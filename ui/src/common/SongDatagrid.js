@@ -1,6 +1,11 @@
 import React, { isValidElement, useMemo, useCallback, forwardRef } from 'react'
 import { useDispatch } from 'react-redux'
-import { Datagrid, PureDatagridBody, PureDatagridRow, useTranslate} from 'react-admin'
+import {
+  Datagrid,
+  PureDatagridBody,
+  PureDatagridRow,
+  useTranslate,
+} from 'react-admin'
 import {
   TableCell,
   TableRow,
@@ -13,9 +18,7 @@ import AlbumIcon from '@material-ui/icons/Album'
 import clsx from 'clsx'
 import { useDrag } from 'react-dnd'
 import { playTracks } from '../actions'
-import { AlbumContextMenu,
-  FormatFullDate,
-} from '../common'
+import { AlbumContextMenu, FormatFullDate } from '../common'
 import { DraggableTypes } from '../consts'
 
 const useStyles = makeStyles({
@@ -52,7 +55,7 @@ const useStyles = makeStyles({
 })
 
 const EditionRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible}, ref) => {
+  ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
     const translate = useTranslate()
@@ -65,7 +68,7 @@ const EditionRow = forwardRef(
       editionTitle.push(translate('resources.album.fields.released'))
       editionTitle.push(FormatFullDate(record.releaseDate))
       if (record.catalogNum && isDesktop) {
-        editionTitle.push("· Cat #")
+        editionTitle.push('· Cat #')
         editionTitle.push(record.catalogNum)
       }
     }
@@ -97,7 +100,7 @@ const EditionRow = forwardRef(
 )
 
 const DiscSubtitleRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible}, ref) => {
+  ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
     const handlePlaySubset = (releaseDate, discNumber) => () => {
@@ -159,7 +162,13 @@ export const SongDatagridRow = ({
     () => ({
       type: DraggableTypes.DISC,
       item: {
-        discs: [{ albumId: record?.albumId, releaseDate: record?.releaseDate, discNumber: record?.discNumber }],
+        discs: [
+          {
+            albumId: record?.albumId,
+            releaseDate: record?.releaseDate,
+            discNumber: record?.discNumber,
+          },
+        ],
       },
       options: { dropEffect: 'copy' },
     }),
@@ -181,19 +190,17 @@ export const SongDatagridRow = ({
 
   const childCount = fields.length
   return (
-    <>      
-    {firstTracksOfEditions.has(record.id) && (
-        
-      <EditionRow
-        ref={dragDiscRef}
-        record={record}
-        onClick={onClickSubset}
-        contextAlwaysVisible={contextAlwaysVisible}
-        colSpan={childCount + (rest.expand ? 1 : 0)}
-      />
-    )}
+    <>
+      {firstTracksOfEditions.has(record.id) && (
+        <EditionRow
+          ref={dragDiscRef}
+          record={record}
+          onClick={onClickSubset}
+          contextAlwaysVisible={contextAlwaysVisible}
+          colSpan={childCount + (rest.expand ? 1 : 0)}
+        />
+      )}
       {firstTracksOfDiscs.has(record.id) && (
-        
         <DiscSubtitleRow
           ref={dragDiscRef}
           record={record}
@@ -239,9 +246,13 @@ const SongDatagridBody = ({
     (releaseDate, discNumber) => {
       let idsToPlay = []
       if (discNumber != undefined) {
-        idsToPlay = ids.filter((id) => (data[id].releaseDate === releaseDate && data[id].discNumber === discNumber))
+        idsToPlay = ids.filter(
+          (id) =>
+            data[id].releaseDate === releaseDate &&
+            data[id].discNumber === discNumber
+        )
       } else {
-        idsToPlay = ids.filter((id) => (data[id].releaseDate === releaseDate))
+        idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
       }
       dispatch(playTracks(data, idsToPlay))
     },
