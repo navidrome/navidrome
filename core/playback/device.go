@@ -38,6 +38,8 @@ type DeviceStatus struct {
 	Position     int
 }
 
+var EmptyStatus = DeviceStatus{CurrentIndex: -1, Playing: false, Gain: 0.5, Position: 0}
+
 func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string, deviceName string) *PlaybackDevice {
 	return &PlaybackDevice{
 		ParentPlaybackServer: playbackServer,
@@ -78,7 +80,7 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
-		return DeviceStatus{CurrentIndex: -1, Gain: 0.5, Playing: false}, nil
+		return EmptyStatus, nil
 	}
 
 	if !pd.Prepared {
@@ -202,7 +204,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 		}
 	case "audio/mp4":
 		fFmpeg := ffmpeg.New()
-		s, err := fFmpeg.ConvertToWAV(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
+		s, err := fFmpeg.ConvertToMP3(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
 		if err != nil {
 			log.Error(err)
 			return
@@ -214,7 +216,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 			return
 		}
 
-		tempFile, err := os.CreateTemp("", "*.wav")
+		tempFile, err := os.CreateTemp("", "*.mp3")
 		if err != nil {
 			log.Error(err)
 			return
@@ -224,7 +226,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 		tempFile.Close()
 
 		log.Debug("using tempfile: " + name)
-		streamer, format, err = decodeWAV(name)
+		streamer, format, err = decodeMp3(name)
 		if err != nil {
 			log.Error(err)
 			return
@@ -235,6 +237,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 		return
 	}
 
+	log.Debug("Setting up audio device")
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
 	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
 	pd.Prepared = true
