@@ -245,7 +245,7 @@ const SongDatagridBody = ({
   const playSubset = useCallback(
     (releaseDate, discNumber) => {
       let idsToPlay = []
-      if (discNumber != undefined) {
+      if (discNumber !== undefined) {
         idsToPlay = ids.filter(
           (id) =>
             data[id].releaseDate === releaseDate &&
