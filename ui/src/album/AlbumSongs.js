@@ -206,7 +206,6 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
 }
 
 const SanitizedAlbumSongs = (props) => {
-  const record = useRecordContext(props)
   removeAlbumCommentsFromSongs(props)
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
