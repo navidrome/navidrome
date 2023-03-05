@@ -15,6 +15,8 @@ import {
   LISTENBRAINZ_TOKEN_CLOSE,
   SHARE_MENU_OPEN,
   SHARE_MENU_CLOSE,
+  WEBHOOK_INFO_OPEN,
+  WEBHOOK_INFO_CLOSE,
 } from '../actions'
 
 export const shareDialogReducer = (
@@ -163,6 +165,32 @@ export const listenBrainzTokenDialogReducer = (
         ...previousState,
         open: false,
       }
+    default:
+      return previousState
+  }
+}
+
+export const webhookTokenReducer = (
+  previousState = {
+    open: false,
+  },
+  payload
+) => {
+  const { type, ...data } = payload
+  switch (type) {
+    case WEBHOOK_INFO_OPEN: {
+      return {
+        ...previousState,
+        open: true,
+        ...data,
+      }
+    }
+    case WEBHOOK_INFO_CLOSE: {
+      return {
+        ...previousState,
+        open: false,
+      }
+    }
     default:
       return previousState
   }

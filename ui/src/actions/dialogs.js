@@ -14,6 +14,8 @@ export const DOWNLOAD_MENU_PLAY = 'playlist'
 export const DOWNLOAD_MENU_SONG = 'song'
 export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
 export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
+export const WEBHOOK_INFO_OPEN = 'WEBHOOK_INFO_OPEN'
+export const WEBHOOK_INFO_CLOSE = 'WEBHOOK_INFO_CLOSE'
 
 export const openShareMenu = (ids, resource, name, label) => ({
   type: SHARE_MENU_OPEN,
@@ -75,4 +77,14 @@ export const openListenBrainzTokenDialog = () => ({
 
 export const closeListenBrainzTokenDialog = () => ({
   type: LISTENBRAINZ_TOKEN_CLOSE,
+})
+
+export const openWebhookDialog = (name, url) => ({
+  type: WEBHOOK_INFO_OPEN,
+  name,
+  url,
+})
+
+export const closeWebhookDialog = () => ({
+  type: WEBHOOK_INFO_CLOSE,
 })

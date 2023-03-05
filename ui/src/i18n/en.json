@@ -114,7 +114,8 @@
             },
             "message": {
                 "listenBrainzToken": "Enter your ListenBrainz user token.",
-                "clickHereForToken": "Click here to get your token"
+                "clickHereForToken": "Click here to get your token",
+                "webhookToken": "Enter your %{name} user token. Caution: if you enable this, your scrobbles will be sent to %{url}"
             }
         },
         "player": {
@@ -361,6 +362,11 @@
         "listenBrainzLinkFailure": "ListenBrainz could not be linked: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz unlinked and scrobbling disabled",
         "listenBrainzUnlinkFailure": "ListenBrainz could not be unlinked",
+        "webhookTitle": "Webhook %{name}",
+        "webhookLinkSuccess": "Webhook %{name} successfully linked and scrobbling enabled as user: %{user}",
+        "webhookLinkFailure": "Webhook %{name} could not be linked: %{error}",
+        "webhookUnlinkSuccess": "Webhook %{name} unlinked and scrobbling disabled",
+        "webhookUnlinkFailure": "Webhook %{name} could not be unlinked",
         "openIn": {
             "lastfm": "Open in Last.fm",
             "musicbrainz": "Open in MusicBrainz"
@@ -389,6 +395,7 @@
                 "desktop_notifications": "Desktop Notifications",
                 "lastfmScrobbling": "Scrobble to Last.fm",
                 "listenBrainzScrobbling": "Scrobble to ListenBrainz",
+                "webhookScrobbling": "Scrobble to Webhook %{name}",
                 "replaygain": "ReplayGain Mode",
                 "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {

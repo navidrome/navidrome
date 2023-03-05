@@ -86,11 +86,13 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 		if version != "dev" {
 			version = "v" + version
 		}
+
 		data := map[string]interface{}{
 			"AppConfig": string(appConfigJson),
 			"Version":   version,
 		}
 		addShareData(r, data, shareInfo)
+		addWebhooks(r, data)
 
 		w.Header().Set("Content-Type", "text/html")
 		err = t.Execute(w, data)
@@ -168,4 +170,26 @@ func addShareData(r *http.Request, data map[string]interface{}, shareInfo *model
 	data["ShareURL"] = shareInfo.URL
 	data["ShareImageURL"] = shareInfo.ImageURL
 	data["ShareInfo"] = string(shareInfoJson)
+}
+
+type webhook struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
+}
+
+func addWebhooks(r *http.Request, data map[string]interface{}) {
+	webhooks := []webhook{}
+	for _, hook := range conf.Server.Webhooks {
+		webhooks = append(webhooks, webhook{
+			Name: hook.Name,
+			Url:  hook.Url,
+		})
+	}
+
+	webhookJson, err := json.Marshal(webhooks)
+	if err != nil {
+		log.Error(r.Context(), "Error converting Webhooks to JSON", "config", webhooks, err)
+	}
+
+	data["Webhooks"] = string(webhookJson)
 }

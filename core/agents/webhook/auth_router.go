@@ -1,0 +1,140 @@
+package webhook
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/deluan/rest"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
+)
+
+type sessionKeysRepo interface {
+	Put(ctx context.Context, userId, sessionKey string) error
+	Get(ctx context.Context, userId string) (string, error)
+	Delete(ctx context.Context, userId string) error
+}
+
+type Router struct {
+	http.Handler
+	ds          model.DataStore
+	name        string
+	sessionKeys sessionKeysRepo
+	client      *client
+}
+
+func newRouter(ds model.DataStore, name, url, apiKey string) *Router {
+	r := &Router{
+		ds:          ds,
+		name:        name,
+		sessionKeys: sessionKey(ds, name),
+	}
+	r.Handler = r.routes()
+	chc := &http.Client{
+		Timeout: consts.DefaultHttpClientTimeOut,
+	}
+	r.client = newClient(url, apiKey, chc)
+	return r
+}
+
+type WebhookRoutes map[string]*Router
+
+func NewRouters(ds model.DataStore) *WebhookRoutes {
+	routes := WebhookRoutes{}
+
+	for _, webhook := range conf.Server.Webhooks {
+		router := newRouter(ds, webhook.Name, webhook.Url, webhook.ApiKey)
+		routes[webhook.Name] = router
+	}
+
+	return &routes
+}
+
+func (s *Router) routes() http.Handler {
+	r := chi.NewRouter()
+
+	r.Group(func(r chi.Router) {
+		r.Use(server.Authenticator(s.ds))
+		r.Use(server.JWTRefresher)
+
+		r.Get("/link", s.getLinkStatus)
+		r.Put("/link", s.link)
+		r.Delete("/link", s.unlink)
+	})
+
+	return r
+}
+
+func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
+	resp := map[string]interface{}{}
+	u, _ := request.UserFrom(r.Context())
+	key, err := s.sessionKeys.Get(r.Context(), u.ID)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		resp["error"] = err
+		resp["status"] = false
+		_ = rest.RespondWithJSON(w, http.StatusInternalServerError, resp)
+		return
+	}
+	resp["status"] = key != ""
+	_ = rest.RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (s *Router) link(w http.ResponseWriter, r *http.Request) {
+	type tokenPayload struct {
+		Token string `json:"token"`
+	}
+	var payload tokenPayload
+	err := json.NewDecoder(r.Body).Decode(&payload)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if payload.Token == "" {
+		_ = rest.RespondWithError(w, http.StatusBadRequest, "Token is required")
+		return
+	}
+
+	u, _ := request.UserFrom(r.Context())
+	resp, err := s.client.validateToken(r.Context(), payload.Token)
+	if err != nil {
+		log.Error(
+			r.Context(), "Could not validate ListenBrainz token", "webhook",
+			s.name, "userId",
+			u.ID, "requestId",
+			middleware.GetReqID(r.Context()), err,
+		)
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if resp.Error != 0 {
+		_ = rest.RespondWithError(w, http.StatusBadRequest, resp.Message)
+		return
+	}
+
+	err = s.sessionKeys.Put(r.Context(), u.ID, payload.Token)
+	if err != nil {
+		log.Error("Could not save Webhook token", "userId", u.ID, "requestId", middleware.GetReqID(r.Context()), err)
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]interface{}{"status": true, "user": resp.UserName})
+}
+
+func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
+	u, _ := request.UserFrom(r.Context())
+	err := s.sessionKeys.Delete(r.Context(), u.ID)
+	if err != nil {
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	} else {
+		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{})
+	}
+}

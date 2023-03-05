@@ -54,4 +54,12 @@ try {
   shareInfo = null
 }
 
+export let webhooks
+
+try {
+  webhooks = JSON.parse(window.__WEBHOOKS__)
+} catch (e) {
+  webhooks = []
+}
+
 export default config

@@ -9,6 +9,7 @@ import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
 import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
 import config from '../config'
 import { ReplayGainToggle } from './ReplayGainToggle'
+import { Webhooks } from './Webhooks'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -29,6 +30,7 @@ const Personal = () => {
         <NotificationsToggle />
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
         {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}
+        {<Webhooks />}
       </SimpleForm>
     </Card>
   )

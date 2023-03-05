@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
+	"github.com/navidrome/navidrome/core/agents/webhook"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
@@ -94,6 +95,13 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	return router
 }
 
+func CreateWebhookRouters() *webhook.WebhookRoutes {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	webhookRoutes := webhook.NewRouters(dataStore)
+	return webhookRoutes
+}
+
 func createScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
@@ -111,7 +119,7 @@ func createScanner() scanner.Scanner {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, webhook.NewRouters, db.Db)
 
 // Scanner must be a Singleton
 var (

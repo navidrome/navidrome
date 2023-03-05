@@ -96,6 +96,9 @@ func startServer(ctx context.Context) func() error {
 			core.WriteInitialMetrics()
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 		}
+		for name, hook := range *CreateWebhookRouters() {
+			a.MountRouter("Webhook "+name+" Auth", consts.URLPathNativeAPI+"/webhook/"+name, hook)
+		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
