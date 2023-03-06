@@ -104,18 +104,18 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 
 	u, _ := request.UserFrom(r.Context())
 	resp, err := s.client.validateToken(r.Context(), payload.Token)
+	if resp.Error != 0 {
+		_ = rest.RespondWithError(w, http.StatusBadRequest, resp.Message)
+		return
+	}
 	if err != nil {
 		log.Error(
-			r.Context(), "Could not validate ListenBrainz token", "webhook",
+			r.Context(), "Could not validate Webhook token", "webhook",
 			s.name, "userId",
 			u.ID, "requestId",
 			middleware.GetReqID(r.Context()), err,
 		)
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if resp.Error != 0 {
-		_ = rest.RespondWithError(w, http.StatusBadRequest, resp.Message)
 		return
 	}
 

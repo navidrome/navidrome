@@ -79,7 +79,7 @@ type configOptions struct {
 	Spotify      spotifyOptions
 	ListenBrainz listenBrainzOptions
 
-	Webhooks []webhookOption
+	Webhooks []WebhookOption
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
@@ -124,7 +124,7 @@ type prometheusOptions struct {
 	MetricsPath string
 }
 
-type webhookOption struct {
+type WebhookOption struct {
 	Name   string
 	Url    string
 	ApiKey string
@@ -308,7 +308,7 @@ func init() {
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
-	viper.SetDefault("webhooks", []webhookOption{})
+	viper.SetDefault("webhooks", []WebhookOption{})
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

@@ -416,6 +416,50 @@ var _ = Describe("serveIndex", func() {
 			})
 		})
 	})
+
+	Describe("Webhooks", func() {
+		It("has an empty list", func() {
+			conf.Server.Webhooks = []conf.WebhookOption{}
+
+			r := httptest.NewRequest("GET", "/index.html", nil)
+			w := httptest.NewRecorder()
+
+			serveIndex(ds, fs, nil)(w, r)
+
+			config := extractWebhookConfig(w.Body.String())
+			Expect(config).To(HaveLen(0))
+		})
+
+		It("handles multiple webhooks", func() {
+			conf.Server.Webhooks = []conf.WebhookOption{
+				{
+					Name:   "Hook 1",
+					Url:    "https://example.com/hook",
+					ApiKey: "notarealkey",
+				}, {
+					Name:   "Hook 2",
+					Url:    "https://example.org/hook",
+					ApiKey: "alsonotakey",
+				},
+			}
+
+			r := httptest.NewRequest("GET", "/index.html", nil)
+			w := httptest.NewRecorder()
+
+			serveIndex(ds, fs, nil)(w, r)
+
+			config := extractWebhookConfig(w.Body.String())
+			Expect(config).To(HaveLen(2))
+			Expect(config[0]).To(Equal(map[string]interface{}{
+				"name": "Hook 1",
+				"url":  "https://example.com/hook",
+			}))
+			Expect(config[1]).To(Equal(map[string]interface{}{
+				"name": "Hook 2",
+				"url":  "https://example.org/hook",
+			}))
+		})
+	})
 })
 
 var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__=(.*);</script>`)
@@ -423,6 +467,24 @@ var appConfigRegex = regexp.MustCompile(`(?m)window.__APP_CONFIG__=(.*);</script
 func extractAppConfig(body string) map[string]interface{} {
 	config := make(map[string]interface{})
 	match := appConfigRegex.FindStringSubmatch(body)
+	if match == nil {
+		return config
+	}
+	str, err := strconv.Unquote(match[1])
+	if err != nil {
+		panic(fmt.Sprintf("%s: %s", match[1], err))
+	}
+	if err := json.Unmarshal([]byte(str), &config); err != nil {
+		panic(err)
+	}
+	return config
+}
+
+var webHookConfig = regexp.MustCompile(`(?m)window.__WEBHOOKS__=(.*);</script>`)
+
+func extractWebhookConfig(body string) []map[string]interface{} {
+	config := make([]map[string]interface{}, 0)
+	match := webHookConfig.FindStringSubmatch(body)
 	if match == nil {
 		return config
 	}

@@ -61,6 +61,7 @@ func (c *client) scrobble(ctx context.Context, sessionKey string, isSubmission b
 	params := map[string]interface{}{
 		"artist":      info.artist,
 		"track":       info.track,
+		"album":       info.album,
 		"trackNumber": info.trackNumber,
 		"mbid":        info.mbid,
 		"duration":    info.duration,
@@ -98,13 +99,11 @@ func (c *client) makeRequest(ctx context.Context, endpoint string, params map[st
 	decoder := json.NewDecoder(resp.Body)
 	jsonErr := decoder.Decode(&response)
 
-	if resp.StatusCode != 200 && jsonErr != nil {
+	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("webhook http status: (%d)", resp.StatusCode)
-	}
-	if jsonErr != nil {
+	} else if jsonErr != nil {
 		return nil, jsonErr
-	}
-	if response.Error != 0 {
+	} else if response.Error != 0 {
 		return &response, &webhookError{Code: response.Error, Message: response.Message}
 	}
 
