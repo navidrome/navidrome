@@ -33,8 +33,8 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.22
 	github.com/mileusna/useragent v1.2.1
-	github.com/onsi/ginkgo/v2 v2.8.1
-	github.com/onsi/gomega v1.27.1
+	github.com/onsi/ginkgo/v2 v2.9.0
+	github.com/onsi/gomega v1.27.2
 	github.com/pressly/goose v2.7.0+incompatible
 	github.com/prometheus/client_golang v1.14.0
 	github.com/robfig/cron/v3 v3.0.1
@@ -45,9 +45,9 @@ require (
 	github.com/unrolled/secure v1.13.0
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
-	golang.org/x/image v0.5.0
+	golang.org/x/image v0.6.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.7.0
+	golang.org/x/text v0.8.0
 	golang.org/x/tools v0.6.0
 	gopkg.in/yaml.v3 v3.0.1
 )
