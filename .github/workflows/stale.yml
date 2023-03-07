@@ -25,7 +25,6 @@ jobs:
             Please open a new issue for related bugs.
       - uses: actions/stale@v7
         with:
-          debug-only: true
           operations-per-run: 999
           days-before-issue-stale: 180
           days-before-pr-stale: 180
