@@ -26,7 +26,7 @@ var _ = Describe("Tags", func() {
 				Expect(testYear).To(Equal(expected))
 			}
 		})
-		
+
 		It("parses the date correctly", func() {
 			var examplesDate = map[string]string{
 				"1985":         "1985",

@@ -19,7 +19,7 @@ var _ = Describe("Tags", func() {
 			mds, err := metadata.Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mds).To(HaveLen(2))
-			
+
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m.Title()).To(Equal("Song"))
 			Expect(m.Album()).To(Equal("Album"))
