@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Support and Feature requests
-    url: https://github.com/navidrome/navidrome/discussions
-    about: This is the place to ask questions and to share ideas.
+  - name: Ideas for new features
+    url: https://github.com/navidrome/navidrome/discussions/new?category=ideas
+    about: This is the place to share and discuss new ideas and potentially new features.
+  - name: Support requests
+    url: https://github.com/navidrome/navidrome/discussions/new?category=q-a
+    about: This is the place to ask questions.
