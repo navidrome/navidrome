@@ -2,8 +2,8 @@ name: Bug Report
 description: Before opening a new issue, please search to see if an issue already exists for the bug you encountered.
 title: "[Bug]: "
 labels: ["bug", "triage"]
-assignees:
-  - deluan
+#assignees:
+#  - deluan
 body:
   - type: markdown
     attributes:
@@ -12,7 +12,7 @@ body:
   - type: checkboxes
     id: requirements
     attributes:
-      label: But first, have you done your homework?
+      label: "I confirm that:"
       options:
         - label: I have searched the existing [open AND closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) to see if an issue already exists for the bug I've encountered
           required: true
@@ -84,7 +84,7 @@ body:
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks. ([Where I can find the logs?](https://www.navidrome.org/docs/faq/#where-are-the-logs))
+      description: Please copy and paste any relevant log output (change your `LogLevel` (`ND_LOGLEVEL`) to debug). This will be automatically formatted into code, so no need for backticks. ([Where I can find the logs?](https://www.navidrome.org/docs/faq/#where-are-the-logs))
       render: shell
   - type: textarea
     attributes:
