@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -159,10 +160,14 @@ func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 // `ignore` file (named after consts.SkipScanFile)
 func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
 	// allows Album folders for albums which e.g. start with ellipses
-	if strings.HasPrefix(dirEnt.Name(), ".") && !strings.HasPrefix(dirEnt.Name(), "..") {
+	name := dirEnt.Name()
+	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
 		return true
 	}
-	_, err := os.Stat(filepath.Join(baseDir, dirEnt.Name(), consts.SkipScanFile))
+	if runtime.GOOS == "windows" && strings.EqualFold(name, "$RECYCLE.BIN") {
+		return true
+	}
+	_, err := os.Stat(filepath.Join(baseDir, name, consts.SkipScanFile))
 	return err == nil
 }
 
