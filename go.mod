@@ -10,7 +10,7 @@ require (
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/cespare/reflex v0.3.1
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
-	github.com/deluan/sanitize v0.0.0-20230205000301-6c233e80fe2e
+	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
@@ -234,8 +234,8 @@ require (
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	honnef.co/go/tools v0.4.0 // indirect
