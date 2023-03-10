@@ -1,0 +1,31 @@
+version: '3.6'
+
+volumes:
+  caddy_data:
+  navidrome_data:
+
+services:
+
+  caddy:
+    container_name: "caddy"
+    image: caddy:2.6-alpine
+    restart: unless-stopped
+    read_only: true
+    volumes:
+      - "caddy_data:/data:rw"
+      - "./Caddyfile:/etc/caddy/Caddyfile:ro"
+    ports:
+      - "80:80"
+      - "443:443"
+
+  navidrome:
+    container_name: "navidrome"
+    image: deluan/navidrome:latest
+    restart: unless-stopped
+    read_only: true
+    # user: 1000:1000
+    ports:
+      - "4533:4533"
+    volumes:
+      - "navidrome_data:/data"
+      #- "/mnt/music:/music:ro"
