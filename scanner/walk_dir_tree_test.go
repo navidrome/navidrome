@@ -79,6 +79,10 @@ var _ = Describe("walk_dir_tree", func() {
 			dirEntry, _ := getDirEntry(baseDir, "...unhidden_folder")
 			Expect(isDirIgnored(baseDir, dirEntry)).To(BeFalse())
 		})
+		It("returns false when folder name is $Recycle.Bin", func() {
+			dirEntry, _ := getDirEntry(baseDir, "$Recycle.Bin")
+			Expect(isDirIgnored(baseDir, dirEntry)).To(BeFalse())
+		})
 	})
 
 	Describe("fullReadDir", func() {
