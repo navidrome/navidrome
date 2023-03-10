@@ -1,0 +1,7 @@
+https://your.website {
+  reverse_proxy * navidrome:4533 {
+    header_up Host {http.reverse_proxy.upstream.hostport}
+    header_up X-Forwarded-For {http.request.remote}
+    header_up X-Real-IP {http.reverse_proxy.upstream.port}
+  }
+}
