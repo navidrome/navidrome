@@ -125,7 +125,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 }
 
 func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
-	cols := []string{"description"}
+	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration
 	if !entity.(*model.Share).ExpiresAt.IsZero() {
