@@ -271,16 +271,14 @@ const AlbumDetails = (props) => {
               className={classes.recordName}
             >
               {record.name}
-              {config.enableFavourites && (
-                <LoveButton
-                  className={classes.loveButton}
-                  record={record}
-                  resource={'album'}
-                  size={isDesktop ? 'default' : 'small'}
-                  aria-label="love"
-                  color="primary"
-                />
-              )}
+              <LoveButton
+                className={classes.loveButton}
+                record={record}
+                resource={'album'}
+                size={isDesktop ? 'default' : 'small'}
+                aria-label="love"
+                color="primary"
+              />
             </Typography>
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
