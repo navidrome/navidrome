@@ -183,6 +183,7 @@
                 "username": "Compartilhado por",
                 "url": "Link",
                 "description": "Descrição",
+                "downloadable": "Permitir Baixar?",
                 "contents": "Conteúdo",
                 "expiresAt": "Dt. Expiração",
                 "lastVisitedAt": "Última visita",

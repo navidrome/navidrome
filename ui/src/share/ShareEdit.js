@@ -1,5 +1,6 @@
 import {
   DateTimeInput,
+  BooleanInput,
   Edit,
   NumberField,
   SimpleForm,
@@ -19,6 +20,7 @@ export const ShareEdit = (props) => {
           {url}
         </Link>
         <TextInput source="description" />
+        <BooleanInput source="downloadable" />
         <DateTimeInput source="expiresAt" />
         <TextInput source="contents" disabled />
         <TextInput source="format" disabled />

@@ -12,6 +12,7 @@ type Share struct {
 	UserID        string     `structs:"user_id" json:"userId,omitempty"  orm:"column(user_id)"`
 	Username      string     `structs:"-" json:"username,omitempty"      orm:"-"`
 	Description   string     `structs:"description" json:"description,omitempty"`
+	Downloadable  bool       `structs:"downloadable" json:"downloadable"`
 	ExpiresAt     time.Time  `structs:"expires_at" json:"expiresAt,omitempty"`
 	LastVisitedAt time.Time  `structs:"last_visited_at" json:"lastVisitedAt,omitempty"`
 	ResourceIDs   string     `structs:"resource_ids" json:"resourceIds,omitempty"   orm:"column(resource_ids)"`
