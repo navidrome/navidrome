@@ -91,8 +91,10 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc b
 
 func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
 	s, err := a.shares.Load(ctx, id)
+	if !s.Downloadable {
+		return model.ErrNotAuthorized
+	}
 	if err != nil {
-		log.Error(ctx, "Error loading mediafiles from share", "id", id, err)
 		return err
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))

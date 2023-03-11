@@ -45,6 +45,9 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 	case errors.Is(err, model.ErrNotFound):
 		log.Error(ctx, "Share not found", "id", id, err)
 		http.Error(w, "Share not found", http.StatusNotFound)
+	case errors.Is(err, model.ErrNotAuthorized):
+		log.Error(ctx, "Share is not downloadable", "id", id, err)
+		http.Error(w, "This share is not downloadable", http.StatusForbidden)
 	case err != nil:
 		log.Error(ctx, "Error retrieving share", "id", id, err)
 		http.Error(w, "Error retrieving share", http.StatusInternalServerError)

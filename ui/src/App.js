@@ -37,7 +37,7 @@ import config, { shareInfo } from './config'
 import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
-import SharePlayer from './SharePlayer'
+import SharePlayer from './share/SharePlayer'
 
 const history = createHashHistory()
 

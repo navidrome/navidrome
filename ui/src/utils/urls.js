@@ -19,6 +19,10 @@ export const shareStreamUrl = (id) => {
   return baseUrl(config.publicBaseUrl + '/s/' + id)
 }
 
+export const shareDownloadUrl = (id) => {
+  return baseUrl(config.publicBaseUrl + '/d/' + id)
+}
+
 export const shareCoverUrl = (id) => {
   return baseUrl(config.publicBaseUrl + '/img/' + id + '?size=300')
 }
