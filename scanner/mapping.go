@@ -32,9 +32,10 @@ func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaF
 func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
+	mf.Year, mf.Date, mf.ReleaseDate = s.mapDates(md)
 	mf.Title = s.mapTrackTitle(md)
 	mf.Album = md.Album()
-	mf.AlbumID = s.albumID(md)
+	mf.AlbumID = s.albumID(md, mf.ReleaseDate)
 	mf.Album = s.mapAlbumName(md)
 	mf.ArtistID = s.artistID(md)
 	mf.Artist = s.mapArtistName(md)
@@ -42,7 +43,6 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
-	mf.Year, mf.Date, mf.ReleaseDate = s.mapDates(md)
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
@@ -128,13 +128,9 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
 }
 
-func (s mediaFileMapper) albumID(md metadata.Tags) string {
+func (s mediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
-
 	if !conf.Server.Scanner.GroupAlbumEditions {
-		// don't really like this - using mapDates() means parsing all three date tags again, seems redundant
-		_, _, releaseDate := s.mapDates(md)
-
 		if len(releaseDate) != 0 {
 			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
 		}
