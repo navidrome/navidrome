@@ -35,7 +35,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 		return nil, err
 	}
 	if !share.ExpiresAt.IsZero() && share.ExpiresAt.Before(time.Now()) {
-		return nil, model.ErrNotAvailable
+		return nil, model.ErrExpired
 	}
 	share.LastVisitedAt = time.Now()
 	share.VisitCount++
