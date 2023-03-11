@@ -18,16 +18,18 @@ import (
 type Archiver interface {
 	ZipAlbum(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
+	ZipShare(ctx context.Context, id string, w io.Writer) error
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
 
-func NewArchiver(ms MediaStreamer, ds model.DataStore) Archiver {
-	return &archiver{ds: ds, ms: ms}
+func NewArchiver(ms MediaStreamer, ds model.DataStore, shares Share) Archiver {
+	return &archiver{ds: ds, ms: ms, shares: shares}
 }
 
 type archiver struct {
-	ds model.DataStore
-	ms MediaStreamer
+	ds     model.DataStore
+	ms     MediaStreamer
+	shares Share
 }
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
@@ -87,19 +89,31 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc b
 	return fmt.Sprintf("%s/%s", mf.Album, file)
 }
 
+func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
+	s, err := a.shares.Load(ctx, id)
+	if !s.Downloadable {
+		return model.ErrNotAuthorized
+	}
+	if err != nil {
+		return err
+	}
+	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
+	return a.zipMediaFiles(ctx, id, s.Format, s.MaxBitRate, out, s.Tracks)
+}
+
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
 	pls, err := a.ds.Playlist(ctx).GetWithTracks(id, true)
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from playlist", "id", id, err)
 		return err
 	}
-	return a.zipPlaylist(ctx, id, format, bitrate, out, pls)
-}
-
-func (a *archiver) zipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer, pls *model.Playlist) error {
-	z := createZipWriter(out, format, bitrate)
 	mfs := pls.MediaFiles()
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
+	return a.zipMediaFiles(ctx, id, format, bitrate, out, mfs)
+}
+
+func (a *archiver) zipMediaFiles(ctx context.Context, id string, format string, bitrate int, out io.Writer, mfs model.MediaFiles) error {
+	z := createZipWriter(out, format, bitrate)
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
 		_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
@@ -132,7 +146,7 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	}
 
 	var r io.ReadCloser
-	if format != "raw" {
+	if format != "raw" && format != "" {
 		r, err = a.ms.DoStream(ctx, &mf, format, bitrate)
 	} else {
 		r, err = os.Open(mf.Path)

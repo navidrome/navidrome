@@ -245,6 +245,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableSharing", false))
 	})
 
+	It("sets the defaultDownloadableShare", func() {
+		conf.Server.DefaultDownloadableShare = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultDownloadableShare", true))
+	})
+
 	It("sets the defaultDownsamplingFormat", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
