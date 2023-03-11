@@ -45,7 +45,7 @@ var _ = Describe("Share", func() {
 				entity := &model.Share{}
 				err := repo.Update("id", entity)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description"))
+				Expect(mockedRepo.(*tests.MockShareRepo).Cols).To(ConsistOf("description", "downloadable"))
 			})
 		})
 	})

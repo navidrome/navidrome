@@ -184,6 +184,7 @@
                 "username": "Shared By",
                 "url": "URL",
                 "description": "Description",
+                "downloadable": "Allow Downloads?",
                 "contents": "Contents",
                 "expiresAt": "Expires",
                 "lastVisitedAt": "Last Visited",
