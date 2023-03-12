@@ -25,6 +25,7 @@ RUN ffmpeg -buildconf
 
 COPY --from=copy-binary /navidrome /app/
 
+RUN mkdir /data && chmod 777 /data
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER /music
 ENV ND_DATAFOLDER /data
