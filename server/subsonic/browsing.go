@@ -415,15 +415,15 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
 	dir.CoverArt = album.CoverArtID().String()
-	dir.SongCount = album.SongCount
-	dir.Duration = int(album.Duration)
+	dir.SongCount = int32(album.SongCount)
+	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {
 		dir.Played = &album.PlayDate
 	}
-	dir.Year = album.MaxYear
+	dir.Year = int32(album.MaxYear)
 	dir.Genre = album.Genre
-	dir.UserRating = album.Rating
+	dir.UserRating = int32(album.Rating)
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt
 	}

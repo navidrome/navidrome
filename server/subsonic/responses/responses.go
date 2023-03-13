@@ -182,14 +182,14 @@ type AlbumID3 struct {
 	Artist     string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
 	ArtistId   string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
 	CoverArt   string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	SongCount  int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
-	Duration   int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
+	SongCount  int32      `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	Duration   int32      `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
 	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
 	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
 	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
-	Year       int        `xml:"year,attr,omitempty"                json:"year,omitempty"`
+	UserRating int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	Year       int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre      string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 }
 
