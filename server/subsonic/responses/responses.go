@@ -170,7 +170,7 @@ type ArtistID3 struct {
 	Id             string     `xml:"id,attr"                            json:"id"`
 	Name           string     `xml:"name,attr"                          json:"name"`
 	CoverArt       string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	AlbumCount     int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	AlbumCount     int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	UserRating     int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
