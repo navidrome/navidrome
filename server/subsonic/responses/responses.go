@@ -369,7 +369,7 @@ type Share struct {
 	Created     time.Time  `xml:"created,attr"                json:"created"`
 	Expires     *time.Time `xml:"expires,omitempty,attr"      json:"expires,omitempty"`
 	LastVisited time.Time  `xml:"lastVisited,omitempty,attr"  json:"lastVisited"`
-	VisitCount  int        `xml:"visitCount,attr"             json:"visitCount"`
+	VisitCount  int32      `xml:"visitCount,attr"             json:"visitCount"`
 }
 
 type Shares struct {
