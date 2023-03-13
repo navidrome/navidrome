@@ -30,7 +30,7 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 
 ## Installation
 
-See instructions in the [project's website](https://www.navidrome.org/docs/installation/)
+See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
 
 ## Cloud Hosting
 
