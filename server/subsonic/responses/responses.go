@@ -211,8 +211,8 @@ type Playlist struct {
 	Id        string    `xml:"id,attr"                       json:"id"`
 	Name      string    `xml:"name,attr"                     json:"name"`
 	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
-	SongCount int       `xml:"songCount,attr"                json:"songCount"`
-	Duration  int       `xml:"duration,attr"                 json:"duration"`
+	SongCount int32     `xml:"songCount,attr"                json:"songCount"`
+	Duration  int32     `xml:"duration,attr"                 json:"duration"`
 	Public    bool      `xml:"public,attr"                   json:"public"`
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
