@@ -283,9 +283,9 @@ func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) 
 		similar := responses.ArtistID3{}
 		similar.Id = s.Id
 		similar.Name = s.Name
-		similar.AlbumCount = int32(s.AlbumCount)
+		similar.AlbumCount = s.AlbumCount
 		similar.Starred = s.Starred
-		similar.UserRating = s.UserRating
+		similar.UserRating = int(s.UserRating)
 		similar.CoverArt = s.CoverArt
 		similar.ArtistImageUrl = s.ArtistImageUrl
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)

@@ -78,9 +78,9 @@ type MusicFolders struct {
 type Artist struct {
 	Id             string     `xml:"id,attr"                           json:"id"`
 	Name           string     `xml:"name,attr"                         json:"name"`
-	AlbumCount     int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
+	AlbumCount     int32      `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
-	UserRating     int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	UserRating     int32      `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
 	CoverArt       string     `xml:"coverArt,attr,omitempty"           json:"coverArt,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
 	/* TODO:
