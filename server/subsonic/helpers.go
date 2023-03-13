@@ -103,7 +103,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		AlbumCount:     int32(a.AlbumCount),
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
-		UserRating:     a.Rating,
+		UserRating:     int32(a.Rating),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt

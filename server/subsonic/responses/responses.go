@@ -148,17 +148,17 @@ type Directory struct {
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
 	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
-	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	UserRating int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 
 	// ID3
 	Artist     string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
 	ArtistId   string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
 	CoverArt   string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	SongCount  int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
-	AlbumCount int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
-	Duration   int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
+	SongCount  int32      `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	AlbumCount int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	Duration   int32      `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
 	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
-	Year       int        `xml:"year,attr,omitempty"                json:"year,omitempty"`
+	Year       int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre      string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 
 	/*
@@ -172,7 +172,7 @@ type ArtistID3 struct {
 	CoverArt       string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
 	AlbumCount     int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	UserRating     int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	UserRating     int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
 }
 
