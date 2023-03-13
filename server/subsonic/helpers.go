@@ -116,8 +116,8 @@ func toGenres(genres model.Genres) *responses.Genres {
 	for i, g := range genres {
 		response[i] = responses.Genre{
 			Name:       g.Name,
-			SongCount:  g.SongCount,
-			AlbumCount: g.AlbumCount,
+			SongCount:  int32(g.SongCount),
+			AlbumCount: int32(g.AlbumCount),
 		}
 	}
 	return &responses.Genres{Genre: response}

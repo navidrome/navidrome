@@ -290,8 +290,8 @@ type Users struct {
 
 type Genre struct {
 	Name       string `xml:",chardata"                      json:"value,omitempty"`
-	SongCount  int    `xml:"songCount,attr"             json:"songCount"`
-	AlbumCount int    `xml:"albumCount,attr"            json:"albumCount"`
+	SongCount  int32  `xml:"songCount,attr"             json:"songCount"`
+	AlbumCount int32  `xml:"albumCount,attr"            json:"albumCount"`
 }
 
 type Genres struct {
