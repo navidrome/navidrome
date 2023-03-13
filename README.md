@@ -32,9 +32,13 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 
 See instructions in the [project's website](https://www.navidrome.org/docs/installation/)
 
-If you plan to host Navidrome in the cloud, a great option is to get a virtual server at [BuyVM](https://my.frantech.ca/aff.php?aff=4605). 
-They have plans that start at $3.50/month! If you decide to sign up, please consider using our [affliliate link](https://my.frantech.ca/aff.php?aff=4605),
-to help support the project <3
+## Cloud Hosting
+
+[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
+[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
+A share of the revenue helps fund the development of Navidrome at no additional cost for you.
+
+[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
 
 ## Features
  
