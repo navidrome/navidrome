@@ -58,7 +58,7 @@ type JsonWrapper struct {
 }
 
 type Error struct {
-	Code    int    `xml:"code,attr"                      json:"code"`
+	Code    int32  `xml:"code,attr"                      json:"code"`
 	Message string `xml:"message,attr"                   json:"message"`
 }
 
