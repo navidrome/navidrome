@@ -265,23 +265,23 @@ type NowPlaying struct {
 }
 
 type User struct {
-	Username            string `xml:"username,attr"               json:"username"`
-	Email               string `xml:"email,attr,omitempty"        json:"email,omitempty"`
-	ScrobblingEnabled   bool   `xml:"scrobblingEnabled,attr"      json:"scrobblingEnabled"`
-	MaxBitRate          int    `xml:"maxBitRate,attr,omitempty"   json:"maxBitRate,omitempty"`
-	AdminRole           bool   `xml:"adminRole,attr"              json:"adminRole"`
-	SettingsRole        bool   `xml:"settingsRole,attr"           json:"settingsRole"`
-	DownloadRole        bool   `xml:"downloadRole,attr"           json:"downloadRole"`
-	UploadRole          bool   `xml:"uploadRole,attr"             json:"uploadRole"`
-	PlaylistRole        bool   `xml:"playlistRole,attr"           json:"playlistRole"`
-	CoverArtRole        bool   `xml:"coverArtRole,attr"           json:"coverArtRole"`
-	CommentRole         bool   `xml:"commentRole,attr"            json:"commentRole"`
-	PodcastRole         bool   `xml:"podcastRole,attr"            json:"podcastRole"`
-	StreamRole          bool   `xml:"streamRole,attr"             json:"streamRole"`
-	JukeboxRole         bool   `xml:"jukeboxRole,attr"            json:"jukeboxRole"`
-	ShareRole           bool   `xml:"shareRole,attr"              json:"shareRole"`
-	VideoConversionRole bool   `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
-	Folder              []int  `xml:"folder,omitempty"            json:"folder,omitempty"`
+	Username            string  `xml:"username,attr"               json:"username"`
+	Email               string  `xml:"email,attr,omitempty"        json:"email,omitempty"`
+	ScrobblingEnabled   bool    `xml:"scrobblingEnabled,attr"      json:"scrobblingEnabled"`
+	MaxBitRate          int32   `xml:"maxBitRate,attr,omitempty"   json:"maxBitRate,omitempty"`
+	AdminRole           bool    `xml:"adminRole,attr"              json:"adminRole"`
+	SettingsRole        bool    `xml:"settingsRole,attr"           json:"settingsRole"`
+	DownloadRole        bool    `xml:"downloadRole,attr"           json:"downloadRole"`
+	UploadRole          bool    `xml:"uploadRole,attr"             json:"uploadRole"`
+	PlaylistRole        bool    `xml:"playlistRole,attr"           json:"playlistRole"`
+	CoverArtRole        bool    `xml:"coverArtRole,attr"           json:"coverArtRole"`
+	CommentRole         bool    `xml:"commentRole,attr"            json:"commentRole"`
+	PodcastRole         bool    `xml:"podcastRole,attr"            json:"podcastRole"`
+	StreamRole          bool    `xml:"streamRole,attr"             json:"streamRole"`
+	JukeboxRole         bool    `xml:"jukeboxRole,attr"            json:"jukeboxRole"`
+	ShareRole           bool    `xml:"shareRole,attr"              json:"shareRole"`
+	VideoConversionRole bool    `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
+	Folder              []int32 `xml:"folder,omitempty"            json:"folder,omitempty"`
 }
 
 type Users struct {
