@@ -104,8 +104,8 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 		searchResult2.Artist[i] = responses.Artist{
 			Id:             artist.ID,
 			Name:           artist.Name,
-			AlbumCount:     artist.AlbumCount,
-			UserRating:     artist.Rating,
+			AlbumCount:     int32(artist.AlbumCount),
+			UserRating:     int32(artist.Rating),
 			CoverArt:       artist.CoverArtID().String(),
 			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
 		}

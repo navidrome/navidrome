@@ -262,7 +262,7 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 		code = subErr.code
 	}
 	response.Status = "failed"
-	response.Error = &responses.Error{Code: code, Message: err.Error()}
+	response.Error = &responses.Error{Code: int32(code), Message: err.Error()}
 
 	sendResponse(w, r, response)
 }
