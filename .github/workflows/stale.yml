@@ -14,9 +14,11 @@ jobs:
     steps:
       - uses: dessant/lock-threads@v4.0.0
         with:
-          issue-inactive-days: 21
-          pr-inactive-days: 21
+          issue-inactive-days: 120
+          pr-inactive-days: 120
           log-output: true
+          add-issue-labels: 'frozen-due-to-age'
+          add-pr-labels: 'frozen-due-to-age'
           issue-comment: >
             This issue has been automatically locked since there
             has not been any recent activity after it was closed.
