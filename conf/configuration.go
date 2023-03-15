@@ -83,6 +83,7 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
 	DevLogLevels                     map[string]string
+	DevEnableProfiler                bool
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
 	DevActivityPanel                 bool
@@ -303,6 +304,7 @@ func init() {
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
+	viper.SetDefault("devenableprofiler", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
