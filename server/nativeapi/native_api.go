@@ -6,6 +6,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
@@ -84,6 +85,15 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 				r.Put("/", rest.Put(constructor))
 				r.Delete("/", rest.Delete(constructor))
 			}
+		})
+	})
+}
+
+func (n *Router) createPlaylistFromM3URoute(r chi.Router) {
+	r.Route("/playlist", func(r chi.Router) {
+		r.Use(middleware.AllowContentType("audio/x-mpegurl"))
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			createPlaylistFromM3U(n.ds)(w, r)
 		})
 	})
 }
