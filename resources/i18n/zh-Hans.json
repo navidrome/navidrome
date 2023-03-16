@@ -148,7 +148,7 @@
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
                 "songCount": "歌曲数",
-                "comment": "评论",
+                "comment": "注释",
                 "sync": "自动导入",
                 "path": "导入"
             },
