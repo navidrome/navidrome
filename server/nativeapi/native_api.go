@@ -51,6 +51,7 @@ func (n *Router) routes() http.Handler {
 		}
 
 		n.addPlaylistTrackRoute(r)
+		n.addPlaylistFromM3URoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -89,8 +90,8 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 	})
 }
 
-func (n *Router) createPlaylistFromM3URoute(r chi.Router) {
-	r.Route("/playlist", func(r chi.Router) {
+func (n *Router) addPlaylistFromM3URoute(r chi.Router) {
+	r.Route("/playlists", func(r chi.Router) {
 		r.Use(middleware.AllowContentType("audio/x-mpegurl"))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 			createPlaylistFromM3U(n.ds)(w, r)

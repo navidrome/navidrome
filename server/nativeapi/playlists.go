@@ -12,8 +12,10 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -48,8 +50,15 @@ func createPlaylistFromM3U(ds model.DataStore) http.HandlerFunc {
 		var mfs model.MediaFiles
 		ctx := r.Context()
 		mediaFileRepo := ds.MediaFile(ctx)
+		user, ok := request.UserFrom(ctx)
+		if !ok {
+			log.Error(ctx, "Unable to retrieve user info from request contest")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		pls := model.Playlist{
-			Name: "TODO",
+			Name:    uuid.NewString(), // TODO
+			OwnerID: user.ID,
 		}
 		scanner := bufio.NewScanner(r.Body)
 		for scanner.Scan() {
