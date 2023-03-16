@@ -73,7 +73,7 @@
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放",
                 "starred": "收藏",
-                "topRated": "评分最高"
+                "topRated": "评分排行"
             }
         },
         "artist": {
@@ -161,7 +161,7 @@
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
-                "song_exist": "部分选定的歌曲已在播放列表，继续添加或是略过它们？"
+                "song_exist": "部分选定的歌曲已在播放列表，继续添加或是跳过它们？"
             }
         },
         "radio": {
@@ -191,7 +191,7 @@
                 "maxBitRate": "最大比特率",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
-								"downloadable": "是否允许下载"
+		"downloadable": "是否允许下载"
             }
         }
     },
@@ -251,7 +251,7 @@
             "open_menu": "打开菜单",
             "close_menu": "关闭菜单",
             "unselect": "未选择",
-            "skip": "取消",
+            "skip": "跳过",
             "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "分享",
             "download": "下载"
@@ -330,7 +330,7 @@
             "i18n_error": "加载所选语言时出错",
             "canceled": "操作已取消",
             "logged_out": "您的会话已结束，请重新登录",
-            "new_version": "发现新版本！请刷新窗口"
+            "new_version": "发现新版本！请刷新此页面"
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "显示的项",
@@ -343,7 +343,7 @@
         "note": "说明",
         "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
         "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码选项时启用此功能。",
-        "songsAddedToPlaylist": "已添加一首歌到歌单 |||| 已添加 %{smart_count} 首歌到歌单",
+        "songsAddedToPlaylist": "已添加 1 首歌到歌单 |||| 已添加 %{smart_count} 首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
         "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
