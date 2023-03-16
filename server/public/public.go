@@ -52,7 +52,9 @@ func (p *Router) routes() http.Handler {
 		})
 		if conf.Server.EnableSharing {
 			r.HandleFunc("/s/{id}", p.handleStream)
-			r.HandleFunc("/d/{id}", p.handleDownloads)
+			if conf.Server.EnableDownloads {
+				r.HandleFunc("/d/{id}", p.handleDownloads)
+			}
 			r.HandleFunc("/{id}", p.handleShares)
 			r.HandleFunc("/", p.handleShares)
 			r.Handle("/*", p.assetsHandler)
