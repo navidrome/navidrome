@@ -103,7 +103,7 @@ func startServer(ctx context.Context) func() error {
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
-		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port))
+		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port), conf.Server.TLSCert, conf.Server.TLSKey)
 	}
 }
 
@@ -162,11 +162,14 @@ func init() {
 	_ = viper.BindPFlag("datafolder", rootCmd.PersistentFlags().Lookup("datafolder"))
 	_ = viper.BindPFlag("loglevel", rootCmd.PersistentFlags().Lookup("loglevel"))
 
-	rootCmd.Flags().StringP("address", "a", viper.GetString("address"), "IP address to bind")
-	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will use")
+	rootCmd.Flags().StringP("address", "a", viper.GetString("address"), "IP address to bind to")
+	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will listen to")
+	rootCmd.Flags().String("baseurl", viper.GetString("baseurl"), "base URL to configure Navidrome behind a proxy (ex: /music or http://my.server.com)")
+	rootCmd.Flags().String("tlscert", viper.GetString("tlscert"), "optional path to a TLS cert file (enables HTTPS listening)")
+	rootCmd.Flags().String("tlskey", viper.GetString("tlskey"), "optional path to a TLS key file (enables HTTPS listening)")
+
 	rootCmd.Flags().Duration("sessiontimeout", viper.GetDuration("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
 	rootCmd.Flags().Duration("scaninterval", viper.GetDuration("scaninterval"), "how frequently to scan for changes in your music library")
-	rootCmd.Flags().String("baseurl", viper.GetString("baseurl"), "base URL (only the path part) to configure Navidrome behind a proxy (ex: /music)")
 	rootCmd.Flags().String("uiloginbackgroundurl", viper.GetString("uiloginbackgroundurl"), "URL to a backaground image used in the Login page")
 	rootCmd.Flags().Bool("enabletranscodingconfig", viper.GetBool("enabletranscodingconfig"), "enables transcoding configuration in the UI")
 	rootCmd.Flags().String("transcodingcachesize", viper.GetString("transcodingcachesize"), "size of transcoding cache")
@@ -178,9 +181,12 @@ func init() {
 
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
+	_ = viper.BindPFlag("tlscert", rootCmd.Flags().Lookup("tlscert"))
+	_ = viper.BindPFlag("tlskey", rootCmd.Flags().Lookup("tlskey"))
+	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
+
 	_ = viper.BindPFlag("sessiontimeout", rootCmd.Flags().Lookup("sessiontimeout"))
 	_ = viper.BindPFlag("scaninterval", rootCmd.Flags().Lookup("scaninterval"))
-	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
 	_ = viper.BindPFlag("uiloginbackgroundurl", rootCmd.Flags().Lookup("uiloginbackgroundurl"))
 
 	_ = viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
