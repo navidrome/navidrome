@@ -161,7 +161,7 @@
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
-                "song_exist": "部分选定的歌曲已在播放列表，继续添加或是跳过它们？"
+                "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？"
             }
         },
         "radio": {
@@ -320,9 +320,9 @@
             "skip_nav": "跳过"
         },
         "notification": {
-            "updated": "项已更新 |||| %{smart_count} 项已更新",
-            "created": "项已新建",
-            "deleted": "项已删除 |||| %{smart_count} 项已删除",
+            "updated": "已更新 1 项 |||| 已更新 %{smart_count} 项",
+            "created": "已新建 1 项",
+            "deleted": "已删除 1 项 |||| 已删除 %{smart_count} 项",
             "bad_item": "不正确的项",
             "item_doesnt_exist": "项不存在",
             "http_error": "与服务通信出错",
@@ -357,7 +357,7 @@
             "lastfm": "在 Last.fm 中打开",
             "musicbrainz": "在 MusicBrainz 中打开"
         },
-        "lastfmLink": "更多…",
+        "lastfmLink": "查看更多…",
         "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
         "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
         "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
