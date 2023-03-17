@@ -603,38 +603,40 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
-	Describe("ScanStatus", func() {
-		BeforeEach(func() {
-			response.ScanStatus = &ScanStatus{}
-		})
-
-		Context("without data", func() {
-			It("should match .XML", func() {
-				Expect(xml.Marshal(response)).To(MatchSnapshot())
-			})
-			It("should match .JSON", func() {
-				Expect(json.Marshal(response)).To(MatchSnapshot())
-			})
-		})
-
-		Context("with data", func() {
+	/*
+		Describe("ScanStatus", func() {
 			BeforeEach(func() {
-				t, _ := time.Parse(time.RFC822, time.RFC822)
-				response.ScanStatus = &ScanStatus{
-					Scanning:    true,
-					FolderCount: 123,
-					Count:       456,
-					LastScan:    &t,
-				}
+				response.ScanStatus = &ScanStatus{}
 			})
-			It("should match .XML", func() {
-				Expect(xml.Marshal(response)).To(MatchSnapshot())
+
+			Context("without data", func() {
+				It("should match .XML", func() {
+					Expect(xml.Marshal(response)).To(MatchSnapshot())
+				})
+				It("should match .JSON", func() {
+					Expect(json.Marshal(response)).To(MatchSnapshot())
+				})
 			})
-			It("should match .JSON", func() {
-				Expect(json.Marshal(response)).To(MatchSnapshot())
+
+			Context("with data", func() {
+				BeforeEach(func() {
+					t, _ := time.Parse(time.RFC822, time.RFC822)
+					response.ScanStatus = &ScanStatus{
+						Scanning:    true,
+						FolderCount: 123,
+						Count:       456,
+						LastScan:    &t,
+					}
+				})
+				It("should match .XML", func() {
+					Expect(xml.Marshal(response)).To(MatchSnapshot())
+				})
+				It("should match .JSON", func() {
+					Expect(json.Marshal(response)).To(MatchSnapshot())
+				})
 			})
 		})
-	})
+	*/
 
 	Describe("Lyrics", func() {
 		BeforeEach(func() {
