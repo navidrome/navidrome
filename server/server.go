@@ -46,30 +46,57 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 	})
 }
 
-func (s *Server) Run(ctx context.Context, addr string) error {
+// Run starts the server with the given address, and if specified, with TLS enabled.
+func (s *Server) Run(ctx context.Context, addr string, tlsCert string, tlsKey string) error {
+	// Mount the router for the frontend assets
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
+
+	// Create a new http.Server with the specified address and read header timeout
 	server := &http.Server{
 		Addr:              addr,
 		ReadHeaderTimeout: consts.ServerReadHeaderTimeout,
 		Handler:           s.router,
 	}
 
-	// Start HTTP server in its own goroutine, send a signal (errC) if failed to start
+	// Determine if TLS is enabled
+	tlsEnabled := tlsCert != "" && tlsKey != ""
+
+	// Start the server in a new goroutine and send an error signal to errC if there's an error
 	errC := make(chan error)
 	go func() {
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Error(ctx, "Could not start server. Aborting", err)
-			errC <- err
+		if tlsEnabled {
+			// Start the HTTPS server
+			log.Info("Starting server with TLS (HTTPS) enabled", "tlsCert", tlsCert, "tlsKey", tlsKey)
+			if err := server.ListenAndServeTLS(tlsCert, tlsKey); !errors.Is(err, http.ErrServerClosed) {
+				errC <- err
+			}
+		} else {
+			// Start the HTTP server
+			if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				errC <- err
+			}
 		}
 	}()
 
-	log.Info(ctx, "Navidrome server is ready!", "address", addr, "startupTime", time.Since(consts.ServerStart))
+	// Measure server startup time
+	startupTime := time.Since(consts.ServerStart)
 
-	// Wait for a signal to terminate (or an error during startup)
+	// Wait a short time before checking if the server has started successfully
+	time.Sleep(50 * time.Millisecond)
 	select {
 	case err := <-errC:
-		return err
+		log.Error(ctx, "Could not start server. Aborting", err)
+		return fmt.Errorf("error starting server: %w", err)
+	default:
+		log.Info(ctx, "----> Navidrome server is ready!", "address", addr, "startupTime", startupTime, "tlsEnabled", tlsEnabled)
+	}
+
+	// Wait for a signal to terminate
+	select {
+	case err := <-errC:
+		return fmt.Errorf("error running server: %w", err)
 	case <-ctx.Done():
+		// If the context is done (i.e. the server should stop), proceed to shutting down the server
 	}
 
 	// Try to stop the HTTP server gracefully
