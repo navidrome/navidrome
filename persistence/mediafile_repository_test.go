@@ -158,7 +158,7 @@ var _ = Describe("MediaRepository", func() {
 			Expect(mf.PlayCount).To(Equal(int64(1)))
 		})
 
-		It("preserves play date iff provided date is older", func() {
+		It("preserves play date if and only if provided date is older", func() {
 			id := "incplay.playdate"
 			Expect(mr.Put(&model.MediaFile{ID: id})).To(BeNil())
 			playDate := time.Now()
