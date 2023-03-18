@@ -64,7 +64,7 @@ func (r sqlRepository) SetRating(rating int, itemID string) error {
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	upd := Update(annotationTable).Where(r.annId(itemID)).
 		Set("play_count", Expr("play_count+1")).
-		Set("play_date", ts)
+		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
 	c, err := r.executeSQL(upd)
 
 	if c == 0 || errors.Is(err, orm.ErrNoRows) {
