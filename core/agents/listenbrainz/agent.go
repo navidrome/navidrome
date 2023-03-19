@@ -3,11 +3,14 @@ package listenbrainz
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -17,6 +20,10 @@ import (
 const (
 	listenBrainzAgentName = "listenbrainz"
 	sessionKeyProperty    = "ListenBrainzSessionKey"
+)
+
+var (
+	playlistTypes = []string{"user", "collab", "created"}
 )
 
 type listenBrainzAgent struct {
@@ -103,6 +110,170 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 	return scrobbler.ErrUnrecoverable
 }
 
+func (l *listenBrainzAgent) GetPlaylistTypes() []string {
+	return playlistTypes
+}
+
+func getIdentifier(url string) string {
+	split := strings.Split(url, "/")
+	return split[len(split)-1]
+}
+
+func (l *listenBrainzAgent) GetPlaylists(ctx context.Context, offset, count int, userId, playlistType string) (*external_playlists.ExternalPlaylists, error) {
+	token, err := l.sessionKeys.GetWithUser(ctx, userId)
+
+	if err == agents.ErrNoUsername {
+		resp, err := l.client.validateToken(ctx, token.Key)
+
+		if err != nil {
+			return nil, err
+		}
+
+		token.User = resp.UserName
+
+		err = l.sessionKeys.PutWithUser(ctx, userId, token.Key, resp.UserName)
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	resp, err := l.client.getPlaylists(ctx, offset, count, token.Key, token.User, playlistType)
+
+	if err != nil {
+		return nil, err
+	}
+
+	lists := make([]external_playlists.ExternalPlaylist, len(resp.Playlists))
+
+	for i, playlist := range resp.Playlists {
+		pls := playlist.Playlist
+
+		lists[i] = external_playlists.ExternalPlaylist{
+			Name:        pls.Title,
+			Description: utils.SanitizeText(pls.Annotation),
+			Creator:     pls.Creator,
+			ID:          getIdentifier(pls.Identifier),
+			Url:         pls.Identifier,
+			CreatedAt:   pls.Date,
+			UpdatedAt:   pls.Extension.Extension.LastModified,
+		}
+	}
+
+	return &external_playlists.ExternalPlaylists{
+		Total: resp.PlaylistCount,
+		Lists: lists,
+	}, nil
+}
+
+func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, userId, id, name string) error {
+	token, err := l.sessionKeys.Get(ctx, userId)
+	if err != nil {
+		return err
+	}
+
+	pls, err := l.client.getPlaylist(ctx, token, id)
+	if err != nil {
+		return err
+	}
+
+	err = l.ds.WithTx(func(tx model.DataStore) error {
+		ids := make([]string, len(pls.Playlist.Tracks))
+		for i, track := range pls.Playlist.Tracks {
+			ids[i] = getIdentifier(track.Identifier)
+		}
+
+		matched_tracks, err := tx.MediaFile(ctx).FindWithMbid(ids)
+
+		if err != nil {
+			return err
+		}
+
+		var playlist *model.Playlist = nil
+
+		comment := agents.StripAllTags.Sanitize(pls.Playlist.Annotation)
+
+		if update {
+			playlist, err = tx.Playlist(ctx).GetByExternalInfo(listenBrainzAgentName, id)
+
+			if err != nil {
+				if !errors.Is(err, model.ErrNotFound) {
+					log.Error(ctx, "Failed to query for playlist", "error", err)
+				}
+			} else if playlist.ExternalAgent != listenBrainzAgentName {
+				return fmt.Errorf("existing agent %s does not match current agent %s", playlist.ExternalAgent, listenBrainzAgentName)
+			} else if userId != playlist.OwnerID {
+				return model.ErrNotAuthorized
+			} else {
+				playlist.Name = name
+				playlist.Comment = comment
+			}
+		}
+
+		if playlist == nil {
+			playlist = &model.Playlist{
+				Name:          name,
+				Comment:       comment,
+				OwnerID:       userId,
+				Public:        false,
+				ExternalAgent: listenBrainzAgentName,
+				ExternalId:    id,
+				ExternalUrl:   pls.Playlist.Identifier,
+			}
+		}
+
+		playlist.AddMediaFiles(matched_tracks)
+
+		err = tx.Playlist(ctx).Put(playlist)
+
+		if err != nil {
+			log.Error(ctx, "Failed to import playlist", "id", id, err)
+		}
+
+		return err
+	})
+
+	return err
+}
+
+func (l *listenBrainzAgent) SyncPlaylist(ctx context.Context, tx model.DataStore, pls *model.Playlist) error {
+	token, err := l.sessionKeys.Get(ctx, pls.OwnerID)
+	if err != nil {
+		return err
+	}
+
+	external, err := l.client.getPlaylist(ctx, token, pls.ExternalId)
+	if err != nil {
+		return err
+	}
+
+	ids := make([]string, len(external.Playlist.Tracks))
+	for i, track := range external.Playlist.Tracks {
+		ids[i] = getIdentifier(track.Identifier)
+	}
+
+	matched_tracks, err := tx.MediaFile(ctx).FindWithMbid(ids)
+
+	if err != nil {
+		return err
+	}
+
+	comment := agents.StripAllTags.Sanitize(external.Playlist.Annotation)
+
+	pls.Comment = comment
+
+	pls.AddMediaFiles(matched_tracks)
+
+	err = tx.Playlist(ctx).Put(pls)
+
+	if err != nil {
+		log.Error(ctx, "Failed to sync playlist", "id", pls.ID, err)
+	}
+
+	return err
+}
+
 func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) bool {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	return err == nil && sk != ""
@@ -112,6 +283,10 @@ func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {
 			scrobbler.Register(listenBrainzAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
+				return listenBrainzConstructor(ds)
+			})
+
+			external_playlists.Register(listenBrainzAgentName, func(ds model.DataStore) external_playlists.PlaylistAgent {
 				return listenBrainzConstructor(ds)
 			})
 		}

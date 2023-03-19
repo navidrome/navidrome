@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useDispatch } from 'react-redux'
 import {
   Button,
@@ -7,10 +7,13 @@ import {
   useTranslate,
   useDataProvider,
   useNotify,
+  Confirm,
+  useRefresh,
 } from 'react-admin'
-import { useMediaQuery, makeStyles } from '@material-ui/core'
+import { useMediaQuery, makeStyles, Link } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
+import SyncIcon from '@material-ui/icons/Sync'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
@@ -30,6 +33,7 @@ import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
+import { OpenInNewOutlined } from '@material-ui/icons'
 
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
@@ -41,8 +45,12 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const classes = useStyles()
   const dataProvider = useDataProvider()
   const notify = useNotify()
+  const refresh = useRefresh()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+
+  const [shouldConfirm, setShouldConfirm] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
@@ -111,6 +119,27 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
     [record]
   )
 
+  const handleResync = React.useCallback(async () => {
+    setShouldConfirm(false)
+
+    if (!syncing) {
+      setSyncing(true)
+      httpClient(`${REST_URL}/externalPlaylist/sync/${record.id}`, {
+        method: 'PUT',
+      })
+        .then(() => {
+          notify('message.playlistSyncSuccess', 'success')
+          refresh()
+        })
+        .catch((error) => {
+          notify('message.playlistSyncError', 'warning', {
+            error: error.message,
+          })
+        })
+        .finally(() => setSyncing(false))
+    }
+  }, [notify, record.id, refresh, syncing])
+
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <div className={classes.toolbar}>
@@ -161,6 +190,36 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
           >
             <QueueMusicIcon />
           </Button>
+          {record.externalUrl && (
+            <>
+              <Button
+                component={Link}
+                href={record.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                label={translate('resources.playlist.actions.viewOriginal')}
+              >
+                <OpenInNewOutlined />
+              </Button>
+              <Button
+                disabled={shouldConfirm || syncing}
+                onClick={() => setShouldConfirm(true)}
+                label={translate('resources.playlist.actions.sync')}
+              >
+                <SyncIcon />
+              </Button>
+              <Confirm
+                isOpen={shouldConfirm}
+                title="message.playlistSyncConfirmTitle"
+                content="message.playlistSyncConfirmBody"
+                translateOptions={{
+                  name: record.name,
+                }}
+                onConfirm={handleResync}
+                onClose={() => setShouldConfirm(false)}
+              />
+            </>
+          )}
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="playlistTrack" />}</div>
       </div>

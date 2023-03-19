@@ -20,6 +20,7 @@ import (
 
 type sessionKeysRepo interface {
 	Put(ctx context.Context, userId, sessionKey string) error
+	PutWithUser(ctx context.Context, userId, sessionKey, remoteUser string) error
 	Get(ctx context.Context, userId string) (string, error)
 	Delete(ctx context.Context, userId string) error
 }
@@ -100,7 +101,7 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.sessionKeys.Put(r.Context(), u.ID, payload.Token)
+	err = s.sessionKeys.PutWithUser(r.Context(), u.ID, payload.Token, resp.UserName)
 	if err != nil {
 		log.Error("Could not save ListenBrainz token", "userId", u.ID, "requestId", middleware.GetReqID(r.Context()), err)
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())

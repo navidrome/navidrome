@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
@@ -40,7 +41,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
 	share := core.NewShare(dataStore)
-	router := nativeapi.New(dataStore, broker, share)
+	playlistRetriever := external_playlists.GetPlaylistRetriever(dataStore)
+	router := nativeapi.New(dataStore, broker, share, playlistRetriever)
 	return router
 }
 

@@ -216,6 +216,7 @@ type MediaFileRepository interface {
 	FindAllByPath(path string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
 	FindPathsRecursively(basePath string) ([]string, error)
+	FindWithMbid(ids []string) (MediaFiles, error)
 	DeleteByPath(path string) (int64, error)
 
 	AnnotatedRepository

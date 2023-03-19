@@ -151,14 +151,17 @@
                 "songCount": "Songs",
                 "comment": "Comment",
                 "sync": "Auto-import",
-                "path": "Import from"
+                "path": "Import from",
+                "external": "External"
             },
             "actions": {
                 "selectPlaylist": "Select a playlist:",
                 "addNewPlaylist": "Create \"%{name}\"",
                 "export": "Export",
                 "makePublic": "Make Public",
-                "makePrivate": "Make Private"
+                "makePrivate": "Make Private",
+                "viewOriginal": "View original",
+                "sync": "Sync from source"
             },
             "message": {
                 "duplicate_song": "Add duplicated songs",
@@ -197,6 +200,29 @@
             "notifications": {
             },
             "actions": {
+            }
+        },
+        "externalPlaylist": {
+            "name": "External Playlist |||| External Playlists",
+            "fields": {
+                "name": "Name",
+                "agent": "Provider",
+                "type": "Playlist type",
+                "creator": "Creator",
+                "updatedAt": "Updated at",
+                "createdAt": "Created at",
+                "existing": "Existing",
+                "update": "Update existing playlists"
+            },
+            "notifications": {
+                "created": "External playlist imported |||| %{smart_count} external playlists imported"
+            },
+            "agent": {
+                "listenbrainz": {
+                    "user": "Created by you",
+                    "collab": "Playlist you collaborated",
+                    "created": "Recommended playlist"
+                }
             }
         }
     },
@@ -259,7 +285,8 @@
             "unselect": "Unselect",
             "skip": "Skip",
             "share": "Share",
-            "download":  "Download"
+            "download":  "Download",
+            "import": "Import"
         },
         "boolean": {
             "true": "Yes",
@@ -374,7 +401,11 @@
         "shareSuccess": "URL copied to clipboard: %{url}",
         "shareFailure": "Error copying URL %{url} to clipboard",
         "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-        "downloadOriginalFormat": "Download in original format"
+        "downloadOriginalFormat": "Download in original format",
+        "playlistSyncConfirmTitle": "Are you sure you want to sync %{name}?",
+        "playlistSyncConfirmBody": "This will overwrite your current playlist",
+        "playlistSyncSuccess": "Successfully synced playlist",
+        "playlistSyncError": "Failed to sync playlist: %{error}"
     },
     "menu": {
         "library": "Library",

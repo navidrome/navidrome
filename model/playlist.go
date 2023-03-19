@@ -26,6 +26,11 @@ type Playlist struct {
 	CreatedAt time.Time      `structs:"created_at" json:"createdAt"`
 	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 
+	// External Info
+	ExternalAgent string `structs:"external_agent" json:"external_agent"`
+	ExternalId    string `structs:"external_id" json:"externalId"`
+	ExternalUrl   string `structs:"external_url" json:"externalUrl"`
+
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"-" json:"rules"`
 	EvaluatedAt time.Time          `structs:"evaluated_at" json:"evaluatedAt"`
@@ -108,6 +113,8 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
+	CheckExternalIds(agent string, ids []string) ([]string, error)
+	GetByExternalInfo(agent, id string) (*Playlist, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository

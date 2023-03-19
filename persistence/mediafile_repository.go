@@ -162,6 +162,15 @@ func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
 	return err
 }
 
+func (r *mediaFileRepository) FindWithMbid(ids []string) (model.MediaFiles, error) {
+	sel := r.newSelect().Column("id").Where(Eq{"mbz_track_id": ids})
+
+	res := model.MediaFiles{}
+	err := r.queryAll(sel, &res)
+
+	return res, err
+}
+
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }

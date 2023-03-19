@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
@@ -18,10 +19,11 @@ type Router struct {
 	ds     model.DataStore
 	broker events.Broker
 	share  core.Share
+	pls    external_playlists.PlaylistRetriever
 }
 
-func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
-	r := &Router{ds: ds, broker: broker, share: share}
+func New(ds model.DataStore, broker events.Broker, share core.Share, pls external_playlists.PlaylistRetriever) *Router {
+	r := &Router{ds: ds, broker: broker, share: share, pls: pls}
 	r.Handler = r.routes()
 	return r
 }
@@ -50,6 +52,8 @@ func (n *Router) routes() http.Handler {
 		}
 
 		n.addPlaylistTrackRoute(r)
+
+		n.externalPlaylistRoutes(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {

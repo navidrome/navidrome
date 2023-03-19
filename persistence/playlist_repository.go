@@ -464,6 +464,39 @@ func (r *playlistRepository) isWritable(playlistId string) bool {
 	return err == nil && pls.OwnerID == usr.ID
 }
 
+func (r *playlistRepository) GetByExternalInfo(agent, id string) (*model.Playlist, error) {
+	sql := Select("*").From(r.tableName).Where(Eq{"external_agent": agent, "external_id": id})
+	var pls model.Playlist
+
+	err := r.queryOne(sql, &pls)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pls, nil
+}
+
+func (r *playlistRepository) CheckExternalIds(agent string, ids []string) ([]string, error) {
+	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
+	chunks := utils.BreakUpStringSlice(ids, 200)
+
+	var lists []string
+
+	for _, chunk := range chunks {
+		sql := Select("external_id").From(r.tableName).Where(Eq{"external_agent": agent, "external_id": chunk})
+		var partial []string
+
+		err := r.queryAll(sql, &partial)
+		if err != nil {
+			return nil, err
+		}
+
+		lists = append(lists, partial...)
+	}
+
+	return lists, nil
+}
+
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
 var _ rest.Repository = (*playlistRepository)(nil)
 var _ rest.Persistable = (*playlistRepository)(nil)
