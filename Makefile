@@ -49,6 +49,10 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go run github.com/google/wire/cmd/wire@latest ./...
 .PHONY: wire
 
+api: check_go_env ##@Development Generate Aura API Server Boilerplate
+	go generate ./server/api/...
+.PHONY: api
+
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/...
 .PHONY: snapshots

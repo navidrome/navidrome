@@ -1,0 +1,537 @@
+openapi: 3.0.0
+info:
+  version: 0.2.0
+  title: Navidrome API
+  description: >
+    This spec describes the Navidrome API, which allows users to browse and manage their music library via a JSON:API 
+    based interface. The API provides endpoints for albums, tracks, artists, playlists and images, along with their 
+    relationships. Clients can retrieve information about the items in the library, filter and sort results, and 
+    perform actions such as creating and deleting playlists. With this API, developers can build music apps and 
+    services that integrate with Navidrome music server, providing a seamless experience for users to access and 
+    manage their music collection.
+  contact:
+    name: Navidrome
+    url: https://navidrome.org
+servers:
+  - url: /api/v2
+paths:
+  /server:
+    get:
+      summary: Get server's global info
+      operationId: getServerInfo
+      responses:
+        '200':
+          description: The response’s data key maps to a resource object dictionary representing the server.
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ServerInfo'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tracks:
+    get:
+      summary: Get a list of tracks
+      operationId: getTracks
+      parameters:
+        - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageOffset'
+        - $ref: '#/components/parameters/filterEquals'
+        - $ref: '#/components/parameters/filterContains'
+        - $ref: '#/components/parameters/filterLessThan'
+        - $ref: '#/components/parameters/filterLessOrEqual'
+        - $ref: '#/components/parameters/filterGreaterThan'
+        - $ref: '#/components/parameters/filterGreaterOrEqual'
+        - $ref: '#/components/parameters/filterStartsWith'
+        - $ref: '#/components/parameters/filterEndsWith'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/include'
+      responses:
+        '200':
+          description: A list of tracks
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data, links]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Track'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tracks/{trackId}:
+    get:
+      summary: Retrieve an individual track
+      operationId: getTrack
+      parameters:
+        - $ref: '#/components/parameters/include'
+        - name: trackId
+          in: path
+          description: The unique identifier of the track
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A track object
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Track'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /artists:
+    get:
+      summary: Retrieve a list of artists
+      operationId: getArtists
+      parameters:
+        - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageOffset'
+        - $ref: '#/components/parameters/filterEquals'
+        - $ref: '#/components/parameters/filterContains'
+        - $ref: '#/components/parameters/filterLessThan'
+        - $ref: '#/components/parameters/filterLessOrEqual'
+        - $ref: '#/components/parameters/filterGreaterThan'
+        - $ref: '#/components/parameters/filterGreaterOrEqual'
+        - $ref: '#/components/parameters/filterStartsWith'
+        - $ref: '#/components/parameters/filterEndsWith'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/include'
+      responses:
+        '200':
+          description: A list of artists
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data, links]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Artist'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /artists/{artistId}:
+    get:
+      summary: Retrieve an individual artist
+      operationId: getArtist
+      parameters:
+        - $ref: '#/components/parameters/include'
+        - name: artistId
+          in: path
+          description: The unique identifier of the artist
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: An artist object
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Artist'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    pageOffset:
+      name: page[offset]
+      in: query
+      description: The offset for pagination
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+    pageLimit:
+      name: page[limit]
+      in: query
+      description: The number of items per page
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 10
+    filterEquals:
+      name: filter[equals]
+      in: query
+      description: 'Filter by any property with an exact match. Usage: filter[equals]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\w+'
+    filterLessThan:
+      name: filter[lessThan]
+      in: query
+      description: 'Filter by any numeric property less than a value. Usage: filter[lessThan]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\d+'
+    filterLessOrEqual:
+      name: filter[lessOrEqual]
+      in: query
+      description: 'Filter by any numeric property less than or equal to a value. Usage: filter[lessOrEqual]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\d+'
+    filterGreaterThan:
+      name: filter[greaterThan]
+      in: query
+      description: 'Filter by any numeric property greater than a value. Usage: filter[greaterThan]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\d+'
+    filterGreaterOrEqual:
+      name: filter[greaterOrEqual]
+      in: query
+      description: 'Filter by any numeric property greater than or equal to a value. Usage: filter[greaterOrEqual]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\d+'
+    filterContains:
+      name: filter[contains]
+      in: query
+      description: 'Filter by any property containing text. Usage: filter[contains]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\w+'
+    filterStartsWith:
+      name: filter[startsWith]
+      in: query
+      description: 'Filter by any property that starts with text. Usage: filter[startsWith]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\w+'
+    filterEndsWith:
+      name: filter[endsWith]
+      in: query
+      description: 'Filter by any property that ends with text. Usage: filter[endsWith]=property:value'
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^\w+:\w+'
+    sort:
+      name: sort
+      in: query
+      description: Sort the results by one or more properties, separated by commas. Prefix the property with '-' for descending order.
+      required: false
+      schema:
+        type: string
+    include:
+      name: include
+      in: query
+      description: Related resources to include in the response, separated by commas
+      required: false
+      schema:
+        type: string
+  schemas:
+    ServerInfo:
+      type: object
+      required: [server, serverVersion, authRequired, features]
+      properties:
+        server:
+          type: string
+          description: The name of the server software.
+          example: "navidrome"
+        serverVersion:
+          type: string
+          description: The version number of the server.
+          example: "0.60.0"
+        authRequired:
+          type: boolean
+          description: Whether the user has access to the server.
+          example: true
+        features:
+          type: array
+          description: A list of optional features the server supports.
+          items:
+            type: string
+            enum:
+              - albums
+              - artists
+              - images
+    ResourceObject:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+          description: The unique identifier for the resource
+        type:
+          type: string
+          description: The type of the resource
+    ResourceList:
+      type: object
+      properties:
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/Track'
+            - $ref: '#/components/schemas/Artist'
+            - type: array
+              items:
+                $ref: '#/components/schemas/ResourceObject'
+        included:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncludedResource'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    IncludedResource:
+      oneOf:
+        - $ref: '#/components/schemas/Track'
+        - $ref: '#/components/schemas/Artist'
+      discriminator:
+        propertyName: type
+        mapping:
+          track: '#/components/schemas/Track'
+          artist: '#/components/schemas/Artist'
+    Track:
+      allOf:
+        - $ref: '#/components/schemas/ResourceObject'
+        - type: object
+          properties:
+            attributes:
+              $ref: '#/components/schemas/TrackAttributes'
+            relationships:
+              type: object
+              properties:
+                artists:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/TrackArtistRelationship'
+              required:
+                - artist
+    TrackAttributes:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The title of the track
+        artist:
+          type: string
+          description: The name of the artist who performed the track
+        album:
+          type: string
+          description: The name of the album the track belongs to
+        composer:
+          type: string
+          description: The name of the composer who created the track
+        duration:
+          type: number
+          format: float
+          description: The duration of the track in seconds
+      required:
+        - title
+        - artist
+        - album
+        - duration
+    TrackArtistRelationship:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            role:
+              $ref: '#/components/schemas/ArtistRole'
+          required:
+            - role
+        data:
+          $ref: '#/components/schemas/ResourceObject'
+      required:
+        - meta
+        - data
+    ArtistRole:
+      type: string
+      enum:
+        - albumArtist
+        - composer
+        - vocalist
+      description: The role of an artist in a track or album
+    Artist:
+      allOf:
+        - $ref: '#/components/schemas/ResourceObject'
+        - type: object
+          properties:
+            attributes:
+              $ref: '#/components/schemas/ArtistAttributes'
+            relationships:
+              type: object
+              properties:
+                tracks:
+                  type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ArtistTrackRelationship'
+                  required:
+                    - data
+              required:
+                - tracks
+    ArtistAttributes:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the artist
+        bio:
+          type: string
+          description: A short biography of the artist
+    ArtistTrackRelationship:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            role:
+              $ref: '#/components/schemas/ArtistRole'
+          required:
+            - role
+        data:
+          $ref: '#/components/schemas/ResourceObject'
+      required:
+        - meta
+        - data
+    PaginationLinks:
+      type: object
+      properties:
+        first:
+          type: string
+          format: uri
+        prev:
+          type: string
+          format: uri
+        next:
+          type: string
+          format: uri
+        last:
+          type: string
+          format: uri
+    PaginationMeta:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          format: int32
+          description: The current page in the collection
+        totalPages:
+          type: integer
+          format: int32
+          description: The total numeber of pages in the collection
+        totalItems:
+          type: integer
+          format: int32
+          description: The total number of items in the collection
+    ErrorList:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorObject'
+    ErrorObject:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+      required:
+        - errors
+  responses:
+    NotFound:
+      description: Not Found
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/ErrorList'
+    NotAuthorized:
+      description: Not Authorized
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/ErrorList'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/ErrorList'
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/ErrorList'

@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/api"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
@@ -41,6 +42,13 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
 	router := nativeapi.New(dataStore, share)
+	return router
+}
+
+func CreateAuraAPIRouter() *api.Router {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	router := api.New(dataStore)
 	return router
 }
 
@@ -112,7 +120,7 @@ func createScanner() scanner.Scanner {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, api.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
 
 // Scanner must be a Singleton
 var (
