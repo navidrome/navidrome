@@ -5,13 +5,13 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -80,8 +80,8 @@ func (a *artistReader) LastUpdated() time.Time {
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	return selectImageReader(ctx, a.artID,
-		fromArtistFolder(ctx, a.artistFolder, "artist.*"),
-		fromExternalFile(ctx, a.files, "artist.*"),
+		fromArtistFolder(ctx, a.artistFolder, "{artist,folder}.{jpg,jpeg,png}"),
+		fromExternalFile(ctx, a.files, "artist.{jpg,jpeg,png}"),
 		fromArtistExternalSource(ctx, a.artist, a.em),
 	)
 }
@@ -89,7 +89,7 @@ func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		fsys := os.DirFS(artistFolder)
-		matches, err := fs.Glob(fsys, pattern)
+		matches, err := doublestar.Glob(fsys, pattern)
 		if err != nil {
 			log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", artistFolder)
 			return nil, "", err

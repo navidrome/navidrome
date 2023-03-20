@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -60,7 +61,7 @@ func fromExternalFile(ctx context.Context, files string, pattern string) sourceF
 	return func() (io.ReadCloser, string, error) {
 		for _, file := range splitList(files) {
 			_, name := filepath.Split(file)
-			match, err := filepath.Match(pattern, strings.ToLower(name))
+			match, err := doublestar.Match(pattern, strings.ToLower(name))
 			if err != nil {
 				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
 				continue
