@@ -32,6 +32,8 @@ type configOptions struct {
 	BasePath                     string
 	BaseHost                     string
 	BaseScheme                   string
+	TLSCert                      string
+	TLSKey                       string
 	UILoginBackgroundURL         string
 	UIWelcomeMessage             string
 	MaxSidebarPlaylists          int
@@ -83,6 +85,7 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
 	DevLogLevels                     map[string]string
+	DevEnableProfiler                bool
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
 	DevActivityPanel                 bool
@@ -245,6 +248,8 @@ func init() {
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
+	viper.SetDefault("tlscert", "")
+	viper.SetDefault("tlskey", "")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
@@ -303,6 +308,7 @@ func init() {
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
+	viper.SetDefault("devenableprofiler", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
