@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
-	github.com/Masterminds/squirrel v1.5.3
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/beego/beego/v2 v2.0.7
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
