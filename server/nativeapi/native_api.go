@@ -6,7 +6,6 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
@@ -43,15 +42,14 @@ func (n *Router) routes() http.Handler {
 		n.R(r, "/artist", model.Artist{}, false)
 		n.R(r, "/genre", model.Genre{}, false)
 		n.R(r, "/player", model.Player{}, true)
-		n.R(r, "/playlist", model.Playlist{}, true)
 		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
 		n.R(r, "/radio", model.Radio{}, true)
 		if conf.Server.EnableSharing {
 			n.RX(r, "/share", n.share.NewRepository, true)
 		}
 
+		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
-		n.addPlaylistFromM3URoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -90,11 +88,27 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 	})
 }
 
-func (n *Router) addPlaylistFromM3URoute(r chi.Router) {
-	r.Route("/playlists", func(r chi.Router) {
-		r.Use(middleware.AllowContentType("audio/x-mpegurl"))
+func (n *Router) addPlaylistRoute(r chi.Router) {
+	m3uContentType := "audio/x-mpegurl"
+	constructor := func(ctx context.Context) rest.Repository {
+		return n.ds.Resource(ctx, model.Playlist{})
+	}
+
+	r.Route("/playlist", func(r chi.Router) {
+		r.Get("/", rest.GetAll(constructor))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			createPlaylistFromM3U(n.ds)(w, r)
+			if r.Header.Get("Content-type") == m3uContentType {
+				createPlaylistFromM3U(n.ds)(w, r)
+				return
+			}
+			rest.Post(constructor)(w, r)
+		})
+
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(server.URLParamsMiddleware)
+			r.Get("/", rest.Get(constructor))
+			r.Put("/", rest.Put(constructor))
+			r.Delete("/", rest.Delete(constructor))
 		})
 	})
 }
