@@ -151,7 +151,7 @@ func (p *playlistRetriever) ImportPlaylists(ctx context.Context, update bool, us
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to sync %d playlist(s): %s", fail, err.Error())
+		return fmt.Errorf("failed to sync %d playlist(s): %w", fail, err)
 	}
 
 	return nil

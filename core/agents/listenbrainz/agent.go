@@ -122,7 +122,7 @@ func getIdentifier(url string) string {
 func (l *listenBrainzAgent) GetPlaylists(ctx context.Context, offset, count int, userId, playlistType string) (*external_playlists.ExternalPlaylists, error) {
 	token, err := l.sessionKeys.GetWithUser(ctx, userId)
 
-	if err == agents.ErrNoUsername {
+	if errors.Is(agents.ErrNoUsername, err) {
 		resp, err := l.client.validateToken(ctx, token.Key)
 
 		if err != nil {

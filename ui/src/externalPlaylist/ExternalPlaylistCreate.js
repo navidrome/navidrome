@@ -227,6 +227,8 @@ const ExternalPlaylistCreate = (props) => {
     <Create title={<Title subTitle={title} />} {...props}>
       {agents === null ? (
         <Loading />
+      ) : agents.length === 0 ? (
+        <div></div>
       ) : (
         <SimpleForm
           toolbar={

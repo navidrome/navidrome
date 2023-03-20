@@ -136,12 +136,11 @@ func (n *Router) syncPlaylist() http.HandlerFunc {
 			log.Error(ctx, "Failed to sync playlist", "id", plsId, err)
 			var code int
 
-			switch err {
-			case model.ErrNotAuthorized:
+			if errors.Is(err, model.ErrNotAuthorized) {
 				code = http.StatusForbidden
-			case model.ErrNotFound:
+			} else if errors.Is(err, model.ErrNotFound) {
 				code = http.StatusNotFound
-			default:
+			} else {
 				code = http.StatusInternalServerError
 			}
 
