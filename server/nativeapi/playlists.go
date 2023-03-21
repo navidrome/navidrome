@@ -1,7 +1,6 @@
 package nativeapi
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,7 +11,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -47,40 +46,24 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 
 func createPlaylistFromM3U(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var mfs model.MediaFiles
 		ctx := r.Context()
-		mediaFileRepo := ds.MediaFile(ctx)
 		user, ok := request.UserFrom(ctx)
 		if !ok {
 			log.Error(ctx, "Unable to retrieve user info from request contest")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		pls := model.Playlist{
-			Name:    uuid.NewString(), // TODO
-			OwnerID: user.ID,
+
+		p := core.NewPlaylists(ds)
+		pls, err := p.ImportM3U(ctx, r.Body, user.ID)
+		if err != nil {
+			log.Error(r.Context(), "Error parsing playlist", err)
+			// TODO: consider returning StatusBadRequest for playlists that are malformed
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		scanner := bufio.NewScanner(r.Body)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if strings.HasPrefix(line, "#PLAYLIST:") {
-				if split := strings.Split(line, ":"); len(split) >= 2 {
-					pls.Name = split[1]
-				}
-				continue
-			}
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			mf, err := mediaFileRepo.FindByPath(line)
-			if err != nil {
-				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", line, err)
-				continue
-			}
-			mfs = append(mfs, *mf)
-		}
-		pls.AddMediaFiles(mfs)
-		err := ds.Playlist(ctx).Put(&pls)
+
+		err = ds.Playlist(ctx).Put(pls)
 		if err != nil {
 			log.Error(r.Context(), "Error saving playlist", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)

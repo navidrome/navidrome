@@ -89,7 +89,6 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 }
 
 func (n *Router) addPlaylistRoute(r chi.Router) {
-	m3uContentType := "audio/x-mpegurl"
 	constructor := func(ctx context.Context) rest.Repository {
 		return n.ds.Resource(ctx, model.Playlist{})
 	}
@@ -97,7 +96,7 @@ func (n *Router) addPlaylistRoute(r chi.Router) {
 	r.Route("/playlist", func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("Content-type") == m3uContentType {
+			if r.Header.Get("Content-type") == "audio/x-mpegurl" {
 				createPlaylistFromM3U(n.ds)(w, r)
 				return
 			}
