@@ -127,7 +127,7 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id string, format string, 
 
 func (a *archiver) playlistFilename(mf model.MediaFile, format string, idx int) string {
 	ext := mf.Suffix
-	if format != "raw" {
+	if format != "" && format != "raw" {
 		ext = format
 	}
 	file := fmt.Sprintf("%02d - %s - %s.%s", idx+1, mf.Artist, mf.Title, ext)
