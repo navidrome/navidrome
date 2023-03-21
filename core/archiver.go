@@ -71,7 +71,7 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	z := zip.NewWriter(out)
 	comment := "Downloaded from Navidrome"
-	if format != "raw" {
+	if format != "raw" && format != "" {
 		comment = fmt.Sprintf("%s, transcoded to %s %dbps", comment, format, bitrate)
 	}
 	_ = z.SetComment(comment)
