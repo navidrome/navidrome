@@ -33,7 +33,7 @@ export const ShareDialog = () => {
   const translate = useTranslate()
   const [description, setDescription] = useState('')
   const [downloadable, setDownloadable] = useState(
-    config.defaultDownloadableShare
+    config.defaultDownloadableShare && config.enableDownloads
   )
   useEffect(() => {
     setDescription('')
@@ -118,14 +118,16 @@ export const ShareDialog = () => {
               setDescription(event.target.value)
             }}
           />
-          <BooleanInput
-            resource={'share'}
-            source={'downloadable'}
-            defaultValue={downloadable}
-            onChange={(value) => {
-              setDownloadable(value)
-            }}
-          />
+          {config.enableDownloads && (
+            <BooleanInput
+              resource={'share'}
+              source={'downloadable'}
+              defaultValue={downloadable}
+              onChange={(value) => {
+                setDownloadable(value)
+              }}
+            />
+          )}
           <TranscodingOptionsInput
             fullWidth
             label={translate('message.shareOriginalFormat')}
