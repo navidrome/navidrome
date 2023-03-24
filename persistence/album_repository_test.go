@@ -37,6 +37,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("returns all records sorted", func() {
 			Expect(repo.GetAll(model.QueryOptions{Sort: "name"})).To(Equal(model.Albums{
 				albumAbbeyRoad,
+				albumMonster,
 				albumRadioactivity,
 				albumSgtPeppers,
 			}))
@@ -46,6 +47,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(repo.GetAll(model.QueryOptions{Sort: "name", Order: "desc"})).To(Equal(model.Albums{
 				albumSgtPeppers,
 				albumRadioactivity,
+				albumMonster,
 				albumAbbeyRoad,
 			}))
 		})
@@ -53,6 +55,20 @@ var _ = Describe("AlbumRepository", func() {
 		It("paginates the result", func() {
 			Expect(repo.GetAll(model.QueryOptions{Offset: 1, Max: 1})).To(Equal(model.Albums{
 				albumAbbeyRoad,
+			}))
+		})
+	})
+
+	Describe("Search", func() {
+		It("returns exact match", func() {
+			Expect(repo.Search("R.E.M.", 0, 1)).To(Equal(model.Albums{
+				albumMonster,
+			}))
+		})
+
+		It("returns match regardless of punctuation", func() {
+			Expect(repo.Search("REM", 0, 1)).To(Equal(model.Albums{
+				albumMonster,
 			}))
 		})
 	})

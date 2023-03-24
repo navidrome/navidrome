@@ -10,7 +10,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 )
 
-var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[\\(\\{\\]\\)\\}]")
+var quotesRegex = regexp.MustCompile("[.,:\\-“”‘’'\"\\[\\(\\{\\]\\)\\}]")
 
 func SanitizeStrings(text ...string) string {
 	sanitizedText := strings.Builder{}

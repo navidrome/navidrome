@@ -18,6 +18,22 @@ var _ = Describe("SanitizeStrings", func() {
 		Expect(SanitizeStrings(" some  text  ")).To(Equal("some text"))
 	})
 
+	It("remove full stop", func() {
+		Expect(SanitizeStrings("some. text")).To(Equal("some text"))
+	})
+
+	It("remove comma", func() {
+		Expect(SanitizeStrings("some, text")).To(Equal("some text"))
+	})
+
+	It("remove colon", func() {
+		Expect(SanitizeStrings("some :text")).To(Equal("some text"))
+	})
+
+	It("remove dash", func() {
+		Expect(SanitizeStrings("some- text")).To(Equal("some text"))
+	})
+
 	It("remove duplicated words", func() {
 		Expect(SanitizeStrings("legião urbana urbana legiÃo")).To(Equal("legiao urbana"))
 	})

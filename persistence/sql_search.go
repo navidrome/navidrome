@@ -39,7 +39,7 @@ func fullTextExpr(value string) Sqlizer {
 	parts := strings.Split(q, " ")
 	filters := And{}
 	for _, part := range parts {
-		filters = append(filters, Like{"full_text": "%" + sep + part + "%"})
+		filters = append(filters, Like{"REPLACE(REPLACE(REPLACE(REPLACE(full_text, '.', ''), ',', ''), ':', ''), '-', '')": "%" + sep + part + "%"})
 	}
 	return filters
 }
