@@ -105,7 +105,7 @@ const ShareList = (props) => {
           <TextField source="description" />
           {isDesktop && <TextField source="contents" />}
           {isDesktop && <FormatInfo source="format" />}
-          <BooleanField source="downloadable" />
+          {config.enableDownloads && <BooleanField source="downloadable" />}
           <NumberField source="visitCount" />
           {isDesktop && (
             <DateField source="lastVisitedAt" showTime sortByOrder={'DESC'} />

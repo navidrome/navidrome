@@ -58,7 +58,7 @@ type JsonWrapper struct {
 }
 
 type Error struct {
-	Code    int    `xml:"code,attr"                      json:"code"`
+	Code    int32  `xml:"code,attr"                      json:"code"`
 	Message string `xml:"message,attr"                   json:"message"`
 }
 
@@ -78,9 +78,9 @@ type MusicFolders struct {
 type Artist struct {
 	Id             string     `xml:"id,attr"                           json:"id"`
 	Name           string     `xml:"name,attr"                         json:"name"`
-	AlbumCount     int        `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
+	AlbumCount     int32      `xml:"albumCount,attr,omitempty"         json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"            json:"starred,omitempty"`
-	UserRating     int        `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
+	UserRating     int32      `xml:"userRating,attr,omitempty"         json:"userRating,omitempty"`
 	CoverArt       string     `xml:"coverArt,attr,omitempty"           json:"coverArt,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"     json:"artistImageUrl,omitempty"`
 	/* TODO:
@@ -107,8 +107,8 @@ type Child struct {
 	Name                  string     `xml:"name,attr,omitempty"                     json:"name,omitempty"`
 	Album                 string     `xml:"album,attr,omitempty"                    json:"album,omitempty"`
 	Artist                string     `xml:"artist,attr,omitempty"                   json:"artist,omitempty"`
-	Track                 int        `xml:"track,attr,omitempty"                    json:"track,omitempty"`
-	Year                  int        `xml:"year,attr,omitempty"                     json:"year,omitempty"`
+	Track                 int32      `xml:"track,attr,omitempty"                    json:"track,omitempty"`
+	Year                  int32      `xml:"year,attr,omitempty"                     json:"year,omitempty"`
 	Genre                 string     `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
 	CoverArt              string     `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`
 	Size                  int64      `xml:"size,attr,omitempty"                     json:"size,omitempty"`
@@ -117,18 +117,18 @@ type Child struct {
 	Starred               *time.Time `xml:"starred,attr,omitempty"                  json:"starred,omitempty"`
 	TranscodedContentType string     `xml:"transcodedContentType,attr,omitempty"    json:"transcodedContentType,omitempty"`
 	TranscodedSuffix      string     `xml:"transcodedSuffix,attr,omitempty"         json:"transcodedSuffix,omitempty"`
-	Duration              int        `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
-	BitRate               int        `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
+	Duration              int32      `xml:"duration,attr,omitempty"                 json:"duration,omitempty"`
+	BitRate               int32      `xml:"bitRate,attr,omitempty"                  json:"bitRate,omitempty"`
 	Path                  string     `xml:"path,attr,omitempty"                     json:"path,omitempty"`
 	PlayCount             int64      `xml:"playCount,attr,omitempty"                json:"playCount,omitempty"`
 	Played                *time.Time `xml:"played,attr,omitempty"                   json:"played,omitempty"`
-	DiscNumber            int        `xml:"discNumber,attr,omitempty"               json:"discNumber,omitempty"`
+	DiscNumber            int32      `xml:"discNumber,attr,omitempty"               json:"discNumber,omitempty"`
 	Created               *time.Time `xml:"created,attr,omitempty"                  json:"created,omitempty"`
 	AlbumId               string     `xml:"albumId,attr,omitempty"                  json:"albumId,omitempty"`
 	ArtistId              string     `xml:"artistId,attr,omitempty"                 json:"artistId,omitempty"`
 	Type                  string     `xml:"type,attr,omitempty"                     json:"type,omitempty"`
-	UserRating            int        `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
-	SongCount             int        `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
+	UserRating            int32      `xml:"userRating,attr,omitempty"               json:"userRating,omitempty"`
+	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	IsVideo               bool       `xml:"isVideo,attr"                            json:"isVideo"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
 	/*
@@ -148,17 +148,17 @@ type Directory struct {
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
 	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
-	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	UserRating int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 
 	// ID3
 	Artist     string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
 	ArtistId   string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
 	CoverArt   string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	SongCount  int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
-	AlbumCount int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
-	Duration   int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
+	SongCount  int32      `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	AlbumCount int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	Duration   int32      `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
 	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
-	Year       int        `xml:"year,attr,omitempty"                json:"year,omitempty"`
+	Year       int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre      string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 
 	/*
@@ -170,9 +170,9 @@ type ArtistID3 struct {
 	Id             string     `xml:"id,attr"                            json:"id"`
 	Name           string     `xml:"name,attr"                          json:"name"`
 	CoverArt       string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	AlbumCount     int        `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	AlbumCount     int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
 	Starred        *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	UserRating     int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	UserRating     int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
 }
 
@@ -182,14 +182,14 @@ type AlbumID3 struct {
 	Artist     string     `xml:"artist,attr,omitempty"              json:"artist,omitempty"`
 	ArtistId   string     `xml:"artistId,attr,omitempty"            json:"artistId,omitempty"`
 	CoverArt   string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	SongCount  int        `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
-	Duration   int        `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
+	SongCount  int32      `xml:"songCount,attr,omitempty"           json:"songCount,omitempty"`
+	Duration   int32      `xml:"duration,attr,omitempty"            json:"duration,omitempty"`
 	PlayCount  int64      `xml:"playCount,attr,omitempty"           json:"playCount,omitempty"`
 	Played     *time.Time `xml:"played,attr,omitempty"              json:"played,omitempty"`
 	Created    *time.Time `xml:"created,attr,omitempty"             json:"created,omitempty"`
 	Starred    *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	UserRating int        `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
-	Year       int        `xml:"year,attr,omitempty"                json:"year,omitempty"`
+	UserRating int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	Year       int32      `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre      string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 }
 
@@ -211,8 +211,8 @@ type Playlist struct {
 	Id        string    `xml:"id,attr"                       json:"id"`
 	Name      string    `xml:"name,attr"                     json:"name"`
 	Comment   string    `xml:"comment,attr,omitempty"        json:"comment,omitempty"`
-	SongCount int       `xml:"songCount,attr"                json:"songCount"`
-	Duration  int       `xml:"duration,attr"                 json:"duration"`
+	SongCount int32     `xml:"songCount,attr"                json:"songCount"`
+	Duration  int32     `xml:"duration,attr"                 json:"duration"`
 	Public    bool      `xml:"public,attr"                   json:"public"`
 	Owner     string    `xml:"owner,attr,omitempty"          json:"owner,omitempty"`
 	Created   time.Time `xml:"created,attr"                  json:"created"`
@@ -255,8 +255,8 @@ type Starred struct {
 type NowPlayingEntry struct {
 	Child
 	UserName   string `xml:"username,attr"                        json:"username"`
-	MinutesAgo int    `xml:"minutesAgo,attr"                      json:"minutesAgo"`
-	PlayerId   int    `xml:"playerId,attr"                        json:"playerId"`
+	MinutesAgo int32  `xml:"minutesAgo,attr"                      json:"minutesAgo"`
+	PlayerId   int32  `xml:"playerId,attr"                        json:"playerId"`
 	PlayerName string `xml:"playerName,attr"                      json:"playerName,omitempty"`
 }
 
@@ -265,23 +265,23 @@ type NowPlaying struct {
 }
 
 type User struct {
-	Username            string `xml:"username,attr"               json:"username"`
-	Email               string `xml:"email,attr,omitempty"        json:"email,omitempty"`
-	ScrobblingEnabled   bool   `xml:"scrobblingEnabled,attr"      json:"scrobblingEnabled"`
-	MaxBitRate          int    `xml:"maxBitRate,attr,omitempty"   json:"maxBitRate,omitempty"`
-	AdminRole           bool   `xml:"adminRole,attr"              json:"adminRole"`
-	SettingsRole        bool   `xml:"settingsRole,attr"           json:"settingsRole"`
-	DownloadRole        bool   `xml:"downloadRole,attr"           json:"downloadRole"`
-	UploadRole          bool   `xml:"uploadRole,attr"             json:"uploadRole"`
-	PlaylistRole        bool   `xml:"playlistRole,attr"           json:"playlistRole"`
-	CoverArtRole        bool   `xml:"coverArtRole,attr"           json:"coverArtRole"`
-	CommentRole         bool   `xml:"commentRole,attr"            json:"commentRole"`
-	PodcastRole         bool   `xml:"podcastRole,attr"            json:"podcastRole"`
-	StreamRole          bool   `xml:"streamRole,attr"             json:"streamRole"`
-	JukeboxRole         bool   `xml:"jukeboxRole,attr"            json:"jukeboxRole"`
-	ShareRole           bool   `xml:"shareRole,attr"              json:"shareRole"`
-	VideoConversionRole bool   `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
-	Folder              []int  `xml:"folder,omitempty"            json:"folder,omitempty"`
+	Username            string  `xml:"username,attr"               json:"username"`
+	Email               string  `xml:"email,attr,omitempty"        json:"email,omitempty"`
+	ScrobblingEnabled   bool    `xml:"scrobblingEnabled,attr"      json:"scrobblingEnabled"`
+	MaxBitRate          int32   `xml:"maxBitRate,attr,omitempty"   json:"maxBitRate,omitempty"`
+	AdminRole           bool    `xml:"adminRole,attr"              json:"adminRole"`
+	SettingsRole        bool    `xml:"settingsRole,attr"           json:"settingsRole"`
+	DownloadRole        bool    `xml:"downloadRole,attr"           json:"downloadRole"`
+	UploadRole          bool    `xml:"uploadRole,attr"             json:"uploadRole"`
+	PlaylistRole        bool    `xml:"playlistRole,attr"           json:"playlistRole"`
+	CoverArtRole        bool    `xml:"coverArtRole,attr"           json:"coverArtRole"`
+	CommentRole         bool    `xml:"commentRole,attr"            json:"commentRole"`
+	PodcastRole         bool    `xml:"podcastRole,attr"            json:"podcastRole"`
+	StreamRole          bool    `xml:"streamRole,attr"             json:"streamRole"`
+	JukeboxRole         bool    `xml:"jukeboxRole,attr"            json:"jukeboxRole"`
+	ShareRole           bool    `xml:"shareRole,attr"              json:"shareRole"`
+	VideoConversionRole bool    `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
+	Folder              []int32 `xml:"folder,omitempty"            json:"folder,omitempty"`
 }
 
 type Users struct {
@@ -290,8 +290,8 @@ type Users struct {
 
 type Genre struct {
 	Name       string `xml:",chardata"                      json:"value,omitempty"`
-	SongCount  int    `xml:"songCount,attr"             json:"songCount"`
-	AlbumCount int    `xml:"albumCount,attr"            json:"albumCount"`
+	SongCount  int32  `xml:"songCount,attr"             json:"songCount"`
+	AlbumCount int32  `xml:"albumCount,attr"            json:"albumCount"`
 }
 
 type Genres struct {
@@ -369,7 +369,7 @@ type Share struct {
 	Created     time.Time  `xml:"created,attr"                json:"created"`
 	Expires     *time.Time `xml:"expires,omitempty,attr"      json:"expires,omitempty"`
 	LastVisited time.Time  `xml:"lastVisited,omitempty,attr"  json:"lastVisited"`
-	VisitCount  int        `xml:"visitCount,attr"             json:"visitCount"`
+	VisitCount  int32      `xml:"visitCount,attr"             json:"visitCount"`
 }
 
 type Shares struct {

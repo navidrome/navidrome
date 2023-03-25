@@ -69,7 +69,7 @@ jobs:
 
       - name: Test
         continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
-        run: go test -race -cover ./... -v
+        run: go test -shuffle=on -race -cover ./... -v
 
   js:
     name: Build JS bundle

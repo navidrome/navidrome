@@ -26,7 +26,7 @@
                 "bpm": "BPM",
                 "playDate": "最后一次播放",
                 "channels": "声道",
-                "createdAt": ""
+                "createdAt": "创建于"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -53,8 +53,8 @@
                 "updatedAt": "更新于",
                 "comment": "注释",
                 "rating": "评分",
-                "createdAt": "",
-                "size": ""
+                "createdAt": "创建于",
+                "size": "文件大小"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -64,7 +64,7 @@
                 "addToPlaylist": "加入歌单",
                 "download": "下载",
                 "info": "查看信息",
-                "share": ""
+                "share": "分享"
             },
             "lists": {
                 "all": "所有",
@@ -85,7 +85,7 @@
                 "playCount": "播放次数",
                 "rating": "评分",
                 "genre": "类型",
-                "size": ""
+                "size": "文件大小"
             }
         },
         "user": {
@@ -165,32 +165,33 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "电台 |||| 电台",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "名称",
+                "streamUrl": "推流地址",
+                "homePageUrl": "首页链接",
+                "updatedAt": "更新于",
+                "createdAt": "创建于"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "开始播放"
             }
         },
         "share": {
-            "name": "",
+            "name": "分享 |||| 分享",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "username": "分享者",
+                "url": "链接",
+                "description": "描述",
+                "contents": "目录",
+                "expiresAt": "过期于",
+                "lastVisitedAt": "上次访问于",
+                "visitCount": "访问数",
+                "format": "格式",
+                "maxBitRate": "最大比特率",
+                "updatedAt": "更新于",
+                "createdAt": "创建于",
+								"downloadable": "是否允许下载"
             }
         }
     },
@@ -221,7 +222,7 @@
             "oneOf": "必须为: %{options} 其中一项",
             "regex": "必须符合指定的格式（正则表达式）：%{pattern}",
             "unique": "必须唯一",
-            "url": ""
+            "url": "必须是有效的链接"
         },
         "action": {
             "add_filter": "添加筛选",
@@ -251,9 +252,9 @@
             "close_menu": "关闭菜单",
             "unselect": "未选择",
             "skip": "取消",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "分享",
+            "download": "下载"
         },
         "boolean": {
             "true": "是",
@@ -361,14 +362,14 @@
         "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
         "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
         "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "downloadOriginalFormat": "下载原始格式",
+        "shareOriginalFormat": "分享原始格式",
+        "shareDialogTitle": "分享 %{resource} '%{name}'",
+        "shareBatchDialogTitle": "分享 1 个 %{resource} |||| 分享 %{smart_count} 个 %{resource}",
+        "shareSuccess": "分享链接已复制: %{url}",
+        "shareFailure": "分享链接复制失败: %{url}",
+        "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter"
     },
     "menu": {
         "library": "曲库",
@@ -384,12 +385,12 @@
                 "desktop_notifications": "桌面通知",
                 "lastfmScrobbling": "启用 Last.fm 的喜好记录",
                 "listenBrainzScrobbling": "启用 ListenBrainz 的喜好记录",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "回放增益",
+                "preAmp": "前置放大器 (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "禁用增益",
+                    "album": "使用专辑增益信息",
+                    "track": "使用歌曲增益信息"
                 }
             }
         },
@@ -449,7 +450,7 @@
             "vol_up": "增大音量",
             "vol_down": "减小音量",
             "toggle_love": "添加/移除星标",
-            "current_song": ""
+            "current_song": "转到当前播放"
         }
     }
 }
