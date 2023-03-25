@@ -237,6 +237,7 @@ SongDatagridRow.defaultProps = {
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  showEditionRow,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -304,11 +305,11 @@ const SongDatagridBody = ({
           return acc
         }, [])
     )
-    if (set.size < 2) {
+    if (!showEditionRow || (set.size < 2)) {
       set.clear()
     }
     return set
-  }, [ids, data])
+  }, [ids, data, showEditionRow])
 
   return (
     <PureDatagridBody
@@ -328,6 +329,7 @@ const SongDatagridBody = ({
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  showEditionRow,
   ...rest
 }) => {
   const classes = useStyles()
@@ -339,6 +341,7 @@ export const SongDatagrid = ({
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
+          showEditionRow={showEditionRow}
         />
       }
     />
@@ -348,5 +351,6 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
+  showEditionRow: PropTypes.bool,
   classes: PropTypes.object,
 }
