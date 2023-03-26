@@ -164,8 +164,8 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 
 var (
 	xForwardedHost   = http.CanonicalHeaderKey("X-Forwarded-Host")
-	xForwardedProto  = http.CanonicalHeaderKey("X-Forwarded-Scheme")
-	xForwardedScheme = http.CanonicalHeaderKey("X-Forwarded-Proto")
+	xForwardedProto  = http.CanonicalHeaderKey("X-Forwarded-Proto")
+	xForwardedScheme = http.CanonicalHeaderKey("X-Forwarded-Scheme")
 )
 
 func serverAddress(r *http.Request) (scheme, host string) {
