@@ -275,5 +275,70 @@ var _ = Describe("listenBrainzAgent", func() {
 				Expect(err).To(MatchError(external_playlists.ErrorUnsupportedType))
 			})
 		})
+
+		Describe("SyncPlaylist", func() {
+			var pls model.Playlist
+
+			BeforeEach(func() {
+				pls = model.Playlist{
+					ID:         "1000",
+					OwnerID:    "user-1",
+					ExternalId: "00000000-0000-0000-0000-000000000004",
+					Tracks:     model.PlaylistTracks{},
+				}
+			})
+
+			AfterEach(func() {
+				_ = ds.Playlist(ctx).Delete(pls.ID)
+			})
+
+			Describe("Successful test", func() {
+				WithMbid := model.MediaFile{ID: "1", Title: "Take Control", MbzTrackID: "9f42783a-423b-4ed6-8a10-fdf4cb44456f", Artist: "Old Gods of Asgard"}
+
+				BeforeEach(func() {
+					_ = ds.MediaFile(ctx).Put(&WithMbid)
+				})
+
+				AfterEach(func() {
+					_ = ds.MediaFile(ctx).Delete(WithMbid.ID)
+				})
+
+				It("should return playlist", func() {
+					f, _ := os.Open("tests/fixtures/listenbrainz.playlist.json")
+
+					httpClient.Res = http.Response{
+						Body:       f,
+						StatusCode: 200,
+					}
+
+					err := agent.SyncPlaylist(ctx, ds, &pls)
+					Expect(err).To(BeNil())
+					Expect(pls.Tracks).To(HaveLen(1))
+					Expect(pls.Tracks[0].ID).To(Equal("1"))
+					Expect(pls.Comment).To(Equal("\n              This playlist contains the top tracks for example that were first listened to in 2022.\n              \n              \n                For more information on how this playlist is generated, please see our\n                Year in Music 2022 Playlists page.\n              \n           "))
+				})
+			})
+
+			Describe("Failed tests", func() {
+				It("should error when trying to fetch token and failing", func() {
+					httpClient.Res = http.Response{
+						Body:       io.NopCloser(bytes.NewBufferString(`{"Code":404,"Error":"No"}`)),
+						StatusCode: 404,
+					}
+					_ = ds.UserProps(ctx).Delete("user-1", sessionKeyProperty+agents.UserSuffix)
+					err := agent.SyncPlaylist(ctx, ds, &pls)
+					Expect(err).To(Equal(model.ErrNotFound))
+				})
+
+				It("should error when playlist is not found", func() {
+					httpClient.Res = http.Response{
+						Body:       io.NopCloser(bytes.NewBufferString(`{"Code":404,"Error":"No"}`)),
+						StatusCode: 404,
+					}
+					err := agent.SyncPlaylist(ctx, ds, &pls)
+					Expect(err).To(Equal(model.ErrNotFound))
+				})
+			})
+		})
 	})
 })

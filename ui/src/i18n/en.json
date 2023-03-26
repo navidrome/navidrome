@@ -405,7 +405,8 @@
         "playlistSyncConfirmTitle": "Are you sure you want to sync %{name}?",
         "playlistSyncConfirmBody": "This will overwrite your current playlist",
         "playlistSyncSuccess": "Successfully synced playlist",
-        "playlistSyncError": "Failed to sync playlist: %{error}"
+        "playlistSyncError": "Failed to sync playlist: %{error}",
+        "noPlaylistAgent": "You have no accounts to sync playlists. Please link a ListenBrainz account to proceed."
     },
     "menu": {
         "library": "Library",

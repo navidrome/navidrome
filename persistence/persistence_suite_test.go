@@ -61,7 +61,8 @@ var (
 	songComeTogether  = model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Genre: "Rock", Genres: model.Genres{genreRock}, Path: P("/beatles/1/come together.mp3"), FullText: " abbey beatles come road the together"}
 	songRadioactivity = model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Genre: "Electronic", Genres: model.Genres{genreElectronic}, Path: P("/kraft/radio/radio.mp3"), FullText: " kraftwerk radioactivity"}
 	songAntenna       = model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, Path: P("/kraft/radio/antenna.mp3"), FullText: " antenna kraftwerk"}
-	testSongs         = model.MediaFiles{
+
+	testSongs = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
 		songRadioactivity,

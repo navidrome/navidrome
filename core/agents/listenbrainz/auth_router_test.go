@@ -97,6 +97,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(sk.KeyValue).To(Equal("tok-1"))
+			Expect(sk.UserName).To(Equal("ListenBrainzUser"))
 		})
 	})
 

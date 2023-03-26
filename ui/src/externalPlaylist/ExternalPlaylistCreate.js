@@ -25,6 +25,7 @@ import {
   useNotify,
   useRecordContext,
   useRedirect,
+  useRefresh,
   useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
@@ -117,6 +118,7 @@ const ExternalPlaylistCreate = (props) => {
   const [mutate] = useMutation()
   const notify = useNotify()
   const redirect = useRedirect()
+  const refresh = useRefresh()
   const translate = useTranslate()
 
   const [agents, setAgents] = useState(null)
@@ -213,6 +215,7 @@ const ExternalPlaylistCreate = (props) => {
         notify('resources.externalPlaylist.notifications.created', 'info', {
           smart_count: count,
         })
+        refresh()
         redirect('/playlist')
       } catch (error) {
         if (error.body.errors) {
@@ -220,15 +223,33 @@ const ExternalPlaylistCreate = (props) => {
         }
       }
     },
-    [ids, mutate, notify, redirect]
+    [ids, mutate, notify, redirect, refresh]
   )
+
+  let formBody
+
+  if (allAgents.length === 0) {
+    formBody = <div>{translate('message.noPlaylistAgent')}</div>
+  } else {
+    formBody = [
+      <SelectInput source="agent" choices={allAgents} onChange={changeAgent} />,
+      <SelectInput source="type" choices={agentKeys} onChange={changeType} />,
+      <BooleanInput source="update" defaultValue={true} />,
+      selectedType && (
+        <ExternalPlaylistSelect
+          filter={{ agent: selectedAgent, type: selectedType }}
+          setIds={setIds}
+          fullWidth
+          ref={clearRef}
+        />
+      ),
+    ]
+  }
 
   return (
     <Create title={<Title subTitle={title} />} {...props}>
       {agents === null ? (
         <Loading />
-      ) : agents.length === 0 ? (
-        <div></div>
       ) : (
         <SimpleForm
           toolbar={
@@ -238,25 +259,7 @@ const ExternalPlaylistCreate = (props) => {
           }
           save={save}
         >
-          <SelectInput
-            source="agent"
-            choices={allAgents}
-            onChange={changeAgent}
-          />
-          <SelectInput
-            source="type"
-            choices={agentKeys}
-            onChange={changeType}
-          />
-          <BooleanInput source="update" defaultValue={true} />
-          {selectedType && (
-            <ExternalPlaylistSelect
-              filter={{ agent: selectedAgent, type: selectedType }}
-              setIds={setIds}
-              fullWidth
-              ref={clearRef}
-            />
-          )}
+          {formBody}
         </SimpleForm>
       )}
     </Create>
