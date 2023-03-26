@@ -5,11 +5,15 @@ import (
 	"net/url"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("AbsoluteURL", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
 	When("BaseURL is empty", func() {
 		BeforeEach(func() {
 			conf.Server.BasePath = ""

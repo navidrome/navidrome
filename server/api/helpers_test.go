@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -122,6 +124,26 @@ var _ = Describe("BuildPaginationLinksAndMeta", func() {
 			validateLink(links.Next, "60")
 			validateLink(links.Prev, "20")
 		})
+	})
+})
+
+var _ = Describe("storeRequestInContext", func() {
+	var (
+		nextHandler http.Handler
+		handler     http.Handler
+	)
+
+	BeforeEach(func() {
+		nextHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Expect(r.Context().Value(requestInContext).(*http.Request).URL).To(Equal(r.URL))
+		})
+		handler = storeRequestInContext(nextHandler)
+	})
+
+	It("adds the full request object to the context", func() {
+		req := httptest.NewRequest("GET", "http://example.com", nil)
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
 	})
 })
 
