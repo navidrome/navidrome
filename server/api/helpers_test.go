@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/url"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -29,9 +31,9 @@ var _ = Describe("BuildPaginationLinksAndMeta", func() {
 		It("returns correct pagination links and meta", func() {
 			links, meta := buildPaginationLinksAndMeta(totalItems, params, resourceName)
 
-			Expect(links.First).To(Equal(p("api/resource?page[offset]=0&page[limit]=10")))
-			Expect(links.Last).To(Equal(p("api/resource?page[offset]=140&page[limit]=10")))
-			Expect(links.Next).To(Equal(p("api/resource?page[offset]=10&page[limit]=10")))
+			testLinkEquality(links.First, p("api/resource?page[offset]=0&page[limit]=10"))
+			testLinkEquality(links.Last, p("api/resource?page[offset]=140&page[limit]=10"))
+			testLinkEquality(links.Next, p("api/resource?page[offset]=10&page[limit]=10"))
 			Expect(links.Prev).To(BeNil())
 
 			Expect(meta.CurrentPage).To(Equal(p(int32(1))))
@@ -51,10 +53,10 @@ var _ = Describe("BuildPaginationLinksAndMeta", func() {
 		It("returns correct pagination links and meta", func() {
 			links, meta := buildPaginationLinksAndMeta(totalItems, params, resourceName)
 
-			Expect(links.First).To(Equal(p("api/resource?page[offset]=0&page[limit]=20")))
-			Expect(links.Last).To(Equal(p("api/resource?page[offset]=140&page[limit]=20")))
-			Expect(links.Next).To(Equal(p("api/resource?page[offset]=60&page[limit]=20")))
-			Expect(links.Prev).To(Equal(p("api/resource?page[offset]=20&page[limit]=20")))
+			testLinkEquality(links.First, p("api/resource?page[offset]=0&page[limit]=20"))
+			testLinkEquality(links.Last, p("api/resource?page[offset]=140&page[limit]=20"))
+			testLinkEquality(links.Next, p("api/resource?page[offset]=60&page[limit]=20"))
+			testLinkEquality(links.Prev, p("api/resource?page[offset]=20&page[limit]=20"))
 
 			Expect(meta.CurrentPage).To(Equal(p(int32(3))))
 			Expect(meta.TotalItems).To(Equal(p(int32(150))))
@@ -81,30 +83,56 @@ var _ = Describe("BuildPaginationLinksAndMeta", func() {
 		It("returns correct pagination links with filter params", func() {
 			links, _ := buildPaginationLinksAndMeta(totalItems, params, resourceName)
 
-			expectedLinkPrefix := "api/resource?"
-			expectedParams := []string{
-				"page[offset]=0&page[limit]=20",
-				"filter[equals]=property1:value1&filter[equals]=property2:value2",
-				"filter[contains]=property3:value3",
-				"filter[lessThan]=property4:value4",
-				"filter[lessOrEqual]=property5:value5",
-				"filter[greaterThan]=property6:value6",
-				"filter[greaterOrEqual]=property7:value7",
-				"filter[startsWith]=property8:value8",
-				"filter[endsWith]=property9:value9",
+			validateLink := func(link *string, expectedOffset string) {
+				parsedLink, err := url.Parse(*link)
+				Expect(err).NotTo(HaveOccurred())
+
+				queryParams, _ := url.ParseQuery(parsedLink.RawQuery)
+				Expect(queryParams["page[offset]"]).To(ConsistOf(expectedOffset))
+				Expect(queryParams["page[limit]"]).To(ConsistOf("20"))
+
+				for _, param := range *params.FilterEquals {
+					Expect(queryParams["filter[equals]"]).To(ContainElements(param))
+				}
+				for _, param := range *params.FilterContains {
+					Expect(queryParams["filter[contains]"]).To(ContainElement(param))
+				}
+				for _, param := range *params.FilterLessThan {
+					Expect(queryParams["filter[lessThan]"]).To(ContainElement(param))
+				}
+				for _, param := range *params.FilterLessOrEqual {
+					Expect(queryParams["filter[lessOrEqual]"]).To(ContainElement(param))
+				}
+				for _, param := range *params.FilterGreaterThan {
+					Expect(queryParams["filter[greaterThan]"]).To(ContainElement(param))
+				}
+				for _, param := range *params.FilterGreaterOrEqual {
+					Expect(queryParams["filter[greaterOrEqual]"]).To(ContainElement(param))
+				}
+				for _, param := range *params.FilterStartsWith {
+					Expect(queryParams["filter[startsWith]"]).To(ContainElement(param))
+				}
+				for _, param := range *params.FilterEndsWith {
+					Expect(queryParams["filter[endsWith]"]).To(ContainElement(param))
+				}
 			}
 
-			Expect(*links.First).To(HavePrefix(expectedLinkPrefix))
-			Expect(*links.Last).To(HavePrefix(expectedLinkPrefix))
-			Expect(*links.Next).To(HavePrefix(expectedLinkPrefix))
-			Expect(*links.Prev).To(HavePrefix(expectedLinkPrefix))
-
-			for _, param := range expectedParams {
-				Expect(*links.First).To(ContainSubstring(param))
-				Expect(*links.Last).To(ContainSubstring(param))
-				Expect(*links.Next).To(ContainSubstring(param))
-				Expect(*links.Prev).To(ContainSubstring(param))
-			}
+			validateLink(links.First, "0")
+			validateLink(links.Last, "140")
+			validateLink(links.Next, "60")
+			validateLink(links.Prev, "20")
 		})
 	})
 })
+
+func testLinkEquality(link1, link2 *string) {
+	parsedLink1, err := url.Parse(*link1)
+	Expect(err).NotTo(HaveOccurred())
+	queryParams1, _ := url.ParseQuery(parsedLink1.RawQuery)
+
+	parsedLink2, err := url.Parse(*link2)
+	Expect(err).NotTo(HaveOccurred())
+	queryParams2, _ := url.ParseQuery(parsedLink2.RawQuery)
+
+	Expect(queryParams1).To(Equal(queryParams2))
+}

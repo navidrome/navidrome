@@ -6,7 +6,6 @@ package api
 import (
 	"context"
 	"net/http"
-	"net/url"
 
 	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -34,7 +33,10 @@ func New(ds model.DataStore) *Router {
 		RequestErrorHandlerFunc:  apiErrorHandler,
 		ResponseErrorHandlerFunc: apiErrorHandler,
 	})
-	r.Handler = HandlerFromMux(handler, mux)
+	r.Handler = HandlerWithOptions(handler, ChiServerOptions{
+		BaseRouter:  mux,
+		Middlewares: []MiddlewareFunc{storeRequestInContext},
+	})
 	return r
 }
 
@@ -76,7 +78,7 @@ func (a *Router) GetTracks(ctx context.Context, request GetTracksRequestObject) 
 	if err != nil {
 		return nil, err
 	}
-	baseUrl, _ := url.JoinPath(spec.Servers[0].URL, "tracks")
+	baseUrl := baseResourceUrl(ctx, "tracks")
 	links, meta := buildPaginationLinksAndMeta(int32(cnt), request.Params, baseUrl)
 	return GetTracks200JSONResponse{
 		Data:  toAPITracks(mfs),

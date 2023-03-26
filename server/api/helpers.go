@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,7 +11,20 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 )
+
+type contextKey string
+
+const requestInContext contextKey = "request"
+
+// storeRequestInContext is a middleware function that adds the full request object to the context.
+func storeRequestInContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), requestInContext, r)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
 func toAPITrack(mf model.MediaFile) Track {
 	return Track{
@@ -88,10 +103,10 @@ func toQueryOptions(params GetTracksParams) model.QueryOptions {
 
 func apiErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	var res ErrorObject
-	switch err {
-	case model.ErrNotAuthorized:
+	switch {
+	case errors.Is(err, model.ErrNotAuthorized):
 		res = ErrorObject{Status: p(strconv.Itoa(http.StatusForbidden)), Title: p(http.StatusText(http.StatusForbidden))}
-	case model.ErrNotFound:
+	case errors.Is(err, model.ErrNotFound):
 		res = ErrorObject{Status: p(strconv.Itoa(http.StatusNotFound)), Title: p(http.StatusText(http.StatusNotFound))}
 	default:
 		res = ErrorObject{Status: p(strconv.Itoa(http.StatusInternalServerError)), Title: p(http.StatusText(http.StatusInternalServerError))}
@@ -99,7 +114,7 @@ func apiErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/vnd.api+json")
 	w.WriteHeader(403)
 
-	json.NewEncoder(w).Encode(ErrorList{[]ErrorObject{res}})
+	_ = json.NewEncoder(w).Encode(ErrorList{[]ErrorObject{res}})
 }
 
 func validationErrorHandler(w http.ResponseWriter, message string, statusCode int) {
@@ -151,15 +166,15 @@ func buildPaginationLinksAndMeta(totalItems int32, params GetTracksParams, resou
 		addFilterParams("filter[endsWith]", params.FilterEndsWith)
 
 		if params.Sort != nil {
-			query.Add("sort", string(*params.Sort))
+			query.Add("sort", *params.Sort)
 		}
 		if params.Include != nil {
-			query.Add("include", string(*params.Include))
+			query.Add("include", *params.Include)
 		}
 
 		link := resourceName
 		if len(query) > 0 {
-			link += "&" + query.Encode()
+			link += "?" + query.Encode()
 		}
 		return &link
 	}
@@ -190,4 +205,10 @@ func buildPaginationLinksAndMeta(totalItems int32, params GetTracksParams, resou
 	}
 
 	return links, meta
+}
+
+func baseResourceUrl(ctx context.Context, resourceName string) string {
+	r := ctx.Value(requestInContext).(*http.Request)
+	baseUrl, _ := url.JoinPath(spec.Servers[0].URL, resourceName)
+	return server.AbsoluteURL(r, baseUrl, nil)
 }
