@@ -171,7 +171,7 @@ func AbsoluteURL(r *http.Request, u string, params url.Values) string {
 	if strings.HasPrefix(u, "/") {
 		buildUrl.Path = path.Join(conf.Server.BasePath, buildUrl.Path)
 		if conf.Server.BaseHost != "" {
-			buildUrl.Scheme = IfZero(conf.Server.BaseScheme, "http")
+			buildUrl.Scheme = If(conf.Server.BaseScheme, "http")
 			buildUrl.Host = conf.Server.BaseHost
 		} else {
 			buildUrl.Scheme = r.URL.Scheme

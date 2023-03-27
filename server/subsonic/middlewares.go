@@ -166,7 +166,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
 					SameSite: http.SameSiteStrictMode,
-					Path:     IfZero(conf.Server.BasePath, "/"),
+					Path:     If(conf.Server.BasePath, "/"),
 				}
 				http.SetCookie(w, cookie)
 			}
