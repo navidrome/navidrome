@@ -305,7 +305,7 @@ const SongDatagridBody = ({
           return acc
         }, [])
     )
-    if (!showEditionRow || (set.size < 2)) {
+    if (!showEditionRow || set.size < 2) {
       set.clear()
     }
     return set
