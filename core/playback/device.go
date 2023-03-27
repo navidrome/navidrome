@@ -1,13 +1,15 @@
 package playback
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"time"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
+	"github.com/faiface/beep/flac"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/wav"
@@ -204,29 +206,21 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 		}
 	case "audio/mp4":
 		fFmpeg := ffmpeg.New()
-		s, err := fFmpeg.ConvertToMP3(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
+		s, err := fFmpeg.ConvertToFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
 		if err != nil {
 			log.Error(err)
 			return
 		}
 
-		b, err := ioutil.ReadAll(s)
+		data, err := io.ReadAll(s)
 		if err != nil {
 			log.Error(err)
 			return
 		}
 
-		tempFile, err := os.CreateTemp("", "*.mp3")
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		tempFile.Write(b)
-		name := tempFile.Name()
-		tempFile.Close()
+		reader := bytes.NewReader(data)
 
-		log.Debug("using tempfile: " + name)
-		streamer, format, err = decodeMp3(name)
+		streamer, format, err = flac.Decode(reader)
 		if err != nil {
 			log.Error(err)
 			return
