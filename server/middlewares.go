@@ -135,7 +135,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     IfZero(conf.Server.BasePath, "/"),
+				Path:     If(conf.Server.BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
@@ -210,11 +210,11 @@ func serverAddress(r *http.Request) (scheme, host string) {
 		}
 		xfh = xfh[:i]
 	}
-	host = firstOr(r.Host, xfh)
+	host = FirstOr(r.Host, xfh)
 
 	// Determine the protocol and scheme of the request based on the presence of
 	// X-Forwarded-* headers or the scheme of the request URL.
-	scheme = firstOr(
+	scheme = FirstOr(
 		protocol,
 		r.Header.Get(xForwardedProto),
 		r.Header.Get(xForwardedScheme),
@@ -229,17 +229,6 @@ func serverAddress(r *http.Request) (scheme, host string) {
 
 	// Return the scheme and host of the server handling the request.
 	return scheme, host
-}
-
-// firstOr is a helper function that returns the first non-empty string from a list
-// of strings, or a default value if all the strings are empty.
-func firstOr(or string, strings ...string) string {
-	for _, s := range strings {
-		if s != "" {
-			return s
-		}
-	}
-	return or
 }
 
 // URLParamsMiddleware is a middleware function that decodes the query string of
