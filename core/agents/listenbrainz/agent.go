@@ -55,7 +55,7 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 				SubmissionClientVersion: consts.Version,
 				TrackNumber:             track.TrackNumber,
 				ArtistMbzIDs:            []string{track.MbzArtistID},
-				TrackMbzID:              track.MbzTrackID,
+				RecordingMbzID:          track.MbzTrackID,
 				ReleaseMbID:             track.MbzAlbumID,
 			},
 		},

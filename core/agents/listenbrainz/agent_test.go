@@ -60,7 +60,7 @@ var _ = Describe("listenBrainzAgent", func() {
 						"SubmissionClient":        Equal(consts.AppName),
 						"SubmissionClientVersion": Equal(consts.Version),
 						"TrackNumber":             Equal(track.TrackNumber),
-						"TrackMbzID":              Equal(track.MbzTrackID),
+						"RecordingMbzID":          Equal(track.MbzTrackID),
 						"ReleaseMbID":             Equal(track.MbzAlbumID),
 						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
 							"mbz-789": Equal(track.MbzArtistID),
