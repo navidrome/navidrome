@@ -221,9 +221,15 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	}
 
 	go func() {
-		speaker.Play(pd.Volume)
+		speaker.Play(beep.Seq(pd.Volume, beep.Callback(func() {
+			pd.endOfStreamCallback()
+		})))
 	}()
 
+}
+
+func (pd *PlaybackDevice) endOfStreamCallback() {
+	log.Info("Hitting end-of-stream")
 }
 
 func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
