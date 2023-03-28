@@ -2,6 +2,7 @@ package playback
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -194,40 +195,17 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	switch contentType {
 	case "audio/mpeg":
 		streamer, format, err = decodeMp3(mf.Path)
-		if err != nil {
-			log.Error(err)
-			return
-		}
 	case "audio/x-wav":
 		streamer, format, err = decodeWAV(mf.Path)
-		if err != nil {
-			log.Error(err)
-			return
-		}
 	case "audio/mp4":
-		fFmpeg := ffmpeg.New()
-		s, err := fFmpeg.ConvertToFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		data, err := io.ReadAll(s)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		reader := bytes.NewReader(data)
-
-		streamer, format, err = flac.Decode(reader)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
+		streamer, format, err = decodeFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
 	default:
 		log.Error("unsupported content type", "contentType", contentType)
+		return
+	}
+
+	if err != nil {
+		log.Error(err)
 		return
 	}
 
@@ -264,6 +242,22 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 
 	}
 	return wav.Decode(f)
+}
+
+func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
+	fFmpeg := ffmpeg.New()
+	readCloser, err := fFmpeg.ConvertToFLAC(ctx, path)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	data, err := io.ReadAll(readCloser)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	return flac.Decode(bytes.NewReader(data))
 }
 
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
