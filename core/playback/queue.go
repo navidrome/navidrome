@@ -2,6 +2,8 @@ package playback
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -47,6 +49,10 @@ func (pd *Queue) Get() model.MediaFiles {
 	return pd.Items
 }
 
+func (pd *Queue) Size() int {
+	return len(pd.Items)
+}
+
 // set is similar to a clear followed by a add, but will not change the currently playing track.
 func (pd *Queue) Set(items model.MediaFiles) {
 	pd.Clear()
@@ -71,7 +77,28 @@ func (pd *Queue) Clear() {
 // idx Zero-based index of the song to skip to or remove.
 func (pd *Queue) Remove(idx int) {}
 
-func (pd *Queue) Shuffle() {}
+func (pd *Queue) Shuffle() {
+	backupID := pd.Current().ID
+
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] })
+
+	var err error
+	pd.Index, err = pd.getMediaFileIndexByID(backupID)
+	if err != nil {
+		log.Error("Could not find ID while shuffling: " + backupID)
+	}
+
+}
+
+func (pd *Queue) getMediaFileIndexByID(id string) (int, error) {
+	for idx, item := range pd.Items {
+		if item.ID == id {
+			return idx, nil
+		}
+	}
+	return -1, fmt.Errorf("ID not found in playlist: " + id)
+}
 
 // Sets the index to a new, valid value inside the Items. Values lower than zero are going to be zero,
 // values above will be limited by number of items.

@@ -165,6 +165,9 @@ func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 
 func (pd *PlaybackDevice) Shuffle() (DeviceStatus, error) {
 	log.Debug("processing Shuffle action")
+	if pd.PlaybackQueue.Size() > 1 {
+		pd.PlaybackQueue.Shuffle()
+	}
 	return pd.getStatus(), nil
 }
 
