@@ -1,20 +1,12 @@
 package playback
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"io"
-	"os"
 	"time"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
-	"github.com/faiface/beep/flac"
-	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/wav"
-	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -44,6 +36,15 @@ type DeviceStatus struct {
 }
 
 var EmptyStatus = DeviceStatus{CurrentIndex: -1, Playing: false, Gain: 0.5, Position: 0}
+
+func (pd *PlaybackDevice) getStatus() DeviceStatus {
+	return DeviceStatus{
+		CurrentIndex: pd.PlaybackQueue.Index,
+		Playing:      pd.isPlaying(),
+		Gain:         pd.Gain,
+		Position:     pd.Position(),
+	}
+}
 
 func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string, deviceName string) *PlaybackDevice {
 	return &PlaybackDevice{
@@ -149,20 +150,24 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
 	pd.PlaybackQueue.Clear()
 	pd.Prepared = false
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 	log.Debug("processing Remove action")
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) Shuffle() (DeviceStatus, error) {
 	log.Debug("processing Shuffle action")
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) SetGain(gain float32) (DeviceStatus, error) {
 	difference := gain - pd.Gain
 	log.Debug(fmt.Sprintf("processing SetGain action. Actual gain: %f, gain to set: %f, difference: %f", pd.Gain, gain, difference))
@@ -253,49 +258,6 @@ func (pd *PlaybackDevice) trackSwitcher() {
 		log.Info("track switching detected")
 		pd.Pause()
 		log.Info("Did pausing stream")
-	}
-}
-
-func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, beep.Format{}, err
-
-	}
-	return mp3.Decode(f)
-}
-
-func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, beep.Format{}, err
-
-	}
-	return wav.Decode(f)
-}
-
-func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
-	fFmpeg := ffmpeg.New()
-	readCloser, err := fFmpeg.ConvertToFLAC(ctx, path)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	data, err := io.ReadAll(readCloser)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	return flac.Decode(bytes.NewReader(data))
-}
-
-func (pd *PlaybackDevice) getStatus() DeviceStatus {
-	return DeviceStatus{
-		CurrentIndex: pd.PlaybackQueue.Index,
-		Playing:      pd.isPlaying(),
-		Gain:         pd.Gain,
-		Position:     pd.Position(),
 	}
 }
 
