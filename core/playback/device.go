@@ -20,7 +20,7 @@ type PlaybackDevice struct {
 	DeviceName           string
 	Ctrl                 *beep.Ctrl
 	Volume               *effects.Volume
-	Prepared             bool
+	TrackLoaded          bool
 	PlaybackQueue        *Queue
 	Gain                 float32
 	SampleRate           beep.SampleRate
@@ -55,7 +55,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		DeviceName:           deviceName,
 		Ctrl:                 &beep.Ctrl{Paused: true},
 		Volume:               &effects.Volume{},
-		Prepared:             false,
+		TrackLoaded:          false,
 		Gain:                 0.5,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
@@ -64,7 +64,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 }
 
 func (pd *PlaybackDevice) String() string {
-	return fmt.Sprintf("Name: %s, Gain: %.4f, Prepared: %t", pd.Name, pd.Gain, pd.Prepared)
+	return fmt.Sprintf("Name: %s, Gain: %.4f, Prepared: %t", pd.Name, pd.Gain, pd.TrackLoaded)
 }
 
 func (pd *PlaybackDevice) Get() (model.MediaFiles, DeviceStatus, error) {
@@ -91,7 +91,7 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 		return EmptyStatus, nil
 	}
 
-	if !pd.Prepared {
+	if !pd.TrackLoaded {
 		pd.loadTrack(*currentTrack)
 	}
 
@@ -125,7 +125,7 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	}
 	pd.PlaybackQueue.SetIndex(index)
 	pd.PlaybackQueue.SetOffset(offset)
-	pd.Prepared = false
+	pd.TrackLoaded = false
 
 	if wasPlaying {
 		pd.Start()
@@ -154,7 +154,7 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
 	pd.PlaybackQueue.Clear()
-	pd.Prepared = false
+	pd.TrackLoaded = false
 	return pd.getStatus(), nil
 }
 
@@ -197,7 +197,7 @@ func (pd *PlaybackDevice) Pause() {
 }
 
 func (pd *PlaybackDevice) isPlaying() bool {
-	return pd.Prepared && !pd.Ctrl.Paused
+	return pd.TrackLoaded && !pd.Ctrl.Paused
 }
 
 func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
@@ -228,7 +228,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	log.Debug("Setting up audio device")
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
 	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
-	pd.Prepared = true
+	pd.TrackLoaded = true
 	pd.SampleRate = format.SampleRate
 
 	err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
@@ -247,17 +247,20 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 func (pd *PlaybackDevice) endOfStreamCallback() {
 	log.Info("Hitting end-of-stream")
 	pd.PlaybackDone <- true
-	log.Info("sended playbackDone event to channel")
 }
 
 func (pd *PlaybackDevice) trackSwitcher() {
 	log.Info("Starting trackSwitcher goroutine")
 	for {
-		log.Info("waiting for switching event on channel")
 		<-pd.PlaybackDone
 		log.Info("track switching detected")
 		pd.Pause()
-		log.Info("Did pausing stream")
+		pd.TrackLoaded = false
+
+		if !pd.PlaybackQueue.IsAtLastElement() {
+			pd.PlaybackQueue.IncreaseIndex()
+			pd.Start()
+		}
 	}
 }
 

@@ -79,6 +79,18 @@ func (pd *Queue) SetIndex(idx int) {
 	pd.Index = max(0, min(idx, len(pd.Items)-1))
 }
 
+// Are we at the last track?
+func (pd *Queue) IsAtLastElement() bool {
+	return (pd.Index + 1) >= len(pd.Items)
+}
+
+// Goto next index
+func (pd *Queue) IncreaseIndex() {
+	if !pd.IsAtLastElement() {
+		pd.SetIndex(pd.Index + 1)
+	}
+}
+
 // SetOffset sets the plaing offset as second into the current track and checks if offset is within the duration of the track
 // FIXME: implement check
 func (pd *Queue) SetOffset(offset int) error {
