@@ -32,6 +32,8 @@ type PlaybackDevice struct {
 	PlaybackQueue        *Queue
 	Gain                 float32
 	SampleRate           beep.SampleRate
+	PlaybackDone         chan bool
+	TrackSwitcherStarted bool
 }
 
 type DeviceStatus struct {
@@ -55,6 +57,8 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Prepared:             false,
 		Gain:                 0.5,
 		PlaybackQueue:        NewQueue(),
+		PlaybackDone:         make(chan bool),
+		TrackSwitcherStarted: false,
 	}
 }
 
@@ -88,6 +92,13 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 
 	if !pd.Prepared {
 		pd.loadTrack(*currentTrack)
+	}
+
+	if !pd.TrackSwitcherStarted {
+		go func() {
+			pd.trackSwitcher()
+		}()
+		pd.TrackSwitcherStarted = true
 	}
 
 	err := pd.SetPosition()
@@ -230,6 +241,19 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 
 func (pd *PlaybackDevice) endOfStreamCallback() {
 	log.Info("Hitting end-of-stream")
+	pd.PlaybackDone <- true
+	log.Info("sended playbackDone event to channel")
+}
+
+func (pd *PlaybackDevice) trackSwitcher() {
+	log.Info("Starting trackSwitcher goroutine")
+	for {
+		log.Info("waiting for switching event on channel")
+		<-pd.PlaybackDone
+		log.Info("track switching detected")
+		pd.Pause()
+		log.Info("Did pausing stream")
+	}
 }
 
 func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
