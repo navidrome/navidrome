@@ -25,8 +25,8 @@ func NewQueue() *Queue {
 
 func (pd *Queue) String() string {
 	filenames := ""
-	for _, item := range pd.Items {
-		filenames += item.Path + " "
+	for idx, item := range pd.Items {
+		filenames += fmt.Sprint(idx) + ":" + item.Path + " "
 	}
 	return fmt.Sprintf("#Items: %d, idx: %d, offset: %d, files: %s", len(pd.Items), pd.Index, pd.Offset, filenames)
 }
@@ -75,10 +75,29 @@ func (pd *Queue) Clear() {
 }
 
 // idx Zero-based index of the song to skip to or remove.
-func (pd *Queue) Remove(idx int) {}
+func (pd *Queue) Remove(idx int) {
+	current := pd.Current()
+	backupID := ""
+	if current != nil {
+		backupID = current.ID
+	}
+
+	pd.Items = append(pd.Items[:idx], pd.Items[idx+1:]...)
+
+	var err error
+	pd.Index, err = pd.getMediaFileIndexByID(backupID)
+	if err != nil {
+		// we seem to have deleted the current id, setting to default:
+		pd.Index = -1
+	}
+}
 
 func (pd *Queue) Shuffle() {
-	backupID := pd.Current().ID
+	current := pd.Current()
+	backupID := ""
+	if current != nil {
+		backupID = current.ID
+	}
 
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] })

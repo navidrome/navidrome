@@ -160,6 +160,12 @@ func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 
 func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 	log.Debug("processing Remove action")
+	// FIXME: what happens when we attempt to delete the playing index?
+	if index > -1 && index < pd.PlaybackQueue.Size() {
+		pd.PlaybackQueue.Remove(index)
+	} else {
+		log.Error("Index to remove out of range: " + fmt.Sprint(index))
+	}
 	return pd.getStatus(), nil
 }
 
