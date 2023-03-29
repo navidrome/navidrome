@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -47,13 +48,12 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 }
 
 // Run starts the server with the given address, and if specified, with TLS enabled.
-func (s *Server) Run(ctx context.Context, addr string, tlsCert string, tlsKey string) error {
+func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) error {
 	// Mount the router for the frontend assets
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
 
-	// Create a new http.Server with the specified address and read header timeout
+	// Create a new http.Server with the specified read header timeout and handler
 	server := &http.Server{
-		Addr:              addr,
 		ReadHeaderTimeout: consts.ServerReadHeaderTimeout,
 		Handler:           s.router,
 	}
@@ -61,18 +61,35 @@ func (s *Server) Run(ctx context.Context, addr string, tlsCert string, tlsKey st
 	// Determine if TLS is enabled
 	tlsEnabled := tlsCert != "" && tlsKey != ""
 
+	// Create a listener based on the address type (either Unix socket or TCP)
+	var listener net.Listener
+	var err error
+	if strings.HasPrefix(addr, "unix:") {
+		socketPath := strings.TrimPrefix(addr, "unix:")
+		listener, err = net.Listen("unix", socketPath)
+		if err != nil {
+			return fmt.Errorf("error creating unix socket listener: %w", err)
+		}
+	} else {
+		addr = fmt.Sprintf("%s:%d", addr, port)
+		listener, err = net.Listen("tcp", addr)
+		if err != nil {
+			return fmt.Errorf("error creating tcp listener: %w", err)
+		}
+	}
+
 	// Start the server in a new goroutine and send an error signal to errC if there's an error
 	errC := make(chan error)
 	go func() {
 		if tlsEnabled {
 			// Start the HTTPS server
 			log.Info("Starting server with TLS (HTTPS) enabled", "tlsCert", tlsCert, "tlsKey", tlsKey)
-			if err := server.ListenAndServeTLS(tlsCert, tlsKey); !errors.Is(err, http.ErrServerClosed) {
+			if err := server.ServeTLS(listener, tlsCert, tlsKey); !errors.Is(err, http.ErrServerClosed) {
 				errC <- err
 			}
 		} else {
 			// Start the HTTP server
-			if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
 				errC <- err
 			}
 		}
