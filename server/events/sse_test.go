@@ -1,7 +1,12 @@
 package events
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"sync/atomic"
+	"time"
 
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
@@ -58,4 +63,126 @@ var _ = Describe("Broker", func() {
 			})
 		})
 	})
+
+	Describe("writeEvent", func() {
+		var (
+			timeout   time.Duration
+			buffer    *bytes.Buffer
+			event     message
+			senderCtx context.Context
+			cancel    context.CancelFunc
+		)
+
+		BeforeEach(func() {
+			buffer = &bytes.Buffer{}
+			senderCtx, cancel = context.WithCancel(context.Background())
+			DeferCleanup(cancel)
+		})
+
+		Context("with an HTTP flusher", func() {
+			var flusher *fakeFlusher
+
+			BeforeEach(func() {
+				flusher = &fakeFlusher{Writer: buffer}
+				event = message{
+					senderCtx: senderCtx,
+					id:        1,
+					event:     "test",
+					data:      "testdata",
+				}
+			})
+
+			Context("when the write completes before the timeout", func() {
+				BeforeEach(func() {
+					timeout = 1 * time.Second
+				})
+				It("should successfully write the event", func() {
+					err := writeEvent(flusher, event, timeout)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(buffer.String()).To(Equal(fmt.Sprintf("id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)))
+					Expect(flusher.flushed.Load()).To(BeTrue())
+				})
+			})
+
+			Context("when the write does not complete before the timeout", func() {
+				BeforeEach(func() {
+					timeout = 1 * time.Millisecond
+					flusher.delay = 10 * time.Millisecond
+				})
+
+				It("should return an errWriteTimeOut error", func() {
+					err := writeEvent(flusher, event, timeout)
+					Expect(err).To(MatchError(errWriteTimeOut))
+					Expect(flusher.flushed.Load()).To(BeFalse())
+				})
+			})
+
+			Context("without an HTTP flusher", func() {
+				var writer *fakeWriter
+
+				BeforeEach(func() {
+					writer = &fakeWriter{Writer: buffer}
+					event = message{
+						senderCtx: senderCtx,
+						id:        1,
+						event:     "test",
+						data:      "testdata",
+					}
+				})
+
+				Context("when the write completes before the timeout", func() {
+					BeforeEach(func() {
+						timeout = 1 * time.Second
+					})
+
+					It("should successfully write the event", func() {
+						err := writeEvent(writer, event, timeout)
+						Expect(err).NotTo(HaveOccurred())
+						Eventually(writer.done.Load).Should(BeTrue())
+						Expect(buffer.String()).To(Equal(fmt.Sprintf("id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)))
+					})
+				})
+
+				Context("when the write does not complete before the timeout", func() {
+					BeforeEach(func() {
+						timeout = 1 * time.Millisecond
+						writer.delay = 10 * time.Millisecond
+					})
+
+					It("should return an errWriteTimeOut error", func() {
+						err := writeEvent(writer, event, timeout)
+						Expect(err).To(MatchError(errWriteTimeOut))
+						Expect(writer.done.Load()).To(BeFalse())
+					})
+				})
+			})
+		})
+	})
 })
+
+type fakeWriter struct {
+	io.Writer
+	delay time.Duration
+	done  atomic.Bool
+}
+
+func (f *fakeWriter) Write(p []byte) (n int, err error) {
+	time.Sleep(f.delay)
+	f.done.Store(true)
+	return f.Writer.Write(p)
+}
+
+type fakeFlusher struct {
+	io.Writer
+	delay   time.Duration
+	flushed atomic.Bool
+}
+
+func (f *fakeFlusher) Write(p []byte) (n int, err error) {
+	time.Sleep(f.delay)
+	return f.Writer.Write(p)
+}
+
+func (f *fakeFlusher) Flush() {
+	f.flushed.Store(true)
+}
