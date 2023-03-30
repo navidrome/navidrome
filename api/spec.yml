@@ -172,6 +172,75 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /albums:
+    get:
+      summary: Retrieve a list of albums
+      operationId: getAlbums
+      parameters:
+        - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageOffset'
+        - $ref: '#/components/parameters/filterEquals'
+        - $ref: '#/components/parameters/filterContains'
+        - $ref: '#/components/parameters/filterLessThan'
+        - $ref: '#/components/parameters/filterLessOrEqual'
+        - $ref: '#/components/parameters/filterGreaterThan'
+        - $ref: '#/components/parameters/filterGreaterOrEqual'
+        - $ref: '#/components/parameters/filterStartsWith'
+        - $ref: '#/components/parameters/filterEndsWith'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/include'
+      responses:
+        '200':
+          description: A list of albums
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data, links]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Album'
+                  links:
+                    $ref: '#/components/schemas/PaginationLinks'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /albums/{albumId}:
+    get:
+      summary: Retrieve an individual album
+      operationId: getAlbum
+      parameters:
+        - $ref: '#/components/parameters/include'
+        - name: albumId
+          in: path
+          description: The unique identifier of the album
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: An album object
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Album'
+        '403':
+          $ref: '#/components/responses/NotAuthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   parameters:
@@ -323,14 +392,21 @@ components:
           type: string
           description: The unique identifier for the resource
         type:
-          type: string
-          description: The type of the resource
+          $ref: '#/components/schemas/ResourceType'
+    ResourceType:
+      type: string
+      description: The type of the resource
+      enum:
+        - album
+        - artist
+        - track
     ResourceList:
       type: object
       properties:
         data:
           oneOf:
             - $ref: '#/components/schemas/Track'
+            - $ref: '#/components/schemas/Album'
             - $ref: '#/components/schemas/Artist'
             - type: array
               items:
@@ -351,6 +427,7 @@ components:
         propertyName: type
         mapping:
           track: '#/components/schemas/Track'
+          album: '#/components/schemas/Album'
           artist: '#/components/schemas/Artist'
     Track:
       allOf:
@@ -360,14 +437,7 @@ components:
             attributes:
               $ref: '#/components/schemas/TrackAttributes'
             relationships:
-              type: object
-              properties:
-                artists:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/TrackArtistRelationship'
-              required:
-                - artist
+              $ref: '#/components/schemas/TrackRelationships'
     TrackAttributes:
       type: object
       properties:
@@ -392,16 +462,24 @@ components:
         - artist
         - album
         - duration
+    TrackRelationships:
+      type: object
+      properties:
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackArtistRelationship'
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumTrackRelationship'
+      required:
+        - artists
     TrackArtistRelationship:
       type: object
       properties:
         meta:
-          type: object
-          properties:
-            role:
-              $ref: '#/components/schemas/ArtistRole'
-          required:
-            - role
+          $ref: #/components/schemas/ArtistMetaObject
         data:
           $ref: '#/components/schemas/ResourceObject'
       required:
@@ -410,6 +488,7 @@ components:
     ArtistRole:
       type: string
       enum:
+        - artist
         - albumArtist
         - composer
         - vocalist
@@ -433,8 +512,15 @@ components:
                         $ref: '#/components/schemas/ArtistTrackRelationship'
                   required:
                     - data
-              required:
-                - tracks
+                albums:
+                  type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ArtistAlbumRelationship'
+                  required:
+                    - data
     ArtistAttributes:
       type: object
       properties:
@@ -444,6 +530,16 @@ components:
         bio:
           type: string
           description: A short biography of the artist
+    ArtistAlbumRelationship:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/ArtistMetaObject'
+        data:
+          $ref: '#/components/schemas/ResourceObject'
+      required:
+        - meta
+        - data
     ArtistTrackRelationship:
       type: object
       properties:
@@ -458,6 +554,68 @@ components:
           $ref: '#/components/schemas/ResourceObject'
       required:
         - meta
+        - data
+    ArtistMetaObject:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/ArtistRole'
+      required:
+        - role
+    Album:
+      allOf:
+        - $ref: '#/components/schemas/ResourceObject'
+        - type: object
+          properties:
+            attributes:
+              $ref: '#/components/schemas/AlbumAttributes'
+            relationships:
+              type: object
+              properties:
+                artists:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AlbumArtistRelationship'
+                tracks:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AlbumTrackRelationship'
+              required:
+                - artists
+                - tracks
+    AlbumAttributes:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The title of the album
+        releaseDate:
+          type: string
+          format: date
+          description: The release date of the album
+        genre:
+          type: string
+          description: The genre of the album
+      required:
+        - title
+        - releaseDate
+        - genre
+    AlbumArtistRelationship:
+      type: object
+      properties:
+        meta:
+          $ref: #/components/schemas/ArtistMetaObject
+        data:
+          $ref: '#/components/schemas/ResourceObject'
+      required:
+        - meta
+        - data
+    AlbumTrackRelationship:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ResourceObject'
+      required:
         - data
     PaginationLinks:
       type: object

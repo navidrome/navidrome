@@ -22,6 +22,12 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Retrieve a list of albums
+	// (GET /albums)
+	GetAlbums(w http.ResponseWriter, r *http.Request, params GetAlbumsParams)
+	// Retrieve an individual album
+	// (GET /albums/{albumId})
+	GetAlbum(w http.ResponseWriter, r *http.Request, albumId string, params GetAlbumParams)
 	// Retrieve a list of artists
 	// (GET /artists)
 	GetArtists(w http.ResponseWriter, r *http.Request, params GetArtistsParams)
@@ -47,6 +53,159 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetAlbums operation middleware
+func (siw *ServerInterfaceWrapper) GetAlbums(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAlbumsParams
+
+	// ------------- Optional query parameter "page[limit]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page[limit]", r.URL.Query(), &params.PageLimit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page[limit]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "page[offset]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page[offset]", r.URL.Query(), &params.PageOffset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page[offset]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[equals]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[equals]", r.URL.Query(), &params.FilterEquals)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[equals]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[contains]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[contains]", r.URL.Query(), &params.FilterContains)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[contains]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[lessThan]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[lessThan]", r.URL.Query(), &params.FilterLessThan)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[lessThan]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[lessOrEqual]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[lessOrEqual]", r.URL.Query(), &params.FilterLessOrEqual)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[lessOrEqual]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[greaterThan]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[greaterThan]", r.URL.Query(), &params.FilterGreaterThan)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[greaterThan]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[greaterOrEqual]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[greaterOrEqual]", r.URL.Query(), &params.FilterGreaterOrEqual)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[greaterOrEqual]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[startsWith]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[startsWith]", r.URL.Query(), &params.FilterStartsWith)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[startsWith]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "filter[endsWith]" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "filter[endsWith]", r.URL.Query(), &params.FilterEndsWith)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filter[endsWith]", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", r.URL.Query(), &params.Sort)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include", r.URL.Query(), &params.Include)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		return
+	}
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAlbums(w, r, params)
+	})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GetAlbum operation middleware
+func (siw *ServerInterfaceWrapper) GetAlbum(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "albumId" -------------
+	var albumId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "albumId", runtime.ParamLocationPath, chi.URLParam(r, "albumId"), &albumId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "albumId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetAlbumParams
+
+	// ------------- Optional query parameter "include" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "include", r.URL.Query(), &params.Include)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "include", Err: err})
+		return
+	}
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAlbum(w, r, albumId, params)
+	})
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
 
 // GetArtists operation middleware
 func (siw *ServerInterfaceWrapper) GetArtists(w http.ResponseWriter, r *http.Request) {
@@ -483,6 +642,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/albums", wrapper.GetAlbums)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/albums/{albumId}", wrapper.GetAlbum)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/artists", wrapper.GetArtists)
 	})
 	r.Group(func(r chi.Router) {
@@ -508,6 +673,105 @@ type InternalServerErrorJSONResponse ErrorList
 type NotAuthorizedJSONResponse ErrorList
 
 type NotFoundJSONResponse ErrorList
+
+type GetAlbumsRequestObject struct {
+	Params GetAlbumsParams
+}
+
+type GetAlbumsResponseObject interface {
+	VisitGetAlbumsResponse(w http.ResponseWriter) error
+}
+
+type GetAlbums200JSONResponse struct {
+	Data  []Album         `json:"data"`
+	Links PaginationLinks `json:"links"`
+	Meta  *PaginationMeta `json:"meta,omitempty"`
+}
+
+func (response GetAlbums200JSONResponse) VisitGetAlbumsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbums400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetAlbums400JSONResponse) VisitGetAlbumsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbums403JSONResponse struct{ NotAuthorizedJSONResponse }
+
+func (response GetAlbums403JSONResponse) VisitGetAlbumsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbums500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response GetAlbums500JSONResponse) VisitGetAlbumsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbumRequestObject struct {
+	AlbumId string `json:"albumId"`
+	Params  GetAlbumParams
+}
+
+type GetAlbumResponseObject interface {
+	VisitGetAlbumResponse(w http.ResponseWriter) error
+}
+
+type GetAlbum200JSONResponse struct {
+	Data Album `json:"data"`
+}
+
+func (response GetAlbum200JSONResponse) VisitGetAlbumResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbum403JSONResponse struct{ NotAuthorizedJSONResponse }
+
+func (response GetAlbum403JSONResponse) VisitGetAlbumResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbum404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetAlbum404JSONResponse) VisitGetAlbumResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetAlbum500JSONResponse struct {
+	InternalServerErrorJSONResponse
+}
+
+func (response GetAlbum500JSONResponse) VisitGetAlbumResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/vnd.api+json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
 
 type GetArtistsRequestObject struct {
 	Params GetArtistsParams
@@ -747,6 +1011,12 @@ func (response GetTrack500JSONResponse) VisitGetTrackResponse(w http.ResponseWri
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Retrieve a list of albums
+	// (GET /albums)
+	GetAlbums(ctx context.Context, request GetAlbumsRequestObject) (GetAlbumsResponseObject, error)
+	// Retrieve an individual album
+	// (GET /albums/{albumId})
+	GetAlbum(ctx context.Context, request GetAlbumRequestObject) (GetAlbumResponseObject, error)
 	// Retrieve a list of artists
 	// (GET /artists)
 	GetArtists(ctx context.Context, request GetArtistsRequestObject) (GetArtistsResponseObject, error)
@@ -792,6 +1062,59 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// GetAlbums operation middleware
+func (sh *strictHandler) GetAlbums(w http.ResponseWriter, r *http.Request, params GetAlbumsParams) {
+	var request GetAlbumsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAlbums(ctx, request.(GetAlbumsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAlbums")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAlbumsResponseObject); ok {
+		if err := validResponse.VisitGetAlbumsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("Unexpected response type: %T", response))
+	}
+}
+
+// GetAlbum operation middleware
+func (sh *strictHandler) GetAlbum(w http.ResponseWriter, r *http.Request, albumId string, params GetAlbumParams) {
+	var request GetAlbumRequestObject
+
+	request.AlbumId = albumId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAlbum(ctx, request.(GetAlbumRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAlbum")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAlbumResponseObject); ok {
+		if err := validResponse.VisitGetAlbumResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("Unexpected response type: %T", response))
+	}
 }
 
 // GetArtists operation middleware
@@ -927,44 +1250,48 @@ func (sh *strictHandler) GetTrack(w http.ResponseWriter, r *http.Request, trackI
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"Od/ebP8XAAD//1dw5/GYLgAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

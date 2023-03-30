@@ -28,7 +28,7 @@ func storeRequestInContext(next http.Handler) http.Handler {
 
 func toAPITrack(mf model.MediaFile) Track {
 	return Track{
-		Type: "track",
+		Type: ResourceTypeTrack,
 		Id:   mf.ID,
 		Attributes: &TrackAttributes{
 			Album: mf.Album,
@@ -48,6 +48,40 @@ func toAPITrack(mf model.MediaFile) Track {
 			//Track:         mf.TrackNumber,
 			//TrackMbid:     p(mf.MbzReleaseTrackID),
 			//Year:          p(mf.Year),
+		},
+		Relationships: &TrackRelationships{
+			Albums:  &[]AlbumTrackRelationship{toAlbumRelationship(mf)},
+			Artists: trackArtistRelationships(mf),
+		},
+	}
+}
+
+func trackArtistRelationships(mf model.MediaFile) []TrackArtistRelationship {
+	var r []TrackArtistRelationship
+	if mf.AlbumArtistID != "" {
+		r = append(r, toArtistRelationship(mf.AlbumArtistID, ArtistRoleAlbumArtist))
+	}
+	if mf.ArtistID != "" {
+		r = append(r, toArtistRelationship(mf.ArtistID, ArtistRoleArtist))
+	}
+	return r
+}
+
+func toArtistRelationship(id string, artist ArtistRole) TrackArtistRelationship {
+	return TrackArtistRelationship{
+		Data: ResourceObject{
+			Type: ResourceTypeArtist,
+			Id:   id,
+		},
+		Meta: struct{ Role ArtistRole }{Role: artist},
+	}
+}
+
+func toAlbumRelationship(mf model.MediaFile) AlbumTrackRelationship {
+	return AlbumTrackRelationship{
+		Data: ResourceObject{
+			Type: ResourceTypeAlbum,
+			Id:   mf.AlbumID,
 		},
 	}
 }

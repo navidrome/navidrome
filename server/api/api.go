@@ -47,6 +47,16 @@ type Router struct {
 	ds model.DataStore
 }
 
+func (a *Router) GetAlbums(ctx context.Context, request GetAlbumsRequestObject) (GetAlbumsResponseObject, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *Router) GetAlbum(ctx context.Context, request GetAlbumRequestObject) (GetAlbumResponseObject, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (a *Router) GetArtists(ctx context.Context, request GetArtistsRequestObject) (GetArtistsResponseObject, error) {
 	//TODO implement me
 	panic("implement me")
