@@ -22,7 +22,8 @@ var _ = Describe("Artwork", func() {
 	var ffmpeg *tests.MockFFmpeg
 	ctx := log.NewContext(context.TODO())
 	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alMultipleCovers model.Album
-	var mfWithEmbed, mfWithoutEmbed, mfCorruptedCover model.MediaFile
+	var arMultipleCovers model.Artist
+	var mfWithEmbed, mfAnotherWithEmbed, mfWithoutEmbed, mfCorruptedCover model.MediaFile
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -30,14 +31,23 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/test.mp3"}
+		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3"}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3"}
-		alOnlyExternal = model.Album{ID: "444", Name: "Only external", ImageFiles: "tests/fixtures/front.png"}
+		alOnlyExternal = model.Album{ID: "444", Name: "Only external", ImageFiles: "tests/fixtures/artist/an-album/front.png"}
 		alExternalNotFound = model.Album{ID: "555", Name: "External not found", ImageFiles: "tests/fixtures/NON_EXISTENT.png"}
-		alMultipleCovers = model.Album{ID: "666", Name: "All options", EmbedArtPath: "tests/fixtures/test.mp3",
-			ImageFiles: "tests/fixtures/cover.jpg" + consts.Zwsp + "tests/fixtures/front.png",
+		arMultipleCovers = model.Artist{ID: "777", Name: "All options"}
+		alMultipleCovers = model.Album{
+			ID:           "666",
+			Name:         "All options",
+			EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3",
+			Paths:        "tests/fixtures/artist/an-album",
+			ImageFiles: "tests/fixtures/artist/an-album/cover.jpg" + consts.Zwsp +
+				"tests/fixtures/artist/an-album/front.png" + consts.Zwsp +
+				"tests/fixtures/artist/an-album/artist.png",
+			AlbumArtistID: "777",
 		}
 		mfWithEmbed = model.MediaFile{ID: "22", Path: "tests/fixtures/test.mp3", HasCoverArt: true, AlbumID: "222"}
+		mfAnotherWithEmbed = model.MediaFile{ID: "23", Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true, AlbumID: "666"}
 		mfWithoutEmbed = model.MediaFile{ID: "44", Path: "tests/fixtures/test.ogg", AlbumID: "444"}
 		mfCorruptedCover = model.MediaFile{ID: "45", Path: "tests/fixtures/test.ogg", HasCoverArt: true, AlbumID: "444"}
 
@@ -65,7 +75,7 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("tests/fixtures/test.mp3"))
+				Expect(path).To(Equal("tests/fixtures/artist/an-album/test.mp3"))
 			})
 			It("returns ErrUnavailable if embed path is not available", func() {
 				ffmpeg.Error = errors.New("not available")
@@ -87,7 +97,7 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("tests/fixtures/front.png"))
+				Expect(path).To(Equal("tests/fixtures/artist/an-album/front.png"))
 			})
 			It("returns ErrUnavailable if external file is not available", func() {
 				aw, err := newAlbumArtworkReader(ctx, aw, alExternalNotFound.CoverArtID(), nil)
@@ -111,9 +121,36 @@ var _ = Describe("Artwork", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(path).To(Equal(expected))
 				},
-				Entry(nil, " folder.* , cover.*,embedded,front.*", "tests/fixtures/cover.jpg"),
-				Entry(nil, "front.* , cover.*, embedded ,folder.*", "tests/fixtures/front.png"),
-				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/test.mp3"),
+				Entry(nil, " folder.* , cover.*,embedded,front.*", "tests/fixtures/artist/an-album/cover.jpg"),
+				Entry(nil, "front.* , cover.*, embedded ,folder.*", "tests/fixtures/artist/an-album/front.png"),
+				Entry(nil, " embedded , front.* , cover.*,folder.*", "tests/fixtures/artist/an-album/test.mp3"),
+			)
+		})
+	})
+	Describe("artistArtworkReader", func() {
+		Context("Multiple covers", func() {
+			BeforeEach(func() {
+				ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
+					arMultipleCovers,
+				})
+				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
+					alMultipleCovers,
+				})
+				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+					mfAnotherWithEmbed,
+				})
+			})
+			DescribeTable("ArtistArtPriority",
+				func(priority string, expected string) {
+					conf.Server.ArtistArtPriority = priority
+					aw, err := newArtistReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
+					Expect(err).ToNot(HaveOccurred())
+					_, path, err := aw.Reader(ctx)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(path).To(Equal(expected))
+				},
+				Entry(nil, " folder.* , artist.*,album/artist.*", "tests/fixtures/artist/artist.jpg"),
+				Entry(nil, "album/artist.*, folder.*,artist.*", "tests/fixtures/artist/an-album/artist.png"),
 			)
 		})
 	})

@@ -79,11 +79,24 @@ func (a *artistReader) LastUpdated() time.Time {
 }
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	return selectImageReader(ctx, a.artID,
-		fromArtistFolder(ctx, a.artistFolder, "artist.*"),
-		fromExternalFile(ctx, a.files, "artist.*"),
-		fromArtistExternalSource(ctx, a.artist, a.em),
-	)
+	var ff = a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)
+	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
+	var ff []sourceFunc
+	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
+		pattern = strings.TrimSpace(pattern)
+		switch {
+		case pattern == "external":
+			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.em))
+		case strings.HasPrefix(pattern, "album/"):
+			ff = append(ff, fromExternalFile(ctx, a.files, strings.TrimPrefix(pattern, "album/")))
+		default:
+			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
+		}
+	}
+	return ff
 }
 
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
