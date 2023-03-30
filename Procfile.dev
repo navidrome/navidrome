@@ -1,2 +1,2 @@
 JS: sh -c "cd ./ui && npm start"
-GO: go run github.com/cespare/reflex -d none -c reflex.conf
+GO: go run github.com/cespare/reflex@latest -d none -c reflex.conf
