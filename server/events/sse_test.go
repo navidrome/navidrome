@@ -107,7 +107,7 @@ var _ = Describe("Broker", func() {
 			Context("when the write does not complete before the timeout", func() {
 				BeforeEach(func() {
 					timeout = 1 * time.Millisecond
-					flusher.delay = 10 * time.Millisecond
+					flusher.delay = 2 * time.Second
 				})
 
 				It("should return an errWriteTimeOut error", func() {
@@ -146,7 +146,7 @@ var _ = Describe("Broker", func() {
 				Context("when the write does not complete before the timeout", func() {
 					BeforeEach(func() {
 						timeout = 1 * time.Millisecond
-						writer.delay = 10 * time.Millisecond
+						writer.delay = 2 * time.Second
 					})
 
 					It("should return an errWriteTimeOut error", func() {
