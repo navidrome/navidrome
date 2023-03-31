@@ -107,7 +107,6 @@ func (pd *Queue) Shuffle() {
 	if err != nil {
 		log.Error("Could not find ID while shuffling: " + backupID)
 	}
-
 }
 
 func (pd *Queue) getMediaFileIndexByID(id string) (int, error) {

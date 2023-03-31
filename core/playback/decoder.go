@@ -18,7 +18,6 @@ func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, beep.Format{}, err
-
 	}
 	return mp3.Decode(f)
 }
@@ -27,7 +26,6 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, beep.Format{}, err
-
 	}
 	return wav.Decode(f)
 }

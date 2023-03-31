@@ -81,7 +81,11 @@ func (pd *PlaybackDevice) Status() (DeviceStatus, error) {
 
 // set is similar to a clear followed by a add, but will not change the currently playing track.
 func (pd *PlaybackDevice) Set(ids []string) (DeviceStatus, error) {
-	pd.Clear()
+	_, err := pd.Clear()
+	if err != nil {
+		log.Error("error setting tracks", ids)
+		return pd.getStatus(), err
+	}
 	return pd.Add(ids)
 }
 
@@ -137,7 +141,11 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	pd.TrackLoaded = false
 
 	if wasPlaying {
-		pd.Start()
+		_, err = pd.Start()
+		if err != nil {
+			log.Error("error starting new track after skipping")
+			return pd.getStatus(), err
+		}
 	}
 
 	return pd.getStatus(), nil
@@ -172,7 +180,11 @@ func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 	log.Debug("processing Remove action")
 	// pausing if attempting to remove running track
 	if pd.isPlaying() && pd.PlaybackQueue.Index == index {
-		pd.Stop()
+		_, err := pd.Stop()
+		if err != nil {
+			log.Error("error stopping running track")
+			return pd.getStatus(), err
+		}
 	}
 
 	if index > -1 && index < pd.PlaybackQueue.Size() {
@@ -264,7 +276,6 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 			pd.endOfStreamCallback()
 		})))
 	}()
-
 }
 
 func (pd *PlaybackDevice) endOfStreamCallback() {
@@ -282,8 +293,14 @@ func (pd *PlaybackDevice) trackSwitcher() {
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
 			pd.PlaybackQueue.IncreaseIndex()
-			pd.PlaybackQueue.SetOffset(0)
-			pd.Start()
+			err := pd.PlaybackQueue.SetOffset(0)
+			if err != nil {
+				log.Error("error setting offset of next track to zero")
+			}
+			_, err = pd.Start()
+			if err != nil {
+				log.Error("error starting track #", pd.PlaybackQueue.Index)
+			}
 		}
 	}
 }
