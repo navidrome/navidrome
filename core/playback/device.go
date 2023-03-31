@@ -46,6 +46,8 @@ func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	}
 }
 
+// NewPlaybackDevice creates a new playback device which implements all the basic Jukebox mode commands defined here:
+// http://www.subsonic.org/pages/api.jsp#jukeboxControl
 func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string, deviceName string) *PlaybackDevice {
 	return &PlaybackDevice{
 		ParentPlaybackServer: playbackServer,
@@ -110,11 +112,13 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 	pd.Play()
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) Stop() (DeviceStatus, error) {
 	log.Debug("processing Stop action")
 	pd.Pause()
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	log.Debug("processing Skip action", "index", index, "offset", offset)
 
@@ -124,7 +128,12 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 		pd.Pause()
 	}
 	pd.PlaybackQueue.SetIndex(index)
-	pd.PlaybackQueue.SetOffset(offset)
+	err := pd.PlaybackQueue.SetOffset(offset)
+	if err != nil {
+		log.Error("error setting offset", err)
+		return pd.getStatus(), err
+	}
+
 	pd.TrackLoaded = false
 
 	if wasPlaying {
@@ -133,6 +142,7 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 
 	return pd.getStatus(), nil
 }
+
 func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 	log.Debug("processing Add action")
 
@@ -160,7 +170,11 @@ func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 
 func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 	log.Debug("processing Remove action")
-	// FIXME: what happens when we attempt to delete the playing index?
+	// pausing if attempting to remove running track
+	if pd.isPlaying() && pd.PlaybackQueue.Index == index {
+		pd.Stop()
+	}
+
 	if index > -1 && index < pd.PlaybackQueue.Size() {
 		pd.PlaybackQueue.Remove(index)
 	} else {
@@ -268,6 +282,7 @@ func (pd *PlaybackDevice) trackSwitcher() {
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
 			pd.PlaybackQueue.IncreaseIndex()
+			pd.PlaybackQueue.SetOffset(0)
 			pd.Start()
 		}
 	}

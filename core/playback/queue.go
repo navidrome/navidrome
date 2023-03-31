@@ -138,8 +138,11 @@ func (pd *Queue) IncreaseIndex() {
 }
 
 // SetOffset sets the plaing offset as second into the current track and checks if offset is within the duration of the track
-// FIXME: implement check
 func (pd *Queue) SetOffset(offset int) error {
+	trackDuration := int(pd.Current().Duration)
+	if offset > trackDuration {
+		return fmt.Errorf("offset given: %d is longer than tracks duration: %d", offset, trackDuration)
+	}
 	pd.Offset = offset
 	return nil
 }
