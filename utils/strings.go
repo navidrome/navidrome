@@ -57,3 +57,20 @@ func LongestCommonPrefix(list []string) string {
 	}
 	return list[0]
 }
+
+func SplitFunc(delimiter rune) func(c rune) bool {
+	open := 0
+	return func(c rune) bool {
+		if c == '(' {
+			open++
+			return false
+		}
+		if open > 0 {
+			if c == ')' {
+				open--
+			}
+			return false
+		}
+		return c == delimiter
+	}
+}

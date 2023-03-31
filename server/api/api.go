@@ -79,7 +79,7 @@ func (a *Router) GetServerInfo(_ context.Context, _ GetServerInfoRequestObject) 
 }
 
 func (a *Router) GetTracks(ctx context.Context, request GetTracksRequestObject) (GetTracksResponseObject, error) {
-	options := toQueryOptions(request.Params)
+	options := toQueryOptions(ctx, request.Params)
 	mfs, err := a.ds.MediaFile(ctx).GetAll(options)
 	if err != nil {
 		return nil, err

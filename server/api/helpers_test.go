@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -125,6 +126,29 @@ var _ = Describe("BuildPaginationLinksAndMeta", func() {
 			validateLink(links.Prev, "20")
 		})
 	})
+})
+
+var _ = Describe("toSortParams", func() {
+	DescribeTable("toSortParams",
+		func(sort string, expected string, expectedError error) {
+			order, err := toSortParams(&sort)
+			Expect(order).To(Equal(expected))
+			if expectedError == nil {
+				Expect(err).To(BeNil())
+			} else {
+				Expect(err).To(Equal(expectedError))
+			}
+		},
+		Entry("should handle nil input", "", "", nil),
+		Entry("should handle empty input", "", "", nil),
+		Entry("should handle single column input", "name", "name asc", nil),
+		Entry("should handle single column input with descending order", "-name", "name desc", nil),
+		Entry("should handle multiple columns input", "name,,date,", "name asc,date asc", nil),
+		Entry("should handle multiple columns input with mixed order and spaces", "name, -age", "name asc,age desc", nil),
+		Entry("should handle relationship columns", "-artist.name", "artist.name desc", nil),
+		Entry("should return an error for invalid input with invalid prefix", "+name", "", errors.New("invalid sort parameter: +name")),
+		Entry("should return an error for invalid prefix in any column", "name,*age", "", errors.New("invalid sort parameter: *age")),
+	)
 })
 
 var _ = Describe("storeRequestInContext", func() {

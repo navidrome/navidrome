@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type sqlRepository struct {
@@ -78,9 +79,9 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 	}
 
 	var newSort []string
-	parts := strings.FieldsFunc(sort, splitFunc(','))
+	parts := strings.FieldsFunc(sort, utils.SplitFunc(','))
 	for _, p := range parts {
-		f := strings.FieldsFunc(p, splitFunc(' '))
+		f := strings.FieldsFunc(p, utils.SplitFunc(' '))
 		newField := []string{f[0]}
 		if len(f) == 1 {
 			newField = append(newField, order)
@@ -94,23 +95,6 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 		newSort = append(newSort, strings.Join(newField, " "))
 	}
 	return strings.Join(newSort, ", ")
-}
-
-func splitFunc(delimiter rune) func(c rune) bool {
-	open := 0
-	return func(c rune) bool {
-		if c == '(' {
-			open++
-			return false
-		}
-		if open > 0 {
-			if c == ')' {
-				open--
-			}
-			return false
-		}
-		return c == delimiter
-	}
 }
 
 func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {

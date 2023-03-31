@@ -4,12 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 )
@@ -112,7 +115,7 @@ func v[T comparable](p *T) T {
 
 // toQueryOptions convert a params struct to a model.QueryOptions struct, to be used by the
 // GetAll and CountAll functions. It assumes all GetXxxxParams functions have the exact same structure.
-func toQueryOptions(params GetTracksParams) model.QueryOptions {
+func toQueryOptions(ctx context.Context, params GetTracksParams) model.QueryOptions {
 	var filters squirrel.And
 	parseFilter := func(fs *[]string, op func(f, v string) squirrel.Sqlizer) {
 		if fs != nil {
@@ -132,7 +135,46 @@ func toQueryOptions(params GetTracksParams) model.QueryOptions {
 	parseFilter(params.FilterLessOrEqual, func(f, v string) squirrel.Sqlizer { return squirrel.LtOrEq{f: v} })
 	offset := v(params.PageOffset)
 	limit := v(params.PageLimit)
-	return model.QueryOptions{Max: int(limit), Offset: int(offset), Filters: filters}
+	sort, err := toSortParams(params.Sort)
+	if err != nil {
+		log.Warn(ctx, "Ignoring invalid sort parameter", err)
+	}
+	return model.QueryOptions{Max: int(limit), Offset: int(offset), Filters: filters, Sort: sort}
+}
+
+var validSortPattern = regexp.MustCompile(`[a-zA-Z0-9_\-]`)
+
+func toSortParams(sort *string) (string, error) {
+	if sort == nil || *sort == "" {
+		return "", nil
+	}
+
+	// Split input by comma
+	inputCols := strings.Split(*sort, ",")
+
+	var resultCols []string
+
+	for _, col := range inputCols {
+		trimmedCol := strings.TrimSpace(col)
+		if trimmedCol == "" {
+			continue
+		}
+
+		// Check for invalid prefix
+		if !validSortPattern.Match([]byte(string(trimmedCol[0]))) {
+			return "", errors.New("invalid sort parameter: " + trimmedCol)
+		}
+
+		colName := strings.TrimSpace(trimmedCol[1:])
+		// Check for descending order
+		if strings.HasPrefix(trimmedCol, "-") {
+			resultCols = append(resultCols, fmt.Sprintf("%s desc", colName))
+		} else {
+			resultCols = append(resultCols, fmt.Sprintf("%s asc", trimmedCol))
+		}
+	}
+
+	return strings.Join(resultCols, ","), nil
 }
 
 func apiErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
