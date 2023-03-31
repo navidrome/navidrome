@@ -1,3 +1,8 @@
+// Package playback implements audio playback using PlaybackDevices. It is used to implement the Jukebox mode in turn.
+// It makes use of the BEEP library to do the playback. Major parts are:
+// - decoder which includes decoding and transcoding of various audio file formats
+// - device implementing the basic functions to work with audio devices like set, play, stop, skip, ...
+// - queue a simple playlist
 package playback
 
 import (
@@ -25,12 +30,14 @@ type playbackServer struct {
 	playbackDevices []PlaybackDevice
 }
 
+// GetInstance returns the playback-server singleton
 func GetInstance() PlaybackServer {
 	return singleton.GetInstance(func() *playbackServer {
 		return &playbackServer{}
 	})
 }
 
+// Run starts the playback server which serves request until canceled using the given context
 func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.datastore = persistence.New(db.Db())
 	devices, err := ps.initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
@@ -48,6 +55,7 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
+// GetCtx produces the context this server was started with. Used for data-retrieval and cancellation
 func (ps *playbackServer) GetCtx() *context.Context {
 	return ps.ctx
 }
@@ -84,10 +92,12 @@ func (ps *playbackServer) getDefaultDevice() (*PlaybackDevice, error) {
 	return &PlaybackDevice{}, fmt.Errorf("no default device found")
 }
 
+// GetMediaFile retrieves the MediaFile given by the id parameter
 func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
 	return ps.datastore.MediaFile(*ps.ctx).Get(id)
 }
 
+// GetDeviceForUser returns the audio playback device for the given user. As of now this is but only the default device.
 func (ps *playbackServer) GetDeviceForUser(user string) (*PlaybackDevice, error) {
 	log.Debug("processing GetDevice")
 	// README: here we might plug-in the user-device mapping one fine day
