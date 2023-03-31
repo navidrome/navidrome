@@ -11,8 +11,6 @@ import (
 const (
 	ArtistRoleAlbumArtist ArtistRole = "albumArtist"
 	ArtistRoleArtist      ArtistRole = "artist"
-	ArtistRoleComposer    ArtistRole = "composer"
-	ArtistRoleVocalist    ArtistRole = "vocalist"
 )
 
 // Defines values for ResourceType.
@@ -205,17 +203,53 @@ type TrackAttributes struct {
 	// Album The name of the album the track belongs to
 	Album string `json:"album"`
 
+	// Albumartist The primary artist of the album the track belongs to.
+	Albumartist string `json:"albumartist"`
+
 	// Artist The name of the artist who performed the track
 	Artist string `json:"artist"`
 
-	// Composer The name of the composer who created the track
-	Composer *string `json:"composer,omitempty"`
+	// Bitrate The bitrate of the audio file in kilobits per second (kbps).
+	Bitrate int `json:"bitrate"`
+
+	// Bpm The beats per minute (BPM) of the track.
+	Bpm *int `json:"bpm,omitempty"`
+
+	// Channels The number of audio channels in the track.
+	Channels int `json:"channels"`
+
+	// Comments Any additional comments or notes about the track.
+	Comments *string `json:"comments,omitempty"`
+
+	// Disc The disc number within a multi-disc album.
+	Disc *int `json:"disc,omitempty"`
 
 	// Duration The duration of the track in seconds
 	Duration float32 `json:"duration"`
 
+	// Genre The genre of the track.
+	Genre *string `json:"genre,omitempty"`
+
+	// Mimetype The MIME type of the audio file.
+	Mimetype string `json:"mimetype"`
+
+	// RecordingMbid The MusicBrainz identifier for the recording of the track.
+	RecordingMbid *string `json:"recording-mbid,omitempty"`
+
+	// Size The size of the audio file in bytes.
+	Size int `json:"size"`
+
 	// Title The title of the track
 	Title string `json:"title"`
+
+	// Track The track number within the album.
+	Track int `json:"track"`
+
+	// TrackMbid The MusicBrainz identifier for the track.
+	TrackMbid *string `json:"track-mbid,omitempty"`
+
+	// Year The release year of the track or album.
+	Year *int `json:"year,omitempty"`
 }
 
 // TrackRelationships defines model for TrackRelationships.
