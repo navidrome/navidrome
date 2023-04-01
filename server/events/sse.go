@@ -111,7 +111,7 @@ func writeEvent(w io.Writer, event message, timeout time.Duration) error {
 		_, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
 
 		// If the writer is an http.Flusher, flush the data immediately.
-		if flusher, ok := w.(http.Flusher); ok {
+		if flusher, ok := w.(http.Flusher); ok && flusher != nil {
 			flusher.Flush()
 		}
 
@@ -135,7 +135,7 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Make sure that the writer supports flushing.
 	_, ok := w.(http.Flusher)
 	if !ok {
-		log.Error(w, "Streaming unsupported! Events cannot be sent to this client", "address", r.RemoteAddr,
+		log.Error(r, "Streaming unsupported! Events cannot be sent to this client", "address", r.RemoteAddr,
 			"userAgent", r.UserAgent(), "user", user.UserName)
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return
