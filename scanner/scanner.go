@@ -158,13 +158,11 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	return nil
 }
 
-func (s *scanner) getStatus(folder string) *scanStatus {
+func (s *scanner) getStatus(folder string) (scanStatus, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if status, ok := s.status[folder]; ok {
-		return status
-	}
-	return nil
+	status, ok := s.status[folder]
+	return *status, ok
 }
 
 func (s *scanner) incStatusCounter(folder string, numFiles uint32) (totalFolders uint32, totalFiles uint32) {
@@ -199,8 +197,8 @@ func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
 }
 
 func (s *scanner) Status(mediaFolder string) (*StatusInfo, error) {
-	status := s.getStatus(mediaFolder)
-	if status == nil {
+	status, ok := s.getStatus(mediaFolder)
+	if !ok {
 		return nil, errors.New("mediaFolder not found")
 	}
 	return &StatusInfo{
