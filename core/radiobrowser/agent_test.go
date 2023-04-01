@@ -24,7 +24,7 @@ var _ = Describe("RadioBrowserAgent", func() {
 	Describe("RadioBrowserAgentCostructor", func() {
 		It("takes base URL from config", func() {
 			conf.Server.RadioBrowser.BaseUrl = "https://example.com:8080"
-			agent := RadioBrowserConstructor(ds)
+			agent := NewRadioBrowser(ds)
 			Expect(agent.baseUrl).To(Equal("https://example.com:8080"))
 		})
 	})
@@ -34,7 +34,7 @@ var _ = Describe("RadioBrowserAgent", func() {
 		var httpClient *tests.FakeHttpClient
 
 		BeforeEach(func() {
-			agent = RadioBrowserConstructor(ds)
+			agent = NewRadioBrowser(ds)
 			httpClient = &tests.FakeHttpClient{}
 			client := NewClient("BASE_URL", httpClient)
 			agent.client = client
@@ -51,7 +51,7 @@ var _ = Describe("RadioBrowserAgent", func() {
 			Expect(err).To(BeNil())
 			Expect(data.Url).To(Equal("https://ais-nzme.streamguys1.com/nz_002_aac"))
 
-			Expect(ds.Property(ctx).Get(model.PropLastRefresh)).NotTo(BeNil())
+			Expect(ds.Property(ctx).Get(model.PropLastRadioBrowserRefresh)).NotTo(BeNil())
 		})
 
 		It("Purges existing entries", func() {
@@ -63,7 +63,6 @@ var _ = Describe("RadioBrowserAgent", func() {
 				Url:      "https://example.com/stream",
 				Homepage: "https://example.com",
 				Favicon:  "https://example.com/favicon.ico",
-				Existing: false,
 				BaseRadioInfo: model.BaseRadioInfo{
 					Tags:        "tag1,tag2,tag3",
 					Country:     "nowhere",

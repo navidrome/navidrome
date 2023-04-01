@@ -164,7 +164,7 @@
                 "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?"
             }
         },
-        "radio": {
+        "radios": {
             "name": "Radio |||| Radios",
             "fields": {
                 "name": "Name",
@@ -174,6 +174,7 @@
                 "createdAt": "Created at"
             },
             "actions": {
+                "findNew": "Find new radios",
                 "playNow": "Play Now"
             }
         },
@@ -189,7 +190,7 @@
                 "country": "Country",
                 "bitrate": "Bitrate",
                 "codec": "Codec",
-                "existing": "Already added"
+                "existingId": "Already added"
             },
             "actions": {
                 "hide": "Hide extra",
@@ -203,6 +204,7 @@
                 "username": "Shared By",
                 "url": "URL",
                 "description": "Description",
+                "downloadable": "Allow Downloads?",
                 "contents": "Contents",
                 "expiresAt": "Expires",
                 "lastVisitedAt": "Last Visited",
@@ -385,7 +387,6 @@
             "musicbrainz": "Open in MusicBrainz"
         },
         "lastfmLink": "Read More...",
-        "originalFormat": "Download in original format",
         "radioErrorBody": "Internet radio stream cannot be played in the Navidrome webapp. Open in a new page?",
         "radioErrorTitle": "Error playing internet radio",
         "shareOriginalFormat": "Share in original format",

@@ -52,11 +52,9 @@ FROM radio_tmp;
 
 DROP TABLE radio_tmp;
 	`)
-	// This code is executed when the migration is applied.
 	return err
 }
 
 func downAddCachedRadioinfo(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

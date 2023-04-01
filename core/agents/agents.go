@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/model"
-
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -42,6 +42,12 @@ func (a *Agents) AgentName() string {
 }
 
 func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return "", ErrNotFound
+	case consts.VariousArtistsID:
+		return "", nil
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {
@@ -61,6 +67,12 @@ func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (str
 }
 
 func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return "", ErrNotFound
+	case consts.VariousArtistsID:
+		return "", nil
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {
@@ -80,6 +92,12 @@ func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (strin
 }
 
 func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return "", ErrNotFound
+	case consts.VariousArtistsID:
+		return "", nil
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {
@@ -90,7 +108,7 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 			continue
 		}
 		bio, err := agent.GetArtistBiography(ctx, id, name, mbid)
-		if bio != "" && err == nil {
+		if err == nil {
 			log.Debug(ctx, "Got Biography", "agent", ag.AgentName(), "artist", name, "len", len(bio), "elapsed", time.Since(start))
 			return bio, nil
 		}
@@ -99,6 +117,12 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 }
 
 func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]Artist, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return nil, ErrNotFound
+	case consts.VariousArtistsID:
+		return nil, nil
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {
@@ -122,6 +146,12 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 }
 
 func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return nil, ErrNotFound
+	case consts.VariousArtistsID:
+		return nil, nil
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {
@@ -141,6 +171,12 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 }
 
 func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
+	switch id {
+	case consts.UnknownArtistID:
+		return nil, ErrNotFound
+	case consts.VariousArtistsID:
+		return nil, nil
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {
@@ -160,6 +196,9 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 }
 
 func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*AlbumInfo, error) {
+	if name == consts.UnknownAlbum {
+		return nil, ErrNotFound
+	}
 	start := time.Now()
 	for _, ag := range a.agents {
 		if utils.IsCtxDone(ctx) {

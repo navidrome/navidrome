@@ -138,6 +138,7 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                     component={renderInput}
                     label={translate('ra.auth.username')}
                     disabled={loading}
+                    spellCheck={false}
                   />
                 </div>
                 <div className={classes.input}>
@@ -201,6 +202,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                     component={renderInput}
                     label={translate('ra.auth.username')}
                     disabled={loading}
+                    spellCheck={false}
                   />
                 </div>
                 <div className={classes.input}>

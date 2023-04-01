@@ -14,7 +14,7 @@ import { QualityRow } from './QualityRow'
 
 const RadioTitle = ({ record }) => {
   const translate = useTranslate()
-  const resourceName = translate('resources.radio.name', {
+  const resourceName = translate('resources.radios.name', {
     smart_count: 1,
   })
   return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />

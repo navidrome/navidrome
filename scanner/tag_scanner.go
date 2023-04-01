@@ -168,7 +168,10 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 
 func isDirEmpty(ctx context.Context, dir string) (bool, error) {
 	children, stats, err := loadDir(ctx, dir)
-	return len(children) == 0 && stats.AudioFilesCount == 0, err
+	if err != nil {
+		return false, err
+	}
+	return len(children) == 0 && stats.AudioFilesCount == 0, nil
 }
 
 func (s *TagScanner) getRootFolderWalker(ctx context.Context) (walkResults, chan error) {

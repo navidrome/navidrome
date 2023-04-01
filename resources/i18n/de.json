@@ -367,7 +367,8 @@
         "shareBatchDialogTitle": "1 %{resource} freigeben |||| %{smart_count} %{resource} freigeben",
         "shareSuccess": "URL in Zwischenablage kopiert: %{url}",
         "shareFailure": "Fehler URL %{url} konnte nicht in Zwischenablage kopiert werden",
-        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})"
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Bibliothek",

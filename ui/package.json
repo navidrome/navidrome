@@ -16,7 +16,7 @@
     "jwt-decode": "^3.1.2",
     "lodash.pick": "^4.4.0",
     "lodash.throttle": "^4.1.1",
-    "navidrome-music-player": "4.25.0",
+    "navidrome-music-player": "4.25.1",
     "prop-types": "^15.7.2",
     "ra-data-json-server": "^3.18.3",
     "ra-i18n-polyglot": "^3.18.3",

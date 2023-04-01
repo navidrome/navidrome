@@ -7,12 +7,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
 func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
+	// If context is already canceled, discard request without further processing
+	if r.Context().Err() != nil {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	id := r.URL.Query().Get(":id")
@@ -26,15 +32,18 @@ func (p *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	size := utils.ParamInt(r, "size", 0)
-	imgReader, lastUpdate, err := p.artwork.Get(ctx, artId.String(), size)
 
+	imgReader, lastUpdate, err := p.artwork.Get(ctx, artId, size)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
 	case errors.Is(err, model.ErrNotFound):
-		log.Error(r, "Couldn't find coverArt", "id", id, err)
+		log.Warn(r, "Couldn't find coverArt", "id", id, err)
+		http.Error(w, "Artwork not found", http.StatusNotFound)
+		return
+	case errors.Is(err, artwork.ErrUnavailable):
+		log.Debug(r, "Item does not have artwork", "id", id, err)
 		http.Error(w, "Artwork not found", http.StatusNotFound)
 		return
 	case err != nil:

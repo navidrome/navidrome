@@ -41,9 +41,10 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"version":                   consts.Version,
 			"firstTime":                 firstTime,
 			"variousArtistsId":          consts.VariousArtistsID,
-			"baseURL":                   utils.SanitizeText(strings.TrimSuffix(conf.Server.BaseURL, "/")),
+			"baseURL":                   utils.SanitizeText(strings.TrimSuffix(conf.Server.BasePath, "/")),
 			"loginBackgroundURL":        utils.SanitizeText(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":            utils.SanitizeText(conf.Server.UIWelcomeMessage),
+			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
 			"enableTranscodingConfig":   conf.Server.EnableTranscodingConfig,
 			"enableDownloads":           conf.Server.EnableDownloads,
 			"enableFavourites":          conf.Server.EnableFavourites,
@@ -57,6 +58,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"devActivityPanel":          conf.Server.DevActivityPanel,
 			"enableUserEditing":         conf.Server.EnableUserEditing,
 			"enableSharing":             conf.Server.EnableSharing,
+			"defaultDownloadableShare":  conf.Server.DefaultDownloadableShare,
 			"devSidebarPlaylists":       conf.Server.DevSidebarPlaylists,
 			"lastFMEnabled":             conf.Server.LastFM.Enabled,
 			"lastFMApiKey":              conf.Server.LastFM.ApiKey,
@@ -68,7 +70,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"sendRadioClicks":           conf.Server.RadioBrowser.SendClicks,
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
-			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BaseURL, conf.Server.UILoginBackgroundURL)
+			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BasePath, conf.Server.UILoginBackgroundURL)
 		}
 		auth := handleLoginFromHeaders(ds, r)
 		if auth != nil {
@@ -121,8 +123,10 @@ func getIndexTemplate(r *http.Request, fs fs.FS) (*template.Template, error) {
 }
 
 type shareData struct {
-	Description string       `json:"description"`
-	Tracks      []shareTrack `json:"tracks"`
+	ID           string       `json:"id"`
+	Description  string       `json:"description"`
+	Downloadable bool         `json:"downloadable"`
+	Tracks       []shareTrack `json:"tracks"`
 }
 
 type shareTrack struct {
@@ -140,7 +144,9 @@ func addShareData(r *http.Request, data map[string]interface{}, shareInfo *model
 		return
 	}
 	sd := shareData{
-		Description: shareInfo.Description,
+		ID:           shareInfo.ID,
+		Description:  shareInfo.Description,
+		Downloadable: shareInfo.Downloadable,
 	}
 	sd.Tracks = slice.Map(shareInfo.Tracks, func(mf model.MediaFile) shareTrack {
 		return shareTrack{

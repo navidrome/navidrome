@@ -38,7 +38,7 @@ import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
 import radioInfo from './radioInfo'
-import SharePlayer from './SharePlayer'
+import SharePlayer from './share/SharePlayer'
 
 const history = createHashHistory()
 
@@ -108,13 +108,16 @@ const Admin = (props) => {
         <Resource name="artist" {...artist} />,
         <Resource name="song" {...song} />,
         <Resource
-          name="radio"
+          name="radios"
           {...(permissions === 'admin' ? radio.admin : radio.all)}
         />,
         permissions === 'admin' ? (
-          <Resource name="radioInfo" {...radioInfo} />
+          <Resource
+            name="radioInfo"
+            {...radioInfo}
+            options={{ subMenu: 'dummy' }}
+          />
         ) : undefined,
-        config.devEnableShare && <Resource name="share" {...share} />,
         config.enableSharing && <Resource name="share" {...share} />,
         <Resource
           name="playlist"

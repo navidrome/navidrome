@@ -15,7 +15,7 @@ type RadioInfo struct {
 	Url           string `structs:"url"          json:"url"`
 	Homepage      string `structs:"homepage"     json:"homepage"`
 	Favicon       string `structs:"favicon"      json:"favicon"`
-	Existing      bool   `structs:"existing"       json:"existing"`
+	ExistingId    string `structs:"existing_id"       json:"existingId"`
 }
 
 type RadioInfos []RadioInfo

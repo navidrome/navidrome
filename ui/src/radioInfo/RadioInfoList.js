@@ -6,6 +6,7 @@ import {
   BooleanInput,
   CloneButton,
   Datagrid,
+  EditButton,
   Filter,
   FunctionField,
   ImageField,
@@ -140,7 +141,7 @@ const NewRadioButton = ({ record }) => {
   return (
     <CloneButton
       label="ra.action.create"
-      basePath="/radio"
+      basePath="/radios"
       record={{
         bitrate,
         codec,
@@ -179,7 +180,7 @@ export const RadioInfoList = (props) => {
     country: <TextField source="countryCode" />,
     bitrate: <NumberField source="bitrate" />,
     codec: <TextField source="codec" />,
-    existing: <BooleanField source="existing" />,
+    existingId: <BooleanField source="existingId" looseValue={true} />,
   }
 
   const columns = useSelectedFields({
@@ -248,7 +249,20 @@ export const RadioInfoList = (props) => {
       ) : (
         <Datagrid rowClick={handleRowClick}>
           {columns}
-          <NewRadioButton />
+          <FunctionField
+            render={(record) =>
+              record.existingId ? (
+                <EditButton
+                  basePath="/radios"
+                  record={{
+                    id: record.existingId,
+                  }}
+                />
+              ) : (
+                <NewRadioButton record={record} />
+              )
+            }
+          />
         </Datagrid>
       )}
     </List>

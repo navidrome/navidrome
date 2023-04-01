@@ -26,7 +26,7 @@
                 "bpm": "BPM",
                 "playDate": "Laatst afgespeeld",
                 "channels": "Kanalen",
-                "createdAt": ""
+                "createdAt": "Datum toegevoegd"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -53,8 +53,8 @@
                 "updatedAt": "Bijgewerkt op",
                 "comment": "Commentaar",
                 "rating": "Beoordeling",
-                "createdAt": "",
-                "size": ""
+                "createdAt": "Datum toegevoegd",
+                "size": "Grootte"
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -64,7 +64,7 @@
                 "addToPlaylist": "Toevoegen aan afspeellijst",
                 "download": "Downloaden",
                 "info": "Meer info",
-                "share": ""
+                "share": "Delen"
             },
             "lists": {
                 "all": "Alle",
@@ -85,7 +85,7 @@
                 "playCount": "Afgespeeld",
                 "rating": "Beoordeling",
                 "genre": "Genre",
-                "size": ""
+                "size": "Grootte"
             }
         },
         "user": {
@@ -112,7 +112,7 @@
                 "deleted": "Gewist door gebruiker"
             },
             "message": {
-                "listenBrainzToken": "Vul je ListenBrainz gebruikerstoken in.",
+                "listenBrainzToken": "Vul je ListenBrainz gebruikers-token in.",
                 "clickHereForToken": "Klik hier voor je token"
             }
         },
@@ -130,7 +130,7 @@
             }
         },
         "transcoding": {
-            "name": "Transcoden |||| Transcoderingen",
+            "name": "Transcoding |||| Transcoderingen",
             "fields": {
                 "name": "Naam",
                 "targetFormat": "Doelformaat",
@@ -165,32 +165,32 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Radio |||| Radio's",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Naam",
+                "streamUrl": "Stream URL",
+                "homePageUrl": "Hoofdpagina URL",
+                "updatedAt": "Geüpdate op",
+                "createdAt": "Gecreëerd op"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Speel nu"
             }
         },
         "share": {
-            "name": "",
+            "name": "Gedeeld",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "username": "Gedeeld door",
+                "url": "URL",
+                "description": "Beschrijving",
+                "contents": "Inhoud",
+                "expiresAt": "Verloopt",
+                "lastVisitedAt": "Laatst bezocht",
+                "visitCount": "Bezocht",
+                "format": "Formaat",
+                "maxBitRate": "Max. bitrate",
+                "updatedAt": "Geupdate op",
+                "createdAt": "Gecreëerd op"
             }
         }
     },
@@ -221,7 +221,7 @@
             "oneOf": "Moet een zijn van: %{options}",
             "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}",
             "unique": "Moet uniek zijn",
-            "url": ""
+            "url": "Moet een geldige URL"
         },
         "action": {
             "add_filter": "Voeg filter toe",
@@ -251,9 +251,9 @@
             "close_menu": "Sluit menu",
             "unselect": "Deselecteer",
             "skip": "Overslaan",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Delen",
+            "download": "Downloaden"
         },
         "boolean": {
             "true": "Ja",
@@ -361,13 +361,14 @@
         "listenBrainzLinkFailure": "ListenBrainz kon niet worden gelinkt: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz ontkoppeld",
         "listenBrainzUnlinkFailure": "ListenBrainz kon niet ontkoppeld worden",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": ""
+        "downloadOriginalFormat": "Download in origineel formaat",
+        "shareOriginalFormat": "Deel in origineel formaat",
+        "shareDialogTitle": "Deel %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Deel 1 %{resource} |||| Deel %{smart_count} %{resource}",
+        "shareSuccess": "URL gekopieeerd naar klembord: %{url}",
+        "shareFailure": "Fout bij kopieren URL %{url} naar klembord",
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Kopieeer naar klembord: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Bibliotheek",
@@ -383,12 +384,12 @@
                 "desktop_notifications": "Bureaubladmeldingen",
                 "lastfmScrobbling": "Scrobble naar Last.fm",
                 "listenBrainzScrobbling": "Scrobble naar ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "ReplayGain modus",
+                "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Uitgeschakeld",
+                    "album": "Gebruik Album Gain",
+                    "track": "Gebruik Track Gain"
                 }
             }
         },

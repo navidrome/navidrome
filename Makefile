@@ -21,7 +21,7 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 .PHONY: dev
 
 server: check_go_env  ##@Development Start the backend in development mode
-	@go run github.com/cespare/reflex -d none -c reflex.conf
+	@go run github.com/cespare/reflex@latest -d none -c reflex.conf
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
@@ -29,7 +29,7 @@ watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 .PHONY: watch
 
 test: ##@Development Run Go tests
-	go test -race ./...
+	go test -race -shuffle=on ./...
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
@@ -37,7 +37,7 @@ testall: test ##@Development Run Go and JS tests
 .PHONY: testall
 
 lint: ##@Development Lint Go code
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v --timeout 5m
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -45,7 +45,7 @@ lintall: lint ##@Development Lint Go and JS code
 .PHONY: lintall
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire ./...
+	go run github.com/google/wire/cmd/wire@latest ./...
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests

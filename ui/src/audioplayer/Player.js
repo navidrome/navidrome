@@ -47,9 +47,11 @@ const Player = () => {
   const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
-  const isMobilePlayer = useMediaQuery(
-    '(max-width: 768px) and (orientation : portrait)'
-  )
+  const isMobilePlayer =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    )
+
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false
@@ -71,7 +73,8 @@ const Player = () => {
       context === null &&
       audioInstance &&
       config.enableReplayGain &&
-      'AudioContext' in window
+      'AudioContext' in window &&
+      (gainInfo.gainMode === 'album' || gainInfo.gainMode === 'track')
     ) {
       const ctx = new AudioContext()
       // we need this to support radios in firefox
@@ -85,7 +88,7 @@ const Player = () => {
       setContext(ctx)
       setGainNode(gain)
     }
-  }, [audioInstance, context])
+  }, [audioInstance, context, gainInfo.gainMode])
 
   useEffect(() => {
     if (gainNode) {

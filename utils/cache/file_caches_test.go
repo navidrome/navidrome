@@ -17,7 +17,7 @@ import (
 // Call NewFileCache and wait for it to be ready
 func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
 	fc := NewFileCache(name, cacheSize, cacheFolder, maxItems, getReader).(*fileCache)
-	Eventually(func() bool { return fc.ready.Get() }).Should(BeTrue())
+	Eventually(func() bool { return fc.ready.Load() }).Should(BeTrue())
 	return fc
 }
 
@@ -130,31 +130,6 @@ var _ = Describe("File Caches", func() {
 					}).Should(BeFalse())
 				})
 			})
-			When("context is canceled", func() {
-				It("does not cache", func() {
-					ctx, cancel := context.WithCancel(context.Background())
-					fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
-						return &ctxFakeReader{ctx}, nil
-					})
-
-					s, err := fc.Get(ctx, &testArg{"test"})
-					Expect(err).ToNot(HaveOccurred())
-					cancel()
-					b := make([]byte, 10)
-					_, err = s.Read(b)
-					// TODO Should be context.Canceled error
-					Expect(err).To(MatchError(io.EOF))
-
-					// Data should not be cached (or eventually be removed from cache)
-					Eventually(func() bool {
-						s, _ = fc.Get(context.Background(), &testArg{"test"})
-						if s != nil {
-							return s.Cached
-						}
-						return false
-					}).Should(BeFalse())
-				})
-			})
 		})
 	})
 })
@@ -166,7 +141,3 @@ func (t *testArg) Key() string { return t.s }
 type errFakeReader struct{ err error }
 
 func (e errFakeReader) Read([]byte) (int, error) { return 0, e.err }
-
-type ctxFakeReader struct{ ctx context.Context }
-
-func (e *ctxFakeReader) Read([]byte) (int, error) { return 0, e.ctx.Err() }

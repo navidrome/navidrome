@@ -6,8 +6,8 @@ import {
   DateField,
   EditButton,
   Filter,
-  Link,
   List,
+  ListButton,
   sanitizeListRestProps,
   SearchInput,
   SimpleList,
@@ -21,6 +21,7 @@ import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
 import { songFromRadio } from './helper'
 import { useDispatch } from 'react-redux'
+import { Empty } from '../common/Empty'
 
 const useStyles = makeStyles({
   row: {
@@ -58,8 +59,11 @@ const RadioListActions = ({
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       {isAdmin && (
         <>
-          <Link to="/radioInfo">Find new radios</Link>
-          <CreateButton basePath="/radio">
+          <ListButton
+            basePath="/radioInfo"
+            label={translate('resources.radios.actions.findNew')}
+          />
+          <CreateButton basePath="/radios">
             {translate('ra.action.create')}
           </CreateButton>
         </>
@@ -72,7 +76,7 @@ const RadioListActions = ({
           filterValues,
           context: 'button',
         })}
-      {isNotSmall && <ToggleFieldsMenu resource="radio" />}
+      {isNotSmall && <ToggleFieldsMenu resource="radios" />}
     </TopToolbar>
   )
 }
@@ -81,6 +85,7 @@ const RadioList = ({ permissions, ...props }) => {
   const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const dispatch = useDispatch()
+  const translate = useTranslate()
   const isAdmin = permissions === 'admin'
 
   const toggleableFields = {
@@ -99,7 +104,7 @@ const RadioList = ({ permissions, ...props }) => {
   }
 
   const columns = useSelectedFields({
-    resource: 'radio',
+    resource: 'radios',
     columns: toggleableFields,
     defaultOff: ['createdAt'],
   })
@@ -118,6 +123,16 @@ const RadioList = ({ permissions, ...props }) => {
       actions={<RadioListActions isAdmin={isAdmin} />}
       filters={<RadioFilter />}
       perPage={isXsmall ? 25 : 10}
+      empty={
+        <Empty
+          extra={
+            <ListButton
+              basePath="/radioInfo"
+              label={translate('resources.radios.actions.findNew')}
+            />
+          }
+        />
+      }
     >
       {isXsmall ? (
         <SimpleList

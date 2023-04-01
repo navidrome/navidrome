@@ -28,7 +28,7 @@ const RadioCreateToolbar = (props) => (
 
 const RadioTitle = () => {
   const translate = useTranslate()
-  const resourceName = translate('resources.radio.name', {
+  const resourceName = translate('resources.radios.name', {
     smart_count: 1,
   })
   const title = translate('ra.page.create', {
@@ -69,7 +69,7 @@ const RadioCreate = (props) => {
         />
         <TextInput
           type="url"
-          source="homepageUrl"
+          source="homePageUrl"
           fullWidth
           validate={[urlValidate]}
         />

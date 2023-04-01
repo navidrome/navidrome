@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -19,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/ui"
+	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type Server struct {
@@ -38,37 +40,80 @@ func New(ds model.DataStore) *Server {
 }
 
 func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler) {
-	urlPath = path.Join(conf.Server.BaseURL, urlPath)
+	urlPath = path.Join(conf.Server.BasePath, urlPath)
 	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
 	s.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
 	})
 }
 
-func (s *Server) Run(ctx context.Context, addr string) error {
+// Run starts the server with the given address, and if specified, with TLS enabled.
+func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) error {
+	// Mount the router for the frontend assets
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
+
+	// Create a new http.Server with the specified read header timeout and handler
 	server := &http.Server{
-		Addr:              addr,
 		ReadHeaderTimeout: consts.ServerReadHeaderTimeout,
 		Handler:           s.router,
 	}
 
-	// Start HTTP server in its own goroutine, send a signal (errC) if failed to start
+	// Determine if TLS is enabled
+	tlsEnabled := tlsCert != "" && tlsKey != ""
+
+	// Create a listener based on the address type (either Unix socket or TCP)
+	var listener net.Listener
+	var err error
+	if strings.HasPrefix(addr, "unix:") {
+		socketPath := strings.TrimPrefix(addr, "unix:")
+		listener, err = net.Listen("unix", socketPath)
+		if err != nil {
+			return fmt.Errorf("error creating unix socket listener: %w", err)
+		}
+	} else {
+		addr = fmt.Sprintf("%s:%d", addr, port)
+		listener, err = net.Listen("tcp", addr)
+		if err != nil {
+			return fmt.Errorf("error creating tcp listener: %w", err)
+		}
+	}
+
+	// Start the server in a new goroutine and send an error signal to errC if there's an error
 	errC := make(chan error)
 	go func() {
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Error(ctx, "Could not start server. Aborting", err)
-			errC <- err
+		if tlsEnabled {
+			// Start the HTTPS server
+			log.Info("Starting server with TLS (HTTPS) enabled", "tlsCert", tlsCert, "tlsKey", tlsKey)
+			if err := server.ServeTLS(listener, tlsCert, tlsKey); !errors.Is(err, http.ErrServerClosed) {
+				errC <- err
+			}
+		} else {
+			// Start the HTTP server
+			if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+				errC <- err
+			}
 		}
 	}()
 
-	log.Info(ctx, "Navidrome server is ready!", "address", addr, "startupTime", time.Since(consts.ServerStart))
+	// Measure server startup time
+	startupTime := time.Since(consts.ServerStart)
 
-	// Wait for a signal to terminate (or an error during startup)
+	// Wait a short time before checking if the server has started successfully
+	time.Sleep(50 * time.Millisecond)
 	select {
 	case err := <-errC:
-		return err
+		log.Error(ctx, "Could not start server. Aborting", err)
+		return fmt.Errorf("error starting server: %w", err)
+	default:
+		log.Info(ctx, "----> Navidrome server is ready!", "address", addr, "startupTime", startupTime, "tlsEnabled", tlsEnabled)
+	}
+
+	// Wait for a signal to terminate
+	select {
+	case err := <-errC:
+		return fmt.Errorf("error running server: %w", err)
 	case <-ctx.Done():
+		// If the context is done (i.e. the server should stop), proceed to shutting down the server
 	}
 
 	// Try to stop the HTTP server gracefully
@@ -82,7 +127,7 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 }
 
 func (s *Server) initRoutes() {
-	s.appRoot = path.Join(conf.Server.BaseURL, consts.URLPathUI)
+	s.appRoot = path.Join(conf.Server.BasePath, consts.URLPathUI)
 
 	r := chi.NewRouter()
 
@@ -103,7 +148,7 @@ func (s *Server) initRoutes() {
 	r.Use(authHeaderMapper)
 	r.Use(jwtVerifier)
 
-	r.Route(path.Join(conf.Server.BaseURL, "/auth"), func(r chi.Router) {
+	r.Route(path.Join(conf.Server.BasePath, "/auth"), func(r chi.Router) {
 		if conf.Server.AuthRequestLimit > 0 {
 			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
 				"windowLength", conf.Server.AuthWindowLength)
@@ -138,13 +183,20 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 	return r
 }
 
-func AbsoluteURL(r *http.Request, url string, params url.Values) string {
-	if strings.HasPrefix(url, "/") {
-		appRoot := path.Join(r.Host, conf.Server.BaseURL, url)
-		url = r.URL.Scheme + "://" + appRoot
+func AbsoluteURL(r *http.Request, u string, params url.Values) string {
+	buildUrl, _ := url.Parse(u)
+	if strings.HasPrefix(u, "/") {
+		buildUrl.Path = path.Join(conf.Server.BasePath, buildUrl.Path)
+		if conf.Server.BaseHost != "" {
+			buildUrl.Scheme = If(conf.Server.BaseScheme, "http")
+			buildUrl.Host = conf.Server.BaseHost
+		} else {
+			buildUrl.Scheme = r.URL.Scheme
+			buildUrl.Host = r.Host
+		}
 	}
 	if len(params) > 0 {
-		url = url + "?" + params.Encode()
+		buildUrl.RawQuery = params.Encode()
 	}
-	return url
+	return buildUrl.String()
 }

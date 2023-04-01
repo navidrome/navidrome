@@ -53,13 +53,15 @@ var _ = Describe("Pipeline", func() {
 				}
 				close(inC)
 
-				var current, count, max int32
+				current := atomic.Int32{}
+				count := atomic.Int32{}
+				max := atomic.Int32{}
 				outC, _ := pl.Stage(context.Background(), maxWorkers, inC, func(ctx context.Context, in int) (int, error) {
-					defer atomic.AddInt32(&current, -1)
-					c := atomic.AddInt32(&current, 1)
-					atomic.AddInt32(&count, 1)
-					if c > atomic.LoadInt32(&max) {
-						atomic.StoreInt32(&max, c)
+					defer current.Add(-1)
+					c := current.Add(1)
+					count.Add(1)
+					if c > max.Load() {
+						max.Store(c)
 					}
 					time.Sleep(10 * time.Millisecond) // Slow process
 					return 0, nil
@@ -68,9 +70,9 @@ var _ = Describe("Pipeline", func() {
 				for range outC {
 				}
 
-				Expect(count).To(Equal(int32(numJobs)))
-				Expect(current).To(Equal(int32(0)))
-				Expect(max).To(Equal(int32(maxWorkers)))
+				Expect(count.Load()).To(Equal(int32(numJobs)))
+				Expect(current.Load()).To(Equal(int32(0)))
+				Expect(max.Load()).To(Equal(int32(maxWorkers)))
 			})
 		})
 		When("the context is canceled", func() {

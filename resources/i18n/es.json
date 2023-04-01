@@ -26,7 +26,7 @@
                 "bpm": "BPM",
                 "playDate": "Últimas reproducciones",
                 "channels": "Canales",
-                "createdAt": ""
+                "createdAt": "Creado el"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -53,8 +53,8 @@
                 "updatedAt": "Actualizado el",
                 "comment": "Comentario",
                 "rating": "Calificación",
-                "createdAt": "",
-                "size": ""
+                "createdAt": "Creado el",
+                "size": "Tamaño del archivo"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -64,7 +64,7 @@
                 "addToPlaylist": "Agregar a la lista",
                 "download": "Descargar",
                 "info": "Obtener información",
-                "share": ""
+                "share": "Compartir"
             },
             "lists": {
                 "all": "Todos",
@@ -85,7 +85,7 @@
                 "playCount": "Reproducciones",
                 "rating": "Calificación",
                 "genre": "Género",
-                "size": ""
+                "size": "Tamaño"
             }
         },
         "user": {
@@ -165,32 +165,32 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Radio |||| Radios",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Nombre",
+                "streamUrl": "URL del stream",
+                "homePageUrl": "URL de la página web",
+                "updatedAt": "Actualizado el",
+                "createdAt": "Creado el"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Reproducir ahora"
             }
         },
         "share": {
-            "name": "",
+            "name": "Compartir",
             "fields": {
-                "username": "",
+                "username": "Nombre de usuario",
                 "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "description": "Descripción",
+                "contents": "Contenido",
+                "expiresAt": "Caduca el",
+                "lastVisitedAt": "Visitado por última vez el",
+                "visitCount": "Número de visitas",
+                "format": "Formato",
+                "maxBitRate": "Tasa de bits Máx.",
+                "updatedAt": "Actualizado el",
+                "createdAt": "Creado el"
             }
         }
     },
@@ -252,8 +252,8 @@
             "unselect": "Deseleccionado",
             "skip": "Omitir",
             "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "share": "Compartir",
+            "download": "Descargar"
         },
         "boolean": {
             "true": "Sí",
@@ -361,13 +361,14 @@
         "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
         "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
         "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
+        "downloadOriginalFormat": "Descargar formato original",
+        "shareOriginalFormat": "Compartir formato original",
         "shareDialogTitle": "",
         "shareBatchDialogTitle": "",
         "shareSuccess": "",
         "shareFailure": "",
-        "downloadDialogTitle": ""
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Biblioteca",
@@ -386,9 +387,9 @@
                 "replaygain": "",
                 "preAmp": "",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Ninguno",
+                    "album": "Álbum",
+                    "track": "Pista"
                 }
             }
         },
@@ -448,7 +449,7 @@
             "vol_up": "Subir volumen",
             "vol_down": "Bajar volumen",
             "toggle_love": "Marca esta canción como favorita",
-            "current_song": ""
+            "current_song": "Canción actual"
         }
     }
 }

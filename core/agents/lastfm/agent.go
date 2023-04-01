@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -20,6 +21,11 @@ const (
 	lastFMAgentName    = "lastfm"
 	sessionKeyProperty = "LastFMSessionKey"
 )
+
+var ignoredBiographies = []string{
+	// Unknown Artist
+	`<a href="https://www.last.fm/music/`,
+}
 
 type lastfmAgent struct {
 	ds          model.DataStore
@@ -124,8 +130,14 @@ func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid str
 	if err != nil {
 		return "", err
 	}
+	a.Bio.Summary = strings.TrimSpace(a.Bio.Summary)
 	if a.Bio.Summary == "" {
 		return "", agents.ErrNotFound
+	}
+	for _, ign := range ignoredBiographies {
+		if strings.HasPrefix(a.Bio.Summary, ign) {
+			return "", nil
+		}
 	}
 	return a.Bio.Summary, nil
 }

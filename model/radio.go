@@ -17,7 +17,6 @@ type Radio struct {
 type Radios []Radio
 
 type RadioRepository interface {
-	ResourceRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Delete(id string) error
 	Get(id string) (*Radio, error)

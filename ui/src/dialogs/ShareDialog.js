@@ -8,6 +8,7 @@ import {
 import {
   SimpleForm,
   TextInput,
+  BooleanInput,
   useCreate,
   useNotify,
   useTranslate,
@@ -17,6 +18,7 @@ import { shareUrl } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
 import { useDispatch, useSelector } from 'react-redux'
 import { closeShareMenu } from '../actions'
+import config from '../config'
 
 export const ShareDialog = () => {
   const {
@@ -30,6 +32,9 @@ export const ShareDialog = () => {
   const notify = useNotify()
   const translate = useTranslate()
   const [description, setDescription] = useState('')
+  const [downloadable, setDownloadable] = useState(
+    config.defaultDownloadableShare && config.enableDownloads
+  )
   useEffect(() => {
     setDescription('')
   }, [ids])
@@ -41,6 +46,7 @@ export const ShareDialog = () => {
       resourceType: resource,
       resourceIds: ids?.join(','),
       description,
+      downloadable,
       ...(!originalFormat && { format }),
       ...(!originalFormat && { maxBitRate }),
     },
@@ -105,12 +111,23 @@ export const ShareDialog = () => {
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
           <TextInput
-            source="description"
+            resource={'share'}
+            source={'description'}
             fullWidth
             onChange={(event) => {
               setDescription(event.target.value)
             }}
           />
+          {config.enableDownloads && (
+            <BooleanInput
+              resource={'share'}
+              source={'downloadable'}
+              defaultValue={downloadable}
+              onChange={(value) => {
+                setDownloadable(value)
+              }}
+            />
+          )}
           <TranscodingOptionsInput
             fullWidth
             label={translate('message.shareOriginalFormat')}

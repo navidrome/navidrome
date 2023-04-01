@@ -64,7 +64,7 @@
                 "addToPlaylist": "Dodaj do Playlisty",
                 "download": "Pobierz",
                 "info": "Zdobądź Informacje",
-                "share": ""
+                "share": "Udostępnij"
             },
             "lists": {
                 "all": "Wszystkie",
@@ -178,19 +178,19 @@
             }
         },
         "share": {
-            "name": "",
+            "name": "Udostępnienie |||| Udostępnienia",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "username": "Udostępnione Przez",
+                "url": "URL",
+                "description": "Opis",
+                "contents": "Zawartość",
+                "expiresAt": "Wygasa",
+                "lastVisitedAt": "Ostatnio Wyświetlone",
+                "visitCount": "Wyświetlenia",
+                "format": "Format",
+                "maxBitRate": "Maks. Bit Rate",
+                "updatedAt": "Zaktualizowano",
+                "createdAt": "Stworzono"
             }
         }
     },
@@ -251,8 +251,8 @@
             "close_menu": "Zamknij menu",
             "unselect": "Odznacz",
             "skip": "Pomiń",
-            "bulk_actions_mobile": "",
-            "share": "",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Udostępnij",
             "download": "Pobierz"
         },
         "boolean": {
@@ -268,8 +268,8 @@
             "loading": "Ładowanie",
             "not_found": "Nie Znaleziono",
             "show": "%{name} #%{id}\n",
-            "empty": "Nie ma jeszcze %{name}.",
-            "invite": "Czy chcesz dodać nową?"
+            "empty": "Nie ma jeszcze żadnego %{name}.",
+            "invite": "Czy chcesz dodać nowe?"
         },
         "input": {
             "file": {
@@ -362,12 +362,13 @@
         "listenBrainzUnlinkSuccess": "Odłączono ListenBrainz i wyłączono scrobblowanie",
         "listenBrainzUnlinkFailure": "ListenBrainz nie może być odłączony",
         "downloadOriginalFormat": "Pobierz w oryginalnym formacie",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": ""
+        "shareOriginalFormat": "Udostępnij w oryginalnym formacie",
+        "shareDialogTitle": "Udostępnij %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Udostępnij 1 %{resource} |||| Udostępnij %{smart_count} %{resource}",
+        "shareSuccess": "Adres URL skopiowany do schowka: %{url}",
+        "shareFailure": "Błąd podczas kopiowania URL %{url} do schowka",
+        "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Biblioteka",

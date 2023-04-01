@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/djherbis/fscache"
@@ -14,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Item interface {
@@ -46,7 +46,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		fc.cache = cache
 		fc.disabled = cache == nil || err != nil
 		log.Info("Finished initializing cache", "cache", fc.name, "maxSize", fc.cacheSize, "elapsedTime", time.Since(start))
-		fc.ready.Set(true)
+		fc.ready.Store(true)
 		if err != nil {
 			log.Error(fmt.Sprintf("Cache %s will be DISABLED due to previous errors", "name"), fc.name, err)
 		}
@@ -66,7 +66,7 @@ type fileCache struct {
 	cache       fscache.Cache
 	getReader   ReadFunc
 	disabled    bool
-	ready       utils.AtomicBool
+	ready       atomic.Bool
 	mutex       *sync.RWMutex
 }
 
@@ -74,7 +74,7 @@ func (fc *fileCache) Available(_ context.Context) bool {
 	fc.mutex.RLock()
 	defer fc.mutex.RUnlock()
 
-	return fc.ready.Get() && !fc.disabled
+	return fc.ready.Load() && !fc.disabled
 }
 
 func (fc *fileCache) invalidate(ctx context.Context, key string) error {
@@ -85,7 +85,11 @@ func (fc *fileCache) invalidate(ctx context.Context, key string) error {
 	if !fc.cache.Exists(key) {
 		return nil
 	}
-	return fc.cache.Remove(key)
+	err := fc.cache.Remove(key)
+	if err != nil {
+		log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
+	}
+	return err
 }
 
 func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
@@ -110,14 +114,15 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		log.Trace(ctx, "Cache MISS", "cache", fc.name, "key", key)
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
+			r.Close()
+			w.Close()
+			_ = fc.invalidate(ctx, key)
 			return nil, err
 		}
 		go func() {
 			if err := copyAndClose(w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
-				if err = fc.invalidate(ctx, key); err != nil {
-					log.Warn(ctx, "Error removing key from cache", "cache", fc.name, "key", key, err)
-				}
+				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
 			}
@@ -202,7 +207,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 		return nil, nil
 	}
 
-	lru := NewFileHaunter(maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
+	lru := NewFileHaunter(name, maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
 	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
 

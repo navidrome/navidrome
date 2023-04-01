@@ -52,8 +52,11 @@ func countryFilter(field string, value interface{}) Sqlizer {
 }
 
 func existsFilter(field string, value interface{}) Sqlizer {
-	existing := toBool(value)
-	return Eq{"existing": existing}
+	if toBool(value) {
+		return NotEq{"existing_id": nil}
+	} else {
+		return Eq{"existing_id": nil}
+	}
 }
 
 func httpsFilter(field string, value interface{}) Sqlizer {
@@ -82,7 +85,7 @@ func tagsFilter(field string, value interface{}) Sqlizer {
 
 func (r *radioInfoRepository) baseQuery(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
-		Column("radioinfo.*, (r.id is not null) AS existing").
+		Column("radioinfo.*, r.id AS existing_id").
 		LeftJoin("radio r ON r.radioinfo_id = radioinfo.id")
 }
 
@@ -93,7 +96,7 @@ func (r *radioInfoRepository) CountAll(options ...model.QueryOptions) (int64, er
 func (r *radioInfoRepository) Insert(m *model.RadioInfo) error {
 	radioMap, _ := toSqlArgs(*m, m.BaseRadioInfo)
 
-	delete(radioMap, "existing")
+	delete(radioMap, "existing_id")
 
 	sql := Insert(r.tableName).SetMap(radioMap)
 	_, err := r.executeSQL(sql)
@@ -135,7 +138,7 @@ func (r *radioInfoRepository) GetAllIds() (map[string]bool, error) {
 func (r *radioInfoRepository) Update(m *model.RadioInfo) error {
 	radioMap, _ := toSqlArgs(*m, m.BaseRadioInfo)
 
-	delete(radioMap, "existing")
+	delete(radioMap, "existing_id")
 
 	sql := Update(r.tableName).SetMap(radioMap).Where(Eq{"id": m.ID})
 	_, err := r.executeSQL(sql)

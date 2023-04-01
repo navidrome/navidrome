@@ -95,26 +95,35 @@ func (b *broker) prepareMessage(ctx context.Context, event Event) message {
 
 var errWriteTimeOut = errors.New("write timeout")
 
-// writeEvent Write to the ResponseWriter, Server Sent Events compatible, and sends it
-// right away, by flushing the writer (if it is a Flusher). It waits for the message to be flushed
-// or times out after the specified timeout
-func writeEvent(w io.Writer, event message, timeout time.Duration) (err error) {
-	complete := make(chan struct{}, 1)
-	flusher, ok := w.(http.Flusher)
-	if ok {
-		go func() {
-			_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
-			// Flush the data immediately instead of buffering it for later.
+// writeEvent writes a message to the given io.Writer, formatted as a Server-Sent Event.
+// If the writer is an http.Flusher, it flushes the data immediately instead of buffering it.
+// The function waits for the message to be written or times out after the specified timeout.
+func writeEvent(w io.Writer, event message, timeout time.Duration) error {
+	// Create a context with a timeout based on the event's sender context.
+	ctx, cancel := context.WithTimeout(event.senderCtx, timeout)
+	defer cancel()
+
+	// Create a channel to signal the completion of writing.
+	errC := make(chan error, 1)
+
+	// Start a goroutine to write the event and optionally flush the writer.
+	go func() {
+		_, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", event.id, event.event, event.data)
+
+		// If the writer is an http.Flusher, flush the data immediately.
+		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
-			complete <- struct{}{}
-		}()
-	} else {
-		complete <- struct{}{}
-	}
+		}
+
+		// Signal that writing is complete.
+		errC <- err
+	}()
+
+	// Wait for either the write completion or the context to time out.
 	select {
-	case <-complete:
-		return
-	case <-time.After(timeout):
+	case err := <-errC:
+		return err
+	case <-ctx.Done():
 		return errWriteTimeOut
 	}
 }

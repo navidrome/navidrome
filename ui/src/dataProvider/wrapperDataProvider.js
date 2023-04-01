@@ -74,7 +74,7 @@ const wrapperDataProvider = {
     }).then(({ json }) => ({ data: json }))
   },
   radioClick: (id) => {
-    return httpClient(`${REST_URL}/radio/${id}`)
+    return httpClient(`${REST_URL}/radios/${id}`)
   },
 }
 

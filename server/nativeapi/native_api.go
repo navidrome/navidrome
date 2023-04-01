@@ -44,7 +44,7 @@ func (n *Router) routes() http.Handler {
 		n.R(r, "/player", model.Player{}, true)
 		n.R(r, "/playlist", model.Playlist{}, true)
 		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-		n.R(r, "/radio", model.Radio{}, true)
+		n.R(r, "/radios", model.Radio{}, true)
 		n.R(r, "/radioInfo", model.RadioInfo{}, false)
 
 		if conf.Server.EnableSharing {

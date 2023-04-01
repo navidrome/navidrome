@@ -94,7 +94,6 @@ var (
 		BaseRadioInfo: model.BaseRadioInfo{
 			Tags: "tag1,tag2,tag3", Country: "Finland", CountryCode: "FI", Codec: "OGG", Bitrate: 320,
 		},
-		Existing: false,
 	}
 	fullRadioWithoutMatch = model.RadioInfo{
 		ID:       "23456",

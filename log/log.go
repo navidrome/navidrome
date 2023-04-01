@@ -26,6 +26,11 @@ var redacted = &Hook{
 		"(Secret:\")[\\w]*",
 		"(Spotify.*ID:\")[\\w]*",
 		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
+		"(ReverseProxyUserHeader:[\\s]*\")[^\"]*",
+		"(ReverseProxyWhitelist:[\\s]*\")[^\"]*",
+		"(MetricsPath:[\\s]*\")[^\"]*",
+		"(DevAutoCreateAdminPassword:[\\s]*\")[^\"]*",
+		"(DevAutoLoginUsername:[\\s]*\")[^\"]*",
 
 		// UI appConfig
 		"(subsonicToken:)[\\w]+(\\s)",
@@ -37,6 +42,9 @@ var redacted = &Hook{
 		"([^\\w]s=)[^&]+",
 		"([^\\w]p=)[^&]+",
 		"([^\\w]jwt=)[^&]+",
+
+		// External services query params
+		"([^\\w]api_key=)[\\w]+",
 	},
 }
 

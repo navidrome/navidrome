@@ -10,7 +10,7 @@ const all = {
   list: RadioList,
   icon: (
     <DynamicMenuIcon
-      path={'radio'}
+      path={'radios'}
       icon={RadioOutlinedIcon}
       activeIcon={RadioIcon}
     />
