@@ -1,4 +1,4 @@
-// Based on https://thoughtbot.com/blog/writing-a-server-sent-events-server-in-go
+// Package events based on https://thoughtbot.com/blog/writing-a-server-sent-events-server-in-go
 package events
 
 import (
@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"code.cloudfoundry.org/go-diodes"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/diodes"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -41,7 +41,7 @@ type (
 		username       string
 		userAgent      string
 		clientUniqueId string
-		diode          *diode
+		diode          *diodes.Diode[message]
 	}
 )
 
@@ -150,7 +150,7 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Debug(ctx, "New broker client", "client", c.String())
 
 	for {
-		event := c.diode.next()
+		event := c.diode.Next()
 		if event == nil {
 			log.Trace(ctx, "Client closed the EventStream connection", "client", c.String())
 			return
@@ -174,7 +174,7 @@ func (b *broker) subscribe(r *http.Request) client {
 		userAgent:      r.UserAgent(),
 		clientUniqueId: clientUniqueId,
 	}
-	c.diode = newDiode(ctx, 1024, diodes.AlertFunc(func(missed int) {
+	c.diode = diodes.New[message](ctx, 1024, diodes.AlertFunc(func(missed int) {
 		log.Debug("Dropped SSE events", "client", c.String(), "missed", missed)
 	}))
 
@@ -224,7 +224,7 @@ func (b *broker) listen() {
 			// Send a serverStart event to new client
 			msg := b.prepareMessage(context.Background(),
 				&ServerStart{StartTime: consts.ServerStart, Version: consts.Version})
-			c.diode.put(msg)
+			c.diode.Put(msg)
 
 		case c := <-b.unsubscribing:
 			// A client has detached, and we want to
@@ -240,7 +240,7 @@ func (b *broker) listen() {
 			for c := range clients {
 				if b.shouldSend(msg, c) {
 					log.Trace("Putting event on client's queue", "client", c.String(), "event", msg)
-					c.diode.put(msg)
+					c.diode.Put(msg)
 				}
 			}
 
@@ -253,7 +253,7 @@ func (b *broker) listen() {
 			msg.id = getNextEventId()
 			for c := range clients {
 				log.Trace("Putting a keepalive event on client's queue", "client", c.String(), "event", msg)
-				c.diode.put(msg)
+				c.diode.Put(msg)
 			}
 		}
 	}
