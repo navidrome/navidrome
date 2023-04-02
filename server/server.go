@@ -19,21 +19,25 @@ import (
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/ui"
 	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type Server struct {
-	router  *chi.Mux
+	router  chi.Router
 	ds      model.DataStore
 	appRoot string
+	broker  events.Broker
 }
 
-func New(ds model.DataStore) *Server {
-	s := &Server{ds: ds}
+func New(ds model.DataStore, broker events.Broker) *Server {
+	s := &Server{ds: ds, broker: broker}
 	auth.Init(s.ds)
 	initialSetup(ds)
 	s.initRoutes()
+	s.mountAuthenticationRoutes()
+	s.mountRootRedirector()
 	checkFfmpegInstallation()
 	checkExternalCredentials()
 	return s
@@ -131,24 +135,52 @@ func (s *Server) initRoutes() {
 
 	r := chi.NewRouter()
 
-	r.Use(secureMiddleware())
-	r.Use(corsHandler())
-	r.Use(middleware.RequestID)
-	if conf.Server.ReverseProxyWhitelist == "" {
-		r.Use(middleware.RealIP)
+	middlewares := chi.Middlewares{
+		secureMiddleware(),
+		corsHandler(),
+		middleware.RequestID,
 	}
-	r.Use(middleware.Recoverer)
-	r.Use(compressMiddleware())
-	r.Use(middleware.Heartbeat("/ping"))
-	r.Use(serverAddressMiddleware)
-	r.Use(clientUniqueIDMiddleware)
-	r.Use(loggerInjector)
-	r.Use(requestLogger)
-	r.Use(robotsTXT(ui.BuildAssets()))
-	r.Use(authHeaderMapper)
-	r.Use(jwtVerifier)
+	if conf.Server.ReverseProxyWhitelist == "" {
+		middlewares = append(middlewares, middleware.RealIP)
+	}
 
-	r.Route(path.Join(conf.Server.BasePath, "/auth"), func(r chi.Router) {
+	middlewares = append(middlewares,
+		middleware.Recoverer,
+		middleware.Heartbeat("/ping"),
+		robotsTXT(ui.BuildAssets()),
+		serverAddressMiddleware,
+		clientUniqueIDMiddleware,
+	)
+
+	// Mount the Native API /events endpoint with all middlewares, except the compress and request logger,
+	// adding the authentication middlewares
+	if conf.Server.DevActivityPanel {
+		r.Group(func(r chi.Router) {
+			r.Use(middlewares...)
+			r.Use(loggerInjector)
+			r.Use(authHeaderMapper)
+			r.Use(jwtVerifier)
+			r.Use(Authenticator(s.ds))
+			r.Use(JWTRefresher)
+			r.Handle(path.Join(conf.Server.BasePath, consts.URLPathNativeAPI, "events"), s.broker)
+		})
+	}
+
+	// Configure the router with the default middlewares
+	r.Group(func(r chi.Router) {
+		r.Use(middlewares...)
+		r.Use(compressMiddleware())
+		r.Use(loggerInjector)
+		r.Use(requestLogger)
+		r.Use(authHeaderMapper)
+		r.Use(jwtVerifier)
+		s.router = r
+	})
+}
+
+func (s *Server) mountAuthenticationRoutes() chi.Router {
+	r := s.router
+	return r.Route(path.Join(conf.Server.BasePath, "/auth"), func(r chi.Router) {
 		if conf.Server.AuthRequestLimit > 0 {
 			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
 				"windowLength", conf.Server.AuthWindowLength)
@@ -162,7 +194,11 @@ func (s *Server) initRoutes() {
 		}
 		r.Post("/createAdmin", createAdmin(s.ds))
 	})
+}
 
+// Serve UI app assets
+func (s *Server) mountRootRedirector() {
+	r := s.router
 	// Redirect root to UI URL
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, s.appRoot+"/", http.StatusFound)
@@ -170,11 +206,8 @@ func (s *Server) initRoutes() {
 	r.Get(s.appRoot, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, s.appRoot+"/", http.StatusFound)
 	})
-
-	s.router = r
 }
 
-// Serve UI app assets
 func (s *Server) frontendAssetsHandler() http.Handler {
 	r := chi.NewRouter()
 
