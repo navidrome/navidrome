@@ -31,16 +31,16 @@ import (
 func CreateServer(musicFolder string) *server.Server {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	serverServer := server.New(dataStore)
+	broker := events.GetBroker()
+	serverServer := server.New(dataStore, broker)
 	return serverServer
 }
 
 func CreateNativeAPIRouter() *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	broker := events.GetBroker()
 	share := core.NewShare(dataStore)
-	router := nativeapi.New(dataStore, broker, share)
+	router := nativeapi.New(dataStore, share)
 	return router
 }
 
