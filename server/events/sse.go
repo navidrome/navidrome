@@ -158,7 +158,8 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Trace(ctx, "Sending event to client", "event", *event, "client", c.String())
 		err := writeEvent(ctx, w, *event, writeTimeOut)
 		if err != nil {
-			log.Debug(ctx, "Error sending event to client", "event", *event, "client", c.String(), err)
+			log.Debug(ctx, "Error sending event to client. Closing connection", "event", *event, "client", c.String(), err)
+			return
 		}
 	}
 }
