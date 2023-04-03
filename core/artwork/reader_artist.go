@@ -110,12 +110,18 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 		if len(matches) == 0 {
 			return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
 		}
-		filePath := filepath.Join(artistFolder, matches[0])
-		f, err := os.Open(filePath)
-		if err != nil {
-			log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
-			return nil, "", err
+		for _, m := range matches {
+			filePath := filepath.Join(artistFolder, m)
+			if !model.IsImageFile(m) {
+				continue
+			}
+			f, err := os.Open(filePath)
+			if err != nil {
+				log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
+				return nil, "", err
+			}
+			return f, filePath, nil
 		}
-		return f, filePath, err
+		return nil, "", nil
 	}
 }
