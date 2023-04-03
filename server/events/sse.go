@@ -159,7 +159,6 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	log.Trace(ctx, "Client EventStream connection closed", "client", c.String())
-	return
 }
 
 func (b *broker) subscribe(r *http.Request) client {
