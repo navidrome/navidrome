@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -70,6 +71,10 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	var err error
 	if strings.HasPrefix(addr, "unix:") {
 		socketPath := strings.TrimPrefix(addr, "unix:")
+		// Remove the socket file if it already exists
+		if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("error removing previous unix socket file: %w", err)
+		}
 		listener, err = net.Listen("unix", socketPath)
 		if err != nil {
 			return fmt.Errorf("error creating unix socket listener: %w", err)
@@ -124,6 +129,7 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	log.Info(ctx, "Stopping HTTP server")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+	server.SetKeepAlivesEnabled(false)
 	if err := server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		log.Error(ctx, "Unexpected error in http.Shutdown()", err)
 	}
