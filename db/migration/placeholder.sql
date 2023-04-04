@@ -1,3 +1,0 @@
--- This can be removed once we have at least one SQL migration.
--- It is here to avoid an error in the linter:
--- db/db.go:23:4: invalid go:embed: build system did not supply embed configuration (typecheck)
