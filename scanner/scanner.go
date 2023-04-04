@@ -111,11 +111,13 @@ func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context
 	go func() {
 		s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 		defer func() {
-			s.broker.SendMessage(ctx, &events.ScanStatus{
-				Scanning:    false,
-				Count:       int64(s.status[mediaFolder].fileCount),
-				FolderCount: int64(s.status[mediaFolder].folderCount),
-			})
+			if status, ok := s.getStatus(mediaFolder); ok {
+				s.broker.SendMessage(ctx, &events.ScanStatus{
+					Scanning:    false,
+					Count:       int64(status.fileCount),
+					FolderCount: int64(status.folderCount),
+				})
+			}
 		}()
 		for {
 			select {
