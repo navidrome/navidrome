@@ -9,7 +9,7 @@ import (
 	_ "github.com/navidrome/navidrome/db/migration"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/singleton"
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 var (
