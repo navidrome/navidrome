@@ -29,7 +29,7 @@ const (
 
 type (
 	message struct {
-		id        uint32
+		id        uint64
 		event     string
 		data      string
 		senderCtx context.Context
@@ -202,9 +202,9 @@ func (b *broker) listen() {
 	defer keepAlive.Stop()
 
 	clients := map[client]struct{}{}
-	var eventId uint32
+	var eventId uint64
 
-	getNextEventId := func() uint32 {
+	getNextEventId := func() uint64 {
 		eventId++
 		return eventId
 	}
