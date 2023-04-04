@@ -16,7 +16,7 @@ func TestScanner(t *testing.T) {
 	tests.Init(t, true)
 	conf.Server.DbPath = "file::memory:?cache=shared"
 	_ = orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
-	db.EnsureLatestVersion()
+	db.Init()
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")

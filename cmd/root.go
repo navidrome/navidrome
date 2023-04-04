@@ -61,7 +61,7 @@ func preRun() {
 }
 
 func runNavidrome() {
-	db.EnsureLatestVersion()
+	db.Init()
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Error("Error closing DB", err)

@@ -24,7 +24,7 @@ func TestPersistence(t *testing.T) {
 	//conf.Server.DbPath = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared"
 	_ = orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
-	db.EnsureLatestVersion()
+	db.Init()
 	log.SetLevel(log.LevelError)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
