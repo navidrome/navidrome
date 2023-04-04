@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 func init() {

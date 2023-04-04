@@ -25,7 +25,7 @@ server: check_go_env  ##@Development Start the backend in development mode
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/v2/ginkgo watch -notify ./...
+	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -notify ./...
 .PHONY: watch
 
 test: ##@Development Run Go tests
@@ -49,12 +49,12 @@ wire: check_go_env ##@Development Update Dependency Injection
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
-	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo ./server/subsonic/...
+	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/...
 .PHONY: snapshots
 
 migration: ##@Development Create an empty migration file
 	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
-	go run github.com/pressly/goose/cmd/goose -dir db/migration create ${name}
+	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migration create ${name}
 .PHONY: migration
 
 setup-dev: setup
