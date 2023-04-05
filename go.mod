@@ -24,6 +24,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/google/wire v0.5.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/kardianos/service v1.2.2
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.9
 	github.com/matoous/go-nanoid/v2 v2.0.0
