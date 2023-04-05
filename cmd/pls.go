@@ -27,9 +27,10 @@ func init() {
 }
 
 var plsCmd = &cobra.Command{
-	Use:   "pls",
-	Short: "Export playlists",
-	Long:  "Export Navidrome playlists to M3U files",
+	Use:     "playlists",
+	Aliases: []string{"pls", "playlist"},
+	Short:   "Export playlists",
+	Long:    "Export Navidrome playlists to M3U files",
 	Run: func(cmd *cobra.Command, args []string) {
 		runExporter()
 	},

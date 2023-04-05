@@ -31,10 +31,11 @@ func init() {
 }
 
 var svcCmd = &cobra.Command{
-	Use:   "svc",
-	Short: "Manage Navidrome as a service",
-	Long:  fmt.Sprintf("Manage Navidrome as a service, using the OS service manager (%s)", service.Platform()),
-	Run:   runServiceCmd,
+	Use:     "service",
+	Aliases: []string{"svc"},
+	Short:   "Manage Navidrome as a service",
+	Long:    fmt.Sprintf("Manage Navidrome as a service, using the OS service manager (%s)", service.Platform()),
+	Run:     runServiceCmd,
 }
 
 type svcControl struct {
