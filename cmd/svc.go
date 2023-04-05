@@ -38,7 +38,6 @@ var svcCmd = &cobra.Command{
 }
 
 type svcControl struct {
-	exit   chan struct{}
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -49,9 +48,8 @@ func (p *svcControl) Start(_ service.Service) error {
 	return nil
 }
 
-func (p *svcControl) run() error {
+func (p *svcControl) run() {
 	runNavidrome(p.ctx)
-	return nil
 }
 
 func (p *svcControl) Stop(_ service.Service) error {
@@ -96,7 +94,7 @@ func svcInstance() service.Service {
 }
 
 func runServiceCmd(cmd *cobra.Command, _ []string) {
-	cmd.Help()
+	_ = cmd.Help()
 }
 
 func executablePath() string {
@@ -187,7 +185,6 @@ func buildStatusCmd() *cobra.Command {
 				log.Fatal(err)
 			}
 			fmt.Printf("Navidrome is %s.\n", svcStatusLabels[status])
-			return
 		},
 	}
 }
