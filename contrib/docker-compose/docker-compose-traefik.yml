@@ -5,7 +5,6 @@ volumes:
   navidrome_data:
 
 services:
-
   traefik:
     container_name: "traefik"
     image: traefik:2.9

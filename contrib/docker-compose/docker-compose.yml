@@ -1,10 +1,9 @@
-version: '3.6'
+version: "3.6"
 
 volumes:
   navidrome_data:
 
 services:
-
   navidrome:
     container_name: "navidrome"
     image: deluan/navidrome:latest

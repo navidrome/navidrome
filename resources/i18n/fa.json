@@ -1,455 +1,455 @@
 {
-    "languageName": "انگلیسی",
-    "resources": {
-        "song": {
-            "name": "ترانه |||| ترانه ها",
-            "fields": {
-                "albumArtist": "هنرمند آلبوم",
-                "duration": "زمان",
-                "trackNumber": "#",
-                "playCount": "پخش ها",
-                "title": "عنوان",
-                "artist": "هنرمند",
-                "album": "آلبوم",
-                "path": "مسیر فایل",
-                "genre": "ژانر",
-                "compilation": "تلفیقی",
-                "year": "سال",
-                "size": "اندازه فایل",
-                "updatedAt": "به روز شده در",
-                "bitRate": "نرخ بیت",
-                "discSubtitle": "زیرنویس دیسک",
-                "starred": "موردعلاقه",
-                "comment": "اظهارنظر",
-                "rating": "رتبه یندی",
-                "quality": "کیفیّت",
-                "bpm": "ضربان در دقیقه",
-                "playDate": "آخرین پخش شده",
-                "channels": "کانال ها",
-                "createdAt": ""
-            },
-            "actions": {
-                "addToQueue": "بعدا پخش کن",
-                "playNow": "الان پخش کن",
-                "addToPlaylist": "افزودن به لیست پخش",
-                "shuffleAll": "همه درهم",
-                "download": "دانلود",
-                "playNext": "پخش بعدی",
-                "info": "گرفتن اطلاعات"
-            }
-        },
-        "album": {
-            "name": "آلبوم |||| آلبوم ها",
-            "fields": {
-                "albumArtist": "هنرمند آلبوم",
-                "artist": "هنرمند",
-                "duration": "زمان",
-                "songCount": "ترانه ها",
-                "playCount": "پخش ها",
-                "name": "نام",
-                "genre": "ژانر",
-                "compilation": "تلفیقی",
-                "year": "سال",
-                "updatedAt": "به روز شده در",
-                "comment": "اظهارنظر",
-                "rating": "رتبه بندی",
-                "createdAt": "",
-                "size": ""
-            },
-            "actions": {
-                "playAll": "پخش",
-                "playNext": "پخش بعدی",
-                "addToQueue": "پخش قبلی",
-                "shuffle": "درهم",
-                "addToPlaylist": "افزودن به لیست پخش",
-                "download": "دانلود",
-                "info": "گرفتن اطلاعات",
-                "share": ""
-            },
-            "lists": {
-                "all": "همه",
-                "random": "تصادفی",
-                "recentlyAdded": "به تازگی اضافه شده",
-                "recentlyPlayed": "آخرین پخش شده ها",
-                "mostPlayed": "بیشتر پخش شده",
-                "starred": "علاقمندی ها",
-                "topRated": "رتبه برتر"
-            }
-        },
-        "artist": {
-            "name": "هنرمند |||| هنرمندان",
-            "fields": {
-                "name": "نام",
-                "albumCount": "تعداد آلبوم",
-                "songCount": "تعداد آهنگ",
-                "playCount": "پخش ها",
-                "rating": "رتبه بندی",
-                "genre": "ژانر",
-                "size": ""
-            }
-        },
-        "user": {
-            "name": "کاربر |||| کاربران",
-            "fields": {
-                "userName": "نام کاربری",
-                "isAdmin": "ادمین است",
-                "lastLoginAt": "آخرین ورود در",
-                "updatedAt": "به روز شده در",
-                "name": "نام",
-                "password": "کلمه عبور",
-                "createdAt": "ایجاد شده در",
-                "changePassword": "تغییر کلمه عبور؟",
-                "currentPassword": "کلمه عبور جاری",
-                "newPassword": "کلمه عبور جدید",
-                "token": ""
-            },
-            "helperTexts": {
-                "name": "تغییرات نام شما در ورود بعدی منعکس می شود"
-            },
-            "notifications": {
-                "created": "کاربر ایجاد شد",
-                "updated": "کاربر به روز شد",
-                "deleted": "کاربر حذف شد"
-            },
-            "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
-            }
-        },
-        "player": {
-            "name": "پخش کننده |||| پخش کننده ها",
-            "fields": {
-                "name": "نام",
-                "transcodingId": "کدگذاری",
-                "maxBitRate": "حداکثر نرخ بیت",
-                "client": "سرویس گیرنده",
-                "userName": "نام کاربری",
-                "lastSeen": "اخرین بازدید در",
-                "reportRealPath": "گزارش مسیر واقعی",
-                "scrobbleEnabled": ""
-            }
-        },
-        "transcoding": {
-            "name": "کدگذاری |||| کدگذاری ها",
-            "fields": {
-                "name": "نام",
-                "targetFormat": "فرمت هدف",
-                "defaultBitRate": "نرخ بیت پیشفرض",
-                "command": "فرمان"
-            }
-        },
-        "playlist": {
-            "name": "لیست پخش |||| فهرست های پخش",
-            "fields": {
-                "name": "نام",
-                "duration": "مدّت زمان",
-                "ownerName": "مالک",
-                "public": "عمومی",
-                "updatedAt": "بروزشده در",
-                "createdAt": "ایجادشده در",
-                "songCount": "ترانه ها",
-                "comment": "اظهارنظر",
-                "sync": "واردکردن-خودکار",
-                "path": "واردکردن از"
-            },
-            "actions": {
-                "selectPlaylist": "یک لیست پخش انتخاب کنید:",
-                "addNewPlaylist": "ایجاد \"%{name}\"",
-                "export": "صادرکردن",
-                "makePublic": "",
-                "makePrivate": ""
-            },
-            "message": {
-                "duplicate_song": "افزودن آهنگ های تکراری",
-                "song_exist": "موارد تکراری به لیست پخش اضافه می شوند. آیا می خواهید موارد تکراری را اضافه کنید یا از آنها صرف نظر می کنید؟"
-            }
-        },
-        "radio": {
-            "name": "",
-            "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "playNow": ""
-            }
-        },
-        "share": {
-            "name": "",
-            "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
-            }
-        }
+  "languageName": "انگلیسی",
+  "resources": {
+    "song": {
+      "name": "ترانه |||| ترانه ها",
+      "fields": {
+        "albumArtist": "هنرمند آلبوم",
+        "duration": "زمان",
+        "trackNumber": "#",
+        "playCount": "پخش ها",
+        "title": "عنوان",
+        "artist": "هنرمند",
+        "album": "آلبوم",
+        "path": "مسیر فایل",
+        "genre": "ژانر",
+        "compilation": "تلفیقی",
+        "year": "سال",
+        "size": "اندازه فایل",
+        "updatedAt": "به روز شده در",
+        "bitRate": "نرخ بیت",
+        "discSubtitle": "زیرنویس دیسک",
+        "starred": "موردعلاقه",
+        "comment": "اظهارنظر",
+        "rating": "رتبه یندی",
+        "quality": "کیفیّت",
+        "bpm": "ضربان در دقیقه",
+        "playDate": "آخرین پخش شده",
+        "channels": "کانال ها",
+        "createdAt": ""
+      },
+      "actions": {
+        "addToQueue": "بعدا پخش کن",
+        "playNow": "الان پخش کن",
+        "addToPlaylist": "افزودن به لیست پخش",
+        "shuffleAll": "همه درهم",
+        "download": "دانلود",
+        "playNext": "پخش بعدی",
+        "info": "گرفتن اطلاعات"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "از اینکه نویدروم را نصب کردید متشکریم!",
-            "welcome2": "برای شروع ، یک کاربر مدپریت ایجاد کنید",
-            "confirmPassword": "تأیید کلمه عبور",
-            "buttonCreateAdmin": "ایجاد مدیر",
-            "auth_check_error": "لطفا برای ادامه وارد سیستم شوید",
-            "user_menu": "پروفایل",
-            "username": "نام کاربری",
-            "password": "کلمه عبور",
-            "sign_in": "ورود",
-            "sign_in_error": "احراز هویت ناموفق بود، لطفاً دوباره امتحان کنید",
-            "logout": "خروج"
-        },
-        "validation": {
-            "invalidChars": "لطفاً فقط از حروف و اعداد استفاده کنید",
-            "passwordDoesNotMatch": "کلمه عبور مطابقت ندارد",
-            "required": "ضروری",
-            "minLength": "حداقل باید %{min} کاراکتر داشته باشد",
-            "maxLength": "حداکثر %{max} کاراکتر یا کمتر باشد",
-            "minValue": "باید حداقل %{min} دقیقه باشد",
-            "maxValue": "حداکثر %{max} دقیقه یا کمتر باشد",
-            "number": "باید یک عدد باشد",
-            "email": "باید یک ایمیل آدرس معتبر باشد",
-            "oneOf": "باید یکی از موارد زیر باشد: %{options}",
-            "regex": "باید با یک قالب خاص (regex) مطابقت داشته باشد: %{pattern}",
-            "unique": "باید یکتا باشد",
-            "url": ""
-        },
-        "action": {
-            "add_filter": "افزودن فیلتر",
-            "add": "افزودن",
-            "back": "برگشت به عقب",
-            "bulk_actions": "1 مورد انتخاب شد |||| %{smart_count} آیتم انتخاب شده",
-            "cancel": "لغو",
-            "clear_input_value": "پاک کردن مقدار",
-            "clone": "شبیه",
-            "confirm": "تایید",
-            "create": "ایجاد",
-            "delete": "حذف",
-            "edit": "ویرایش",
-            "export": "صادرکردن",
-            "list": "فهرست",
-            "refresh": "تازه کردن",
-            "remove_filter": "حذف این فیلتر",
-            "remove": "حذف",
-            "save": "ذخیره",
-            "search": "جستجو",
-            "show": "نمایش",
-            "sort": "ترتیب",
-            "undo": "واگرد",
-            "expand": "گشودن",
-            "close": "بستن",
-            "open_menu": "بازکردن منو",
-            "close_menu": "بستن منو",
-            "unselect": "لغو انتخاب",
-            "skip": "ردشدن",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
-        },
-        "boolean": {
-            "true": "بله",
-            "false": "خیر"
-        },
-        "page": {
-            "create": "ایجاد %{name}",
-            "dashboard": "داشبورد",
-            "edit": "%{name} #%{id}",
-            "error": "مشکلی پیش آمد",
-            "list": "%{name}",
-            "loading": "بارگذاری",
-            "not_found": "پیدا نشد",
-            "show": "%{name} #%{id}",
-            "empty": "هنوز %{name} نیست",
-            "invite": "آیا میخواهید یکی اضافه کنید؟"
-        },
-        "input": {
-            "file": {
-                "upload_several": "تعدادی فایل برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب یکی از آنها کلیک کنید.",
-                "upload_single": "یک فایل را برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب روی آن کلیک کنید."
-            },
-            "image": {
-                "upload_several": "تعدادی تصویر برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب یکی روی آن کلیک کنید.",
-                "upload_single": "یک تصویر را برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب روی آن کلیک کنید."
-            },
-            "references": {
-                "all_missing": "داده های مرجع در دسترس نمی باشد.",
-                "many_missing": "حداقل یکی از مرجع های مرتبط به نظر می رسد دیگر در دسترس نیست.",
-                "single_missing": "مرجع مرتبط دیگر در دسترس نیست."
-            },
-            "password": {
-                "toggle_visible": "پنهان کردن کلمه عبور",
-                "toggle_hidden": "نمایش کلمه عبور"
-            }
-        },
-        "message": {
-            "about": "درباره",
-            "are_you_sure": "آیا مطمئن هستید؟",
-            "bulk_delete_content": "آیا مطمئن هستید که می خواهید این%{name} را حذف کنید؟ |||| آیا مطمئن هستید که می خواهید این موارد %{smart_count} را حذف کنید؟",
-            "bulk_delete_title": "حذف %{name} |||| حذف %{smart_count} %{name}",
-            "delete_content": "آیا مطمئن هستید که میخواهید این مورد را حذف کنید؟",
-            "delete_title": "حذف %{name} #%{id}",
-            "details": "جزئیات",
-            "error": "یک خطای سرویس گیرنده رخ داده و درخواست شما کامل نشد.",
-            "invalid_form": "فرم معتبر نیست. لطفاً خطاها را بررسی کنید",
-            "loading": "صفحه در حال بارگیری است، تنها چند لحظه لطفاً شکیبا باشید",
-            "no": "خیر",
-            "not_found": "یا آدرس اینترنتی اشتباهی تایپ کرده اید یا پیوند بدی را دنبال کرده اید.",
-            "yes": "بله",
-            "unsaved_changes": "برخی از تغییرات شما ذخیره نشده. آیا مطمئن هستید که می خواهید آنها را نادیده بگیرید؟"
-        },
-        "navigation": {
-            "no_results": "نتیجه ای پیدا نشد",
-            "no_more_results": "شماره صفحه %{page} خارج از محدوده است. صفحه قبلی را امتحان کنید",
-            "page_out_of_boundaries": "شماره صفحه %{page} خارج از محدوده است",
-            "page_out_from_end": "نمیتوان به بعد از آخرین صفحه رفت",
-            "page_out_from_begin": "نمیتوان به قبل از صفحه 1 رفت",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} از %{total}",
-            "page_rows_per_page": "آیتم در صفحه :",
-            "next": "بعدی",
-            "prev": "قبلی",
-            "skip_nav": "پرش به محتوا"
-        },
-        "notification": {
-            "updated": "عنصر به روز شد |||| {smart_count} عنصر به روز شدند",
-            "created": "عنصر ایجاد شد",
-            "deleted": "عنصر حذف شد |||| {smart_count} عنصر حذف شدند",
-            "bad_item": "عنصر نادرست",
-            "item_doesnt_exist": "عنصر موجود نمی باشد",
-            "http_error": "خطای ارتباط سرور",
-            "data_provider_error": "خطای ارائه کننده داده. برای جزئیات بیشتر کنسول را بررسی کنید.",
-            "i18n_error": "نمی تواند ترجمه ها را برای زبان تعین شده بارگذاری کرد",
-            "canceled": "اقدام لغو شد",
-            "logged_out": "جلسه شما به پایان رسیده، لطفاً دوباره وصل شوید.",
-            "new_version": "نسخه جدید در دسترس است! لطفا این پنجره را تازه کنید."
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "ستون ها برای نمایش",
-            "layout": "لایه",
-            "grid": "شبکه",
-            "table": "جدول"
-        }
+    "album": {
+      "name": "آلبوم |||| آلبوم ها",
+      "fields": {
+        "albumArtist": "هنرمند آلبوم",
+        "artist": "هنرمند",
+        "duration": "زمان",
+        "songCount": "ترانه ها",
+        "playCount": "پخش ها",
+        "name": "نام",
+        "genre": "ژانر",
+        "compilation": "تلفیقی",
+        "year": "سال",
+        "updatedAt": "به روز شده در",
+        "comment": "اظهارنظر",
+        "rating": "رتبه بندی",
+        "createdAt": "",
+        "size": ""
+      },
+      "actions": {
+        "playAll": "پخش",
+        "playNext": "پخش بعدی",
+        "addToQueue": "پخش قبلی",
+        "shuffle": "درهم",
+        "addToPlaylist": "افزودن به لیست پخش",
+        "download": "دانلود",
+        "info": "گرفتن اطلاعات",
+        "share": ""
+      },
+      "lists": {
+        "all": "همه",
+        "random": "تصادفی",
+        "recentlyAdded": "به تازگی اضافه شده",
+        "recentlyPlayed": "آخرین پخش شده ها",
+        "mostPlayed": "بیشتر پخش شده",
+        "starred": "علاقمندی ها",
+        "topRated": "رتبه برتر"
+      }
     },
-    "message": {
-        "note": "توجه",
-        "transcodingDisabled": "تغییر پیکربندی کدگذاری از طریق رابط وب به دلایل امنیتی غیرفعال است. اگر می خواهید گزینه های کدگذاری را تغییر دهید (ویرایش یا اضافه کنید) ، سرور را با گزینه پیکربندی %{config} راه اندازی مجدد کنید.",
-        "transcodingEnabled": "نویدروم در حال حاضر با %{config}, اجرا می شود و امکان اجرای دستورات سیستم از تنظیمات کدگذاری با استفاده از رابط وب را ممکن می سازد. توصیه می کنیم آن را به دلایل امنیتی غیرفعال کنید و فقط هنگام پیکربندی گزینه های کدگذاری آن را فعال کنید.",
-        "songsAddedToPlaylist": "1 آهنگ به لیست پخش اضافه شد |||| %{smart_count} آهنگ به لیست پخش اضافه شد",
-        "noPlaylistsAvailable": "موجود نیست",
-        "delete_user_title": "حذف کاربر '%{name}'",
-        "delete_user_content": "آیا مطمئن هستید که می خواهید این کاربر و همه داده های او (از جمله لیست پخش و تنظیمات برگزیده اش) را حذف کنید؟",
-        "notifications_blocked": "شما اعلان های این سایت را در تنظیمات مرورگر خود مسدود کرده اید",
-        "notifications_not_available": "این مرورگر از اعلان های دسکتاپ پشتیبانی نمی کند یا از طریق https به نوید روم دسترسی ندارید",
-        "lastfmLinkSuccess": "last.fm با موفقیت مرتبط شد و scrobbling فعال شد",
-        "lastfmLinkFailure": "last.fm پیوند داده نشد",
-        "lastfmUnlinkSuccess": "last.fm لغو پیوند شده و scrobbling غیرفعال شده است",
-        "lastfmUnlinkFailure": "پیوند last.fm را نمی توان لغو کرد",
-        "openIn": {
-            "lastfm": "بازکردن در Last.fm",
-            "musicbrainz": "بازکردن در موزیک براینز"
-        },
-        "lastfmLink": "بیشتر بخوانید...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": "",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+    "artist": {
+      "name": "هنرمند |||| هنرمندان",
+      "fields": {
+        "name": "نام",
+        "albumCount": "تعداد آلبوم",
+        "songCount": "تعداد آهنگ",
+        "playCount": "پخش ها",
+        "rating": "رتبه بندی",
+        "genre": "ژانر",
+        "size": ""
+      }
     },
-    "menu": {
-        "library": "کتابخانه",
-        "settings": "تنظیمات",
-        "version": "نسخه",
-        "theme": "تم",
-        "personal": {
-            "name": "شخصی",
-            "options": {
-                "theme": "تم",
-                "language": "زبان",
-                "defaultView": "نمای پیش فرض",
-                "desktop_notifications": "اعلان های دسکتاپ",
-                "lastfmScrobbling": "اسکروبل به Last.fm",
-                "listenBrainzScrobbling": "",
-                "replaygain": "",
-                "preAmp": "",
-                "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
-                }
-            }
-        },
-        "albumList": "آلبوم ها",
-        "about": "درباره",
-        "playlists": "لیست پخش",
-        "sharedPlaylists": "لیست پخش مشترک"
+    "user": {
+      "name": "کاربر |||| کاربران",
+      "fields": {
+        "userName": "نام کاربری",
+        "isAdmin": "ادمین است",
+        "lastLoginAt": "آخرین ورود در",
+        "updatedAt": "به روز شده در",
+        "name": "نام",
+        "password": "کلمه عبور",
+        "createdAt": "ایجاد شده در",
+        "changePassword": "تغییر کلمه عبور؟",
+        "currentPassword": "کلمه عبور جاری",
+        "newPassword": "کلمه عبور جدید",
+        "token": ""
+      },
+      "helperTexts": {
+        "name": "تغییرات نام شما در ورود بعدی منعکس می شود"
+      },
+      "notifications": {
+        "created": "کاربر ایجاد شد",
+        "updated": "کاربر به روز شد",
+        "deleted": "کاربر حذف شد"
+      },
+      "message": {
+        "listenBrainzToken": "",
+        "clickHereForToken": ""
+      }
     },
     "player": {
-        "playListsText": "صف پخش",
-        "openText": "بازکردن",
-        "closeText": "بستن",
-        "notContentText": "بدون موسیقی",
-        "clickToPlayText": "برای پخش کلیک کنید",
-        "clickToPauseText": "برای مکث کلیک کنید",
-        "nextTrackText": "آهنگ بعدی",
-        "previousTrackText": "آهنگ قبلی",
-        "reloadText": "بارگیری مجدد",
-        "volumeText": "حجم صدا",
-        "toggleLyricText": "کلید متن ترانه",
-        "toggleMiniModeText": "به حداقل رساندن",
-        "destroyText": "از بین رفتن",
-        "downloadText": "دانلود",
-        "removeAudioListsText": "حذف لیست های صوتی",
-        "clickToDeleteText": "برای حذف %{name} کلیک کنید",
-        "emptyLyricText": "بدون متن ترانه",
-        "playModeText": {
-            "order": "به ترتیب",
-            "orderLoop": "تکرار",
-            "singleLoop": "تکرار یکی",
-            "shufflePlay": "درهم"
-        }
+      "name": "پخش کننده |||| پخش کننده ها",
+      "fields": {
+        "name": "نام",
+        "transcodingId": "کدگذاری",
+        "maxBitRate": "حداکثر نرخ بیت",
+        "client": "سرویس گیرنده",
+        "userName": "نام کاربری",
+        "lastSeen": "اخرین بازدید در",
+        "reportRealPath": "گزارش مسیر واقعی",
+        "scrobbleEnabled": ""
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "صفحه نخست",
-            "source": "کد منبع",
-            "featureRequests": "درخواست های ویژگی"
-        }
+    "transcoding": {
+      "name": "کدگذاری |||| کدگذاری ها",
+      "fields": {
+        "name": "نام",
+        "targetFormat": "فرمت هدف",
+        "defaultBitRate": "نرخ بیت پیشفرض",
+        "command": "فرمان"
+      }
     },
-    "activity": {
-        "title": "فعالیّت",
-        "totalScanned": "کل پوشه ها اسکن شدند",
-        "quickScan": "اسکن سریع",
-        "fullScan": "اسکن کامل",
-        "serverUptime": "زمان کار سرور",
-        "serverDown": "آفلاین"
+    "playlist": {
+      "name": "لیست پخش |||| فهرست های پخش",
+      "fields": {
+        "name": "نام",
+        "duration": "مدّت زمان",
+        "ownerName": "مالک",
+        "public": "عمومی",
+        "updatedAt": "بروزشده در",
+        "createdAt": "ایجادشده در",
+        "songCount": "ترانه ها",
+        "comment": "اظهارنظر",
+        "sync": "واردکردن-خودکار",
+        "path": "واردکردن از"
+      },
+      "actions": {
+        "selectPlaylist": "یک لیست پخش انتخاب کنید:",
+        "addNewPlaylist": "ایجاد \"%{name}\"",
+        "export": "صادرکردن",
+        "makePublic": "",
+        "makePrivate": ""
+      },
+      "message": {
+        "duplicate_song": "افزودن آهنگ های تکراری",
+        "song_exist": "موارد تکراری به لیست پخش اضافه می شوند. آیا می خواهید موارد تکراری را اضافه کنید یا از آنها صرف نظر می کنید؟"
+      }
     },
-    "help": {
-        "title": "کلیدهای میانبر نوید روم",
-        "hotkeys": {
-            "show_help": "نمایش این کمک",
-            "toggle_menu": "دکمه منو نوارکناری",
-            "toggle_play": "پخش / مکث",
-            "prev_song": "آهنگ قبلی",
-            "next_song": "آهنگ بعدی",
-            "vol_up": "حجم صدا بالا",
-            "vol_down": "حجم صدا پائین",
-            "toggle_love": "افزودن این آهنگ به موارد دلخواه",
-            "current_song": ""
-        }
+    "radio": {
+      "name": "",
+      "fields": {
+        "name": "",
+        "streamUrl": "",
+        "homePageUrl": "",
+        "updatedAt": "",
+        "createdAt": ""
+      },
+      "actions": {
+        "playNow": ""
+      }
+    },
+    "share": {
+      "name": "",
+      "fields": {
+        "username": "",
+        "url": "",
+        "description": "",
+        "contents": "",
+        "expiresAt": "",
+        "lastVisitedAt": "",
+        "visitCount": "",
+        "format": "",
+        "maxBitRate": "",
+        "updatedAt": "",
+        "createdAt": ""
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "از اینکه نویدروم را نصب کردید متشکریم!",
+      "welcome2": "برای شروع ، یک کاربر مدپریت ایجاد کنید",
+      "confirmPassword": "تأیید کلمه عبور",
+      "buttonCreateAdmin": "ایجاد مدیر",
+      "auth_check_error": "لطفا برای ادامه وارد سیستم شوید",
+      "user_menu": "پروفایل",
+      "username": "نام کاربری",
+      "password": "کلمه عبور",
+      "sign_in": "ورود",
+      "sign_in_error": "احراز هویت ناموفق بود، لطفاً دوباره امتحان کنید",
+      "logout": "خروج"
+    },
+    "validation": {
+      "invalidChars": "لطفاً فقط از حروف و اعداد استفاده کنید",
+      "passwordDoesNotMatch": "کلمه عبور مطابقت ندارد",
+      "required": "ضروری",
+      "minLength": "حداقل باید %{min} کاراکتر داشته باشد",
+      "maxLength": "حداکثر %{max} کاراکتر یا کمتر باشد",
+      "minValue": "باید حداقل %{min} دقیقه باشد",
+      "maxValue": "حداکثر %{max} دقیقه یا کمتر باشد",
+      "number": "باید یک عدد باشد",
+      "email": "باید یک ایمیل آدرس معتبر باشد",
+      "oneOf": "باید یکی از موارد زیر باشد: %{options}",
+      "regex": "باید با یک قالب خاص (regex) مطابقت داشته باشد: %{pattern}",
+      "unique": "باید یکتا باشد",
+      "url": ""
+    },
+    "action": {
+      "add_filter": "افزودن فیلتر",
+      "add": "افزودن",
+      "back": "برگشت به عقب",
+      "bulk_actions": "1 مورد انتخاب شد |||| %{smart_count} آیتم انتخاب شده",
+      "cancel": "لغو",
+      "clear_input_value": "پاک کردن مقدار",
+      "clone": "شبیه",
+      "confirm": "تایید",
+      "create": "ایجاد",
+      "delete": "حذف",
+      "edit": "ویرایش",
+      "export": "صادرکردن",
+      "list": "فهرست",
+      "refresh": "تازه کردن",
+      "remove_filter": "حذف این فیلتر",
+      "remove": "حذف",
+      "save": "ذخیره",
+      "search": "جستجو",
+      "show": "نمایش",
+      "sort": "ترتیب",
+      "undo": "واگرد",
+      "expand": "گشودن",
+      "close": "بستن",
+      "open_menu": "بازکردن منو",
+      "close_menu": "بستن منو",
+      "unselect": "لغو انتخاب",
+      "skip": "ردشدن",
+      "bulk_actions_mobile": "",
+      "share": "",
+      "download": ""
+    },
+    "boolean": {
+      "true": "بله",
+      "false": "خیر"
+    },
+    "page": {
+      "create": "ایجاد %{name}",
+      "dashboard": "داشبورد",
+      "edit": "%{name} #%{id}",
+      "error": "مشکلی پیش آمد",
+      "list": "%{name}",
+      "loading": "بارگذاری",
+      "not_found": "پیدا نشد",
+      "show": "%{name} #%{id}",
+      "empty": "هنوز %{name} نیست",
+      "invite": "آیا میخواهید یکی اضافه کنید؟"
+    },
+    "input": {
+      "file": {
+        "upload_several": "تعدادی فایل برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب یکی از آنها کلیک کنید.",
+        "upload_single": "یک فایل را برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب روی آن کلیک کنید."
+      },
+      "image": {
+        "upload_several": "تعدادی تصویر برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب یکی روی آن کلیک کنید.",
+        "upload_single": "یک تصویر را برای بارگذاری بکشید و اینجا رها کنید یا برای انتخاب روی آن کلیک کنید."
+      },
+      "references": {
+        "all_missing": "داده های مرجع در دسترس نمی باشد.",
+        "many_missing": "حداقل یکی از مرجع های مرتبط به نظر می رسد دیگر در دسترس نیست.",
+        "single_missing": "مرجع مرتبط دیگر در دسترس نیست."
+      },
+      "password": {
+        "toggle_visible": "پنهان کردن کلمه عبور",
+        "toggle_hidden": "نمایش کلمه عبور"
+      }
+    },
+    "message": {
+      "about": "درباره",
+      "are_you_sure": "آیا مطمئن هستید؟",
+      "bulk_delete_content": "آیا مطمئن هستید که می خواهید این%{name} را حذف کنید؟ |||| آیا مطمئن هستید که می خواهید این موارد %{smart_count} را حذف کنید؟",
+      "bulk_delete_title": "حذف %{name} |||| حذف %{smart_count} %{name}",
+      "delete_content": "آیا مطمئن هستید که میخواهید این مورد را حذف کنید؟",
+      "delete_title": "حذف %{name} #%{id}",
+      "details": "جزئیات",
+      "error": "یک خطای سرویس گیرنده رخ داده و درخواست شما کامل نشد.",
+      "invalid_form": "فرم معتبر نیست. لطفاً خطاها را بررسی کنید",
+      "loading": "صفحه در حال بارگیری است، تنها چند لحظه لطفاً شکیبا باشید",
+      "no": "خیر",
+      "not_found": "یا آدرس اینترنتی اشتباهی تایپ کرده اید یا پیوند بدی را دنبال کرده اید.",
+      "yes": "بله",
+      "unsaved_changes": "برخی از تغییرات شما ذخیره نشده. آیا مطمئن هستید که می خواهید آنها را نادیده بگیرید؟"
+    },
+    "navigation": {
+      "no_results": "نتیجه ای پیدا نشد",
+      "no_more_results": "شماره صفحه %{page} خارج از محدوده است. صفحه قبلی را امتحان کنید",
+      "page_out_of_boundaries": "شماره صفحه %{page} خارج از محدوده است",
+      "page_out_from_end": "نمیتوان به بعد از آخرین صفحه رفت",
+      "page_out_from_begin": "نمیتوان به قبل از صفحه 1 رفت",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} از %{total}",
+      "page_rows_per_page": "آیتم در صفحه :",
+      "next": "بعدی",
+      "prev": "قبلی",
+      "skip_nav": "پرش به محتوا"
+    },
+    "notification": {
+      "updated": "عنصر به روز شد |||| {smart_count} عنصر به روز شدند",
+      "created": "عنصر ایجاد شد",
+      "deleted": "عنصر حذف شد |||| {smart_count} عنصر حذف شدند",
+      "bad_item": "عنصر نادرست",
+      "item_doesnt_exist": "عنصر موجود نمی باشد",
+      "http_error": "خطای ارتباط سرور",
+      "data_provider_error": "خطای ارائه کننده داده. برای جزئیات بیشتر کنسول را بررسی کنید.",
+      "i18n_error": "نمی تواند ترجمه ها را برای زبان تعین شده بارگذاری کرد",
+      "canceled": "اقدام لغو شد",
+      "logged_out": "جلسه شما به پایان رسیده، لطفاً دوباره وصل شوید.",
+      "new_version": "نسخه جدید در دسترس است! لطفا این پنجره را تازه کنید."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "ستون ها برای نمایش",
+      "layout": "لایه",
+      "grid": "شبکه",
+      "table": "جدول"
+    }
+  },
+  "message": {
+    "note": "توجه",
+    "transcodingDisabled": "تغییر پیکربندی کدگذاری از طریق رابط وب به دلایل امنیتی غیرفعال است. اگر می خواهید گزینه های کدگذاری را تغییر دهید (ویرایش یا اضافه کنید) ، سرور را با گزینه پیکربندی %{config} راه اندازی مجدد کنید.",
+    "transcodingEnabled": "نویدروم در حال حاضر با %{config}, اجرا می شود و امکان اجرای دستورات سیستم از تنظیمات کدگذاری با استفاده از رابط وب را ممکن می سازد. توصیه می کنیم آن را به دلایل امنیتی غیرفعال کنید و فقط هنگام پیکربندی گزینه های کدگذاری آن را فعال کنید.",
+    "songsAddedToPlaylist": "1 آهنگ به لیست پخش اضافه شد |||| %{smart_count} آهنگ به لیست پخش اضافه شد",
+    "noPlaylistsAvailable": "موجود نیست",
+    "delete_user_title": "حذف کاربر '%{name}'",
+    "delete_user_content": "آیا مطمئن هستید که می خواهید این کاربر و همه داده های او (از جمله لیست پخش و تنظیمات برگزیده اش) را حذف کنید؟",
+    "notifications_blocked": "شما اعلان های این سایت را در تنظیمات مرورگر خود مسدود کرده اید",
+    "notifications_not_available": "این مرورگر از اعلان های دسکتاپ پشتیبانی نمی کند یا از طریق https به نوید روم دسترسی ندارید",
+    "lastfmLinkSuccess": "last.fm با موفقیت مرتبط شد و scrobbling فعال شد",
+    "lastfmLinkFailure": "last.fm پیوند داده نشد",
+    "lastfmUnlinkSuccess": "last.fm لغو پیوند شده و scrobbling غیرفعال شده است",
+    "lastfmUnlinkFailure": "پیوند last.fm را نمی توان لغو کرد",
+    "openIn": {
+      "lastfm": "بازکردن در Last.fm",
+      "musicbrainz": "بازکردن در موزیک براینز"
+    },
+    "lastfmLink": "بیشتر بخوانید...",
+    "listenBrainzLinkSuccess": "",
+    "listenBrainzLinkFailure": "",
+    "listenBrainzUnlinkSuccess": "",
+    "listenBrainzUnlinkFailure": "",
+    "downloadOriginalFormat": "",
+    "shareOriginalFormat": "",
+    "shareDialogTitle": "",
+    "shareBatchDialogTitle": "",
+    "shareSuccess": "",
+    "shareFailure": "",
+    "downloadDialogTitle": "",
+    "shareCopyToClipboard": ""
+  },
+  "menu": {
+    "library": "کتابخانه",
+    "settings": "تنظیمات",
+    "version": "نسخه",
+    "theme": "تم",
+    "personal": {
+      "name": "شخصی",
+      "options": {
+        "theme": "تم",
+        "language": "زبان",
+        "defaultView": "نمای پیش فرض",
+        "desktop_notifications": "اعلان های دسکتاپ",
+        "lastfmScrobbling": "اسکروبل به Last.fm",
+        "listenBrainzScrobbling": "",
+        "replaygain": "",
+        "preAmp": "",
+        "gain": {
+          "none": "",
+          "album": "",
+          "track": ""
+        }
+      }
+    },
+    "albumList": "آلبوم ها",
+    "about": "درباره",
+    "playlists": "لیست پخش",
+    "sharedPlaylists": "لیست پخش مشترک"
+  },
+  "player": {
+    "playListsText": "صف پخش",
+    "openText": "بازکردن",
+    "closeText": "بستن",
+    "notContentText": "بدون موسیقی",
+    "clickToPlayText": "برای پخش کلیک کنید",
+    "clickToPauseText": "برای مکث کلیک کنید",
+    "nextTrackText": "آهنگ بعدی",
+    "previousTrackText": "آهنگ قبلی",
+    "reloadText": "بارگیری مجدد",
+    "volumeText": "حجم صدا",
+    "toggleLyricText": "کلید متن ترانه",
+    "toggleMiniModeText": "به حداقل رساندن",
+    "destroyText": "از بین رفتن",
+    "downloadText": "دانلود",
+    "removeAudioListsText": "حذف لیست های صوتی",
+    "clickToDeleteText": "برای حذف %{name} کلیک کنید",
+    "emptyLyricText": "بدون متن ترانه",
+    "playModeText": {
+      "order": "به ترتیب",
+      "orderLoop": "تکرار",
+      "singleLoop": "تکرار یکی",
+      "shufflePlay": "درهم"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "صفحه نخست",
+      "source": "کد منبع",
+      "featureRequests": "درخواست های ویژگی"
+    }
+  },
+  "activity": {
+    "title": "فعالیّت",
+    "totalScanned": "کل پوشه ها اسکن شدند",
+    "quickScan": "اسکن سریع",
+    "fullScan": "اسکن کامل",
+    "serverUptime": "زمان کار سرور",
+    "serverDown": "آفلاین"
+  },
+  "help": {
+    "title": "کلیدهای میانبر نوید روم",
+    "hotkeys": {
+      "show_help": "نمایش این کمک",
+      "toggle_menu": "دکمه منو نوارکناری",
+      "toggle_play": "پخش / مکث",
+      "prev_song": "آهنگ قبلی",
+      "next_song": "آهنگ بعدی",
+      "vol_up": "حجم صدا بالا",
+      "vol_down": "حجم صدا پائین",
+      "toggle_love": "افزودن این آهنگ به موارد دلخواه",
+      "current_song": ""
+    }
+  }
 }

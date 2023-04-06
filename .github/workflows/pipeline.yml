@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.20.x,1.19.x]
+        go_version: [1.20.x, 1.19.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -75,14 +75,14 @@ jobs:
     name: Build JS bundle
     runs-on: ubuntu-latest
     env:
-      NODE_OPTIONS: '--max_old_space_size=4096'
+      NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
       - name: npm install dependencies
         run: |
