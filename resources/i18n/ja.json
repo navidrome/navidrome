@@ -190,7 +190,8 @@
                 "format": "フォーマット",
                 "maxBitRate": "最大ビットレート",
                 "updatedAt": "更新日",
-                "createdAt": "作成日"
+                "createdAt": "作成日",
+                "downloadable": ""
             }
         }
     },

@@ -183,7 +183,6 @@
                 "username": "Compartilhado por",
                 "url": "Link",
                 "description": "Descrição",
-                "downloadable": "Permitir Baixar?",
                 "contents": "Conteúdo",
                 "expiresAt": "Dt. Expiração",
                 "lastVisitedAt": "Última visita",
@@ -191,7 +190,8 @@
                 "format": "Formato",
                 "maxBitRate": "Bitrate máx",
                 "updatedAt": "Últ. Atualização",
-                "createdAt": "Data de Criação"
+                "createdAt": "Data de Criação",
+                "downloadable": "Permitir Baixar?"
             }
         }
     },

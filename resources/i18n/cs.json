@@ -190,7 +190,8 @@
                 "format": "",
                 "maxBitRate": "",
                 "updatedAt": "",
-                "createdAt": ""
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },

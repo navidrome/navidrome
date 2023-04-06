@@ -190,7 +190,8 @@
                 "format": "Формат",
                 "maxBitRate": "Макс. Битрейт",
                 "updatedAt": "Обновлено в",
-                "createdAt": "Создано"
+                "createdAt": "Создано",
+                "downloadable": "Разрешить загрузку?"
             }
         }
     },
@@ -332,7 +333,7 @@
             "new_version": "Доступна новая версия! Пожалуйста, обновите это окно"
         },
         "toggleFieldsMenu": {
-            "columnsToDisplay": "Отображать столбцов",
+            "columnsToDisplay": "Отображение столбцов",
             "layout": "Макет",
             "grid": "Сетка",
             "table": "Таблица"
@@ -368,7 +369,7 @@
         "shareSuccess": "URL скопирован в буфер обмена: %{url}",
         "shareFailure": "Ошибка копирования URL-адреса %{url} в буфер обмена",
         "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": ""
+        "shareCopyToClipboard": "Копировать в буфер обмена: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Библиотека",

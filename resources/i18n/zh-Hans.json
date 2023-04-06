@@ -191,7 +191,7 @@
                 "maxBitRate": "最大比特率",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
-		"downloadable": "是否允许下载"
+                "downloadable": "是否允许下载"
             }
         }
     },

@@ -18,7 +18,6 @@
                 "size": "حجم الملف",
                 "updatedAt": "وقت التحديث",
                 "bitRate": "معدل البت",
-                "channels": "القنوات",
                 "discSubtitle": "العنوان الفرعي للقرص",
                 "starred": "المفضلة",
                 "comment": "التعليق",
@@ -26,6 +25,7 @@
                 "quality": "الجودة",
                 "bpm": "سرعة الإيقاع",
                 "playDate": "أخر تشغيلة",
+                "channels": "القنوات",
                 "createdAt": "تاريخ الإضافة"
             },
             "actions": {
@@ -46,7 +46,6 @@
                 "duration": "المدة",
                 "songCount": "صوتية",
                 "playCount": "تشغيلات",
-                "size": "الحجم",
                 "name": "الاسم",
                 "genre": "النوع",
                 "compilation": "التجميعة",
@@ -54,17 +53,18 @@
                 "updatedAt": "وقت التحديث",
                 "comment": "التعليق",
                 "rating": "التقييم",
-                "createdAt": "تاريخ الإضافة"
+                "createdAt": "تاريخ الإضافة",
+                "size": "الحجم"
             },
             "actions": {
                 "playAll": "شغّل",
                 "playNext": "شغّل التالي",
                 "addToQueue": "شغّل لاحقا",
-                "share": "شارك",
                 "shuffle": "اخلط",
                 "addToPlaylist": "أضف لقائمة التشغيل",
                 "download": "نزّل",
-                "info": "معلومات"
+                "info": "معلومات",
+                "share": "شارك"
             },
             "lists": {
                 "all": "الكل",
@@ -82,10 +82,10 @@
                 "name": "الاسم",
                 "albumCount": "عدد الألبومات",
                 "songCount": "عدد الصوتيات",
-                "size": "الحجم",
                 "playCount": "التشغيلات",
                 "rating": "التقييم",
-                "genre": "النوع"
+                "genre": "النوع",
+                "size": "الحجم"
             }
         },
         "user": {
@@ -183,7 +183,6 @@
                 "username": "مشاركة بواسطة",
                 "url": "العنوان",
                 "description": "الوصف",
-                "downloadable": "هل يسمح بالتنزيل؟",
                 "contents": "المحتويات",
                 "expiresAt": "تاريخ الانتهاء",
                 "lastVisitedAt": "آخر زيارة",
@@ -191,7 +190,8 @@
                 "format": "التنسيق",
                 "maxBitRate": "أقصى معدل بت",
                 "updatedAt": "آخر تحديث",
-                "createdAt": "تاريخ الإنشاء"
+                "createdAt": "تاريخ الإنشاء",
+                "downloadable": "هل يسمح بالتنزيل؟"
             }
         }
     },
@@ -229,7 +229,6 @@
             "add": "أضف",
             "back": "أرجع للخلف",
             "bulk_actions": "عنصر واحد محدد |||| %{smart_count} عنصرا محددا",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "ألغ",
             "clear_input_value": "امسح القيمة",
             "clone": "انسخ",
@@ -253,6 +252,7 @@
             "close_menu": "أغلق القائمة",
             "unselect": "ألغ التحديد",
             "skip": "تخطئ",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "شارك",
             "download": "نزل"
         },
@@ -353,23 +353,23 @@
         "lastfmLinkFailure": "حساب Last.fm غير مربوط",
         "lastfmUnlinkSuccess": "ألغي ربط Last.fm وعطل إرسال البيانات",
         "lastfmUnlinkFailure": "تعذر فك ارتباط حساب Last.fm",
-        "listenBrainzLinkSuccess": "ربط حساب ListenBrainz بنجاح ومكّن إرسال البينات باسم المستخدم: %{user}",
-        "listenBrainzLinkFailure": "تعذر ربط ListenBrainz : %{error}",
-        "listenBrainzUnlinkSuccess": "ألغي ربط ListenBrainz وعطل إرسال البيانات",
-        "listenBrainzUnlinkFailure": "حساب ListenBrainz غير مربوط",
         "openIn": {
             "lastfm": "افتح في Last.fm",
             "musicbrainz": "افتح في MusicBrainz"
         },
         "lastfmLink": "اقرأ المزيد…",
+        "listenBrainzLinkSuccess": "ربط حساب ListenBrainz بنجاح ومكّن إرسال البينات باسم المستخدم: %{user}",
+        "listenBrainzLinkFailure": "تعذر ربط ListenBrainz : %{error}",
+        "listenBrainzUnlinkSuccess": "ألغي ربط ListenBrainz وعطل إرسال البيانات",
+        "listenBrainzUnlinkFailure": "حساب ListenBrainz غير مربوط",
+        "downloadOriginalFormat": "حمّل بالترميز الأصلي",
         "shareOriginalFormat": "شارك بالترميز الأصلي",
         "shareDialogTitle": "شارك %{resource} '%{name}'",
         "shareBatchDialogTitle": "شارك %{resource} |||| شارك %{smart_count} %{resource}",
-        "shareCopyToClipboard": "انسخ إلى الحافظة: Ctrl+C، إدخال",
         "shareSuccess": "نسخ الرابط للحافظة: %{url}",
         "shareFailure": "حدث خطأ أثناء نسخ الرابط  %{url} إلى الحافظة",
         "downloadDialogTitle": "حمّل %{resource} '%{name}' (%{size})",
-        "downloadOriginalFormat": "حمّل بالترميز الأصلي"
+        "shareCopyToClipboard": "انسخ إلى الحافظة: Ctrl+C، إدخال"
     },
     "menu": {
         "library": "المكتبة",
@@ -395,9 +395,9 @@
             }
         },
         "albumList": "الألبومات",
+        "about": "عن",
         "playlists": "قوائم التشغيل",
-        "sharedPlaylists": "قوائم التشغيل المشتركة",
-        "about": "عن"
+        "sharedPlaylists": "قوائم التشغيل المشتركة"
     },
     "player": {
         "playListsText": "صف التشغيل",
@@ -447,10 +447,10 @@
             "toggle_play": "شغّل / ألبث",
             "prev_song": "الصوتية السابقة",
             "next_song": "الصوتية التالية",
-            "current_song": "اذهب للصوتية الحالية",
             "vol_up": "ارفع الصوت",
             "vol_down": "أخفض الصوت",
-            "toggle_love": "أضف هذا المسار للمفضلة"
+            "toggle_love": "أضف هذا المسار للمفضلة",
+            "current_song": "اذهب للصوتية الحالية"
         }
     }
 }
