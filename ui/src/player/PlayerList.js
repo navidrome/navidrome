@@ -28,7 +28,7 @@ const PlayerList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
-          primaryText={(r) => r.client}
+          primaryText={(r) => r.name}
           secondaryText={(r) => r.userName}
           tertiaryText={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
         />
