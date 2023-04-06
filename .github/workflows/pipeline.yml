@@ -203,6 +203,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
+          labels: |
+            maintainer=deluan
           images: |
             name=${{secrets.DOCKER_IMAGE}},enable=${{env.GITHUB_REF_TYPE == 'tag'}}
             name=ghcr.io/${{ github.repository }}
@@ -213,18 +215,10 @@ jobs:
 
       - name: Build and Push
         if: env.DOCKER_IMAGE != ''
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           context: .
           file: .github/workflows/pipeline.dockerfile
           platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-
-#      - name: Build the Docker image and push
-#        if: env.DOCKER_IMAGE != ''
-#        env:
-#          DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
-#          DOCKER_PLATFORM: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
-#        run: |
-#          docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/pipeline.dockerfile --push .
