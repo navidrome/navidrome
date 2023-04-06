@@ -26,7 +26,7 @@ elif [[ $GITHUB_REF == "refs/heads/master" ]]; then
 # Check if it's a feature branch
 elif [[ $GIT_BRANCH = feature/* ]]; then
     # Append the branch name with slashes replaced by hyphens to the Docker image tag
-    DOCKER_IMAGE_TAG="${DOCKER_IMAGE_TAG} --tag ${DOCKER_IMAGE}:$(echo $GIT_BRANCH | tr / -)"
+    DOCKER_IMAGE_TAG="${DOCKER_IMAGE_TAG} --tag ${DOCKER_IMAGE}:$(echo "$GIT_BRANCH" | tr / -)"
 fi
 
-echo ${DOCKER_IMAGE_TAG}
+echo "${DOCKER_IMAGE_TAG}"

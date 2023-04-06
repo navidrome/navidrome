@@ -191,6 +191,9 @@ jobs:
         if: env.DOCKER_IMAGE != ''
         run: echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      - run: .github/workflows/docker-tags.sh
+        if: env.DOCKER_IMAGE != ''
+
       - name: Build the Docker image and push
         if: env.DOCKER_IMAGE != ''
         env:
