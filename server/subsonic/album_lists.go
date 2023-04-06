@@ -182,7 +182,7 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 
 func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error) {
 	count := number.Min(utils.ParamInt(r, "count", 10), 500)
-	offset := number.Min(utils.ParamInt(r, "offset", 0), 500)
+	offset := utils.ParamInt(r, "offset", 0)
 	genre := utils.ParamString(r, "genre")
 
 	songs, err := api.getSongs(r.Context(), offset, count, filter.SongsByGenre(genre))
