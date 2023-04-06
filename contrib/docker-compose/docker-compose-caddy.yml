@@ -1,11 +1,10 @@
-version: '3.6'
+version: "3.6"
 
 volumes:
   caddy_data:
   navidrome_data:
 
 services:
-
   caddy:
     container_name: "caddy"
     image: caddy:2.6-alpine

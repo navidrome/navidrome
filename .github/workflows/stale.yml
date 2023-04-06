@@ -1,8 +1,8 @@
-name: 'Close stale and lock closed issues and PRs'
+name: "Close stale and lock closed issues and PRs"
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 1 * * *'
+    - cron: "30 1 * * *"
 permissions:
   contents: read
 jobs:
@@ -17,8 +17,8 @@ jobs:
           issue-inactive-days: 120
           pr-inactive-days: 120
           log-output: true
-          add-issue-labels: 'frozen-due-to-age'
-          add-pr-labels: 'frozen-due-to-age'
+          add-issue-labels: "frozen-due-to-age"
+          add-pr-labels: "frozen-due-to-age"
           issue-comment: >
             This issue has been automatically locked since there
             has not been any recent activity after it was closed.
@@ -43,13 +43,14 @@ jobs:
             If this is a **feature request**, and you feel that it is still relevant and valuable, please tell us why.
 
             This issue will automatically be closed in the near future if no further activity occurs. Thank you for all your contributions.
-          stale-pr-message: This PR has been automatically marked as stale because it has not had
+          stale-pr-message:
+            This PR has been automatically marked as stale because it has not had
             recent activity. The resources of the Navidrome team are limited, and so we are asking for your help.
 
             Please check https://github.com/navidrome/navidrome/blob/master/CONTRIBUTING.md#pull-requests and verify that this code contribution fits with the description. If yes, tell it in a comment.
 
             This PR will automatically be closed in the near future if no further activity occurs. Thank you for all your contributions.
-          stale-issue-label: 'stale'
-          exempt-issue-labels: 'keep,security'
-          stale-pr-label: 'stale'
-          exempt-pr-labels: 'keep,security'
+          stale-issue-label: "stale"
+          exempt-issue-labels: "keep,security"
+          stale-pr-label: "stale"
+          exempt-pr-labels: "keep,security"

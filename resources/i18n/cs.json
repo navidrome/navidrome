@@ -1,455 +1,455 @@
 {
-    "languageName": "Čeština",
-    "resources": {
-        "song": {
-            "name": "Skladba |||| Skladby",
-            "fields": {
-                "albumArtist": "Interpret alba",
-                "duration": "Délka",
-                "trackNumber": "#",
-                "playCount": "Přehrání",
-                "title": "Název",
-                "artist": "Interpret",
-                "album": "Album",
-                "path": "Cesta k souboru",
-                "genre": "Žánr",
-                "compilation": "Kompilace",
-                "year": "Rok",
-                "size": "Velikost souboru",
-                "updatedAt": "Nahráno",
-                "bitRate": "Přenosová rychlost",
-                "discSubtitle": "Podtitul disku",
-                "starred": "Oblíbené",
-                "comment": "Komentář",
-                "rating": "Hodnocení",
-                "quality": "Kvalita",
-                "bpm": "BPM",
-                "playDate": "Poslední přehravaná skladba",
-                "channels": "Kanály",
-                "createdAt": ""
-            },
-            "actions": {
-                "addToQueue": "Přehrát později",
-                "playNow": "Přehrát nyní",
-                "addToPlaylist": "Přidat do seznamu skladeb",
-                "shuffleAll": "Zamíchat vše",
-                "download": "Stáhnout",
-                "playNext": "Přehrát další",
-                "info": "Získat informace"
-            }
-        },
-        "album": {
-            "name": "Album |||| Alba",
-            "fields": {
-                "albumArtist": "Interpret alba",
-                "artist": "Interpret",
-                "duration": "Délka",
-                "songCount": "Skladby",
-                "playCount": "Přehrání",
-                "name": "Název",
-                "genre": "Žánr",
-                "compilation": "Kompilace",
-                "year": "Rok",
-                "updatedAt": "Aktualizováno",
-                "comment": "Komentář",
-                "rating": "Hodnocení",
-                "createdAt": "",
-                "size": ""
-            },
-            "actions": {
-                "playAll": "Přehrát",
-                "playNext": "Přehrát další",
-                "addToQueue": "Přehrát později",
-                "shuffle": "Zamíchat",
-                "addToPlaylist": "Přidat do seznamu skladeb",
-                "download": "Stáhnout",
-                "info": "Získat informace",
-                "share": ""
-            },
-            "lists": {
-                "all": "Všechno",
-                "random": "Náhodné",
-                "recentlyAdded": "Nedávno přidané",
-                "recentlyPlayed": "Nedávno přehrané",
-                "mostPlayed": "Nejpřehrávanější",
-                "starred": "Oblíbené",
-                "topRated": "Nejlépe hodnocené"
-            }
-        },
-        "artist": {
-            "name": "Interpret |||| Interpreti",
-            "fields": {
-                "name": "Název",
-                "albumCount": "Počet alb",
-                "songCount": "Počet skladeb",
-                "playCount": "Přehrání",
-                "rating": "Hodnocení",
-                "genre": "Žánr",
-                "size": ""
-            }
-        },
-        "user": {
-            "name": "Uživatel |||| Uživatelé",
-            "fields": {
-                "userName": "Uživatelské jméno",
-                "isAdmin": "Správcem",
-                "lastLoginAt": "Naposledy přihlášen",
-                "updatedAt": "Upraven",
-                "name": "Jméno",
-                "password": "Heslo",
-                "createdAt": "Vytvořen",
-                "changePassword": "Změnit heslo?",
-                "currentPassword": "Současné heslo",
-                "newPassword": "Nové heslo",
-                "token": "Token"
-            },
-            "helperTexts": {
-                "name": "Změna jména se zobrazí až při dalším přihlášení"
-            },
-            "notifications": {
-                "created": "Uživatel vytvořen",
-                "updated": "Uživatel upraven",
-                "deleted": "Uživatel odstraněn"
-            },
-            "message": {
-                "listenBrainzToken": "Vložte svůj uživatelský ListenBrainz token.",
-                "clickHereForToken": "Klikněte zde pro získání svého tokenu"
-            }
-        },
-        "player": {
-            "name": "Přehrávač |||| Přehrávače",
-            "fields": {
-                "name": "Název",
-                "transcodingId": "ID překódování",
-                "maxBitRate": "Max. přenosová rychlost",
-                "client": "Klient",
-                "userName": "Uživatelské jméno",
-                "lastSeen": "Naposledy viděn",
-                "reportRealPath": "Zkutečná cesta hlášení",
-                "scrobbleEnabled": "Poslat scrobblování na externí služby"
-            }
-        },
-        "transcoding": {
-            "name": "Překódování |||| Překódování",
-            "fields": {
-                "name": "Název",
-                "targetFormat": "Cílený formát",
-                "defaultBitRate": "Výchozí přenosová rychlost",
-                "command": "Příkaz"
-            }
-        },
-        "playlist": {
-            "name": "Seznam skladeb |||| Seznamy skladeb",
-            "fields": {
-                "name": "Název",
-                "duration": "Délka",
-                "ownerName": "Autor",
-                "public": "Veřejný",
-                "updatedAt": "Nahrán",
-                "createdAt": "Vytvořen",
-                "songCount": "Skladby",
-                "comment": "Komentář",
-                "sync": "Auto-import",
-                "path": "Importovat z"
-            },
-            "actions": {
-                "selectPlaylist": "Přidat skladby do seznamu:",
-                "addNewPlaylist": "Vytvořit \"%{name}\"",
-                "export": "Export",
-                "makePublic": "Zveřejnit",
-                "makePrivate": "Nastavit jako soukromé"
-            },
-            "message": {
-                "duplicate_song": "Přidat duplicitní skladby",
-                "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
-            }
-        },
-        "radio": {
-            "name": "",
-            "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "playNow": ""
-            }
-        },
-        "share": {
-            "name": "",
-            "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": ""
-            }
-        }
+  "languageName": "Čeština",
+  "resources": {
+    "song": {
+      "name": "Skladba |||| Skladby",
+      "fields": {
+        "albumArtist": "Interpret alba",
+        "duration": "Délka",
+        "trackNumber": "#",
+        "playCount": "Přehrání",
+        "title": "Název",
+        "artist": "Interpret",
+        "album": "Album",
+        "path": "Cesta k souboru",
+        "genre": "Žánr",
+        "compilation": "Kompilace",
+        "year": "Rok",
+        "size": "Velikost souboru",
+        "updatedAt": "Nahráno",
+        "bitRate": "Přenosová rychlost",
+        "discSubtitle": "Podtitul disku",
+        "starred": "Oblíbené",
+        "comment": "Komentář",
+        "rating": "Hodnocení",
+        "quality": "Kvalita",
+        "bpm": "BPM",
+        "playDate": "Poslední přehravaná skladba",
+        "channels": "Kanály",
+        "createdAt": ""
+      },
+      "actions": {
+        "addToQueue": "Přehrát později",
+        "playNow": "Přehrát nyní",
+        "addToPlaylist": "Přidat do seznamu skladeb",
+        "shuffleAll": "Zamíchat vše",
+        "download": "Stáhnout",
+        "playNext": "Přehrát další",
+        "info": "Získat informace"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Děkujeme, že jste si nainstalovali Navidrome!",
-            "welcome2": "Nejdříve vytvořte účet správce",
-            "confirmPassword": "Potvrďte heslo",
-            "buttonCreateAdmin": "Vytvořit správce",
-            "auth_check_error": "Pro pokračování se prosím přihlašte",
-            "user_menu": "Profil",
-            "username": "Uživatelské jméno",
-            "password": "Heslo",
-            "sign_in": "Přihlásit se",
-            "sign_in_error": "Ověření selhalo, zkuste to znovu",
-            "logout": "Odhlásit se"
-        },
-        "validation": {
-            "invalidChars": "Prosím, používejte pouze písmena a čísla",
-            "passwordDoesNotMatch": "Hesla se neschodují",
-            "required": "Povinné pole",
-            "minLength": "Musí obsahovat nejméně %{min} znaků",
-            "maxLength": "Může obsahovat maximálně %{max} znaků",
-            "minValue": "Musí být alespoň %{min}",
-            "maxValue": "Může být maximálně %{max}",
-            "number": "Musí být číslo",
-            "email": "Musí být platná emailová adresa",
-            "oneOf": "Musí splňovat jedno z: %{options}",
-            "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
-            "unique": "Musí být jedinečný",
-            "url": ""
-        },
-        "action": {
-            "add_filter": "Přidat filtr",
-            "add": "Přidat",
-            "back": "Jít zpět",
-            "bulk_actions": "%{smart_count} vybráno",
-            "cancel": "Zrušit",
-            "clear_input_value": "Smazat hodnotu",
-            "clone": "Klonovat",
-            "confirm": "Potvrdit",
-            "create": "Vytvořit",
-            "delete": "Smazat",
-            "edit": "Upravit",
-            "export": "Exportovat",
-            "list": "Seznam",
-            "refresh": "Obnovit",
-            "remove_filter": "Odstranit filtr",
-            "remove": "Odstranit",
-            "save": "Uložit",
-            "search": "Vyhledat",
-            "show": "Ukázat",
-            "sort": "Seřadit",
-            "undo": "Vrátit",
-            "expand": "Zvětšit",
-            "close": "Zavřít",
-            "open_menu": "Otevřít nabídku",
-            "close_menu": "Zavřít nabídku",
-            "unselect": "Zrušit výběr",
-            "skip": "Přeskočit",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
-        },
-        "boolean": {
-            "true": "Ano",
-            "false": "Ne"
-        },
-        "page": {
-            "create": "Vytvořit %{name}",
-            "dashboard": "Dashboard",
-            "edit": "%{name} #%{id}",
-            "error": "Něco se pokazilo",
-            "list": "%{name}",
-            "loading": "Načítání",
-            "not_found": "Nenalezeno",
-            "show": "%{name} #%{id}",
-            "empty": "Zatím žádný %{name}.",
-            "invite": "Chcete jeden přidat?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr.",
-                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr."
-            },
-            "image": {
-                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr.",
-                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr."
-            },
-            "references": {
-                "all_missing": "Nelze nalézt referencovaná data.",
-                "many_missing": "Minimálně jedna z referencí už není dostupná.",
-                "single_missing": "Reference se nezdá být nadále dostupná."
-            },
-            "password": {
-                "toggle_visible": "Skrýt heslo",
-                "toggle_hidden": "Ukázat heslo"
-            }
-        },
-        "message": {
-            "about": "O Navidrome",
-            "are_you_sure": "Jste si jistý?",
-            "bulk_delete_content": "Jste si jistý, že chcete smazat %{name}? |||| Jste si jistý, že chcete smazat těchto %{smart_count} položek?",
-            "bulk_delete_title": "Smazat %{name} |||| Smazat %{smart_count} %{name} položek",
-            "delete_content": "Jste si jistý, že chcete smazat tuto položku?",
-            "delete_title": "Smazat %{name} #%{id}",
-            "details": "Detaily",
-            "error": "Objevila se chyba klienta a váš požadavek nemohl být splněn.",
-            "invalid_form": "Formulář není platný. Prosím překontrolujte ho.",
-            "loading": "Stránka se načítá, prosím vyčkejte",
-            "no": "Ne",
-            "not_found": "Napsali jste špatnou adresu URL, nebo jste následovali špatný odkaz.",
-            "yes": "Ano",
-            "unsaved_changes": "Některé vaše změny nebyly uloženy. Jste si jisti, že je chcete ignorovat?"
-        },
-        "navigation": {
-            "no_results": "Žádné výsledky nebyly nalezeny",
-            "no_more_results": "Stránka číslo %{page} je mimo rozsah. Zkuste předchozí.",
-            "page_out_of_boundaries": "Stránka číslo %{page} je mimo rozsah",
-            "page_out_from_end": "Nelze jít za poslední stranu",
-            "page_out_from_begin": "Nelze jít před první stranu",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
-            "page_rows_per_page": "Položek na stránce:",
-            "next": "Další",
-            "prev": "Předchozí",
-            "skip_nav": "Přeskočit na obsah"
-        },
-        "notification": {
-            "updated": "Prvek aktualizován |||| %{smart_count} prvků aktualizováno",
-            "created": "Prvek vytvořen",
-            "deleted": "Prvek smazán |||| %{smart_count} prvků smazáno",
-            "bad_item": "Nesprávný prvek",
-            "item_doesnt_exist": "Prvek neexistuje",
-            "http_error": "Chyba komunikace serveru",
-            "data_provider_error": "Chyba dataProvideru. Detaily najdete v konzoli.",
-            "i18n_error": "Nelze načíst překlady pro vybraný jazyk",
-            "canceled": "Akce zrušena",
-            "logged_out": "Vaše relace skončila, prosím připojte se znovu.",
-            "new_version": "Je dostupná nová verze! Prosím obnovte toto okno."
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "Sloupce na displej",
-            "layout": "Rozložení",
-            "grid": "Mřížka",
-            "table": "Tabulka"
-        }
+    "album": {
+      "name": "Album |||| Alba",
+      "fields": {
+        "albumArtist": "Interpret alba",
+        "artist": "Interpret",
+        "duration": "Délka",
+        "songCount": "Skladby",
+        "playCount": "Přehrání",
+        "name": "Název",
+        "genre": "Žánr",
+        "compilation": "Kompilace",
+        "year": "Rok",
+        "updatedAt": "Aktualizováno",
+        "comment": "Komentář",
+        "rating": "Hodnocení",
+        "createdAt": "",
+        "size": ""
+      },
+      "actions": {
+        "playAll": "Přehrát",
+        "playNext": "Přehrát další",
+        "addToQueue": "Přehrát později",
+        "shuffle": "Zamíchat",
+        "addToPlaylist": "Přidat do seznamu skladeb",
+        "download": "Stáhnout",
+        "info": "Získat informace",
+        "share": ""
+      },
+      "lists": {
+        "all": "Všechno",
+        "random": "Náhodné",
+        "recentlyAdded": "Nedávno přidané",
+        "recentlyPlayed": "Nedávno přehrané",
+        "mostPlayed": "Nejpřehrávanější",
+        "starred": "Oblíbené",
+        "topRated": "Nejlépe hodnocené"
+      }
     },
-    "message": {
-        "note": "POZNÁMKA",
-        "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
-        "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
-        "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb |||| %{smart_count} skladeb přidáno na seznam skladeb",
-        "noPlaylistsAvailable": "Žádné nejsou dostupné",
-        "delete_user_title": "Odstranit uživatele '%{name}'",
-        "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
-        "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
-        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https",
-        "lastfmLinkSuccess": "Last.fm úspěšně připojeno a scrobblování zapnuto",
-        "lastfmLinkFailure": "Last.fm nemohlo být připojeno",
-        "lastfmUnlinkSuccess": "Last.fm odpojeno a scrobblování vypnuto",
-        "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno",
-        "openIn": {
-            "lastfm": "Otevřít na Last.fm",
-            "musicbrainz": "Otevřít na MusicBrainz"
-        },
-        "lastfmLink": "Číst dále...",
-        "listenBrainzLinkSuccess": "ListenBrainz úspěšně připojeno a scrobblování zapnuto jako uživatel: %{user}",
-        "listenBrainzLinkFailure": "ListenBrainz nemohlo být připojeno: %{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz odpojeno a scrobblování vypnuto",
-        "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+    "artist": {
+      "name": "Interpret |||| Interpreti",
+      "fields": {
+        "name": "Název",
+        "albumCount": "Počet alb",
+        "songCount": "Počet skladeb",
+        "playCount": "Přehrání",
+        "rating": "Hodnocení",
+        "genre": "Žánr",
+        "size": ""
+      }
     },
-    "menu": {
-        "library": "Knihovna",
-        "settings": "Nastavení",
-        "version": "Verze",
-        "theme": "Téma",
-        "personal": {
-            "name": "Osobní",
-            "options": {
-                "theme": "Téma",
-                "language": "Jazyk",
-                "defaultView": "Výchozí stránka",
-                "desktop_notifications": "Oznámení na ploše",
-                "lastfmScrobbling": "Scrobblovat na Last.fm",
-                "listenBrainzScrobbling": "Scrobblovat na ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
-                "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
-                }
-            }
-        },
-        "albumList": "Alba",
-        "about": "O Navidrome",
-        "playlists": "Seznamy skladeb",
-        "sharedPlaylists": "Sdílené seznamy skladeb"
+    "user": {
+      "name": "Uživatel |||| Uživatelé",
+      "fields": {
+        "userName": "Uživatelské jméno",
+        "isAdmin": "Správcem",
+        "lastLoginAt": "Naposledy přihlášen",
+        "updatedAt": "Upraven",
+        "name": "Jméno",
+        "password": "Heslo",
+        "createdAt": "Vytvořen",
+        "changePassword": "Změnit heslo?",
+        "currentPassword": "Současné heslo",
+        "newPassword": "Nové heslo",
+        "token": "Token"
+      },
+      "helperTexts": {
+        "name": "Změna jména se zobrazí až při dalším přihlášení"
+      },
+      "notifications": {
+        "created": "Uživatel vytvořen",
+        "updated": "Uživatel upraven",
+        "deleted": "Uživatel odstraněn"
+      },
+      "message": {
+        "listenBrainzToken": "Vložte svůj uživatelský ListenBrainz token.",
+        "clickHereForToken": "Klikněte zde pro získání svého tokenu"
+      }
     },
     "player": {
-        "playListsText": "Fronta",
-        "openText": "Otevřít",
-        "closeText": "Zavřít",
-        "notContentText": "Žádné skladby",
-        "clickToPlayText": "Klikněte pro přehrání",
-        "clickToPauseText": "Klikněte pro pozastavní",
-        "nextTrackText": "Další skladba",
-        "previousTrackText": "Předchozí skladba",
-        "reloadText": "Znovu načíst",
-        "volumeText": "Hlasitost",
-        "toggleLyricText": "Přepnout text",
-        "toggleMiniModeText": "Zmenšit",
-        "destroyText": "Zničit",
-        "downloadText": "Stáhnout",
-        "removeAudioListsText": "Vymazat seznam",
-        "clickToDeleteText": "Klikněte pro odstratění %{name}",
-        "emptyLyricText": "Bez textu",
-        "playModeText": {
-            "order": "Popořadě",
-            "orderLoop": "Opakovat",
-            "singleLoop": "Opakovat jednou",
-            "shufflePlay": "Zamíchat"
-        }
+      "name": "Přehrávač |||| Přehrávače",
+      "fields": {
+        "name": "Název",
+        "transcodingId": "ID překódování",
+        "maxBitRate": "Max. přenosová rychlost",
+        "client": "Klient",
+        "userName": "Uživatelské jméno",
+        "lastSeen": "Naposledy viděn",
+        "reportRealPath": "Zkutečná cesta hlášení",
+        "scrobbleEnabled": "Poslat scrobblování na externí služby"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Domovská stránka",
-            "source": "Zdrojový kód",
-            "featureRequests": "Požadavky o funkce"
-        }
+    "transcoding": {
+      "name": "Překódování |||| Překódování",
+      "fields": {
+        "name": "Název",
+        "targetFormat": "Cílený formát",
+        "defaultBitRate": "Výchozí přenosová rychlost",
+        "command": "Příkaz"
+      }
     },
-    "activity": {
-        "title": "Aktivita",
-        "totalScanned": "Naskenované složky",
-        "quickScan": "Rychlý sken",
-        "fullScan": "Úplný sken",
-        "serverUptime": "Doba od spuštění",
-        "serverDown": "OFFLINE"
+    "playlist": {
+      "name": "Seznam skladeb |||| Seznamy skladeb",
+      "fields": {
+        "name": "Název",
+        "duration": "Délka",
+        "ownerName": "Autor",
+        "public": "Veřejný",
+        "updatedAt": "Nahrán",
+        "createdAt": "Vytvořen",
+        "songCount": "Skladby",
+        "comment": "Komentář",
+        "sync": "Auto-import",
+        "path": "Importovat z"
+      },
+      "actions": {
+        "selectPlaylist": "Přidat skladby do seznamu:",
+        "addNewPlaylist": "Vytvořit \"%{name}\"",
+        "export": "Export",
+        "makePublic": "Zveřejnit",
+        "makePrivate": "Nastavit jako soukromé"
+      },
+      "message": {
+        "duplicate_song": "Přidat duplicitní skladby",
+        "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
+      }
     },
-    "help": {
-        "title": "Klávesové zkratky Navidrome",
-        "hotkeys": {
-            "show_help": "Ukázat tuto nápovědu",
-            "toggle_menu": "Přepnout postranní menu",
-            "toggle_play": "Přehrát / Pozastavit",
-            "prev_song": "Předchozí skladba",
-            "next_song": "Následující skladba",
-            "vol_up": "Zvýšit hlasitost",
-            "vol_down": "Snížit hlasitost",
-            "toggle_love": "Přidat tuto skladbu do oblíbených",
-            "current_song": "Přejít na aktuální skladbu"
-        }
+    "radio": {
+      "name": "",
+      "fields": {
+        "name": "",
+        "streamUrl": "",
+        "homePageUrl": "",
+        "updatedAt": "",
+        "createdAt": ""
+      },
+      "actions": {
+        "playNow": ""
+      }
+    },
+    "share": {
+      "name": "",
+      "fields": {
+        "username": "",
+        "url": "",
+        "description": "",
+        "contents": "",
+        "expiresAt": "",
+        "lastVisitedAt": "",
+        "visitCount": "",
+        "format": "",
+        "maxBitRate": "",
+        "updatedAt": "",
+        "createdAt": ""
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Děkujeme, že jste si nainstalovali Navidrome!",
+      "welcome2": "Nejdříve vytvořte účet správce",
+      "confirmPassword": "Potvrďte heslo",
+      "buttonCreateAdmin": "Vytvořit správce",
+      "auth_check_error": "Pro pokračování se prosím přihlašte",
+      "user_menu": "Profil",
+      "username": "Uživatelské jméno",
+      "password": "Heslo",
+      "sign_in": "Přihlásit se",
+      "sign_in_error": "Ověření selhalo, zkuste to znovu",
+      "logout": "Odhlásit se"
+    },
+    "validation": {
+      "invalidChars": "Prosím, používejte pouze písmena a čísla",
+      "passwordDoesNotMatch": "Hesla se neschodují",
+      "required": "Povinné pole",
+      "minLength": "Musí obsahovat nejméně %{min} znaků",
+      "maxLength": "Může obsahovat maximálně %{max} znaků",
+      "minValue": "Musí být alespoň %{min}",
+      "maxValue": "Může být maximálně %{max}",
+      "number": "Musí být číslo",
+      "email": "Musí být platná emailová adresa",
+      "oneOf": "Musí splňovat jedno z: %{options}",
+      "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
+      "unique": "Musí být jedinečný",
+      "url": ""
+    },
+    "action": {
+      "add_filter": "Přidat filtr",
+      "add": "Přidat",
+      "back": "Jít zpět",
+      "bulk_actions": "%{smart_count} vybráno",
+      "cancel": "Zrušit",
+      "clear_input_value": "Smazat hodnotu",
+      "clone": "Klonovat",
+      "confirm": "Potvrdit",
+      "create": "Vytvořit",
+      "delete": "Smazat",
+      "edit": "Upravit",
+      "export": "Exportovat",
+      "list": "Seznam",
+      "refresh": "Obnovit",
+      "remove_filter": "Odstranit filtr",
+      "remove": "Odstranit",
+      "save": "Uložit",
+      "search": "Vyhledat",
+      "show": "Ukázat",
+      "sort": "Seřadit",
+      "undo": "Vrátit",
+      "expand": "Zvětšit",
+      "close": "Zavřít",
+      "open_menu": "Otevřít nabídku",
+      "close_menu": "Zavřít nabídku",
+      "unselect": "Zrušit výběr",
+      "skip": "Přeskočit",
+      "bulk_actions_mobile": "",
+      "share": "",
+      "download": ""
+    },
+    "boolean": {
+      "true": "Ano",
+      "false": "Ne"
+    },
+    "page": {
+      "create": "Vytvořit %{name}",
+      "dashboard": "Dashboard",
+      "edit": "%{name} #%{id}",
+      "error": "Něco se pokazilo",
+      "list": "%{name}",
+      "loading": "Načítání",
+      "not_found": "Nenalezeno",
+      "show": "%{name} #%{id}",
+      "empty": "Zatím žádný %{name}.",
+      "invite": "Chcete jeden přidat?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr.",
+        "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr."
+      },
+      "image": {
+        "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr.",
+        "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr."
+      },
+      "references": {
+        "all_missing": "Nelze nalézt referencovaná data.",
+        "many_missing": "Minimálně jedna z referencí už není dostupná.",
+        "single_missing": "Reference se nezdá být nadále dostupná."
+      },
+      "password": {
+        "toggle_visible": "Skrýt heslo",
+        "toggle_hidden": "Ukázat heslo"
+      }
+    },
+    "message": {
+      "about": "O Navidrome",
+      "are_you_sure": "Jste si jistý?",
+      "bulk_delete_content": "Jste si jistý, že chcete smazat %{name}? |||| Jste si jistý, že chcete smazat těchto %{smart_count} položek?",
+      "bulk_delete_title": "Smazat %{name} |||| Smazat %{smart_count} %{name} položek",
+      "delete_content": "Jste si jistý, že chcete smazat tuto položku?",
+      "delete_title": "Smazat %{name} #%{id}",
+      "details": "Detaily",
+      "error": "Objevila se chyba klienta a váš požadavek nemohl být splněn.",
+      "invalid_form": "Formulář není platný. Prosím překontrolujte ho.",
+      "loading": "Stránka se načítá, prosím vyčkejte",
+      "no": "Ne",
+      "not_found": "Napsali jste špatnou adresu URL, nebo jste následovali špatný odkaz.",
+      "yes": "Ano",
+      "unsaved_changes": "Některé vaše změny nebyly uloženy. Jste si jisti, že je chcete ignorovat?"
+    },
+    "navigation": {
+      "no_results": "Žádné výsledky nebyly nalezeny",
+      "no_more_results": "Stránka číslo %{page} je mimo rozsah. Zkuste předchozí.",
+      "page_out_of_boundaries": "Stránka číslo %{page} je mimo rozsah",
+      "page_out_from_end": "Nelze jít za poslední stranu",
+      "page_out_from_begin": "Nelze jít před první stranu",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
+      "page_rows_per_page": "Položek na stránce:",
+      "next": "Další",
+      "prev": "Předchozí",
+      "skip_nav": "Přeskočit na obsah"
+    },
+    "notification": {
+      "updated": "Prvek aktualizován |||| %{smart_count} prvků aktualizováno",
+      "created": "Prvek vytvořen",
+      "deleted": "Prvek smazán |||| %{smart_count} prvků smazáno",
+      "bad_item": "Nesprávný prvek",
+      "item_doesnt_exist": "Prvek neexistuje",
+      "http_error": "Chyba komunikace serveru",
+      "data_provider_error": "Chyba dataProvideru. Detaily najdete v konzoli.",
+      "i18n_error": "Nelze načíst překlady pro vybraný jazyk",
+      "canceled": "Akce zrušena",
+      "logged_out": "Vaše relace skončila, prosím připojte se znovu.",
+      "new_version": "Je dostupná nová verze! Prosím obnovte toto okno."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Sloupce na displej",
+      "layout": "Rozložení",
+      "grid": "Mřížka",
+      "table": "Tabulka"
+    }
+  },
+  "message": {
+    "note": "POZNÁMKA",
+    "transcodingDisabled": "Měnění nastavení překódování je ve webovém prostředí vypnuto kvůli bezpečnosti. Pokud by jste chtěli změnit (upravit nebo přidat) možnosti překódování, restartujte server s možností %{config}.",
+    "transcodingEnabled": "Navidrome právě běží s možností %{config}, umožňující spouštění systémových příkazů z nastavení překódování pomocí webového rozhraní. Doporučujeme ji vypnout kvůli bezpečnosti a použít ji pouze pokud upravujete nastavení překódování.",
+    "songsAddedToPlaylist": "1 skladba přidána na seznam skladeb |||| %{smart_count} skladeb přidáno na seznam skladeb",
+    "noPlaylistsAvailable": "Žádné nejsou dostupné",
+    "delete_user_title": "Odstranit uživatele '%{name}'",
+    "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
+    "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
+    "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https",
+    "lastfmLinkSuccess": "Last.fm úspěšně připojeno a scrobblování zapnuto",
+    "lastfmLinkFailure": "Last.fm nemohlo být připojeno",
+    "lastfmUnlinkSuccess": "Last.fm odpojeno a scrobblování vypnuto",
+    "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno",
+    "openIn": {
+      "lastfm": "Otevřít na Last.fm",
+      "musicbrainz": "Otevřít na MusicBrainz"
+    },
+    "lastfmLink": "Číst dále...",
+    "listenBrainzLinkSuccess": "ListenBrainz úspěšně připojeno a scrobblování zapnuto jako uživatel: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz nemohlo být připojeno: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz odpojeno a scrobblování vypnuto",
+    "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno",
+    "downloadOriginalFormat": "",
+    "shareOriginalFormat": "",
+    "shareDialogTitle": "",
+    "shareBatchDialogTitle": "",
+    "shareSuccess": "",
+    "shareFailure": "",
+    "downloadDialogTitle": "",
+    "shareCopyToClipboard": ""
+  },
+  "menu": {
+    "library": "Knihovna",
+    "settings": "Nastavení",
+    "version": "Verze",
+    "theme": "Téma",
+    "personal": {
+      "name": "Osobní",
+      "options": {
+        "theme": "Téma",
+        "language": "Jazyk",
+        "defaultView": "Výchozí stránka",
+        "desktop_notifications": "Oznámení na ploše",
+        "lastfmScrobbling": "Scrobblovat na Last.fm",
+        "listenBrainzScrobbling": "Scrobblovat na ListenBrainz",
+        "replaygain": "",
+        "preAmp": "",
+        "gain": {
+          "none": "",
+          "album": "",
+          "track": ""
+        }
+      }
+    },
+    "albumList": "Alba",
+    "about": "O Navidrome",
+    "playlists": "Seznamy skladeb",
+    "sharedPlaylists": "Sdílené seznamy skladeb"
+  },
+  "player": {
+    "playListsText": "Fronta",
+    "openText": "Otevřít",
+    "closeText": "Zavřít",
+    "notContentText": "Žádné skladby",
+    "clickToPlayText": "Klikněte pro přehrání",
+    "clickToPauseText": "Klikněte pro pozastavní",
+    "nextTrackText": "Další skladba",
+    "previousTrackText": "Předchozí skladba",
+    "reloadText": "Znovu načíst",
+    "volumeText": "Hlasitost",
+    "toggleLyricText": "Přepnout text",
+    "toggleMiniModeText": "Zmenšit",
+    "destroyText": "Zničit",
+    "downloadText": "Stáhnout",
+    "removeAudioListsText": "Vymazat seznam",
+    "clickToDeleteText": "Klikněte pro odstratění %{name}",
+    "emptyLyricText": "Bez textu",
+    "playModeText": {
+      "order": "Popořadě",
+      "orderLoop": "Opakovat",
+      "singleLoop": "Opakovat jednou",
+      "shufflePlay": "Zamíchat"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Domovská stránka",
+      "source": "Zdrojový kód",
+      "featureRequests": "Požadavky o funkce"
+    }
+  },
+  "activity": {
+    "title": "Aktivita",
+    "totalScanned": "Naskenované složky",
+    "quickScan": "Rychlý sken",
+    "fullScan": "Úplný sken",
+    "serverUptime": "Doba od spuštění",
+    "serverDown": "OFFLINE"
+  },
+  "help": {
+    "title": "Klávesové zkratky Navidrome",
+    "hotkeys": {
+      "show_help": "Ukázat tuto nápovědu",
+      "toggle_menu": "Přepnout postranní menu",
+      "toggle_play": "Přehrát / Pozastavit",
+      "prev_song": "Předchozí skladba",
+      "next_song": "Následující skladba",
+      "vol_up": "Zvýšit hlasitost",
+      "vol_down": "Snížit hlasitost",
+      "toggle_love": "Přidat tuto skladbu do oblíbených",
+      "current_song": "Přejít na aktuální skladbu"
+    }
+  }
 }

@@ -2,7 +2,7 @@ name: Update Translations
 on:
   workflow_dispatch:
   schedule:
-    - cron:  '0 10 * * *'
+    - cron: "0 10 * * *"
 jobs:
   update-translations:
     runs-on: ubuntu-latest

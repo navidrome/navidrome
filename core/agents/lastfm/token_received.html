@@ -7,7 +7,10 @@
   <body>
     <h2 id="msg"></h2>
     <script>
-      setTimeout("document.getElementById('msg').innerHTML = 'Success! Your account is linked to Last.fm. You can close this tab now.';",2000)
+      setTimeout(
+        "document.getElementById('msg').innerHTML = 'Success! Your account is linked to Last.fm. You can close this tab now.';",
+        2000
+      );
       document.addEventListener("DOMContentLoaded", () => {
         window.close();
       });
