@@ -41,7 +41,8 @@ lint: ##@Development Lint Go code
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
-	@(cd ./ui && npm run check-formatting && npm run lint)
+	@(cd ./ui && npm run check-formatting) || (echo "\n\nPlease run 'npm run prettier' to fix formatting issues." && exit 1)
+	@(cd ./ui && npm run lint)
 .PHONY: lintall
 
 wire: check_go_env ##@Development Update Dependency Injection
