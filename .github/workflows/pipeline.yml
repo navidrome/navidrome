@@ -183,11 +183,18 @@ jobs:
           name: binaries
           path: dist
 
+      - name: Login into DockerHub
+        if: env.DOCKER_IMAGE != ''
+        run: echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{secrets.DOCKER_USERNAME}} --password-stdin
+
+      - name: Login into GitHub Container Registry
+        if: env.DOCKER_IMAGE != ''
+        run: echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: Build the Docker image and push
         if: env.DOCKER_IMAGE != ''
         env:
           DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
           DOCKER_PLATFORM: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
         run: |
-          echo ${{secrets.DOCKER_PASSWORD}} | docker login -u ${{secrets.DOCKER_USERNAME}} --password-stdin
           docker buildx build --platform ${DOCKER_PLATFORM} `.github/workflows/docker-tags.sh` -f .github/workflows/pipeline.dockerfile --push .
