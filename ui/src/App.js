@@ -136,12 +136,14 @@ const Admin = (props) => {
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Player />,
-      ]}
+      ]}{' '}
     </RAAdmin>
   )
 }
 
 const AppWithHotkeys = () => {
+  let language = localStorage.getItem('locale') || 'en'
+  document.documentElement.lang = language
   if (config.enableSharing && shareInfo) {
     return <SharePlayer />
   }
