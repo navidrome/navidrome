@@ -190,7 +190,8 @@
                 "format": "Формат",
                 "maxBitRate": "Макс. Bit Rate",
                 "updatedAt": "Актуализирана на",
-                "createdAt": "Създадена на"
+                "createdAt": "Създадена на",
+                "downloadable": ""
             }
         }
     },
