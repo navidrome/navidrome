@@ -189,8 +189,9 @@
                 "visitCount": "Bezocht",
                 "format": "Formaat",
                 "maxBitRate": "Max. bitrate",
-                "updatedAt": "Geupdate op",
-                "createdAt": "Gecreëerd op"
+                "updatedAt": "Geüpdatet op",
+                "createdAt": "Gecreëerd op",
+                "downloadable": "Downloads toestaan?"
             }
         }
     },
