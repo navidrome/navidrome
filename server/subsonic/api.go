@@ -175,6 +175,9 @@ func (api *Router) routes() http.Handler {
 	} else {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
+	r.Group(func(r chi.Router) {
+		h(r, "getOpenSubsonicExtensions", api.GetOpenSubsonicExtensions)
+	})
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
