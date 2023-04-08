@@ -136,7 +136,7 @@ const Admin = (props) => {
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Player />,
-      ]}{' '}
+      ]}
     </RAAdmin>
   )
 }
