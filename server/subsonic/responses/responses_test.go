@@ -19,7 +19,13 @@ import (
 var _ = Describe("Responses", func() {
 	var response *Subsonic
 	BeforeEach(func() {
-		response = &Subsonic{Status: "ok", Version: "1.8.0", Type: consts.AppName, ServerVersion: "v0.0.0"}
+		response = &Subsonic{
+			Status:        "ok",
+			Version:       "1.8.0",
+			Type:          consts.AppName,
+			ServerVersion: "v0.0.0",
+			OpenSubsonic:  true,
+		}
 	})
 
 	Describe("EmptyResponse", func() {
