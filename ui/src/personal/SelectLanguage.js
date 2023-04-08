@@ -31,6 +31,7 @@ export const SelectLanguage = (props) => {
         }
         setLocale(event.target.value).then(() => {
           localStorage.setItem('locale', event.target.value)
+          document.documentElement.lang = event.target.value
         })
       }}
     />
