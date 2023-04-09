@@ -1,0 +1,28 @@
+get:
+  summary: Retrieve an individual artist
+  operationId: getArtist
+  parameters:
+    - $ref: '#/components/parameters/include'
+    - name: artistId
+      in: path
+      description: The unique identifier of the artist
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: An artist object
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Artist'
+    '403':
+      $ref: '#/components/responses/NotAuthorized'
+    '404':
+      $ref: '#/components/responses/NotFound'
+    '500':
+      $ref: '#/components/responses/InternalServerError'

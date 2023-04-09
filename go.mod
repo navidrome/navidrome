@@ -8,7 +8,7 @@ require (
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/beego/beego/v2 v2.0.7
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
-	github.com/deepmap/oapi-codegen v1.12.4
+	github.com/deepmap/oapi-codegen v1.12.5-0.20230403173426-fd06f5aed350
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
 	github.com/dhowden/tag v0.0.0-20220618230019-adf36e896086

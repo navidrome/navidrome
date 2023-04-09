@@ -1,0 +1,28 @@
+get:
+  summary: Retrieve an individual album
+  operationId: getAlbum
+  parameters:
+    - $ref: '#/components/parameters/include'
+    - name: albumId
+      in: path
+      description: The unique identifier of the album
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: An album object
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Album'
+    '403':
+      $ref: '#/components/responses/NotAuthorized'
+    '404':
+      $ref: '#/components/responses/NotFound'
+    '500':
+      $ref: '#/components/responses/InternalServerError'

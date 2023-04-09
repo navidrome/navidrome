@@ -1,0 +1,28 @@
+get:
+  summary: Retrieve an individual track
+  operationId: getTrack
+  parameters:
+    - $ref: '#/components/parameters/include'
+    - name: trackId
+      in: path
+      description: The unique identifier of the track
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: A track object
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '#/components/schemas/Track'
+    '403':
+      $ref: '#/components/responses/NotAuthorized'
+    '404':
+      $ref: '#/components/responses/NotFound'
+    '500':
+      $ref: '#/components/responses/InternalServerError'

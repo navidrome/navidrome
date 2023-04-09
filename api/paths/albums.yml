@@ -1,0 +1,39 @@
+get:
+  summary: Retrieve a list of albums
+  operationId: getAlbums
+  parameters:
+    - $ref: '#/components/parameters/pageLimit'
+    - $ref: '#/components/parameters/pageOffset'
+    - $ref: '#/components/parameters/filterEquals'
+    - $ref: '#/components/parameters/filterContains'
+    - $ref: '#/components/parameters/filterLessThan'
+    - $ref: '#/components/parameters/filterLessOrEqual'
+    - $ref: '#/components/parameters/filterGreaterThan'
+    - $ref: '#/components/parameters/filterGreaterOrEqual'
+    - $ref: '#/components/parameters/filterStartsWith'
+    - $ref: '#/components/parameters/filterEndsWith'
+    - $ref: '#/components/parameters/sort'
+    - $ref: '#/components/parameters/include'
+  responses:
+    '200':
+      description: A list of albums
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data, links]
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Album'
+              links:
+                $ref: '#/components/schemas/PaginationLinks'
+              meta:
+                $ref: '#/components/schemas/PaginationMeta'
+    '400':
+      $ref: '#/components/responses/BadRequest'
+    '403':
+      $ref: '#/components/responses/NotAuthorized'
+    '500':
+      $ref: '#/components/responses/InternalServerError'
