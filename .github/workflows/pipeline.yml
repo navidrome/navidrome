@@ -1,4 +1,4 @@
-name: Pipeline
+name: Pipeline [Test, Lint, Build]
 on:
   push:
     branches:
@@ -158,7 +158,7 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Build Docker images
+    name: Build and publish Docker images
     needs: [binaries]
     runs-on: ubuntu-latest
     env:

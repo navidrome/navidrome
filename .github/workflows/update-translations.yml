@@ -1,4 +1,4 @@
-name: Update Translations
+name: POEditor import
 on:
   workflow_dispatch:
   schedule:
