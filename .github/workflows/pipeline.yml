@@ -1,4 +1,4 @@
-name: Pipeline [Test, Lint, Build]
+name: 'Pipeline: Test, Lint, Build'
 on:
   push:
     branches:
