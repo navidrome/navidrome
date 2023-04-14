@@ -86,7 +86,6 @@ type configOptions struct {
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
 	DevArtworkThrottleBacklogTimeout time.Duration
-	DevEnableJukebox                 bool
 }
 
 type scannerOptions struct {
@@ -303,7 +302,6 @@ func init() {
 	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
-	viper.SetDefault("devenablejukebox", true)
 }
 
 func InitConfig(cfgFile string) {

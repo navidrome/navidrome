@@ -162,7 +162,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
 
-	if conf.Server.DevEnableJukebox {
+	if conf.Server.Jukebox.Enabled {
 		r.Group(func(r chi.Router) {
 			h(r, "jukeboxControl", api.JukeboxControl)
 		})

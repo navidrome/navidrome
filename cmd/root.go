@@ -74,7 +74,7 @@ func runNavidrome() {
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 
-	if conf.Server.DevEnableJukebox {
+	if conf.Server.Jukebox.Enabled {
 		g.Go(startPlaybackServer(ctx))
 	}
 
