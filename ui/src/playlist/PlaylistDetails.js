@@ -53,7 +53,7 @@ const PlaylistDetails = (props) => {
           {record.name || translate('ra.page.loading')}
         </Typography>
         <Typography component="h6">
-          <Linkify text={record.comment} />
+          <Linkify text={record.comment} clampText />
         </Typography>
         <Typography component="p">
           {record.songCount ? (
