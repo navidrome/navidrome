@@ -2,75 +2,111 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/go-chi/jwtauth"
+	"github.com/go-chi/jwtauth/v5"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 )
 
 var (
-	once           sync.Once
-	JwtSecret      []byte
-	TokenAuth      *jwtauth.JWTAuth
-	sessionTimeOut time.Duration
+	once      sync.Once
+	Secret    []byte
+	TokenAuth *jwtauth.JWTAuth
 )
 
-func InitTokenAuth(ds model.DataStore) {
+func Init(ds model.DataStore) {
 	once.Do(func() {
+		log.Info("Setting Session Timeout", "value", conf.Server.SessionTimeout)
 		secret, err := ds.Property(context.TODO()).DefaultGet(consts.JWTSecretKey, "not so secret")
 		if err != nil {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
 		}
-		JwtSecret = []byte(secret)
-		TokenAuth = jwtauth.New("HS256", JwtSecret, nil)
+		Secret = []byte(secret)
+		TokenAuth = jwtauth.New("HS256", Secret, nil)
 	})
 }
 
+func createBaseClaims() map[string]any {
+	tokenClaims := map[string]any{}
+	tokenClaims[jwt.IssuerKey] = consts.JWTIssuer
+	return tokenClaims
+}
+
+func CreatePublicToken(claims map[string]any) (string, error) {
+	tokenClaims := createBaseClaims()
+	for k, v := range claims {
+		tokenClaims[k] = v
+	}
+	_, token, err := TokenAuth.Encode(tokenClaims)
+
+	return token, err
+}
+
+func CreateExpiringPublicToken(exp time.Time, claims map[string]any) (string, error) {
+	tokenClaims := createBaseClaims()
+	if !exp.IsZero() {
+		tokenClaims[jwt.ExpirationKey] = exp.UTC().Unix()
+	}
+	for k, v := range claims {
+		tokenClaims[k] = v
+	}
+	_, token, err := TokenAuth.Encode(tokenClaims)
+
+	return token, err
+}
+
 func CreateToken(u *model.User) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-	claims["iss"] = consts.JWTIssuer
-	claims["sub"] = u.UserName
+	claims := createBaseClaims()
+	claims[jwt.SubjectKey] = u.UserName
+	claims[jwt.IssuedAtKey] = time.Now().UTC().Unix()
+	claims["uid"] = u.ID
 	claims["adm"] = u.IsAdmin
+	token, _, err := TokenAuth.Encode(claims)
+	if err != nil {
+		return "", err
+	}
 
 	return TouchToken(token)
 }
 
-func getSessionTimeOut() time.Duration {
-	if sessionTimeOut == 0 {
-		sessionTimeOut = conf.Server.SessionTimeout
-		log.Info("Setting Session Timeout", "value", sessionTimeOut)
+func TouchToken(token jwt.Token) (string, error) {
+	claims, err := token.AsMap(context.Background())
+	if err != nil {
+		return "", err
 	}
-	return sessionTimeOut
+
+	claims[jwt.ExpirationKey] = time.Now().UTC().Add(conf.Server.SessionTimeout).Unix()
+	_, newToken, err := TokenAuth.Encode(claims)
+
+	return newToken, err
 }
 
-func TouchToken(token *jwt.Token) (string, error) {
-	timeout := getSessionTimeOut()
-	expireIn := time.Now().Add(timeout).Unix()
-	claims := token.Claims.(jwt.MapClaims)
-	claims["exp"] = expireIn
-
-	return token.SignedString(JwtSecret)
-}
-
-func Validate(tokenStr string) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
-		return JwtSecret, nil
-	})
+func Validate(tokenStr string) (map[string]interface{}, error) {
+	token, err := jwtauth.VerifyToken(TokenAuth, tokenStr)
 	if err != nil {
 		return nil, err
 	}
-	return token.Claims.(jwt.MapClaims), err
+	return token.AsMap(context.Background())
+}
+
+func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
+	u, err := ds.User(ctx).FindFirstAdmin()
+	if err != nil {
+		c, err := ds.User(ctx).CountAll()
+		if c == 0 && err == nil {
+			log.Debug(ctx, "Scanner: No admin user yet!", err)
+		} else {
+			log.Error(ctx, "Scanner: No admin user found!", err)
+		}
+		u = &model.User{}
+	}
+
+	ctx = request.WithUsername(ctx, u.UserName)
+	return request.WithUser(ctx, *u)
 }

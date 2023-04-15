@@ -1,0 +1,456 @@
+{
+    "languageName": "Slovenščina",
+    "resources": {
+        "song": {
+            "name": "Pesem |||| Pesmi",
+            "fields": {
+                "albumArtist": "Avtor albuma",
+                "duration": "Dolžina",
+                "trackNumber": "#",
+                "playCount": "Predvajano",
+                "title": "Naslov",
+                "artist": "Avtor",
+                "album": "Album",
+                "path": "Pot datoteke",
+                "genre": "Žanr",
+                "compilation": "Kompilacija",
+                "year": "Leto",
+                "size": "Velikost datoteke",
+                "updatedAt": "Posodobljeno",
+                "bitRate": "Bitna hitrost",
+                "discSubtitle": "Podnapisi",
+                "starred": "Priljubljen",
+                "comment": "Opomba",
+                "rating": "Ocena",
+                "quality": "Kakovost",
+                "bpm": "BPM",
+                "playDate": "Zadnja predvajana",
+                "channels": "Kanali",
+                "createdAt": "Datum dodano"
+            },
+            "actions": {
+                "addToQueue": "Predvajaj kasneje",
+                "playNow": "Predvajaj",
+                "addToPlaylist": "Dodaj na seznam predvajanj",
+                "shuffleAll": "Premešaj vse",
+                "download": "Naloži",
+                "playNext": "Naslednji",
+                "info": "Več informacij"
+            }
+        },
+        "album": {
+            "name": "Album |||| Albumi",
+            "fields": {
+                "albumArtist": "Avtor albuma",
+                "artist": "Izvajalec",
+                "duration": "Dolžina",
+                "songCount": "Pesmi",
+                "playCount": "Predvajano",
+                "name": "Naslov",
+                "genre": "Žanr",
+                "compilation": "Kompilacija",
+                "year": "Leto",
+                "updatedAt": "Posodobljeno",
+                "comment": "Opomba",
+                "rating": "Ocena",
+                "createdAt": "Datum dodano",
+                "size": "Velikost"
+            },
+            "actions": {
+                "playAll": "Predvajaj vse",
+                "playNext": "Naslednji",
+                "addToQueue": "Predvajaj kasneje",
+                "shuffle": "Premešaj",
+                "addToPlaylist": "Dodaj v seznam predvajanja",
+                "download": "Naloži",
+                "info": "Več informacij",
+                "share": "Deli"
+            },
+            "lists": {
+                "all": "Vse",
+                "random": "Naključno",
+                "recentlyAdded": "Dodan nedavno",
+                "recentlyPlayed": "Predvajan nedavno",
+                "mostPlayed": "Največ predvajano",
+                "starred": "Priljubljeni",
+                "topRated": "Najvišje ocenjeno"
+            }
+        },
+        "artist": {
+            "name": "Izvajalec |||| Izvajalci",
+            "fields": {
+                "name": "Ime",
+                "albumCount": "# albumov",
+                "songCount": "# pesmi",
+                "playCount": "# predvajanj",
+                "rating": "Ocena",
+                "genre": "Žanr",
+                "size": "Velikost"
+            }
+        },
+        "user": {
+            "name": "Uporabnik |||| Uporabniki",
+            "fields": {
+                "userName": "Uporabnik",
+                "isAdmin": "Upravitelj",
+                "lastLoginAt": "Zadnji vpis",
+                "updatedAt": "Posodobljeno",
+                "name": "Ime",
+                "password": "Geslo",
+                "createdAt": "Ustvarjeno",
+                "changePassword": "Spremeni geslo?",
+                "currentPassword": "Trenutno geslo",
+                "newPassword": "Novo geslo",
+                "token": "Žeton"
+            },
+            "helperTexts": {
+                "name": "Sprememba imena bo vidna pri naslednjem vpisu"
+            },
+            "notifications": {
+                "created": "Uporabnik ustvarjen",
+                "updated": "Uporabnik posodobljen",
+                "deleted": "Uporabnik izbrisan"
+            },
+            "message": {
+                "listenBrainzToken": "Vnesi žeton uporabnika ListenBrainz.",
+                "clickHereForToken": "Klikni za žeton"
+            }
+        },
+        "player": {
+            "name": "Predvajalnik |||| Predvajalniki",
+            "fields": {
+                "name": "Naziv",
+                "transcodingId": "Transkodiranje",
+                "maxBitRate": "Maks. bitrate",
+                "client": "Klijent",
+                "userName": "Uporabnik",
+                "lastSeen": "Zadnjič viden",
+                "reportRealPath": "Zabeleži pravo pot",
+                "scrobbleEnabled": "Pošlji Scrobbles zunanjim storitvam"
+            }
+        },
+        "transcoding": {
+            "name": "Transkodiranje |||| Transkodiranje",
+            "fields": {
+                "name": "Ime",
+                "targetFormat": "Ciljni format",
+                "defaultBitRate": "Privzet bitrate",
+                "command": "Ukaz"
+            }
+        },
+        "playlist": {
+            "name": "Seznam predvajanj |||| Seznami predvajanj",
+            "fields": {
+                "name": "Ime",
+                "duration": "Dolžina",
+                "ownerName": "Lastnik",
+                "public": "Javno",
+                "updatedAt": "Posodobljen",
+                "createdAt": "Ustvarjen",
+                "songCount": "# pesmi",
+                "comment": "Opomba",
+                "sync": "Avtomatski uvoz",
+                "path": "Uvozi iz"
+            },
+            "actions": {
+                "selectPlaylist": "Izberi seznam",
+                "addNewPlaylist": "Ustvari \"%{name}\"",
+                "export": "Izvozi",
+                "makePublic": "Naredi javno",
+                "makePrivate": "Naredi zasebno"
+            },
+            "message": {
+                "duplicate_song": "Dodaj podvojene pesmi",
+                "song_exist": "Seznamu predvajanja boste dodali duplikate. Jih želite dodati ali izpustiti?"
+            }
+        },
+        "radio": {
+            "name": "Radio |||| Radiji",
+            "fields": {
+                "name": "Ime",
+                "streamUrl": "URL toka",
+                "homePageUrl": "URL domače strani",
+                "updatedAt": "Posodobljeno ob",
+                "createdAt": "Ustvarjeno ob"
+            },
+            "actions": {
+                "playNow": "Predvajaj"
+            }
+        },
+        "share": {
+            "name": "Deli |||| Delitev",
+            "fields": {
+                "username": "Delil z",
+                "url": "URL",
+                "description": "Opis",
+                "contents": "Vsebine",
+                "expiresAt": "Poteče",
+                "lastVisitedAt": "Nazadnje obiskano",
+                "visitCount": "Obiski",
+                "format": "Oblika",
+                "maxBitRate": "Maks. bitna hitrost",
+                "updatedAt": "Posodobljeno ob",
+                "createdAt": "Ustvarjeno ob",
+                "downloadable": ""
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Hvala, da ste naložili Navidrome!",
+            "welcome2": "Za začetek, ustvarite upraviteljski račun",
+            "confirmPassword": "Potrdi Geslo",
+            "buttonCreateAdmin": "Ustvari upravitelja",
+            "auth_check_error": "Vpišite se za nadaljevanje",
+            "user_menu": "Profil",
+            "username": "Uporabnik",
+            "password": "Geslo",
+            "sign_in": "Vpis",
+            "sign_in_error": "Avtentikacija neuspešna, poskusite ponovno",
+            "logout": "Izpis"
+        },
+        "validation": {
+            "invalidChars": "Uporabi samo alfanumerične znake",
+            "passwordDoesNotMatch": "Geslo se ne ujema",
+            "required": "Potreben",
+            "minLength": "Potrebnih je vsaj %{min} znakov",
+            "maxLength": "Potrebnih je največ %{max}",
+            "minValue": "Potrebnih je vsaj %{min}",
+            "maxValue": "Potrebnih je največ %{max}",
+            "number": "Mora biti številka",
+            "email": "Veljaven e-poštni naslov",
+            "oneOf": "Mora biti ena izmed %{options}",
+            "regex": "Mora se ujemati z določeno obliko (regexp): %{pattern}",
+            "unique": "Mora biti edinstven",
+            "url": "Biti mora veljaven URL"
+        },
+        "action": {
+            "add_filter": "Dodaj filter",
+            "add": "Dodaj",
+            "back": "Nazaj",
+            "bulk_actions": "Izbran 1 element |||| Izbranih %{smart_count} elementov",
+            "cancel": "Prekliči",
+            "clear_input_value": "Pobriši",
+            "clone": "Podvoji",
+            "confirm": "Potrdi",
+            "create": "Ustvari",
+            "delete": "Izbriši",
+            "edit": "Uredi",
+            "export": "Izvozi",
+            "list": "Seznam",
+            "refresh": "Osveži",
+            "remove_filter": "Odstrani filter",
+            "remove": "Odstrani",
+            "save": "Shrani",
+            "search": "Išči",
+            "show": "Prikaži",
+            "sort": "Razvrsti",
+            "undo": "Razveljavi",
+            "expand": "Razširi",
+            "close": "Zapri",
+            "open_menu": "Odpri meni",
+            "close_menu": "Zapri meni",
+            "unselect": "Prekliči izbiro",
+            "skip": "Izpusti",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Deli",
+            "download": "Prenesi"
+        },
+        "boolean": {
+            "true": "Da",
+            "false": "Ne"
+        },
+        "page": {
+            "create": "Ustvari %{name}",
+            "dashboard": "Nadzorna plošča",
+            "edit": "%{name} #%{id}",
+            "error": "Nedoločena napaka",
+            "list": "%{name}",
+            "loading": "Nalagam",
+            "not_found": "Ni zadetka",
+            "show": "%{name} #%{id}",
+            "empty": "Še brez %{name}.",
+            "invite": "Ga želite dodati?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Povlecite datoteke ali pa kliknite in izberite.",
+                "upload_single": "Povlecite datoteko ali pa kliknite in izberite."
+            },
+            "image": {
+                "upload_several": "Povlecite slike, ali pa kliknite in izberite.",
+                "upload_single": "Povlecite sliko, ali pa kliknite in izberite."
+            },
+            "references": {
+                "all_missing": "Ne najdem referenciranih podatkov.",
+                "many_missing": "Zdi se, da vsaj ena asociirana referenca ni več na voljo.",
+                "single_missing": "Zdi se, da asociirana referenca ni več na voljo."
+            },
+            "password": {
+                "toggle_visible": "Skrij geslo",
+                "toggle_hidden": "Prikaži geslo"
+            }
+        },
+        "message": {
+            "about": "O programu",
+            "are_you_sure": "Ste prepričani?",
+            "bulk_delete_content": "Ste prepričani, da želite izbrisati %{name}? |||| Ste prepričani, da želite izbrisati %{smart_count} elementov?",
+            "bulk_delete_title": "Izbriši %{name} |||| Izbriši %{smart_count} %{name}",
+            "delete_content": "Ste prepričani, da želite izbrisati ta element?",
+            "delete_title": "Izbriši %{name} #%{id}",
+            "details": "Podrobnosti",
+            "error": "Napak klijenta. Vaš zahtevek se je zaključil neuspešno.",
+            "invalid_form": "Oblika ni veljavna. Prosim preverite napake",
+            "loading": "Stran se nalaga, trenutek",
+            "no": "Ne",
+            "not_found": "Ali ste vtipkali napačen naslov (URL), ali pa sledili neobstoječi povezavi.",
+            "yes": "Da",
+            "unsaved_changes": "Nekate spremembe se niso shranile. Ste prepričani, da jih želite ignorirati?"
+        },
+        "navigation": {
+            "no_results": "Ni zadetkov",
+            "no_more_results": "Številka strani %{page} je zunaj meja. Preizkusite prejšnjo stran.",
+            "page_out_of_boundaries": "Številka strani %{page} je zunaj meja",
+            "page_out_from_end": "Ne gre dalje od zadnje strani",
+            "page_out_from_begin": "Ne gre pred prvo stran",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} od %{total}",
+            "page_rows_per_page": "Elementov na stran:",
+            "next": "Naslednji",
+            "prev": "Prejšnji",
+            "skip_nav": "Preskoči k vsebini"
+        },
+        "notification": {
+            "updated": "Element posodobljen |||| Posodobljenih %{smart_count} elementov",
+            "created": "Element dodan",
+            "deleted": "Element izbrisan |||| %{smart_count} elementov izbrisanih",
+            "bad_item": "Nepravilen element",
+            "item_doesnt_exist": "Element ne obstaja",
+            "http_error": "Strežnika napaka v komunikaciji",
+            "data_provider_error": "Napaka dataProvider error. Preverite konzolo za podrobnosti.",
+            "i18n_error": "Ne uspem naložiti prevode za izbran jezik",
+            "canceled": "Akcija preklicana",
+            "logged_out": "Seja je potekla, prosim povežite se ponovno.",
+            "new_version": "Na voljo je nova verzija! Prosim osvežite okno."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Prikaži stolpce",
+            "layout": "Razporeditev",
+            "grid": "Mreža",
+            "table": "Tabela"
+        }
+    },
+    "message": {
+        "note": "OPOMBA",
+        "transcodingDisabled": "Sprememba konfiguracije transkodiranja skozi spletni vmesnik je onemogočeno zaradi varnostnih razlogov. Če želite spremeniti (urediti ali izbrisati) možnosti transkodiranja, ponovno zaženite strežnik z %{config} nastavitvami.",
+        "transcodingEnabled": "Navidrome trenutno uporablja nastavitve %{config}, kar pomeni da je možno pognati sistemske ukaze v nastavitvah transkodiranja preko spletnega vmesnika.\nZaradi varnostnih razlogov je možnost priporočeno onemogočiti , razen v primeru spreminjanja nastavitev.",
+        "songsAddedToPlaylist": "Dodaj pesem na seznam predvajanj |||| Dodaj %{smart_count} pesmi na seznam predvajanj",
+        "noPlaylistsAvailable": "Ni seznamov",
+        "delete_user_title": "Odstrani uporabnika '%{name}'",
+        "delete_user_content": "Ste prepričani o izbrisu uporabnika, vključno z njegovimi podatki (tudi seznami predvajanj in nastavitvami)?",
+        "notifications_blocked": "V vašem brskljalniku Imate blokirana možnost obvestil za to spletno stran",
+        "notifications_not_available": "Vaš brskljalnik ne omogoča obvestil na namizju ali pa do Navidrome ne dostopate po varni povezavi (https)",
+        "lastfmLinkSuccess": "Last.fm uspešno povezan in 'scrobbling' omogočen",
+        "lastfmLinkFailure": "Last.fm ni uspešno povezan",
+        "lastfmUnlinkSuccess": "Last.fm povezava prekinjena in 'scrobbling' onemogočen",
+        "lastfmUnlinkFailure": "Last.fm povezava neuspešno prekinjena",
+        "openIn": {
+            "lastfm": "Odpri v Last.fm",
+            "musicbrainz": "Odpri v MusicBrainz"
+        },
+        "lastfmLink": "Preberi več...",
+        "listenBrainzLinkSuccess": "ListenBrainz uspešno povezan in scrobbling vključen za uporabnika: %{user}",
+        "listenBrainzLinkFailure": "ListBrainz neuspešno povezan: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz povezava prekinjena in scrobbling izključen",
+        "listenBrainzUnlinkFailure": "ListenBrainz prekinitev povezave neuspešna",
+        "downloadOriginalFormat": "Prenesi v izvirni obliki",
+        "shareOriginalFormat": "Deli v izvirni obliki",
+        "shareDialogTitle": "Deli %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Deli 1 %{resource} |||| Deli %{smart_count} %{resource}",
+        "shareSuccess": "URL kopiran v odložišče: %{url}",
+        "shareFailure": "Napaka pri kopiranju URL-ja %{url} v odložišče",
+        "downloadDialogTitle": "Prenesi %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": ""
+    },
+    "menu": {
+        "library": "Knjižnica",
+        "settings": "Nastavitve",
+        "version": "Različica",
+        "theme": "Tema",
+        "personal": {
+            "name": "Osebno",
+            "options": {
+                "theme": "Tema",
+                "language": "Jezik",
+                "defaultView": "Privzet pogled",
+                "desktop_notifications": "Namizna obvestila",
+                "lastfmScrobbling": "'Scrobble' do Last.fm",
+                "listenBrainzScrobbling": "Scrobble k ListenBrainz",
+                "replaygain": "ReplayGain način",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Onemogočeno",
+                    "album": "Uporabi Album Gain",
+                    "track": "Uporabi Track Gain"
+                }
+            }
+        },
+        "albumList": "Albumi",
+        "about": "O programu",
+        "playlists": "Seznami predvajanj",
+        "sharedPlaylists": "Deljeni seznami predvajanj"
+    },
+    "player": {
+        "playListsText": "Predvajaj vrsto",
+        "openText": "Odpri",
+        "closeText": "Zapri",
+        "notContentText": "Ni glasbe",
+        "clickToPlayText": "Predvajaj",
+        "clickToPauseText": "Premor predvajanja",
+        "nextTrackText": "Naslednje predvajanje",
+        "previousTrackText": "Prejšnji",
+        "reloadText": "Ponovno naloži",
+        "volumeText": "Glasnost",
+        "toggleLyricText": "Preklopi besedila",
+        "toggleMiniModeText": "Pomanjšaj",
+        "destroyText": "Uniči",
+        "downloadText": "Naloži",
+        "removeAudioListsText": "Izbriši avdio seznam",
+        "clickToDeleteText": "Klikni za izbris %{name}",
+        "emptyLyricText": "Ni besedila",
+        "playModeText": {
+            "order": "Po vrsti",
+            "orderLoop": "Ponavljaj",
+            "singleLoop": "Ponovi enkrat",
+            "shufflePlay": "Premešaj"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Domača stran",
+            "source": "Izvorna koda",
+            "featureRequests": "Funkcionalni zahtevki"
+        }
+    },
+    "activity": {
+        "title": "Aktivnost",
+        "totalScanned": "Skupaj preiskanih map",
+        "quickScan": "Hitro preišči",
+        "fullScan": "Polno preišči",
+        "serverUptime": "Čas delovanja",
+        "serverDown": "NEPOVEZAN"
+    },
+    "help": {
+        "title": "Hitre tipke",
+        "hotkeys": {
+            "show_help": "Prikaži pomoč",
+            "toggle_menu": "Preklopi stransko vrstico menija",
+            "toggle_play": "Predvajaj / Pavza",
+            "prev_song": "Prejšnja",
+            "next_song": "Naslednja",
+            "vol_up": "Zvišaj glasnost",
+            "vol_down": "Znižaj glasnost",
+            "toggle_love": "Dodaj med priljubljene",
+            "current_song": "Skoči na predvajano"
+        }
+    }
+}

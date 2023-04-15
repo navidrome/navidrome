@@ -3,7 +3,7 @@ package persistence
 import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -58,6 +58,16 @@ var _ = Describe("sqlRepository", func() {
 			It("inverts multiple fields", func() {
 				sql := r.buildSortOrder("name desc, age, status asc", "desc")
 				Expect(sql).To(Equal("name asc, age desc, status desc"))
+			})
+		})
+		Context("function fields", func() {
+			It("handles functions with multiple params", func() {
+				sql := r.buildSortOrder("substr(id, 7)", "asc")
+				Expect(sql).To(Equal("substr(id, 7) asc"))
+			})
+			It("handles functions with multiple params mixed with multiple fields", func() {
+				sql := r.buildSortOrder("name desc, substr(id, 7), status asc", "desc")
+				Expect(sql).To(Equal("name asc, substr(id, 7) desc, status desc"))
 			})
 		})
 	})

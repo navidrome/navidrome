@@ -20,7 +20,13 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Plade undernavn",
                 "starred": "Stjernemarkeret",
-                "comment": "Kommentar"
+                "comment": "Kommentar",
+                "rating": "",
+                "quality": "",
+                "bpm": "",
+                "playDate": "",
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Afspil senere",
@@ -28,7 +34,8 @@
                 "addToPlaylist": "Tilføj til afspilningsliste",
                 "shuffleAll": "Bland alle",
                 "download": "Hent",
-                "playNext": "Spil næste"
+                "playNext": "Spil næste",
+                "info": ""
             }
         },
         "album": {
@@ -44,7 +51,10 @@
                 "compilation": "Samling",
                 "year": "År",
                 "updatedAt": "Opdateret den",
-                "comment": "Kommentar"
+                "comment": "Kommentar",
+                "rating": "",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Afspil",
@@ -52,7 +62,9 @@
                 "addToQueue": "Afspil senere",
                 "shuffle": "Bland",
                 "addToPlaylist": "Tilføj til afspilningsliste",
-                "download": "Hent"
+                "download": "Hent",
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Alle",
@@ -60,7 +72,8 @@
                 "recentlyAdded": "Nyligt tilføjet",
                 "recentlyPlayed": "Nyligt Afspillet",
                 "mostPlayed": "Mest Afspillet",
-                "starred": "Stjernemarkeret"
+                "starred": "Stjernemarkeret",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +82,10 @@
                 "name": "Navn",
                 "albumCount": "Antal album",
                 "songCount": "Antal sange",
-                "playCount": "Afspilninger"
+                "playCount": "Afspilninger",
+                "rating": "",
+                "genre": "",
+                "size": ""
             }
         },
         "user": {
@@ -81,7 +97,23 @@
                 "updatedAt": "Opdateret den",
                 "name": "Navn",
                 "password": "Kodeord",
-                "createdAt": "Oprettet den"
+                "createdAt": "Oprettet den",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": "",
+                "token": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -93,7 +125,8 @@
                 "client": "Klient",
                 "userName": "Brugernavn",
                 "lastSeen": "Sidst set",
-                "reportRealPath": ""
+                "reportRealPath": "",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -110,7 +143,7 @@
             "fields": {
                 "name": "Navn",
                 "duration": "Varighed",
-                "owner": "Ejer",
+                "ownerName": "Ejer",
                 "public": "Offentlig",
                 "updatedAt": "Opdateret den",
                 "createdAt": "Oprettet den",
@@ -122,7 +155,43 @@
             "actions": {
                 "selectPlaylist": "Vælg en afspilningsliste:",
                 "addNewPlaylist": "Opret \"%{name}\"",
-                "export": "Eksporter"
+                "export": "Eksporter",
+                "makePublic": "",
+                "makePrivate": ""
+            },
+            "message": {
+                "duplicate_song": "",
+                "song_exist": ""
+            }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },
@@ -151,7 +220,9 @@
             "number": "Skal være et nummer",
             "email": "Skal være en gyldig e-mail-adresse",
             "oneOf": "Skal være en af: %{options}",
-            "regex": "Skal matche et bestemt format (regexp): %{pattern}"
+            "regex": "Skal matche et bestemt format (regexp): %{pattern}",
+            "unique": "",
+            "url": ""
         },
         "action": {
             "add_filter": "Tilføj filter",
@@ -179,7 +250,11 @@
             "close": "Luk",
             "open_menu": "Åben menu",
             "close_menu": "Luk menu",
-            "unselect": "Fravælg"
+            "unselect": "Fravælg",
+            "skip": "",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Ja",
@@ -241,7 +316,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} af %{total}",
             "page_rows_per_page": "Rækker pr. side:",
             "next": "Næste",
-            "prev": "Forrige"
+            "prev": "Forrige",
+            "skip_nav": ""
         },
         "notification": {
             "updated": "Objekt opdateret |||| %{smart_count} objekter opdateret",
@@ -253,7 +329,14 @@
             "data_provider_error": "dataProvider fejl. Check din console for detaljer.",
             "i18n_error": "Kan ikke indlæse oversættelse af det ønskede sprog",
             "canceled": "Handling blev annulleret",
-            "logged_out": "Din session er udløbet, venligst tilslut igen"
+            "logged_out": "Din session er udløbet, venligst tilslut igen",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -265,7 +348,28 @@
         "delete_user_title": "Slet bruger '%{name}'",
         "delete_user_content": "Er du sikker på at du vil slette denne bruger og tilhørende data (inklusive afspilningslister og indstillinger)?",
         "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_not_available": "",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        },
+        "lastfmLink": "",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Bibliotek",
@@ -278,11 +382,22 @@
                 "theme": "Tema",
                 "language": "Sprog",
                 "defaultView": "Standardopsætning",
-                "desktop_notifications": ""
+                "desktop_notifications": "",
+                "lastfmScrobbling": "",
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albums",
-        "about": "Om"
+        "about": "Om",
+        "playlists": "",
+        "sharedPlaylists": ""
     },
     "player": {
         "playListsText": "Afspilnings kø",
@@ -323,5 +438,19 @@
         "fullScan": "Fuld søgning\n",
         "serverUptime": "Server uptime",
         "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "",
+        "hotkeys": {
+            "show_help": "",
+            "toggle_menu": "",
+            "toggle_play": "",
+            "prev_song": "",
+            "next_song": "",
+            "vol_up": "",
+            "vol_down": "",
+            "toggle_love": "",
+            "current_song": ""
+        }
     }
 }

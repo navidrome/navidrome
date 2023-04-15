@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -23,11 +24,11 @@ type artistRepository struct {
 }
 
 type dbArtist struct {
-	model.Artist
-	SimilarArtists string `json:"similarArtists"`
+	model.Artist   `structs:",flatten"`
+	SimilarArtists string `structs:"similar_artists" json:"similarArtists"`
 }
 
-func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepository {
+func NewArtistRepository(ctx context.Context, o orm.QueryExecutor) model.ArtistRepository {
 	r := &artistRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -37,6 +38,7 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 		"name": "order_artist_name",
 	}
 	r.filterMappings = map[string]filterFunc{
+		"id":      idFilter(r.tableName),
 		"name":    fullTextFilter,
 		"starred": booleanFilter,
 	}
@@ -44,26 +46,35 @@ func NewArtistRepository(ctx context.Context, o orm.Ormer) model.ArtistRepositor
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelectWithAnnotation("artist.id", options...).Columns("*")
+	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
+	return r.withGenres(sql).GroupBy("artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.newSelectWithAnnotation("artist.id"), options...)
+	sql := r.newSelectWithAnnotation("artist.id")
+	sql = r.withGenres(sql)
+	return r.count(sql, options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Select().Where(Eq{"artist.id": id}))
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
 	_, err := r.put(dba.ID, dba)
-	return err
+	if err != nil {
+		return err
+	}
+	if a.ID == consts.VariousArtistsID {
+		return r.updateGenres(a.ID, r.tableName, nil)
+	}
+	return r.updateGenres(a.ID, r.tableName, a.Genres)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
-	sel := r.selectArtist().Where(Eq{"id": id})
+	sel := r.selectArtist().Where(Eq{"artist.id": id})
 	var dba []dbArtist
 	if err := r.queryAll(sel, &dba); err != nil {
 		return nil, err
@@ -72,14 +83,19 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 		return nil, model.ErrNotFound
 	}
 	res := r.toModels(dba)
-	return &res[0], nil
+	err := r.loadArtistGenres(&res)
+	return &res[0], err
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
 	var dba []dbArtist
 	err := r.queryAll(sel, &dba)
+	if err != nil {
+		return nil, err
+	}
 	res := r.toModels(dba)
+	err = r.loadArtistGenres(&res)
 	return res, err
 }
 
@@ -160,67 +176,6 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	return result, nil
 }
 
-func (r *artistRepository) Refresh(ids ...string) error {
-	chunks := utils.BreakUpStringSlice(ids, 100)
-	for _, chunk := range chunks {
-		err := r.refresh(chunk...)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *artistRepository) refresh(ids ...string) error {
-	type refreshArtist struct {
-		model.Artist
-		CurrentId string
-	}
-	var artists []refreshArtist
-	sel := Select("f.album_artist_id as id", "f.album_artist as name", "count(*) as album_count", "a.id as current_id",
-		"group_concat(f.mbz_album_artist_id , ' ') as mbz_artist_id",
-		"f.sort_album_artist_name as sort_artist_name", "f.order_album_artist_name as order_artist_name",
-		"sum(f.song_count) as song_count", "sum(f.size) as size").
-		From("album f").
-		LeftJoin("artist a on f.album_artist_id = a.id").
-		Where(Eq{"f.album_artist_id": ids}).
-		GroupBy("f.album_artist_id").OrderBy("f.id")
-	err := r.queryAll(sel, &artists)
-	if err != nil {
-		return err
-	}
-
-	toInsert := 0
-	toUpdate := 0
-	for _, ar := range artists {
-		if ar.CurrentId != "" {
-			toUpdate++
-		} else {
-			toInsert++
-		}
-		ar.MbzArtistID = getMbzId(r.ctx, ar.MbzArtistID, r.tableName, ar.Name)
-		err := r.Put(&ar.Artist)
-		if err != nil {
-			return err
-		}
-	}
-	if toInsert > 0 {
-		log.Debug(r.ctx, "Inserted new artists", "totalInserted", toInsert)
-	}
-	if toUpdate > 0 {
-		log.Debug(r.ctx, "Updated artists", "totalUpdated", toUpdate)
-	}
-	return err
-}
-
-func (r *artistRepository) GetStarred(options ...model.QueryOptions) (model.Artists, error) {
-	sq := r.selectArtist(options...).Where("starred = true")
-	var dba []dbArtist
-	err := r.queryAll(sq, &dba)
-	starred := r.toModels(dba)
-	return starred, err
-}
-
 func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
@@ -261,21 +216,5 @@ func (r *artistRepository) NewInstance() interface{} {
 	return &model.Artist{}
 }
 
-func (r artistRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
-}
-
-func (r artistRepository) Save(entity interface{}) (string, error) {
-	artist := entity.(*model.Artist)
-	err := r.Put(artist)
-	return artist.ID, err
-}
-
-func (r artistRepository) Update(entity interface{}, cols ...string) error {
-	artist := entity.(*model.Artist)
-	return r.Put(artist)
-}
-
 var _ model.ArtistRepository = (*artistRepository)(nil)
 var _ model.ResourceRepository = (*artistRepository)(nil)
-var _ rest.Persistable = (*artistRepository)(nil)

@@ -3,12 +3,12 @@ package server
 import (
 	"context"
 	"fmt"
-	"os/exec"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -20,7 +20,7 @@ func initialSetup(ds model.DataStore) {
 		if err == nil {
 			return nil
 		}
-		log.Warn("Running initial setup")
+		log.Info("Running initial setup")
 		if err = createJWTSecret(ds); err != nil {
 			return err
 		}
@@ -47,12 +47,12 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 		log.Warn("Creating initial admin user. This should only be used for development purposes!!",
 			"user", consts.DevInitialUserName, "password", initialPassword, "id", id)
 		initialUser := model.User{
-			ID:       id,
-			UserName: consts.DevInitialUserName,
-			Name:     consts.DevInitialName,
-			Email:    "",
-			Password: initialPassword,
-			IsAdmin:  true,
+			ID:          id,
+			UserName:    consts.DevInitialUserName,
+			Name:        consts.DevInitialName,
+			Email:       "",
+			NewPassword: initialPassword,
+			IsAdmin:     true,
 		}
 		err := users.Put(&initialUser)
 		if err != nil {
@@ -68,7 +68,7 @@ func createJWTSecret(ds model.DataStore) error {
 	if err == nil {
 		return nil
 	}
-	log.Warn("Creating JWT secret, used for encrypting UI sessions")
+	log.Info("Creating new JWT secret, used for encrypting UI sessions")
 	err = properties.Put(consts.JWTSecretKey, uuid.NewString())
 	if err != nil {
 		log.Error("Could not save JWT secret in DB", err)
@@ -77,9 +77,9 @@ func createJWTSecret(ds model.DataStore) error {
 }
 
 func checkFfmpegInstallation() {
-	path, err := exec.LookPath("ffmpeg")
+	f := ffmpeg.New()
+	_, err := f.CmdPath()
 	if err == nil {
-		log.Info("Found ffmpeg", "path", path)
 		return
 	}
 	log.Warn("Unable to find ffmpeg. Transcoding will fail if used", err)
@@ -90,11 +90,23 @@ func checkFfmpegInstallation() {
 }
 
 func checkExternalCredentials() {
-	if conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
-		log.Info("Last.FM integration not available: missing ApiKey/Secret")
-	}
+	if conf.Server.EnableExternalServices {
+		if !conf.Server.LastFM.Enabled {
+			log.Info("Last.fm integration is DISABLED")
+		} else {
+			log.Debug("Last.fm integration is ENABLED")
+		}
 
-	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
-		log.Info("Spotify integration is not enabled: artist images will not be available")
+		if !conf.Server.ListenBrainz.Enabled {
+			log.Info("ListenBrainz integration is DISABLED")
+		} else {
+			log.Debug("ListenBrainz integration is ENABLED", "ListenBrainz.BaseURL", conf.Server.ListenBrainz.BaseURL)
+		}
+
+		if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
+			log.Info("Spotify integration is not enabled: missing ID/Secret")
+		} else {
+			log.Debug("Spotify integration is ENABLED")
+		}
 	}
 }

@@ -2,11 +2,14 @@
 
 Navidrome is a streaming service which allows you to enjoy your music collection from anywhere. We'd welcome you to contribute to our open source project and make Navidrome even better. There are some basic guidelines which you need to follow if you like to contribute to Navidrome.
 
+- [Asking Support Questions](#asking-support-questions)
 - [Code of Conduct](#code-of-conduct)
 - [Issues](#issues)
-- [Questions](#questions)
 - [Pull Requests](#pull-requests)
 
+
+## Asking Support Questions
+We have an active [discussion forum](https://github.com/navidrome/navidrome/discussions) where users and developers can ask questions. Please don't use the GitHub issue tracker to ask questions.
 
 ## Code of Conduct
 Please read the following [Code of Conduct](https://github.com/navidrome/navidrome/blob/master/CODE_OF_CONDUCT.md).
@@ -14,13 +17,10 @@ Please read the following [Code of Conduct](https://github.com/navidrome/navidro
 ## Issues
 Found any issue or bug in our codebase? Have a great idea you want to propose or discuss with 
 the developers? You can help by submitting an [issue](https://github.com/navidrome/navidrome/issues/new/choose)
-to the Github repository. 
+to the GitHub repository. 
 
 **Before opening a new issue, please check if the issue has not been already made by searching 
 the [issues](https://github.com/navidrome/navidrome/issues)**
-
-## Questions
-We would like to have discussions and general queries related to Navidrome on our [Discord channel](https://discord.gg/2qMuMyHfSV).
 
 ## Pull requests
 Before submitting a pull request, ensure that you go through the following:

@@ -2,20 +2,22 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"reflect"
 
-	"github.com/astaxie/beego/orm"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
 type SQLStore struct {
-	orm orm.Ormer
+	orm orm.QueryExecutor
+	db  *sql.DB
 }
 
-func New() model.DataStore {
-	return &SQLStore{}
+func New(db *sql.DB) model.DataStore {
+	return &SQLStore{db: db}
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
@@ -50,6 +52,18 @@ func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
 	return NewPropertyRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
+	return NewRadioRepository(ctx, s.getOrmer())
+}
+
+func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
+	return NewUserPropsRepository(ctx, s.getOrmer())
+}
+
+func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
+	return NewShareRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, s.getOrmer())
 }
@@ -60,6 +74,10 @@ func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository 
 
 func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
 	return NewPlayerRepository(ctx, s.getOrmer())
+}
+
+func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+	return NewScrobbleBufferRepository(ctx, s.getOrmer())
 }
 
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
@@ -76,45 +94,39 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Album(ctx).(model.ResourceRepository)
 	case model.MediaFile:
 		return s.MediaFile(ctx).(model.ResourceRepository)
+	case model.Genre:
+		return s.Genre(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
+	case model.Radio:
+		return s.Radio(ctx).(model.ResourceRepository)
+	case model.Share:
+		return s.Share(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil
 }
 
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	o, err := orm.NewOrmWithDB(db.Driver, "default", db.Db())
+	o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
 	if err != nil {
 		return err
 	}
-	err = o.Begin()
-	if err != nil {
-		return err
-	}
-
-	newDb := &SQLStore{orm: o}
-	err = block(newDb)
-
-	if err != nil {
-		err2 := o.Rollback()
-		if err2 != nil {
-			return err2
-		}
-		return err
-	}
-
-	err2 := o.Commit()
-	if err2 != nil {
-		return err2
-	}
-	return nil
+	return o.DoTx(func(ctx context.Context, txOrm orm.TxOrmer) error {
+		newDb := &SQLStore{orm: txOrm}
+		return block(newDb)
+	})
 }
 
 func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	err := s.MediaFile(ctx).(*mediaFileRepository).deleteNotInPath(rootFolder)
 	if err != nil {
 		log.Error(ctx, "Error removing dangling tracks", err)
+		return err
+	}
+	err = s.MediaFile(ctx).(*mediaFileRepository).removeNonAlbumArtistIds()
+	if err != nil {
+		log.Error(ctx, "Error removing non-album artist_ids", err)
 		return err
 	}
 	err = s.Album(ctx).(*albumRepository).purgeEmpty()
@@ -151,12 +163,17 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	if err != nil {
 		log.Error(ctx, "Error tidying up playlists", err)
 	}
+	err = s.Genre(ctx).(*genreRepository).purgeEmpty()
+	if err != nil {
+		log.Error(ctx, "Error removing unused genres", err)
+		return err
+	}
 	return err
 }
 
-func (s *SQLStore) getOrmer() orm.Ormer {
+func (s *SQLStore) getOrmer() orm.QueryExecutor {
 	if s.orm == nil {
-		o, err := orm.NewOrmWithDB(db.Driver, "default", db.Db())
+		o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
 		if err != nil {
 			log.Error("Error obtaining new orm instance", err)
 		}

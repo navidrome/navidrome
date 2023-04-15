@@ -1,4 +1,4 @@
-import { ALBUM_MODE_GRID, ALBUM_MODE_LIST } from '../actions'
+import { ALBUM_MODE_GRID, ALBUM_MODE_TABLE } from '../actions'
 
 export const albumViewReducer = (
   previousState = {
@@ -9,7 +9,7 @@ export const albumViewReducer = (
   const { type } = payload
   switch (type) {
     case ALBUM_MODE_GRID:
-    case ALBUM_MODE_LIST:
+    case ALBUM_MODE_TABLE:
       return { ...previousState, grid: type === ALBUM_MODE_GRID }
     default:
       return previousState

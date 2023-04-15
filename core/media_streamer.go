@@ -11,7 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/transcoder"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,18 +20,19 @@ import (
 
 type MediaStreamer interface {
 	NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int) (*Stream, error)
+	DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error)
 }
 
 type TranscodingCache cache.FileCache
 
-func NewMediaStreamer(ds model.DataStore, ffm transcoder.Transcoder, cache TranscodingCache) MediaStreamer {
-	return &mediaStreamer{ds: ds, ffm: ffm, cache: cache}
+func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCache) MediaStreamer {
+	return &mediaStreamer{ds: ds, transcoder: t, cache: cache}
 }
 
 type mediaStreamer struct {
-	ds    model.DataStore
-	ffm   transcoder.Transcoder
-	cache cache.FileCache
+	ds         model.DataStore
+	transcoder ffmpeg.FFmpeg
+	cache      cache.FileCache
 }
 
 type streamJob struct {
@@ -51,11 +52,15 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 		return nil, err
 	}
 
+	return ms.DoStream(ctx, mf, reqFormat, reqBitRate)
+}
+
+func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
 	defer func() {
-		log.Info("Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
+		log.Info(ctx, "Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
 			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw",
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
@@ -142,6 +147,12 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 			if p, ok := request.PlayerFrom(ctx); ok {
 				cBitRate = p.MaxBitRate
 			}
+		} else if reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "" {
+			// If no format is specified and no transcoding associated to the player, but a bitrate is specified,
+			// and there is no transcoding set for the player, we use the default downsampling format.
+			// But only if the requested bitRate is lower than the original bitRate.
+			log.Debug("Default Downsampling", "Using default downsampling format", conf.Server.DefaultDownsamplingFormat)
+			cFormat = conf.Server.DefaultDownsamplingFormat
 		}
 	}
 	if reqBitRate > 0 {
@@ -163,7 +174,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 		format = "raw"
 		bitRate = 0
 	}
-	return
+	return format, bitRate
 }
 
 var (
@@ -182,7 +193,7 @@ func GetTranscodingCache() TranscodingCache {
 					log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
 					return nil, os.ErrInvalid
 				}
-				out, err := job.ms.ffm.Start(ctx, t.Command, job.mf.Path, job.bitRate)
+				out, err := job.ms.transcoder.Transcode(ctx, t.Command, job.mf.Path, job.bitRate)
 				if err != nil {
 					log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 					return nil, os.ErrInvalid

@@ -1,25 +1,56 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   Datagrid,
   DateField,
   EditButton,
   Filter,
   NumberField,
+  ReferenceInput,
   SearchInput,
+  SelectInput,
   TextField,
   useUpdate,
   useNotify,
+  useRecordContext,
+  BulkDeleteButton,
+  usePermissions,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
-import { DurationField, List, Writable, isWritable } from '../common'
+import { useMediaQuery } from '@material-ui/core'
+import {
+  DurationField,
+  List,
+  Writable,
+  isWritable,
+  useSelectedFields,
+  useResourceRefresh,
+} from '../common'
+import PlaylistListActions from './PlaylistListActions'
+import ChangePublicStatusButton from './ChangePublicStatusButton'
 
-const PlaylistFilter = (props) => (
-  <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
-  </Filter>
-)
+const PlaylistFilter = (props) => {
+  const { permissions } = usePermissions()
+  return (
+    <Filter {...props} variant={'outlined'}>
+      <SearchInput source="q" alwaysOn />
+      {permissions === 'admin' && (
+        <ReferenceInput
+          source="owner_id"
+          label={'resources.playlist.fields.ownerName'}
+          reference="user"
+          perPage={0}
+          sort={{ field: 'name', order: 'ASC' }}
+          alwaysOn
+        >
+          <SelectInput optionText="name" />
+        </ReferenceInput>
+      )}
+    </Filter>
+  )
+}
 
-const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
+const TogglePublicInput = ({ resource, source }) => {
+  const record = useRecordContext()
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,
@@ -42,38 +73,67 @@ const TogglePublicInput = ({ permissions, resource, record = {}, source }) => {
     e.stopPropagation()
   }
 
-  const canChange =
-    permissions === 'admin' ||
-    localStorage.getItem('username') === record['owner']
-
   return (
     <Switch
       checked={record[source]}
       onClick={handleClick}
-      disabled={!canChange}
+      disabled={!isWritable(record.ownerId)}
     />
   )
 }
 
-const PlaylistList = ({ permissions, ...props }) => (
-  <List {...props} exporter={false} filters={<PlaylistFilter />}>
-    <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r && r.owner)}>
-      <TextField source="name" />
-      <TextField source="owner" />
-      <NumberField source="songCount" />
-      <DurationField source="duration" />
-      <DateField source="updatedAt" sortByOrder={'DESC'} />
-      <TogglePublicInput
-        source="public"
-        permissions={permissions}
-        sortByOrder={'DESC'}
-      />
-      <Writable>
-        <EditButton />
-      </Writable>
-      />
-    </Datagrid>
-  </List>
+const PlaylistListBulkActions = (props) => (
+  <>
+    <ChangePublicStatusButton public={true} {...props} />
+    <ChangePublicStatusButton public={false} {...props} />
+    <BulkDeleteButton {...props} />
+  </>
 )
+
+const PlaylistList = (props) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  useResourceRefresh('playlist')
+
+  const toggleableFields = useMemo(
+    () => ({
+      ownerName: isDesktop && <TextField source="ownerName" />,
+      songCount: !isXsmall && <NumberField source="songCount" />,
+      duration: <DurationField source="duration" />,
+      updatedAt: isDesktop && (
+        <DateField source="updatedAt" sortByOrder={'DESC'} />
+      ),
+      public: !isXsmall && (
+        <TogglePublicInput source="public" sortByOrder={'DESC'} />
+      ),
+      comment: <TextField source="comment" />,
+    }),
+    [isDesktop, isXsmall]
+  )
+
+  const columns = useSelectedFields({
+    resource: 'playlist',
+    columns: toggleableFields,
+    defaultOff: ['comment'],
+  })
+
+  return (
+    <List
+      {...props}
+      exporter={false}
+      filters={<PlaylistFilter />}
+      actions={<PlaylistListActions />}
+      bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
+    >
+      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
+        <TextField source="name" />
+        {columns}
+        <Writable>
+          <EditButton />
+        </Writable>
+      </Datagrid>
+    </List>
+  )
+}
 
 export default PlaylistList

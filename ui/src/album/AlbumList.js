@@ -6,30 +6,48 @@ import {
   Filter,
   NullableBooleanInput,
   NumberInput,
+  Pagination,
   ReferenceInput,
   SearchInput,
-  Pagination,
   useTranslate,
 } from 'react-admin'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
-import { List, QuickFilter, Title, useAlbumsPerPage } from '../common'
+import {
+  List,
+  QuickFilter,
+  Title,
+  useAlbumsPerPage,
+  useResourceRefresh,
+  useSetToggleableFields,
+} from '../common'
 import AlbumListActions from './AlbumListActions'
-import AlbumListView from './AlbumListView'
+import AlbumTableView from './AlbumTableView'
 import AlbumGridView from './AlbumGridView'
-import { AddToPlaylistDialog } from '../dialogs'
 import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
+import AlbumInfo from './AlbumInfo'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="name" alwaysOn />
+      <SearchInput id="search" source="name" alwaysOn />
       <ReferenceInput
         label={translate('resources.album.fields.artist')}
         source="artist_id"
         reference="artist"
+        sort={{ field: 'name', order: 'ASC' }}
+        filterToQuery={(searchText) => ({ name: [searchText] })}
+      >
+        <AutocompleteInput emptyText="-- None --" />
+      </ReferenceInput>
+      <ReferenceInput
+        label={translate('resources.album.fields.genre')}
+        source="genre_id"
+        reference="genre"
+        perPage={0}
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
@@ -65,10 +83,29 @@ const AlbumList = (props) => {
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
+  useResourceRefresh('album')
 
   const albumListType = location.pathname
     .replace(/^\/album/, '')
     .replace(/^\//, '')
+
+  // Workaround to force album columns to appear the first time.
+  // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
+  // TODO: Find a better solution
+  useSetToggleableFields(
+    'album',
+    [
+      'artist',
+      'songCount',
+      'playCount',
+      'year',
+      'duration',
+      'rating',
+      'size',
+      'createdAt',
+    ],
+    ['createdAt', 'size']
+  )
 
   // If it does not have filter/sort params (usually coming from Menu),
   // reload with correct filter/sort params
@@ -94,12 +131,12 @@ const AlbumList = (props) => {
         title={<AlbumListTitle albumListType={albumListType} />}
       >
         {albumView.grid ? (
-          <AlbumGridView {...props} />
+          <AlbumGridView albumListType={albumListType} {...props} />
         ) : (
-          <AlbumListView {...props} />
+          <AlbumTableView {...props} />
         )}
       </List>
-      <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<AlbumInfo />} />
     </>
   )
 }

@@ -2,18 +2,20 @@ package core
 
 import (
 	"github.com/google/wire"
-	"github.com/navidrome/navidrome/core/transcoder"
+	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/scrobbler"
 )
 
 var Set = wire.NewSet(
-	NewArtwork,
 	NewMediaStreamer,
 	GetTranscodingCache,
-	GetImageCache,
 	NewArchiver,
-	NewNowPlayingRepository,
 	NewExternalMetadata,
-	NewCacheWarmer,
 	NewPlayers,
-	transcoder.New,
+	NewShare,
+	NewPlaylists,
+	agents.New,
+	ffmpeg.New,
+	scrobbler.GetPlayTracker,
 )

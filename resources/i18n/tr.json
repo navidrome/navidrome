@@ -20,7 +20,13 @@
                 "bitRate": "Bir sayısı",
                 "discSubtitle": "Disk Altyazısı",
                 "starred": "Yıldızlı",
-                "comment": ""
+                "comment": "",
+                "rating": "",
+                "quality": "",
+                "bpm": "",
+                "playDate": "",
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Sonra çal",
@@ -28,7 +34,8 @@
                 "addToPlaylist": "Çalma listesine ekle",
                 "shuffleAll": "Tümünü karıştır",
                 "download": "İndir",
-                "playNext": "Sonrakini çal"
+                "playNext": "Sonrakini çal",
+                "info": ""
             }
         },
         "album": {
@@ -44,7 +51,10 @@
                 "compilation": "Derleme",
                 "year": "Yıl",
                 "updatedAt": "Güncellendi ",
-                "comment": ""
+                "comment": "",
+                "rating": "",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Çaldır",
@@ -52,7 +62,9 @@
                 "addToQueue": "Sonra çal",
                 "shuffle": "Karıştır",
                 "addToPlaylist": "Playlist'e ekle",
-                "download": "İndir"
+                "download": "İndir",
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Hepsi",
@@ -60,7 +72,8 @@
                 "recentlyAdded": "Son Eklenenler",
                 "recentlyPlayed": "Son oynatılan",
                 "mostPlayed": "En çok çalanlar",
-                "starred": "Yıldızlı"
+                "starred": "Yıldızlı",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +82,10 @@
                 "name": "Ad",
                 "albumCount": "Albüm Sayısı",
                 "songCount": "Şarkı sayısı",
-                "playCount": "Oynatma"
+                "playCount": "Oynatma",
+                "rating": "",
+                "genre": "",
+                "size": ""
             }
         },
         "user": {
@@ -81,7 +97,23 @@
                 "updatedAt": "Güncelleme Tarihi",
                 "name": "Ad",
                 "password": "Şifre",
-                "createdAt": "Oluşturuldu"
+                "createdAt": "Oluşturuldu",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": "",
+                "token": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -93,7 +125,8 @@
                 "client": "Cihaz",
                 "userName": "Kullanıcı adı",
                 "lastSeen": "Son Görülme",
-                "reportRealPath": ""
+                "reportRealPath": "",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -110,7 +143,7 @@
             "fields": {
                 "name": "Isim",
                 "duration": "Süre",
-                "owner": "Sahibi",
+                "ownerName": "Sahibi",
                 "public": "Görülebilir",
                 "updatedAt": "Güncelleme tarihi:",
                 "createdAt": "Oluşturma tarihi:",
@@ -122,7 +155,43 @@
             "actions": {
                 "selectPlaylist": "Bir çalma listesi seç:",
                 "addNewPlaylist": "Oluştur  \"%{name}\"",
-                "export": "Aktar"
+                "export": "Aktar",
+                "makePublic": "",
+                "makePrivate": ""
+            },
+            "message": {
+                "duplicate_song": "",
+                "song_exist": ""
+            }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },
@@ -151,7 +220,9 @@
             "number": "Sayısal bir değer olmalı",
             "email": "E-posta geçerli değil",
             "oneOf": "Bunlardan biri olmalı: %{options}",
-            "regex": "Belirli bir formatla eşleşmelidir (regexp): %{pattern}"
+            "regex": "Belirli bir formatla eşleşmelidir (regexp): %{pattern}",
+            "unique": "",
+            "url": ""
         },
         "action": {
             "add_filter": "Filtre ekle",
@@ -179,7 +250,11 @@
             "close": "Kapat",
             "open_menu": "Menüyü aç",
             "close_menu": "Menüyü kapat",
-            "unselect": "Seçimi kaldır"
+            "unselect": "Seçimi kaldır",
+            "skip": "",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Evet",
@@ -241,7 +316,8 @@
             "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
             "page_rows_per_page": "Sayfa başına kayıtlar",
             "next": "Sonraki",
-            "prev": "Önceki"
+            "prev": "Önceki",
+            "skip_nav": ""
         },
         "notification": {
             "updated": "Öğe güncellendi |||| %{smart_count} öğe güncellendi",
@@ -253,7 +329,14 @@
             "data_provider_error": "dataProvider hatası. Detay için konsolu gözden geçir.",
             "i18n_error": "Belirtilen dil için çeviriler yüklenemedi",
             "canceled": "Eylem iptal edildi",
-            "logged_out": "Oturumunuz sona erdi, Lütfen yeniden bağlanın."
+            "logged_out": "Oturumunuz sona erdi, Lütfen yeniden bağlanın.",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -265,7 +348,28 @@
         "delete_user_title": "'%{name}' kullanıcısını sil",
         "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listesi ve tercihleri dahil) silmek istediğinden emin misin?",
         "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_not_available": "",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        },
+        "lastfmLink": "",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Müzik kütüphanesi",
@@ -278,11 +382,22 @@
                 "theme": "Tema",
                 "language": "Dil",
                 "defaultView": "Varsayılan görünüm",
-                "desktop_notifications": ""
+                "desktop_notifications": "",
+                "lastfmScrobbling": "",
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albümler",
-        "about": "Hakkinda"
+        "about": "Hakkinda",
+        "playlists": "",
+        "sharedPlaylists": ""
     },
     "player": {
         "playListsText": "Oynatma Sırası",
@@ -323,5 +438,19 @@
         "fullScan": "",
         "serverUptime": "",
         "serverDown": ""
+    },
+    "help": {
+        "title": "",
+        "hotkeys": {
+            "show_help": "",
+            "toggle_menu": "",
+            "toggle_play": "",
+            "prev_song": "",
+            "next_song": "",
+            "vol_up": "",
+            "vol_down": "",
+            "toggle_love": "",
+            "current_song": ""
+        }
     }
 }

@@ -2,9 +2,10 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
-	"github.com/Masterminds/squirrel"
-	"github.com/astaxie/beego/orm"
+	. "github.com/Masterminds/squirrel"
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -12,7 +13,7 @@ type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository(ctx context.Context, o orm.Ormer) model.PropertyRepository {
+func NewPropertyRepository(ctx context.Context, o orm.QueryExecutor) model.PropertyRepository {
 	r := &propertyRepository{}
 	r.ctx = ctx
 	r.ormer = o
@@ -21,21 +22,21 @@ func NewPropertyRepository(ctx context.Context, o orm.Ormer) model.PropertyRepos
 }
 
 func (r propertyRepository) Put(id string, value string) error {
-	update := squirrel.Update(r.tableName).Set("value", value).Where(squirrel.Eq{"id": id})
+	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
 	count, err := r.executeSQL(update)
 	if err != nil {
-		return nil
+		return err
 	}
 	if count > 0 {
 		return nil
 	}
-	insert := squirrel.Insert(r.tableName).Columns("id", "value").Values(id, value)
+	insert := Insert(r.tableName).Columns("id", "value").Values(id, value)
 	_, err = r.executeSQL(insert)
 	return err
 }
 
 func (r propertyRepository) Get(id string) (string, error) {
-	sel := squirrel.Select("value").From(r.tableName).Where(squirrel.Eq{"id": id})
+	sel := Select("value").From(r.tableName).Where(Eq{"id": id})
 	resp := struct {
 		Value string
 	}{}
@@ -48,11 +49,15 @@ func (r propertyRepository) Get(id string) (string, error) {
 
 func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	value, err := r.Get(id)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return defaultValue, nil
 	}
 	if err != nil {
 		return defaultValue, err
 	}
 	return value, nil
+}
+
+func (r propertyRepository) Delete(id string) error {
+	return r.delete(Eq{"id": id})
 }

@@ -7,11 +7,12 @@ import (
 
 type IndexGroups map[string]string
 
+// ParseIndexGroups
 // The specification is a space-separated list of index entries. Normally, each entry is just a single character,
 // but you may also specify multiple characters.  For instance, the entry "The" will link to all files and
 // folders starting with "The".
 //
-// You may also create an entry using a group of index characters in parenthesis. For instance, the entry
+// You may also create an entry using a group of index characters in parentheses. For instance, the entry
 // "A-E(ABCDE)" will display as "A-E" and link to all files and folders starting with either
 // A, B, C, D or E.  This may be useful for grouping less-frequently used characters (such and X, Y and Z), or
 // for grouping accented characters (such as A, \u00C0 and \u00C1)
@@ -25,7 +26,7 @@ func ParseIndexGroups(spec string) IndexGroups {
 		sub := re.FindStringSubmatch(g)
 		if len(sub) > 0 {
 			i := 0
-			chars := strings.SplitN(sub[2], "", -1)
+			chars := strings.Split(sub[2], "")
 			for _, c := range chars {
 				parsed[c] = sub[1]
 				i++

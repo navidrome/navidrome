@@ -20,7 +20,13 @@
                 "bitRate": "Tasa de bits",
                 "discSubtitle": "Subtítulo del disco",
                 "starred": "Favorito",
-                "comment": "Comentario"
+                "comment": "Comentario",
+                "rating": "Calificación",
+                "quality": "Calidad",
+                "bpm": "BPM",
+                "playDate": "Últimas reproducciones",
+                "channels": "Canales",
+                "createdAt": "Creado el"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -28,7 +34,8 @@
                 "addToPlaylist": "Agregar a la lista de reproducción",
                 "shuffleAll": "Todas aleatorias",
                 "download": "Descarga",
-                "playNext": "Siguiente"
+                "playNext": "Siguiente",
+                "info": "Obtener información"
             }
         },
         "album": {
@@ -44,7 +51,10 @@
                 "compilation": "Compilación",
                 "year": "Año",
                 "updatedAt": "Actualizado el",
-                "comment": "Comentario"
+                "comment": "Comentario",
+                "rating": "Calificación",
+                "createdAt": "Creado el",
+                "size": "Tamaño del archivo"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -52,7 +62,9 @@
                 "addToQueue": "Reproducir después",
                 "shuffle": "Aletorio",
                 "addToPlaylist": "Agregar a la lista",
-                "download": "Descargar"
+                "download": "Descargar",
+                "info": "Obtener información",
+                "share": "Compartir"
             },
             "lists": {
                 "all": "Todos",
@@ -60,7 +72,8 @@
                 "recentlyAdded": "Recientes",
                 "recentlyPlayed": "Recientes",
                 "mostPlayed": "Más reproducidos",
-                "starred": "Favoritos"
+                "starred": "Favoritos",
+                "topRated": "Los mejores calificados"
             }
         },
         "artist": {
@@ -69,7 +82,10 @@
                 "name": "Nombre",
                 "albumCount": "Número de álbumes",
                 "songCount": "Número de canciones",
-                "playCount": "Reproducciones"
+                "playCount": "Reproducciones",
+                "rating": "Calificación",
+                "genre": "Género",
+                "size": "Tamaño"
             }
         },
         "user": {
@@ -81,7 +97,23 @@
                 "updatedAt": "Actualizado el",
                 "name": "Nombre",
                 "password": "Contraseña",
-                "createdAt": "Creado el"
+                "createdAt": "Creado el",
+                "changePassword": "¿Cambiar contraseña?",
+                "currentPassword": "Contraseña actual",
+                "newPassword": "Nueva contraseña",
+                "token": "Token"
+            },
+            "helperTexts": {
+                "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión"
+            },
+            "notifications": {
+                "created": "Usuario creado",
+                "updated": "Usuario actulalizado",
+                "deleted": "Usuario eliminado"
+            },
+            "message": {
+                "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
+                "clickHereForToken": "Click aquí para obtener tu token"
             }
         },
         "player": {
@@ -93,7 +125,8 @@
                 "client": "Cliente",
                 "userName": "Usuario",
                 "lastSeen": "Última conexión",
-                "reportRealPath": "Reporta la ruta absoluta"
+                "reportRealPath": "Reporta la ruta absoluta",
+                "scrobbleEnabled": "Envía los scrobbles a servicios externos"
             }
         },
         "transcoding": {
@@ -110,7 +143,7 @@
             "fields": {
                 "name": "Nombre",
                 "duration": "Duración",
-                "owner": "Dueño",
+                "ownerName": "Dueño",
                 "public": "Público",
                 "updatedAt": "Actualizado el",
                 "createdAt": "Creado el",
@@ -122,11 +155,43 @@
             "actions": {
                 "selectPlaylist": "Seleccione una lista:",
                 "addNewPlaylist": "Creada \"%{name}\"",
-                "export": "Exportar"
+                "export": "Exportar",
+                "makePublic": "Hazla pública",
+                "makePrivate": "Hazla privada"
             },
             "message": {
-              "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
-              "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
+                "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
+                "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
+            }
+        },
+        "radio": {
+            "name": "Radio |||| Radios",
+            "fields": {
+                "name": "Nombre",
+                "streamUrl": "URL del stream",
+                "homePageUrl": "URL de la página web",
+                "updatedAt": "Actualizado el",
+                "createdAt": "Creado el"
+            },
+            "actions": {
+                "playNow": "Reproducir ahora"
+            }
+        },
+        "share": {
+            "name": "Compartir",
+            "fields": {
+                "username": "Nombre de usuario",
+                "url": "",
+                "description": "Descripción",
+                "contents": "Contenido",
+                "expiresAt": "Caduca el",
+                "lastVisitedAt": "Visitado por última vez el",
+                "visitCount": "Número de visitas",
+                "format": "Formato",
+                "maxBitRate": "Tasa de bits Máx.",
+                "updatedAt": "Actualizado el",
+                "createdAt": "Creado el",
+                "downloadable": ""
             }
         }
     },
@@ -155,7 +220,9 @@
             "number": "Debe ser un número",
             "email": "Debe ser un correo electrónico válido",
             "oneOf": "Debe ser uno de: %{options}",
-            "regex": "Debe coincidir con un formato específico (regexp): %{pattern}"
+            "regex": "Debe coincidir con un formato específico (regexp): %{pattern}",
+            "unique": "Tiene que ser único",
+            "url": ""
         },
         "action": {
             "add_filter": "Añadir filtro",
@@ -184,7 +251,10 @@
             "open_menu": "Abrir menú",
             "close_menu": "Cerrar menú",
             "unselect": "Deseleccionado",
-            "skip": "Omitir"
+            "skip": "Omitir",
+            "bulk_actions_mobile": "",
+            "share": "Compartir",
+            "download": "Descargar"
         },
         "boolean": {
             "true": "Sí",
@@ -259,7 +329,14 @@
             "data_provider_error": "Error del proveedor de datos. Consulte la consola para más detalles.",
             "i18n_error": "No se pudieron cargar las traducciones para el idioma especificado",
             "canceled": "Acción cancelada",
-            "logged_out": "Su sesión ha finalizado, vuelva a conectarse."
+            "logged_out": "Su sesión ha finalizado, vuelva a conectarse.",
+            "new_version": "¡Nueva versión disponible! Por favor refresca esta ventana."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Columnas para mostrar",
+            "layout": "Diseño",
+            "grid": "Cuadrícula",
+            "table": "Tabla"
         }
     },
     "message": {
@@ -271,7 +348,28 @@
         "delete_user_title": "Eliminar usuario '%{name}'",
         "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
         "notifications_blocked": "Las notificaciones de este sitio están bloqueadas en tu navegador",
-        "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https"
+        "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https",
+        "lastfmLinkSuccess": "Last.fm esta conectado y el scrobbling esta activado",
+        "lastfmLinkFailure": "No se pudo conectar con Last.fm",
+        "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
+        "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
+        "openIn": {
+            "lastfm": "Ver en Last.fm",
+            "musicbrainz": "Ver en MusicBrainz"
+        },
+        "lastfmLink": "Leer más...",
+        "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activo el scrobbling como el usuario: %{user}",
+        "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
+        "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
+        "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
+        "downloadOriginalFormat": "Descargar formato original",
+        "shareOriginalFormat": "Compartir formato original",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Biblioteca",
@@ -284,11 +382,22 @@
                 "theme": "Tema",
                 "language": "Idioma",
                 "defaultView": "Vista por defecto",
-                "desktop_notifications": "Notificaciones de escritorio"
+                "desktop_notifications": "Notificaciones de escritorio",
+                "lastfmScrobbling": "Scrobble a Last.fm",
+                "listenBrainzScrobbling": "Scrobble a ListenBrainz",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "Ninguno",
+                    "album": "Álbum",
+                    "track": "Pista"
+                }
             }
         },
         "albumList": "Álbumes",
-        "about": "Acerca de"
+        "about": "Acerca de",
+        "playlists": "Playlists",
+        "sharedPlaylists": "Playlists Compartidas"
     },
     "player": {
         "playListsText": "Lista de reproducción",
@@ -340,7 +449,8 @@
             "next_song": "Siguiente canción",
             "vol_up": "Subir volumen",
             "vol_down": "Bajar volumen",
-            "toggle_star": "Activa/desactiva esta canción como favorita"
+            "toggle_love": "Marca esta canción como favorita",
+            "current_song": "Canción actual"
         }
     }
 }

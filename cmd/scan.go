@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"github.com/navidrome/navidrome/conf"
+	"context"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var fullRescan bool
@@ -24,8 +24,6 @@ var scanCmd = &cobra.Command{
 }
 
 func runScanner() {
-	conf.Server.DevPreCacheAlbumArtwork = false
-
 	scanner := GetScanner()
 	_ = scanner.RescanAll(context.Background(), fullRescan)
 	if fullRescan {

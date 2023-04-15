@@ -7,9 +7,8 @@
             content="Navidrome Music Server - {{.Version}}"
     />
     <title>Navidrome</title>
-    <script>
-      window.__APP_CONFIG__="{{.AppConfig}}"
-    </script>
+    <!-- The line below has to match the exact format of the equivalent line in ui/build/index.html -->
+    <script>window.__APP_CONFIG__={{ .AppConfig }};</script>
 </head>
 <body>
 </body>

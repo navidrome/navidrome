@@ -8,30 +8,45 @@ import {
   useDataProvider,
   useNotify,
 } from 'react-admin'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
+import ShareIcon from '@material-ui/icons/Share'
 import { httpClient } from '../dataProvider'
-import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
+import {
+  playNext,
+  addTracks,
+  playTracks,
+  shuffleTracks,
+  openDownloadMenu,
+  DOWNLOAD_MENU_PLAY,
+  openShareMenu,
+} from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
-import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
-import { useMediaQuery } from '@material-ui/core'
 import config from '../config'
+import { ToggleFieldsMenu } from '../common'
+
+const useStyles = makeStyles({
+  toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
+})
 
 const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const classes = useStyles()
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
+  const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
   const getAllSongsAndDispatch = React.useCallback(
     (action) => {
-      if (ids.length === record.songCount) {
+      if (ids?.length === record.songCount) {
         return dispatch(action(data, ids))
       }
 
@@ -71,9 +86,13 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
     getAllSongsAndDispatch(shuffleTracks)
   }, [getAllSongsAndDispatch])
 
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], 'playlist', record.name))
+  }, [dispatch, record])
+
   const handleDownload = React.useCallback(() => {
-    subsonic.download(record.id)
-  }, [record])
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_PLAY))
+  }, [dispatch, record])
 
   const handleExport = React.useCallback(
     () =>
@@ -94,47 +113,57 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
-      <Button
-        onClick={handlePlay}
-        label={translate('resources.album.actions.playAll')}
-      >
-        <PlayArrowIcon />
-      </Button>
-      <Button
-        onClick={handleShuffle}
-        label={translate('resources.album.actions.shuffle')}
-      >
-        <ShuffleIcon />
-      </Button>
-      <Button
-        onClick={handlePlayNext}
-        label={translate('resources.album.actions.playNext')}
-      >
-        <RiPlayList2Fill />
-      </Button>
-      <Button
-        onClick={handlePlayLater}
-        label={translate('resources.album.actions.addToQueue')}
-      >
-        <RiPlayListAddFill />
-      </Button>
-      {config.enableDownloads && (
-        <Button
-          onClick={handleDownload}
-          label={
-            translate('resources.album.actions.download') +
-            (isDesktop ? ` (${formatBytes(record.size)})` : '')
-          }
-        >
-          <CloudDownloadOutlinedIcon />
-        </Button>
-      )}
-      <Button
-        onClick={handleExport}
-        label={translate('resources.playlist.actions.export')}
-      >
-        <QueueMusicIcon />
-      </Button>
+      <div className={classes.toolbar}>
+        <div>
+          <Button
+            onClick={handlePlay}
+            label={translate('resources.album.actions.playAll')}
+          >
+            <PlayArrowIcon />
+          </Button>
+          <Button
+            onClick={handleShuffle}
+            label={translate('resources.album.actions.shuffle')}
+          >
+            <ShuffleIcon />
+          </Button>
+          <Button
+            onClick={handlePlayNext}
+            label={translate('resources.album.actions.playNext')}
+          >
+            <RiPlayList2Fill />
+          </Button>
+          <Button
+            onClick={handlePlayLater}
+            label={translate('resources.album.actions.addToQueue')}
+          >
+            <RiPlayListAddFill />
+          </Button>
+          {config.enableSharing && (
+            <Button onClick={handleShare} label={translate('ra.action.share')}>
+              <ShareIcon />
+            </Button>
+          )}
+          {config.enableDownloads && (
+            <Button
+              onClick={handleDownload}
+              label={
+                translate('ra.action.download') +
+                (isDesktop ? ` (${formatBytes(record.size)})` : '')
+              }
+            >
+              <CloudDownloadOutlinedIcon />
+            </Button>
+          )}
+          <Button
+            onClick={handleExport}
+            label={translate('resources.playlist.actions.export')}
+          >
+            <QueueMusicIcon />
+          </Button>
+        </div>
+        <div>{isNotSmall && <ToggleFieldsMenu resource="playlistTrack" />}</div>
+      </div>
     </TopToolbar>
   )
 }

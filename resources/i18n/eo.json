@@ -20,7 +20,13 @@
                 "bitRate": "Bitrapido",
                 "discSubtitle": "Diska Subteksto",
                 "starred": "Stela",
-                "comment": "Komento"
+                "comment": "Komento",
+                "rating": "",
+                "quality": "",
+                "bpm": "",
+                "playDate": "",
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Ludi Poste",
@@ -28,7 +34,8 @@
                 "addToPlaylist": "Aldoni al Ludlisto",
                 "shuffleAll": "Miksu Ĉiujn",
                 "download": "Elŝuti",
-                "playNext": "Ludu Poste"
+                "playNext": "Ludu Poste",
+                "info": ""
             }
         },
         "album": {
@@ -44,7 +51,10 @@
                 "compilation": "Kompilaĵo",
                 "year": "Jaro",
                 "updatedAt": "Ĝisdatigita je :",
-                "comment": "Komento"
+                "comment": "Komento",
+                "rating": "",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Ludi",
@@ -52,7 +62,9 @@
                 "addToQueue": "Aldoni la dosieron de atento",
                 "shuffle": "Miksi",
                 "addToPlaylist": "Aldoni al la Ludlisto",
-                "download": "Elŝuti"
+                "download": "Elŝuti",
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Ĉiuj",
@@ -60,7 +72,8 @@
                 "recentlyAdded": "Lastatempe Aldonita",
                 "recentlyPlayed": "Lastatempe Ludita",
                 "mostPlayed": "Plej Luditaj",
-                "starred": "Stelplena"
+                "starred": "Stelplena",
+                "topRated": ""
             }
         },
         "artist": {
@@ -69,7 +82,10 @@
                 "name": "Nomo",
                 "albumCount": "Nombro da albumoj",
                 "songCount": "Kanto kalkula",
-                "playCount": "Teatraĵoj"
+                "playCount": "Teatraĵoj",
+                "rating": "",
+                "genre": "",
+                "size": ""
             }
         },
         "user": {
@@ -81,7 +97,23 @@
                 "updatedAt": "Ĝisdatigita je",
                 "name": "Nomo",
                 "password": "Pasvorto",
-                "createdAt": "Kreita je :"
+                "createdAt": "Kreita je :",
+                "changePassword": "",
+                "currentPassword": "",
+                "newPassword": "",
+                "token": ""
+            },
+            "helperTexts": {
+                "name": ""
+            },
+            "notifications": {
+                "created": "",
+                "updated": "",
+                "deleted": ""
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
             }
         },
         "player": {
@@ -93,7 +125,8 @@
                 "client": "Kliento",
                 "userName": "Uzantonomo",
                 "lastSeen": "Laste Vidita Je",
-                "reportRealPath": "Raporti vera pado"
+                "reportRealPath": "Raporti vera pado",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -110,7 +143,7 @@
             "fields": {
                 "name": "Nomo",
                 "duration": "Daŭro",
-                "owner": "Posedanto",
+                "ownerName": "Posedanto",
                 "public": "Publika",
                 "updatedAt": "Ĝisdatigita je",
                 "createdAt": "Kreita je",
@@ -122,11 +155,43 @@
             "actions": {
                 "selectPlaylist": "Elektu ludliston :",
                 "addNewPlaylist": "Krei \"%{name}\"",
-                "export": "Eksporti"
+                "export": "Eksporti",
+                "makePublic": "",
+                "makePrivate": ""
             },
             "message": {
                 "duplicate_song": "",
                 "song_exist": ""
+            }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },
@@ -155,7 +220,9 @@
             "number": "Devas esti nombro",
             "email": "Devas esti valida retpoŝto",
             "oneOf": "Devas esti unu el: %{options}",
-            "regex": "Devas kongrui kun specifa formato (regexp): %{pattern}"
+            "regex": "Devas kongrui kun specifa formato (regexp): %{pattern}",
+            "unique": "",
+            "url": ""
         },
         "action": {
             "add_filter": "Aldoni filtrilon",
@@ -184,7 +251,10 @@
             "open_menu": "Malfermu menuon",
             "close_menu": "Fermu menuon",
             "unselect": "Malelekti",
-            "skip": ""
+            "skip": "",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Jes",
@@ -259,7 +329,14 @@
             "data_provider_error": "datumaProvizora eraro. Kontrolu la konzolon por detaloj.",
             "i18n_error": "Ne eblas ŝargi la tradukojn por la specifa lingvo",
             "canceled": "Ago nuligita",
-            "logged_out": "Via seanco finiĝis, bonvolu rekonekti."
+            "logged_out": "Via seanco finiĝis, bonvolu rekonekti.",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -271,7 +348,28 @@
         "delete_user_title": "Forigi uzanto '%{name}'",
         "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?",
         "notifications_blocked": "Vi blokis sciigojn por ĉi tiu retejo en la agordoj de via retumilo",
-        "notifications_not_available": "Ĉi tiu retumilo ne subtenas labortablajn sciigojn aŭ vi ne aliras Navidrome per https"
+        "notifications_not_available": "Ĉi tiu retumilo ne subtenas labortablajn sciigojn aŭ vi ne aliras Navidrome per https",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        },
+        "lastfmLink": "",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Biblioteko",
@@ -284,11 +382,22 @@
                 "theme": "Temo",
                 "language": "Lingvo",
                 "defaultView": "Defaŭlta Vido",
-                "desktop_notifications": "Labortablaj sciigoj"
+                "desktop_notifications": "Labortablaj sciigoj",
+                "lastfmScrobbling": "",
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albumoj",
-        "about": "Pri"
+        "about": "Pri",
+        "playlists": "",
+        "sharedPlaylists": ""
     },
     "player": {
         "playListsText": "Ludu Atendon",
@@ -340,7 +449,8 @@
             "next_song": "Sekva kanto",
             "vol_up": "Pli volumo",
             "vol_down": "Malpli volumo",
-            "toggle_star": "Baskuli la stelon de nuna kanto"
+            "toggle_love": "Baskuli la stelon de nuna kanto",
+            "current_song": ""
         }
     }
 }

@@ -5,6 +5,8 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
 import { useToggleLove } from './useToggleLove'
+import { useRecordContext } from 'react-admin'
+import config from '../config'
 
 const useStyles = makeStyles({
   love: {
@@ -16,7 +18,6 @@ const useStyles = makeStyles({
 
 export const LoveButton = ({
   resource,
-  record,
   color,
   visible,
   size,
@@ -25,6 +26,7 @@ export const LoveButton = ({
   disabled,
   ...rest
 }) => {
+  const record = useRecordContext(rest) || {}
   const classes = useStyles({ color, visible, loved: record.starred })
   const [toggleLove, loading] = useToggleLove(resource, record)
 
@@ -37,6 +39,9 @@ export const LoveButton = ({
     [toggleLove]
   )
 
+  if (!config.enableFavourites) {
+    return <></>
+  }
   return (
     <Button
       onClick={handleToggleLove}
@@ -56,7 +61,7 @@ export const LoveButton = ({
 
 LoveButton.propTypes = {
   resource: PropTypes.string.isRequired,
-  record: PropTypes.object.isRequired,
+  record: PropTypes.object,
   visible: PropTypes.bool,
   color: PropTypes.string,
   size: PropTypes.string,
@@ -66,7 +71,6 @@ LoveButton.propTypes = {
 
 LoveButton.defaultProps = {
   addLabel: true,
-  record: {},
   visible: true,
   size: 'small',
   color: 'inherit',

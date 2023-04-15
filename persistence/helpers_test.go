@@ -1,11 +1,10 @@
 package persistence
 
 import (
-	"context"
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -25,53 +24,46 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 	Describe("toSqlArgs", func() {
+		type Embed struct{}
 		type Model struct {
-			ID        string `json:"id"`
-			AlbumId   string `json:"albumId"`
-			PlayCount int    `json:"playCount"`
-			CreatedAt *time.Time
+			Embed     `structs:"-"`
+			ID        string     `structs:"id" json:"id"`
+			AlbumId   string     `structs:"album_id" json:"albumId"`
+			PlayCount int        `structs:"play_count" json:"playCount"`
+			UpdatedAt *time.Time `structs:"updated_at"`
+			CreatedAt time.Time  `structs:"created_at"`
 		}
 
 		It("returns a map with snake_case keys", func() {
 			now := time.Now()
-			m := &Model{ID: "123", AlbumId: "456", CreatedAt: &now, PlayCount: 2}
+			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
 			args, err := toSqlArgs(m)
 			Expect(err).To(BeNil())
 			Expect(args).To(HaveKeyWithValue("id", "123"))
 			Expect(args).To(HaveKeyWithValue("album_id", "456"))
-			Expect(args).To(HaveKey("created_at"))
-			Expect(args).To(HaveLen(3))
-		})
-
-		It("remove null fields", func() {
-			m := &Model{ID: "123", AlbumId: "456"}
-			args, err := toSqlArgs(m)
-			Expect(err).To(BeNil())
-			Expect(args).To(HaveKey("id"))
-			Expect(args).To(HaveKey("album_id"))
-			Expect(args).To(HaveLen(2))
+			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
+			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
+			Expect(args).ToNot(HaveKey("Embed"))
 		})
 	})
 
-	Describe("Exists", func() {
+	Describe("exists", func() {
 		It("constructs the correct EXISTS query", func() {
 			e := exists("album", squirrel.Eq{"id": 1})
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
-			Expect(args).To(Equal([]interface{}{1}))
+			Expect(args).To(ConsistOf(1))
 			Expect(err).To(BeNil())
 		})
 	})
 
-	Describe("getMbzId", func() {
-		It(`returns "" when no ids are passed`, func() {
-			Expect(getMbzId(context.TODO(), " ", "", "")).To(Equal(""))
-		})
-		It(`returns the only id passed`, func() {
-			Expect(getMbzId(context.TODO(), "1234 ", "", "")).To(Equal("1234"))
-		})
-		It(`returns the id with higher frequency`, func() {
-			Expect(getMbzId(context.TODO(), "1 2 3 4 1", "", "")).To(Equal("1"))
+	Describe("notExists", func() {
+		It("constructs the correct NOT EXISTS query", func() {
+			e := notExists("artist", squirrel.ConcatExpr("id = artist_id"))
+			sql, args, err := e.ToSql()
+			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
+			Expect(args).To(BeEmpty())
+			Expect(err).To(BeNil())
 		})
 	})
 })

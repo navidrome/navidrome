@@ -27,10 +27,14 @@ type DataStore interface {
 	Genre(ctx context.Context) GenreRepository
 	Playlist(ctx context.Context) PlaylistRepository
 	PlayQueue(ctx context.Context) PlayQueueRepository
-	Property(ctx context.Context) PropertyRepository
-	User(ctx context.Context) UserRepository
 	Transcoding(ctx context.Context) TranscodingRepository
 	Player(ctx context.Context) PlayerRepository
+	Radio(ctx context.Context) RadioRepository
+	Share(ctx context.Context) ShareRepository
+	Property(ctx context.Context) PropertyRepository
+	User(ctx context.Context) UserRepository
+	UserProps(ctx context.Context) UserPropsRepository
+	ScrobbleBuffer(ctx context.Context) ScrobbleBufferRepository
 
 	Resource(ctx context.Context, model interface{}) ResourceRepository
 

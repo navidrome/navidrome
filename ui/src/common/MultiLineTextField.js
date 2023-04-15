@@ -1,21 +1,21 @@
 import React, { memo } from 'react'
-import get from 'lodash.get'
 import Typography from '@material-ui/core/Typography'
 import sanitizeFieldRestProps from './sanitizeFieldRestProps'
-import md5 from 'md5-hex'
+import md5 from 'blueimp-md5'
+import { useRecordContext } from 'react-admin'
 
 export const MultiLineTextField = memo(
   ({
     className,
     emptyText,
     source,
-    record,
     firstLine,
     maxLines,
     addLabel,
     ...rest
   }) => {
-    const value = get(record, source)
+    const record = useRecordContext(rest)
+    const value = record && record[source]
     let lines = value ? value.split('\n') : []
     if (maxLines || firstLine) {
       lines = lines.slice(firstLine, maxLines)
@@ -47,7 +47,6 @@ export const MultiLineTextField = memo(
 )
 
 MultiLineTextField.defaultProps = {
-  record: {},
   addLabel: true,
   firstLine: 0,
 }

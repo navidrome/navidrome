@@ -1,1 +1,0 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0"><playQueue current="111" position="243" username="user1" changed="0001-01-01T00:00:00Z" changedBy="a_client"><entry id="1" isDir="false" title="title" isVideo="false"></entry></playQueue></subsonic-response>

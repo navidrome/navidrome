@@ -20,7 +20,13 @@
                 "bitRate": "Přenosová rychlost",
                 "discSubtitle": "Podtitul disku",
                 "starred": "Oblíbené",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "Hodnocení",
+                "quality": "Kvalita",
+                "bpm": "BPM",
+                "playDate": "Poslední přehravaná skladba",
+                "channels": "Kanály",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -28,7 +34,8 @@
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "shuffleAll": "Zamíchat vše",
                 "download": "Stáhnout",
-                "playNext": "Přehrát další"
+                "playNext": "Přehrát další",
+                "info": "Získat informace"
             }
         },
         "album": {
@@ -44,7 +51,10 @@
                 "compilation": "Kompilace",
                 "year": "Rok",
                 "updatedAt": "Aktualizováno",
-                "comment": "Komentář"
+                "comment": "Komentář",
+                "rating": "Hodnocení",
+                "createdAt": "",
+                "size": ""
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -52,7 +62,9 @@
                 "addToQueue": "Přehrát později",
                 "shuffle": "Zamíchat",
                 "addToPlaylist": "Přidat do seznamu skladeb",
-                "download": "Stáhnout"
+                "download": "Stáhnout",
+                "info": "Získat informace",
+                "share": ""
             },
             "lists": {
                 "all": "Všechno",
@@ -60,7 +72,8 @@
                 "recentlyAdded": "Nedávno přidané",
                 "recentlyPlayed": "Nedávno přehrané",
                 "mostPlayed": "Nejpřehrávanější",
-                "starred": "Oblíbené"
+                "starred": "Oblíbené",
+                "topRated": "Nejlépe hodnocené"
             }
         },
         "artist": {
@@ -69,7 +82,10 @@
                 "name": "Název",
                 "albumCount": "Počet alb",
                 "songCount": "Počet skladeb",
-                "playCount": "Přehrání"
+                "playCount": "Přehrání",
+                "rating": "Hodnocení",
+                "genre": "Žánr",
+                "size": ""
             }
         },
         "user": {
@@ -81,7 +97,23 @@
                 "updatedAt": "Upraven",
                 "name": "Jméno",
                 "password": "Heslo",
-                "createdAt": "Vytvořen"
+                "createdAt": "Vytvořen",
+                "changePassword": "Změnit heslo?",
+                "currentPassword": "Současné heslo",
+                "newPassword": "Nové heslo",
+                "token": "Token"
+            },
+            "helperTexts": {
+                "name": "Změna jména se zobrazí až při dalším přihlášení"
+            },
+            "notifications": {
+                "created": "Uživatel vytvořen",
+                "updated": "Uživatel upraven",
+                "deleted": "Uživatel odstraněn"
+            },
+            "message": {
+                "listenBrainzToken": "Vložte svůj uživatelský ListenBrainz token.",
+                "clickHereForToken": "Klikněte zde pro získání svého tokenu"
             }
         },
         "player": {
@@ -92,8 +124,9 @@
                 "maxBitRate": "Max. přenosová rychlost",
                 "client": "Klient",
                 "userName": "Uživatelské jméno",
-                "lastSeen": "Naposledy spatřen",
-                "reportRealPath": "Zkutečná cesta hlášení"
+                "lastSeen": "Naposledy viděn",
+                "reportRealPath": "Zkutečná cesta hlášení",
+                "scrobbleEnabled": "Poslat scrobblování na externí služby"
             }
         },
         "transcoding": {
@@ -110,7 +143,7 @@
             "fields": {
                 "name": "Název",
                 "duration": "Délka",
-                "owner": "Vlastník",
+                "ownerName": "Autor",
                 "public": "Veřejný",
                 "updatedAt": "Nahrán",
                 "createdAt": "Vytvořen",
@@ -122,11 +155,43 @@
             "actions": {
                 "selectPlaylist": "Přidat skladby do seznamu:",
                 "addNewPlaylist": "Vytvořit \"%{name}\"",
-                "export": "Export"
+                "export": "Export",
+                "makePublic": "Zveřejnit",
+                "makePrivate": "Nastavit jako soukromé"
             },
             "message": {
-                "duplicate_song": "",
-                "song_exist": ""
+                "duplicate_song": "Přidat duplicitní skladby",
+                "song_exist": "Do seznamu skladeb se přidávají duplikáty. Chcete je přidat nebo přeskočit?"
+            }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },
@@ -155,7 +220,9 @@
             "number": "Musí být číslo",
             "email": "Musí být platná emailová adresa",
             "oneOf": "Musí splňovat jedno z: %{options}",
-            "regex": "Musí být ve specifickém formátu (regexp): %{pattern}"
+            "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
+            "unique": "Musí být jedinečný",
+            "url": ""
         },
         "action": {
             "add_filter": "Přidat filtr",
@@ -184,7 +251,10 @@
             "open_menu": "Otevřít nabídku",
             "close_menu": "Zavřít nabídku",
             "unselect": "Zrušit výběr",
-            "skip": ""
+            "skip": "Přeskočit",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Ano",
@@ -199,21 +269,21 @@
             "loading": "Načítání",
             "not_found": "Nenalezeno",
             "show": "%{name} #%{id}",
-            "empty": "Zatím žádný %{name}",
+            "empty": "Zatím žádný %{name}.",
             "invite": "Chcete jeden přidat?"
         },
         "input": {
             "file": {
-                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte soubory pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte soubor pro nahrání nebo klikněte pro jeho výběr."
             },
             "image": {
-                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr",
-                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr"
+                "upload_several": "Přetáhněte obrázky pro nahrání nebo klikněte pro výběr.",
+                "upload_single": "Přetáhněte obrázek pro nahrání nebo klikněte pro jeho výběr."
             },
             "references": {
-                "all_missing": "Nelze nalézt referencovaná data",
-                "many_missing": "Minimálně jedna z referencí se nezdá být nadále dostupná",
+                "all_missing": "Nelze nalézt referencovaná data.",
+                "many_missing": "Minimálně jedna z referencí už není dostupná.",
                 "single_missing": "Reference se nezdá být nadále dostupná."
             },
             "password": {
@@ -230,7 +300,7 @@
             "delete_title": "Smazat %{name} #%{id}",
             "details": "Detaily",
             "error": "Objevila se chyba klienta a váš požadavek nemohl být splněn.",
-            "invalid_form": "Formulář není platný. Prosím zkontrolujte chyby.",
+            "invalid_form": "Formulář není platný. Prosím překontrolujte ho.",
             "loading": "Stránka se načítá, prosím vyčkejte",
             "no": "Ne",
             "not_found": "Napsali jste špatnou adresu URL, nebo jste následovali špatný odkaz.",
@@ -259,7 +329,14 @@
             "data_provider_error": "Chyba dataProvideru. Detaily najdete v konzoli.",
             "i18n_error": "Nelze načíst překlady pro vybraný jazyk",
             "canceled": "Akce zrušena",
-            "logged_out": "Vaše relace skončila, prosím připojte se znovu."
+            "logged_out": "Vaše relace skončila, prosím připojte se znovu.",
+            "new_version": "Je dostupná nová verze! Prosím obnovte toto okno."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Sloupce na displej",
+            "layout": "Rozložení",
+            "grid": "Mřížka",
+            "table": "Tabulka"
         }
     },
     "message": {
@@ -271,24 +348,56 @@
         "delete_user_title": "Odstranit uživatele '%{name}'",
         "delete_user_content": "Jste si jisti že chcete odstranit tohoto uživatele a všechny jejich data (zahrujicí seznamy skladeb a nastavení)?",
         "notifications_blocked": "Zablokovali jste si oznámení pro tuto stránku v nastavení vašeho prohlížeče",
-        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše"
+        "notifications_not_available": "Tento prohlížeč nepodporuje oznámení na ploše nebo nepřistupujete k Navidrome přes https",
+        "lastfmLinkSuccess": "Last.fm úspěšně připojeno a scrobblování zapnuto",
+        "lastfmLinkFailure": "Last.fm nemohlo být připojeno",
+        "lastfmUnlinkSuccess": "Last.fm odpojeno a scrobblování vypnuto",
+        "lastfmUnlinkFailure": "Last.fm nemohlo být odpojeno",
+        "openIn": {
+            "lastfm": "Otevřít na Last.fm",
+            "musicbrainz": "Otevřít na MusicBrainz"
+        },
+        "lastfmLink": "Číst dále...",
+        "listenBrainzLinkSuccess": "ListenBrainz úspěšně připojeno a scrobblování zapnuto jako uživatel: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz nemohlo být připojeno: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz odpojeno a scrobblování vypnuto",
+        "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Knihovna",
         "settings": "Nastavení",
         "version": "Verze",
-        "theme": "Motiv",
+        "theme": "Téma",
         "personal": {
             "name": "Osobní",
             "options": {
-                "theme": "Motiv",
+                "theme": "Téma",
                 "language": "Jazyk",
                 "defaultView": "Výchozí stránka",
-                "desktop_notifications": "Oznámení na ploše"
+                "desktop_notifications": "Oznámení na ploše",
+                "lastfmScrobbling": "Scrobblovat na Last.fm",
+                "listenBrainzScrobbling": "Scrobblovat na ListenBrainz",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Alba",
-        "about": "O Navidrome"
+        "about": "O Navidrome",
+        "playlists": "Seznamy skladeb",
+        "sharedPlaylists": "Sdílené seznamy skladeb"
     },
     "player": {
         "playListsText": "Fronta",
@@ -340,7 +449,8 @@
             "next_song": "Následující skladba",
             "vol_up": "Zvýšit hlasitost",
             "vol_down": "Snížit hlasitost",
-            "toggle_star": "Přepnout hvězdičku aktuální skladby"
+            "toggle_love": "Přidat tuto skladbu do oblíbených",
+            "current_song": "Přejít na aktuální skladbu"
         }
     }
 }

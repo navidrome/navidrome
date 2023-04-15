@@ -9,10 +9,13 @@ import {
   BooleanInput,
   required,
   useTranslate,
+  usePermissions,
+  ReferenceInput,
+  SelectInput,
 } from 'react-admin'
-import { Title } from '../common'
+import { isWritable, Title } from '../common'
 
-const SyncFragment = ({ formData, ...rest }) => {
+const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
     <Fragment>
       {formData.path && <BooleanInput source="sync" {...rest} />}
@@ -27,16 +30,39 @@ const PlaylistTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} "${record ? record.name : ''}"`} />
 }
 
-const PlaylistEdit = (props) => (
-  <Edit title={<PlaylistTitle />} {...props}>
-    <SimpleForm redirect="list" variant={'outlined'}>
+const PlaylistEditForm = (props) => {
+  const { record } = props
+  const { permissions } = usePermissions()
+  return (
+    <SimpleForm redirect="list" variant={'outlined'} {...props}>
       <TextInput source="name" validate={required()} />
       <TextInput multiline source="comment" />
-      <BooleanInput source="public" />
+      {permissions === 'admin' ? (
+        <ReferenceInput
+          source="ownerId"
+          reference="user"
+          perPage={0}
+          sort={{ field: 'name', order: 'ASC' }}
+        >
+          <SelectInput
+            label={'resources.playlist.fields.ownerName'}
+            optionText="userName"
+          />
+        </ReferenceInput>
+      ) : (
+        <TextField source="ownerName" />
+      )}
+      <BooleanInput source="public" disabled={!isWritable(record.ownerId)} />
       <FormDataConsumer>
         {(formDataProps) => <SyncFragment {...formDataProps} />}
       </FormDataConsumer>
     </SimpleForm>
+  )
+}
+
+const PlaylistEdit = (props) => (
+  <Edit title={<PlaylistTitle />} actions={false} {...props}>
+    <PlaylistEditForm {...props} />
   </Edit>
 )
 

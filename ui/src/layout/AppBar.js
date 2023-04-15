@@ -1,4 +1,4 @@
-import React, { createElement, forwardRef } from 'react'
+import React, { createElement, forwardRef, Fragment } from 'react'
 import {
   AppBar as RAAppBar,
   MenuItemLink,
@@ -10,6 +10,9 @@ import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
+import PersonIcon from '@material-ui/icons/Person'
+import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount'
+import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
@@ -58,6 +61,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
 })
 
 const settingsResources = (resource) =>
+  resource.name !== 'user' &&
   resource.hasList &&
   resource.options &&
   resource.options.subMenu === 'settings'
@@ -68,16 +72,39 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   const classes = useStyles(rest)
   const { permissions } = usePermissions()
 
-  const renderSettingsMenuItemLink = (resource) => {
+  const resourceDefinition = (resourceName) =>
+    resources.find((r) => r?.name === resourceName)
+
+  const renderUserMenuItemLink = () => {
+    const userResource = resourceDefinition('user')
+    if (!userResource) {
+      return null
+    }
+    if (permissions !== 'admin') {
+      if (!config.enableUserEditing) {
+        return null
+      }
+      userResource.icon = PersonIcon
+    } else {
+      userResource.icon = SupervisorAccountIcon
+    }
+    return renderSettingsMenuItemLink(
+      userResource,
+      permissions !== 'admin' ? localStorage.getItem('userId') : null
+    )
+  }
+
+  const renderSettingsMenuItemLink = (resource, id) => {
     const label = translate(`resources.${resource.name}.name`, {
-      smart_count: 2,
+      smart_count: id ? 1 : 2,
     })
+    const link = id ? `/${resource.name}/${id}` : `/${resource.name}`
     return (
       <MenuItemLink
         className={classes.root}
         activeClassName={classes.active}
         key={resource.name}
-        to={`/${resource.name}`}
+        to={link}
         primaryText={label}
         leftIcon={
           (resource.icon && createElement(resource.icon)) || <ViewListIcon />
@@ -94,14 +121,20 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />
-        {resources.filter(settingsResources).map(renderSettingsMenuItemLink)}
+        {renderUserMenuItemLink()}
+        {resources
+          .filter(settingsResources)
+          .map((r) => renderSettingsMenuItemLink(r))}
         <Divider />
         <AboutMenuItem />
       </UserMenu>
+      <Dialogs />
     </>
   )
 }
 
-const AppBar = (props) => <RAAppBar {...props} userMenu={<CustomUserMenu />} />
+const AppBar = (props) => (
+  <RAAppBar {...props} container={Fragment} userMenu={<CustomUserMenu />} />
+)
 
 export default AppBar

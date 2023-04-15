@@ -1,4 +1,4 @@
-//+build linux darwin
+//go:build unix
 
 // TODO Fix snapshot tests in Windows
 // Response Snapshot tests. Only run in Linux and macOS, as they fail in Windows
@@ -12,14 +12,20 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Responses", func() {
 	var response *Subsonic
 	BeforeEach(func() {
-		response = &Subsonic{Status: "ok", Version: "1.8.0", Type: consts.AppName, ServerVersion: "v0.0.0"}
+		response = &Subsonic{
+			Status:        "ok",
+			Version:       "1.8.0",
+			Type:          consts.AppName,
+			ServerVersion: "v0.0.0",
+			OpenSubsonic:  true,
+		}
 	})
 
 	Describe("EmptyResponse", func() {
@@ -215,7 +221,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				response.User.Email = "navidrome@deluan.com"
-				response.User.Folder = []int{1}
+				response.User.Folder = []int32{1}
 			})
 
 			It("should match .XML", func() {
@@ -247,7 +253,7 @@ var _ = Describe("Responses", func() {
 				u := User{Username: "deluan"}
 				u.Email = "navidrome@deluan.com"
 				u.AdminRole = true
-				u.Folder = []int{1}
+				u.Folder = []int32{1}
 				response.Users = &Users{User: []User{u}}
 			})
 
@@ -286,6 +292,7 @@ var _ = Describe("Responses", func() {
 					Duration:  120,
 					Public:    true,
 					Owner:     "admin",
+					CoverArt:  "pl-123123123123",
 					Created:   timestamp,
 					Changed:   timestamp,
 				}
@@ -334,6 +341,39 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("AlbumInfo", func() {
+		BeforeEach(func() {
+			response.AlbumInfo = &AlbumInfo{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.AlbumInfo.SmallImageUrl = "https://lastfm.freetls.fastly.net/i/u/34s/3b54885952161aaea4ce2965b2db1638.png"
+				response.AlbumInfo.MediumImageUrl = "https://lastfm.freetls.fastly.net/i/u/64s/3b54885952161aaea4ce2965b2db1638.png"
+				response.AlbumInfo.LargeImageUrl = "https://lastfm.freetls.fastly.net/i/u/174s/3b54885952161aaea4ce2965b2db1638.png"
+				response.AlbumInfo.LastFmUrl = "https://www.last.fm/music/Cher/Believe"
+				response.AlbumInfo.MusicBrainzID = "03c91c40-49a6-44a7-90e7-a700edf97a62"
+				response.AlbumInfo.Notes = "Believe is the twenty-third studio album by American singer-actress Cher..."
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("ArtistInfo", func() {
 		BeforeEach(func() {
 			response.ArtistInfo = &ArtistInfo{}
@@ -352,10 +392,10 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="http://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
 				response.ArtistInfo.MusicBrainzID = "5182c1d9-c7d2-4dad-afa0-ccfeada921a8"
-				response.ArtistInfo.LastFmUrl = "http://www.last.fm/music/Black+Sabbath"
-				response.ArtistInfo.SmallImageUrl = "http://userserve-ak.last.fm/serve/64/27904353.jpg"
-				response.ArtistInfo.MediumImageUrl = "http://userserve-ak.last.fm/serve/126/27904353.jpg"
-				response.ArtistInfo.LargeImageUrl = "http://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg"
+				response.ArtistInfo.LastFmUrl = "https://www.last.fm/music/Black+Sabbath"
+				response.ArtistInfo.SmallImageUrl = "https://userserve-ak.last.fm/serve/64/27904353.jpg"
+				response.ArtistInfo.MediumImageUrl = "https://userserve-ak.last.fm/serve/126/27904353.jpg"
+				response.ArtistInfo.LargeImageUrl = "https://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg"
 				response.ArtistInfo.SimilarArtist = []Artist{
 					{Id: "22", Name: "Accept"},
 					{Id: "101", Name: "Bruce Dickinson"},
@@ -493,6 +533,47 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("Shares", func() {
+		BeforeEach(func() {
+			response.Shares = &Shares{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				t := time.Time{}
+				share := Share{
+					ID:          "ABC123",
+					Url:         "http://localhost/p/ABC123",
+					Description: "Check it out!",
+					Username:    "deluan",
+					Created:     t,
+					Expires:     &t,
+					LastVisited: t,
+					VisitCount:  2,
+				}
+				share.Entry = make([]Child, 2)
+				share.Entry[0] = Child{Id: "1", Title: "title", Album: "album", Artist: "artist", Duration: 120}
+				share.Entry[1] = Child{Id: "2", Title: "title 2", Album: "album", Artist: "artist", Duration: 300}
+				response.Shares.Share = []Share{share}
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("Bookmarks", func() {
 		BeforeEach(func() {
 			response.Bookmarks = &Bookmarks{}
@@ -516,7 +597,7 @@ var _ = Describe("Responses", func() {
 					Created:  time.Time{},
 					Changed:  time.Time{},
 				}
-				bmk.Entry = []Child{{Id: "1", Title: "title", IsDir: false}}
+				bmk.Entry = Child{Id: "1", Title: "title", IsDir: false}
 				response.Bookmarks.Bookmark = []Bookmark{bmk}
 			})
 			It("should match .XML", func() {
@@ -552,6 +633,74 @@ var _ = Describe("Responses", func() {
 					LastScan:    &t,
 				}
 			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("Lyrics", func() {
+		BeforeEach(func() {
+			response.Lyrics = &Lyrics{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				response.Lyrics.Artist = "Rick Astley"
+				response.Lyrics.Title = "Never Gonna Give You Up"
+				response.Lyrics.Value = `Never gonna give you up
+				Never gonna let you down
+				Never gonna run around and desert you
+				Never gonna say goodbye`
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+
+		})
+	})
+
+	Describe("InternetRadioStations", func() {
+		BeforeEach(func() {
+			response.InternetRadioStations = &InternetRadioStations{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				radio := make([]Radio, 1)
+				radio[0] = Radio{
+					ID:          "12345678",
+					StreamUrl:   "https://example.com/stream",
+					Name:        "Example Stream",
+					HomepageUrl: "https://example.com",
+				}
+				response.InternetRadioStations.Radios = radio
+			})
+
 			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())
 			})

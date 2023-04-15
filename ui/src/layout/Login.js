@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
 import { useDispatch } from 'react-redux'
@@ -7,15 +7,23 @@ import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import TextField from '@material-ui/core/TextField'
-import { createMuiTheme, makeStyles } from '@material-ui/core/styles'
-import { ThemeProvider } from '@material-ui/styles'
-import Logo from '../icons/android-icon-72x72.png'
-import { useLogin, useNotify, useTranslate } from 'react-admin'
+import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
+import {
+  createMuiTheme,
+  useLogin,
+  useNotify,
+  useRefresh,
+  useSetLocale,
+  useTranslate,
+  useVersion,
+} from 'react-admin'
+import Logo from '../icons/android-icon-192x192.png'
 
 import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
+import { retrieveTranslation } from '../i18n'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -33,14 +41,18 @@ const useStyles = makeStyles(
     card: {
       minWidth: 300,
       marginTop: '6em',
+      overflow: 'visible',
     },
     avatar: {
       margin: '1em',
       display: 'flex',
       justifyContent: 'center',
+      marginTop: '-3em',
     },
     icon: {
-      width: '40px',
+      backgroundColor: 'transparent',
+      width: '6.3em',
+      height: '6.3em',
     },
     systemName: {
       marginTop: '1em',
@@ -53,6 +65,7 @@ const useStyles = makeStyles(
       padding: '0 1em 1em 1em',
       display: 'flex',
       justifyContent: 'center',
+      flexWrap: 'wrap',
       color: '#3f51b5', //theme.palette.grey[500]
     },
     form: {
@@ -64,7 +77,10 @@ const useStyles = makeStyles(
     actions: {
       padding: '0 1em 1em 1em',
     },
-    systemNameLink: {},
+    button: {},
+    systemNameLink: {
+      textDecoration: 'none',
+    },
   }),
   { name: 'NDLogin' }
 )
@@ -122,6 +138,7 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                     component={renderInput}
                     label={translate('ra.auth.username')}
                     disabled={loading}
+                    spellCheck={false}
                   />
                 </div>
                 <div className={classes.input}>
@@ -185,6 +202,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                     component={renderInput}
                     label={translate('ra.auth.username')}
                     disabled={loading}
+                    spellCheck={false}
                   />
                 </div>
                 <div className={classes.input}>
@@ -315,9 +333,30 @@ Login.propTypes = {
 // the right theme
 const LoginWithTheme = (props) => {
   const theme = useCurrentTheme()
+  const setLocale = useSetLocale()
+  const refresh = useRefresh()
+  const version = useVersion()
+
+  useEffect(() => {
+    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
+      retrieveTranslation(config.defaultLanguage)
+        .then(() => {
+          setLocale(config.defaultLanguage).then(() => {
+            localStorage.setItem('locale', config.defaultLanguage)
+          })
+          refresh(true)
+        })
+        .catch((e) => {
+          throw new Error(
+            'Cannot load language "' + config.defaultLanguage + '": ' + e
+          )
+        })
+    }
+  }, [refresh, setLocale])
+
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
-      <Login {...props} />
+      <Login key={version} {...props} />
     </ThemeProvider>
   )
 }

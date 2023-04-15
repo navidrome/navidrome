@@ -16,7 +16,7 @@ const musicListActions = {
         backgroundColor: 'inherit !important',
       },
     },
-    'button:first-child': {
+    'button:first-child:not(:only-child)': {
       '@media screen and (max-width: 720px)': {
         transform: 'scale(1.5)',
         margin: '1rem',
@@ -40,6 +40,9 @@ const musicListActions = {
         boxShadow: '0px 0px 4px 0px #5656567d',
       },
     },
+    'button:only-child': {
+      margin: '1.5rem',
+    },
     'button:first-child>span:first-child': {
       padding: 0,
       color: bLight['300'],
@@ -47,9 +50,10 @@ const musicListActions = {
     'button:first-child>span:first-child>span': {
       display: 'none',
     },
-    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg': {
-      color: '#656565',
-    },
+    'button>span:first-child>span, button:not(:first-child)>span:first-child>svg':
+      {
+        color: '#656565',
+      },
   },
 }
 
@@ -179,9 +183,6 @@ export default {
         background: bLight['500'],
         paddingTop: '10px',
         boxShadow: '-14px -7px 20px black',
-      },
-      '&:hover': {
-        backgroundColor: '#000',
       },
     },
     MuiTableRow: {
@@ -319,13 +320,13 @@ export default {
       audioTitle: {
         color: '#000',
         fontSize: '0.875rem',
-        '&.songTitle': {
-          fontWeight: 400,
-        },
-        '&.songInfo': {
-          fontSize: '0.675rem',
-          color: '#b3b3b3',
-        },
+      },
+      songTitle: {
+        fontWeight: 400,
+      },
+      songInfo: {
+        fontSize: '0.675rem',
+        color: '#b3b3b3',
       },
       player: {},
     },
@@ -346,6 +347,7 @@ export default {
       icon: {
         backgroundColor: 'transparent',
         width: '100px',
+        height: '100px',
       },
       card: {
         minWidth: 300,
@@ -355,6 +357,12 @@ export default {
       },
       avatar: {
         marginTop: '-50px',
+      },
+    },
+    NDMobileArtistDetails: {
+      bgContainer: {
+        background:
+          'linear-gradient(to bottom, rgb(255 255 255 / 51%), rgb(240 242 245))!important',
       },
     },
     RaLayout: {
@@ -424,6 +432,9 @@ export default {
       },
     },
     RaSidebar: {
+      root: {
+        height: 'initial',
+      },
       drawerPaper: {
         '@media (min-width: 0px) and (max-width: 599.95px)': {
           backgroundColor: `${bLight['500']} !important`,

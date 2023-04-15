@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -7,8 +7,16 @@ import {
   makeStyles,
   Typography,
   useMediaQuery,
+  withWidth,
 } from '@material-ui/core'
-import { useTranslate } from 'react-admin'
+import {
+  useRecordContext,
+  useTranslate,
+  ArrayField,
+  SingleFieldList,
+  ChipField,
+  Link,
+} from 'react-admin'
 import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
@@ -20,8 +28,12 @@ import {
   SizeField,
   LoveButton,
   RatingField,
+  useAlbumsPerPage,
 } from '../common'
 import config from '../config'
+import { intersperse } from '../utils'
+import AlbumExternalLinks from './AlbumExternalLinks'
+import AnchorMe from '../common/Linkify'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -77,7 +89,14 @@ const useStyles = makeStyles(
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
-      wordBreak: 'break-all',
+      wordBreak: 'break-word',
+    },
+    notes: {
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-word',
+      cursor: 'pointer',
     },
     pointerCursor: {
       cursor: 'pointer',
@@ -85,6 +104,12 @@ const useStyles = makeStyles(
     recordName: {},
     recordArtist: {},
     recordMeta: {},
+    genreList: {
+      marginTop: theme.spacing(0.5),
+    },
+    externalLinks: {
+      marginTop: theme.spacing(1.5),
+    },
   }),
   {
     name: 'NDAlbumDetails',
@@ -99,7 +124,7 @@ const AlbumComment = ({ record }) => {
   const formatted = useMemo(() => {
     return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
-        <span dangerouslySetInnerHTML={{ __html: line }} />
+        <AnchorMe text={line} />
         <br />
       </span>
     ))
@@ -126,23 +151,96 @@ const AlbumComment = ({ record }) => {
   )
 }
 
-const AlbumDetails = ({ record }) => {
+export const useGetHandleGenreClick = (width) => {
+  const [perPage] = useAlbumsPerPage(width)
+
+  return (id) => {
+    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+  }
+}
+
+const GenreChipField = withWidth()(({ width, ...rest }) => {
+  const record = useRecordContext(rest)
+  const genreLink = useGetHandleGenreClick(width)
+
+  return (
+    <Link to={genreLink(record.id)} onClick={(e) => e.stopPropagation()}>
+      <ChipField
+        source="name"
+        // Workaround to force ChipField to be clickable
+        onClick={() => {}}
+      />
+    </Link>
+  )
+})
+
+const GenreList = () => {
+  const classes = useStyles()
+  return (
+    <ArrayField className={classes.genreList} source={'genres'}>
+      <SingleFieldList linkType={false}>
+        <GenreChipField />
+      </SingleFieldList>
+    </ArrayField>
+  )
+}
+
+const Details = (props) => {
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const translate = useTranslate()
+  const record = useRecordContext(props)
+  let details = []
+  const addDetail = (obj) => {
+    const id = details.length
+    details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
+  }
+
+  const year = formatRange(record, 'year')
+  year && addDetail(<>{year}</>)
+  addDetail(
+    <>
+      {record.songCount +
+        ' ' +
+        translate('resources.song.name', {
+          smart_count: record.songCount,
+        })}
+    </>
+  )
+  !isXsmall && addDetail(<DurationField source={'duration'} />)
+  !isXsmall && addDetail(<SizeField source="size" />)
+
+  return <>{intersperse(details, ' · ')}</>
+}
+
+const AlbumDetails = (props) => {
+  const record = useRecordContext(props)
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
-  const translate = useTranslate()
+  const [expanded, setExpanded] = useState(false)
+  const [albumInfo, setAlbumInfo] = useState()
 
-  const genreYear = (record) => {
-    let genreDateLine = []
-    if (record.genre) {
-      genreDateLine.push(record.genre)
-    }
-    const year = formatRange(record, 'year')
-    if (year) {
-      genreDateLine.push(year)
-    }
-    return genreDateLine.join(' · ')
+  let notes =
+    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+
+  if (notes !== undefined) {
+    notes += '..'
   }
+
+  useEffect(() => {
+    subsonic
+      .getAlbumInfo(record.id)
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          setAlbumInfo(data.albumInfo)
+        }
+      })
+      .catch((e) => {
+        console.error('error on album page', e)
+      })
+  }, [record])
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
@@ -173,31 +271,20 @@ const AlbumDetails = ({ record }) => {
               className={classes.recordName}
             >
               {record.name}
-              {config.enableFavourites && (
-                <LoveButton
-                  className={classes.loveButton}
-                  record={record}
-                  resource={'album'}
-                  size={isDesktop ? 'default' : 'small'}
-                  aria-label="love"
-                  color="primary"
-                />
-              )}
+              <LoveButton
+                className={classes.loveButton}
+                record={record}
+                resource={'album'}
+                size={isDesktop ? 'default' : 'small'}
+                aria-label="love"
+                color="primary"
+              />
             </Typography>
-            <Typography component="h6" className={classes.recordArtist}>
+            <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component="p" className={classes.recordMeta}>
-              {genreYear(record)}
-            </Typography>
-            <Typography component="p" className={classes.recordMeta}>
-              {record.songCount}{' '}
-              {translate('resources.song.name', {
-                smart_count: record.songCount,
-              })}
-              {' · '} <DurationField record={record} source={'duration'} />{' '}
-              {' · '}
-              <SizeField record={record} source="size" />
+            <Typography component={'div'} className={classes.recordMeta}>
+              <Details />
             </Typography>
             {config.enableStarRating && (
               <div>
@@ -208,11 +295,50 @@ const AlbumDetails = ({ record }) => {
                 />
               </div>
             )}
+            {isDesktop ? (
+              <GenreList />
+            ) : (
+              <Typography component={'p'}>{record.genre}</Typography>
+            )}
+            {!isXsmall && (
+              <Typography component={'div'} className={classes.recordMeta}>
+                {config.enableExternalServices && (
+                  <AlbumExternalLinks className={classes.externalLinks} />
+                )}
+              </Typography>
+            )}
+            {isDesktop && (
+              <Collapse
+                collapsedHeight={'2.75em'}
+                in={expanded}
+                timeout={'auto'}
+                className={classes.notes}
+              >
+                <Typography
+                  variant={'body1'}
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  <span dangerouslySetInnerHTML={{ __html: notes }} />
+                </Typography>
+              </Collapse>
+            )}
             {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
       </div>
       {!isDesktop && record['comment'] && <AlbumComment record={record} />}
+      {!isDesktop && (
+        <div className={classes.notes}>
+          <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
+            <Typography
+              variant={'body1'}
+              onClick={() => setExpanded(!expanded)}
+            >
+              <span dangerouslySetInnerHTML={{ __html: notes }} />
+            </Typography>
+          </Collapse>
+        </div>
+      )}
       {isLightboxOpen && (
         <Lightbox
           imagePadding={50}

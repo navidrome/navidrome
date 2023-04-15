@@ -1,14 +1,14 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
   TextField,
-  useRefresh,
+  NumberField,
   useDataProvider,
   useNotify,
   useVersion,
   useListContext,
-  ListBase,
+  FunctionField,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -17,16 +17,20 @@ import { makeStyles } from '@material-ui/core/styles'
 import ReactDragListView from 'react-drag-listview'
 import {
   DurationField,
-  SongDetails,
+  SongInfo,
   SongContextMenu,
   SongDatagrid,
   SongTitleField,
+  QualityInfo,
+  useSelectedFields,
+  useResourceRefresh,
+  DateField,
+  ArtistLinkField,
 } from '../common'
-import { AddToPlaylistDialog } from '../dialogs'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
-import { QualityInfo } from '../common/QualityInfo'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -80,23 +84,22 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const listContext = useListContext()
-  const { data, ids, onUnselectItems } = listContext
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const { data, ids, selectedIds, onUnselectItems, refetch } = listContext
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
   const dataProvider = useDataProvider()
-  const refresh = useRefresh()
   const notify = useNotify()
   const version = useVersion()
+  useResourceRefresh('song', 'playlist')
 
   const onAddToPlaylist = useCallback(
     (pls) => {
       if (pls.id === playlistId) {
-        refresh()
+        refetch()
       }
     },
-    [playlistId, refresh]
+    [playlistId, refetch]
   )
 
   const reorder = useCallback(
@@ -108,13 +111,13 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
           filter: { playlist_id: playlistId },
         })
         .then(() => {
-          refresh()
+          refetch()
         })
         .catch(() => {
           notify('ra.page.error', 'warning')
         })
     },
-    [dataProvider, notify, refresh]
+    [dataProvider, notify, refetch]
   )
 
   const handleDragEnd = useCallback(
@@ -126,25 +129,65 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
     [playlistId, reorder, ids]
   )
 
+  const toggleableFields = useMemo(() => {
+    return {
+      trackNumber: isDesktop && <TextField source="id" label={'#'} />,
+      title: <SongTitleField source="title" showTrackNumbers={false} />,
+      album: isDesktop && <AlbumLinkField source="album" />,
+      artist: isDesktop && <ArtistLinkField source="artist" />,
+      albumArtist: isDesktop && <ArtistLinkField source="albumArtist" />,
+      duration: (
+        <DurationField source="duration" className={classes.draggable} />
+      ),
+      year: isDesktop && (
+        <FunctionField
+          source="year"
+          render={(r) => r.year || ''}
+          sortByOrder={'DESC'}
+        />
+      ),
+      playCount: isDesktop && (
+        <NumberField source="playCount" sortByOrder={'DESC'} />
+      ),
+      playDate: <DateField source="playDate" sortByOrder={'DESC'} showTime />,
+      quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      channels: isDesktop && <NumberField source="channels" />,
+      bpm: isDesktop && <NumberField source="bpm" />,
+    }
+  }, [isDesktop, classes.draggable])
+
+  const columns = useSelectedFields({
+    resource: 'playlistTrack',
+    columns: toggleableFields,
+    defaultOff: [
+      'channels',
+      'bpm',
+      'year',
+      'playCount',
+      'playDate',
+      'albumArtist',
+    ],
+  })
+
   return (
     <>
       <ListToolbar
         classes={{ toolbar: classes.toolbar }}
         filters={props.filters}
         actions={actions}
-        {...listContext}
       />
       <div className={classes.main}>
         <Card
           className={clsx(classes.content, {
-            [classes.bulkActionsDisplayed]: listContext.selectedIds.length > 0,
+            [classes.bulkActionsDisplayed]: selectedIds.length > 0,
           })}
           key={version}
         >
-          <BulkActionsToolbar {...listContext}>
+          <BulkActionsToolbar>
             <PlaylistSongBulkActions
               playlistId={playlistId}
               onUnselectItems={onUnselectItems}
+              readOnly={readOnly}
             />
           </BulkActionsToolbar>
           <ReorderableList
@@ -153,19 +196,13 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
             nodeSelector={'tr'}
           >
             <SongDatagrid
-              expand={!isXsmall && <SongDetails />}
               rowClick={(id) => dispatch(playTracks(data, ids, id))}
               {...listContext}
-              hasBulkActions={true}
+              hasBulkActions={!readOnly}
               contextAlwaysVisible={!isDesktop}
               classes={{ row: classes.row }}
             >
-              {isDesktop && <TextField source="id" label={'#'} />}
-              <SongTitleField source="title" showTrackNumbers={false} />
-              {isDesktop && <AlbumLinkField source="album" />}
-              {isDesktop && <TextField source="artist" />}
-              <DurationField source="duration" className={classes.draggable} />
-              {isDesktop && <QualityInfo source="quality" sortable={false} />}
+              {columns}
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={false}
@@ -175,7 +212,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
           </ReorderableList>
         </Card>
       </div>
-      <AddToPlaylistDialog />
+      <ExpandInfoDialog content={<SongInfo />} />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )
@@ -186,16 +223,12 @@ const SanitizedPlaylistSongs = (props) => {
   return (
     <>
       {loaded && (
-        <>
-          <ListBase {...props}>
-            <PlaylistSongs
-              playlistId={props.id}
-              actions={props.actions}
-              pagination={props.pagination}
-              {...rest}
-            />
-          </ListBase>
-        </>
+        <PlaylistSongs
+          playlistId={props.id}
+          actions={props.actions}
+          pagination={props.pagination}
+          {...rest}
+        />
       )}
     </>
   )

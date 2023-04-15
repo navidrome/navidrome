@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -24,11 +24,11 @@ var _ = Describe("Logger", func() {
 
 	BeforeEach(func() {
 		l, hook = test.NewNullLogger()
-		SetLevel(LevelInfo)
+		SetLevel(LevelTrace)
 		SetDefaultLogger(l)
 	})
 
-	Context("Logging", func() {
+	Describe("Logging", func() {
 		It("logs a simple message", func() {
 			Error("Simple Message")
 			Expect(hook.LastEntry().Message).To(Equal("Simple Message"))
@@ -90,13 +90,13 @@ var _ = Describe("Logger", func() {
 		It("logs source file and line number, if requested", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
-			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
-			// NOTE: This assertions breaks if the line number changes
+			// NOTE: This assertion breaks if the line number above changes
 			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:92"))
+			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 	})
 
-	Context("Levels", func() {
+	Describe("Levels", func() {
 		BeforeEach(func() {
 			SetLevel(LevelTrace)
 		})
@@ -116,13 +116,28 @@ var _ = Describe("Logger", func() {
 			Debug("msg")
 			Expect(hook.LastEntry().Level).To(Equal(logrus.DebugLevel))
 		})
-		It("logs info messages", func() {
+		It("logs trace messages", func() {
 			Trace("msg")
 			Expect(hook.LastEntry().Level).To(Equal(logrus.TraceLevel))
 		})
 	})
 
-	Context("extractLogger", func() {
+	Describe("LogLevels", func() {
+		It("logs at specific levels", func() {
+			SetLevel(LevelError)
+			Debug("message 1")
+			Expect(hook.LastEntry()).To(BeNil())
+
+			SetLogLevels(map[string]string{
+				"log/log_test": "debug",
+			})
+
+			Debug("message 2")
+			Expect(hook.LastEntry().Message).To(Equal("message 2"))
+		})
+	})
+
+	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
 			Expect(err).ToNot(BeNil())
@@ -151,10 +166,10 @@ var _ = Describe("Logger", func() {
 		})
 	})
 
-	Context("SetLevelString", func() {
-		It("converts Critical level", func() {
-			SetLevelString("Critical")
-			Expect(CurrentLevel()).To(Equal(LevelCritical))
+	Describe("SetLevelString", func() {
+		It("converts Fatal level", func() {
+			SetLevelString("Fatal")
+			Expect(CurrentLevel()).To(Equal(LevelFatal))
 		})
 		It("converts Error level", func() {
 			SetLevelString("ERROR")
@@ -175,6 +190,13 @@ var _ = Describe("Logger", func() {
 		It("converts Trace level", func() {
 			SetLevelString("trace")
 			Expect(CurrentLevel()).To(Equal(LevelTrace))
+		})
+	})
+
+	Describe("Redact", func() {
+		Describe("Subsonic API password", func() {
+			msg := "getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=first%20and%20other%20words&title=Title"
+			Expect(Redact(msg)).To(Equal("getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=[REDACTED]&title=Title"))
 		})
 	})
 })
