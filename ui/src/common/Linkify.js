@@ -16,22 +16,24 @@ const useStyles = makeStyles(
       overflow: 'hidden',
     },
     contentWrapper: {
-      position: "relative",
+      position: 'relative',
     },
     viewBtn: {
-      whiteSpace: "nowrap",
-      position: "absolute",
+      whiteSpace: 'nowrap',
+      position: 'absolute',
       right: -90,
       bottom: 0,
-      padding: "0px 8px",
-    }
+      padding: '0px 8px',
+    },
   }),
   { name: 'RaLink' }
 )
 
 const Linkify = ({ text, clampText = false, ...rest }) => {
   const classes = useStyles()
-  const [viewDetailedText, setViewDetailedText] = useState(clampText ? false : true)
+  const [viewDetailedText, setViewDetailedText] = useState(
+    clampText ? false : true
+  )
   const linkify = useCallback((text) => {
     const urlRegex =
       /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/gi
@@ -83,16 +85,23 @@ const Linkify = ({ text, clampText = false, ...rest }) => {
 
   const parsedText = useMemo(() => parse(), [parse])
 
-  return <>
-    <div className={classes.contentWrapper}>
-      <div className={viewDetailedText ? "" : classes.textWrapper}> {parsedText} </div>
-      {clampText && <Button
-        className={classes.viewBtn}
-        onClick={() => setViewDetailedText(val => !val)}>
-        VIEW {viewDetailedText ? "LESS" : "MORE"}
-      </Button>}
-    </div>
-  </>
+  return (
+    <>
+      <div className={classes.contentWrapper}>
+        <div className={viewDetailedText ? '' : classes.textWrapper}>
+          {parsedText}
+        </div>
+        {clampText && (
+          <Button
+            className={classes.viewBtn}
+            onClick={() => setViewDetailedText((val) => !val)}
+          >
+            VIEW {viewDetailedText ? 'LESS' : 'MORE'}
+          </Button>
+        )}
+      </div>
+    </>
+  )
 }
 
 Linkify.propTypes = {
