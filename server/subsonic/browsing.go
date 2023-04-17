@@ -216,7 +216,7 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	response := newResponse()
-	child := ChildFromMediaFile(ctx, *mf)
+	child := childFromMediaFile(ctx, *mf)
 	response.Song = &child
 	return response, nil
 }

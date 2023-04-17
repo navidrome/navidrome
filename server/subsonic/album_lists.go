@@ -158,7 +158,7 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 			return nil, err
 		}
 
-		response.NowPlaying.Entry[i].Child = ChildFromMediaFile(ctx, *mf)
+		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, *mf)
 		response.NowPlaying.Entry[i].UserName = np.Username
 		response.NowPlaying.Entry[i].MinutesAgo = int(time.Since(np.Start).Minutes())
 		response.NowPlaying.Entry[i].PlayerId = i + 1 // Fake numeric playerId, it does not seem to be used for anything

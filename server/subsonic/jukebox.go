@@ -187,7 +187,7 @@ func deviceStatusToJukeboxStatus(status playback.DeviceStatus) *responses.Jukebo
 func mediafilesToChildren(ctx context.Context, items model.MediaFiles) []responses.Child {
 	result := []responses.Child{}
 	for _, item := range items {
-		result = append(result, ChildFromMediaFile(ctx, item))
+		result = append(result, childFromMediaFile(ctx, item))
 	}
 	return result
 }
