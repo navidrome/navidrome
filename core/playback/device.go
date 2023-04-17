@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -71,29 +72,32 @@ func (pd *PlaybackDevice) String() string {
 	return fmt.Sprintf("Name: %s, Gain: %.4f, Prepared: %t", pd.Name, pd.Gain, pd.TrackLoaded)
 }
 
-func (pd *PlaybackDevice) Get() (model.MediaFiles, DeviceStatus, error) {
-	log.Debug("processing Get action")
+func (pd *PlaybackDevice) Get(ctx context.Context) (model.MediaFiles, DeviceStatus, error) {
+	log.Debug(ctx, "processing Get action")
 	return pd.PlaybackQueue.Get(), pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Status() (DeviceStatus, error) {
-	log.Debug(fmt.Sprintf("processing Status action on: %s, queue: %s", pd, pd.PlaybackQueue))
+func (pd *PlaybackDevice) Status(ctx context.Context) (DeviceStatus, error) {
+	log.Debug(ctx, fmt.Sprintf("processing Status action on: %s, queue: %s", pd, pd.PlaybackQueue))
 	return pd.getStatus(), nil
 }
 
 // set is similar to a clear followed by a add, but will not change the currently playing track.
-func (pd *PlaybackDevice) Set(ids []string) (DeviceStatus, error) {
-	_, err := pd.Clear()
+func (pd *PlaybackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, error) {
+	_, err := pd.Clear(ctx)
 	if err != nil {
-		log.Error("error setting tracks", ids)
+		log.Error(ctx, "error setting tracks", ids)
 		return pd.getStatus(), err
 	}
-	return pd.Add(ids)
+	return pd.Add(ctx, ids)
 }
 
-func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
-	log.Debug("processing Start action")
+func (pd *PlaybackDevice) Start(ctx context.Context) (DeviceStatus, error) {
+	log.Debug(ctx, "processing Start action")
+	return pd.startTrack()
+}
 
+func (pd *PlaybackDevice) startTrack() (DeviceStatus, error) {
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
 		return EmptyStatus, nil
@@ -115,23 +119,23 @@ func (pd *PlaybackDevice) Start() (DeviceStatus, error) {
 		return DeviceStatus{}, fmt.Errorf("could not set position to %d", pd.PlaybackQueue.Offset)
 	}
 
-	pd.Play()
+	pd.play()
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Stop() (DeviceStatus, error) {
-	log.Debug("processing Stop action")
-	pd.Pause()
+func (pd *PlaybackDevice) Stop(ctx context.Context) (DeviceStatus, error) {
+	log.Debug(ctx, "processing Stop action")
+	pd.pause()
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
-	log.Debug("processing Skip action", "index", index, "offset", offset)
+func (pd *PlaybackDevice) Skip(ctx context.Context, index int, offset int) (DeviceStatus, error) {
+	log.Debug(ctx, "processing Skip action", "index", index, "offset", offset)
 
 	wasPlaying := pd.isPlaying()
 
 	if wasPlaying {
-		pd.Pause()
+		pd.pause()
 	}
 
 	if index != pd.PlaybackQueue.Index {
@@ -141,14 +145,14 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 
 	err := pd.PlaybackQueue.SetOffset(offset)
 	if err != nil {
-		log.Error("error setting offset", err)
+		log.Error(ctx, "error setting offset", err)
 		return pd.getStatus(), err
 	}
 
 	if wasPlaying {
-		_, err = pd.Start()
+		_, err = pd.Start(ctx)
 		if err != nil {
-			log.Error("error starting new track after skipping")
+			log.Error(ctx, "error starting new track after skipping")
 			return pd.getStatus(), err
 		}
 	}
@@ -156,8 +160,8 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
-	log.Debug("processing Add action")
+func (pd *PlaybackDevice) Add(ctx context.Context, ids []string) (DeviceStatus, error) {
+	log.Debug(ctx, "processing Add action")
 
 	items := model.MediaFiles{}
 
@@ -166,7 +170,7 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 		if err != nil {
 			return DeviceStatus{}, err
 		}
-		log.Debug("Found mediafile: " + mf.Path)
+		log.Debug(ctx, "Found mediafile: "+mf.Path)
 		items = append(items, *mf)
 	}
 	pd.PlaybackQueue.Add(items)
@@ -174,20 +178,20 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
-	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
+func (pd *PlaybackDevice) Clear(ctx context.Context) (DeviceStatus, error) {
+	log.Debug(ctx, fmt.Sprintf("processing Clear action on: %s", pd))
 	pd.PlaybackQueue.Clear()
 	pd.closeTrack()
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
-	log.Debug("processing Remove action")
+func (pd *PlaybackDevice) Remove(ctx context.Context, index int) (DeviceStatus, error) {
+	log.Debug(ctx, "processing Remove action")
 	// pausing if attempting to remove running track
 	if pd.isPlaying() && pd.PlaybackQueue.Index == index {
-		_, err := pd.Stop()
+		_, err := pd.Stop(ctx)
 		if err != nil {
-			log.Error("error stopping running track")
+			log.Error(ctx, "error stopping running track")
 			return pd.getStatus(), err
 		}
 	}
@@ -195,22 +199,22 @@ func (pd *PlaybackDevice) Remove(index int) (DeviceStatus, error) {
 	if index > -1 && index < pd.PlaybackQueue.Size() {
 		pd.PlaybackQueue.Remove(index)
 	} else {
-		log.Error("Index to remove out of range: " + fmt.Sprint(index))
+		log.Error(ctx, "Index to remove out of range: "+fmt.Sprint(index))
 	}
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) Shuffle() (DeviceStatus, error) {
-	log.Debug("processing Shuffle action")
+func (pd *PlaybackDevice) Shuffle(ctx context.Context) (DeviceStatus, error) {
+	log.Debug(ctx, "processing Shuffle action")
 	if pd.PlaybackQueue.Size() > 1 {
 		pd.PlaybackQueue.Shuffle()
 	}
 	return pd.getStatus(), nil
 }
 
-func (pd *PlaybackDevice) SetGain(gain float32) (DeviceStatus, error) {
+func (pd *PlaybackDevice) SetGain(ctx context.Context, gain float32) (DeviceStatus, error) {
 	difference := gain - pd.Gain
-	log.Debug(fmt.Sprintf("processing SetGain action. Actual gain: %f, gain to set: %f, difference: %f", pd.Gain, gain, difference))
+	log.Debug(ctx, fmt.Sprintf("processing SetGain action. Actual gain: %f, gain to set: %f, difference: %f", pd.Gain, gain, difference))
 
 	pd.adjustVolume(float64(difference) * 5)
 	pd.Gain = gain
@@ -224,13 +228,13 @@ func (pd *PlaybackDevice) adjustVolume(value float64) {
 	speaker.Unlock()
 }
 
-func (pd *PlaybackDevice) Play() {
+func (pd *PlaybackDevice) play() {
 	speaker.Lock()
 	pd.Ctrl.Paused = false
 	speaker.Unlock()
 }
 
-func (pd *PlaybackDevice) Pause() {
+func (pd *PlaybackDevice) pause() {
 	speaker.Lock()
 	pd.Ctrl.Paused = true
 	speaker.Unlock()
@@ -296,7 +300,7 @@ func (pd *PlaybackDevice) trackSwitcher() {
 	for {
 		<-pd.PlaybackDone
 		log.Info("track switching detected")
-		pd.Pause()
+		pd.pause()
 		pd.closeTrack()
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
@@ -305,7 +309,7 @@ func (pd *PlaybackDevice) trackSwitcher() {
 			if err != nil {
 				log.Error("error setting offset of next track to zero")
 			}
-			_, err = pd.Start()
+			_, err = pd.startTrack()
 			if err != nil {
 				log.Error("error starting track #", pd.PlaybackQueue.Index)
 			}
@@ -335,8 +339,8 @@ func (pd *PlaybackDevice) SetPosition() error {
 	streamer, ok := pd.Ctrl.Streamer.(beep.StreamSeeker)
 	if ok {
 		sampleRatePerSecond := pd.SampleRate.N(time.Second)
-		nextPosition := sampleRatePerSecond * pd.PlaybackQueue.Offset
 		log.Debug("Samplerate per second", "samplerate", sampleRatePerSecond)
+		nextPosition := sampleRatePerSecond * pd.PlaybackQueue.Offset
 		return streamer.Seek(nextPosition)
 	}
 	return fmt.Errorf("streamer is not seekable")
