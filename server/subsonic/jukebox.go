@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
@@ -13,53 +12,19 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
-type ActionType int
-
 const (
-	ActionUnknown ActionType = iota
-	ActionGet
-	ActionStatus
-	ActionSet
-	ActionStart
-	ActionStop
-	ActionSkip
-	ActionAdd
-	ActionClear
-	ActionRemove
-	ActionShuffle
-	ActionSetGain
+	ActionGet     = "get"
+	ActionStatus  = "status"
+	ActionSet     = "set"
+	ActionStart   = "start"
+	ActionStop    = "stop"
+	ActionSkip    = "skip"
+	ActionAdd     = "add"
+	ActionClear   = "clear"
+	ActionRemove  = "remove"
+	ActionShuffle = "shuffle"
+	ActionSetGain = "setGain"
 )
-
-var ACTION_MAP = map[ActionType]string{
-	ActionGet:     "get",
-	ActionStatus:  "status",
-	ActionSet:     "set",
-	ActionStart:   "start",
-	ActionStop:    "stop",
-	ActionSkip:    "skip",
-	ActionAdd:     "add",
-	ActionClear:   "clear",
-	ActionRemove:  "remove",
-	ActionShuffle: "shuffle",
-	ActionSetGain: "setGain",
-}
-
-func (action ActionType) String() string {
-	value, found := ACTION_MAP[action]
-	if found {
-		return strings.ToUpper(value)
-	}
-	return "Unknown"
-}
-
-func parseAction(actionStr string) ActionType {
-	for k, v := range ACTION_MAP {
-		if v == actionStr {
-			return k
-		}
-	}
-	return ActionUnknown
-}
 
 func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) {
 	user, err := requiredParamString(r, "u")
@@ -77,11 +42,9 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	if err != nil {
 		return nil, err
 	}
+	log.Debug(fmt.Sprintf("processing action: %s", actionString))
 
-	action := parseAction(actionString)
-	log.Debug(fmt.Sprintf("processing action: %s", action))
-
-	switch action {
+	switch actionString {
 	case ActionGet:
 		mediafiles, status, err := pb.Get(r.Context())
 		if err != nil {
@@ -154,11 +117,9 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		}
 
 		return createResponse(pb.SetGain(r.Context(), float32(gain)))
-	case ActionUnknown:
+	default:
 		return nil, newError(responses.ErrorMissingParameter, "Unknown action: %s", actionString)
 	}
-
-	return nil, newError(responses.ErrorMissingParameter, "action not found")
 }
 
 // createResponse is to shorten the case-switch in the JukeboxController
