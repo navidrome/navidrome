@@ -261,7 +261,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	case "audio/x-wav":
 		streamer, format, err = decodeWAV(mf.Path)
 	case "audio/mp4":
-		streamer, format, err, tmpfileToCleanup = decodeFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
+		streamer, format, tmpfileToCleanup, err = decodeFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
 	default:
 		log.Error("unsupported content type", "contentType", contentType)
 		return
