@@ -1,7 +1,6 @@
 package playback
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
@@ -30,18 +29,33 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 	return wav.Decode(f)
 }
 
-func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
+func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, err error, fileToCleanup string) {
 	fFmpeg := ffmpeg.New()
 	readCloser, err := fFmpeg.ConvertToFLAC(ctx, path)
 	if err != nil {
-		log.Error(err)
-		return
+		log.Error(ctx, "error converting file to FLAC", path, err)
+		return nil, beep.Format{}, err, ""
 	}
 
-	data, err := io.ReadAll(readCloser)
+	tempFile, err := os.CreateTemp("", "*.flac")
+
 	if err != nil {
-		log.Error(err)
-		return
+		log.Error(ctx, "error creating temp file", err)
+		return nil, beep.Format{}, err, ""
 	}
-	return flac.Decode(bytes.NewReader(data))
+	log.Debug(ctx, "created tempfile", "filename", tempFile.Name())
+
+	written, err := io.Copy(tempFile, readCloser)
+	if err != nil {
+		return nil, beep.Format{}, err, ""
+	}
+	log.Debug(ctx, "written # bytes to file: ", written)
+
+	f, err := os.Open(tempFile.Name())
+	if err != nil {
+		return nil, beep.Format{}, err, ""
+	}
+
+	s, format, err = flac.Decode(f)
+	return s, format, err, tempFile.Name()
 }

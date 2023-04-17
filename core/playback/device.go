@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/faiface/beep"
@@ -23,6 +24,7 @@ type PlaybackDevice struct {
 	Volume               *effects.Volume
 	TrackLoaded          bool
 	ActiveStream         beep.StreamSeekCloser
+	TempfileToCleanup    string
 	PlaybackQueue        *Queue
 	Gain                 float32
 	SampleRate           beep.SampleRate
@@ -251,6 +253,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	var streamer beep.StreamSeekCloser
 	var format beep.Format
 	var err error
+	var tmpfileToCleanup = ""
 
 	switch contentType {
 	case "audio/mpeg":
@@ -258,7 +261,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	case "audio/x-wav":
 		streamer, format, err = decodeWAV(mf.Path)
 	case "audio/mp4":
-		streamer, format, err = decodeFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
+		streamer, format, err, tmpfileToCleanup = decodeFLAC(*pd.ParentPlaybackServer.GetCtx(), mf.Path)
 	default:
 		log.Error("unsupported content type", "contentType", contentType)
 		return
@@ -271,6 +274,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 
 	// save running stream for closing when switching tracks
 	pd.ActiveStream = streamer
+	pd.TempfileToCleanup = tmpfileToCleanup
 
 	log.Debug("Setting up audio device")
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
@@ -321,6 +325,13 @@ func (pd *PlaybackDevice) closeTrack() {
 	pd.TrackLoaded = false
 	if pd.ActiveStream != nil {
 		pd.ActiveStream.Close()
+	}
+
+	if pd.TempfileToCleanup != "" {
+		err := os.Remove(pd.TempfileToCleanup)
+		if err != nil {
+			log.Error("error cleaning up tempfile: ", pd.TempfileToCleanup)
+		}
 	}
 }
 
