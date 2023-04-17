@@ -90,7 +90,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 		playlist := responses.JukeboxPlaylist{
 			JukeboxStatus: *deviceStatusToJukeboxStatus(status),
-			Entry:         mediafilesToChilds(r.Context(), mediafiles),
+			Entry:         mediafilesToChildren(r.Context(), mediafiles),
 		}
 
 		response := newResponse()
@@ -184,7 +184,7 @@ func deviceStatusToJukeboxStatus(status playback.DeviceStatus) *responses.Jukebo
 	}
 }
 
-func mediafilesToChilds(ctx context.Context, items model.MediaFiles) []responses.Child {
+func mediafilesToChildren(ctx context.Context, items model.MediaFiles) []responses.Child {
 	result := []responses.Child{}
 	for _, item := range items {
 		result = append(result, ChildFromMediaFile(ctx, item))
