@@ -21,6 +21,7 @@ type PlaybackDevice struct {
 	Ctrl                 *beep.Ctrl
 	Volume               *effects.Volume
 	TrackLoaded          bool
+	ActiveStream         beep.StreamSeekCloser
 	PlaybackQueue        *Queue
 	Gain                 float32
 	SampleRate           beep.SampleRate
@@ -58,6 +59,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Ctrl:                 &beep.Ctrl{Paused: true},
 		Volume:               &effects.Volume{},
 		TrackLoaded:          false,
+		ActiveStream:         nil,
 		Gain:                 0.5,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
@@ -131,14 +133,17 @@ func (pd *PlaybackDevice) Skip(index int, offset int) (DeviceStatus, error) {
 	if wasPlaying {
 		pd.Pause()
 	}
-	pd.PlaybackQueue.SetIndex(index)
+
+	if index != pd.PlaybackQueue.Index {
+		pd.closeTrack()
+		pd.PlaybackQueue.SetIndex(index)
+	}
+
 	err := pd.PlaybackQueue.SetOffset(offset)
 	if err != nil {
 		log.Error("error setting offset", err)
 		return pd.getStatus(), err
 	}
-
-	pd.TrackLoaded = false
 
 	if wasPlaying {
 		_, err = pd.Start()
@@ -172,7 +177,7 @@ func (pd *PlaybackDevice) Add(ids []string) (DeviceStatus, error) {
 func (pd *PlaybackDevice) Clear() (DeviceStatus, error) {
 	log.Debug(fmt.Sprintf("processing Clear action on: %s", pd))
 	pd.PlaybackQueue.Clear()
-	pd.TrackLoaded = false
+	pd.closeTrack()
 	return pd.getStatus(), nil
 }
 
@@ -260,6 +265,9 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 		return
 	}
 
+	// save running stream for closing when switching tracks
+	pd.ActiveStream = streamer
+
 	log.Debug("Setting up audio device")
 	pd.Ctrl = &beep.Ctrl{Streamer: streamer, Paused: true}
 	pd.Volume = &effects.Volume{Streamer: pd.Ctrl, Base: 2}
@@ -289,7 +297,7 @@ func (pd *PlaybackDevice) trackSwitcher() {
 		<-pd.PlaybackDone
 		log.Info("track switching detected")
 		pd.Pause()
-		pd.TrackLoaded = false
+		pd.closeTrack()
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
 			pd.PlaybackQueue.IncreaseIndex()
@@ -302,6 +310,13 @@ func (pd *PlaybackDevice) trackSwitcher() {
 				log.Error("error starting track #", pd.PlaybackQueue.Index)
 			}
 		}
+	}
+}
+
+func (pd *PlaybackDevice) closeTrack() {
+	pd.TrackLoaded = false
+	if pd.ActiveStream != nil {
+		pd.ActiveStream.Close()
 	}
 }
 
