@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -9,13 +10,18 @@ import (
 	_ "github.com/navidrome/navidrome/db/migration"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/singleton"
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 var (
 	Driver = "sqlite3"
 	Path   string
 )
+
+//go:embed migration/*.sql
+var embedMigrations embed.FS
+
+const migrationsFolder = "migration"
 
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
@@ -38,7 +44,7 @@ func Close() error {
 	return Db().Close()
 }
 
-func EnsureLatestVersion() {
+func Init() {
 	db := Db()
 
 	// Disable foreign_keys to allow re-creating tables in migrations
@@ -55,18 +61,19 @@ func EnsureLatestVersion() {
 
 	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
 	goose.SetLogger(gooseLogger)
+	goose.SetBaseFS(embedMigrations)
 
 	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
-	err = goose.Run("up", db, "./")
+	err = goose.Up(db, migrationsFolder)
 	if err != nil {
 		log.Fatal("Failed to apply new migrations", err)
 	}
 }
 
-func isSchemaEmpty(db *sql.DB) bool { // nolint:interfacer
+func isSchemaEmpty(db *sql.DB) bool {
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
 	if err != nil {
 		log.Fatal("Database could not be opened!", err)

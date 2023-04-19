@@ -73,7 +73,7 @@
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放",
                 "starred": "收藏",
-                "topRated": "评分最高"
+                "topRated": "评分排行"
             }
         },
         "artist": {
@@ -148,7 +148,7 @@
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
                 "songCount": "歌曲数",
-                "comment": "评论",
+                "comment": "注释",
                 "sync": "自动导入",
                 "path": "导入"
             },
@@ -161,7 +161,7 @@
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
-                "song_exist": "部分选定的歌曲已在播放列表，继续添加或是略过它们？"
+                "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？"
             }
         },
         "radio": {
@@ -191,7 +191,7 @@
                 "maxBitRate": "最大比特率",
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
-								"downloadable": "是否允许下载"
+                "downloadable": "是否允许下载"
             }
         }
     },
@@ -251,7 +251,7 @@
             "open_menu": "打开菜单",
             "close_menu": "关闭菜单",
             "unselect": "未选择",
-            "skip": "取消",
+            "skip": "跳过",
             "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "分享",
             "download": "下载"
@@ -320,9 +320,9 @@
             "skip_nav": "跳过"
         },
         "notification": {
-            "updated": "项已更新 |||| %{smart_count} 项已更新",
-            "created": "项已新建",
-            "deleted": "项已删除 |||| %{smart_count} 项已删除",
+            "updated": "已更新 1 项 |||| 已更新 %{smart_count} 项",
+            "created": "已新建 1 项",
+            "deleted": "已删除 1 项 |||| 已删除 %{smart_count} 项",
             "bad_item": "不正确的项",
             "item_doesnt_exist": "项不存在",
             "http_error": "与服务通信出错",
@@ -330,7 +330,7 @@
             "i18n_error": "加载所选语言时出错",
             "canceled": "操作已取消",
             "logged_out": "您的会话已结束，请重新登录",
-            "new_version": "发现新版本！请刷新窗口"
+            "new_version": "发现新版本！请刷新此页面"
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "显示的项",
@@ -343,7 +343,7 @@
         "note": "说明",
         "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
         "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码选项时启用此功能。",
-        "songsAddedToPlaylist": "已添加一首歌到歌单 |||| 已添加 %{smart_count} 首歌到歌单",
+        "songsAddedToPlaylist": "已添加 1 首歌到歌单 |||| 已添加 %{smart_count} 首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
         "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
@@ -357,7 +357,7 @@
             "lastfm": "在 Last.fm 中打开",
             "musicbrainz": "在 MusicBrainz 中打开"
         },
-        "lastfmLink": "更多…",
+        "lastfmLink": "查看更多…",
         "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
         "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
         "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",

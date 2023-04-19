@@ -56,6 +56,7 @@ type configOptions struct {
 	FFmpegPath                   string
 	CoverArtPriority             string
 	CoverJpegQuality             int
+	ArtistArtPriority            string
 	EnableGravatar               bool
 	EnableFavourites             bool
 	EnableStarRating             bool
@@ -273,6 +274,7 @@ func init() {
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)

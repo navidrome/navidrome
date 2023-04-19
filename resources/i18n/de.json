@@ -190,7 +190,8 @@
                 "format": "Format",
                 "maxBitRate": "Max. Bit Rate",
                 "updatedAt": "Geändert am",
-                "createdAt": "Erstellt am"
+                "createdAt": "Erstellt am",
+                "downloadable": "Downloads erlauben?"
             }
         }
     },

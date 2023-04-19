@@ -1,4 +1,4 @@
-name: Update Translations
+name: POEditor import
 on:
   workflow_dispatch:
   schedule:
@@ -14,6 +14,10 @@ jobs:
           POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
         run: |
           ./update-translations.sh
+      - name: Show changes, if any
+        run: |
+          git status --porcelain
+          git diff
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:

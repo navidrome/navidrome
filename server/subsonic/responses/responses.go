@@ -11,6 +11,7 @@ type Subsonic struct {
 	Version       string             `xml:"version,attr"                                  json:"version"`
 	Type          string             `xml:"type,attr"                                     json:"type"`
 	ServerVersion string             `xml:"serverVersion,attr"                            json:"serverVersion"`
+	OpenSubsonic  bool               `xml:"openSubsonic,attr,omitempty"                   json:"openSubsonic,omitempty"`
 	Error         *Error             `xml:"error,omitempty"                               json:"error,omitempty"`
 	License       *License           `xml:"license,omitempty"                             json:"license,omitempty"`
 	MusicFolders  *MusicFolders      `xml:"musicFolders,omitempty"                        json:"musicFolders,omitempty"`
@@ -50,7 +51,8 @@ type Subsonic struct {
 	ScanStatus *ScanStatus `xml:"scanStatus,omitempty"                                    json:"scanStatus,omitempty"`
 	Lyrics     *Lyrics     `xml:"lyrics,omitempty"                                        json:"lyrics,omitempty"`
 
-	InternetRadioStations *InternetRadioStations `xml:"internetRadioStations,omitempty"  json:"internetRadioStations,omitempty"`
+	InternetRadioStations  *InternetRadioStations  `xml:"internetRadioStations,omitempty"  json:"internetRadioStations,omitempty"`
+	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -399,3 +401,5 @@ type Radio struct {
 	StreamUrl   string `xml:"streamUrl,attr"             json:"streamUrl"`
 	HomepageUrl string `xml:"homePageUrl,omitempty,attr" json:"homePageUrl,omitempty"`
 }
+
+type OpenSubsonicExtensions struct{}

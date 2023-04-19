@@ -61,7 +61,7 @@ func preRun() {
 }
 
 func runNavidrome() {
-	db.EnsureLatestVersion()
+	db.Init()
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Error("Error closing DB", err)
@@ -103,7 +103,7 @@ func startServer(ctx context.Context) func() error {
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
-		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port), conf.Server.TLSCert, conf.Server.TLSKey)
+		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
 	}
 }
 
