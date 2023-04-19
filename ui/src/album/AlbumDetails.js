@@ -197,17 +197,13 @@ const Details = (props) => {
   }
 
   const yearRange = formatRange(record, 'year')
-  let date = yearRange
-  if (record.date) {
-    date = FormatFullDate(record.date)
-  }
+  const date = record.date ? FormatFullDate(record.date) : yearRange
+  
   yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
 
-  let releaseDate = date
-  if (record.releaseDate) {
-    releaseDate = FormatFullDate(record.releaseDate)
-  }
+  const releaseDate = record.releaseDate ? FormatFullDate(record.releaseDate) : date
   const showReleaseDate = date !== releaseDate
+  
   showReleaseDate &&
     addDetail(
       <>
