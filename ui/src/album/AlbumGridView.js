@@ -17,7 +17,7 @@ import {
   AlbumContextMenu,
   PlayButton,
   ArtistLinkField,
-  RangeFieldDouble,
+  RangeDoubleField,
 } from '../common'
 import { DraggableTypes } from '../consts'
 
@@ -161,7 +161,7 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />
       ) : (
-        <RangeFieldDouble
+        <RangeDoubleField
           record={record}
           source={'year'}
           symbol1={'♫'}
