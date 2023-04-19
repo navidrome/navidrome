@@ -214,18 +214,18 @@ const Details = (props) => {
       </>
     )
 
-  const showEditions = record.editions > 1
-  showEditions &&
+  const showReleases = record.releases > 1
+  showReleases &&
     addDetail(
       <>
         {!isXsmall
           ? [
-              record.editions,
-              translate('resources.album.fields.edition', {
-                smart_count: record.editions,
+              record.releases,
+              translate('resources.album.fields.releases', {
+                smart_count: record.releases,
               }),
             ].join(' ')
-          : ['(', record.editions, ')))'].join(' ')}
+          : ['(', record.releases, ')))'].join(' ')}
       </>
     )
 
