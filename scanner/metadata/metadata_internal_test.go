@@ -6,7 +6,7 @@ import (
 )
 
 var _ = Describe("Tags", func() {
-	Describe("getYear", func() {
+	Describe("getDate", func() {
 		It("parses the year correctly", func() {
 			var examplesYear = map[string]int{
 				"1985":         1985,
