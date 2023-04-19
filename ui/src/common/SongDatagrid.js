@@ -54,7 +54,7 @@ const useStyles = makeStyles({
   },
 })
 
-const EditionRow = forwardRef(
+const ReleaseRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
@@ -63,13 +63,13 @@ const EditionRow = forwardRef(
       onClick(releaseDate)
     }
 
-    let editionTitle = []
+    let releaseTitle = []
     if (record.releaseDate) {
-      editionTitle.push(translate('resources.album.fields.released'))
-      editionTitle.push(FormatFullDate(record.releaseDate))
+      releaseTitle.push(translate('resources.album.fields.released'))
+      releaseTitle.push(FormatFullDate(record.releaseDate))
       if (record.catalogNum && isDesktop) {
-        editionTitle.push('· Cat #')
-        editionTitle.push(record.catalogNum)
+        releaseTitle.push('· Cat #')
+        releaseTitle.push(record.catalogNum)
       }
     }
 
@@ -82,7 +82,7 @@ const EditionRow = forwardRef(
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            {editionTitle.join(' ')}
+            {releaseTitle.join(' ')}
           </Typography>
         </TableCell>
         <TableCell>
@@ -147,7 +147,7 @@ export const SongDatagridRow = ({
   record,
   children,
   firstTracksOfDiscs,
-  firstTracksOfEditions,
+  firstTracksOfReleases,
   contextAlwaysVisible,
   onClickSubset,
   className,
@@ -191,8 +191,8 @@ export const SongDatagridRow = ({
   const childCount = fields.length
   return (
     <>
-      {firstTracksOfEditions.has(record.id) && (
-        <EditionRow
+      {firstTracksOfReleases.has(record.id) && (
+        <ReleaseRow
           ref={dragDiscRef}
           record={record}
           onClick={onClickSubset}
@@ -225,7 +225,7 @@ SongDatagridRow.propTypes = {
   record: PropTypes.object,
   children: PropTypes.node,
   firstTracksOfDiscs: PropTypes.instanceOf(Set),
-  firstTracksOfEditions: PropTypes.instanceOf(Set),
+  firstTracksOfReleases: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
   onClickSubset: PropTypes.func,
 }
@@ -237,7 +237,7 @@ SongDatagridRow.defaultProps = {
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  showEditionRow,
+  showReleaseRow,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -287,7 +287,7 @@ const SongDatagridBody = ({
     return set
   }, [ids, data, showDiscSubtitles])
 
-  const firstTracksOfEditions = useMemo(() => {
+  const firstTracksOfReleases = useMemo(() => {
     if (!ids) {
       return new Set()
     }
@@ -305,11 +305,11 @@ const SongDatagridBody = ({
           return acc
         }, [])
     )
-    if (!showEditionRow || set.size < 2) {
+    if (!showReleaseRow || set.size < 2) {
       set.clear()
     }
     return set
-  }, [ids, data, showEditionRow])
+  }, [ids, data, showReleaseRow])
 
   return (
     <PureDatagridBody
@@ -317,7 +317,7 @@ const SongDatagridBody = ({
       row={
         <SongDatagridRow
           firstTracksOfDiscs={firstTracksOfDiscs}
-          firstTracksOfEditions={firstTracksOfEditions}
+          firstTracksOfReleases={firstTracksOfReleases}
           contextAlwaysVisible={contextAlwaysVisible}
           onClickSubset={playSubset}
         />
@@ -329,7 +329,7 @@ const SongDatagridBody = ({
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  showEditionRow,
+  showReleaseRow,
   ...rest
 }) => {
   const classes = useStyles()
@@ -341,7 +341,7 @@ export const SongDatagrid = ({
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
-          showEditionRow={showEditionRow}
+          showReleaseRow={showReleaseRow}
         />
       }
     />
@@ -351,6 +351,6 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
-  showEditionRow: PropTypes.bool,
+  showReleaseRow: PropTypes.bool,
   classes: PropTypes.object,
 }
