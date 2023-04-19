@@ -130,7 +130,7 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 
 func (s mediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
-	if !conf.Server.Scanner.GroupAlbumEditions {
+	if !conf.Server.Scanner.GroupAlbumReleases {
 		if len(releaseDate) != 0 {
 			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
 		}
@@ -180,7 +180,7 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, string) {
 	year, date := md.Date()
 	releaseYear, releaseDate := md.ReleaseDate()
 
-	// MusicBrainz Picard writes the Release Date of an album to the Date tag, not to the Release Date tag
+	// MusicBrainz Picard writes the Release Date of an album to the Date tag, and leaves the Release Date tag empty
 	taggedLikePicard := (originalYear != 0) &&
 		(releaseYear == 0) &&
 		(year >= originalYear)
