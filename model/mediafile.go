@@ -161,9 +161,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 	}
 
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
-	a.Date, _ = AllOrNothing(dates)
+	a.Date, _ = allOrNothing(dates)
 	a.ReleaseDate, a.Editions = AllOrNothing(releaseDates)
-	a.Comment, _ = AllOrNothing(comments)
+	a.Comment, _ = allOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
@@ -177,7 +177,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	return a
 }
 
-func AllOrNothing(items []string) (string, int) {
+func allOrNothing(items []string) (string, int) {
 	items = slices.Compact(items)
 	if len(items) == 1 {
 		return items[0], 1
