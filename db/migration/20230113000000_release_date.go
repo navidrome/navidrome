@@ -22,7 +22,7 @@ alter table album
 alter table album
     add release_date varchar(255) default '' not null;
 alter table album
-    add editions integer default 0 not null;
+    add releases integer default 0 not null;
 `)
 	if err != nil {
 		return err
