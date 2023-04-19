@@ -13,15 +13,15 @@ export const RangeDoubleField = ({
 }) => {
   const record = useRecordContext(rest)
   const yearRange = formatRange(record, source).toString()
-  const editions = [record.editions]
+  const releases = [record.releases]
   const releaseDate = [record.releaseDate]
   const releaseYear = releaseDate.toString().substring(0, 4)
   let subtitle = yearRange
 
-  if (editions > 1) {
+  if (releases > 1) {
     subtitle = [
       [yearRange && symbol1, yearRange].join(' '),
-      ['(', editions, ')))'].join(' '),
+      ['(', releases, ')))'].join(' '),
     ].join(separator)
   }
 
