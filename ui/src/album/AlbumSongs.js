@@ -172,7 +172,7 @@ const AlbumSongs = (props) => {
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
-            showReleaseRow={true}
+            showReleaseDivider={true}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
