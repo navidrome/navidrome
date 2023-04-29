@@ -1,0 +1,111 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: navidrome
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-data-pvc
+  namespace: navidrome
+  annotations:
+    volumeType: local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome-deployment
+  namespace: navidrome
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: navidrome
+  template:
+    metadata:
+      labels:
+        app: navidrome
+    spec:
+      containers:
+        - name: navidrome
+          image: ghcr.io/navidrome/navidrome:0.49.3
+          ports:
+            - containerPort: 4533
+          env:
+            - name: ND_SCANSCHEDULE
+              value: "12h"
+            - name: ND_SESSIONTIMEOUT
+              value: "24h"
+            - name: ND_LOGLEVEL
+              value: "info"
+            - name: ND_ENABLETRANSCODINGCONFIG
+              value: "false"
+            - name: ND_TRANSCODINGCACHESIZE
+              value: "512MB"
+            - name: ND_ENABLESTARRATING
+              value: "false"
+            - name: ND_ENABLEFAVOURITES
+              value: "false"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: music
+              mountPath: /music
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: navidrome-data-pvc
+        - name: music
+          hostPath:
+            path: /path/to/your/music/on/the/host
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navidrome-service
+  namespace: navidrome
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      targetPort: 4533
+      port: 4533
+      protocol: TCP
+  selector:
+    app: navidrome
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: navidrome-ingress
+  namespace: navidrome
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  rules:
+    - host: navidrome.${SECRET_INTERNAL_DOMAIN_NAME}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: navidrome-service
+                port:
+                  number: 4533
+  tls:
+    - hosts:
+        - navidrome.${SECRET_INTERNAL_DOMAIN_NAME}
+      secretName: navidrome-tls
