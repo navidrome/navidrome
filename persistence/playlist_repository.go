@@ -10,6 +10,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -87,6 +88,10 @@ func (r *playlistRepository) Delete(id string) error {
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
+	if p.ExternalSync && !p.ExternalSyncable {
+		return external_playlists.ErrSyncUnsupported
+	}
+
 	pls := dbPlaylist{Playlist: *p}
 	if p.IsSmartPlaylist() {
 		j, err := json.Marshal(p.Rules)
@@ -127,6 +132,17 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
+}
+
+func (r *playlistRepository) GetSyncedPlaylists() (model.Playlists, error) {
+	sel := r.newSelect().Columns("id", "owner_id")
+	var res model.Playlists
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
 }
 
 func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool) (*model.Playlist, error) {
@@ -466,6 +482,18 @@ func (r *playlistRepository) isWritable(playlistId string) bool {
 
 func (r *playlistRepository) GetByExternalInfo(agent, id string) (*model.Playlist, error) {
 	sql := Select("*").From(r.tableName).Where(Eq{"external_agent": agent, "external_id": id})
+	var pls model.Playlist
+
+	err := r.queryOne(sql, &pls)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pls, nil
+}
+
+func (r *playlistRepository) GetRecommended(userId, agent string) (*model.Playlist, error) {
+	sql := Select("*").From(r.tableName).Where(Eq{"external_agent": agent, "owner_id": userId, "external_recommended": true})
 	var pls model.Playlist
 
 	err := r.queryOne(sql, &pls)

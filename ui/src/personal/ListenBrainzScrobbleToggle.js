@@ -5,6 +5,7 @@ import { httpClient } from '../dataProvider'
 import { ListenBrainzTokenDialog } from '../dialogs'
 import { useDispatch } from 'react-redux'
 import { openListenBrainzTokenDialog } from '../actions'
+import { ListenBrainzPlaylistToggle } from './ListenBrainzPlaylistToggle'
 
 export const ListenBrainzScrobbleToggle = () => {
   const dispatch = useDispatch()
@@ -56,6 +57,11 @@ export const ListenBrainzScrobbleToggle = () => {
         />
       </FormControl>
       <ListenBrainzTokenDialog setLinked={setLinked} />
+      {linked && (
+        <div>
+          <ListenBrainzPlaylistToggle />
+        </div>
+      )}
     </>
   )
 }

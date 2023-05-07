@@ -152,7 +152,8 @@
                 "comment": "Comment",
                 "sync": "Auto-import",
                 "path": "Import from",
-                "external": "External"
+                "external": "External",
+                "externalSync": "Sync from source"
             },
             "actions": {
                 "selectPlaylist": "Select a playlist:",
@@ -212,10 +213,12 @@
                 "updatedAt": "Updated at",
                 "createdAt": "Created at",
                 "existing": "Existing",
+                "sync": "Periodically fetch",
                 "update": "Update existing playlists"
             },
             "notifications": {
-                "created": "External playlist imported |||| %{smart_count} external playlists imported"
+                "created": "External playlist imported |||| %{smart_count} external playlists imported",
+                "failed": "Could not import playlists: %{cause}"
             },
             "agent": {
                 "listenbrainz": {
@@ -389,6 +392,10 @@
         "listenBrainzLinkFailure": "ListenBrainz could not be linked: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz unlinked and scrobbling disabled",
         "listenBrainzUnlinkFailure": "ListenBrainz could not be unlinked",
+        "agentRecommendedSyncSuccess": "%{agent} enabled to sync recommended playlists",
+        "agentRecommendedSyncFail": "%{agent} could not enable playlist syncing: %{error}",
+        "agentRecommendedUnsyncSuccess": "%{agent} disabled syncing recommended playlists",
+        "agentRecommendedUnsyncFail": "%{agent} could not disable playlist syncing: %{error}",
         "openIn": {
             "lastfm": "Open in Last.fm",
             "musicbrainz": "Open in MusicBrainz"
@@ -422,6 +429,7 @@
                 "desktop_notifications": "Desktop Notifications",
                 "lastfmScrobbling": "Scrobble to Last.fm",
                 "listenBrainzScrobbling": "Scrobble to ListenBrainz",
+                "listenBrainzPlaylistSync": "Sync daily playlists (this requires following troi-bot)",
                 "replaygain": "ReplayGain Mode",
                 "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {

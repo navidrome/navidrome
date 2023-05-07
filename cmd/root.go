@@ -74,6 +74,7 @@ func runNavidrome() {
 	g.Go(startSignaler(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(schedulePlaylistSync(ctx))
 
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -132,6 +133,35 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 			log.Error("Error executing initial scan", err)
 		}
 		log.Debug("Finished initial scan")
+		return nil
+	}
+}
+
+func schedulePlaylistSync(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.PlaylistSyncSchedule
+		if schedule == "" {
+			log.Warn("Periodic playlist sync is DISABLED")
+			return nil
+		}
+
+		scanner := GetScanner()
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling periodic playlist sync", "schedule", schedule)
+		err := schedulerInstance.Add(schedule, func() {
+			_ = scanner.SyncPlaylists(ctx)
+		})
+		if err != nil {
+			log.Error("Error scheduling periodic playlist sync", err)
+		}
+
+		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+		log.Debug("Executing initial playlist sync")
+		if err := scanner.SyncPlaylists(ctx); err != nil {
+			log.Error("Error executing initial  playlist sync", err)
+		}
+		log.Debug("Finished initial  playlist sync")
 		return nil
 	}
 }

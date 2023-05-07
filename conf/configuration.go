@@ -76,6 +76,7 @@ type configOptions struct {
 	ReverseProxyWhitelist        string
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
+	PlaylistSyncSchedule         string
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -161,6 +162,10 @@ func Load() {
 		os.Exit(1)
 	}
 
+	if err := validateSchedule(&Server.PlaylistSyncSchedule); err != nil {
+		os.Exit(1)
+	}
+
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
 		if err != nil {
@@ -218,17 +223,22 @@ func validateScanSchedule() error {
 			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
 		}
 	}
-	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
-		Server.ScanSchedule = ""
+	return validateSchedule(&Server.ScanSchedule)
+}
+
+func validateSchedule(schedule *string) error {
+	extracted := *schedule
+	if extracted == "0" || extracted == "" {
+		*schedule = ""
 		return nil
 	}
-	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
-		Server.ScanSchedule = "@every " + Server.ScanSchedule
+	if _, err := time.ParseDuration(extracted); err == nil {
+		*schedule = "@every " + extracted
 	}
 	c := cron.New()
-	_, err := c.AddFunc(Server.ScanSchedule, func() {})
+	_, err := c.AddFunc(*schedule, func() {})
 	if err != nil {
-		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
+		log.Error("Invalid schedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", *schedule, err)
 	}
 	return err
 }
@@ -305,6 +315,8 @@ func init() {
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+
+	viper.SetDefault("playlistsyncschedule", "")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

@@ -5,19 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 )
 
 type Scanner interface {
 	RescanAll(ctx context.Context, fullRescan bool) error
 	Status(mediaFolder string) (*StatusInfo, error)
+	SyncPlaylists(ctx context.Context) error
 }
 
 type StatusInfo struct {
@@ -48,6 +52,7 @@ type scanner struct {
 	pls         core.Playlists
 	broker      events.Broker
 	cacheWarmer artwork.CacheWarmer
+	retriever   external_playlists.PlaylistRetriever
 }
 
 type scanStatus struct {
@@ -57,7 +62,13 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker) Scanner {
+func New(
+	ds model.DataStore,
+	playlists core.Playlists,
+	cacheWarmer artwork.CacheWarmer,
+	broker events.Broker,
+	retriever external_playlists.PlaylistRetriever,
+) Scanner {
 	s := &scanner{
 		ds:          ds,
 		pls:         playlists,
@@ -66,6 +77,7 @@ func New(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.Cache
 		status:      map[string]*scanStatus{},
 		lock:        &sync.RWMutex{},
 		cacheWarmer: cacheWarmer,
+		retriever:   retriever,
 	}
 	s.loadFolders()
 	return s
@@ -248,4 +260,51 @@ func (s *scanner) loadFolders() {
 
 func (s *scanner) newScanner(f model.MediaFolder) FolderScanner {
 	return NewTagScanner(f.Path, s.ds, s.pls, s.cacheWarmer)
+}
+
+// Why is this in the Scanner, when it isn't directly related to scanning files?
+// Because the operation it runs can contend with scanning.
+// To make sure scanning and playlist syncing are mutually exclusive, both
+// exist here under the same lock
+func (s *scanner) SyncPlaylists(ctx context.Context) error {
+	isScanning.Lock()
+	defer isScanning.Unlock()
+
+	playlists, err := s.ds.Playlist(ctx).GetSyncedPlaylists()
+
+	if err != nil {
+		return err
+	}
+
+	for _, playlist := range playlists {
+		user := model.User{
+			ID: playlist.OwnerID,
+		}
+		nestedCtx := request.WithUser(ctx, user)
+		err = s.retriever.SyncPlaylist(nestedCtx, playlist.ID)
+		if err != nil {
+			log.Error(nestedCtx, "Failed to sync playlist", "id", playlist.ID, err)
+		}
+	}
+
+	props, err := s.ds.UserProps(ctx).GetAllWithPrefix(external_playlists.UserAgentKey)
+
+	if err != nil {
+		return err
+	}
+
+	for _, prop := range props {
+		split := strings.Split(prop.Key, external_playlists.UserAgentKey)
+		user := model.User{
+			ID: prop.UserID,
+		}
+		nestedCtx := request.WithUser(ctx, user)
+		err = s.retriever.SyncRecommended(nestedCtx, prop.UserID, split[1])
+
+		if err != nil {
+			log.Error(ctx, "Failed to fetch recommended playlists", "user", prop.UserID, "agent", split[1])
+		}
+	}
+
+	return err
 }

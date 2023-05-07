@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -55,10 +56,17 @@ func (s *Router) routes() http.Handler {
 		r.Get("/link", s.getLinkStatus)
 		r.Put("/link", s.link)
 		r.Delete("/link", s.unlink)
+		r.Get("/playlist", s.getSyncStatus)
+		r.Put("/playlist", s.syncPlaylist)
+		r.Delete("/playlist", s.unsyncPlaylist)
 	})
 
 	return r
 }
+
+const (
+	userAgentKey = external_playlists.UserAgentKey + listenBrainzAgentName
+)
 
 func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{}
@@ -114,6 +122,49 @@ func (s *Router) link(w http.ResponseWriter, r *http.Request) {
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
 	err := s.sessionKeys.Delete(r.Context(), u.ID)
+
+	_ = s.ds.UserProps(r.Context()).Delete(u.ID, userAgentKey)
+	if err != nil {
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	} else {
+		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{})
+	}
+}
+
+func (s *Router) getSyncStatus(w http.ResponseWriter, r *http.Request) {
+	resp := map[string]interface{}{}
+	u, _ := request.UserFrom(r.Context())
+	_, err := s.ds.UserProps(r.Context()).Get(u.ID, userAgentKey)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			resp["status"] = false
+			_ = rest.RespondWithJSON(w, http.StatusOK, resp)
+		} else {
+			resp["error"] = err
+			resp["status"] = false
+			_ = rest.RespondWithJSON(w, http.StatusInternalServerError, resp)
+		}
+		return
+	}
+	resp["status"] = true
+	_ = rest.RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (s *Router) syncPlaylist(w http.ResponseWriter, r *http.Request) {
+	u, _ := request.UserFrom(r.Context())
+
+	err := s.ds.UserProps(r.Context()).Put(u.ID, userAgentKey, "")
+	if err != nil {
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	} else {
+		_ = rest.RespondWithJSON(w, http.StatusOK, map[string]string{})
+	}
+}
+
+func (s *Router) unsyncPlaylist(w http.ResponseWriter, r *http.Request) {
+	u, _ := request.UserFrom(r.Context())
+
+	err := s.ds.UserProps(r.Context()).Delete(u.ID, userAgentKey)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {

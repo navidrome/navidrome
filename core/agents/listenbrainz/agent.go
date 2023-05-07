@@ -20,10 +20,16 @@ import (
 const (
 	listenBrainzAgentName = "listenbrainz"
 	sessionKeyProperty    = "ListenBrainzSessionKey"
+	troiBot               = "troi-bot"
+	playlistTypeUser      = "user"
+	playlistTypeCollab    = "collab"
+	playlistTypeCreated   = "created"
+	defaultFetch          = 25
+	sourceDaily           = "daily-jams"
 )
 
 var (
-	playlistTypes = []string{"user", "collab", "created"}
+	playlistTypes = []string{playlistTypeUser, playlistTypeCollab, playlistTypeCreated}
 )
 
 type listenBrainzAgent struct {
@@ -158,6 +164,7 @@ func (l *listenBrainzAgent) GetPlaylists(ctx context.Context, offset, count int,
 			Url:         pls.Identifier,
 			CreatedAt:   pls.Date,
 			UpdatedAt:   pls.Extension.Extension.LastModified,
+			Syncable:    pls.Creator != troiBot,
 		}
 	}
 
@@ -167,7 +174,7 @@ func (l *listenBrainzAgent) GetPlaylists(ctx context.Context, offset, count int,
 	}, nil
 }
 
-func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, userId, id, name string) error {
+func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, sync bool, userId, id, name string) error {
 	token, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil {
 		return err
@@ -176,6 +183,12 @@ func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, use
 	pls, err := l.client.getPlaylist(ctx, token, id)
 	if err != nil {
 		return err
+	}
+
+	syncable := pls.Playlist.Creator != troiBot
+
+	if sync && !syncable {
+		return external_playlists.ErrSyncUnsupported
 	}
 
 	err = l.ds.WithTx(func(tx model.DataStore) error {
@@ -213,13 +226,15 @@ func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, use
 
 		if playlist == nil {
 			playlist = &model.Playlist{
-				Name:          name,
-				Comment:       comment,
-				OwnerID:       userId,
-				Public:        false,
-				ExternalAgent: listenBrainzAgentName,
-				ExternalId:    id,
-				ExternalUrl:   pls.Playlist.Identifier,
+				Name:             name,
+				Comment:          comment,
+				OwnerID:          userId,
+				Public:           false,
+				ExternalAgent:    listenBrainzAgentName,
+				ExternalId:       id,
+				ExternalSync:     sync,
+				ExternalSyncable: syncable,
+				ExternalUrl:      pls.Playlist.Identifier,
 			}
 		}
 
@@ -270,6 +285,100 @@ func (l *listenBrainzAgent) SyncPlaylist(ctx context.Context, tx model.DataStore
 	if err != nil {
 		log.Error(ctx, "Failed to sync playlist", "id", pls.ID, err)
 	}
+
+	return err
+}
+
+func (l *listenBrainzAgent) SyncRecommended(ctx context.Context, userId string) error {
+	token, err := l.sessionKeys.GetWithUser(ctx, userId)
+
+	if errors.Is(agents.ErrNoUsername, err) {
+		resp, err := l.client.validateToken(ctx, token.Key)
+
+		if err != nil {
+			return err
+		}
+
+		token.User = resp.UserName
+
+		err = l.sessionKeys.PutWithUser(ctx, userId, token.Key, resp.UserName)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	resp, err := l.client.getPlaylists(ctx, 0, defaultFetch, token.Key, token.User, playlistTypeCreated)
+
+	if err != nil {
+		return err
+	}
+
+	var full_pls *listenBrainzResponse = nil
+	var id string
+
+	for _, pls := range resp.Playlists {
+		if pls.Playlist.Extension.Extension.AdditionalMetadata.AlgorithmMetadata.SourcePatch == sourceDaily {
+			id = getIdentifier(pls.Playlist.Identifier)
+
+			full_pls, err = l.client.getPlaylist(ctx, token.Key, id)
+			break
+		}
+	}
+
+	if err != nil {
+		return err
+	} else if full_pls == nil {
+		return agents.ErrNotFound
+	}
+
+	err = l.ds.WithTx(func(tx model.DataStore) error {
+		ids := make([]string, len(full_pls.Playlist.Tracks))
+		for i, track := range full_pls.Playlist.Tracks {
+			ids[i] = getIdentifier(track.Identifier)
+		}
+
+		matched_tracks, err := tx.MediaFile(ctx).FindWithMbid(ids)
+
+		if err != nil {
+			return err
+		}
+
+		playlist, err := tx.Playlist(ctx).GetRecommended(userId, listenBrainzAgentName)
+
+		comment := agents.StripAllTags.Sanitize(full_pls.Playlist.Annotation)
+
+		if err != nil {
+			playlist = &model.Playlist{
+				Name:                "ListenBrainz Daily Playlist",
+				Comment:             comment,
+				OwnerID:             userId,
+				Public:              false,
+				ExternalAgent:       listenBrainzAgentName,
+				ExternalId:          id,
+				ExternalSync:        false,
+				ExternalSyncable:    false,
+				ExternalRecommended: true,
+			}
+
+			if !errors.Is(err, model.ErrNotFound) {
+				log.Error(ctx, "Failed to query for playlist", "error", err)
+			}
+		}
+
+		playlist.ExternalId = id
+		playlist.ExternalUrl = full_pls.Playlist.Identifier
+
+		playlist.AddMediaFiles(matched_tracks)
+		err = tx.Playlist(ctx).Put(playlist)
+
+		if err != nil {
+			log.Error(ctx, "Failed to import playlist", "id", id, err)
+		}
+
+		return err
+	})
 
 	return err
 }
