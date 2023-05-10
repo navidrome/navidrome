@@ -29,7 +29,6 @@ type PlaybackDevice struct {
 	Gain                 float32
 	SampleRate           beep.SampleRate
 	PlaybackDone         chan bool
-	TrackSwitcherStarted bool
 }
 
 type DeviceStatus struct {
@@ -52,8 +51,9 @@ func (pd *PlaybackDevice) getStatus() DeviceStatus {
 
 // NewPlaybackDevice creates a new playback device which implements all the basic Jukebox mode commands defined here:
 // http://www.subsonic.org/pages/api.jsp#jukeboxControl
+// Starts the trackSwitcher goroutine for the device.
 func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string, deviceName string) *PlaybackDevice {
-	return &PlaybackDevice{
+	playbackDevice := PlaybackDevice{
 		ParentPlaybackServer: playbackServer,
 		User:                 "",
 		Name:                 name,
@@ -66,8 +66,14 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Gain:                 0.5,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
-		TrackSwitcherStarted: false,
 	}
+
+	// Start one trackSwitcher goroutine with each device
+	go func() {
+		playbackDevice.trackSwitcher()
+	}()
+
+	return &playbackDevice
 }
 
 func (pd *PlaybackDevice) String() string {
@@ -111,13 +117,6 @@ func (pd *PlaybackDevice) startTrack() (DeviceStatus, error) {
 		return pd.getStatus(), nil
 	} else {
 		pd.loadTrack(*currentTrack)
-	}
-
-	if !pd.TrackSwitcherStarted {
-		go func() {
-			pd.trackSwitcher()
-		}()
-		pd.TrackSwitcherStarted = true
 	}
 
 	err := pd.SetPosition()
@@ -290,6 +289,7 @@ func (pd *PlaybackDevice) loadTrack(mf model.MediaFile) {
 	if err != nil {
 		log.Error(err)
 	}
+	log.Debug("speaker.Init() finished")
 
 	go func() {
 		speaker.Play(beep.Seq(pd.Volume, beep.Callback(func() {
@@ -308,12 +308,11 @@ func (pd *PlaybackDevice) trackSwitcher() {
 	for {
 		<-pd.PlaybackDone
 		log.Info("track switching detected")
-		// pd.pause()
 		pd.closeTrack()
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
-			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
 			pd.PlaybackQueue.IncreaseIndex()
+			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
 			err := pd.PlaybackQueue.SetOffset(0)
 			if err != nil {
 				log.Error("error setting offset of next track to zero")
@@ -322,6 +321,7 @@ func (pd *PlaybackDevice) trackSwitcher() {
 			if err != nil {
 				log.Error("error starting track #", pd.PlaybackQueue.Index)
 			}
+			pd.play()
 		}
 	}
 }
@@ -331,6 +331,7 @@ func (pd *PlaybackDevice) closeTrack() {
 	if pd.ActiveStream != nil {
 		log.Debug("closing activ stream")
 		pd.ActiveStream.Close()
+		pd.ActiveStream = nil
 	}
 
 	if pd.TempfileToCleanup != "" {
@@ -344,13 +345,20 @@ func (pd *PlaybackDevice) closeTrack() {
 
 // Position returns the playback position in seconds
 func (pd *PlaybackDevice) Position() int {
+	if pd.Ctrl.Streamer == nil {
+		log.Debug("streamer is not setup (nil), could not get position")
+		return 0
+	}
+
 	streamer, ok := pd.Ctrl.Streamer.(beep.StreamSeeker)
 	if ok {
 		position := pd.SampleRate.D(streamer.Position())
 		posSecs := position.Round(time.Second).Seconds()
 		return int(posSecs)
+	} else {
+		log.Debug("streamer is no beep.StreamSeeker, could not get position")
+		return 0
 	}
-	return 0
 }
 
 func (pd *PlaybackDevice) SetPosition() error {
