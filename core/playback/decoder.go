@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"time"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/flac"
@@ -31,6 +30,7 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 }
 
 func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, fileToCleanup string, err error) {
+	// TODO: Turn this into a semi-parallel operation: start playing while still transcoding/copying
 	fFmpeg := ffmpeg.New()
 	readCloser, err := fFmpeg.ConvertToFLAC(ctx, path)
 	if err != nil {
@@ -46,16 +46,11 @@ func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, form
 	}
 	log.Debug(ctx, "created tempfile", "filename", tempFile.Name())
 
-	go func() {
-		written, err := io.Copy(tempFile, readCloser)
-		if err != nil {
-			log.Error(ctx, "error coping file", "dest", tempFile.Name())
-		}
-		log.Debug(ctx, "copy pipe into tempfile", "bytes written", written, "filename", tempFile.Name())
-	}()
-
-	// FIXME: turn this into a wait-for-certain-amount-of-bytes-loop
-	time.Sleep(time.Second)
+	written, err := io.Copy(tempFile, readCloser)
+	if err != nil {
+		log.Error(ctx, "error coping file", "dest", tempFile.Name())
+	}
+	log.Debug(ctx, "copy pipe into tempfile", "bytes written", written, "filename", tempFile.Name())
 
 	f, err := os.Open(tempFile.Name())
 	if err != nil {
