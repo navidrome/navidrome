@@ -102,10 +102,14 @@ func (pd *PlaybackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 func (pd *PlaybackDevice) startTrack() (DeviceStatus, error) {
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
+		log.Debug("startTrack() no current track found")
 		return EmptyStatus, nil
 	}
 
-	if !pd.TrackLoaded {
+	if pd.TrackLoaded {
+		pd.play()
+		return pd.getStatus(), nil
+	} else {
 		pd.loadTrack(*currentTrack)
 	}
 
@@ -304,10 +308,11 @@ func (pd *PlaybackDevice) trackSwitcher() {
 	for {
 		<-pd.PlaybackDone
 		log.Info("track switching detected")
-		pd.pause()
+		// pd.pause()
 		pd.closeTrack()
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
+			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
 			pd.PlaybackQueue.IncreaseIndex()
 			err := pd.PlaybackQueue.SetOffset(0)
 			if err != nil {
@@ -324,10 +329,12 @@ func (pd *PlaybackDevice) trackSwitcher() {
 func (pd *PlaybackDevice) closeTrack() {
 	pd.TrackLoaded = false
 	if pd.ActiveStream != nil {
+		log.Debug("closing activ stream")
 		pd.ActiveStream.Close()
 	}
 
 	if pd.TempfileToCleanup != "" {
+		log.Debug("Removing tempfile", "tmpfilename", pd.TempfileToCleanup)
 		err := os.Remove(pd.TempfileToCleanup)
 		if err != nil {
 			log.Error("error cleaning up tempfile: ", pd.TempfileToCleanup)
@@ -350,8 +357,8 @@ func (pd *PlaybackDevice) SetPosition() error {
 	streamer, ok := pd.Ctrl.Streamer.(beep.StreamSeeker)
 	if ok {
 		sampleRatePerSecond := pd.SampleRate.N(time.Second)
-		log.Debug("Samplerate per second", "samplerate", sampleRatePerSecond)
 		nextPosition := sampleRatePerSecond * pd.PlaybackQueue.Offset
+		log.Debug("SetPosition", "samplerate", sampleRatePerSecond, "nextPosition", nextPosition)
 		return streamer.Seek(nextPosition)
 	}
 	return fmt.Errorf("streamer is not seekable")

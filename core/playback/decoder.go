@@ -31,6 +31,7 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 
 func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, fileToCleanup string, err error) {
 	// TODO: Turn this into a semi-parallel operation: start playing while still transcoding/copying
+	log.Debug(ctx, "decode to FLAC", "filename", path)
 	fFmpeg := ffmpeg.New()
 	readCloser, err := fFmpeg.ConvertToFLAC(ctx, path)
 	if err != nil {
