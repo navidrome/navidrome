@@ -31,10 +31,8 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { setTrack } from '../actions'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
-import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
-import DownloadMenuDialog from '../dialogs/DownloadMenuDialog'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles({
@@ -139,6 +137,7 @@ const SongList = (props) => {
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
+      path: <TextField source="path" />,
       createdAt: <DateField source="createdAt" showTime />,
     }
   }, [isDesktop, classes.ratingField])
@@ -153,6 +152,7 @@ const SongList = (props) => {
       'albumArtist',
       'genre',
       'comment',
+      'path',
       'createdAt',
     ],
   })
@@ -196,8 +196,6 @@ const SongList = (props) => {
           </SongDatagrid>
         )}
       </List>
-      <AddToPlaylistDialog />
-      <DownloadMenuDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -121,7 +122,7 @@ func (r *refresher) getImageFiles(dirs []string) (string, time.Time) {
 			updatedAt = stats.ImagesUpdatedAt
 		}
 	}
-	return strings.Join(imageFiles, string(filepath.ListSeparator)), updatedAt
+	return strings.Join(imageFiles, consts.Zwsp), updatedAt
 }
 
 func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {

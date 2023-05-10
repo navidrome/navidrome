@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.19.5-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.20.3-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -21,15 +21,15 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 .PHONY: dev
 
 server: check_go_env  ##@Development Start the backend in development mode
-	@go run github.com/cespare/reflex -d none -c reflex.conf
+	@go run github.com/cespare/reflex@latest -d none -c reflex.conf
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/v2/ginkgo watch -notify ./...
+	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -notify ./...
 .PHONY: watch
 
 test: ##@Development Run Go tests
-	go test -race ./...
+	go test -race -shuffle=on ./...
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
@@ -37,24 +37,30 @@ testall: test ##@Development Run Go and JS tests
 .PHONY: testall
 
 lint: ##@Development Lint Go code
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run -v --timeout 5m
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
-	@(cd ./ui && npm run check-formatting && npm run lint)
+	@(cd ./ui && npm run check-formatting) || (echo "\n\nPlease run 'npm run prettier' to fix formatting issues." && exit 1)
+	@(cd ./ui && npm run lint)
 .PHONY: lintall
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire ./...
+	go run github.com/google/wire/cmd/wire@latest ./...
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
-	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo ./server/subsonic/...
+	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/...
 .PHONY: snapshots
 
-migration: ##@Development Create an empty migration file
-	@if [ -z "${name}" ]; then echo "Usage: make migration name=name_of_migration_file"; exit 1; fi
-	go run github.com/pressly/goose/cmd/goose -dir db/migration create ${name}
+migration-sql: ##@Development Create an empty SQL migration file
+	@if [ -z "${name}" ]; then echo "Usage: make migration-sql name=name_of_migration_file"; exit 1; fi
+	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migration create ${name} sql
+.PHONY: migration
+
+migration-go: ##@Development Create an empty Go migration file
+	@if [ -z "${name}" ]; then echo "Usage: make migration-go name=name_of_migration_file"; exit 1; fi
+	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migration create ${name}
 .PHONY: migration
 
 setup-dev: setup

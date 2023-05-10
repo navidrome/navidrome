@@ -32,7 +32,7 @@ export default {
     },
     MuiButton: {
       textPrimary: {
-        color: '#8ec07c',
+        color: '#458588',
       },
       textSecondary: {
         color: '#ebdbb2',

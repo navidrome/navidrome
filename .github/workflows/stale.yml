@@ -1,0 +1,55 @@
+name: 'Close stale issues and PRs'
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 1 * * *'
+permissions:
+  contents: read
+jobs:
+  stale:
+    permissions:
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dessant/lock-threads@v4.0.0
+        with:
+          issue-inactive-days: 120
+          pr-inactive-days: 120
+          log-output: true
+          add-issue-labels: 'frozen-due-to-age'
+          add-pr-labels: 'frozen-due-to-age'
+          issue-comment: >
+            This issue has been automatically locked since there
+            has not been any recent activity after it was closed.
+            Please open a new issue for related bugs.
+          pr-comment: >
+            This pull request has been automatically locked since there
+            has not been any recent activity after it was closed.
+            Please open a new issue for related bugs.
+      - uses: actions/stale@v7
+        with:
+          operations-per-run: 999
+          days-before-issue-stale: 180
+          days-before-pr-stale: 180
+          days-before-issue-close: 30
+          days-before-pr-close: 30
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not had
+            recent activity. The resources of the Navidrome team are limited, and so we are asking for your help.
+
+            If this is a **bug** and you can still reproduce this error on the <code>master</code> branch, please reply with all of the information you have about it in order to keep the issue open.
+
+            If this is a **feature request**, and you feel that it is still relevant and valuable, please tell us why.
+
+            This issue will automatically be closed in the near future if no further activity occurs. Thank you for all your contributions.
+          stale-pr-message: This PR has been automatically marked as stale because it has not had
+            recent activity. The resources of the Navidrome team are limited, and so we are asking for your help.
+
+            Please check https://github.com/navidrome/navidrome/blob/master/CONTRIBUTING.md#pull-requests and verify that this code contribution fits with the description. If yes, tell it in a comment.
+
+            This PR will automatically be closed in the near future if no further activity occurs. Thank you for all your contributions.
+          stale-issue-label: 'stale'
+          exempt-issue-labels: 'keep,security'
+          stale-pr-label: 'stale'
+          exempt-pr-labels: 'keep,security'

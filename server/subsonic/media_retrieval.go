@@ -53,13 +53,18 @@ func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) 
 }
 
 func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	// If context is already canceled, discard request without further processing
+	if r.Context().Err() != nil {
+		return nil, nil //nolint:nilerr
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	id := utils.ParamString(r, "id")
 	size := utils.ParamInt(r, "size", 0)
 
-	imgReader, lastUpdate, err := api.artwork.Get(ctx, id, size)
+	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size)
 	w.Header().Set("cache-control", "public, max-age=315360000")
 	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
 
@@ -67,7 +72,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	case errors.Is(err, context.Canceled):
 		return nil, nil
 	case errors.Is(err, model.ErrNotFound):
-		log.Error(r, "Couldn't find coverArt", "id", id, err)
+		log.Warn(r, "Couldn't find coverArt", "id", id, err)
 		return nil, newError(responses.ErrorDataNotFound, "Artwork not found")
 	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)

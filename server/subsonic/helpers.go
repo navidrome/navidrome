@@ -5,22 +5,24 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
-	"net/url"
-	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
 )
 
 func newResponse() *responses.Subsonic {
-	return &responses.Subsonic{Status: "ok", Version: Version, Type: consts.AppName, ServerVersion: consts.Version}
+	return &responses.Subsonic{
+		Status:        "ok",
+		Version:       Version,
+		Type:          consts.AppName,
+		ServerVersion: consts.Version,
+		OpenSubsonic:  true,
+	}
 }
 
 func requiredParamString(r *http.Request, param string) (string, error) {
@@ -89,10 +91,10 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
-		AlbumCount:     a.AlbumCount,
-		UserRating:     a.Rating,
+		AlbumCount:     int32(a.AlbumCount),
+		UserRating:     int32(a.Rating),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: publicImageURL(r, a.CoverArtID(), 0),
+		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -104,10 +106,10 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
-		AlbumCount:     a.AlbumCount,
+		AlbumCount:     int32(a.AlbumCount),
 		CoverArt:       a.CoverArtID().String(),
-		ArtistImageUrl: publicImageURL(r, a.CoverArtID(), 0),
-		UserRating:     a.Rating,
+		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
+		UserRating:     int32(a.Rating),
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -115,23 +117,13 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	return artist
 }
 
-func publicImageURL(r *http.Request, artID model.ArtworkID, size int) string {
-	link := public.EncodeArtworkID(artID)
-	path := filepath.Join(consts.URLPathPublicImages, link)
-	params := url.Values{}
-	if size > 0 {
-		params.Add("size", strconv.Itoa(size))
-	}
-	return server.AbsoluteURL(r, path, params)
-}
-
 func toGenres(genres model.Genres) *responses.Genres {
 	response := make([]responses.Genre, len(genres))
 	for i, g := range genres {
 		response[i] = responses.Genre{
 			Name:       g.Name,
-			SongCount:  g.SongCount,
-			AlbumCount: g.AlbumCount,
+			SongCount:  int32(g.SongCount),
+			AlbumCount: int32(g.AlbumCount),
 		}
 	}
 	return &responses.Genres{Genre: response}
@@ -156,14 +148,14 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.IsDir = false
 	child.Parent = mf.AlbumID
 	child.Album = mf.Album
-	child.Year = mf.Year
+	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
-	child.Track = mf.TrackNumber
-	child.Duration = int(mf.Duration)
+	child.Track = int32(mf.TrackNumber)
+	child.Duration = int32(mf.Duration)
 	child.Size = mf.Size
 	child.Suffix = mf.Suffix
-	child.BitRate = mf.BitRate
+	child.BitRate = int32(mf.BitRate)
 	child.CoverArt = mf.CoverArtID().String()
 	child.ContentType = mf.ContentType()
 	player, ok := request.PlayerFrom(ctx)
@@ -172,7 +164,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	} else {
 		child.Path = fakePath(mf)
 	}
-	child.DiscNumber = mf.DiscNumber
+	child.DiscNumber = int32(mf.DiscNumber)
 	child.Created = &mf.CreatedAt
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
@@ -184,7 +176,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	if mf.Starred {
 		child.Starred = &mf.StarredAt
 	}
-	child.UserRating = mf.Rating
+	child.UserRating = int32(mf.Rating)
 
 	format, _ := getTranscoding(ctx)
 	if mf.Suffix != "" && format != "" && mf.Suffix != format {
@@ -223,14 +215,14 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Name = al.Name
 	child.Album = al.Name
 	child.Artist = al.AlbumArtist
-	child.Year = al.MaxYear
+	child.Year = int32(al.MaxYear)
 	child.Genre = al.Genre
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
 	child.ArtistId = al.AlbumArtistID
-	child.Duration = int(al.Duration)
-	child.SongCount = al.SongCount
+	child.Duration = int32(al.Duration)
+	child.SongCount = int32(al.SongCount)
 	if al.Starred {
 		child.Starred = &al.StarredAt
 	}
@@ -238,7 +230,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	if al.PlayCount > 0 {
 		child.Played = &al.PlayDate
 	}
-	child.UserRating = al.Rating
+	child.UserRating = int32(al.Rating)
 	return child
 }
 

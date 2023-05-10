@@ -19,7 +19,13 @@ import (
 var _ = Describe("Responses", func() {
 	var response *Subsonic
 	BeforeEach(func() {
-		response = &Subsonic{Status: "ok", Version: "1.8.0", Type: consts.AppName, ServerVersion: "v0.0.0"}
+		response = &Subsonic{
+			Status:        "ok",
+			Version:       "1.8.0",
+			Type:          consts.AppName,
+			ServerVersion: "v0.0.0",
+			OpenSubsonic:  true,
+		}
 	})
 
 	Describe("EmptyResponse", func() {
@@ -215,7 +221,7 @@ var _ = Describe("Responses", func() {
 		Context("with data", func() {
 			BeforeEach(func() {
 				response.User.Email = "navidrome@deluan.com"
-				response.User.Folder = []int{1}
+				response.User.Folder = []int32{1}
 			})
 
 			It("should match .XML", func() {
@@ -247,7 +253,7 @@ var _ = Describe("Responses", func() {
 				u := User{Username: "deluan"}
 				u.Email = "navidrome@deluan.com"
 				u.AdminRole = true
-				u.Folder = []int{1}
+				u.Folder = []int32{1}
 				response.Users = &Users{User: []User{u}}
 			})
 
@@ -517,6 +523,47 @@ var _ = Describe("Responses", func() {
 				child := make([]Child, 1)
 				child[0] = Child{Id: "1", Title: "title", IsDir: false}
 				response.PlayQueue.Entry = child
+			})
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("Shares", func() {
+		BeforeEach(func() {
+			response.Shares = &Shares{}
+		})
+
+		Context("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.Marshal(response)).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.Marshal(response)).To(MatchSnapshot())
+			})
+		})
+
+		Context("with data", func() {
+			BeforeEach(func() {
+				t := time.Time{}
+				share := Share{
+					ID:          "ABC123",
+					Url:         "http://localhost/p/ABC123",
+					Description: "Check it out!",
+					Username:    "deluan",
+					Created:     t,
+					Expires:     &t,
+					LastVisited: t,
+					VisitCount:  2,
+				}
+				share.Entry = make([]Child, 2)
+				share.Entry[0] = Child{Id: "1", Title: "title", Album: "album", Artist: "artist", Duration: 120}
+				share.Entry[1] = Child{Id: "2", Title: "title 2", Album: "album", Artist: "artist", Duration: 300}
+				response.Shares.Share = []Share{share}
 			})
 			It("should match .XML", func() {
 				Expect(xml.Marshal(response)).To(MatchSnapshot())

@@ -38,11 +38,12 @@ type Router struct {
 	scanner          scanner.Scanner
 	broker           events.Broker
 	scrobbler        scrobbler.PlayTracker
+	share            core.Share
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
-	playlists core.Playlists, scrobbler scrobbler.PlayTracker) *Router {
+	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share) *Router {
 	r := &Router{
 		ds:               ds,
 		artwork:          artwork,
@@ -54,6 +55,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 		scanner:          scanner,
 		broker:           broker,
 		scrobbler:        scrobbler,
+		share:            share,
 	}
 	r.Handler = r.routes()
 	return r
@@ -144,8 +146,10 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		// configure request throttling
 		if conf.Server.DevArtworkMaxRequests > 0 {
-			maxRequests := conf.Server.DevArtworkMaxRequests
-			r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+			log.Debug("Throttling Subsonic getCoverArt endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
+				"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
+				conf.Server.DevArtworkThrottleBacklogTimeout)
+			r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
 				conf.Server.DevArtworkThrottleBacklogTimeout))
 		}
 		hr(r, "getCoverArt", api.GetCoverArt)
@@ -160,6 +164,19 @@ func (api *Router) routes() http.Handler {
 		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
 		h(r, "getInternetRadioStations", api.GetInternetRadios)
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
+	})
+	if conf.Server.EnableSharing {
+		r.Group(func(r chi.Router) {
+			h(r, "getShares", api.GetShares)
+			h(r, "createShare", api.CreateShare)
+			h(r, "updateShare", api.UpdateShare)
+			h(r, "deleteShare", api.DeleteShare)
+		})
+	} else {
+		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
+	}
+	r.Group(func(r chi.Router) {
+		h(r, "getOpenSubsonicExtensions", api.GetOpenSubsonicExtensions)
 	})
 
 	if conf.Server.Jukebox.Enabled {
@@ -256,7 +273,7 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 		code = subErr.code
 	}
 	response.Status = "failed"
-	response.Error = &responses.Error{Code: code, Message: err.Error()}
+	response.Error = &responses.Error{Code: int32(code), Message: err.Error()}
 
 	sendResponse(w, r, response)
 }
