@@ -105,8 +105,10 @@ func (pd *PlaybackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 			pd.ActiveTrack.Unpause()
 		}
 	} else {
-		pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
-		pd.ActiveTrack.Unpause()
+		if !pd.PlaybackQueue.IsEmpty() {
+			pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+			pd.ActiveTrack.Unpause()
+		}
 	}
 
 	return pd.getStatus(), nil

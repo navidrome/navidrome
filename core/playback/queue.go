@@ -53,6 +53,10 @@ func (pd *Queue) Size() int {
 	return len(pd.Items)
 }
 
+func (pd *Queue) IsEmpty() bool {
+	return len(pd.Items) < 1
+}
+
 // set is similar to a clear followed by a add, but will not change the currently playing track.
 func (pd *Queue) Set(items model.MediaFiles) {
 	pd.Clear()
