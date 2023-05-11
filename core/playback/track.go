@@ -40,7 +40,7 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, mf model.Media
 	case "audio/x-wav":
 		streamer, format, err = decodeWAV(mf.Path)
 	case "audio/mp4":
-		streamer, format, tmpfileToCleanup, err = decodeFLAC(ctx, mf.Path)
+		streamer, format, tmpfileToCleanup, err = decodeFLAC(mf.Path)
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
 
@@ -108,18 +108,18 @@ func (t *Track) Pause() {
 	speaker.Unlock()
 }
 
-func (pd *Track) Close() {
-	if pd.ActiveStream != nil {
+func (t *Track) Close() {
+	if t.ActiveStream != nil {
 		log.Debug("closing activ stream")
-		pd.ActiveStream.Close()
-		pd.ActiveStream = nil
+		t.ActiveStream.Close()
+		t.ActiveStream = nil
 	}
 
-	if pd.TempfileToCleanup != "" {
-		log.Debug("Removing tempfile", "tmpfilename", pd.TempfileToCleanup)
-		err := os.Remove(pd.TempfileToCleanup)
+	if t.TempfileToCleanup != "" {
+		log.Debug("Removing tempfile", "tmpfilename", t.TempfileToCleanup)
+		err := os.Remove(t.TempfileToCleanup)
 		if err != nil {
-			log.Error("error cleaning up tempfile: ", pd.TempfileToCleanup)
+			log.Error("error cleaning up tempfile: ", t.TempfileToCleanup)
 		}
 	}
 }

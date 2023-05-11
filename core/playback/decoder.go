@@ -29,33 +29,33 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 	return wav.Decode(f)
 }
 
-func decodeFLAC(ctx context.Context, path string) (s beep.StreamSeekCloser, format beep.Format, fileToCleanup string, err error) {
+func decodeFLAC(path string) (s beep.StreamSeekCloser, format beep.Format, fileToCleanup string, err error) {
 	// TODO: Turn this into a semi-parallel operation: start playing while still transcoding/copying
-	log.Debug(ctx, "decode to FLAC", "filename", path)
+	log.Debug("decode to FLAC", "filename", path)
 	fFmpeg := ffmpeg.New()
-	readCloser, err := fFmpeg.ConvertToFLAC(ctx, path)
+	readCloser, err := fFmpeg.ConvertToFLAC(context.TODO(), path)
 	if err != nil {
-		log.Error(ctx, "error converting file to FLAC", path, err)
+		log.Error("error converting file to FLAC", path, err)
 		return nil, beep.Format{}, "", err
 	}
 
 	tempFile, err := os.CreateTemp("", "*.flac")
 
 	if err != nil {
-		log.Error(ctx, "error creating temp file", err)
+		log.Error("error creating temp file", err)
 		return nil, beep.Format{}, "", err
 	}
-	log.Debug(ctx, "created tempfile", "filename", tempFile.Name())
+	log.Debug("created tempfile", "filename", tempFile.Name())
 
 	written, err := io.Copy(tempFile, readCloser)
 	if err != nil {
-		log.Error(ctx, "error coping file", "dest", tempFile.Name())
+		log.Error("error coping file", "dest", tempFile.Name())
 	}
-	log.Debug(ctx, "copy pipe into tempfile", "bytes written", written, "filename", tempFile.Name())
+	log.Debug("copy pipe into tempfile", "bytes written", written, "filename", tempFile.Name())
 
 	f, err := os.Open(tempFile.Name())
 	if err != nil {
-		log.Error(ctx, "could not re-open tempfile", "filename", tempFile.Name())
+		log.Error("could not re-open tempfile", "filename", tempFile.Name())
 		return nil, beep.Format{}, "", err
 	}
 
