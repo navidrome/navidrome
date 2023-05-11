@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/faiface/beep/speaker"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -19,6 +20,7 @@ type PlaybackDevice struct {
 	Gain                 float32
 	PlaybackDone         chan bool
 	ActiveTrack          *Track
+	TrackSwitcherStarted bool
 }
 
 type DeviceStatus struct {
@@ -47,7 +49,7 @@ func (pd *PlaybackDevice) getStatus() DeviceStatus {
 // http://www.subsonic.org/pages/api.jsp#jukeboxControl
 // Starts the trackSwitcher goroutine for the device.
 func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string, deviceName string) *PlaybackDevice {
-	playbackDevice := PlaybackDevice{
+	return &PlaybackDevice{
 		ParentPlaybackServer: playbackServer,
 		User:                 "",
 		Name:                 name,
@@ -56,14 +58,8 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Gain:                 0.5,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
+		TrackSwitcherStarted: false,
 	}
-
-	// Start one trackSwitcher goroutine with each device
-	go func() {
-		playbackDevice.trackSwitcherGoroutine()
-	}()
-
-	return &playbackDevice
 }
 
 func (pd *PlaybackDevice) String() string {
@@ -93,6 +89,15 @@ func (pd *PlaybackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, 
 func (pd *PlaybackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "processing Start action")
 
+	if !pd.TrackSwitcherStarted {
+		log.Info(ctx, "Starting trackSwitcher goroutine")
+		// Start one trackSwitcher goroutine with each device
+		go func() {
+			pd.trackSwitcherGoroutine()
+		}()
+		pd.TrackSwitcherStarted = true
+	}
+
 	if pd.ActiveTrack != nil {
 		if pd.isPlaying() {
 			log.Debug("trying to start an already playing track")
@@ -100,7 +105,7 @@ func (pd *PlaybackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 			pd.ActiveTrack.Unpause()
 		}
 	} else {
-		pd.switchActiveTrackByIndex(ctx, pd.PlaybackQueue.Index)
+		pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
 		pd.ActiveTrack.Unpause()
 	}
 
@@ -125,7 +130,7 @@ func (pd *PlaybackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 	}
 
 	if index != pd.PlaybackQueue.Index {
-		pd.switchActiveTrackByIndex(ctx, index)
+		pd.switchActiveTrackByIndex(index)
 	}
 
 	err := pd.PlaybackQueue.SetOffset(offset)
@@ -224,18 +229,23 @@ func (pd *PlaybackDevice) trackSwitcherGoroutine() {
 		log.Info("track switching detected")
 		if pd.ActiveTrack != nil {
 			pd.ActiveTrack.Close()
+			pd.ActiveTrack = nil
 		}
+
+		speaker.Close()
 
 		if !pd.PlaybackQueue.IsAtLastElement() {
 			pd.PlaybackQueue.IncreaseIndex()
 			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
-			pd.switchActiveTrackByIndex(context.TODO(), pd.PlaybackQueue.Index)
+			pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
 			pd.ActiveTrack.Unpause()
+		} else {
+			log.Debug("There is no song left in the playlist. Finish.")
 		}
 	}
 }
 
-func (pd *PlaybackDevice) switchActiveTrackByIndex(ctx context.Context, index int) error {
+func (pd *PlaybackDevice) switchActiveTrackByIndex(index int) error {
 	pd.PlaybackQueue.SetIndex(index)
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
@@ -247,7 +257,7 @@ func (pd *PlaybackDevice) switchActiveTrackByIndex(ctx context.Context, index in
 		return fmt.Errorf("error setting offset of next track to zero")
 	}
 
-	track, err := NewTrack(ctx, pd.PlaybackDone, *currentTrack)
+	track, err := NewTrack(pd.PlaybackDone, *currentTrack)
 	if err != nil {
 		return err
 	}

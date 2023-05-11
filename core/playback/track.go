@@ -1,7 +1,6 @@
 package playback
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"time"
@@ -23,7 +22,7 @@ type Track struct {
 	PlaybackDone      chan bool
 }
 
-func NewTrack(ctx context.Context, playbackDoneChannel chan bool, mf model.MediaFile) (*Track, error) {
+func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*Track, error) {
 	t := Track{}
 
 	contentType := mf.ContentType()
@@ -74,6 +73,7 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, mf model.Media
 			t.PlaybackDone <- true
 			log.Debug("Signalling finished")
 		})))
+		log.Debug("dropping out of speaker.Play()")
 	}()
 	return &t, nil
 }
