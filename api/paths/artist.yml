@@ -2,7 +2,7 @@ get:
   summary: Retrieve an individual artist
   operationId: getArtist
   parameters:
-    - $ref: '#/components/parameters/include'
+    - $ref: '../spec.yml#/components/parameters/include'
     - name: artistId
       in: path
       description: The unique identifier of the artist
@@ -19,10 +19,10 @@ get:
             required: [data]
             properties:
               data:
-                $ref: '#/components/schemas/Artist'
+                $ref: '../spec.yml#/components/schemas/Artist'
     '403':
-      $ref: '#/components/responses/NotAuthorized'
+      $ref: '../spec.yml#/components/responses/NotAuthorized'
     '404':
-      $ref: '#/components/responses/NotFound'
+      $ref: '../spec.yml#/components/responses/NotFound'
     '500':
-      $ref: '#/components/responses/InternalServerError'
+      $ref: '../spec.yml#/components/responses/InternalServerError'

@@ -11,8 +11,8 @@ get:
             required: [data]
             properties:
               data:
-                $ref: '#/components/schemas/ServerInfo'
+                $ref: '../spec.yml#/components/schemas/ServerInfo'
     '403':
-      $ref: '#/components/responses/NotAuthorized'
+      $ref: '../spec.yml#/components/responses/NotAuthorized'
     '500':
-      $ref: '#/components/responses/InternalServerError'
+      $ref: '../spec.yml#/components/responses/InternalServerError'

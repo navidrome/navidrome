@@ -300,7 +300,7 @@ components:
       type: object
       properties:
         meta:
-          $ref: #/components/schemas/ArtistMetaObject
+          $ref: '#/components/schemas/ArtistMetaObject'
         data:
           $ref: '#/components/schemas/ResourceObject'
       required:
@@ -423,7 +423,7 @@ components:
       type: object
       properties:
         meta:
-          $ref: #/components/schemas/ArtistMetaObject
+          $ref: '#/components/schemas/ArtistMetaObject'
         data:
           $ref: '#/components/schemas/ResourceObject'
       required:

@@ -2,18 +2,18 @@ get:
   summary: Retrieve a list of albums
   operationId: getAlbums
   parameters:
-    - $ref: '#/components/parameters/pageLimit'
-    - $ref: '#/components/parameters/pageOffset'
-    - $ref: '#/components/parameters/filterEquals'
-    - $ref: '#/components/parameters/filterContains'
-    - $ref: '#/components/parameters/filterLessThan'
-    - $ref: '#/components/parameters/filterLessOrEqual'
-    - $ref: '#/components/parameters/filterGreaterThan'
-    - $ref: '#/components/parameters/filterGreaterOrEqual'
-    - $ref: '#/components/parameters/filterStartsWith'
-    - $ref: '#/components/parameters/filterEndsWith'
-    - $ref: '#/components/parameters/sort'
-    - $ref: '#/components/parameters/include'
+    - $ref: '../spec.yml#/components/parameters/pageLimit'
+    - $ref: '../spec.yml#/components/parameters/pageOffset'
+    - $ref: '../spec.yml#/components/parameters/filterEquals'
+    - $ref: '../spec.yml#/components/parameters/filterContains'
+    - $ref: '../spec.yml#/components/parameters/filterLessThan'
+    - $ref: '../spec.yml#/components/parameters/filterLessOrEqual'
+    - $ref: '../spec.yml#/components/parameters/filterGreaterThan'
+    - $ref: '../spec.yml#/components/parameters/filterGreaterOrEqual'
+    - $ref: '../spec.yml#/components/parameters/filterStartsWith'
+    - $ref: '../spec.yml#/components/parameters/filterEndsWith'
+    - $ref: '../spec.yml#/components/parameters/sort'
+    - $ref: '../spec.yml#/components/parameters/include'
   responses:
     '200':
       description: A list of albums
@@ -26,14 +26,14 @@ get:
               data:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Album'
+                  $ref: '../spec.yml#/components/schemas/Album'
               links:
-                $ref: '#/components/schemas/PaginationLinks'
+                $ref: '../spec.yml#/components/schemas/PaginationLinks'
               meta:
-                $ref: '#/components/schemas/PaginationMeta'
+                $ref: '../spec.yml#/components/schemas/PaginationMeta'
     '400':
-      $ref: '#/components/responses/BadRequest'
+      $ref: '../spec.yml#/components/responses/BadRequest'
     '403':
-      $ref: '#/components/responses/NotAuthorized'
+      $ref: '../spec.yml#/components/responses/NotAuthorized'
     '500':
-      $ref: '#/components/responses/InternalServerError'
+      $ref: '../spec.yml#/components/responses/InternalServerError'
