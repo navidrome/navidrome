@@ -132,6 +132,11 @@ func (pd *PlaybackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 	}
 
 	if index != pd.PlaybackQueue.Index {
+		if pd.ActiveTrack != nil {
+			pd.ActiveTrack.Close()
+			pd.ActiveTrack = nil
+		}
+
 		pd.switchActiveTrackByIndex(index)
 	}
 
