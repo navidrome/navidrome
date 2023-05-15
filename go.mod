@@ -31,7 +31,7 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/microcosm-cc/bluemonday v1.0.23
 	github.com/mileusna/useragent v1.3.2
-	github.com/onsi/ginkgo/v2 v2.9.4
+	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.6
 	github.com/pressly/goose/v3 v3.11.2
 	github.com/prometheus/client_golang v1.15.1
