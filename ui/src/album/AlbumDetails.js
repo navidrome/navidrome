@@ -216,7 +216,7 @@ const Details = (props) => {
     !isXsmall &&
     addDetail(
       <>
-        {[translate("resources.album.fields.original"), originalDate].join(
+        {[translate("resources.album.fields.originalDate"), originalDate].join(
           "  "
         )}
       </>
@@ -228,7 +228,7 @@ const Details = (props) => {
     addDetail(
       <>
         {(!isXsmall
-          ? [translate("resources.album.fields.released"), releaseDate]
+          ? [translate("resources.album.fields.releaseDate"), releaseDate]
           : ["○", record.releaseDate.substring(0, 4)]
         ).join("  ")}
       </>
