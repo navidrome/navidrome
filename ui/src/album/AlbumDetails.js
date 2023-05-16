@@ -196,15 +196,33 @@ const Details = (props) => {
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>);
   };
 
+  const originalYearRange = formatRange(record, "originalYear");
+  const originalDate = record.originalDate
+    ? FormatFullDate(record.originalDate)
+    : originalYearRange;
   const yearRange = formatRange(record, "year");
   const date = record.date ? FormatFullDate(record.date) : yearRange;
-
-  yearRange && addDetail(<>{["♫", !isXsmall ? date : yearRange].join("  ")}</>);
-
   const releaseDate = record.releaseDate
     ? FormatFullDate(record.releaseDate)
     : date;
-  const showReleaseDate = date !== releaseDate;
+
+  const showReleaseDate = date !== releaseDate && releaseDate.length > 3;
+  const showOriginalDate =
+    date !== originalDate &&
+    originalDate !== releaseDate &&
+    originalDate.length > 3;
+
+  showOriginalDate &&
+    !isXsmall &&
+    addDetail(
+      <>
+        {[translate("resources.album.fields.original"), originalDate].join(
+          "  "
+        )}
+      </>
+    );
+
+  yearRange && addDetail(<>{["♫", !isXsmall ? date : yearRange].join("  ")}</>);
 
   showReleaseDate &&
     addDetail(
@@ -215,7 +233,7 @@ const Details = (props) => {
         ).join("  ")}
       </>
     );
-
+    
   const showReleases = record.releases > 1;
   showReleases &&
     addDetail(
