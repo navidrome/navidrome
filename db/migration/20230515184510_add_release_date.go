@@ -3,7 +3,7 @@ package migrations
 import (
 	"database/sql"
 
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 func init() {
@@ -15,10 +15,20 @@ func upAddRelRecYear(tx *sql.Tx) error {
 alter table media_file
     add date varchar(255) default '' not null;
 alter table media_file
+    add original_year int default 0 not null;
+alter table media_file
+    add original_date varchar(255) default '' not null;
+alter table media_file
     add release_date varchar(255) default '' not null;
 
 alter table album
     add date varchar(255) default '' not null;
+alter table album
+    add min_original_year int default 0 not null;
+alter table album
+    add max_original_year int default 0 not null;
+alter table album
+    add original_date varchar(255) default '' not null;
 alter table album
     add release_date varchar(255) default '' not null;
 alter table album
