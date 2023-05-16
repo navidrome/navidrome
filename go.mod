@@ -102,8 +102,8 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.uber.org/goleak v1.1.11 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20230425010034-47ecfdc1ba53 // indirect
-	golang.org/x/mobile v0.0.0-20201217150744-e6ae53a27f4f // indirect
+	golang.org/x/exp/shiny v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
+	golang.org/x/mobile v0.0.0-20230427221453-e8d11dd0ba41 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
