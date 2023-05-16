@@ -189,4 +189,3 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, i
 	}
 	return year, date, originalYear, originalDate, releaseYear, releaseDate
 }
-
