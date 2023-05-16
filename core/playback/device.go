@@ -106,7 +106,10 @@ func (pd *PlaybackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 		}
 	} else {
 		if !pd.PlaybackQueue.IsEmpty() {
-			pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+			err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+			if err != nil {
+				return pd.getStatus(), err
+			}
 			pd.ActiveTrack.Unpause()
 		}
 	}
@@ -137,7 +140,10 @@ func (pd *PlaybackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 			pd.ActiveTrack = nil
 		}
 
-		pd.switchActiveTrackByIndex(index)
+		err := pd.switchActiveTrackByIndex(index)
+		if err != nil {
+			return pd.getStatus(), err
+		}
 	}
 
 	err := pd.PlaybackQueue.SetOffset(offset)
@@ -244,7 +250,10 @@ func (pd *PlaybackDevice) trackSwitcherGoroutine() {
 		if !pd.PlaybackQueue.IsAtLastElement() {
 			pd.PlaybackQueue.IncreaseIndex()
 			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
-			pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+			err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+			if err != nil {
+				log.Error("error switching track", "error", err)
+			}
 			pd.ActiveTrack.Unpause()
 		} else {
 			log.Debug("There is no song left in the playlist. Finish.")

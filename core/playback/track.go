@@ -42,7 +42,6 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*Track, error)
 		streamer, format, tmpfileToCleanup, err = decodeFLAC(mf.Path)
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
-
 	}
 
 	if err != nil {
