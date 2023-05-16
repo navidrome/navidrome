@@ -21,6 +21,9 @@ type Album struct {
 	MaxYear               int       `structs:"max_year" json:"maxYear"`
 	MinYear               int       `structs:"min_year" json:"minYear"`
 	Date                  string    `structs:"date" json:"date,omitempty"`
+	MaxOriginalYear       int       `structs:"max_original_year" json:"maxOriginalYear"`
+	MinOriginalYear       int       `structs:"min_original_year" json:"minOriginalYear"`
+	OriginalDate          string    `structs:"original_date" json:"originalDate,omitempty"`
 	ReleaseDate           string    `structs:"release_date" json:"releaseDate,omitempty"`
 	Releases              int       `structs:"releases" json:"releases"`
 	Compilation           bool      `structs:"compilation" json:"compilation"`
