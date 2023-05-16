@@ -33,8 +33,8 @@ var _ = Describe("Archiver", func() {
 	Context("ZipAlbum", func() {
 		It("zips an album correctly", func() {
 			mfs := model.MediaFiles{
-				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
-				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1},
+				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1},
 			}
 
 			mfRepo := &mockMediaFileRepository{}
@@ -44,7 +44,7 @@ var _ = Describe("Archiver", func() {
 			}}).Return(mfs, nil)
 
 			ds.On("MediaFile", mock.Anything).Return(mfRepo)
-			ms.On("DoStream", mock.Anything, mock.Anything, "mp3", 128).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
+			ms.On("DoStream", mock.Anything, mock.Anything, "mp3", 128).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
 
 			out := new(bytes.Buffer)
 			err := arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)
@@ -54,8 +54,8 @@ var _ = Describe("Archiver", func() {
 			Expect(err).To(BeNil())
 
 			Expect(len(zr.File)).To(Equal(2))
-			Expect(zr.File[0].Name).To(Equal("Album 1/01 - track1.mp3"))
-			Expect(zr.File[1].Name).To(Equal("Album 1/02 - track2.mp3"))
+			Expect(zr.File[0].Name).To(Equal("Album_Promo/01 - track1.mp3"))
+			Expect(zr.File[1].Name).To(Equal("Album_Promo/02 - track2.mp3"))
 		})
 	})
 
@@ -123,7 +123,7 @@ var _ = Describe("Archiver", func() {
 	Context("ZipPlaylist", func() {
 		It("zips a playlist correctly", func() {
 			tracks := []model.PlaylistTrack{
-				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "Artist 1", Title: "track1"}},
+				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"}},
 				{MediaFile: model.MediaFile{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "Artist 2", Title: "track2"}},
 			}
 
@@ -146,7 +146,7 @@ var _ = Describe("Archiver", func() {
 			Expect(err).To(BeNil())
 
 			Expect(len(zr.File)).To(Equal(2))
-			Expect(zr.File[0].Name).To(Equal("01 - Artist 1 - track1.mp3"))
+			Expect(zr.File[0].Name).To(Equal("01 - AC_DC - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("02 - Artist 2 - track2.mp3"))
 		})
 	})
