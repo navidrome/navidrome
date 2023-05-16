@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useEffect } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -8,7 +8,7 @@ import {
   Typography,
   useMediaQuery,
   withWidth,
-} from "@material-ui/core";
+} from '@material-ui/core'
 import {
   useRecordContext,
   useTranslate,
@@ -16,11 +16,11 @@ import {
   SingleFieldList,
   ChipField,
   Link,
-} from "react-admin";
-import clsx from "clsx";
-import Lightbox from "react-image-lightbox";
-import "react-image-lightbox/style.css";
-import subsonic from "../subsonic";
+} from 'react-admin'
+import clsx from 'clsx'
+import Lightbox from 'react-image-lightbox'
+import 'react-image-lightbox/style.css'
+import subsonic from '../subsonic'
 import {
   ArtistLinkField,
   DurationField,
@@ -30,77 +30,77 @@ import {
   LoveButton,
   RatingField,
   useAlbumsPerPage,
-} from "../common";
-import config from "../config";
-import { intersperse } from "../utils";
-import AlbumExternalLinks from "./AlbumExternalLinks";
-import AnchorMe from "../common/Linkify";
+} from '../common'
+import config from '../config'
+import { intersperse } from '../utils'
+import AlbumExternalLinks from './AlbumExternalLinks'
+import AnchorMe from '../common/Linkify'
 
 const useStyles = makeStyles(
   (theme) => ({
     root: {
-      [theme.breakpoints.down("xs")]: {
-        padding: "0.7em",
-        minWidth: "20em",
+      [theme.breakpoints.down('xs')]: {
+        padding: '0.7em',
+        minWidth: '20em',
       },
-      [theme.breakpoints.up("sm")]: {
-        padding: "1em",
-        minWidth: "32em",
+      [theme.breakpoints.up('sm')]: {
+        padding: '1em',
+        minWidth: '32em',
       },
     },
     cardContents: {
-      display: "flex",
+      display: 'flex',
     },
     details: {
-      display: "flex",
-      flexDirection: "column",
+      display: 'flex',
+      flexDirection: 'column',
     },
     content: {
-      flex: "2 0 auto",
+      flex: '2 0 auto',
     },
     coverParent: {
-      [theme.breakpoints.down("xs")]: {
-        height: "8em",
-        width: "8em",
-        minWidth: "8em",
+      [theme.breakpoints.down('xs')]: {
+        height: '8em',
+        width: '8em',
+        minWidth: '8em',
       },
-      [theme.breakpoints.up("sm")]: {
-        height: "10em",
-        width: "10em",
-        minWidth: "10em",
+      [theme.breakpoints.up('sm')]: {
+        height: '10em',
+        width: '10em',
+        minWidth: '10em',
       },
-      [theme.breakpoints.up("lg")]: {
-        height: "15em",
-        width: "15em",
-        minWidth: "15em",
+      [theme.breakpoints.up('lg')]: {
+        height: '15em',
+        width: '15em',
+        minWidth: '15em',
       },
     },
     cover: {
-      objectFit: "contain",
-      cursor: "pointer",
-      display: "block",
-      width: "100%",
-      height: "100%",
+      objectFit: 'contain',
+      cursor: 'pointer',
+      display: 'block',
+      width: '100%',
+      height: '100%',
     },
     loveButton: {
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
     },
     commentBlock: {
-      display: "inline-block",
-      marginTop: "1em",
-      float: "left",
-      wordBreak: "break-word",
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-word',
     },
     notes: {
-      display: "inline-block",
-      marginTop: "1em",
-      float: "left",
-      wordBreak: "break-word",
-      cursor: "pointer",
+      display: 'inline-block',
+      marginTop: '1em',
+      float: 'left',
+      wordBreak: 'break-word',
+      cursor: 'pointer',
     },
     pointerCursor: {
-      cursor: "pointer",
+      cursor: 'pointer',
     },
     recordName: {},
     recordArtist: {},
@@ -113,56 +113,56 @@ const useStyles = makeStyles(
     },
   }),
   {
-    name: "NDAlbumDetails",
+    name: 'NDAlbumDetails',
   }
-);
+)
 
 const AlbumComment = ({ record }) => {
-  const classes = useStyles();
-  const [expanded, setExpanded] = React.useState(false);
+  const classes = useStyles()
+  const [expanded, setExpanded] = React.useState(false)
 
-  const lines = record.comment.split("\n");
+  const lines = record.comment.split('\n')
   const formatted = useMemo(() => {
     return lines.map((line, idx) => (
-      <span key={record.id + "-comment-" + idx}>
+      <span key={record.id + '-comment-' + idx}>
         <AnchorMe text={line} />
         <br />
       </span>
-    ));
-  }, [lines, record.id]);
+    ))
+  }, [lines, record.id])
 
   const handleExpandClick = useCallback(() => {
-    setExpanded(!expanded);
-  }, [expanded, setExpanded]);
+    setExpanded(!expanded)
+  }, [expanded, setExpanded])
 
   return (
     <Collapse
-      collapsedHeight={"1.5em"}
+      collapsedHeight={'1.5em'}
       in={expanded}
-      timeout={"auto"}
+      timeout={'auto'}
       className={clsx(
         classes.commentBlock,
         lines.length > 1 && classes.pointerCursor
       )}
     >
-      <Typography variant={"body1"} onClick={handleExpandClick}>
+      <Typography variant={'body1'} onClick={handleExpandClick}>
         {formatted}
       </Typography>
     </Collapse>
-  );
-};
+  )
+}
 
 export const useGetHandleGenreClick = (width) => {
-  const [perPage] = useAlbumsPerPage(width);
+  const [perPage] = useAlbumsPerPage(width)
 
   return (id) => {
-    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`;
-  };
-};
+    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+  }
+}
 
 const GenreChipField = withWidth()(({ width, ...rest }) => {
-  const record = useRecordContext(rest);
-  const genreLink = useGetHandleGenreClick(width);
+  const record = useRecordContext(rest)
+  const genreLink = useGetHandleGenreClick(width)
 
   return (
     <Link to={genreLink(record.id)} onClick={(e) => e.stopPropagation()}>
@@ -172,142 +172,142 @@ const GenreChipField = withWidth()(({ width, ...rest }) => {
         onClick={() => {}}
       />
     </Link>
-  );
-});
+  )
+})
 
 const GenreList = () => {
-  const classes = useStyles();
+  const classes = useStyles()
   return (
-    <ArrayField className={classes.genreList} source={"genres"}>
+    <ArrayField className={classes.genreList} source={'genres'}>
       <SingleFieldList linkType={false}>
         <GenreChipField />
       </SingleFieldList>
     </ArrayField>
-  );
-};
+  )
+}
 
 const Details = (props) => {
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down("xs"));
-  const translate = useTranslate();
-  const record = useRecordContext(props);
-  let details = [];
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const translate = useTranslate()
+  const record = useRecordContext(props)
+  let details = []
   const addDetail = (obj) => {
-    const id = details.length;
-    details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>);
-  };
+    const id = details.length
+    details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
+  }
 
-  const originalYearRange = formatRange(record, "originalYear");
+  const originalYearRange = formatRange(record, 'originalYear')
   const originalDate = record.originalDate
     ? FormatFullDate(record.originalDate)
-    : originalYearRange;
-  const yearRange = formatRange(record, "year");
-  const date = record.date ? FormatFullDate(record.date) : yearRange;
+    : originalYearRange
+  const yearRange = formatRange(record, 'year')
+  const date = record.date ? FormatFullDate(record.date) : yearRange
   const releaseDate = record.releaseDate
     ? FormatFullDate(record.releaseDate)
-    : date;
+    : date
 
-  const showReleaseDate = date !== releaseDate && releaseDate.length > 3;
+  const showReleaseDate = date !== releaseDate && releaseDate.length > 3
   const showOriginalDate =
     date !== originalDate &&
     originalDate !== releaseDate &&
-    originalDate.length > 3;
+    originalDate.length > 3
 
   showOriginalDate &&
     !isXsmall &&
     addDetail(
       <>
-        {[translate("resources.album.fields.originalDate"), originalDate].join(
-          "  "
+        {[translate('resources.album.fields.originalDate'), originalDate].join(
+          '  '
         )}
       </>
-    );
+    )
 
-  yearRange && addDetail(<>{["♫", !isXsmall ? date : yearRange].join("  ")}</>);
+  yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
 
   showReleaseDate &&
     addDetail(
       <>
         {(!isXsmall
-          ? [translate("resources.album.fields.releaseDate"), releaseDate]
-          : ["○", record.releaseDate.substring(0, 4)]
-        ).join("  ")}
+          ? [translate('resources.album.fields.releaseDate'), releaseDate]
+          : ['○', record.releaseDate.substring(0, 4)]
+        ).join('  ')}
       </>
-    );
-    
-  const showReleases = record.releases > 1;
+    )
+
+  const showReleases = record.releases > 1
   showReleases &&
     addDetail(
       <>
         {!isXsmall
           ? [
               record.releases,
-              translate("resources.album.fields.releases", {
+              translate('resources.album.fields.releases', {
                 smart_count: record.releases,
               }),
-            ].join(" ")
-          : ["(", record.releases, ")))"].join(" ")}
+            ].join(' ')
+          : ['(', record.releases, ')))'].join(' ')}
       </>
-    );
+    )
 
   addDetail(
     <>
       {record.songCount +
-        " " +
-        translate("resources.song.name", {
+        ' ' +
+        translate('resources.song.name', {
           smart_count: record.songCount,
         })}
     </>
-  );
-  !isXsmall && addDetail(<DurationField source={"duration"} />);
-  !isXsmall && addDetail(<SizeField source="size" />);
+  )
+  !isXsmall && addDetail(<DurationField source={'duration'} />)
+  !isXsmall && addDetail(<SizeField source="size" />)
 
-  return <>{intersperse(details, " · ")}</>;
-};
+  return <>{intersperse(details, ' · ')}</>
+}
 
 const AlbumDetails = (props) => {
-  const record = useRecordContext(props);
-  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down("xs"));
-  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up("lg"));
-  const classes = useStyles();
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [albumInfo, setAlbumInfo] = useState();
+  const record = useRecordContext(props)
+  const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
+  const classes = useStyles()
+  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [albumInfo, setAlbumInfo] = useState()
 
   let notes =
-    albumInfo?.notes?.replace(new RegExp("<.*>", "g"), "") || record.notes;
+    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
 
   if (notes !== undefined) {
-    notes += "..";
+    notes += '..'
   }
 
   useEffect(() => {
     subsonic
       .getAlbumInfo(record.id)
-      .then((resp) => resp.json["subsonic-response"])
+      .then((resp) => resp.json['subsonic-response'])
       .then((data) => {
-        if (data.status === "ok") {
-          setAlbumInfo(data.albumInfo);
+        if (data.status === 'ok') {
+          setAlbumInfo(data.albumInfo)
         }
       })
       .catch((e) => {
-        console.error("error on album page", e);
-      });
-  }, [record]);
+        console.error('error on album page', e)
+      })
+  }, [record])
 
-  const imageUrl = subsonic.getCoverArtUrl(record, 300);
-  const fullImageUrl = subsonic.getCoverArtUrl(record);
+  const imageUrl = subsonic.getCoverArtUrl(record, 300)
+  const fullImageUrl = subsonic.getCoverArtUrl(record)
 
-  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), []);
+  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
     () => setLightboxOpen(false),
     []
-  );
+  )
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
           <CardMedia
-            component={"img"}
+            component={'img'}
             src={imageUrl}
             width="400"
             height="400"
@@ -319,41 +319,41 @@ const AlbumDetails = (props) => {
         <div className={classes.details}>
           <CardContent className={classes.content}>
             <Typography
-              variant={isDesktop ? "h5" : "h6"}
+              variant={isDesktop ? 'h5' : 'h6'}
               className={classes.recordName}
             >
               {record.name}
               <LoveButton
                 className={classes.loveButton}
                 record={record}
-                resource={"album"}
-                size={isDesktop ? "default" : "small"}
+                resource={'album'}
+                size={isDesktop ? 'default' : 'small'}
                 aria-label="love"
                 color="primary"
               />
             </Typography>
-            <Typography component={"h6"} className={classes.recordArtist}>
+            <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
-            <Typography component={"div"} className={classes.recordMeta}>
+            <Typography component={'div'} className={classes.recordMeta}>
               <Details />
             </Typography>
             {config.enableStarRating && (
               <div>
                 <RatingField
                   record={record}
-                  resource={"album"}
-                  size={isDesktop ? "medium" : "small"}
+                  resource={'album'}
+                  size={isDesktop ? 'medium' : 'small'}
                 />
               </div>
             )}
             {isDesktop ? (
               <GenreList />
             ) : (
-              <Typography component={"p"}>{record.genre}</Typography>
+              <Typography component={'p'}>{record.genre}</Typography>
             )}
             {!isXsmall && (
-              <Typography component={"div"} className={classes.recordMeta}>
+              <Typography component={'div'} className={classes.recordMeta}>
                 {config.enableExternalServices && (
                   <AlbumExternalLinks className={classes.externalLinks} />
                 )}
@@ -361,29 +361,29 @@ const AlbumDetails = (props) => {
             )}
             {isDesktop && (
               <Collapse
-                collapsedHeight={"2.75em"}
+                collapsedHeight={'2.75em'}
                 in={expanded}
-                timeout={"auto"}
+                timeout={'auto'}
                 className={classes.notes}
               >
                 <Typography
-                  variant={"body1"}
+                  variant={'body1'}
                   onClick={() => setExpanded(!expanded)}
                 >
                   <span dangerouslySetInnerHTML={{ __html: notes }} />
                 </Typography>
               </Collapse>
             )}
-            {isDesktop && record["comment"] && <AlbumComment record={record} />}
+            {isDesktop && record['comment'] && <AlbumComment record={record} />}
           </CardContent>
         </div>
       </div>
-      {!isDesktop && record["comment"] && <AlbumComment record={record} />}
+      {!isDesktop && record['comment'] && <AlbumComment record={record} />}
       {!isDesktop && (
         <div className={classes.notes}>
-          <Collapse collapsedHeight={"1.5em"} in={expanded} timeout={"auto"}>
+          <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
             <Typography
-              variant={"body1"}
+              variant={'body1'}
               onClick={() => setExpanded(!expanded)}
             >
               <span dangerouslySetInnerHTML={{ __html: notes }} />
@@ -401,7 +401,7 @@ const AlbumDetails = (props) => {
         />
       )}
     </Card>
-  );
-};
+  )
+}
 
-export default AlbumDetails;
+export default AlbumDetails
