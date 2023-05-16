@@ -6,6 +6,7 @@ on:
 jobs:
   update-translations:
     runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'navidrome' }}
     steps:
       - uses: actions/checkout@v3
       - name: Get updated translations
