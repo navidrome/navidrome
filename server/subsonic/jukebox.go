@@ -1,14 +1,12 @@
 package subsonic
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -53,7 +51,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 		playlist := responses.JukeboxPlaylist{
 			JukeboxStatus: *deviceStatusToJukeboxStatus(status),
-			Entry:         mediafilesToChildren(r.Context(), mediafiles),
+			Entry:         childrenFromMediaFiles(r.Context(), mediafiles),
 		}
 
 		response := newResponse()
@@ -143,12 +141,4 @@ func deviceStatusToJukeboxStatus(status playback.DeviceStatus) *responses.Jukebo
 		Gain:         status.Gain,
 		Position:     status.Position,
 	}
-}
-
-func mediafilesToChildren(ctx context.Context, items model.MediaFiles) []responses.Child {
-	result := []responses.Child{}
-	for _, item := range items {
-		result = append(result, childFromMediaFile(ctx, item))
-	}
-	return result
 }
