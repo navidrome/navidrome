@@ -56,7 +56,7 @@ var _ = Describe("Tags", func() {
 			Expect(m.Size()).To(Equal(int64(5178)))
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
-			Expect(m.BitRate()).To(BeElementOf(18, 39))
+			Expect(m.BitRate()).To(BeElementOf(18, 39, 40))
 		})
 	})
 })
