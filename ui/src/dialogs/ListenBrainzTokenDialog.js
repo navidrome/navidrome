@@ -82,7 +82,6 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
       <Dialog
         open={open}
         onClose={handleClickClose}
-        onBackdropClick={handleClickClose}
         aria-labelledby="form-dialog-listenbrainz-token"
         fullWidth={true}
         maxWidth="md"

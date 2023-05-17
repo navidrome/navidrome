@@ -73,11 +73,7 @@ export const HelpDialog = (props) => {
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
-      <HelpTable
-        open={open}
-        onClose={handleClickClose}
-        onBackdropClick={handleClickClose}
-      />
+      <HelpTable open={open} onClose={handleClickClose} />
     </>
   )
 }

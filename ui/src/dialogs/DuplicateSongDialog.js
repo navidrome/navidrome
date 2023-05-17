@@ -21,7 +21,6 @@ const DuplicateSongDialog = ({
     <Dialog
       open={open}
       onClose={handleClickClose}
-      onBackdropClick={handleClickClose}
       aria-labelledby="form-dialog-duplicate-song"
     >
       <DialogTitle id="form-dialog-duplicate-song">

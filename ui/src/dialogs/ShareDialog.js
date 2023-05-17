@@ -93,7 +93,6 @@ export const ShareDialog = () => {
     <Dialog
       open={open}
       onClose={handleClose}
-      onBackdropClick={handleClose}
       aria-labelledby="share-dialog"
       fullWidth={true}
       maxWidth={'sm'}

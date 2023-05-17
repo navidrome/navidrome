@@ -52,12 +52,7 @@ const LinkToVersion = ({ version }) => {
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
   return (
-    <Dialog
-      onClose={onClose}
-      onBackdropClick={onClose}
-      aria-labelledby="about-dialog-title"
-      open={open}
-    >
+    <Dialog onClose={onClose} aria-labelledby="about-dialog-title" open={open}>
       <DialogTitle id="about-dialog-title" onClose={onClose}>
         Navidrome Music Server
       </DialogTitle>

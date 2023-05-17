@@ -25,7 +25,6 @@ const ExpandInfoDialog = ({ title, content }) => {
     <Dialog
       open={open}
       onClose={handleClose}
-      onBackdropClick={handleClose}
       aria-labelledby="info-dialog-album"
       fullWidth={true}
       maxWidth={'sm'}
