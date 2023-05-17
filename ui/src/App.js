@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
@@ -34,7 +33,6 @@ import {
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
 import config, { shareInfo } from './config'
-import { setDispatch, startEventStream, stopEventStream } from './eventStream'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
 import SharePlayer from './share/SharePlayer'
@@ -76,18 +74,6 @@ const App = () => (
 
 const Admin = (props) => {
   useChangeThemeColor()
-  useEffect(() => {
-    if (config.devActivityPanel) {
-      setDispatch(adminStore.dispatch)
-      authProvider
-        .checkAuth()
-        .then(() => startEventStream(adminStore.dispatch))
-        .catch(() => {})
-    }
-    return () => {
-      stopEventStream()
-    }
-  }, [])
 
   return (
     <RAAdmin
