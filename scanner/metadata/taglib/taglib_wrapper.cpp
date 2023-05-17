@@ -15,6 +15,13 @@
 
 #include "taglib_wrapper.h"
 
+// Tags necessary for M4a parsing
+const char *RG_TAGS[] = {
+    "replaygain_album_gain",
+    "replaygain_album_peak",
+    "replaygain_track_gain",
+    "replaygain_track_peak"};
+
 char has_cover(const TagLib::FileRef f);
 
 int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
@@ -66,6 +73,29 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
       for (const auto &kv : frameListMap) {
         if (!kv.second.isEmpty())
           tags.insert(kv.first, kv.second.front()->toString());
+      }
+    }
+  }
+
+  TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
+  if (m4afile != NULL)
+  {
+    const auto itemListMap = m4afile->tag();
+    {
+      char buf[200];
+
+      for (const char *key : RG_TAGS)
+      {
+        snprintf(buf, sizeof(buf), "----:com.apple.iTunes:%s", key);
+        const auto item = itemListMap->item(buf);
+        if (item.isValid())
+        {
+          char *dup = ::strdup(key);
+          char *val = ::strdup(item.toStringList().front().toCString(true));
+          go_map_put_str(id, dup, val);
+          free(dup);
+          free(val);
+        }
       }
     }
   }

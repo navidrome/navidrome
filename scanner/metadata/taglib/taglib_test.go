@@ -65,7 +65,35 @@ var _ = Describe("Extractor", func() {
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m).To(HaveKey("bitrate"))
-			Expect(m["bitrate"][0]).To(BeElementOf("18", "39"))
+			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40"))
+		})
+
+		Context("ReplayGain", func() {
+			testGain := func(file, albumGain, albumPeak, trackGain, trackPeak string) {
+				file = "tests/fixtures/" + file
+				mds, err := e.Parse(file)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(mds).To(HaveLen(1))
+
+				m := mds[file]
+
+				Expect(m).To(HaveKeyWithValue("replaygain_album_gain", []string{albumGain}))
+				Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{albumPeak}))
+				Expect(m).To(HaveKeyWithValue("replaygain_track_gain", []string{trackGain}))
+				Expect(m).To(HaveKeyWithValue("replaygain_track_peak", []string{trackPeak}))
+			}
+
+			It("Correctly parses m4a (aac) gain tags", func() {
+				testGain("01 Invisible (RED) Edit Version.m4a", "0.37", "0.48", "0.37", "0.48")
+			})
+
+			It("correctly parses mp3 tags", func() {
+				testGain("test.mp3", "+3.21518 dB", "0.9125", "-1.48 dB", "0.4512")
+			})
+
+			It("correctly parses ogg (vorbis) tags", func() {
+				testGain("test.ogg", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506")
+			})
 		})
 	})
 
