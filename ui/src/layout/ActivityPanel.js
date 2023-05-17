@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNotify, useTranslate } from 'react-admin'
 import {
   Popover,
-  Badge,
   CircularProgress,
   IconButton,
   makeStyles,
@@ -94,9 +93,7 @@ const ActivityPanel = () => {
     <div className={classes.wrapper}>
       <Tooltip title={translate('activity.title')}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
-          <Badge badgeContent={null} color="secondary">
-            {up ? <FiActivity size={'20'} /> : <BiError size={'20'} />}
-          </Badge>
+          {up ? <FiActivity size={'20'} /> : <BiError size={'20'} />}
         </IconButton>
       </Tooltip>
       {scanStatus.scanning && (
