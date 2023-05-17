@@ -60,7 +60,7 @@ const UserMenu = (props) => {
         .then(() => startEventStream(dispatch))
         .catch(() => {})
     }
-  }, [])
+  }, [dispatch])
 
   if (!logout && !children) return null
   const open = Boolean(anchorEl)
