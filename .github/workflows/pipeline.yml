@@ -16,6 +16,9 @@ jobs:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
+      - name: Install alsa (for Jukebox)
+        run: sudo apt-get install libasound2-dev
+
       - name: Set up Go 1.20
         uses: actions/setup-go@v3
         with:
@@ -52,6 +55,9 @@ jobs:
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
+
+      - name: Install alsa (for Jukebox)
+        run: sudo apt-get install libasound2-dev
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
