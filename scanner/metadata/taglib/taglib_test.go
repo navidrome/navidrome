@@ -50,6 +50,10 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			Expect(m).To(HaveKeyWithValue("lyrics", []string{"Lyrics 1\rLyrics 2"}))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
+			Expect(m).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
+			Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
+			Expect(m).To(HaveKeyWithValue("replaygain_track_gain", []string{"-1.48 dB"}))
+			Expect(m).To(HaveKeyWithValue("replaygain_track_peak", []string{"0.4512"}))
 
 			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10"}))
 			m = m.Map(e.CustomMappings())
@@ -57,7 +61,6 @@ var _ = Describe("Extractor", func() {
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
-			Expect(m).ToNot(HaveKey("title"))
 			Expect(m).ToNot(HaveKey("has_picture"))
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.04"}))
 			Expect(m).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
@@ -68,8 +71,8 @@ var _ = Describe("Extractor", func() {
 			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40"))
 		})
 
-		Context("ReplayGain", func() {
-			testGain := func(file, albumGain, albumPeak, trackGain, trackPeak string) {
+		Context("Format-Specific tests", func() {
+			testTags := func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -81,18 +84,65 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{albumPeak}))
 				Expect(m).To(HaveKeyWithValue("replaygain_track_gain", []string{trackGain}))
 				Expect(m).To(HaveKeyWithValue("replaygain_track_peak", []string{trackPeak}))
+
+				Expect(m).To(HaveKeyWithValue("title", []string{"Title", "Title"}))
+				Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
+				Expect(m).To(HaveKeyWithValue("artist", []string{"Artist", "Artist"}))
+				Expect(m).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
+				Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
+				Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
+				Expect(m).To(HaveKeyWithValue("date", []string{"2014", "2014"}))
+
+				Expect(m).To(HaveKey("discnumber"))
+				discno := m["discnumber"]
+				Expect(discno).To(HaveLen(1))
+				Expect(discno[0]).To(BeElementOf([]string{"1", "1/2"}))
+
+				Expect(m).NotTo(HaveKeyWithValue("has_picture", []string{"true"}))
+				Expect(m).To(HaveKeyWithValue("duration", []string{duration}))
+
+				Expect(m).To(HaveKeyWithValue("channels", []string{channels}))
+				Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
+				Expect(m).To(HaveKeyWithValue("lyrics", []string{"Lyrics1\nLyrics 2"}))
+				Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
+
+				Expect(m).To(HaveKey("tracknumber"))
+				trackno := m["tracknumber"]
+				Expect(trackno).To(HaveLen(1))
+				Expect(trackno[0]).To(BeElementOf([]string{"3", "3/10"}))
 			}
 
-			It("Correctly parses m4a (aac) gain tags", func() {
-				testGain("01 Invisible (RED) Edit Version.m4a", "0.37", "0.48", "0.37", "0.48")
+			It("correctly parses aiff tags", func() {
+				// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
+				testTags("test.aiff", "1.00", "1", "2.00 dB", "0.124972", "2.00 dB", "0.124972")
 			})
 
-			It("correctly parses mp3 tags", func() {
-				testGain("test.mp3", "+3.21518 dB", "0.9125", "-1.48 dB", "0.4512")
+			It("correctly parses flac tags", func() {
+				// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
+				testTags("test.flac", "1.00", "1", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948")
+			})
+
+			It("Correctly parses m4a (aac) gain tags", func() {
+				testTags("01 Invisible (RED) Edit Version.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48")
 			})
 
 			It("correctly parses ogg (vorbis) tags", func() {
-				testGain("test.ogg", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506")
+				testTags("test.ogg", "1.04", "2", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506")
+			})
+
+			It("correctly parses wav tags", func() {
+				// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
+				testTags("test.wav", "1.00", "1", "3.06 dB", "0.125056", "3.06 dB", "0.125056")
+			})
+
+			It("correctly parses wma/asf tags", func() {
+				// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
+				testTags("test.wma", "1.02", "1", "3.27 dB", "0.132914", "3.27 dB", "0.132914")
+			})
+
+			It("correctly parses wv (wavpak) tags", func() {
+				// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
+				testTags("test.wv", "1.00", "1", "3.43 dB", "0.125061", "3.43 dB", "0.125061")
 			})
 		})
 	})
