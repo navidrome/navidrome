@@ -158,6 +158,45 @@ var _ = Describe("MediaFiles", func() {
 				})
 			})
 		})
+		Context("Publishers", func() {
+			When("we have only one Publisher without year", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{{Publishers: Publishers{{ID: "p1", Name: "Virgin"}}}}
+				})
+				It("sets the correct Publisher", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Publisher).To(Equal("Virgin"))
+					Expect(album.Publishers).To(ConsistOf(Publisher{ID: "p1", Name: "Virgin"}))
+				})
+			})
+			When("we have only one Publisher with year", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{{Publishers: Publishers{{ID: "p1", Name: "Virgin"}}, Year: 2000}}
+				})
+				It("sets the correct Publisher", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Publisher).To(Equal("Virgin"))
+					Expect(album.Publishers).To(ConsistOf(Publisher{ID: "p1", Name: "Virgin"}))
+				})
+			})
+			When("we have multiple mediafiles with different Publishers with different years", func() {
+				var album Album
+				BeforeEach(func() {
+					mfs = MediaFiles{
+						{Publishers: Publishers{{ID: "p1", Name: "Virgin"}}, Year: 2000},
+						{Publishers: Publishers{{ID: "p2", Name: "Warner Records"}}, Year: 1997},
+						{Publishers: Publishers{{ID: "p1", Name: "Virgin"}}, Year: 2000},
+					}
+					album = mfs.ToAlbum()
+				})
+				It("sets the correct Publisher (oldest Release Date)", func() {
+					Expect(album.Publisher).To(Equal("Warner Records"))
+				})
+				It("removes duplications from Publishers", func() {
+					Expect(album.Publishers).To(Equal(Publishers{{ID: "p1", Name: "Virgin"}, {ID: "p2", Name: "Warner Records"}}))
+				})
+			})
+		})
 		Context("Comments", func() {
 			When("we have only one Comment", func() {
 				BeforeEach(func() {

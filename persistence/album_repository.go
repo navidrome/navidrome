@@ -77,6 +77,7 @@ func artistFilter(field string, value interface{}) Sqlizer {
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("album.id")
 	sql = r.withGenres(sql)
+	sql = r.withPublishers(sql)
 	return r.count(sql, options...)
 }
 
@@ -96,6 +97,14 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 				sql = sql.GroupBy("album.id")
 			}
 		}
+		// If there's any reference of publisher in the filter, joins with publisher
+		if strings.Contains(s, "publisher") {
+			sql = r.withPublishers(sql)
+			// If there's no filter on publisher_id, group the results by media_file.id
+			if !strings.Contains(s, "publisher_id") {
+				sql = sql.GroupBy("album.id")
+			}
+		}
 	}
 	return sql
 }
@@ -110,6 +119,10 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 		return nil, model.ErrNotFound
 	}
 	err := r.loadAlbumGenres(&res)
+	if err != nil {
+		return &res[0], err
+	}
+	err = r.loadAlbumPublishers(&res)
 	return &res[0], err
 }
 
@@ -118,7 +131,11 @@ func (r *albumRepository) Put(m *model.Album) error {
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, m.Genres)
+	err = r.updateGenres(m.ID, r.tableName, m.Genres)
+	if err != nil {
+		return err
+	}
+	return r.updatePublishers(m.ID, r.tableName, m.Publishers)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
@@ -127,6 +144,10 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 		return nil, err
 	}
 	err = r.loadAlbumGenres(&res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadAlbumPublishers(&res)
 	return res, err
 }
 

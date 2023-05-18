@@ -19,57 +19,59 @@ type MediaFile struct {
 	Annotations  `structs:"-"`
 	Bookmarkable `structs:"-"`
 
-	ID                   string  `structs:"id" json:"id"            orm:"pk;column(id)"`
-	Path                 string  `structs:"path" json:"path"`
-	Title                string  `structs:"title" json:"title"`
-	Album                string  `structs:"album" json:"album"`
-	ArtistID             string  `structs:"artist_id" json:"artistId"      orm:"pk;column(artist_id)"`
-	Artist               string  `structs:"artist" json:"artist"`
-	AlbumArtistID        string  `structs:"album_artist_id" json:"albumArtistId" orm:"pk;column(album_artist_id)"`
-	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
-	AlbumID              string  `structs:"album_id" json:"albumId"       orm:"pk;column(album_id)"`
-	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
-	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
-	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
-	DiscSubtitle         string  `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
-	Year                 int     `structs:"year" json:"year"`
-	Date                 string  `structs:"date" json:"date,omitempty"`
-	OriginalYear         int     `structs:"original_year" json:"originalYear"`
-	OriginalDate         string  `structs:"original_date" json:"originalDate,omitempty"`
-	ReleaseYear          int     `structs:"release_year" json:"releaseYear"`
-	ReleaseDate          string  `structs:"release_date" json:"releaseDate,omitempty"`
-	Size                 int64   `structs:"size" json:"size"`
-	Suffix               string  `structs:"suffix" json:"suffix"`
-	Duration             float32 `structs:"duration" json:"duration"`
-	BitRate              int     `structs:"bit_rate" json:"bitRate"`
-	Channels             int     `structs:"channels" json:"channels"`
-	Genre                string  `structs:"genre" json:"genre"`
-	Genres               Genres  `structs:"-" json:"genres"`
-	FullText             string  `structs:"full_text" json:"fullText"`
-	SortTitle            string  `structs:"sort_title" json:"sortTitle,omitempty"`
-	SortAlbumName        string  `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
-	SortArtistName       string  `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
-	SortAlbumArtistName  string  `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
-	OrderTitle           string  `structs:"order_title" json:"orderTitle,omitempty"`
-	OrderAlbumName       string  `structs:"order_album_name" json:"orderAlbumName"`
-	OrderArtistName      string  `structs:"order_artist_name" json:"orderArtistName"`
-	OrderAlbumArtistName string  `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
-	Compilation          bool    `structs:"compilation" json:"compilation"`
-	Comment              string  `structs:"comment" json:"comment,omitempty"`
-	Lyrics               string  `structs:"lyrics" json:"lyrics,omitempty"`
-	Bpm                  int     `structs:"bpm" json:"bpm,omitempty"`
-	CatalogNum           string  `structs:"catalog_num" json:"catalogNum,omitempty"`
-	MbzTrackID           string  `structs:"mbz_track_id" json:"mbzTrackId,omitempty"         orm:"column(mbz_track_id)"`
-	MbzReleaseTrackID    string  `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty" orm:"column(mbz_release_track_id)"`
-	MbzAlbumID           string  `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
-	MbzArtistID          string  `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"        orm:"column(mbz_artist_id)"`
-	MbzAlbumArtistID     string  `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
-	MbzAlbumType         string  `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
-	MbzAlbumComment      string  `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
-	RGAlbumGain          float64 `structs:"rg_album_gain" json:"rgAlbumGain" orm:"column(rg_album_gain)"`
-	RGAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak" orm:"column(rg_album_peak)"`
-	RGTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain" orm:"column(rg_track_gain)"`
-	RGTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak" orm:"column(rg_track_peak)"`
+	ID                   string     `structs:"id" json:"id"            orm:"pk;column(id)"`
+	Path                 string     `structs:"path" json:"path"`
+	Title                string     `structs:"title" json:"title"`
+	Album                string     `structs:"album" json:"album"`
+	ArtistID             string     `structs:"artist_id" json:"artistId"      orm:"pk;column(artist_id)"`
+	Artist               string     `structs:"artist" json:"artist"`
+	AlbumArtistID        string     `structs:"album_artist_id" json:"albumArtistId" orm:"pk;column(album_artist_id)"`
+	AlbumArtist          string     `structs:"album_artist" json:"albumArtist"`
+	AlbumID              string     `structs:"album_id" json:"albumId"       orm:"pk;column(album_id)"`
+	HasCoverArt          bool       `structs:"has_cover_art" json:"hasCoverArt"`
+	TrackNumber          int        `structs:"track_number" json:"trackNumber"`
+	DiscNumber           int        `structs:"disc_number" json:"discNumber"`
+	DiscSubtitle         string     `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
+	Year                 int        `structs:"year" json:"year"`
+	Date                 string     `structs:"date" json:"date,omitempty"`
+	OriginalYear         int        `structs:"original_year" json:"originalYear"`
+	OriginalDate         string     `structs:"original_date" json:"originalDate,omitempty"`
+	ReleaseYear          int        `structs:"release_year" json:"releaseYear"`
+	ReleaseDate          string     `structs:"release_date" json:"releaseDate,omitempty"`
+	Size                 int64      `structs:"size" json:"size"`
+	Suffix               string     `structs:"suffix" json:"suffix"`
+	Duration             float32    `structs:"duration" json:"duration"`
+	BitRate              int        `structs:"bit_rate" json:"bitRate"`
+	Channels             int        `structs:"channels" json:"channels"`
+	Genre                string     `structs:"genre" json:"genre"`
+	Genres               Genres     `structs:"-" json:"genres"`
+	Publisher            string     `structs:"publisher" json:"publisher"`
+	Publishers           Publishers `structs:"-" json:"publishers"`
+	FullText             string     `structs:"full_text" json:"fullText"`
+	SortTitle            string     `structs:"sort_title" json:"sortTitle,omitempty"`
+	SortAlbumName        string     `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
+	SortArtistName       string     `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
+	SortAlbumArtistName  string     `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderTitle           string     `structs:"order_title" json:"orderTitle,omitempty"`
+	OrderAlbumName       string     `structs:"order_album_name" json:"orderAlbumName"`
+	OrderArtistName      string     `structs:"order_artist_name" json:"orderArtistName"`
+	OrderAlbumArtistName string     `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
+	Compilation          bool       `structs:"compilation" json:"compilation"`
+	Comment              string     `structs:"comment" json:"comment,omitempty"`
+	Lyrics               string     `structs:"lyrics" json:"lyrics,omitempty"`
+	Bpm                  int        `structs:"bpm" json:"bpm,omitempty"`
+	CatalogNum           string     `structs:"catalog_num" json:"catalogNum,omitempty"`
+	MbzTrackID           string     `structs:"mbz_track_id" json:"mbzTrackId,omitempty"         orm:"column(mbz_track_id)"`
+	MbzReleaseTrackID    string     `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty" orm:"column(mbz_release_track_id)"`
+	MbzAlbumID           string     `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
+	MbzArtistID          string     `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"        orm:"column(mbz_artist_id)"`
+	MbzAlbumArtistID     string     `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumType         string     `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	RGAlbumGain          float64    `structs:"rg_album_gain" json:"rgAlbumGain" orm:"column(rg_album_gain)"`
+	RGAlbumPeak          float64    `structs:"rg_album_peak" json:"rgAlbumPeak" orm:"column(rg_album_peak)"`
+	RGTrackGain          float64    `structs:"rg_track_gain" json:"rgTrackGain" orm:"column(rg_track_gain)"`
+	RGTrackPeak          float64    `structs:"rg_track_peak" json:"rgTrackPeak" orm:"column(rg_track_peak)"`
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
@@ -119,6 +121,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var originalYears []int
 	var originalDates []string
 	var releaseDates []string
+	var minYear int
+	var oldestPublisher string
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
@@ -146,6 +150,22 @@ func (mfs MediaFiles) ToAlbum() Album {
 		originalYears = append(originalYears, m.OriginalYear)
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
+
+		if oldestPublisher == "" && len(m.Publishers) > 0 {
+			oldestPublisher = m.Publishers[0].Name
+		}
+		if minYear == 0 {
+			minYear = m.Year
+		} else if m.Year > 0 {
+			if m.Year < minYear {
+				minYear = m.Year
+				if len(m.Publishers) > 0 {
+					oldestPublisher = m.Publishers[0].Name
+				}
+			}
+		}
+
+		a.Publishers = append(a.Publishers, m.Publishers...)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
 		a.Genres = append(a.Genres, m.Genres...)
@@ -161,7 +181,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.EmbedArtPath = m.Path
 		}
 	}
-
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
 	a.Date, _ = allOrNothing(dates)
 	a.OriginalDate, _ = allOrNothing(originalDates)
@@ -173,6 +192,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
+	a.Publisher = oldestPublisher
+	slices.SortFunc(a.Publishers, func(a, b Publisher) bool { return a.ID < b.ID })
+	a.Publishers = slices.Compact(a.Publishers)
 	a.FullText = " " + utils.SanitizeStrings(fullText...)
 	a = fixAlbumArtist(a, albumArtistIds)
 	songArtistIds = append(songArtistIds, a.AlbumArtistID, a.ArtistID)

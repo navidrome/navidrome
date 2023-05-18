@@ -58,10 +58,18 @@ var _ = Describe("Tags", func() {
 	})
 
 	Describe("getAllTagValues", func() {
-		It("returns values from all tag names", func() {
+		It("returns genre values from all tag names", func() {
 			md := &Tags{}
 			md.tags = map[string][]string{
 				"genre": {"Rock", "Pop", "New Wave"},
+			}
+
+			Expect(md.Genres()).To(ConsistOf("Rock", "Pop", "New Wave"))
+		})
+		It("remove duplicated values", func() {
+			md := &Tags{}
+			md.tags = map[string][]string{
+				"genre": {"Rock", "Pop", "Pop", "New Wave", "Rock"},
 			}
 
 			Expect(md.Genres()).To(ConsistOf("Rock", "Pop", "New Wave"))

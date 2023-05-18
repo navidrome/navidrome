@@ -8,6 +8,7 @@ import (
 
 type MockDataStore struct {
 	MockedGenre          model.GenreRepository
+	MockedPublisher      model.PublisherRepository
 	MockedAlbum          model.AlbumRepository
 	MockedArtist         model.ArtistRepository
 	MockedMediaFile      model.MediaFileRepository
@@ -52,6 +53,13 @@ func (db *MockDataStore) Genre(context.Context) model.GenreRepository {
 		db.MockedGenre = &MockedGenreRepo{}
 	}
 	return db.MockedGenre
+}
+
+func (db *MockDataStore) Publisher(context.Context) model.PublisherRepository {
+	if db.MockedPublisher == nil {
+		db.MockedPublisher = &MockedPublisherRepo{}
+	}
+	return db.MockedPublisher
 }
 
 func (db *MockDataStore) Playlist(context.Context) model.PlaylistRepository {

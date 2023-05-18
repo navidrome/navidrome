@@ -128,6 +128,7 @@ const AlbumSongs = (props) => {
       size: isDesktop && <SizeField source="size" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
+      publisher: isDesktop && <TextField source="publisher" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
         <RatingField
           resource={'song'}
@@ -143,7 +144,15 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate', 'size'],
+    defaultOff: [
+      'channels',
+      'bpm',
+      'year',
+      'playCount',
+      'playDate',
+      'size',
+      'publisher',
+    ],
   })
 
   const bulkActionsLabel = isDesktop

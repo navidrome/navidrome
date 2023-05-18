@@ -37,6 +37,12 @@ var (
 )
 
 var (
+	publisherKlingKlang = model.Publisher{ID: "pn-1", Name: "Kling Klang"}
+	publisherApple      = model.Publisher{ID: "pn-2", Name: "Apple"}
+	testPublishers      = model.Publishers{publisherKlingKlang, publisherApple}
+)
+
+var (
 	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1, FullText: " kraftwerk"}
 	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, FullText: " beatles the"}
 	testArtists     = model.Artists{
@@ -46,9 +52,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = model.Album{ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the"}
-	albumAbbeyRoad     = model.Album{ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the"}
-	albumRadioactivity = model.Album{ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity"}
+	albumSgtPeppers    = model.Album{ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, Publisher: "Apple", Publishers: model.Publishers{publisherApple}, EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the"}
+	albumAbbeyRoad     = model.Album{ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", Genre: "Rock", Genres: model.Genres{genreRock}, Publisher: "Apple", Publishers: model.Publishers{publisherApple}, EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the"}
+	albumRadioactivity = model.Album{ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, Publisher: "Kling Klang", Publishers: model.Publishers{publisherKlingKlang, publisherApple}, EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity"}
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
@@ -57,10 +63,10 @@ var (
 )
 
 var (
-	songDayInALife    = model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Genre: "Rock", Genres: model.Genres{genreRock}, Path: P("/beatles/1/sgt/a day.mp3"), FullText: " a beatles day in life peppers sgt the"}
-	songComeTogether  = model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Genre: "Rock", Genres: model.Genres{genreRock}, Path: P("/beatles/1/come together.mp3"), FullText: " abbey beatles come road the together"}
-	songRadioactivity = model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Genre: "Electronic", Genres: model.Genres{genreElectronic}, Path: P("/kraft/radio/radio.mp3"), FullText: " kraftwerk radioactivity"}
-	songAntenna       = model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, Path: P("/kraft/radio/antenna.mp3"), FullText: " antenna kraftwerk"}
+	songDayInALife    = model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Genre: "Rock", Genres: model.Genres{genreRock}, Publisher: "Apple", Publishers: model.Publishers{publisherApple}, Path: P("/beatles/1/sgt/a day.mp3"), FullText: " a beatles day in life peppers sgt the"}
+	songComeTogether  = model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Genre: "Rock", Genres: model.Genres{genreRock}, Publisher: "Apple", Publishers: model.Publishers{publisherApple}, Path: P("/beatles/1/come together.mp3"), FullText: " abbey beatles come road the together"}
+	songRadioactivity = model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Genre: "Electronic", Genres: model.Genres{genreElectronic}, Publisher: "Kling Klang", Publishers: model.Publishers{publisherKlingKlang}, Path: P("/kraft/radio/radio.mp3"), FullText: " kraftwerk radioactivity"}
+	songAntenna       = model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Genre: "Electronic", Genres: model.Genres{genreElectronic, genreRock}, Publisher: "Kling Klang", Publishers: model.Publishers{publisherKlingKlang, publisherApple}, Path: P("/kraft/radio/antenna.mp3"), FullText: " antenna kraftwerk"}
 	testSongs         = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
@@ -103,6 +109,15 @@ var _ = BeforeSuite(func() {
 	for i := range testGenres {
 		g := testGenres[i]
 		err := gr.Put(&g)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	pubr := NewPublisherRepository(ctx, o)
+	for i := range testPublishers {
+		p := testPublishers[i]
+		err := pubr.Put(&p)
 		if err != nil {
 			panic(err)
 		}

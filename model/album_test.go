@@ -64,6 +64,26 @@ var _ = Describe("Albums", func() {
 				})
 			})
 		})
+		Context("Publishers", func() {
+			When("we have only one Publisher", func() {
+				BeforeEach(func() {
+					albums = Albums{{Publishers: Publishers{{ID: "p1", Name: "Virgin"}}}}
+				})
+				It("sets the correct Publisher", func() {
+					artist := albums.ToAlbumArtist()
+					Expect(artist.Publishers).To(ConsistOf(Publisher{ID: "p1", Name: "Virgin"}))
+				})
+			})
+			When("we have multiple Publishers", func() {
+				BeforeEach(func() {
+					albums = Albums{{Publishers: Publishers{{ID: "p1", Name: "Virgin"}, {ID: "p2", Name: "Warner"}, {ID: "p3", Name: "Polydor"}, {ID: "p2", Name: "Warner"}}}}
+				})
+				It("sets the correct Publishers", func() {
+					artist := albums.ToAlbumArtist()
+					Expect(artist.Publishers).To(Equal(Publishers{{ID: "p1", Name: "Virgin"}, {ID: "p2", Name: "Warner"}, {ID: "p3", Name: "Polydor"}}))
+				})
+			})
+		})
 		Context("MbzArtistID", func() {
 			When("we have only one MbzArtistID", func() {
 				BeforeEach(func() {

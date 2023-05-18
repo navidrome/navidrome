@@ -14,6 +14,7 @@
                 "album": "Album",
                 "path": "File path",
                 "genre": "Genre",
+                "publisher": "Publisher",
                 "compilation": "Compilation",
                 "year": "Year",
                 "size": "File size",
@@ -50,6 +51,7 @@
                 "size": "Size",
                 "name": "Name",
                 "genre": "Genre",
+                "publisher": "Publisher",
                 "compilation": "Compilation",
                 "year": "Year",
                 "originalDate": "Original",
@@ -90,7 +92,8 @@
                 "size": "Size",
                 "playCount": "Plays",
                 "rating": "Rating",
-                "genre": "Genre"
+                "genre": "Genre",
+                "publisher": "Publisher"
             }
         },
         "user": {

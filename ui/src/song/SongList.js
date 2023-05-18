@@ -74,6 +74,16 @@ const SongFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" />
       </ReferenceInput>
+      <ReferenceInput
+        label={translate('resources.song.fields.publisher')}
+        source="publisher_id"
+        reference="publisher"
+        perPage={0}
+        sort={{ field: 'name', order: 'ASC' }}
+        filterToQuery={(searchText) => ({ name: [searchText] })}
+      >
+        <AutocompleteInput emptyText="-- None --" />
+      </ReferenceInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
@@ -135,6 +145,7 @@ const SongList = (props) => {
         />
       ),
       bpm: isDesktop && <NumberField source="bpm" />,
+      publisher: isDesktop && <TextField source="publisher" />,
       genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
       path: <TextField source="path" />,
@@ -148,6 +159,7 @@ const SongList = (props) => {
     defaultOff: [
       'channels',
       'bpm',
+      'publisher',
       'playDate',
       'albumArtist',
       'genre',
