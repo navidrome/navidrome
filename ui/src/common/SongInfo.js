@@ -49,10 +49,17 @@ export const SongInfo = (props) => {
     updatedAt: <DateField source="updatedAt" showTime />,
     playCount: <TextField source="playCount" />,
     bpm: <NumberField source="bpm" />,
+    publisher: <TextField source="publisher" />,
     comment: <MultiLineTextField source="comment" />,
   }
 
-  const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre']
+  const optionalFields = [
+    'discSubtitle',
+    'comment',
+    'bpm',
+    'genre',
+    'publisher',
+  ]
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
   })

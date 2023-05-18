@@ -40,6 +40,10 @@ func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getOrmer())
 }
 
+func (s *SQLStore) Publisher(ctx context.Context) model.PublisherRepository {
+	return NewPublisherRepository(ctx, s.getOrmer())
+}
+
 func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
 	return NewPlayQueueRepository(ctx, s.getOrmer())
 }
@@ -96,6 +100,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.MediaFile(ctx).(model.ResourceRepository)
 	case model.Genre:
 		return s.Genre(ctx).(model.ResourceRepository)
+	case model.Publisher:
+		return s.Publisher(ctx).(model.ResourceRepository)
 	case model.Playlist:
 		return s.Playlist(ctx).(model.ResourceRepository)
 	case model.Radio:
@@ -166,6 +172,11 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	err = s.Genre(ctx).(*genreRepository).purgeEmpty()
 	if err != nil {
 		log.Error(ctx, "Error removing unused genres", err)
+		return err
+	}
+	err = s.Publisher(ctx).(*publisherRepository).purgeEmpty()
+	if err != nil {
+		log.Error(ctx, "Error removing unused publishers", err)
 		return err
 	}
 	return err

@@ -71,6 +71,16 @@ const ArtistFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" />
       </ReferenceInput>
+      <ReferenceInput
+        label={translate('resources.artist.fields.publisher')}
+        source="publisher_id"
+        reference="publisher"
+        perPage={0}
+        sort={{ field: 'name', order: 'ASC' }}
+        filterToQuery={(searchText) => ({ name: [searchText] })}
+      >
+        <AutocompleteInput emptyText="-- None --" />
+      </ReferenceInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"

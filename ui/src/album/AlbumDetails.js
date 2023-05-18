@@ -249,6 +249,7 @@ const Details = (props) => {
       </>
     )
 
+  record.publisher && addDetail(<>{record.publisher}</>)
   addDetail(
     <>
       {record.songCount +

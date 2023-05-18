@@ -100,7 +100,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	var changedDirs []string
 	s.cnt = &counters{}
 	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
-	s.mapper = newMediaFileMapper(s.rootFolder, genres)
+	publishers := newCachedPublisherRepository(ctx, s.ds.Publisher(ctx))
+	s.mapper = newMediaFileMapper(s.rootFolder, genres, publishers)
 	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
 
 	foldersFound, walkerError := s.getRootFolderWalker(ctx)

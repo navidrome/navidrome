@@ -105,6 +105,7 @@ func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string              { return t.getFirstTagValue("lyrics", "lyrics-eng") }
 func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation") }
+func (t Tags) Publishers() []string        { return t.getAllTagValues("tpub", "publisher", "label") }
 func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
 func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
@@ -197,9 +198,15 @@ func (t Tags) getFirstTagValue(tagNames ...string) string {
 
 func (t Tags) getAllTagValues(tagNames ...string) []string {
 	var values []string
+	var existValues = make(map[string]bool)
 	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {
-			values = append(values, v...)
+			for _, iv := range v {
+				if !existValues[iv] {
+					values = append(values, iv)
+					existValues[iv] = true
+				}
+			}
 		}
 	}
 	return values

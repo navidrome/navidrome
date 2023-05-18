@@ -25,6 +25,7 @@ type DataStore interface {
 	MediaFile(ctx context.Context) MediaFileRepository
 	MediaFolder(ctx context.Context) MediaFolderRepository
 	Genre(ctx context.Context) GenreRepository
+	Publisher(ctr context.Context) PublisherRepository
 	Playlist(ctx context.Context) PlaylistRepository
 	PlayQueue(ctx context.Context) PlayQueueRepository
 	Transcoding(ctx context.Context) TranscodingRepository

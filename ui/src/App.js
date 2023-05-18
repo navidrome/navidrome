@@ -119,6 +119,7 @@ const Admin = (props) => {
         ),
         <Resource name="translation" />,
         <Resource name="genre" />,
+        <Resource name="publisher" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Player />,

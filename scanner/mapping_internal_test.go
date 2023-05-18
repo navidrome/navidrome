@@ -15,7 +15,7 @@ var _ = Describe("mapping", func() {
 	Describe("mediaFileMapper", func() {
 		var mapper *mediaFileMapper
 		BeforeEach(func() {
-			mapper = newMediaFileMapper("/music", nil)
+			mapper = newMediaFileMapper("/music", nil, nil)
 		})
 		Describe("mapTrackTitle", func() {
 			It("returns the Title when it is available", func() {
@@ -52,7 +52,7 @@ var _ = Describe("mapping", func() {
 			ds := &tests.MockDataStore{}
 			gr = ds.Genre(ctx)
 			gr = newCachedGenreRepository(ctx, gr)
-			mapper = newMediaFileMapper("/", gr)
+			mapper = newMediaFileMapper("/", gr, nil)
 		})
 
 		It("returns empty if no genres are available", func() {
@@ -88,6 +88,54 @@ var _ = Describe("mapping", func() {
 			_, gs := mapper.mapGenres([]string{"New Wave"})
 			Expect(gs).To(HaveLen(1))
 			Expect(gs[0].Name).To(Equal("New Wave"))
+		})
+	})
+
+	Describe("mapPublishers", func() {
+		var mapper *mediaFileMapper
+		var pr model.PublisherRepository
+		var ctx context.Context
+		BeforeEach(func() {
+			ctx = context.Background()
+			ds := &tests.MockDataStore{}
+			pr = ds.Publisher(ctx)
+			pr = newCachedPublisherRepository(ctx, pr)
+			mapper = newMediaFileMapper("/", nil, pr)
+		})
+
+		It("returns empty if no publishers are available", func() {
+			p, ps := mapper.mapPublishers(nil)
+			Expect(p).To(BeEmpty())
+			Expect(ps).To(BeEmpty())
+		})
+
+		It("returns publishers", func() {
+			p, ps := mapper.mapPublishers([]string{"Virgin", "Universal"})
+			Expect(p).To(Equal("Virgin"))
+			Expect(ps).To(HaveLen(2))
+			Expect(ps[0].Name).To(Equal("Virgin"))
+			Expect(ps[1].Name).To(Equal("Universal"))
+		})
+
+		It("parses multi-valued publishers", func() {
+			p, ps := mapper.mapPublishers([]string{"Virgin;Dance", "Universal", "Virgin"})
+			Expect(p).To(Equal("Virgin"))
+			Expect(ps).To(HaveLen(3))
+			Expect(ps[0].Name).To(Equal("Virgin"))
+			Expect(ps[1].Name).To(Equal("Dance"))
+			Expect(ps[2].Name).To(Equal("Universal"))
+		})
+		It("trims publishers names", func() {
+			_, ps := mapper.mapPublishers([]string{"Virgin ;  Parlophone", " Universal "})
+			Expect(ps).To(HaveLen(3))
+			Expect(ps[0].Name).To(Equal("Virgin"))
+			Expect(ps[1].Name).To(Equal("Parlophone"))
+			Expect(ps[2].Name).To(Equal("Universal"))
+		})
+		It("does not break on spaces", func() {
+			_, ps := mapper.mapPublishers([]string{"Capitol Records"})
+			Expect(ps).To(HaveLen(1))
+			Expect(ps[0].Name).To(Equal("Capitol Records"))
 		})
 	})
 })

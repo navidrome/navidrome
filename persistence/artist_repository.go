@@ -47,12 +47,15 @@ func NewArtistRepository(ctx context.Context, o orm.QueryExecutor) model.ArtistR
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
-	return r.withGenres(sql).GroupBy("artist.id")
+	sql = r.withGenres(sql)
+	sql = r.withPublishers(sql)
+	return sql.GroupBy("artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("artist.id")
 	sql = r.withGenres(sql)
+	sql = r.withPublishers(sql)
 	return r.count(sql, options...)
 }
 
@@ -68,9 +71,14 @@ func (r *artistRepository) Put(a *model.Artist) error {
 		return err
 	}
 	if a.ID == consts.VariousArtistsID {
-		return r.updateGenres(a.ID, r.tableName, nil)
+		err = r.updateGenres(a.ID, r.tableName, nil)
+	} else {
+		err = r.updateGenres(a.ID, r.tableName, a.Genres)
 	}
-	return r.updateGenres(a.ID, r.tableName, a.Genres)
+	if err != nil {
+		return err
+	}
+	return r.updatePublishers(a.ID, r.tableName, a.Publishers)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
@@ -84,6 +92,10 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	}
 	res := r.toModels(dba)
 	err := r.loadArtistGenres(&res)
+	if err != nil {
+		return &res[0], err
+	}
+	err = r.loadArtistPublishers(&res)
 	return &res[0], err
 }
 
@@ -96,6 +108,10 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	}
 	res := r.toModels(dba)
 	err = r.loadArtistGenres(&res)
+	if err != nil {
+		return res, err
+	}
+	err = r.loadArtistPublishers(&res)
 	return res, err
 }
 

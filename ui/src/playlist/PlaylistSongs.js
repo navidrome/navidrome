@@ -153,6 +153,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" />,
       bpm: isDesktop && <NumberField source="bpm" />,
+      publisher: isDesktop && <TextField source="publisher" />,
     }
   }, [isDesktop, classes.draggable])
 

@@ -19,12 +19,14 @@ import (
 type mediaFileMapper struct {
 	rootFolder string
 	genres     model.GenreRepository
+	publishers model.PublisherRepository
 }
 
-func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaFileMapper {
+func newMediaFileMapper(rootFolder string, genres model.GenreRepository, publishers model.PublisherRepository) *mediaFileMapper {
 	return &mediaFileMapper{
 		rootFolder: rootFolder,
 		genres:     genres,
+		publishers: publishers,
 	}
 }
 
@@ -42,6 +44,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtistID = s.albumArtistID(md)
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
+	mf.Publisher, mf.Publishers = s.mapPublishers(md.Publishers())
 	mf.Compilation = md.Compilation()
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
@@ -188,4 +191,33 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, i
 		return originalYear, originalDate, originalYear, originalDate, year, date
 	}
 	return year, date, originalYear, originalDate, releaseYear, releaseDate
+}
+
+func (s mediaFileMapper) mapPublishers(publishers []string) (string, model.Publishers) {
+	var result model.Publishers
+	unique := map[string]struct{}{}
+	var all []string
+	for i := range publishers {
+		gs := strings.FieldsFunc(publishers[i], func(r rune) bool {
+			return strings.ContainsRune(conf.Server.Scanner.PublisherSeparators, r)
+		})
+		for j := range gs {
+			g := strings.TrimSpace(gs[j])
+			key := strings.ToLower(g)
+			if _, ok := unique[key]; ok {
+				continue
+			}
+			all = append(all, g)
+			unique[key] = struct{}{}
+		}
+	}
+	for _, g := range all {
+		publisher := model.Publisher{Name: g}
+		_ = s.publishers.Put(&publisher)
+		result = append(result, publisher)
+	}
+	if len(result) == 0 {
+		return "", nil
+	}
+	return result[0].Name, result
 }

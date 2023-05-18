@@ -41,6 +41,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFile
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("media_file.id")
 	sql = r.withGenres(sql)
+	sql = r.withPublishers(sql)
 	return r.count(sql, options...)
 }
 
@@ -55,7 +56,11 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, m.Genres)
+	err = r.updateGenres(m.ID, r.tableName, m.Genres)
+	if err != nil {
+		return err
+	}
+	return r.updatePublishers(m.ID, r.tableName, m.Publishers)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
@@ -68,6 +73,14 @@ func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sel
 			sql = r.withGenres(sql)
 			// If there's no filter on genre_id, group the results by media_file.id
 			if !strings.Contains(s, "genre_id") {
+				sql = sql.GroupBy("media_file.id")
+			}
+		}
+		// If there's any reference of publisher in the filter, joins with publisher
+		if strings.Contains(s, "publisher") {
+			sql = r.withPublishers(sql)
+			// If there's no filter on publisher_id, group the results by media_file.id
+			if !strings.Contains(s, "publisher_id") {
 				sql = sql.GroupBy("media_file.id")
 			}
 		}
@@ -85,6 +98,10 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 		return nil, model.ErrNotFound
 	}
 	err := r.loadMediaFileGenres(&res)
+	if err != nil {
+		return &res[0], err
+	}
+	err = r.loadMediaFilePublishers(&res)
 	return &res[0], err
 }
 
@@ -96,6 +113,10 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 		return nil, err
 	}
 	err = r.loadMediaFileGenres(&res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadMediaFilePublishers(&res)
 	return res, err
 }
 

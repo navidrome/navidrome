@@ -52,6 +52,7 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			Expect(m).To(HaveKeyWithValue("lyrics", []string{"Lyrics 1\rLyrics 2"}))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
+			Expect(m).To(HaveKeyWithValue("tpub", []string{"Publisher"}))
 
 			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10"}))
 			m = m.Map(e.CustomMappings())

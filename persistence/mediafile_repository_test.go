@@ -144,6 +144,17 @@ var _ = Describe("MediaRepository", func() {
 		}))
 	})
 
+	It("filters by publisher", func() {
+		Expect(mr.GetAll(model.QueryOptions{
+			Sort:    "publisher.name asc, title asc",
+			Filters: squirrel.Eq{"publisher.name": "Apple"},
+		})).To(Equal(model.MediaFiles{
+			songDayInALife,
+			songAntenna,
+			songComeTogether,
+		}))
+	})
+
 	Context("Annotations", func() {
 		It("increments play count when the tracks does not have annotations", func() {
 			id := "incplay.firsttime"
