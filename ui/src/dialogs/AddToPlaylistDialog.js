@@ -139,7 +139,6 @@ export const AddToPlaylistDialog = () => {
       <Dialog
         open={open}
         onClose={handleClickClose}
-        onBackdropClick={handleClickClose}
         aria-labelledby="form-dialog-new-playlist"
         fullWidth={true}
         maxWidth={'sm'}
