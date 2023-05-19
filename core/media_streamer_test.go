@@ -37,7 +37,7 @@ var _ = Describe("MediaStreamer", func() {
 		_ = os.RemoveAll(conf.Server.DataFolder)
 	})
 
-	Context("NewStream", func() {
+	Context("NewStream", MustPassRepeatedly(2), func() {
 		It("returns a seekable stream if format is 'raw'", func() {
 			s, err := streamer.NewStream(ctx, "123", "raw", 0)
 			Expect(err).ToNot(HaveOccurred())
