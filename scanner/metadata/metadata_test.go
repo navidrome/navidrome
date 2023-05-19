@@ -40,7 +40,7 @@ var _ = Describe("Tags", func() {
 			Expect(m.Channels()).To(Equal(2))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.mp3"))
 			Expect(m.Suffix()).To(Equal("mp3"))
-			Expect(m.Size()).To(Equal(int64(52050)))
+			Expect(m.Size()).To(Equal(int64(51876)))
 			Expect(m.RGAlbumGain()).To(Equal(3.21518))
 			Expect(m.RGAlbumPeak()).To(Equal(0.9125))
 			Expect(m.RGTrackGain()).To(Equal(-1.48))

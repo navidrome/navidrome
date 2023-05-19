@@ -41,7 +41,7 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
 			Expect(m).To(HaveKeyWithValue("tcmp", []string{"1"})) // Compilation
 			Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
-			Expect(m).To(HaveKeyWithValue("date", []string{"2014", "2014"}))
+			Expect(m).To(HaveKeyWithValue("date", []string{"2014-05-21", "2014"}))
 			Expect(m).To(HaveKeyWithValue("discnumber", []string{"1/2"}))
 			Expect(m).To(HaveKeyWithValue("has_picture", []string{"true"}))
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.02"}))
@@ -68,8 +68,8 @@ var _ = Describe("Extractor", func() {
 			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40"))
 		})
 
-		Context("ReplayGain", func() {
-			testGain := func(file, albumGain, albumPeak, trackGain, trackPeak string) {
+		DescribeTable("ReplayGain",
+			func(file, albumGain, albumPeak, trackGain, trackPeak string) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -81,20 +81,11 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{albumPeak}))
 				Expect(m).To(HaveKeyWithValue("replaygain_track_gain", []string{trackGain}))
 				Expect(m).To(HaveKeyWithValue("replaygain_track_peak", []string{trackPeak}))
-			}
-
-			It("Correctly parses m4a (aac) gain tags", func() {
-				testGain("01 Invisible (RED) Edit Version.m4a", "0.37", "0.48", "0.37", "0.48")
-			})
-
-			It("correctly parses mp3 tags", func() {
-				testGain("test.mp3", "+3.21518 dB", "0.9125", "-1.48 dB", "0.4512")
-			})
-
-			It("correctly parses ogg (vorbis) tags", func() {
-				testGain("test.ogg", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506")
-			})
-		})
+			},
+			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "0.37", "0.48", "0.37", "0.48"),
+			Entry("correctly parses mp3 tags", "test.mp3", "+3.21518 dB", "0.9125", "-1.48 dB", "0.4512"),
+			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506"),
+		)
 	})
 
 	Context("Error Checking", func() {
