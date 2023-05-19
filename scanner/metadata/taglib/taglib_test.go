@@ -42,6 +42,8 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("tcmp", []string{"1"})) // Compilation
 			Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
 			Expect(m).To(HaveKeyWithValue("date", []string{"2014-05-21", "2014"}))
+			Expect(m).To(HaveKeyWithValue("originaldate", []string{"1996-11-21"}))
+			Expect(m).To(HaveKeyWithValue("releasedate", []string{"2020-12-31"}))
 			Expect(m).To(HaveKeyWithValue("discnumber", []string{"1/2"}))
 			Expect(m).To(HaveKeyWithValue("has_picture", []string{"true"}))
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.02"}))
