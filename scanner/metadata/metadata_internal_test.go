@@ -6,29 +6,51 @@ import (
 )
 
 var _ = Describe("Tags", func() {
-	Describe("getYear", func() {
+	Describe("getDate", func() {
 		It("parses the year correctly", func() {
-			var examples = map[string]int{
+			var examplesYear = map[string]int{
 				"1985":         1985,
 				"2002-01":      2002,
 				"1969.06":      1969,
 				"1980.07.25":   1980,
 				"2004-00-00":   2004,
+				"2016-12-31":   2016,
 				"2013-May-12":  2013,
 				"May 12, 2016": 2016,
 				"01/10/1990":   1990,
 			}
-			for tag, expected := range examples {
+			for tag, expected := range examplesYear {
 				md := &Tags{}
 				md.tags = map[string][]string{"date": {tag}}
-				Expect(md.Year()).To(Equal(expected))
+				testYear, _ := md.Date()
+				Expect(testYear).To(Equal(expected))
 			}
 		})
 
+		It("parses the date correctly", func() {
+			var examplesDate = map[string]string{
+				"1985":         "1985",
+				"2002-01":      "2002-01",
+				"1969.06":      "1969",
+				"1980.07.25":   "1980",
+				"2004-00-00":   "2004",
+				"2016-12-31":   "2016-12-31",
+				"2013-May-12":  "2013",
+				"May 12, 2016": "2016",
+				"01/10/1990":   "1990",
+			}
+			for tag, expected := range examplesDate {
+				md := &Tags{}
+				md.tags = map[string][]string{"date": {tag}}
+				_, testDate := md.Date()
+				Expect(testDate).To(Equal(expected))
+			}
+		})
 		It("returns 0 if year is invalid", func() {
 			md := &Tags{}
 			md.tags = map[string][]string{"date": {"invalid"}}
-			Expect(md.Year()).To(Equal(0))
+			testYear, _ := md.Date()
+			Expect(testYear).To(Equal(0))
 		})
 	})
 

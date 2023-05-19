@@ -17,7 +17,7 @@ import {
   AlbumContextMenu,
   PlayButton,
   ArtistLinkField,
-  RangeField,
+  RangeDoubleField,
 } from '../common'
 import { DraggableTypes } from '../consts'
 
@@ -161,9 +161,12 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />
       ) : (
-        <RangeField
+        <RangeDoubleField
           record={record}
           source={'year'}
+          symbol1={'♫'}
+          symbol2={'○'}
+          separator={' · '}
           sortBy={'max_year'}
           sortByOrder={'DESC'}
           className={classes.albumSubtitle}

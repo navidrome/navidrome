@@ -102,7 +102,7 @@ const SongList = (props) => {
         <AlbumLinkField
           source="album"
           sortBy={
-            'album, order_album_artist_name, disc_number, track_number, title'
+            'album, order_album_artist_name, release_date, disc_number, track_number, title'
           }
           sortByOrder={'ASC'}
         />

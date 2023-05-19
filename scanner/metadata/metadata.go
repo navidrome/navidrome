@@ -94,17 +94,19 @@ func (t Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist
 func (t Tags) AlbumArtist() string {
 	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
 }
-func (t Tags) SortTitle() string       { return t.getSortTag("", "title", "name") }
-func (t Tags) SortAlbum() string       { return t.getSortTag("", "album") }
-func (t Tags) SortArtist() string      { return t.getSortTag("", "artist") }
-func (t Tags) SortAlbumArtist() string { return t.getSortTag("tso2", "albumartist", "album_artist") }
-func (t Tags) Genres() []string        { return t.getAllTagValues("genre") }
-func (t Tags) Year() int               { return t.getYear("date") }
-func (t Tags) Comment() string         { return t.getFirstTagValue("comment") }
-func (t Tags) Lyrics() string          { return t.getFirstTagValue("lyrics", "lyrics-eng") }
-func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
-func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
+func (t Tags) SortTitle() string           { return t.getSortTag("", "title", "name") }
+func (t Tags) SortAlbum() string           { return t.getSortTag("", "album") }
+func (t Tags) SortArtist() string          { return t.getSortTag("", "artist") }
+func (t Tags) SortAlbumArtist() string     { return t.getSortTag("tso2", "albumartist", "album_artist") }
+func (t Tags) Genres() []string            { return t.getAllTagValues("genre") }
+func (t Tags) Date() (int, string)         { return t.getDate("date") }
+func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
+func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
+func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
+func (t Tags) Lyrics() string              { return t.getFirstTagValue("lyrics", "lyrics-eng") }
+func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation") }
+func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
+func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
 	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
 }
@@ -217,18 +219,38 @@ func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
-func (t Tags) getYear(tagNames ...string) int {
+func (t Tags) getDate(tagNames ...string) (int, string) {
 	tag := t.getFirstTagValue(tagNames...)
-	if tag == "" {
-		return 0
+	if len(tag) < 4 {
+		return 0, ""
 	}
+	// first get just the year
 	match := dateRegex.FindStringSubmatch(tag)
 	if len(match) == 0 {
-		log.Warn("Error parsing year date field", "file", t.filePath, "date", tag)
-		return 0
+		log.Warn("Error parsing "+tagNames[0]+" field for year", "file", t.filePath, "date", tag)
+		return 0, ""
 	}
 	year, _ := strconv.Atoi(match[1])
-	return year
+
+	if len(tag) < 5 {
+		return year, match[1]
+	}
+
+	//then try YYYY-MM-DD
+	if len(tag) > 10 {
+		tag = tag[:10]
+	}
+	layout := "2006-01-02"
+	_, err := time.Parse(layout, tag)
+	if err != nil {
+		layout = "2006-01"
+		_, err = time.Parse(layout, tag)
+		if err != nil {
+			log.Warn("Error parsing "+tagNames[0]+" field for month + day", "file", t.filePath, "date", tag)
+			return year, match[1]
+		}
+	}
+	return year, tag
 }
 
 func (t Tags) getBool(tagNames ...string) bool {

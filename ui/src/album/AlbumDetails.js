@@ -25,6 +25,7 @@ import {
   ArtistLinkField,
   DurationField,
   formatRange,
+  FormatFullDate,
   SizeField,
   LoveButton,
   RatingField,
@@ -195,8 +196,59 @@ const Details = (props) => {
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
   }
 
-  const year = formatRange(record, 'year')
-  year && addDetail(<>{year}</>)
+  const originalYearRange = formatRange(record, 'originalYear')
+  const originalDate = record.originalDate
+    ? FormatFullDate(record.originalDate)
+    : originalYearRange
+  const yearRange = formatRange(record, 'year')
+  const date = record.date ? FormatFullDate(record.date) : yearRange
+  const releaseDate = record.releaseDate
+    ? FormatFullDate(record.releaseDate)
+    : date
+
+  const showReleaseDate = date !== releaseDate && releaseDate.length > 3
+  const showOriginalDate =
+    date !== originalDate &&
+    originalDate !== releaseDate &&
+    originalDate.length > 3
+
+  showOriginalDate &&
+    !isXsmall &&
+    addDetail(
+      <>
+        {[translate('resources.album.fields.originalDate'), originalDate].join(
+          '  '
+        )}
+      </>
+    )
+
+  yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
+
+  showReleaseDate &&
+    addDetail(
+      <>
+        {(!isXsmall
+          ? [translate('resources.album.fields.releaseDate'), releaseDate]
+          : ['○', record.releaseDate.substring(0, 4)]
+        ).join('  ')}
+      </>
+    )
+
+  const showReleases = record.releases > 1
+  showReleases &&
+    addDetail(
+      <>
+        {!isXsmall
+          ? [
+              record.releases,
+              translate('resources.album.fields.releases', {
+                smart_count: record.releases,
+              }),
+            ].join(' ')
+          : ['(', record.releases, ')))'].join(' ')}
+      </>
+    )
+
   addDetail(
     <>
       {record.songCount +
