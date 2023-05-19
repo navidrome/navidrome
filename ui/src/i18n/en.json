@@ -51,6 +51,7 @@
                 "name": "Name",
                 "genre": "Genre",
                 "compilation": "Compilation",
+                "year": "Year",
                 "originalDate": "Original",
                 "releaseDate": "Released",
                 "releases": "Release |||| Releases",
