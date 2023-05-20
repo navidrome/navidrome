@@ -196,8 +196,8 @@ func allOrNothing(items []string) (string, int) {
 }
 
 func minMax(items []int) (int, int) {
-	var max int = items[0]
-	var min int = items[0]
+	var max = items[0]
+	var min = items[0]
 	for _, value := range items {
 		max = number.Max(max, value)
 		if min == 0 {
