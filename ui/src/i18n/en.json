@@ -55,6 +55,7 @@
                 "originalDate": "Original",
                 "releaseDate": "Released",
                 "releases": "Release |||| Releases",
+                "released": "Released",
                 "updatedAt": "Updated at",
                 "comment": "Comment",
                 "rating": "Rating",
