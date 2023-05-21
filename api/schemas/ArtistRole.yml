@@ -1,0 +1,5 @@
+type: string
+enum:
+  - artist
+  - albumArtist
+description: The role of an artist in a track or album

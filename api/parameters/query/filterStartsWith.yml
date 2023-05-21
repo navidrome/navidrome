@@ -1,0 +1,9 @@
+  name: filter[startsWith]
+  in: query
+  description: 'Filter by any property that starts with text. Usage: filter[startsWith]=property:value'
+  required: false
+  schema:
+    type: array
+    items:
+      type: string
+      pattern: '^\w+:\w+'

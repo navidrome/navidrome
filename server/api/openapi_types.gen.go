@@ -44,8 +44,8 @@ type Album struct {
 
 // AlbumArtistRelationship defines model for AlbumArtistRelationship.
 type AlbumArtistRelationship struct {
-	Data ResourceObject `json:"data"`
-	Meta interface{}    `json:"meta"`
+	Data ResourceObject   `json:"data"`
+	Meta ArtistMetaObject `json:"meta"`
 }
 
 // AlbumAttributes defines model for AlbumAttributes.
@@ -146,7 +146,7 @@ type PaginationMeta struct {
 	// TotalItems The total number of items in the collection
 	TotalItems *int32 `json:"totalItems,omitempty"`
 
-	// TotalPages The total numeber of pages in the collection
+	// TotalPages The total number of pages in the collection
 	TotalPages *int32 `json:"totalPages,omitempty"`
 }
 
@@ -194,8 +194,8 @@ type Track struct {
 
 // TrackArtistRelationship defines model for TrackArtistRelationship.
 type TrackArtistRelationship struct {
-	Data ResourceObject `json:"data"`
-	Meta interface{}    `json:"meta"`
+	Data ResourceObject   `json:"data"`
+	Meta ArtistMetaObject `json:"meta"`
 }
 
 // TrackAttributes defines model for TrackAttributes.

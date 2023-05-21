@@ -1,0 +1,6 @@
+type: string
+description: The type of the resource
+enum:
+  - album
+  - artist
+  - track

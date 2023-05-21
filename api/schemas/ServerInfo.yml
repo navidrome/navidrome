@@ -1,0 +1,24 @@
+type: object
+required: [server, serverVersion, authRequired, features]
+properties:
+  server:
+    type: string
+    description: The name of the server software.
+    example: "navidrome"
+  serverVersion:
+    type: string
+    description: The version number of the server.
+    example: "0.60.0"
+  authRequired:
+    type: boolean
+    description: Whether the user has access to the server.
+    example: true
+  features:
+    type: array
+    description: A list of optional features the server supports.
+    items:
+      type: string
+      enum:
+        - albums
+        - artists
+        - images

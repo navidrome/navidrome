@@ -1,0 +1,9 @@
+oneOf:
+  - $ref: './Track.yml'
+  - $ref: './Artist.yml'
+discriminator:
+  propertyName: type
+  mapping:
+    track: './Track.yml'
+    album: './Album.yml'
+    artist: './Artist.yml'

@@ -1,0 +1,8 @@
+NotFound:
+  $ref: './NotFound.yml'
+NotAuthorized:
+  $ref: './NotAuthorized.yml'
+BadRequest:
+  $ref: './BadRequest.yml'
+InternalServerError:
+  $ref: './InternalServerError.yml'

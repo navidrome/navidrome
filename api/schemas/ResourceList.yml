@@ -1,0 +1,18 @@
+type: object
+properties:
+  data:
+    oneOf:
+      - $ref: './Track.yml'
+      - $ref: './Album.yml'
+      - $ref: './Artist.yml'
+      - type: array
+        items:
+          $ref: './ResourceObject.yml'
+  included:
+    type: array
+    items:
+      $ref: './IncludedResource.yml'
+  links:
+    $ref: './PaginationLinks.yml'
+  meta:
+    $ref: './PaginationMeta.yml'

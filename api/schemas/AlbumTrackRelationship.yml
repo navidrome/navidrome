@@ -1,0 +1,6 @@
+type: object
+properties:
+  data:
+    $ref: './ResourceObject.yml'
+required:
+  - data

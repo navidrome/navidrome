@@ -1,0 +1,55 @@
+type: object
+required: [title, artist, album, albumartist, track, mimetype, duration, channels, bitrate, size]
+properties:
+  title:
+    type: string
+    description: The title of the track
+  artist: # TODO: Remove
+    type: string
+    description: The name of the artist who performed the track
+  albumartist: # TODO: Remove
+    type: string
+    description: The primary artist of the album the track belongs to.
+  album: # TODO Remove
+    type: string
+    description: The name of the album the track belongs to
+  genre: # TODO Remove
+    type: string
+    description: The genre of the track.
+  track:
+    type: integer
+    description: The track number within the album.
+  disc:
+    type: integer
+    description: The disc number within a multi-disc album.
+  year:
+    type: integer
+    description: The release year of the track or album.
+  bpm:
+    type: integer
+    description: The beats per minute (BPM) of the track.
+  recording-mbid:
+    type: string
+    description: The MusicBrainz identifier for the recording of the track.
+  track-mbid:
+    type: string
+    description: The MusicBrainz identifier for the track.
+  comments:
+    type: string
+    description: Any additional comments or notes about the track.
+  mimetype:
+    type: string
+    description: The MIME type of the audio file.
+  duration:
+    type: number
+    format: float
+    description: The duration of the track in seconds
+  channels:
+    type: integer
+    description: The number of audio channels in the track.
+  bitrate:
+    type: integer
+    description: The bitrate of the audio file in kilobits per second (kbps).
+  size:
+    type: integer
+    description: The size of the audio file in bytes.

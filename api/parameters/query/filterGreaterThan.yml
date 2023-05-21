@@ -1,0 +1,9 @@
+name: filter[greaterThan]
+in: query
+description: 'Filter by any numeric property greater than a value. Usage: filter[greaterThan]=property:value'
+required: false
+schema:
+  type: array
+  items:
+    type: string
+    pattern: '^\w+:\d+'

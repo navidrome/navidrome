@@ -1,0 +1,9 @@
+name: filter[lessOrEqual]
+in: query
+description: 'Filter by any numeric property less than or equal to a value. Usage: filter[lessOrEqual]=property:value'
+required: false
+schema:
+  type: array
+  items:
+    type: string
+    pattern: '^\w+:\d+'

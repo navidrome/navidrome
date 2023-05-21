@@ -1,0 +1,9 @@
+name: page[limit]
+in: query
+description: The number of items per page
+required: false
+schema:
+  type: integer
+  format: int32
+  minimum: 0
+  default: 10

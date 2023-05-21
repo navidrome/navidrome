@@ -1,0 +1,16 @@
+type: object
+properties:
+  title:
+    type: string
+    description: The title of the album
+  releaseDate:
+    type: string
+    format: date
+    description: The release date of the album
+  genre:
+    type: string
+    description: The genre of the album
+required:
+  - title
+  - releaseDate
+  - genre
