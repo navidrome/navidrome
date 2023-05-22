@@ -1,4 +1,3 @@
-//go:generate npx swagger-cli bundle ../../api/spec.yml --outfile ../../api/openapi.yaml --type yaml
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config ./openapi_api.cfg.yaml "../../api/openapi.yaml"
 //go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config ./openapi_types.cfg.yaml "../../api/openapi.yaml"
 

@@ -43,16 +43,54 @@ var _ = Describe("GG", func() {
 		)
 	})
 
-	Describe("FirstOr", func() {
+	Describe("Coalesce", func() {
 		Context("when given a list of strings", func() {
 			It("returns the first non-empty value", func() {
-				Expect(gg.FirstOr("default", "foo", "bar", "baz")).To(Equal("foo"))
-				Expect(gg.FirstOr("default", "", "", "qux")).To(Equal("qux"))
+				Expect(gg.Coalesce("foo", "bar", "baz", "default")).To(Equal("foo"))
+				Expect(gg.Coalesce("", "", "qux", "default")).To(Equal("qux"))
 			})
 
 			It("returns the default value if all values are empty", func() {
-				Expect(gg.FirstOr("default", "", "", "")).To(Equal("default"))
-				Expect(gg.FirstOr("", "", "", "")).To(Equal(""))
+				Expect(gg.Coalesce("", "", "", "default")).To(Equal("default"))
+				Expect(gg.Coalesce("", "", "", "")).To(Equal(""))
+			})
+		})
+	})
+
+	Describe("P", func() {
+		Context("when given a non-zero value", func() {
+			It("should return a non-nil pointer to that value", func() {
+				value := 42
+				result := gg.P(value)
+				Expect(result).ToNot(BeNil())
+				Expect(*result).To(Equal(value))
+			})
+		})
+
+		Context("when given the zero value of a type", func() {
+			It("should return nil", func() {
+				var value string
+				result := gg.P(value)
+				Expect(result).To(BeNil())
+			})
+		})
+	})
+
+	Describe("V", func() {
+		Context("when given a non-nil pointer", func() {
+			It("should return the value of that pointer", func() {
+				value := 42
+				pointer := &value
+				result := gg.V(pointer)
+				Expect(result).To(Equal(value))
+			})
+		})
+
+		Context("when given a nil pointer", func() {
+			It("should return the zero value of the type", func() {
+				var pointer *string
+				result := gg.V(pointer)
+				Expect(result).To(Equal(""))
 			})
 		})
 	})

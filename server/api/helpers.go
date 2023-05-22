@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
+	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type contextKey string
@@ -38,19 +39,19 @@ func toAPITrack(mf model.MediaFile) Track {
 			Albumartist:   mf.AlbumArtist,
 			Artist:        mf.Artist,
 			Bitrate:       mf.BitRate,
-			Bpm:           p(mf.Bpm),
+			Bpm:           P(mf.Bpm),
 			Channels:      mf.Channels,
-			Comments:      p(mf.Comment),
-			Disc:          p(mf.DiscNumber),
+			Comments:      P(mf.Comment),
+			Disc:          P(mf.DiscNumber),
 			Duration:      mf.Duration,
-			Genre:         p(mf.Genre),
+			Genre:         P(mf.Genre),
 			Mimetype:      mf.ContentType(),
-			RecordingMbid: p(mf.MbzTrackID),
+			RecordingMbid: P(mf.MbzTrackID),
 			Size:          int(mf.Size),
 			Title:         mf.Title,
 			Track:         mf.TrackNumber,
-			TrackMbid:     p(mf.MbzReleaseTrackID),
-			Year:          p(mf.Year),
+			TrackMbid:     P(mf.MbzReleaseTrackID),
+			Year:          P(mf.Year),
 		},
 		Relationships: &TrackRelationships{
 			Albums:  &[]AlbumTrackRelationship{toAlbumRelationship(mf)},
@@ -97,22 +98,6 @@ func toAPITracks(mfs model.MediaFiles) []Track {
 	return tracks
 }
 
-func p[T comparable](t T) *T {
-	var zero T
-	if t == zero {
-		return nil
-	}
-	return &t
-}
-
-func v[T comparable](p *T) T {
-	var zero T
-	if p == nil {
-		return zero
-	}
-	return *p
-}
-
 // toQueryOptions convert a params struct to a model.QueryOptions struct, to be used by the
 // GetAll and CountAll functions. It assumes all GetXxxxParams functions have the exact same structure.
 func toQueryOptions(ctx context.Context, params GetTracksParams) model.QueryOptions {
@@ -133,8 +118,8 @@ func toQueryOptions(ctx context.Context, params GetTracksParams) model.QueryOpti
 	parseFilter(params.FilterGreaterOrEqual, func(f, v string) squirrel.Sqlizer { return squirrel.GtOrEq{f: v} })
 	parseFilter(params.FilterLessThan, func(f, v string) squirrel.Sqlizer { return squirrel.Lt{f: v} })
 	parseFilter(params.FilterLessOrEqual, func(f, v string) squirrel.Sqlizer { return squirrel.LtOrEq{f: v} })
-	offset := v(params.PageOffset)
-	limit := v(params.PageLimit)
+	offset := V(params.PageOffset)
+	limit := V(params.PageLimit)
 	sort, err := toSortParams(params.Sort)
 	if err != nil {
 		log.Warn(ctx, "Ignoring invalid sort parameter", err)
@@ -177,15 +162,15 @@ func toSortParams(sort *string) (string, error) {
 	return strings.Join(resultCols, ","), nil
 }
 
-func apiErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
+func apiErrorHandler(w http.ResponseWriter, _ *http.Request, err error) {
 	var res ErrorObject
 	switch {
 	case errors.Is(err, model.ErrNotAuthorized):
-		res = ErrorObject{Status: p(strconv.Itoa(http.StatusForbidden)), Title: p(http.StatusText(http.StatusForbidden))}
+		res = ErrorObject{Status: P(strconv.Itoa(http.StatusForbidden)), Title: P(http.StatusText(http.StatusForbidden))}
 	case errors.Is(err, model.ErrNotFound):
-		res = ErrorObject{Status: p(strconv.Itoa(http.StatusNotFound)), Title: p(http.StatusText(http.StatusNotFound))}
+		res = ErrorObject{Status: P(strconv.Itoa(http.StatusNotFound)), Title: P(http.StatusText(http.StatusNotFound))}
 	default:
-		res = ErrorObject{Status: p(strconv.Itoa(http.StatusInternalServerError)), Title: p(http.StatusText(http.StatusInternalServerError))}
+		res = ErrorObject{Status: P(strconv.Itoa(http.StatusInternalServerError)), Title: P(http.StatusText(http.StatusInternalServerError))}
 	}
 	w.Header().Set("Content-Type", "application/vnd.api+json")
 	w.WriteHeader(403)
@@ -196,9 +181,9 @@ func apiErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 func validationErrorHandler(w http.ResponseWriter, message string, statusCode int) {
 	_ = GetTracks400JSONResponse{BadRequestJSONResponse{Errors: []ErrorObject{
 		{
-			Status: p(strconv.Itoa(statusCode)),
-			Title:  p(http.StatusText(statusCode)),
-			Detail: p(message),
+			Status: P(strconv.Itoa(statusCode)),
+			Title:  P(http.StatusText(statusCode)),
+			Detail: P(message),
 		},
 	}}}.VisitGetTracksResponse(w)
 }

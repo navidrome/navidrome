@@ -32,7 +32,11 @@ test: ##@Development Run Go tests
 	go test -race -shuffle=on ./...
 .PHONY: test
 
-testall: test ##@Development Run Go and JS tests
+testapi: api/openapi.yaml ##@Development Validate OpenAPI spec
+	@npx swagger-cli validate api/openapi.yaml
+.PHONY: testapi
+
+testall: testapi test ##@Development Run Go and JS tests, and validate OpenAPI spec
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall
 
@@ -45,13 +49,18 @@ lintall: lint ##@Development Lint Go and JS code
 	@(cd ./ui && npm run lint)
 .PHONY: lintall
 
-wire: check_go_env ##@Development Update Dependency Injection
+gen: check_go_env api ##@Development Update Generated Code (wire, mocks, openapi, etc)
 	go run github.com/google/wire/cmd/wire@latest ./...
 .PHONY: wire
 
-api: check_go_env ##@Development Generate New Native API Server Boilerplate
+api: check_go_env api/openapi.yaml
 	go generate ./server/api/...
 .PHONY: api
+
+spec_parts=$(shell find api -name '*.yml')
+api/openapi.yaml: $(spec_parts)
+	@echo "Bundling OpenAPI spec..."
+	npx swagger-cli bundle api/spec.yml --outfile api/openapi.yaml --type yaml
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/...
