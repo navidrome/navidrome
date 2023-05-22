@@ -108,7 +108,24 @@ jobs:
         with:
           name: js-bundle
           path: ui/build
-          retention-days: 7
+
+  api:
+    name: Test and build API spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - run: make testapi
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: openapi.yaml
+          path: api/openapi.yaml
 
   binaries:
     name: Build binaries
@@ -155,7 +172,6 @@ jobs:
             dist
             !dist/*.tar.gz
             !dist/*.zip
-          retention-days: 7
 
   docker:
     name: Build and publish Docker images
