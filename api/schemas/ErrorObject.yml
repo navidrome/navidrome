@@ -8,5 +8,3 @@ properties:
     type: string
   detail:
     type: string
-required:
-  - errors

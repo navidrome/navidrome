@@ -178,6 +178,18 @@ var _ = Describe("Auth", func() {
 
 			Expect(w.Code).To(Equal(200))
 		})
+		It("does not override the Authorization header if x-nd-authorizer is not present", func() {
+			r := httptest.NewRequest("GET", "/index.html", nil)
+			r.Header.Set("Authorization", "original bearer")
+			w := httptest.NewRecorder()
+
+			authHeaderMapper(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.Header.Get("Authorization")).To(Equal("original bearer"))
+				w.WriteHeader(200)
+			})).ServeHTTP(w, r)
+
+			Expect(w.Code).To(Equal(200))
+		})
 	})
 
 	Describe("validateIPAgainstList", func() {

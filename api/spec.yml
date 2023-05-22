@@ -15,6 +15,9 @@ info:
 servers:
   - url: /api/v2
 
+security:
+  - bearerAuth: []
+
 paths:
   /server:
     $ref: './resources/server.yml'
@@ -38,3 +41,8 @@ components:
     $ref: './schemas/_index.yml'
   responses:
     $ref: './responses/_index.yml'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

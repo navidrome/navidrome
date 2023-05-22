@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 )
 
 var spec = func() *openapi3.T {
@@ -25,6 +26,8 @@ var spec = func() *openapi3.T {
 func New(ds model.DataStore) *Router {
 	r := &Router{ds: ds}
 	mux := chi.NewRouter()
+	mux.Use(server.Authenticator(ds))
+	mux.Use(server.JWTRefresher)
 	mux.Use(middleware.OapiRequestValidatorWithOptions(spec, &middleware.Options{
 		ErrorHandler: validationErrorHandler,
 	}))
