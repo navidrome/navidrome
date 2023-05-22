@@ -110,7 +110,7 @@ jobs:
           path: ui/build
 
   api:
-    name: Test and build API spec
+    name: Build OpenAPI spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -120,7 +120,17 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
-      - run: make testapi
+      - run: make lintapi
+
+      - run: make gen
+
+      - name: Verify no changes
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo 'Changes to OpenAPI spec caused changes to the code. Please review and commit the changes.'
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v3
         with:
@@ -129,7 +139,7 @@ jobs:
 
   binaries:
     name: Build binaries
-    needs: [js, go, go-lint]
+    needs: [js, go, go-lint, api]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

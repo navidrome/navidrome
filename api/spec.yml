@@ -12,6 +12,10 @@ info:
   contact:
     name: Navidrome
     url: https://navidrome.org
+  license:
+    name: GNU General Public License v3.0
+    url: https://github.com/navidrome/navidrome/blob/master/LICENSE
+
 servers:
   - url: /api/v2
 

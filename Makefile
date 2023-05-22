@@ -32,11 +32,7 @@ test: ##@Development Run Go tests
 	go test -race -shuffle=on ./...
 .PHONY: test
 
-testapi: api/openapi.yaml ##@Development Validate OpenAPI spec
-	@npx swagger-cli validate api/openapi.yaml
-.PHONY: testapi
-
-testall: testapi test ##@Development Run Go and JS tests, and validate OpenAPI spec
+testall: test ##@Development Run Go and JS tests, and validate OpenAPI spec
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall
 
@@ -44,7 +40,11 @@ lint: ##@Development Lint Go code
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v --timeout 5m
 .PHONY: lint
 
-lintall: lint ##@Development Lint Go and JS code
+lintapi: api/openapi.yaml ##@Development Lint OpenAPI spec
+	npx @redocly/cli lint api/openapi.yaml
+.PHONY: lintapi
+
+lintall: lint lintapi ##@Development Lint Go and JS code
 	@(cd ./ui && npm run check-formatting) || (echo "\n\nPlease run 'npm run prettier' to fix formatting issues." && exit 1)
 	@(cd ./ui && npm run lint)
 .PHONY: lintall
@@ -60,7 +60,7 @@ api: check_go_env api/openapi.yaml
 spec_parts=$(shell find api -name '*.yml')
 api/openapi.yaml: $(spec_parts)
 	@echo "Bundling OpenAPI spec..."
-	npx swagger-cli bundle api/spec.yml --outfile api/openapi.yaml --type yaml
+	npx @redocly/cli bundle api/spec.yml -o api/openapi.yaml
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
 	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/...
