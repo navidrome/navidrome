@@ -76,7 +76,7 @@ func toArtistRelationship(id string, artist ArtistRole) TrackArtistRelationship 
 			Type: ResourceTypeArtist,
 			Id:   id,
 		},
-		Meta: struct{ Role ArtistRole }{Role: artist},
+		Meta: ArtistMetaObject{Role: artist},
 	}
 }
 

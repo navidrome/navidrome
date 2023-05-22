@@ -45,7 +45,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	return router
 }
 
-func CreateAuraAPIRouter() *api.Router {
+func CreateNewNativeAPIRouter() *api.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	router := api.New(dataStore)

@@ -48,7 +48,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	))
 }
 
-func CreateAuraAPIRouter() *api.Router {
+func CreateNewNativeAPIRouter() *api.Router {
 	panic(wire.Build(
 		allProviders,
 	))

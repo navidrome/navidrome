@@ -49,7 +49,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go run github.com/google/wire/cmd/wire@latest ./...
 .PHONY: wire
 
-api: check_go_env ##@Development Generate Aura API Server Boilerplate
+api: check_go_env ##@Development Generate New Native API Server Boilerplate
 	go generate ./server/api/...
 .PHONY: api
 
