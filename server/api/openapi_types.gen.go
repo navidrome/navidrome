@@ -306,6 +306,9 @@ type FilterStartsWith = []string
 // Include defines model for include.
 type Include = string
 
+// IncludeForAlbum defines model for includeForAlbum.
+type IncludeForAlbum = includeSlice
+
 // IncludeForAlbums defines model for includeForAlbums.
 type IncludeForAlbums = includeSlice
 
@@ -363,7 +366,7 @@ type GetAlbumsParams struct {
 // GetAlbumParams defines parameters for GetAlbum.
 type GetAlbumParams struct {
 	// Include Related resources to include in the response, separated by commas
-	Include *IncludeForAlbums `form:"include,omitempty" json:"include,omitempty"`
+	Include *IncludeForAlbum `form:"include,omitempty" json:"include,omitempty"`
 }
 
 // GetArtistsParams defines parameters for GetArtists.

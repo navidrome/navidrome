@@ -122,10 +122,16 @@ func (a *Router) GetAlbums(ctx context.Context, request GetAlbumsRequestObject) 
 	}
 	baseUrl := baseResourceUrl(ctx, "albums")
 	links, meta := buildPaginationLinksAndMeta(int32(cnt), request.Params, baseUrl)
+	resources := includedResources{ctx: ctx, ds: a.ds, includes: request.Params.Include}
+	err = resources.AddArtists(albums.ArtistIDs()...)
+	if err != nil {
+		return nil, err
+	}
 	return GetAlbums200JSONResponse{
-		Data:  toAPIAlbums(albums),
-		Links: links,
-		Meta:  &meta,
+		Data:     toAPIAlbums(albums),
+		Links:    links,
+		Meta:     &meta,
+		Included: resources.Build(),
 	}, nil
 }
 
@@ -134,7 +140,19 @@ func (a *Router) GetAlbum(ctx context.Context, request GetAlbumRequestObject) (G
 	if err != nil {
 		return nil, err
 	}
-	return GetAlbum200JSONResponse{Data: toAPIAlbum(*album)}, nil
+	resources := includedResources{ctx: ctx, ds: a.ds, includes: request.Params.Include}
+	err = resources.AddArtists(album.ArtistID, album.AlbumArtistID)
+	if err != nil {
+		return nil, err
+	}
+	err = resources.AddTracks(album.ID)
+	if err != nil {
+		return nil, err
+	}
+	return GetAlbum200JSONResponse{
+		Data:     toAPIAlbum(*album),
+		Included: resources.Build(),
+	}, nil
 }
 
 func (a *Router) GetArtists(ctx context.Context, request GetArtistsRequestObject) (GetArtistsResponseObject, error) {

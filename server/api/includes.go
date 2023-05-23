@@ -16,8 +16,26 @@ type includedResources struct {
 	resources []IncludedResource
 }
 
+func (i *includedResources) AddTracks(albumIds ...string) error {
+	if i.includes == nil || !slices.Contains(*i.includes, string(ResourceTypeTrack)) {
+		return nil
+	}
+	sort.Strings(albumIds)
+	slices.Compact(albumIds)
+	tracks, err := i.ds.MediaFile(i.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": albumIds}})
+	if err != nil {
+		return err
+	}
+	for _, tr := range tracks {
+		inc := &IncludedResource{}
+		_ = inc.FromTrack(toAPITrack(tr))
+		i.resources = append(i.resources, *inc)
+	}
+	return nil
+}
+
 func (i *includedResources) AddAlbums(albumIds ...string) error {
-	if i.includes == nil || !slices.Contains(*i.includes, "album") {
+	if i.includes == nil || !slices.Contains(*i.includes, string(ResourceTypeAlbum)) {
 		return nil
 	}
 	sort.Strings(albumIds)
@@ -35,7 +53,7 @@ func (i *includedResources) AddAlbums(albumIds ...string) error {
 }
 
 func (i *includedResources) AddArtists(artistIds ...string) error {
-	if i.includes == nil || !slices.Contains(*i.includes, "artist") {
+	if i.includes == nil || !slices.Contains(*i.includes, string(ResourceTypeArtist)) {
 		return nil
 	}
 	sort.Strings(artistIds)
@@ -53,7 +71,7 @@ func (i *includedResources) AddArtists(artistIds ...string) error {
 }
 
 func (i *includedResources) Build() *[]IncludedResource {
-	if len(i.resources) == 0 {
+	if i.includes == nil {
 		return nil
 	}
 	return &i.resources

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -89,6 +90,14 @@ func (als Albums) ToAlbumArtist() Artist {
 	a.MbzArtistID = slice.MostFrequent(mbzArtistIds)
 
 	return a
+}
+
+func (als Albums) ArtistIDs() []string {
+	var ids []string
+	for _, al := range als {
+		ids = append(ids, strings.Split(al.AllArtistIDs, " ")...)
+	}
+	return ids
 }
 
 type AlbumRepository interface {

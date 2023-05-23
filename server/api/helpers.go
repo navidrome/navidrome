@@ -133,14 +133,6 @@ func toAPIArtist(ma model.Artist) Artist {
 	}
 }
 
-func toAPIArtists(mas model.Artists) []Artist {
-	artists := make([]Artist, len(mas))
-	for i := range mas {
-		artists[i] = toAPIArtist(mas[i])
-	}
-	return artists
-}
-
 type GetParams interface {
 	GetParams() GetTracksParams
 }

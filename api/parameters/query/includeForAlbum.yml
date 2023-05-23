@@ -9,4 +9,5 @@ schema:
   items:
     type: string
     enum:
+      - track
       - artist

@@ -31,6 +31,10 @@ get:
                 $ref: '../schemas/PaginationLinks.yml'
               meta:
                 $ref: '../schemas/PaginationMeta.yml'
+              included:
+                type: array
+                items:
+                  $ref: '../schemas/IncludedResource.yml'
     '400':
       $ref: '../responses/BadRequest.yml'
     '403':
