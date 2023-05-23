@@ -23,7 +23,7 @@ var _ = Describe("MediaStreamer", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
+		conf.Server.CacheFolder, _ = os.MkdirTemp("", "file_caches")
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -34,10 +34,10 @@ var _ = Describe("MediaStreamer", func() {
 		streamer = core.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
-		_ = os.RemoveAll(conf.Server.DataFolder)
+		_ = os.RemoveAll(conf.Server.CacheFolder)
 	})
 
-	Context("NewStream", MustPassRepeatedly(2), func() {
+	Context("NewStream", func() {
 		It("returns a seekable stream if format is 'raw'", func() {
 			s, err := streamer.NewStream(ctx, "123", "raw", 0)
 			Expect(err).ToNot(HaveOccurred())

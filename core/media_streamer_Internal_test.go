@@ -20,7 +20,7 @@ var _ = Describe("MediaStreamer", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder, _ = os.MkdirTemp("", "file_caches")
+		conf.Server.CacheFolder, _ = os.MkdirTemp("", "file_caches")
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -30,7 +30,7 @@ var _ = Describe("MediaStreamer", func() {
 		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
 	})
 	AfterEach(func() {
-		_ = os.RemoveAll(conf.Server.DataFolder)
+		_ = os.RemoveAll(conf.Server.CacheFolder)
 	})
 
 	Context("selectTranscodingOptions", func() {

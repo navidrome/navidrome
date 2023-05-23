@@ -135,6 +135,11 @@ var (
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
+		os.Exit(1)
+	}
 	Load()
 }
 
