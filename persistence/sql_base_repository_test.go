@@ -69,6 +69,10 @@ var _ = Describe("sqlRepository", func() {
 				sql := r.buildSortOrder("name desc, substr(id, 7), status asc", "desc")
 				Expect(sql).To(Equal("name asc, substr(id, 7) desc, status desc"))
 			})
+			It("handles nested functions", func() {
+				sql := r.buildSortOrder("name desc, coalesce(nullif(release_date, ''), nullif(original_date, '')), status asc", "desc")
+				Expect(sql).To(Equal("name asc, coalesce(nullif(release_date, ''), nullif(original_date, '')) desc, status desc"))
+			})
 		})
 	})
 })

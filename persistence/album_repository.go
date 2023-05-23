@@ -27,7 +27,7 @@ func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRep
 		"name":           "order_album_name asc, order_album_artist_name asc",
 		"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
 		"random":         "RANDOM()",
-		"max_year":       "max_year asc, name, order_album_name asc",
+		"max_year":       "max_year, coalesce(nullif(original_date, ''), nullif(release_date, '')), name, order_album_name asc",
 		"recently_added": recentlyAddedSort(),
 	}
 	r.filterMappings = map[string]filterFunc{

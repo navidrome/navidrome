@@ -97,14 +97,16 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 }
 
 func splitFunc(delimiter rune) func(c rune) bool {
-	open := false
+	open := 0
 	return func(c rune) bool {
-		if open {
-			open = c != ')'
+		if c == '(' {
+			open++
 			return false
 		}
-		if c == '(' {
-			open = true
+		if open > 0 {
+			if c == ')' {
+				open--
+			}
 			return false
 		}
 		return c == delimiter
