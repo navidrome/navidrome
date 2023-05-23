@@ -22,6 +22,8 @@ type contextKey string
 
 const requestInContext contextKey = "request"
 
+type includeSlice []string
+
 // storeRequestInContext is a middleware function that adds the full request object to the context.
 func storeRequestInContext(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +100,40 @@ func toAPITracks(mfs model.MediaFiles) []Track {
 	return tracks
 }
 
+func toAPIAlbum(ma model.Album) Album {
+	return Album{
+		Type: ResourceTypeAlbum,
+		Id:   ma.ID,
+		Attributes: &AlbumAttributes{
+			Artist:      ma.AlbumArtist,
+			Genre:       P(ma.Genre),
+			ReleaseDate: P(ma.ReleaseDate),
+			Title:       ma.Name,
+			Tracktotal:  P(ma.SongCount),
+		},
+	}
+}
+
+func toAPIAlbums(mas model.Albums) []Album {
+	albums := make([]Album, len(mas))
+	for i := range mas {
+		albums[i] = toAPIAlbum(mas[i])
+	}
+	return albums
+}
+
+type GetParams interface {
+	GetParams() GetTracksParams
+}
+
+func (p GetTracksParams) GetParams() GetTracksParams { return p }
+
+func (p GetAlbumsParams) GetParams() GetTracksParams { return GetTracksParams(p) }
+
 // toQueryOptions convert a params struct to a model.QueryOptions struct, to be used by the
 // GetAll and CountAll functions. It assumes all GetXxxxParams functions have the exact same structure.
-func toQueryOptions(ctx context.Context, params GetTracksParams) model.QueryOptions {
+func toQueryOptions(ctx context.Context, p GetParams) model.QueryOptions {
+	params := p.GetParams()
 	var filters squirrel.And
 	parseFilter := func(fs *[]string, op func(f, v string) squirrel.Sqlizer) {
 		if fs != nil {
@@ -188,7 +221,8 @@ func validationErrorHandler(w http.ResponseWriter, message string, statusCode in
 	}}}.VisitGetTracksResponse(w)
 }
 
-func buildPaginationLinksAndMeta(totalItems int32, params GetTracksParams, resourceName string) (PaginationLinks, PaginationMeta) {
+func buildPaginationLinksAndMeta(totalItems int32, p GetParams, resourceName string) (PaginationLinks, PaginationMeta) {
+	params := p.GetParams()
 	pageLimit := *params.PageLimit
 	pageOffset := *params.PageOffset
 
@@ -230,7 +264,7 @@ func buildPaginationLinksAndMeta(totalItems int32, params GetTracksParams, resou
 			query.Add("sort", *params.Sort)
 		}
 		if params.Include != nil {
-			query.Add("include", *params.Include)
+			query.Add("include", A(*params.Include))
 		}
 
 		link := resourceName
@@ -266,6 +300,14 @@ func buildPaginationLinksAndMeta(totalItems int32, params GetTracksParams, resou
 	}
 
 	return links, meta
+}
+
+func A[T any](slice []T) string {
+	var buf []string
+	for _, v := range slice {
+		buf = append(buf, fmt.Sprintf("%v", v))
+	}
+	return strings.Join(buf, ",")
 }
 
 func baseResourceUrl(ctx context.Context, resourceName string) string {

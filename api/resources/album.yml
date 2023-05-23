@@ -2,7 +2,7 @@ get:
   summary: Retrieve an individual album
   operationId: getAlbum
   parameters:
-    - $ref: '../parameters/query/include.yml'
+    - $ref: '../parameters/query/includeForAlbums.yml'
     - name: albumId
       in: path
       description: The unique identifier of the album

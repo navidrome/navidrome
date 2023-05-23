@@ -22,3 +22,7 @@ sort:
   $ref: './query/sort.yml'
 include:
   $ref: './query/include.yml'
+includeForTracks:
+  $ref: './query/includeForTracks.yml'
+includeForAlbums:
+  $ref: './query/includeForAlbums.yml'

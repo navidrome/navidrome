@@ -50,26 +50,6 @@ type Router struct {
 	ds model.DataStore
 }
 
-func (a *Router) GetAlbums(ctx context.Context, request GetAlbumsRequestObject) (GetAlbumsResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *Router) GetAlbum(ctx context.Context, request GetAlbumRequestObject) (GetAlbumResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *Router) GetArtists(ctx context.Context, request GetArtistsRequestObject) (GetArtistsResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a *Router) GetArtist(ctx context.Context, request GetArtistRequestObject) (GetArtistResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (a *Router) GetServerInfo(_ context.Context, _ GetServerInfoRequestObject) (GetServerInfoResponseObject, error) {
 	return GetServerInfo200JSONResponse{
 		Data: ServerInfo{
@@ -106,4 +86,41 @@ func (a *Router) GetTrack(ctx context.Context, request GetTrackRequestObject) (G
 		return nil, err
 	}
 	return GetTrack200JSONResponse{Data: toAPITrack(*mf)}, nil
+}
+
+func (a *Router) GetAlbums(ctx context.Context, request GetAlbumsRequestObject) (GetAlbumsResponseObject, error) {
+	options := toQueryOptions(ctx, request.Params)
+	albums, err := a.ds.Album(ctx).GetAll(options)
+	if err != nil {
+		return nil, err
+	}
+	cnt, err := a.ds.MediaFile(ctx).CountAll(options)
+	if err != nil {
+		return nil, err
+	}
+	baseUrl := baseResourceUrl(ctx, "albums")
+	links, meta := buildPaginationLinksAndMeta(int32(cnt), request.Params, baseUrl)
+	return GetAlbums200JSONResponse{
+		Data:  toAPIAlbums(albums),
+		Links: links,
+		Meta:  &meta,
+	}, nil
+}
+
+func (a *Router) GetAlbum(ctx context.Context, request GetAlbumRequestObject) (GetAlbumResponseObject, error) {
+	album, err := a.ds.Album(ctx).Get(request.AlbumId)
+	if err != nil {
+		return nil, err
+	}
+	return GetAlbum200JSONResponse{Data: toAPIAlbum(*album)}, nil
+}
+
+func (a *Router) GetArtists(ctx context.Context, request GetArtistsRequestObject) (GetArtistsResponseObject, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *Router) GetArtist(ctx context.Context, request GetArtistRequestObject) (GetArtistResponseObject, error) {
+	//TODO implement me
+	panic("implement me")
 }

@@ -2,7 +2,7 @@ get:
   summary: Retrieve an individual track
   operationId: getTrack
   parameters:
-    - $ref: '../parameters/query/include.yml'
+    - $ref: '../parameters/query/includeForTracks.yml'
     - name: trackId
       in: path
       description: The unique identifier of the track

@@ -1,5 +1,5 @@
 get:
-  summary: Get a list of tracks
+  summary: Retrieve a list of tracks
   operationId: getTracks
   parameters:
     - $ref: '../parameters/query/pageLimit.yml'
@@ -13,7 +13,7 @@ get:
     - $ref: '../parameters/query/filterStartsWith.yml'
     - $ref: '../parameters/query/filterEndsWith.yml'
     - $ref: '../parameters/query/sort.yml'
-    - $ref: '../parameters/query/include.yml'
+    - $ref: '../parameters/query/includeForTracks.yml'
   responses:
     '200':
       description: A list of tracks
