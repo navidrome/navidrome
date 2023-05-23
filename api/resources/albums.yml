@@ -32,6 +32,7 @@ get:
               meta:
                 $ref: '../schemas/PaginationMeta.yml'
               included:
+                description: Included resources, as requested by the `include` query parameter
                 type: array
                 items:
                   $ref: '../schemas/IncludedResource.yml'
