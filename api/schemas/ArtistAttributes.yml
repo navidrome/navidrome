@@ -6,3 +6,5 @@ properties:
   bio:
     type: string
     description: A short biography of the artist
+required:
+  - name

@@ -20,6 +20,10 @@ get:
             properties:
               data:
                 $ref: '../schemas/Track.yml'
+              included:
+                type: array
+                items:
+                  $ref: '../schemas/IncludedResource.yml'
     '403':
       $ref: '../responses/NotAuthorized.yml'
     '404':

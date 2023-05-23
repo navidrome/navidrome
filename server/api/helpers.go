@@ -122,6 +122,25 @@ func toAPIAlbums(mas model.Albums) []Album {
 	return albums
 }
 
+func toAPIArtist(ma model.Artist) Artist {
+	return Artist{
+		Type: ResourceTypeArtist,
+		Id:   ma.ID,
+		Attributes: &ArtistAttributes{
+			Name: ma.Name,
+			Bio:  P(ma.Biography),
+		},
+	}
+}
+
+func toAPIArtists(mas model.Artists) []Artist {
+	artists := make([]Artist, len(mas))
+	for i := range mas {
+		artists[i] = toAPIArtist(mas[i])
+	}
+	return artists
+}
+
 type GetParams interface {
 	GetParams() GetTracksParams
 }

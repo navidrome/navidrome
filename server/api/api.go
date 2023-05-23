@@ -73,10 +73,20 @@ func (a *Router) GetTracks(ctx context.Context, request GetTracksRequestObject) 
 	}
 	baseUrl := baseResourceUrl(ctx, "tracks")
 	links, meta := buildPaginationLinksAndMeta(int32(cnt), request.Params, baseUrl)
+	resources := includedResources{ctx: ctx, ds: a.ds, includes: request.Params.Include}
+	err = resources.AddArtists(mfs.ArtistIDs()...)
+	if err != nil {
+		return nil, err
+	}
+	err = resources.AddAlbums(mfs.AlbumIDs()...)
+	if err != nil {
+		return nil, err
+	}
 	return GetTracks200JSONResponse{
-		Data:  toAPITracks(mfs),
-		Links: links,
-		Meta:  &meta,
+		Data:     toAPITracks(mfs),
+		Links:    links,
+		Meta:     &meta,
+		Included: resources.Build(),
 	}, nil
 }
 
@@ -85,7 +95,19 @@ func (a *Router) GetTrack(ctx context.Context, request GetTrackRequestObject) (G
 	if err != nil {
 		return nil, err
 	}
-	return GetTrack200JSONResponse{Data: toAPITrack(*mf)}, nil
+	resources := includedResources{ctx: ctx, ds: a.ds, includes: request.Params.Include}
+	err = resources.AddArtists(mf.ArtistID, mf.AlbumArtistID)
+	if err != nil {
+		return nil, err
+	}
+	err = resources.AddAlbums(mf.AlbumID)
+	if err != nil {
+		return nil, err
+	}
+	return GetTrack200JSONResponse{
+		Data:     toAPITrack(*mf),
+		Included: resources.Build(),
+	}, nil
 }
 
 func (a *Router) GetAlbums(ctx context.Context, request GetAlbumsRequestObject) (GetAlbumsResponseObject, error) {
