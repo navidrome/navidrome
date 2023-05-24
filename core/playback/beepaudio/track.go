@@ -1,4 +1,4 @@
-package playback
+package beepaudio
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/speaker"
-	"github.com/navidrome/navidrome/core/playback/beepaudio"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -36,11 +35,11 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*Track, error)
 
 	switch contentType {
 	case "audio/mpeg":
-		streamer, format, err = beepaudio.DecodeMp3(mf.Path)
+		streamer, format, err = DecodeMp3(mf.Path)
 	case "audio/x-wav":
-		streamer, format, err = beepaudio.DecodeWAV(mf.Path)
+		streamer, format, err = DecodeWAV(mf.Path)
 	case "audio/mp4":
-		streamer, format, tmpfileToCleanup, err = beepaudio.DecodeFLAC(mf.Path)
+		streamer, format, tmpfileToCleanup, err = DecodeFLAC(mf.Path)
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)
 	}

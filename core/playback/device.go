@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/faiface/beep/speaker"
+	"github.com/navidrome/navidrome/core/playback/beepaudio"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -19,8 +20,9 @@ type PlaybackDevice struct {
 	PlaybackQueue        *Queue
 	Gain                 float32
 	PlaybackDone         chan bool
-	ActiveTrack          *Track
+	ActiveTrack          *beepaudio.Track
 	TrackSwitcherStarted bool
+	Output               AudioPlayback
 }
 
 type DeviceStatus struct {
@@ -273,7 +275,7 @@ func (pd *PlaybackDevice) switchActiveTrackByIndex(index int) error {
 		return fmt.Errorf("error setting offset of next track to zero")
 	}
 
-	track, err := NewTrack(pd.PlaybackDone, *currentTrack)
+	track, err := beepaudio.NewTrack(pd.PlaybackDone, *currentTrack)
 	if err != nil {
 		return err
 	}
