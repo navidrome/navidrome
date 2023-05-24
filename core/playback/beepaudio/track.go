@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type Track struct {
+type BeepTrack struct {
 	MediaFile         model.MediaFile
 	Ctrl              *beep.Ctrl
 	Volume            *effects.Volume
@@ -22,8 +22,8 @@ type Track struct {
 	PlaybackDone      chan bool
 }
 
-func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*Track, error) {
-	t := Track{}
+func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*BeepTrack, error) {
+	t := BeepTrack{}
 
 	contentType := mf.ContentType()
 	log.Debug("loading track", "trackname", mf.Path, "mediatype", contentType)
@@ -77,17 +77,17 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*Track, error)
 	return &t, nil
 }
 
-func (t *Track) String() string {
+func (t *BeepTrack) String() string {
 	return fmt.Sprintf("Name: %s", t.MediaFile.Path)
 }
 
-func (t *Track) SetVolume(value float64) {
+func (t *BeepTrack) SetVolume(value float64) {
 	speaker.Lock()
 	t.Volume.Volume += value
 	speaker.Unlock()
 }
 
-func (t *Track) Unpause() {
+func (t *BeepTrack) Unpause() {
 	speaker.Lock()
 	if t.Ctrl.Paused {
 		t.Ctrl.Paused = false
@@ -97,7 +97,7 @@ func (t *Track) Unpause() {
 	speaker.Unlock()
 }
 
-func (t *Track) Pause() {
+func (t *BeepTrack) Pause() {
 	speaker.Lock()
 	if t.Ctrl.Paused {
 		log.Debug("tried to pause while already paused")
@@ -107,7 +107,7 @@ func (t *Track) Pause() {
 	speaker.Unlock()
 }
 
-func (t *Track) Close() {
+func (t *BeepTrack) Close() {
 	if t.ActiveStream != nil {
 		log.Debug("closing activ stream")
 		t.ActiveStream.Close()
@@ -124,7 +124,7 @@ func (t *Track) Close() {
 }
 
 // Position returns the playback position in seconds
-func (t *Track) Position() int {
+func (t *BeepTrack) Position() int {
 	if t.Ctrl.Streamer == nil {
 		log.Debug("streamer is not setup (nil), could not get position")
 		return 0
@@ -142,7 +142,7 @@ func (t *Track) Position() int {
 }
 
 // offset = pd.PlaybackQueue.Offset
-func (t *Track) SetPosition(offset int) error {
+func (t *BeepTrack) SetPosition(offset int) error {
 	streamer, ok := t.Ctrl.Streamer.(beep.StreamSeeker)
 	if ok {
 		sampleRatePerSecond := t.SampleRate.N(time.Second)
@@ -153,6 +153,6 @@ func (t *Track) SetPosition(offset int) error {
 	return fmt.Errorf("streamer is not seekable")
 }
 
-func (t *Track) IsPlaying() bool {
+func (t *BeepTrack) IsPlaying() bool {
 	return t.Ctrl != nil && !t.Ctrl.Paused
 }

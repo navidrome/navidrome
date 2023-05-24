@@ -17,17 +17,6 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
-type AudioPlayback interface {
-	Play(playbackDoneChannel chan bool, mf model.MediaFile) error
-	IsPlaying() bool
-	SetVolume(value float64) error
-	Pause() error
-	Unpause() error
-	Position() (error, int)
-	SetPosition(offset int) error
-	Close()
-}
-
 type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDeviceForUser(user string) (*PlaybackDevice, error)

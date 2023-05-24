@@ -10,6 +10,16 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+type Track interface {
+	IsPlaying() bool
+	SetVolume(value float64)
+	Pause()
+	Unpause()
+	Position() int
+	SetPosition(offset int) error
+	Close()
+}
+
 type PlaybackDevice struct {
 	ParentPlaybackServer PlaybackServer
 	Default              bool
@@ -20,9 +30,8 @@ type PlaybackDevice struct {
 	PlaybackQueue        *Queue
 	Gain                 float32
 	PlaybackDone         chan bool
-	ActiveTrack          *beepaudio.Track
+	ActiveTrack          Track
 	TrackSwitcherStarted bool
-	Output               AudioPlayback
 }
 
 type DeviceStatus struct {
