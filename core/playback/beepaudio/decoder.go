@@ -1,4 +1,4 @@
-package playback
+package beepaudio
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
+func DecodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, beep.Format{}, err
@@ -21,7 +21,7 @@ func decodeMp3(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 	return mp3.Decode(f)
 }
 
-func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
+func DecodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, beep.Format{}, err
@@ -29,7 +29,7 @@ func decodeWAV(path string) (s beep.StreamSeekCloser, format beep.Format, err er
 	return wav.Decode(f)
 }
 
-func decodeFLAC(path string) (s beep.StreamSeekCloser, format beep.Format, fileToCleanup string, err error) {
+func DecodeFLAC(path string) (s beep.StreamSeekCloser, format beep.Format, fileToCleanup string, err error) {
 	// TODO: Turn this into a semi-parallel operation: start playing while still transcoding/copying
 	log.Debug("decode to FLAC", "filename", path)
 	fFmpeg := ffmpeg.New()
