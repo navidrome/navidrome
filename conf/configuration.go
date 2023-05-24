@@ -54,6 +54,7 @@ type configOptions struct {
 	IndexGroups                  string
 	SubsonicArtistParticipations bool
 	FFmpegPath                   string
+	MPVPath                      string
 	CoverArtPriority             string
 	CoverJpegQuality             int
 	ArtistArtPriority            string
