@@ -18,8 +18,9 @@ import AlbumIcon from '@material-ui/icons/Album'
 import clsx from 'clsx'
 import { useDrag } from 'react-dnd'
 import { playTracks } from '../actions'
-import { AlbumContextMenu, FormatFullDate } from '../common'
+import { AlbumContextMenu } from '../common'
 import { DraggableTypes } from '../consts'
+import { formatFullDate } from '../utils'
 
 const useStyles = makeStyles({
   subtitle: {
@@ -66,7 +67,7 @@ const ReleaseRow = forwardRef(
     let releaseTitle = []
     if (record.releaseDate) {
       releaseTitle.push(translate('resources.album.fields.released'))
-      releaseTitle.push(FormatFullDate(record.releaseDate))
+      releaseTitle.push(formatFullDate(record.releaseDate))
       if (record.catalogNum && isDesktop) {
         releaseTitle.push('· Cat #')
         releaseTitle.push(record.catalogNum)
