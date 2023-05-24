@@ -156,3 +156,7 @@ func (t *BeepTrack) SetPosition(offset int) error {
 func (t *BeepTrack) IsPlaying() bool {
 	return t.Ctrl != nil && !t.Ctrl.Paused
 }
+
+func (t *BeepTrack) CloseDevice() {
+	speaker.Close()
+}
