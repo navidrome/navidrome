@@ -25,14 +25,13 @@ import {
   ArtistLinkField,
   DurationField,
   formatRange,
-  FormatFullDate,
   SizeField,
   LoveButton,
   RatingField,
   useAlbumsPerPage,
 } from '../common'
 import config from '../config'
-import { intersperse } from '../utils'
+import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 import AnchorMe from '../common/Linkify'
 
@@ -198,12 +197,12 @@ const Details = (props) => {
 
   const originalYearRange = formatRange(record, 'originalYear')
   const originalDate = record.originalDate
-    ? FormatFullDate(record.originalDate)
+    ? formatFullDate(record.originalDate)
     : originalYearRange
   const yearRange = formatRange(record, 'year')
-  const date = record.date ? FormatFullDate(record.date) : yearRange
+  const date = record.date ? formatFullDate(record.date) : yearRange
   const releaseDate = record.releaseDate
-    ? FormatFullDate(record.releaseDate)
+    ? formatFullDate(record.releaseDate)
     : date
 
   const showReleaseDate = date !== releaseDate && releaseDate.length > 3
