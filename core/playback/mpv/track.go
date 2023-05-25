@@ -7,6 +7,7 @@ package mpv
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/DexterLB/mpvipc"
 	"github.com/navidrome/navidrome/log"
@@ -26,12 +27,17 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 		return nil, err
 	}
 
-	args := createMPVCommand(mpvComdTemplate, mf.Path, mpvSocket)
+	tmpSocketName := TempFileName("mpv-ctrl-", ".socket")
+
+	args := createMPVCommand(mpvComdTemplate, mf.Path, tmpSocketName)
 	start(args)
+
+	// FIXME: this won't stay like this ...
+	time.Sleep(1000 * time.Millisecond)
 
 	var err error
 
-	conn := mpvipc.NewConnection(mpvSocket)
+	conn := mpvipc.NewConnection(tmpSocketName)
 	err = conn.Open()
 
 	if err != nil {
@@ -96,9 +102,9 @@ func (t *MpvTrack) Position() int {
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {
-	err := t.Conn.Set("time-pos", offset)
+	err := t.Conn.Set("time-pos", float64(offset))
 	if err != nil {
-		log.Error(err)
+		log.Error("could not set the position in track", "offset", offset, "error", err)
 		return err
 	}
 	log.Info("set position", "offset", offset)
@@ -118,8 +124,4 @@ func (t *MpvTrack) IsPlaying() bool {
 		return false
 	}
 	return !pause
-}
-
-func (t *MpvTrack) CloseDevice() {
-
 }

@@ -114,6 +114,8 @@ func (t *BeepTrack) Close() {
 		t.ActiveStream = nil
 	}
 
+	speaker.Close()
+
 	if t.TempfileToCleanup != "" {
 		log.Debug("Removing tempfile", "tmpfilename", t.TempfileToCleanup)
 		err := os.Remove(t.TempfileToCleanup)
@@ -155,8 +157,4 @@ func (t *BeepTrack) SetPosition(offset int) error {
 
 func (t *BeepTrack) IsPlaying() bool {
 	return t.Ctrl != nil && !t.Ctrl.Paused
-}
-
-func (t *BeepTrack) CloseDevice() {
-	speaker.Close()
 }

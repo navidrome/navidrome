@@ -1,11 +1,14 @@
 package mpv
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -15,7 +18,6 @@ import (
 
 // mpv --no-audio-display --pause 'Jack Johnson/On And On/01 Times Like These.m4a' --input-ipc-server=/tmp/gonzo.socket
 const (
-	mpvSocket       = "/tmp/mpv_rpc"
 	mpvComdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s"
 )
 
@@ -41,7 +43,7 @@ type mpvCmd struct {
 func (j *mpvCmd) _start() error {
 	cmd := exec.Command(j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
-	if log.CurrentLevel() >= log.LevelDebug {
+	if log.CurrentLevel() >= log.LevelTrace {
 		cmd.Stderr = os.Stderr
 	} else {
 		cmd.Stderr = io.Discard
@@ -119,3 +121,9 @@ var (
 	mpvPath string
 	mpvErr  error
 )
+
+func TempFileName(prefix, suffix string) string {
+	randBytes := make([]byte, 16)
+	rand.Read(randBytes)
+	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
+}

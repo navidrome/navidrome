@@ -17,7 +17,6 @@ type Track interface {
 	Position() int
 	SetPosition(offset int) error
 	Close()
-	CloseDevice()
 }
 
 type PlaybackDevice struct {
@@ -253,7 +252,6 @@ func (pd *PlaybackDevice) trackSwitcherGoroutine() {
 		log.Info("track switching detected")
 		if pd.ActiveTrack != nil {
 			pd.ActiveTrack.Close()
-			pd.ActiveTrack.CloseDevice()
 			pd.ActiveTrack = nil
 		}
 
