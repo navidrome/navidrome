@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/navidrome/navidrome/core/playback/beepaudio"
+	"github.com/navidrome/navidrome/core/playback/mpv"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -283,7 +283,7 @@ func (pd *PlaybackDevice) switchActiveTrackByIndex(index int) error {
 		return fmt.Errorf("error setting offset of next track to zero")
 	}
 
-	track, err := beepaudio.NewTrack(pd.PlaybackDone, *currentTrack)
+	track, err := mpv.NewTrack(pd.PlaybackDone, *currentTrack)
 	if err != nil {
 		return err
 	}

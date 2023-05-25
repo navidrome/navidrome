@@ -35,7 +35,7 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 	err = conn.Open()
 
 	if err != nil {
-		log.Error(err)
+		log.Error("error opening new connection", "error", err)
 		return nil, err
 	}
 
@@ -55,7 +55,7 @@ func (t *MpvTrack) String() string {
 func (t *MpvTrack) SetVolume(value float64) {
 	err := t.Conn.Set("volume", value)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	log.Info("set volume", "volume", value)
 }
@@ -63,7 +63,7 @@ func (t *MpvTrack) SetVolume(value float64) {
 func (t *MpvTrack) Unpause() {
 	err := t.Conn.Set("pause", false)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	log.Info("unpaused track")
 }
@@ -71,7 +71,7 @@ func (t *MpvTrack) Unpause() {
 func (t *MpvTrack) Pause() {
 	err := t.Conn.Set("pause", true)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	log.Info("paused track")
 }
@@ -84,7 +84,7 @@ func (t *MpvTrack) Close() {
 func (t *MpvTrack) Position() int {
 	position, err := t.Conn.Get("time-pos")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return 0
 	}
 	pos, ok := position.(int)
@@ -97,7 +97,7 @@ func (t *MpvTrack) Position() int {
 func (t *MpvTrack) SetPosition(offset int) error {
 	err := t.Conn.Set("time-pos", offset)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 	log.Info("set position", "offset", offset)
@@ -107,15 +107,16 @@ func (t *MpvTrack) SetPosition(offset int) error {
 func (t *MpvTrack) IsPlaying() bool {
 	pausing, err := t.Conn.Get("pause")
 	if err != nil {
-		log.Fatal("problem getting paused status", "error", err)
+		log.Error("problem getting paused status", "error", err)
 		return false
 	}
 
 	pause, ok := pausing.(bool)
 	if !ok {
+		log.Error("could not cast pausing to boolean")
 		return false
 	}
-	return pause
+	return !pause
 }
 
 func (t *MpvTrack) CloseDevice() {

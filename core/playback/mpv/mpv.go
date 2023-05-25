@@ -16,11 +16,11 @@ import (
 // mpv --no-audio-display --pause 'Jack Johnson/On And On/01 Times Like These.m4a' --input-ipc-server=/tmp/gonzo.socket
 const (
 	mpvSocket       = "/tmp/mpv_rpc"
-	mpvComdTemplate = "mpv --no-audio-display --pause %s --input-unix-socket=%s"
+	mpvComdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s"
 )
 
 func start(args []string) (io.ReadCloser, error) {
-	log.Trace("Executing mpv command", "cmd", args)
+	log.Debug("Executing mpv command", "cmd", args)
 	j := &mpvCmd{args: args}
 	j.PipeReader, j.out = io.Pipe()
 	err := j._start()
@@ -41,7 +41,7 @@ type mpvCmd struct {
 func (j *mpvCmd) _start() error {
 	cmd := exec.Command(j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
-	if log.CurrentLevel() >= log.LevelTrace {
+	if log.CurrentLevel() >= log.LevelDebug {
 		cmd.Stderr = os.Stderr
 	} else {
 		cmd.Stderr = io.Discard
@@ -71,7 +71,7 @@ func (j *mpvCmd) wait() {
 func createMPVCommand(cmd, filename string, socketName string) []string {
 	split := strings.Split(fixCmd(cmd), " ")
 	for i, s := range split {
-		s = strings.ReplaceAll(s, "%s", filename)
+		s = strings.ReplaceAll(s, "%f", filename)
 		s = strings.ReplaceAll(s, "%s", socketName)
 		split[i] = s
 	}
