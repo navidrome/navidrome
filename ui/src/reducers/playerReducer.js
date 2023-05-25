@@ -21,7 +21,7 @@ const initialState = {
 }
 
 const timestampRegex =
-  /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])/g
+  /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,3})?\])/g
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
