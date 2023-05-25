@@ -13,10 +13,10 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-// mpv some_file.mkv --input-unix-socket=/tmp/mpv_socket
+// mpv --no-audio-display --pause 'Jack Johnson/On And On/01 Times Like These.m4a' --input-ipc-server=/tmp/gonzo.socket
 const (
 	mpvSocket       = "/tmp/mpv_rpc"
-	mpvComdTemplate = "mpv %s --input-unix-socket=%s"
+	mpvComdTemplate = "mpv --no-audio-display --pause %s --input-unix-socket=%s"
 )
 
 func start(args []string) (io.ReadCloser, error) {
