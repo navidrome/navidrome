@@ -39,6 +39,12 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 		return nil, err
 	}
 
+	go func() {
+		conn.WaitUntilClosed()
+		log.Info("Hitting end-of-stream, signalling on channel")
+		playbackDoneChannel <- true
+	}()
+
 	return &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn}, nil
 }
 
@@ -88,7 +94,6 @@ func (t *MpvTrack) Position() int {
 	return pos
 }
 
-// offset = pd.PlaybackQueue.Offset
 func (t *MpvTrack) SetPosition(offset int) error {
 	err := t.Conn.Set("time-pos", offset)
 	if err != nil {
