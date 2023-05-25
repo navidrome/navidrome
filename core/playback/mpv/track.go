@@ -84,14 +84,15 @@ func (t *MpvTrack) Close() {
 func (t *MpvTrack) Position() int {
 	position, err := t.Conn.Get("time-pos")
 	if err != nil {
-		log.Error(err)
+		log.Error("error getting position in track", "error", err)
 		return 0
 	}
-	pos, ok := position.(int)
+	pos, ok := position.(float64)
 	if !ok {
+		log.Error("could not cast position from mpv into float64")
 		return 0
 	}
-	return pos
+	return int(pos)
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {
