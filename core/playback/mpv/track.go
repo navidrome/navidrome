@@ -7,6 +7,7 @@ package mpv
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/DexterLB/mpvipc"
@@ -15,9 +16,10 @@ import (
 )
 
 type MpvTrack struct {
-	MediaFile    model.MediaFile
-	PlaybackDone chan bool
-	Conn         *mpvipc.Connection
+	MediaFile     model.MediaFile
+	PlaybackDone  chan bool
+	Conn          *mpvipc.Connection
+	IPCSocketName string
 }
 
 func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, error) {
@@ -32,8 +34,8 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 	args := createMPVCommand(mpvComdTemplate, mf.Path, tmpSocketName)
 	start(args)
 
-	// FIXME: this won't stay like this ...
-	time.Sleep(1000 * time.Millisecond)
+	// wait for socket to show up
+	waitForFile(tmpSocketName, 3*time.Second, 100*time.Millisecond)
 
 	var err error
 
@@ -51,7 +53,7 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 		playbackDoneChannel <- true
 	}()
 
-	return &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn}, nil
+	return &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn, IPCSocketName: tmpSocketName}, nil
 }
 
 func (t *MpvTrack) String() string {
@@ -83,7 +85,15 @@ func (t *MpvTrack) Pause() {
 }
 
 func (t *MpvTrack) Close() {
+	log.Debug("closing resources")
 
+	if len(t.IPCSocketName) > 0 {
+		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
+		err := os.Remove(t.IPCSocketName)
+		if err != nil {
+			log.Error("error cleaning up socketfile: ", t.IPCSocketName)
+		}
+	}
 }
 
 // Position returns the playback position in seconds
@@ -124,4 +134,21 @@ func (t *MpvTrack) IsPlaying() bool {
 		return false
 	}
 	return !pause
+}
+
+func waitForFile(path string, timeout time.Duration, pause time.Duration) error {
+	start := time.Now()
+	end := start.Add(timeout)
+
+	for {
+		fileInfo, err := os.Stat(path)
+		if err == nil && fileInfo != nil && !fileInfo.IsDir() {
+			log.Debug("file found", "waittime", time.Since(start).Microseconds())
+			return nil
+		}
+		if time.Now().After(end) {
+			return fmt.Errorf("timeout reached: %s", timeout)
+		}
+		time.Sleep(pause)
+	}
 }
