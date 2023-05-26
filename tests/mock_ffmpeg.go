@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"strings"
@@ -18,7 +17,6 @@ type MockFFmpeg struct {
 	lock   sync.Mutex
 	closed atomic.Bool
 	Error  error
-	cover  *bytes.Buffer
 }
 
 func (ff *MockFFmpeg) Transcode(_ context.Context, _, _ string, _ int) (f io.ReadCloser, err error) {
@@ -28,11 +26,11 @@ func (ff *MockFFmpeg) Transcode(_ context.Context, _, _ string, _ int) (f io.Rea
 	return ff, nil
 }
 
-func (ff *MockFFmpeg) ExtractImage(context.Context, string) (*bytes.Buffer, error) {
+func (ff *MockFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
 	if ff.Error != nil {
 		return nil, ff.Error
 	}
-	return ff.cover, nil
+	return ff, nil
 }
 
 func (ff *MockFFmpeg) Probe(context.Context, []string) (string, error) {

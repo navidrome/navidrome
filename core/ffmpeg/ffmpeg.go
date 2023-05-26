@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -81,7 +80,7 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 	}
 
 	defer r.Close()
-	body, err := ioutil.ReadAll(r)
+	body, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
