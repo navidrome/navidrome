@@ -162,6 +162,8 @@ func (pd *PlaybackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 		return pd.getStatus(), err
 	}
 
+	pd.ActiveTrack.SetPosition(offset)
+
 	if wasPlaying {
 		_, err = pd.Start(ctx)
 		if err != nil {
