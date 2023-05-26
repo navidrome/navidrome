@@ -21,6 +21,7 @@ type MpvTrack struct {
 	Conn          *mpvipc.Connection
 	IPCSocketName string
 	Exe           *Executor
+	CloseCalled   bool
 }
 
 func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, error) {
@@ -50,13 +51,17 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 		return nil, err
 	}
 
+	theTrack := &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn, IPCSocketName: tmpSocketName, Exe: &exe, CloseCalled: false}
+
 	go func() {
 		conn.WaitUntilClosed()
 		log.Info("Hitting end-of-stream, signalling on channel")
-		playbackDoneChannel <- true
+		if !theTrack.CloseCalled {
+			playbackDoneChannel <- true
+		}
 	}()
 
-	return &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn, IPCSocketName: tmpSocketName, Exe: &exe}, nil
+	return theTrack, nil
 }
 
 func (t *MpvTrack) String() string {
@@ -89,19 +94,37 @@ func (t *MpvTrack) Pause() {
 
 func (t *MpvTrack) Close() {
 	log.Debug("closing resources")
+	t.CloseCalled = true
+	// trying to shutdown mpv process using socket
+	if t.isSocketfilePresent() {
+		log.Debug("sending shutdown command")
+		_, err := t.Conn.Call("quit")
+		if err != nil {
+			log.Error("error sending quit command to mpv-ipc socket", "error", err)
 
-	if t.Exe != nil {
-		log.Debug("cancelling executor")
-		t.Exe.Cancel()
+			if t.Exe != nil {
+				log.Debug("cancelling executor")
+				t.Exe.Cancel()
+			}
+		}
 	}
 
-	if len(t.IPCSocketName) > 0 {
+	if t.isSocketfilePresent() {
 		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
 		err := os.Remove(t.IPCSocketName)
 		if err != nil {
 			log.Error("error cleaning up socketfile: ", t.IPCSocketName)
 		}
 	}
+}
+
+func (t *MpvTrack) isSocketfilePresent() bool {
+	if len(t.IPCSocketName) < 1 {
+		return false
+	}
+
+	fileInfo, err := os.Stat(t.IPCSocketName)
+	return err == nil && fileInfo != nil && !fileInfo.IsDir()
 }
 
 // Position returns the playback position in seconds
