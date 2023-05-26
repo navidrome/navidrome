@@ -11,7 +11,7 @@ import (
 
 type Track interface {
 	IsPlaying() bool
-	SetVolume(value float64)
+	SetVolume(value float32) // Used to control the playback volume. A float value between 0.0 and 1.0.
 	Pause()
 	Unpause()
 	Position() int
@@ -40,7 +40,9 @@ type DeviceStatus struct {
 	Position     int
 }
 
-var EmptyStatus = DeviceStatus{CurrentIndex: -1, Playing: false, Gain: 0.5, Position: 0}
+const DefaultGain float32 = 1.0
+
+var EmptyStatus = DeviceStatus{CurrentIndex: -1, Playing: false, Gain: DefaultGain, Position: 0}
 
 func (pd *PlaybackDevice) getStatus() DeviceStatus {
 	pos := 0
@@ -65,7 +67,7 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, method string
 		Name:                 name,
 		Method:               method,
 		DeviceName:           deviceName,
-		Gain:                 0.5,
+		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
 		TrackSwitcherStarted: false,
@@ -231,12 +233,12 @@ func (pd *PlaybackDevice) Shuffle(ctx context.Context) (DeviceStatus, error) {
 	return pd.getStatus(), nil
 }
 
+// Used to control the playback volume. A float value between 0.0 and 1.0.
 func (pd *PlaybackDevice) SetGain(ctx context.Context, gain float32) (DeviceStatus, error) {
-	difference := gain - pd.Gain
-	log.Debug(ctx, fmt.Sprintf("processing SetGain action. Actual gain: %f, gain to set: %f, difference: %f", pd.Gain, gain, difference))
+	log.Debug(ctx, fmt.Sprintf("processing SetGain action. Actual gain: %f, gain to set: %f", pd.Gain, gain))
 
 	if pd.ActiveTrack != nil {
-		pd.ActiveTrack.SetVolume(float64(difference) * 5)
+		pd.ActiveTrack.SetVolume(gain)
 	}
 	pd.Gain = gain
 
