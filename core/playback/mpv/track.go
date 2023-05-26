@@ -20,6 +20,7 @@ type MpvTrack struct {
 	PlaybackDone  chan bool
 	Conn          *mpvipc.Connection
 	IPCSocketName string
+	Exe           *Executor
 }
 
 func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, error) {
@@ -32,12 +33,14 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 	tmpSocketName := TempFileName("mpv-ctrl-", ".socket")
 
 	args := createMPVCommand(mpvComdTemplate, mf.Path, tmpSocketName)
-	start(args)
+	exe, err := start(args)
+	if err != nil {
+		log.Error("error starting mpv process", "error", err)
+		return nil, err
+	}
 
 	// wait for socket to show up
 	waitForFile(tmpSocketName, 3*time.Second, 100*time.Millisecond)
-
-	var err error
 
 	conn := mpvipc.NewConnection(tmpSocketName)
 	err = conn.Open()
@@ -53,11 +56,11 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 		playbackDoneChannel <- true
 	}()
 
-	return &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn, IPCSocketName: tmpSocketName}, nil
+	return &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn, IPCSocketName: tmpSocketName, Exe: &exe}, nil
 }
 
 func (t *MpvTrack) String() string {
-	return fmt.Sprintf("Name: %s", t.MediaFile.Path)
+	return fmt.Sprintf("Name: %s, Socket: %s", t.MediaFile.Path, t.IPCSocketName)
 }
 
 func (t *MpvTrack) SetVolume(value float64) {
@@ -86,6 +89,11 @@ func (t *MpvTrack) Pause() {
 
 func (t *MpvTrack) Close() {
 	log.Debug("closing resources")
+
+	if t.Exe != nil {
+		log.Debug("cancelling executor")
+		t.Exe.Cancel()
+	}
 
 	if len(t.IPCSocketName) > 0 {
 		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
@@ -139,16 +147,18 @@ func (t *MpvTrack) IsPlaying() bool {
 func waitForFile(path string, timeout time.Duration, pause time.Duration) error {
 	start := time.Now()
 	end := start.Add(timeout)
+	var retries int = 0
 
 	for {
 		fileInfo, err := os.Stat(path)
 		if err == nil && fileInfo != nil && !fileInfo.IsDir() {
-			log.Debug("file found", "waittime", time.Since(start).Microseconds())
+			log.Debug("file found", "retries", retries, "waittime", time.Since(start).Microseconds())
 			return nil
 		}
 		if time.Now().After(end) {
 			return fmt.Errorf("timeout reached: %s", timeout)
 		}
 		time.Sleep(pause)
+		retries += 1
 	}
 }

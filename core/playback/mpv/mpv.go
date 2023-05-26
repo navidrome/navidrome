@@ -1,6 +1,7 @@
 package mpv
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -21,27 +22,36 @@ const (
 	mpvComdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s"
 )
 
-func start(args []string) (io.ReadCloser, error) {
+func start(args []string) (Executor, error) {
 	log.Debug("Executing mpv command", "cmd", args)
-	j := &mpvCmd{args: args}
+	j := Executor{args: args}
 	j.PipeReader, j.out = io.Pipe()
 	err := j._start()
 	if err != nil {
-		return nil, err
+		return Executor{}, err
 	}
 	go j.wait()
 	return j, nil
 }
 
-type mpvCmd struct {
+func (j *Executor) Cancel() {
+	if j.cmd != nil {
+		j.cmd.Cancel()
+	}
+}
+
+type Executor struct {
 	*io.PipeReader
 	out  *io.PipeWriter
 	args []string
 	cmd  *exec.Cmd
+	ctx  context.Context
 }
 
-func (j *mpvCmd) _start() error {
-	cmd := exec.Command(j.args[0], j.args[1:]...) // #nosec
+func (j *Executor) _start() error {
+	ctx := context.Background()
+	j.ctx = ctx
+	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
 	if log.CurrentLevel() >= log.LevelTrace {
 		cmd.Stderr = os.Stderr
@@ -56,7 +66,7 @@ func (j *mpvCmd) _start() error {
 	return nil
 }
 
-func (j *mpvCmd) wait() {
+func (j *Executor) wait() {
 	if err := j.cmd.Wait(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
