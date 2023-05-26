@@ -3,6 +3,7 @@ package model
 import (
 	"mime"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -32,6 +33,11 @@ type MediaFile struct {
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string  `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
 	Year                 int     `structs:"year" json:"year"`
+	Date                 string  `structs:"date" json:"date,omitempty"`
+	OriginalYear         int     `structs:"original_year" json:"originalYear"`
+	OriginalDate         string  `structs:"original_date" json:"originalDate,omitempty"`
+	ReleaseYear          int     `structs:"release_year" json:"releaseYear"`
+	ReleaseDate          string  `structs:"release_date" json:"releaseDate,omitempty"`
 	Size                 int64   `structs:"size" json:"size"`
 	Suffix               string  `structs:"suffix" json:"suffix"`
 	Duration             float32 `structs:"duration" json:"duration"`
@@ -108,6 +114,11 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var songArtistIds []string
 	var mbzAlbumIds []string
 	var comments []string
+	var years []int
+	var dates []string
+	var originalYears []int
+	var originalDates []string
+	var releaseDates []string
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
@@ -130,12 +141,11 @@ func (mfs MediaFiles) ToAlbum() Album {
 		// Calculated attributes based on aggregations
 		a.Duration += m.Duration
 		a.Size += m.Size
-		if a.MinYear == 0 {
-			a.MinYear = m.Year
-		} else if m.Year > 0 {
-			a.MinYear = number.Min(a.MinYear, m.Year)
-		}
-		a.MaxYear = number.Max(a.MaxYear, m.Year)
+		years = append(years, m.Year)
+		dates = append(dates, m.Date)
+		originalYears = append(originalYears, m.OriginalYear)
+		originalDates = append(originalDates, m.OriginalDate)
+		releaseDates = append(releaseDates, m.ReleaseDate)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
 		a.Genres = append(a.Genres, m.Genres...)
@@ -151,11 +161,15 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.EmbedArtPath = m.Path
 		}
 	}
+
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
-	comments = slices.Compact(comments)
-	if len(comments) == 1 {
-		a.Comment = comments[0]
-	}
+	a.Date, _ = allOrNothing(dates)
+	a.OriginalDate, _ = allOrNothing(originalDates)
+	a.ReleaseDate, a.Releases = allOrNothing(releaseDates)
+	a.MinYear, a.MaxYear = minMax(years)
+	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
+	a.Comment, _ = allOrNothing(comments)
+	a.Comment, _ = allOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
@@ -167,6 +181,32 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 
 	return a
+}
+
+func allOrNothing(items []string) (string, int) {
+	items = slices.Compact(items)
+	if len(items) == 1 {
+		return items[0], 1
+	}
+	if len(items) > 1 {
+		sort.Strings(items)
+		return "", len(slices.Compact(items))
+	}
+	return "", 0
+}
+
+func minMax(items []int) (int, int) {
+	var max = items[0]
+	var min = items[0]
+	for _, value := range items {
+		max = number.Max(max, value)
+		if min == 0 {
+			min = value
+		} else if value > 0 {
+			min = number.Min(min, value)
+		}
+	}
+	return min, max
 }
 
 func newer(t1, t2 time.Time) time.Time {

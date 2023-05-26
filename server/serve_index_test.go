@@ -3,11 +3,13 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -245,6 +247,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableSharing", false))
 	})
 
+	It("sets the defaultDownloadableShare", func() {
+		conf.Server.DefaultDownloadableShare = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("defaultDownloadableShare", true))
+	})
+
 	It("sets the defaultDownsamplingFormat", func() {
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
@@ -413,6 +426,97 @@ var _ = Describe("serveIndex", func() {
 					config := extractAppConfig(w.Body.String())
 					Expect(config).To(HaveKeyWithValue("loginBackgroundURL", "https://example.com/images/1.jpg"))
 				})
+			})
+		})
+	})
+})
+
+var _ = Describe("addShareData", func() {
+	var (
+		r         *http.Request
+		data      map[string]interface{}
+		shareInfo *model.Share
+	)
+
+	BeforeEach(func() {
+		data = make(map[string]interface{})
+		r = httptest.NewRequest("GET", "/", nil)
+	})
+
+	Context("when shareInfo is nil or has an empty ID", func() {
+		It("should not modify data", func() {
+			addShareData(r, data, nil)
+			Expect(data).To(BeEmpty())
+
+			shareInfo = &model.Share{}
+			addShareData(r, data, shareInfo)
+			Expect(data).To(BeEmpty())
+		})
+	})
+
+	Context("when shareInfo is not nil and has a non-empty ID", func() {
+		BeforeEach(func() {
+			shareInfo = &model.Share{
+				ID:           "testID",
+				Description:  "Test description",
+				Downloadable: true,
+				Tracks: []model.MediaFile{
+					{
+						ID:        "track1",
+						Title:     "Track 1",
+						Artist:    "Artist 1",
+						Album:     "Album 1",
+						Duration:  100,
+						UpdatedAt: time.Date(2023, time.Month(3), 27, 0, 0, 0, 0, time.UTC),
+					},
+					{
+						ID:        "track2",
+						Title:     "Track 2",
+						Artist:    "Artist 2",
+						Album:     "Album 2",
+						Duration:  200,
+						UpdatedAt: time.Date(2023, time.Month(3), 26, 0, 0, 0, 0, time.UTC),
+					},
+				},
+				Contents: "Test contents",
+				URL:      "https://example.com/share/testID",
+				ImageURL: "https://example.com/share/testID/image",
+			}
+		})
+
+		It("should populate data with shareInfo data", func() {
+			addShareData(r, data, shareInfo)
+
+			Expect(data["ShareDescription"]).To(Equal(shareInfo.Description))
+			Expect(data["ShareURL"]).To(Equal(shareInfo.URL))
+			Expect(data["ShareImageURL"]).To(Equal(shareInfo.ImageURL))
+
+			var shareData shareData
+			err := json.Unmarshal([]byte(data["ShareInfo"].(string)), &shareData)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shareData.ID).To(Equal(shareInfo.ID))
+			Expect(shareData.Description).To(Equal(shareInfo.Description))
+			Expect(shareData.Downloadable).To(Equal(shareInfo.Downloadable))
+
+			Expect(shareData.Tracks).To(HaveLen(len(shareInfo.Tracks)))
+			for i, track := range shareData.Tracks {
+				Expect(track.ID).To(Equal(shareInfo.Tracks[i].ID))
+				Expect(track.Title).To(Equal(shareInfo.Tracks[i].Title))
+				Expect(track.Artist).To(Equal(shareInfo.Tracks[i].Artist))
+				Expect(track.Album).To(Equal(shareInfo.Tracks[i].Album))
+				Expect(track.Duration).To(Equal(shareInfo.Tracks[i].Duration))
+				Expect(track.UpdatedAt).To(Equal(shareInfo.Tracks[i].UpdatedAt))
+			}
+		})
+
+		Context("when shareInfo has an empty description", func() {
+			BeforeEach(func() {
+				shareInfo.Description = ""
+			})
+
+			It("should use shareInfo.Contents as ShareDescription", func() {
+				addShareData(r, data, shareInfo)
+				Expect(data["ShareDescription"]).To(Equal(shareInfo.Contents))
 			})
 		})
 	})

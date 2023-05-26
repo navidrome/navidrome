@@ -32,6 +32,8 @@ type configOptions struct {
 	BasePath                     string
 	BaseHost                     string
 	BaseScheme                   string
+	TLSCert                      string
+	TLSKey                       string
 	UILoginBackgroundURL         string
 	UIWelcomeMessage             string
 	MaxSidebarPlaylists          int
@@ -54,11 +56,13 @@ type configOptions struct {
 	FFmpegPath                   string
 	CoverArtPriority             string
 	CoverJpegQuality             int
+	ArtistArtPriority            string
 	EnableGravatar               bool
 	EnableFavourites             bool
 	EnableStarRating             bool
 	EnableUserEditing            bool
 	EnableSharing                bool
+	DefaultDownloadableShare     bool
 	DefaultTheme                 string
 	DefaultLanguage              string
 	DefaultUIVolume              int
@@ -82,6 +86,7 @@ type configOptions struct {
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
 	DevLogLevels                     map[string]string
+	DevEnableProfiler                bool
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
 	DevActivityPanel                 bool
@@ -96,8 +101,9 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Extractor       string
-	GenreSeparators string
+	Extractor          string
+	GenreSeparators    string
+	GroupAlbumReleases bool
 }
 
 type lastfmOptions struct {
@@ -244,6 +250,8 @@ func init() {
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
+	viper.SetDefault("tlscert", "")
+	viper.SetDefault("tlskey", "")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
@@ -266,6 +274,7 @@ func init() {
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
+	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
@@ -289,6 +298,7 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
+	viper.SetDefault("scanner.groupalbumreleases", true)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
@@ -302,10 +312,12 @@ func init() {
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
+	viper.SetDefault("devenableprofiler", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)

@@ -32,9 +32,10 @@ func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaF
 func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
+	mf.Year, mf.Date, mf.OriginalYear, mf.OriginalDate, mf.ReleaseYear, mf.ReleaseDate = s.mapDates(md)
 	mf.Title = s.mapTrackTitle(md)
 	mf.Album = md.Album()
-	mf.AlbumID = s.albumID(md)
+	mf.AlbumID = s.albumID(md, mf.ReleaseDate)
 	mf.Album = s.mapAlbumName(md)
 	mf.ArtistID = s.artistID(md)
 	mf.Artist = s.mapArtistName(md)
@@ -42,7 +43,6 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.AlbumArtist = s.mapAlbumArtistName(md)
 	mf.Genre, mf.Genres = s.mapGenres(md.Genres())
 	mf.Compilation = md.Compilation()
-	mf.Year = md.Year()
 	mf.TrackNumber, _ = md.TrackNumber()
 	mf.DiscNumber, _ = md.DiscNumber()
 	mf.DiscSubtitle = md.DiscSubtitle()
@@ -128,8 +128,13 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
 }
 
-func (s mediaFileMapper) albumID(md metadata.Tags) string {
+func (s mediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
+	if !conf.Server.Scanner.GroupAlbumReleases {
+		if len(releaseDate) != 0 {
+			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
+		}
+	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
 
@@ -168,4 +173,19 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 		return "", nil
 	}
 	return result[0].Name, result
+}
+
+func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, int, string) {
+	year, date := md.Date()
+	originalYear, originalDate := md.OriginalDate()
+	releaseYear, releaseDate := md.ReleaseDate()
+
+	// MusicBrainz Picard writes the Release Date of an album to the Date tag, and leaves the Release Date tag empty
+	taggedLikePicard := (originalYear != 0) &&
+		(releaseYear == 0) &&
+		(year >= originalYear)
+	if taggedLikePicard {
+		return originalYear, originalDate, originalYear, originalDate, year, date
+	}
+	return year, date, originalYear, originalDate, releaseYear, releaseDate
 }

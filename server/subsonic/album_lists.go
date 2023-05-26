@@ -155,8 +155,8 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	for i, np := range npInfo {
 		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, np.MediaFile)
 		response.NowPlaying.Entry[i].UserName = np.Username
-		response.NowPlaying.Entry[i].MinutesAgo = int(time.Since(np.Start).Minutes())
-		response.NowPlaying.Entry[i].PlayerId = i + 1 // Fake numeric playerId, it does not seem to be used for anything
+		response.NowPlaying.Entry[i].MinutesAgo = int32(time.Since(np.Start).Minutes())
+		response.NowPlaying.Entry[i].PlayerId = int32(i + 1) // Fake numeric playerId, it does not seem to be used for anything
 		response.NowPlaying.Entry[i].PlayerName = np.PlayerName
 	}
 	return response, nil
@@ -182,7 +182,7 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 
 func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error) {
 	count := number.Min(utils.ParamInt(r, "count", 10), 500)
-	offset := number.Min(utils.ParamInt(r, "offset", 0), 500)
+	offset := utils.ParamInt(r, "offset", 0)
 	genre := utils.ParamString(r, "genre")
 
 	songs, err := api.getSongs(r.Context(), offset, count, filter.SongsByGenre(genre))

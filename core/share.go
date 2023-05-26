@@ -35,7 +35,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 		return nil, err
 	}
 	if !share.ExpiresAt.IsZero() && share.ExpiresAt.Before(time.Now()) {
-		return nil, model.ErrNotAvailable
+		return nil, model.ErrExpired
 	}
 	share.LastVisitedAt = time.Now()
 	share.VisitCount++
@@ -125,7 +125,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 }
 
 func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...string) error {
-	cols := []string{"description"}
+	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration
 	if !entity.(*model.Share).ExpiresAt.IsZero() {

@@ -10,18 +10,16 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/server/events"
 )
 
 type Router struct {
 	http.Handler
-	ds     model.DataStore
-	broker events.Broker
-	share  core.Share
+	ds    model.DataStore
+	share core.Share
 }
 
-func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
-	r := &Router{ds: ds, broker: broker, share: share}
+func New(ds model.DataStore, share core.Share) *Router {
+	r := &Router{ds: ds, share: share}
 	r.Handler = r.routes()
 	return r
 }
@@ -55,10 +53,6 @@ func (n *Router) routes() http.Handler {
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
 		})
-
-		if conf.Server.DevActivityPanel {
-			r.Handle("/events", n.broker)
-		}
 	})
 
 	return r

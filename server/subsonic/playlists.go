@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -165,12 +166,16 @@ func (api *Router) buildPlaylist(p model.Playlist) *responses.Playlist {
 	pls.Id = p.ID
 	pls.Name = p.Name
 	pls.Comment = p.Comment
-	pls.SongCount = p.SongCount
+	pls.SongCount = int32(p.SongCount)
 	pls.Owner = p.OwnerName
-	pls.Duration = int(p.Duration)
+	pls.Duration = int32(p.Duration)
 	pls.Public = p.Public
 	pls.Created = p.CreatedAt
-	pls.Changed = p.UpdatedAt
 	pls.CoverArt = p.CoverArtID().String()
+	if p.IsSmartPlaylist() {
+		pls.Changed = time.Now()
+	} else {
+		pls.Changed = p.UpdatedAt
+	}
 	return pls
 }

@@ -175,6 +175,9 @@ func (api *Router) routes() http.Handler {
 	} else {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
+	r.Group(func(r chi.Router) {
+		h(r, "getOpenSubsonicExtensions", api.GetOpenSubsonicExtensions)
+	})
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
@@ -262,7 +265,7 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 		code = subErr.code
 	}
 	response.Status = "failed"
-	response.Error = &responses.Error{Code: code, Message: err.Error()}
+	response.Error = &responses.Error{Code: int32(code), Message: err.Error()}
 
 	sendResponse(w, r, response)
 }

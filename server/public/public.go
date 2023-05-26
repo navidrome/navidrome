@@ -20,13 +20,14 @@ type Router struct {
 	http.Handler
 	artwork       artwork.Artwork
 	streamer      core.MediaStreamer
+	archiver      core.Archiver
 	share         core.Share
 	assetsHandler http.Handler
 	ds            model.DataStore
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, share core.Share) *Router {
-	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share}
+func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
+	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share, archiver: archiver}
 	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))
 	p.Handler = p.routes()
@@ -51,6 +52,9 @@ func (p *Router) routes() http.Handler {
 		})
 		if conf.Server.EnableSharing {
 			r.HandleFunc("/s/{id}", p.handleStream)
+			if conf.Server.EnableDownloads {
+				r.HandleFunc("/d/{id}", p.handleDownloads)
+			}
 			r.HandleFunc("/{id}", p.handleShares)
 			r.HandleFunc("/", p.handleShares)
 			r.Handle("/*", p.assetsHandler)
