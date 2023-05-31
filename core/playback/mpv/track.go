@@ -41,7 +41,11 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 	}
 
 	// wait for socket to show up
-	waitForFile(tmpSocketName, 3*time.Second, 100*time.Millisecond)
+	err = waitForFile(tmpSocketName, 3*time.Second, 100*time.Millisecond)
+	if err != nil {
+		log.Error("error or timeout waiting for control socket", "socketname", tmpSocketName, "error", err)
+		return nil, err
+	}
 
 	conn := mpvipc.NewConnection(tmpSocketName)
 	err = conn.Open()
@@ -111,7 +115,10 @@ func (t *MpvTrack) Close() {
 
 			if t.Exe != nil {
 				log.Debug("cancelling executor")
-				t.Exe.Cancel()
+				err = t.Exe.Cancel()
+				if err != nil {
+					log.Error("error canceling executor")
+				}
 			}
 		}
 	}

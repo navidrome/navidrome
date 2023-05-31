@@ -34,10 +34,11 @@ func start(args []string) (Executor, error) {
 	return j, nil
 }
 
-func (j *Executor) Cancel() {
+func (j *Executor) Cancel() error {
 	if j.cmd != nil {
-		j.cmd.Cancel()
+		return j.cmd.Cancel()
 	}
+	return fmt.Errorf("there is non command to cancel")
 }
 
 type Executor struct {
@@ -134,6 +135,7 @@ var (
 
 func TempFileName(prefix, suffix string) string {
 	randBytes := make([]byte, 16)
-	rand.Read(randBytes)
+	// we can savely ignore the return value since we're loading into a precreated, fixedsized buffer
+	_, _ = rand.Read(randBytes)
 	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
 }
