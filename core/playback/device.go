@@ -158,13 +158,7 @@ func (pd *PlaybackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 		}
 	}
 
-	err := pd.PlaybackQueue.SetOffset(offset)
-	if err != nil {
-		log.Error(ctx, "error setting offset", err)
-		return pd.getStatus(), err
-	}
-
-	err = pd.ActiveTrack.SetPosition(offset)
+	err := pd.ActiveTrack.SetPosition(offset)
 	if err != nil {
 		log.Error(ctx, "error setting position", err)
 		return pd.getStatus(), err
@@ -282,11 +276,6 @@ func (pd *PlaybackDevice) switchActiveTrackByIndex(index int) error {
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
 		return fmt.Errorf("could not get current track")
-	}
-
-	err := pd.PlaybackQueue.SetOffset(0)
-	if err != nil {
-		return fmt.Errorf("error setting offset of next track to zero")
 	}
 
 	track, err := mpv.NewTrack(pd.PlaybackDone, *currentTrack)

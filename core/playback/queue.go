@@ -10,16 +10,14 @@ import (
 )
 
 type Queue struct {
-	Index  int
-	Items  model.MediaFiles
-	Offset int
+	Index int
+	Items model.MediaFiles
 }
 
 func NewQueue() *Queue {
 	return &Queue{
-		Index:  -1,
-		Items:  model.MediaFiles{},
-		Offset: 0,
+		Index: -1,
+		Items: model.MediaFiles{},
 	}
 }
 
@@ -28,7 +26,7 @@ func (pd *Queue) String() string {
 	for idx, item := range pd.Items {
 		filenames += fmt.Sprint(idx) + ":" + item.Path + " "
 	}
-	return fmt.Sprintf("#Items: %d, idx: %d, offset: %d, files: %s", len(pd.Items), pd.Index, pd.Offset, filenames)
+	return fmt.Sprintf("#Items: %d, idx: %d, files: %s", len(pd.Items), pd.Index, filenames)
 }
 
 // returns the current mediafile or nil
@@ -75,7 +73,6 @@ func (pd *Queue) Add(items model.MediaFiles) {
 func (pd *Queue) Clear() {
 	pd.Index = -1
 	pd.Items = nil
-	pd.Offset = 0
 }
 
 // idx Zero-based index of the song to skip to or remove.
@@ -138,16 +135,6 @@ func (pd *Queue) IncreaseIndex() {
 	if !pd.IsAtLastElement() {
 		pd.SetIndex(pd.Index + 1)
 	}
-}
-
-// SetOffset sets the plaing offset as second into the current track and checks if offset is within the duration of the track
-func (pd *Queue) SetOffset(offset int) error {
-	trackDuration := int(pd.Current().Duration)
-	if offset > trackDuration {
-		return fmt.Errorf("offset given: %d is longer than tracks duration: %d", offset, trackDuration)
-	}
-	pd.Offset = offset
-	return nil
 }
 
 func max(x, y int) int {
