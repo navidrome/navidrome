@@ -142,21 +142,43 @@ func (t *MpvTrack) isSocketfilePresent() bool {
 }
 
 // Position returns the playback position in seconds
+// every now and then the mpv IPC interface returns "mpv error: property unavailable"
+// in this case we have to retry
 func (t *MpvTrack) Position() int {
-	position, err := t.Conn.Get("time-pos")
-	if err != nil {
-		log.Error("error getting position in track", "error", err)
-		return 0
+	retryCount := 0
+	for {
+		position, err := t.Conn.Get("time-pos")
+		if err != nil && err.Error() == "mpv error: property unavailable" {
+			log.Debug("got the mpv error: property unavailable error, retry ...")
+			retryCount += 1
+			if retryCount > 5 {
+				return 0
+			}
+			break
+		}
+
+		if err != nil {
+			log.Error("error getting position in track", "error", err)
+			return 0
+		}
+
+		pos, ok := position.(float64)
+		if !ok {
+			log.Error("could not cast position from mpv into float64")
+			return 0
+		} else {
+			return int(pos)
+		}
 	}
-	pos, ok := position.(float64)
-	if !ok {
-		log.Error("could not cast position from mpv into float64")
-		return 0
-	}
-	return int(pos)
+	return 0
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {
+	pos := t.Position()
+	if pos == offset {
+		log.Debug("no position difference, skipping operation")
+		return nil
+	}
 	err := t.Conn.Set("time-pos", float64(offset))
 	if err != nil {
 		log.Error("could not set the position in track", "offset", offset, "error", err)
