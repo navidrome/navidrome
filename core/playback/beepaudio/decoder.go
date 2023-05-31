@@ -1,3 +1,5 @@
+//go:build beep
+
 package beepaudio
 
 import (
