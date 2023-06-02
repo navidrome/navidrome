@@ -129,11 +129,11 @@ func (s *Stream) EstimatedContentLength() int {
 func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int) (format string, bitRate int) {
 	format = "raw"
 	if reqFormat == "raw" {
-		return
+		return format, 0
 	}
 	if reqFormat == mf.Suffix && reqBitRate == 0 {
 		bitRate = mf.BitRate
-		return
+		return format, bitRate
 	}
 	trc, hasDefault := request.TranscodingFrom(ctx)
 	var cFormat string
@@ -159,7 +159,7 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 		cBitRate = reqBitRate
 	}
 	if cBitRate == 0 && cFormat == "" {
-		return
+		return format, bitRate
 	}
 	t, err := ds.Transcoding(ctx).FindByFormat(cFormat)
 	if err == nil {
