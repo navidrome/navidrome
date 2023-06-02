@@ -209,7 +209,7 @@ func newFSCache(name, cacheSize, cacheFolder string, maxItems int) (fscache.Cach
 
 	lru := NewFileHaunter(name, maxItems, int64(size), consts.DefaultCacheCleanUpInterval)
 	h := fscache.NewLRUHaunterStrategy(lru)
-	cacheFolder = filepath.Join(conf.Server.DataFolder, cacheFolder)
+	cacheFolder = filepath.Join(conf.Server.CacheFolder, cacheFolder)
 
 	var fs *spreadFS
 	log.Info(fmt.Sprintf("Creating %s cache", name), "path", cacheFolder, "maxSize", humanize.Bytes(size))

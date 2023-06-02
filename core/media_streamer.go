@@ -184,22 +184,26 @@ var (
 
 func GetTranscodingCache() TranscodingCache {
 	onceTranscodingCache.Do(func() {
-		instanceTranscodingCache = cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
-			consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
-			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
-				job := arg.(*streamJob)
-				t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
-				if err != nil {
-					log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
-					return nil, os.ErrInvalid
-				}
-				out, err := job.ms.transcoder.Transcode(ctx, t.Command, job.mf.Path, job.bitRate)
-				if err != nil {
-					log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
-					return nil, os.ErrInvalid
-				}
-				return out, nil
-			})
+		instanceTranscodingCache = NewTranscodingCache()
 	})
 	return instanceTranscodingCache
+}
+
+func NewTranscodingCache() TranscodingCache {
+	return cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
+		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
+		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
+			job := arg.(*streamJob)
+			t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
+			if err != nil {
+				log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
+				return nil, os.ErrInvalid
+			}
+			out, err := job.ms.transcoder.Transcode(ctx, t.Command, job.mf.Path, job.bitRate)
+			if err != nil {
+				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
+				return nil, os.ErrInvalid
+			}
+			return out, nil
+		})
 }
