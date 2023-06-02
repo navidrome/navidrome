@@ -35,18 +35,6 @@ var _ = Describe("Strings", func() {
 		})
 	})
 
-	Describe("MoveString", func() {
-		It("moves item to end of slice", func() {
-			Expect(MoveString([]string{"1", "2", "3"}, 0, 2)).To(ConsistOf("2", "3", "1"))
-		})
-		It("moves item to beginning of slice", func() {
-			Expect(MoveString([]string{"1", "2", "3"}, 2, 0)).To(ConsistOf("3", "1", "2"))
-		})
-		It("keeps item in same position if srcIndex == dstIndex", func() {
-			Expect(MoveString([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
-		})
-	})
-
 	Describe("BreakUpStringSlice", func() {
 		It("returns no chunks if slice is empty", func() {
 			var slice []string

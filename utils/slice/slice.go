@@ -41,3 +41,16 @@ func MostFrequent[T comparable](list []T) T {
 
 	return topItem
 }
+
+func Insert[T any](slice []T, value T, index int) []T {
+	return append(slice[:index], append([]T{value}, slice[index:]...)...)
+}
+
+func Remove[T any](slice []T, index int) []T {
+	return append(slice[:index], slice[index+1:]...)
+}
+
+func Move[T any](slice []T, srcIndex int, dstIndex int) []T {
+	value := slice[srcIndex]
+	return Insert(Remove(slice, srcIndex), value, dstIndex)
+}
