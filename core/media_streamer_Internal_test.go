@@ -2,10 +2,8 @@ package core
 
 import (
 	"context"
-	"os"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -16,21 +14,10 @@ import (
 
 var _ = Describe("MediaStreamer", func() {
 	var ds model.DataStore
-	ctx := log.NewContext(context.TODO())
+	ctx := log.NewContext(context.Background())
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CacheFolder, _ = os.MkdirTemp("", "file_caches")
-		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
-		})
-		testCache := NewTranscodingCache()
-		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
-	})
-	AfterEach(func() {
-		_ = os.RemoveAll(conf.Server.CacheFolder)
 	})
 
 	Context("selectTranscodingOptions", func() {
