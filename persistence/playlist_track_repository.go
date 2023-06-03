@@ -5,7 +5,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type playlistTrackRepository struct {
@@ -196,7 +196,7 @@ func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
 	if err != nil {
 		return err
 	}
-	newOrder := utils.MoveString(ids, pos-1, newPos-1)
+	newOrder := slice.Move(ids, pos-1, newPos-1)
 	return r.playlistRepo.updatePlaylist(r.playlistId, newOrder)
 }
 

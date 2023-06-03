@@ -23,6 +23,7 @@ type configOptions struct {
 	Port                         int
 	MusicFolder                  string
 	DataFolder                   string
+	CacheFolder                  string
 	DbPath                       string
 	LogLevel                     string
 	ScanInterval                 time.Duration
@@ -135,6 +136,11 @@ var (
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
+		os.Exit(1)
+	}
 	Load()
 }
 
@@ -149,6 +155,16 @@ func Load() {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
+
+	if Server.CacheFolder == "" {
+		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
+	}
+	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", "path", Server.CacheFolder, err)
+		os.Exit(1)
+	}
+
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
@@ -242,6 +258,7 @@ func AddHook(hook func()) {
 
 func init() {
 	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
+	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
@@ -298,7 +315,7 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
-	viper.SetDefault("scanner.groupalbumreleases", true)
+	viper.SetDefault("scanner.groupalbumreleases", false)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
