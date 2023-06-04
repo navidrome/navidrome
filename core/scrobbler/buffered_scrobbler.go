@@ -12,6 +12,7 @@ import (
 
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
+	b.starSignal = make(chan struct{}, 1)
 	b.wakeSignal = make(chan struct{}, 1)
 
 	go b.run(context.TODO())
