@@ -3,4 +3,4 @@ Password = "wordpass"
 DbPath = "file::memory:?cache=shared"
 MusicFolder = "./tests/fixtures"
 DataFolder = "data/tests"
-ScanInterval=0
+ScanSchedule="0"
