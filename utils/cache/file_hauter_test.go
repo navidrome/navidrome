@@ -22,7 +22,7 @@ func TestFileHaunterMaxSize(t *testing.T) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	c, err := fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(cache.NewFileHaunter(0, 24, 400*time.Millisecond)))
+	c, err := fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(cache.NewFileHaunter("", 0, 24, 400*time.Millisecond)))
 	if err != nil {
 		t.Error(err.Error())
 		return

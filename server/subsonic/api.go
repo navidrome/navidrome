@@ -146,8 +146,10 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		// configure request throttling
 		if conf.Server.DevArtworkMaxRequests > 0 {
-			maxRequests := conf.Server.DevArtworkMaxRequests
-			r.Use(middleware.ThrottleBacklog(maxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
+			log.Debug("Throttling Subsonic getCoverArt endpoint", "maxRequests", conf.Server.DevArtworkMaxRequests,
+				"backlogLimit", conf.Server.DevArtworkThrottleBacklogLimit, "backlogTimeout",
+				conf.Server.DevArtworkThrottleBacklogTimeout)
+			r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
 				conf.Server.DevArtworkThrottleBacklogTimeout))
 		}
 		hr(r, "getCoverArt", api.GetCoverArt)
@@ -163,7 +165,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "getInternetRadioStations", api.GetInternetRadios)
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
-	if conf.Server.DevEnableShare {
+	if conf.Server.EnableSharing {
 		r.Group(func(r chi.Router) {
 			h(r, "getShares", api.GetShares)
 			h(r, "createShare", api.CreateShare)
@@ -173,6 +175,9 @@ func (api *Router) routes() http.Handler {
 	} else {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
+	r.Group(func(r chi.Router) {
+		h(r, "getOpenSubsonicExtensions", api.GetOpenSubsonicExtensions)
+	})
 
 	// Not Implemented (yet?)
 	h501(r, "jukeboxControl")
@@ -260,7 +265,7 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 		code = subErr.code
 	}
 	response.Status = "failed"
-	response.Error = &responses.Error{Code: code, Message: err.Error()}
+	response.Error = &responses.Error{Code: int32(code), Message: err.Error()}
 
 	sendResponse(w, r, response)
 }

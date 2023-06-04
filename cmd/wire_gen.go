@@ -31,16 +31,16 @@ import (
 func CreateServer(musicFolder string) *server.Server {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	serverServer := server.New(dataStore)
+	broker := events.GetBroker()
+	serverServer := server.New(dataStore, broker)
 	return serverServer
 }
 
 func CreateNativeAPIRouter() *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	broker := events.GetBroker()
 	share := core.NewShare(dataStore)
-	router := nativeapi.New(dataStore, broker, share)
+	router := nativeapi.New(dataStore, share)
 	return router
 }
 
@@ -54,13 +54,13 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
-	archiver := core.NewArchiver(mediaStreamer, dataStore)
+	share := core.NewShare(dataStore)
+	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	players := core.NewPlayers(dataStore)
 	scanner := GetScanner()
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
-	share := core.NewShare(dataStore)
 	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker, share)
 	return router
 }
@@ -76,7 +76,8 @@ func CreatePublicRouter() *public.Router {
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
-	router := public.New(dataStore, artworkArtwork, mediaStreamer, share)
+	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
+	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
 	return router
 }
 

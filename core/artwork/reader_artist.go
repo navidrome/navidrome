@@ -13,6 +13,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -42,17 +43,19 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 		em:     em,
 		artist: *ar,
 	}
-	a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
+	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
+	// change _after_ retrieving from external sources, making the key invalid
+	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
 	var files []string
 	var paths []string
 	for _, al := range als {
 		files = append(files, al.ImageFiles)
-		paths = append(paths, filepath.SplitList(al.Paths)...)
+		paths = append(paths, splitList(al.Paths)...)
 		if a.cacheKey.lastUpdate.Before(al.UpdatedAt) {
 			a.cacheKey.lastUpdate = al.UpdatedAt
 		}
 	}
-	a.files = strings.Join(files, string(filepath.ListSeparator))
+	a.files = strings.Join(files, consts.Zwsp)
 	a.artistFolder = utils.LongestCommonPrefix(paths)
 	if !strings.HasSuffix(a.artistFolder, string(filepath.Separator)) {
 		a.artistFolder, _ = filepath.Split(a.artistFolder)
@@ -64,10 +67,10 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 func (a *artistReader) Key() string {
 	hash := md5.Sum([]byte(conf.Server.Agents + conf.Server.Spotify.ID))
 	return fmt.Sprintf(
-		"%s.%x.%t",
+		"%s.%t.%x",
 		a.cacheKey.Key(),
-		hash,
 		conf.Server.EnableExternalServices,
+		hash,
 	)
 }
 
@@ -76,12 +79,24 @@ func (a *artistReader) LastUpdated() time.Time {
 }
 
 func (a *artistReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
-	return selectImageReader(ctx, a.artID,
-		fromArtistFolder(ctx, a.artistFolder, "artist.*"),
-		fromExternalFile(ctx, a.files, "artist.*"),
-		fromArtistExternalSource(ctx, a.artist, a.em),
-		fromArtistPlaceholder(),
-	)
+	var ff = a.fromArtistArtPriority(ctx, conf.Server.ArtistArtPriority)
+	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority string) []sourceFunc {
+	var ff []sourceFunc
+	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
+		pattern = strings.TrimSpace(pattern)
+		switch {
+		case pattern == "external":
+			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.em))
+		case strings.HasPrefix(pattern, "album/"):
+			ff = append(ff, fromExternalFile(ctx, a.files, strings.TrimPrefix(pattern, "album/")))
+		default:
+			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
+		}
+	}
+	return ff
 }
 
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
@@ -95,12 +110,18 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 		if len(matches) == 0 {
 			return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
 		}
-		filePath := filepath.Join(artistFolder, matches[0])
-		f, err := os.Open(filePath)
-		if err != nil {
-			log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
-			return nil, "", err
+		for _, m := range matches {
+			filePath := filepath.Join(artistFolder, m)
+			if !model.IsImageFile(m) {
+				continue
+			}
+			f, err := os.Open(filePath)
+			if err != nil {
+				log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
+				return nil, "", err
+			}
+			return f, filePath, nil
 		}
-		return f, filePath, err
+		return nil, "", nil
 	}
 }

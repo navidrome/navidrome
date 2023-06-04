@@ -1,6 +1,7 @@
 package public
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -27,23 +28,30 @@ func (p *Router) handleShares(w http.ResponseWriter, r *http.Request) {
 
 	// If it is not, consider it a share ID
 	s, err := p.share.Load(r.Context(), id)
-	switch {
-	case errors.Is(err, model.ErrNotAvailable):
-		log.Error(r, "Share expired", "id", id, err)
-		http.Error(w, "Share not available anymore", http.StatusGone)
-	case errors.Is(err, model.ErrNotFound):
-		log.Error(r, "Share not found", "id", id, err)
-		http.Error(w, "Share not found", http.StatusNotFound)
-	case err != nil:
-		log.Error(r, "Error retrieving share", "id", id, err)
-		http.Error(w, "Error retrieving share", http.StatusInternalServerError)
-	}
 	if err != nil {
+		checkShareError(r.Context(), w, err, id)
 		return
 	}
 
 	s = p.mapShareInfo(r, *s)
 	server.IndexWithShare(p.ds, ui.BuildAssets(), s)(w, r)
+}
+
+func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
+	switch {
+	case errors.Is(err, model.ErrExpired):
+		log.Error(ctx, "Share expired", "id", id, err)
+		http.Error(w, "Share not available anymore", http.StatusGone)
+	case errors.Is(err, model.ErrNotFound):
+		log.Error(ctx, "Share not found", "id", id, err)
+		http.Error(w, "Share not found", http.StatusNotFound)
+	case errors.Is(err, model.ErrNotAuthorized):
+		log.Error(ctx, "Share is not downloadable", "id", id, err)
+		http.Error(w, "This share is not downloadable", http.StatusForbidden)
+	case err != nil:
+		log.Error(ctx, "Error retrieving share", "id", id, err)
+		http.Error(w, "Error retrieving share", http.StatusInternalServerError)
+	}
 }
 
 func (p *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {

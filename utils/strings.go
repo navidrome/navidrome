@@ -17,19 +17,6 @@ func NoArticle(name string) string {
 	return name
 }
 
-func InsertString(slice []string, value string, index int) []string {
-	return append(slice[:index], append([]string{value}, slice[index:]...)...)
-}
-
-func RemoveString(slice []string, index int) []string {
-	return append(slice[:index], slice[index+1:]...)
-}
-
-func MoveString(slice []string, srcIndex int, dstIndex int) []string {
-	value := slice[srcIndex]
-	return InsertString(RemoveString(slice, srcIndex), value, dstIndex)
-}
-
 func BreakUpStringSlice(items []string, chunkSize int) [][]string {
 	numTracks := len(items)
 	var chunks [][]string

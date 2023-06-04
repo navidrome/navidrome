@@ -8,6 +8,7 @@ import {
 import {
   SimpleForm,
   TextInput,
+  BooleanInput,
   useCreate,
   useNotify,
   useTranslate,
@@ -17,6 +18,7 @@ import { shareUrl } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
 import { useDispatch, useSelector } from 'react-redux'
 import { closeShareMenu } from '../actions'
+import config from '../config'
 
 export const ShareDialog = () => {
   const {
@@ -30,6 +32,9 @@ export const ShareDialog = () => {
   const notify = useNotify()
   const translate = useTranslate()
   const [description, setDescription] = useState('')
+  const [downloadable, setDownloadable] = useState(
+    config.defaultDownloadableShare && config.enableDownloads
+  )
   useEffect(() => {
     setDescription('')
   }, [ids])
@@ -41,27 +46,30 @@ export const ShareDialog = () => {
       resourceType: resource,
       resourceIds: ids?.join(','),
       description,
+      downloadable,
       ...(!originalFormat && { format }),
       ...(!originalFormat && { maxBitRate }),
     },
     {
       onSuccess: (res) => {
         const url = shareUrl(res?.data?.id)
-        navigator.clipboard
-          .writeText(url)
-          .then(() => {
-            notify('message.shareSuccess', 'info', { url }, false, 0)
-          })
-          .catch((err) => {
-            notify(
-              translate('message.shareFailure', { url }) + ': ' + err.message,
-              {
-                type: 'warning',
-                multiLine: true,
-                duration: 0,
-              }
-            )
-          })
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard
+            .writeText(url)
+            .then(() => {
+              notify('message.shareSuccess', 'info', { url }, false, 0)
+            })
+            .catch((err) => {
+              notify(
+                translate('message.shareFailure', { url }) + ': ' + err.message,
+                {
+                  type: 'warning',
+                  multiLine: true,
+                  duration: 0,
+                }
+              )
+            })
+        } else prompt(translate('message.shareCopyToClipboard'), url)
       },
       onFailure: (error) =>
         notify(translate('ra.page.error') + ': ' + error.message, {
@@ -85,7 +93,6 @@ export const ShareDialog = () => {
     <Dialog
       open={open}
       onClose={handleClose}
-      onBackdropClick={handleClose}
       aria-labelledby="share-dialog"
       fullWidth={true}
       maxWidth={'sm'}
@@ -103,12 +110,23 @@ export const ShareDialog = () => {
       <DialogContent>
         <SimpleForm toolbar={null} variant={'outlined'}>
           <TextInput
-            source="description"
+            resource={'share'}
+            source={'description'}
             fullWidth
             onChange={(event) => {
               setDescription(event.target.value)
             }}
           />
+          {config.enableDownloads && (
+            <BooleanInput
+              resource={'share'}
+              source={'downloadable'}
+              defaultValue={downloadable}
+              onChange={(value) => {
+                setDownloadable(value)
+              }}
+            />
+          )}
           <TranscodingOptionsInput
             fullWidth
             label={translate('message.shareOriginalFormat')}

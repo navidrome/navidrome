@@ -14,7 +14,7 @@ var _ = Describe("encodeArtworkID", func() {
 			auth.TokenAuth = jwtauth.New("HS256", []byte("super secret"), nil)
 		})
 		It("returns a reversible string representation", func() {
-			id := model.NewArtworkID(model.KindArtistArtwork, "1234")
+			id := model.NewArtworkID(model.KindArtistArtwork, "1234", nil)
 			encoded := encodeArtworkID(id)
 			decoded, err := decodeArtworkID(encoded)
 			Expect(err).ToNot(HaveOccurred())

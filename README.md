@@ -1,6 +1,6 @@
 <a href="https://www.navidrome.org"><img src="resources/logo-192x192.png" alt="Navidrome logo" title="navidrome" align="right" height="60px" /></a>
 
-# Navidrome Music Server
+# Navidrome Music Server &nbsp;[![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Tired%20of%20paying%20for%20music%20subscriptions%2C%20and%20not%20finding%20what%20you%20really%20like%3F%20Roll%20your%20own%20streaming%20service%21&url=https://navidrome.org&via=navidrome)
 
 [![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/navidrome/navidrome/pipeline.yml?branch=master&logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
@@ -30,11 +30,15 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 
 ## Installation
 
-See instructions in the [project's website](https://www.navidrome.org/docs/installation/)
+See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
 
-If you plan to host Navidrome in the cloud, a great option is to get a virtual server at [BuyVM](https://my.frantech.ca/aff.php?aff=4605). 
-They have plans that start at $3.50/month! If you decide to sign up, please consider using our [affliliate link](https://my.frantech.ca/aff.php?aff=4605),
-to help support the project <3
+## Cloud Hosting
+
+[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
+[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
+A share of the revenue helps fund the development of Navidrome at no additional cost for you.
+
+[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
 
 ## Features
  

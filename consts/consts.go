@@ -43,6 +43,7 @@ const (
 	// DefaultUILoginBackgroundOffline Background image used in case external integrations are disabled
 	DefaultUILoginBackgroundOffline    = "iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
 	DefaultUILoginBackgroundURLOffline = "data:image/png;base64," + DefaultUILoginBackgroundOffline
+	DefaultMaxSidebarPlaylists         = 100
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
@@ -70,10 +71,10 @@ const (
 
 // Cache options
 const (
-	TranscodingCacheDir             = "cache/transcoding"
+	TranscodingCacheDir             = "transcoding"
 	DefaultTranscodingCacheMaxItems = 0 // Unlimited
 
-	ImageCacheDir             = "cache/images"
+	ImageCacheDir             = "images"
 	DefaultImageCacheMaxItems = 0 // Unlimited
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
@@ -93,19 +94,19 @@ var (
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",
 			"defaultBitRate": 192,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -",
+			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			"name":           "opus audio",
 			"targetFormat":   "opus",
 			"defaultBitRate": 128,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			"name":           "aac audio",
 			"targetFormat":   "aac",
 			"defaultBitRate": 256,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 
@@ -115,7 +116,9 @@ var (
 var (
 	VariousArtists      = "Various Artists"
 	VariousArtistsID    = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
+	UnknownAlbum        = "[Unknown Album]"
 	UnknownArtist       = "[Unknown Artist]"
+	UnknownArtistID     = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(UnknownArtist))))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ServerStart = time.Now()

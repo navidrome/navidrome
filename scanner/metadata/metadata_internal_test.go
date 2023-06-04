@@ -6,31 +6,25 @@ import (
 )
 
 var _ = Describe("Tags", func() {
-	Describe("getYear", func() {
-		It("parses the year correctly", func() {
-			var examples = map[string]int{
-				"1985":         1985,
-				"2002-01":      2002,
-				"1969.06":      1969,
-				"1980.07.25":   1980,
-				"2004-00-00":   2004,
-				"2013-May-12":  2013,
-				"May 12, 2016": 2016,
-				"01/10/1990":   1990,
-			}
-			for tag, expected := range examples {
-				md := &Tags{}
-				md.tags = map[string][]string{"date": {tag}}
-				Expect(md.Year()).To(Equal(expected))
-			}
-		})
-
-		It("returns 0 if year is invalid", func() {
+	DescribeTable("getDate",
+		func(tag string, expectedYear int, expectedDate string) {
 			md := &Tags{}
-			md.tags = map[string][]string{"date": {"invalid"}}
-			Expect(md.Year()).To(Equal(0))
-		})
-	})
+			md.tags = map[string][]string{"date": {tag}}
+			testYear, testDate := md.Date()
+			Expect(testYear).To(Equal(expectedYear))
+			Expect(testDate).To(Equal(expectedDate))
+		},
+		Entry(nil, "1985", 1985, "1985"),
+		Entry(nil, "2002-01", 2002, "2002-01"),
+		Entry(nil, "1969.06", 1969, "1969"),
+		Entry(nil, "1980.07.25", 1980, "1980"),
+		Entry(nil, "2004-00-00", 2004, "2004"),
+		Entry(nil, "2016-12-31", 2016, "2016-12-31"),
+		Entry(nil, "2013-May-12", 2013, "2013"),
+		Entry(nil, "May 12, 2016", 2016, "2016"),
+		Entry(nil, "01/10/1990", 1990, "1990"),
+		Entry(nil, "invalid", 0, ""),
+	)
 
 	Describe("getMbzID", func() {
 		It("return a valid MBID", func() {

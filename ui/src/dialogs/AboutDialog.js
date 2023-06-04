@@ -22,7 +22,8 @@ const links = {
   twitter: 'twitter.com/navidrome',
   discord: 'discord.gg/xh7j7yF',
   source: 'github.com/navidrome/navidrome',
-  featureRequests: 'github.com/navidrome/navidrome/issues',
+  bugReports: 'github.com/navidrome/navidrome/issues/new/choose',
+  featureRequests: 'github.com/navidrome/navidrome/discussions/new',
 }
 
 const LinkToVersion = ({ version }) => {
@@ -51,12 +52,7 @@ const LinkToVersion = ({ version }) => {
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
   return (
-    <Dialog
-      onClose={onClose}
-      onBackdropClick={onClose}
-      aria-labelledby="about-dialog-title"
-      open={open}
-    >
+    <Dialog onClose={onClose} aria-labelledby="about-dialog-title" open={open}>
       <DialogTitle id="about-dialog-title" onClose={onClose}>
         Navidrome Music Server
       </DialogTitle>

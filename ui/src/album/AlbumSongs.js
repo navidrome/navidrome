@@ -27,6 +27,7 @@ import {
   useResourceRefresh,
   DateField,
   SizeField,
+  ArtistLinkField,
 } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
@@ -98,7 +99,7 @@ const AlbumSongs = (props) => {
       trackNumber: isDesktop && (
         <TextField
           source="trackNumber"
-          sortBy="discNumber asc, trackNumber asc"
+          sortBy="releaseDate asc, discNumber asc, trackNumber asc"
           label="#"
           sortable={false}
         />
@@ -110,7 +111,7 @@ const AlbumSongs = (props) => {
           showTrackNumbers={!isDesktop}
         />
       ),
-      artist: isDesktop && <TextField source="artist" sortable={false} />,
+      artist: isDesktop && <ArtistLinkField source="artist" />,
       duration: <DurationField source="duration" sortable={false} />,
       year: isDesktop && (
         <FunctionField
@@ -171,6 +172,7 @@ const AlbumSongs = (props) => {
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
+            showReleaseDivider={true}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
@@ -206,7 +208,6 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
 
 const SanitizedAlbumSongs = (props) => {
   removeAlbumCommentsFromSongs(props)
-
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
 }

@@ -29,10 +29,11 @@ const DownloadMenuDialog = () => {
 
   const handleDownload = (e) => {
     if (record) {
+      const id = record.mediaFileId || record.id
       if (originalFormat) {
-        subsonic.download(record.id, 'raw')
+        subsonic.download(id, 'raw')
       } else {
-        subsonic.download(record.id, format, maxBitRate?.toString())
+        subsonic.download(id, format, maxBitRate?.toString())
       }
       dispatch(closeDownloadMenu())
     }
@@ -43,7 +44,6 @@ const DownloadMenuDialog = () => {
     <Dialog
       open={open}
       onClose={handleClose}
-      onBackdropClick={handleClose}
       aria-labelledby="download-dialog"
       fullWidth={true}
       maxWidth={'sm'}

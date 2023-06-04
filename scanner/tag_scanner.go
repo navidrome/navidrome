@@ -80,9 +80,10 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 
 	// Special case: if lastModifiedSince is zero, re-import all files
 	fullScan := lastModifiedSince.IsZero()
+	rootFS := os.DirFS(s.rootFolder)
 
 	// If the media folder is empty (no music and no subfolders), abort to avoid deleting all data from DB
-	empty, err := isDirEmpty(ctx, s.rootFolder)
+	empty, err := isDirEmpty(ctx, rootFS, ".")
 	if err != nil {
 		return 0, err
 	}
@@ -103,7 +104,9 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	s.mapper = newMediaFileMapper(s.rootFolder, genres)
 	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
 
-	foldersFound, walkerError := s.getRootFolderWalker(ctx)
+	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
+	foldersFound, walkerError := walkDirTree(ctx, rootFS, s.rootFolder)
+
 	for {
 		folderStats, more := <-foldersFound
 		if !more {
@@ -166,25 +169,12 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	return s.cnt.total(), err
 }
 
-func isDirEmpty(ctx context.Context, dir string) (bool, error) {
-	children, stats, err := loadDir(ctx, dir)
-	return len(children) == 0 && stats.AudioFilesCount == 0, err
-}
-
-func (s *TagScanner) getRootFolderWalker(ctx context.Context) (walkResults, chan error) {
-	start := time.Now()
-	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
-	results := make(chan dirStats, 5000)
-	walkerError := make(chan error)
-	go func() {
-		err := walkDirTree(ctx, s.rootFolder, results)
-		if err != nil {
-			log.Error("There were errors reading directories from filesystem", err)
-		}
-		walkerError <- err
-		log.Debug("Finished reading directories from filesystem", "elapsed", time.Since(start))
-	}()
-	return results, walkerError
+func isDirEmpty(ctx context.Context, rootFS fs.FS, dir string) (bool, error) {
+	children, stats, err := loadDir(ctx, rootFS, dir)
+	if err != nil {
+		return false, err
+	}
+	return len(children) == 0 && stats.AudioFilesCount == 0, nil
 }
 
 func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, error) {

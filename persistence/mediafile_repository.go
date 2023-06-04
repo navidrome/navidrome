@@ -26,8 +26,8 @@ func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFile
 	r.ormer = o
 	r.tableName = "media_file"
 	r.sortMappings = map[string]string{
-		"artist": "order_artist_name asc, order_album_name asc, disc_number asc, track_number asc",
-		"album":  "order_album_name asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+		"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
+		"album":  "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
 		"random": "RANDOM()",
 	}
 	r.filterMappings = map[string]filterFunc{
@@ -100,7 +100,7 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 }
 
 func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"path": path})
+	sel := r.newSelect().Columns("*").Where(Like{"path": path})
 	var res model.MediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
@@ -179,7 +179,7 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 
 func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 	upd := Update(r.tableName).Set("artist_id", "").Where(notExists("artist", ConcatExpr("id = artist_id")))
-	log.Debug(r.ctx, "Removing non-album artist_id")
+	log.Debug(r.ctx, "Removing non-album artist_ids")
 	_, err := r.executeSQL(upd)
 	return err
 }

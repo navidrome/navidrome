@@ -193,9 +193,10 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = album.SmallImageUrl
-	response.AlbumInfo.MediumImageUrl = album.MediumImageUrl
-	response.AlbumInfo.LargeImageUrl = album.LargeImageUrl
+	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 150)
+	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
+	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
+
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
 
@@ -257,9 +258,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 160)
-	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 320)
-	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 0)
+	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 150)
+	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
+	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
 	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
@@ -353,8 +354,8 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	if artist.PlayCount > 0 {
 		dir.Played = &artist.PlayDate
 	}
-	dir.AlbumCount = artist.AlbumCount
-	dir.UserRating = artist.Rating
+	dir.AlbumCount = int32(artist.AlbumCount)
+	dir.UserRating = int32(artist.Rating)
 	if artist.Starred {
 		dir.Starred = &artist.StarredAt
 	}
@@ -391,8 +392,8 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 	if album.PlayCount > 0 {
 		dir.Played = &album.PlayDate
 	}
-	dir.UserRating = album.Rating
-	dir.SongCount = album.SongCount
+	dir.UserRating = int32(album.Rating)
+	dir.SongCount = int32(album.SongCount)
 	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {
 		dir.Starred = &album.StarredAt
@@ -414,15 +415,15 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	dir.Artist = album.AlbumArtist
 	dir.ArtistId = album.AlbumArtistID
 	dir.CoverArt = album.CoverArtID().String()
-	dir.SongCount = album.SongCount
-	dir.Duration = int(album.Duration)
+	dir.SongCount = int32(album.SongCount)
+	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {
 		dir.Played = &album.PlayDate
 	}
-	dir.Year = album.MaxYear
+	dir.Year = int32(album.MaxYear)
 	dir.Genre = album.Genre
-	dir.UserRating = album.Rating
+	dir.UserRating = int32(album.Rating)
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt
 	}

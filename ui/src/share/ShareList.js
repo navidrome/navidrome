@@ -1,6 +1,7 @@
 import {
   Datagrid,
   FunctionField,
+  BooleanField,
   List,
   NumberField,
   SimpleList,
@@ -24,30 +25,34 @@ export const FormatInfo = ({ record, size }) => {
 
 const ShareList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const translate = useTranslate()
   const notify = useNotify()
 
   const handleShare = (r) => (e) => {
     const url = shareUrl(r?.id)
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        notify(translate('message.shareSuccess', { url }), {
-          type: 'info',
-          multiLine: true,
-          duration: 0,
-        })
-      })
-      .catch((err) => {
-        notify(
-          translate('message.shareFailure', { url }) + ': ' + err.message,
-          {
-            type: 'warning',
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          notify(translate('message.shareSuccess', { url }), {
+            type: 'info',
             multiLine: true,
             duration: 0,
-          }
-        )
-      })
+          })
+        })
+        .catch((err) => {
+          notify(
+            translate('message.shareFailure', { url }) + ': ' + err.message,
+            {
+              type: 'warning',
+              multiLine: true,
+              duration: 0,
+            }
+          )
+        })
+    } else prompt(translate('message.shareCopyToClipboard'), url)
+
     e.preventDefault()
     e.stopPropagation()
   }
@@ -98,10 +103,13 @@ const ShareList = (props) => {
           />
           <TextField source="username" />
           <TextField source="description" />
-          <TextField source="contents" />
-          <FormatInfo source="format" />
+          {isDesktop && <TextField source="contents" />}
+          {isDesktop && <FormatInfo source="format" />}
+          {config.enableDownloads && <BooleanField source="downloadable" />}
           <NumberField source="visitCount" />
-          <DateField source="lastVisitedAt" showTime sortByOrder={'DESC'} />
+          {isDesktop && (
+            <DateField source="lastVisitedAt" showTime sortByOrder={'DESC'} />
+          )}
           <DateField source="expiresAt" showTime />
         </Datagrid>
       )}
