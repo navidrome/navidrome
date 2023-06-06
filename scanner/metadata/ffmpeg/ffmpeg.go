@@ -43,8 +43,9 @@ func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, erro
 
 func (e *Extractor) CustomMappings() metadata.ParsedTags {
 	return metadata.ParsedTags{
-		"disc":        {"tpa"},
-		"has_picture": {"metadata_block_picture"},
+		"disc":         {"tpa"},
+		"has_picture":  {"metadata_block_picture"},
+		"originaldate": {"tdor"},
 	}
 }
 
