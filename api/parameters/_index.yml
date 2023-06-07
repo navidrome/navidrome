@@ -1,0 +1,28 @@
+pageOffset:
+  $ref: './query/pageOffset.yml'
+pageLimit:
+  $ref: './query/pageLimit.yml'
+filterEquals:
+  $ref: './query/filterEquals.yml'
+filterLessThan:
+  $ref: './query/filterLessThan.yml'
+filterLessOrEqual:
+  $ref: './query/filterLessOrEqual.yml'
+filterGreaterThan:
+  $ref: './query/filterGreaterThan.yml'
+filterGreaterOrEqual:
+  $ref: './query/filterGreaterOrEqual.yml'
+filterContains:
+  $ref: './query/filterContains.yml'
+filterStartsWith:
+  $ref: './query/filterStartsWith.yml'
+filterEndsWith:
+  $ref: './query/filterEndsWith.yml'
+sort:
+  $ref: './query/sort.yml'
+include:
+  $ref: './query/include.yml'
+includeForTracks:
+  $ref: './query/includeForTracks.yml'
+includeForAlbums:
+  $ref: './query/includeForAlbums.yml'

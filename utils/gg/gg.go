@@ -13,20 +13,37 @@ func If[T comparable](v T, orElse T) T {
 	return orElse
 }
 
-// FirstOr is a generic helper function that returns the first non-zero value from
-// a list of comparable values, or a default value if all the values are zero.
-func FirstOr[T comparable](or T, values ...T) T {
-	// Initialize a zero value of the same type as the input values.
+// P returns a pointer to a value, or nil if the value is the zero value of the type.
+func P[T comparable](t T) *T {
 	var zero T
+	if t == zero {
+		return nil
+	}
+	return &t
+}
 
-	// Loop through each input value and check if it is non-zero. If a non-zero value
-	// is found, return it immediately.
-	for _, v := range values {
+// V returns the value of a pointer, or the zero value of the type if the pointer is nil.
+func V[T comparable](p *T) T {
+	var zero T
+	if p == nil {
+		return zero
+	}
+	return *p
+}
+
+// Coalesce returns the first non-zero value from listed arguments.
+// Returns the zero value of the type parameter if no arguments are given or all are the zero value.
+// Useful when you want to initialize a variable to the first non-zero value from a list of fallback values.
+//
+// For example:
+//
+//	hostVal := Coalesce(hostName, os.Getenv("HOST"), "localhost")
+func Coalesce[T comparable](values ...T) (v T) {
+	var zero T
+	for _, v = range values {
 		if v != zero {
-			return v
+			return
 		}
 	}
-
-	// If all the input values are zero, return the default value.
-	return or
+	return
 }

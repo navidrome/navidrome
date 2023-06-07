@@ -60,6 +60,10 @@ func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
 }
 
+func (a Album) ArtistIDs() []string {
+	return []string{a.ArtistID, a.AlbumArtistID}
+}
+
 type DiscID struct {
 	AlbumID     string `json:"albumId"`
 	ReleaseDate string `json:"releaseDate"`
@@ -89,6 +93,14 @@ func (als Albums) ToAlbumArtist() Artist {
 	a.MbzArtistID = slice.MostFrequent(mbzArtistIds)
 
 	return a
+}
+
+func (als Albums) ArtistIDs() []string {
+	var ids []string
+	for _, al := range als {
+		ids = append(ids, al.ArtistIDs()...)
+	}
+	return ids
 }
 
 type AlbumRepository interface {

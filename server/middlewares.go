@@ -190,41 +190,31 @@ var (
 // handling the given request, as determined by the presence of X-Forwarded-* headers
 // or the scheme and host of the request URL.
 func serverAddress(r *http.Request) (scheme, host string) {
-	// Save the original request host for later comparison.
-	origHost := r.Host
-
 	// Determine the protocol of the request based on the presence of a TLS connection.
 	protocol := "http"
 	if r.TLS != nil {
 		protocol = "https"
 	}
 
-	// Get the X-Forwarded-Host header and extract the first host name if there are
-	// multiple hosts listed. If there is no X-Forwarded-Host header, use the original
-	// request host as the default.
-	xfh := r.Header.Get(xForwardedHost)
-	if xfh != "" {
-		i := strings.Index(xfh, ",")
-		if i == -1 {
-			i = len(xfh)
-		}
-		xfh = xfh[:i]
-	}
-	host = FirstOr(r.Host, xfh)
-
 	// Determine the protocol and scheme of the request based on the presence of
 	// X-Forwarded-* headers or the scheme of the request URL.
-	scheme = FirstOr(
-		protocol,
+	scheme = Coalesce(
 		r.Header.Get(xForwardedProto),
 		r.Header.Get(xForwardedScheme),
 		r.URL.Scheme,
+		protocol,
 	)
+
+	// Get the X-Forwarded-Host header and extract the first host name if there are
+	// multiple hosts listed. If there is no X-Forwarded-Host header, use the original
+	// request host as the default.
+	parts := strings.Split(r.Header.Get(xForwardedHost), ",")
+	host = Coalesce(parts[0], r.Host)
 
 	// If the request host has changed due to the X-Forwarded-Host header, log a trace
 	// message with the original and new host values, as well as the scheme and URL.
-	if host != origHost {
-		log.Trace(r.Context(), "Request host has changed", "origHost", origHost, "host", host, "scheme", scheme, "url", r.URL)
+	if host != r.Host {
+		log.Trace(r.Context(), "Request host has changed", "origHost", r.Host, "host", host, "scheme", scheme, "url", r.URL)
 	}
 
 	// Return the scheme and host of the server handling the request.

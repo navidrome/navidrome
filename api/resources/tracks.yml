@@ -1,0 +1,44 @@
+get:
+  summary: Retrieve a list of tracks
+  operationId: getTracks
+  parameters:
+    - $ref: '../parameters/query/pageLimit.yml'
+    - $ref: '../parameters/query/pageOffset.yml'
+    - $ref: '../parameters/query/filterEquals.yml'
+    - $ref: '../parameters/query/filterContains.yml'
+    - $ref: '../parameters/query/filterLessThan.yml'
+    - $ref: '../parameters/query/filterLessOrEqual.yml'
+    - $ref: '../parameters/query/filterGreaterThan.yml'
+    - $ref: '../parameters/query/filterGreaterOrEqual.yml'
+    - $ref: '../parameters/query/filterStartsWith.yml'
+    - $ref: '../parameters/query/filterEndsWith.yml'
+    - $ref: '../parameters/query/sort.yml'
+    - $ref: '../parameters/query/includeForTracks.yml'
+  responses:
+    '200':
+      description: A list of tracks
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data, links]
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '../schemas/Track.yml'
+              links:
+                $ref: '../schemas/PaginationLinks.yml'
+              meta:
+                $ref: '../schemas/PaginationMeta.yml'
+              included:
+                description: Included resources, as requested by the `include` query parameter
+                type: array
+                items:
+                  $ref: '../schemas/IncludedResource.yml'
+    '400':
+      $ref: '../responses/BadRequest.yml'
+    '403':
+      $ref: '../responses/NotAuthorized.yml'
+    '500':
+      $ref: '../responses/InternalServerError.yml'

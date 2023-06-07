@@ -1,0 +1,46 @@
+ServerInfo:
+  $ref: './ServerInfo.yml'
+ResourceObject:
+  $ref: './ResourceObject.yml'
+ResourceType:
+  $ref: './ResourceType.yml'
+ResourceList:
+  $ref: './ResourceList.yml'
+IncludedResource:
+  $ref: './IncludedResource.yml'
+Track:
+  $ref: './Track.yml'
+TrackAttributes:
+  $ref: './TrackAttributes.yml'
+TrackRelationships:
+  $ref: './TrackRelationships.yml'
+TrackArtistRelationship:
+  $ref: './TrackArtistRelationship.yml'
+ArtistRole:
+  $ref: './ArtistRole.yml'
+Artist:
+  $ref: './Artist.yml'
+ArtistAttributes:
+  $ref: './ArtistAttributes.yml'
+ArtistAlbumRelationship:
+  $ref: './ArtistAlbumRelationship.yml'
+ArtistTrackRelationship:
+  $ref: './ArtistTrackRelationship.yml'
+ArtistMetaObject:
+  $ref: './ArtistMetaObject.yml'
+Album:
+  $ref: './Album.yml'
+AlbumAttributes:
+  $ref: './AlbumAttributes.yml'
+AlbumArtistRelationship:
+  $ref: './AlbumArtistRelationship.yml'
+AlbumTrackRelationship:
+  $ref: './AlbumTrackRelationship.yml'
+PaginationLinks:
+  $ref: './PaginationLinks.yml'
+PaginationMeta:
+  $ref: './PaginationMeta.yml'
+ErrorList:
+  $ref: './ErrorList.yml'
+ErrorObject:
+  $ref: './ErrorObject.yml'

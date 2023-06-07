@@ -174,7 +174,9 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 func authHeaderMapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bearer := r.Header.Get(consts.UIAuthorizationHeader)
-		r.Header.Set("Authorization", bearer)
+		if bearer != "" {
+			r.Header.Set("Authorization", bearer)
+		}
 		next.ServeHTTP(w, r)
 	})
 }

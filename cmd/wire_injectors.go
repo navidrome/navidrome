@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/api"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
@@ -25,6 +26,7 @@ var allProviders = wire.NewSet(
 	artwork.Set,
 	subsonic.New,
 	nativeapi.New,
+	api.New,
 	public.New,
 	persistence.New,
 	lastfm.NewRouter,
@@ -41,6 +43,12 @@ func CreateServer(musicFolder string) *server.Server {
 }
 
 func CreateNativeAPIRouter() *nativeapi.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateNewNativeAPIRouter() *api.Router {
 	panic(wire.Build(
 		allProviders,
 	))

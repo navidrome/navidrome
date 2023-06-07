@@ -1,0 +1,27 @@
+allOf:
+  - $ref: './ResourceObject.yml'
+  - type: object
+    properties:
+      attributes:
+        $ref: './ArtistAttributes.yml'
+      relationships:
+        type: object
+        properties:
+          tracks:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: './ArtistTrackRelationship.yml'
+            required:
+              - data
+          albums:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: './ArtistAlbumRelationship.yml'
+            required:
+              - data

@@ -183,6 +183,22 @@ func (mfs MediaFiles) ToAlbum() Album {
 	return a
 }
 
+func (mfs MediaFiles) ArtistIDs() []string {
+	var ids []string
+	for _, mf := range mfs {
+		ids = append(ids, mf.ArtistID, mf.AlbumArtistID)
+	}
+	return ids
+}
+
+func (mfs MediaFiles) AlbumIDs() []string {
+	var ids []string
+	for _, mf := range mfs {
+		ids = append(ids, mf.AlbumID)
+	}
+	return ids
+}
+
 func allOrNothing(items []string) (string, int) {
 	items = slices.Compact(items)
 	if len(items) == 1 {

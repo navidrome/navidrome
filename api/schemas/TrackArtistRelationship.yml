@@ -1,0 +1,9 @@
+type: object
+properties:
+  meta:
+    $ref: './ArtistMetaObject.yml'
+  data:
+    $ref: './ResourceObject.yml'
+required:
+  - meta
+  - data

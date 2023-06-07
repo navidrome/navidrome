@@ -1,0 +1,23 @@
+type: object
+properties:
+  title:
+    type: string
+    description: The title of the album
+  artist:
+    type: string
+    description: The artist of the album
+  releaseDate:
+    type: string
+    description: The release date of the album
+  tracktotal:
+    type: integer
+    description: The number of tracks on the album
+  disctotal:
+    type: integer
+    description: The number of discs in the album
+  genre:
+    type: string
+    description: The genre of the album
+required:
+  - title
+  - artist

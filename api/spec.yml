@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  version: 0.2.0
+  title: Navidrome API
+  description: >
+    This spec describes the Navidrome API, which allows users to browse and manage their music library via a JSON:API 
+    based interface. The API provides endpoints for albums, tracks, artists, playlists and images, along with their 
+    relationships. Clients can retrieve information about the items in the library, filter and sort results, and 
+    perform actions such as creating and deleting playlists. With this API, developers can build music apps and 
+    services that integrate with Navidrome music server, providing a seamless experience for users to access and 
+    manage their music collection.
+  contact:
+    name: Navidrome
+    url: https://navidrome.org
+  license:
+    name: GNU General Public License v3.0
+    url: https://github.com/navidrome/navidrome/blob/master/LICENSE
+
+servers:
+  - url: /api/v2
+
+security:
+  - bearerAuth: []
+
+paths:
+  /server:
+    $ref: './resources/server.yml'
+  /tracks:
+    $ref: './resources/tracks.yml'
+  /tracks/{trackId}:
+    $ref: './resources/track.yml'
+  /artists:
+    $ref: './resources/artists.yml'
+  /artists/{artistId}:
+    $ref: './resources/artist.yml'
+  /albums:
+    $ref: './resources/albums.yml'
+  /albums/{albumId}:
+    $ref: './resources/album.yml'
+
+components:
+  parameters:
+    $ref: './parameters/_index.yml'
+  schemas:
+    $ref: './schemas/_index.yml'
+  responses:
+    $ref: './responses/_index.yml'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

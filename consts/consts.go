@@ -32,6 +32,7 @@ const (
 
 	URLPathUI           = "/app"
 	URLPathNativeAPI    = "/api"
+	URLPathAPI          = "/api/v2"
 	URLPathSubsonicAPI  = "/rest"
 	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"

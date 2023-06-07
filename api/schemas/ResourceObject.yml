@@ -1,0 +1,8 @@
+type: object
+required: [id, type]
+properties:
+  id:
+    type: string
+    description: The unique identifier for the resource
+  type:
+    $ref: './ResourceType.yml'

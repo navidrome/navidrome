@@ -1,0 +1,28 @@
+get:
+  summary: Retrieve an individual artist
+  operationId: getArtist
+  parameters:
+    - $ref: '../parameters/query/include.yml'
+    - name: artistId
+      in: path
+      description: The unique identifier of the artist
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: An artist object
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '../schemas/Artist.yml'
+    '403':
+      $ref: '../responses/NotAuthorized.yml'
+    '404':
+      $ref: '../responses/NotFound.yml'
+    '500':
+      $ref: '../responses/InternalServerError.yml'

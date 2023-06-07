@@ -1,0 +1,12 @@
+type: object
+properties:
+  artists:
+    type: array
+    items:
+      $ref: './TrackArtistRelationship.yml'
+  albums:
+    type: array
+    items:
+      $ref: './AlbumTrackRelationship.yml'
+required:
+  - artists

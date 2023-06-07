@@ -1,0 +1,9 @@
+name: page[offset]
+in: query
+description: The offset for pagination
+required: false
+schema:
+  type: integer
+  format: int32
+  minimum: 0
+  default: 0

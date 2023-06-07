@@ -1,0 +1,33 @@
+get:
+  summary: Retrieve an individual track
+  operationId: getTrack
+  parameters:
+    - $ref: '../parameters/query/includeForTracks.yml'
+    - name: trackId
+      in: path
+      description: The unique identifier of the track
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      description: A track object
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '../schemas/Track.yml'
+              included:
+                description: Included resources, as requested by the `include` query parameter
+                type: array
+                items:
+                  $ref: '../schemas/IncludedResource.yml'
+    '403':
+      $ref: '../responses/NotAuthorized.yml'
+    '404':
+      $ref: '../responses/NotFound.yml'
+    '500':
+      $ref: '../responses/InternalServerError.yml'

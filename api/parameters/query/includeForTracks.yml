@@ -1,0 +1,13 @@
+name: include
+in: query
+description: Related resources to include in the response, separated by commas
+required: false
+explode: false
+schema:
+  type: array
+  x-go-type: includeSlice
+  items:
+    type: string
+    enum:
+      - album
+      - artist

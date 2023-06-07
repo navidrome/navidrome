@@ -1,0 +1,9 @@
+name: filter[equals]
+in: query
+description: 'Filter by any property with an exact match. Usage: filter[equals]=property:value'
+required: false
+schema:
+  type: array
+  items:
+    type: string
+    pattern: '^\w+:\w+'

@@ -1,0 +1,6 @@
+type: object
+properties:
+  role:
+    $ref: './ArtistRole.yml'
+required:
+  - role

@@ -1,0 +1,6 @@
+name: sort
+in: query
+description: Sort the results by one or more properties, separated by commas. Prefix the property with '-' for descending order.
+required: false
+schema:
+  type: string

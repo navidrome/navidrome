@@ -1,0 +1,14 @@
+type: object
+properties:
+  currentPage:
+    type: integer
+    format: int32
+    description: The current page in the collection
+  totalPages:
+    type: integer
+    format: int32
+    description: The total number of pages in the collection
+  totalItems:
+    type: integer
+    format: int32
+    description: The total number of items in the collection

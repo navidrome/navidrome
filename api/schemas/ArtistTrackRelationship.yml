@@ -1,0 +1,14 @@
+type: object
+properties:
+  meta:
+    type: object
+    properties:
+      role:
+        $ref: './ArtistRole.yml'
+    required:
+      - role
+  data:
+    $ref: './ResourceObject.yml'
+required:
+  - meta
+  - data

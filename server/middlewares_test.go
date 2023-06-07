@@ -86,10 +86,23 @@ var _ = Describe("middlewares", func() {
 			})
 		})
 
-		Context("with X-Forwarded-Host header", func() {
+		Context("with X-Forwarded-Host header with one host", func() {
 			BeforeEach(func() {
 				req, _ = http.NewRequest("GET", "http://example.com", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
+			})
+
+			It("should modify the request with the X-Forwarded-Host header value", func() {
+				middleware.ServeHTTP(recorder, req)
+				Expect(req.Host).To(Equal("forwarded.example.com"))
+				Expect(req.URL.Scheme).To(Equal("http"))
+			})
+		})
+
+		Context("with X-Forwarded-Host header with multiple hosts", func() {
+			BeforeEach(func() {
+				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req.Header.Set("X-Forwarded-Host", "forwarded.example.com,forwarded2.example.com")
 			})
 
 			It("should modify the request with the X-Forwarded-Host header value", func() {

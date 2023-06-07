@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - master
+
 jobs:
   go-lint:
     name: Lint Go code
@@ -42,6 +43,28 @@ jobs:
             echo 'To fix this check, run "goimports -w $(find . -name '*.go' | grep -v '_gen.go$') && go mod tidy"'
             exit 1
           fi
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Build and Lint OpenAPI spec
+        run: make lintapi gen
+
+      - name: Verify no changes
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo 'Changes to OpenAPI spec caused changes to the code. Please review and commit the changes.'
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: openapi.yaml
+          path: api/openapi.yaml
 
   go:
     name: Test with Go ${{ matrix.go_version }}
@@ -108,7 +131,6 @@ jobs:
         with:
           name: js-bundle
           path: ui/build
-          retention-days: 7
 
   binaries:
     name: Build binaries
@@ -155,7 +177,6 @@ jobs:
             dist
             !dist/*.tar.gz
             !dist/*.zip
-          retention-days: 7
 
   docker:
     name: Build and publish Docker images

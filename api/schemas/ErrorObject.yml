@@ -1,0 +1,10 @@
+type: object
+properties:
+  id:
+    type: string
+  status:
+    type: string
+  title:
+    type: string
+  detail:
+    type: string

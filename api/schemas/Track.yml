@@ -1,0 +1,8 @@
+allOf:
+  - $ref: './ResourceObject.yml'
+  - type: object
+    properties:
+      attributes:
+        $ref: './TrackAttributes.yml'
+      relationships:
+        $ref: './TrackRelationships.yml'

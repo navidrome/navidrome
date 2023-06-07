@@ -1,0 +1,9 @@
+name: filter[contains]
+in: query
+description: 'Filter by any property containing text. Usage: filter[contains]=property:value'
+required: false
+schema:
+  type: array
+  items:
+    type: string
+    pattern: '^\w+:\w+'

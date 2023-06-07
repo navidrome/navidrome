@@ -1,0 +1,6 @@
+name: include
+in: query
+description: Related resources to include in the response, separated by commas
+required: false
+schema:
+  type: string

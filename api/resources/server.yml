@@ -1,0 +1,18 @@
+get:
+  summary: Get server's global info
+  operationId: getServerInfo
+  responses:
+    '200':
+      description: The response’s data key maps to a resource object dictionary representing the server.
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                $ref: '../schemas/ServerInfo.yml'
+    '403':
+      $ref: '../responses/NotAuthorized.yml'
+    '500':
+      $ref: '../responses/InternalServerError.yml'
