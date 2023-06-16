@@ -62,7 +62,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
 	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
 	mf.CatalogNum = md.CatalogNum()
-	mf.MbzTrackID = md.MbzTrackID()
+	mf.MbzRecordingID = md.MbzRecordingID()
 	mf.MbzReleaseTrackID = md.MbzReleaseTrackID()
 	mf.MbzAlbumID = md.MbzAlbumID()
 	mf.MbzArtistID = md.MbzArtistID()

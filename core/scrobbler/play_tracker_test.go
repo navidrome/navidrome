@@ -40,16 +40,16 @@ var _ = Describe("PlayTracker", func() {
 		tracker = newPlayTracker(ds, events.GetBroker())
 
 		track = model.MediaFile{
-			ID:          "123",
-			Title:       "Track Title",
-			Album:       "Track Album",
-			AlbumID:     "al-1",
-			Artist:      "Track Artist",
-			ArtistID:    "ar-1",
-			AlbumArtist: "Track AlbumArtist",
-			TrackNumber: 1,
-			Duration:    180,
-			MbzTrackID:  "mbz-123",
+			ID:             "123",
+			Title:          "Track Title",
+			Album:          "Track Album",
+			AlbumID:        "al-1",
+			Artist:         "Track Artist",
+			ArtistID:       "ar-1",
+			AlbumArtist:    "Track AlbumArtist",
+			TrackNumber:    1,
+			Duration:       180,
+			MbzRecordingID: "mbz-123",
 		}
 		_ = ds.MediaFile(ctx).Put(&track)
 		artist = model.Artist{ID: "ar-1"}

@@ -257,7 +257,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		track:       track.Title,
 		album:       track.Album,
 		trackNumber: track.TrackNumber,
-		mbid:        track.MbzTrackID,
+		mbid:        track.MbzRecordingID,
 		duration:    int(track.Duration),
 		albumArtist: track.AlbumArtist,
 	})
@@ -283,7 +283,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		track:       s.Title,
 		album:       s.Album,
 		trackNumber: s.TrackNumber,
-		mbid:        s.MbzTrackID,
+		mbid:        s.MbzRecordingID,
 		duration:    int(s.Duration),
 		albumArtist: s.AlbumArtist,
 		timestamp:   s.TimeStamp,
