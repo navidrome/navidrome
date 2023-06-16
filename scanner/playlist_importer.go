@@ -36,6 +36,9 @@ func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int
 		return count
 	}
 	for _, f := range files {
+		if strings.HasPrefix(f.Name(), ".") {
+			continue
+		}
 		if !model.IsValidPlaylist(f.Name()) {
 			continue
 		}
