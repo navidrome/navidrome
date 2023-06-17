@@ -236,14 +236,14 @@ var _ = Describe("lastfmAgent", func() {
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			track = &model.MediaFile{
-				ID:          "123",
-				Title:       "Track Title",
-				Album:       "Track Album",
-				Artist:      "Track Artist",
-				AlbumArtist: "Track AlbumArtist",
-				TrackNumber: 1,
-				Duration:    180,
-				MbzTrackID:  "mbz-123",
+				ID:             "123",
+				Title:          "Track Title",
+				Album:          "Track Album",
+				Artist:         "Track Artist",
+				AlbumArtist:    "Track AlbumArtist",
+				TrackNumber:    1,
+				Duration:       180,
+				MbzRecordingID: "mbz-123",
 			}
 		})
 
@@ -264,7 +264,7 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
 				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
 				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
-				Expect(sentParams.Get("mbid")).To(Equal(track.MbzTrackID))
+				Expect(sentParams.Get("mbid")).To(Equal(track.MbzRecordingID))
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
@@ -291,7 +291,7 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
 				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
 				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
-				Expect(sentParams.Get("mbid")).To(Equal(track.MbzTrackID))
+				Expect(sentParams.Get("mbid")).To(Equal(track.MbzRecordingID))
 				Expect(sentParams.Get("timestamp")).To(Equal(strconv.FormatInt(ts.Unix(), 10)))
 			})
 

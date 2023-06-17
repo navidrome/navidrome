@@ -33,14 +33,14 @@ var _ = Describe("listenBrainzAgent", func() {
 		agent = listenBrainzConstructor(ds)
 		agent.client = newClient("http://localhost:8080", httpClient)
 		track = &model.MediaFile{
-			ID:          "123",
-			Title:       "Track Title",
-			Album:       "Track Album",
-			Artist:      "Track Artist",
-			TrackNumber: 1,
-			MbzTrackID:  "mbz-123",
-			MbzAlbumID:  "mbz-456",
-			MbzArtistID: "mbz-789",
+			ID:             "123",
+			Title:          "Track Title",
+			Album:          "Track Album",
+			Artist:         "Track Artist",
+			TrackNumber:    1,
+			MbzRecordingID: "mbz-123",
+			MbzAlbumID:     "mbz-456",
+			MbzArtistID:    "mbz-789",
 		}
 	})
 
@@ -61,7 +61,7 @@ var _ = Describe("listenBrainzAgent", func() {
 						"SubmissionClient":        Equal(consts.AppName),
 						"SubmissionClientVersion": Equal(consts.Version),
 						"TrackNumber":             Equal(track.TrackNumber),
-						"TrackMbzID":              Equal(track.MbzTrackID),
+						"RecordingMbzID":          Equal(track.MbzRecordingID),
 						"ReleaseMbID":             Equal(track.MbzAlbumID),
 						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
 							"mbz-789": Equal(track.MbzArtistID),
@@ -193,7 +193,7 @@ var _ = Describe("listenBrainzAgent", func() {
 		})
 
 		It("Should not be able to star if MBID missing", func() {
-			track.MbzTrackID = ""
+			track.MbzRecordingID = ""
 			Expect(agent.CanStar(track)).To(BeFalse())
 		})
 	})

@@ -57,7 +57,7 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 				SubmissionClientVersion: consts.Version,
 				TrackNumber:             track.TrackNumber,
 				ArtistMbzIDs:            []string{track.MbzArtistID},
-				TrackMbzID:              track.MbzTrackID,
+				RecordingMbzID:          track.MbzRecordingID,
 				ReleaseMbID:             track.MbzAlbumID,
 			},
 		},
@@ -118,7 +118,7 @@ func (l *listenBrainzAgent) CanProxyStars(ctx context.Context, userId string) bo
 }
 
 func (l *listenBrainzAgent) CanStar(track *model.MediaFile) bool {
-	return track.MbzTrackID != ""
+	return track.MbzRecordingID != ""
 }
 
 func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, track *model.MediaFile) error {
@@ -127,8 +127,8 @@ func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, 
 		return scrobbler.ErrNotAuthorized
 	}
 
-	if track.MbzTrackID != "" {
-		err = l.client.Star(ctx, sk, star, track.MbzTrackID)
+	if track.MbzRecordingID != "" {
+		err = l.client.Star(ctx, sk, star, track.MbzRecordingID)
 	}
 
 	if err == nil {
