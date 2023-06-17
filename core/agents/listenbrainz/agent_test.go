@@ -40,6 +40,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			MbzRecordingID: "mbz-123",
 			MbzAlbumID:     "mbz-456",
 			MbzArtistID:    "mbz-789",
+			Duration:       142.2,
 		}
 	})
 
@@ -65,6 +66,7 @@ var _ = Describe("listenBrainzAgent", func() {
 						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
 							"mbz-789": Equal(track.MbzArtistID),
 						}),
+						"DurationMs": Equal(142200),
 					}),
 				}),
 			}))

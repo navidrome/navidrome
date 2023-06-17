@@ -78,6 +78,7 @@ var _ = Describe("client", func() {
 						RecordingMbzID: "mbz-123",
 						ArtistMbzIDs:   []string{"mbz-789"},
 						ReleaseMbID:    "mbz-456",
+						DurationMs:     142200,
 					},
 				},
 			}
