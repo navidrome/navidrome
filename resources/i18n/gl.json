@@ -54,7 +54,11 @@
                 "comment": "Comentario",
                 "rating": "Valoración",
                 "createdAt": "Engadido o",
-                "size": "Tamaño"
+                "size": "Tamaño",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Reproducir",

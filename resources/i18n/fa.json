@@ -54,7 +54,11 @@
                 "comment": "اظهارنظر",
                 "rating": "رتبه بندی",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "پخش",
