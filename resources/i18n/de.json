@@ -54,7 +54,11 @@
                 "comment": "Kommentar",
                 "rating": "Bewertung",
                 "createdAt": "Hinzugefügt",
-                "size": "Größe"
+                "size": "Größe",
+                "originalDate": "Ursprünglich",
+                "releaseDate": "Erschienen",
+                "releases": "Veröffentlichung |||| Veröffentlichungen",
+                "released": "Erschienen"
             },
             "actions": {
                 "playAll": "Abspielen",

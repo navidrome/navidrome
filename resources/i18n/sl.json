@@ -54,7 +54,11 @@
                 "comment": "Opomba",
                 "rating": "Ocena",
                 "createdAt": "Datum dodano",
-                "size": "Velikost"
+                "size": "Velikost",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Predvajaj vse",

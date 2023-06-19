@@ -2,7 +2,7 @@
     "languageName": "简体中文",
     "resources": {
         "song": {
-            "name": "歌曲 |||| 歌曲",
+            "name": "歌曲",
             "fields": {
                 "albumArtist": "专辑歌手",
                 "duration": "时长",
@@ -39,7 +39,7 @@
             }
         },
         "album": {
-            "name": "专辑 |||| 专辑",
+            "name": "专辑",
             "fields": {
                 "albumArtist": "专辑歌手",
                 "artist": "歌手",
@@ -54,7 +54,11 @@
                 "comment": "注释",
                 "rating": "评分",
                 "createdAt": "创建于",
-                "size": "文件大小"
+                "size": "文件大小",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "立即播放",
@@ -77,7 +81,7 @@
             }
         },
         "artist": {
-            "name": "艺术家 |||| 艺术家",
+            "name": "艺术家",
             "fields": {
                 "name": "名称",
                 "albumCount": "专辑数",
@@ -89,7 +93,7 @@
             }
         },
         "user": {
-            "name": "用户 |||| 用户",
+            "name": "用户",
             "fields": {
                 "userName": "用户名",
                 "isAdmin": "是否管理员",
@@ -117,7 +121,7 @@
             }
         },
         "player": {
-            "name": "客户端 |||| 客户端",
+            "name": "客户端",
             "fields": {
                 "name": "名称",
                 "transcodingId": "转码编号",
@@ -130,7 +134,7 @@
             }
         },
         "transcoding": {
-            "name": "转码 |||| 转码",
+            "name": "转码",
             "fields": {
                 "name": "名称",
                 "targetFormat": "目标格式",
@@ -139,7 +143,7 @@
             }
         },
         "playlist": {
-            "name": "歌单 |||| 歌单",
+            "name": "歌单",
             "fields": {
                 "name": "名称",
                 "duration": "时长",
@@ -165,7 +169,7 @@
             }
         },
         "radio": {
-            "name": "电台 |||| 电台",
+            "name": "电台",
             "fields": {
                 "name": "名称",
                 "streamUrl": "推流地址",
@@ -178,7 +182,7 @@
             }
         },
         "share": {
-            "name": "分享 |||| 分享",
+            "name": "分享",
             "fields": {
                 "username": "分享者",
                 "url": "链接",
@@ -252,7 +256,7 @@
             "close_menu": "关闭菜单",
             "unselect": "未选择",
             "skip": "跳过",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "bulk_actions_mobile": "%{smart_count}",
             "share": "分享",
             "download": "下载"
         },
@@ -294,8 +298,8 @@
         "message": {
             "about": "关于",
             "are_you_sure": "您确定要进行此操作？",
-            "bulk_delete_content": "您确定要删除 %{name}？ |||| 您确定要删除 %{smart_count} 项？",
-            "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count} 项 %{name}",
+            "bulk_delete_content": "您确定要删除 %{smart_count} 项 %{name}？",
+            "bulk_delete_title": "删除 %{smart_count} 项 %{name}",
             "delete_content": "您确定要删除该条目？",
             "delete_title": "删除 %{name} #%{id}",
             "details": "详情",
@@ -309,8 +313,8 @@
         },
         "navigation": {
             "no_results": "无内容",
-            "no_more_results": "页码 %{page} 超出边界，尝试返回上一页",
-            "page_out_of_boundaries": "页码 %{page} 超出边界",
+            "no_more_results": "页码 %{page} 超出范围，尝试返回上一页",
+            "page_out_of_boundaries": "页码 %{page} 超出范围",
             "page_out_from_end": "已经最后一页",
             "page_out_from_begin": "已经是第一页",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
@@ -320,11 +324,11 @@
             "skip_nav": "跳过"
         },
         "notification": {
-            "updated": "已更新 1 项 |||| 已更新 %{smart_count} 项",
+            "updated": "已更新 %{smart_count} 项",
             "created": "已新建 1 项",
-            "deleted": "已删除 1 项 |||| 已删除 %{smart_count} 项",
+            "deleted": "已删除 %{smart_count} 项",
             "bad_item": "不正确的项",
-            "item_doesnt_exist": "项不存在",
+            "item_doesnt_exist": "该项不存在",
             "http_error": "与服务通信出错",
             "data_provider_error": "数据来源错误，请检查控制台的详细信息",
             "i18n_error": "加载所选语言时出错",
@@ -343,7 +347,7 @@
         "note": "说明",
         "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
         "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码选项时启用此功能。",
-        "songsAddedToPlaylist": "已添加 1 首歌到歌单 |||| 已添加 %{smart_count} 首歌到歌单",
+        "songsAddedToPlaylist": "已添加 %{smart_count} 首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
         "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
@@ -365,7 +369,7 @@
         "downloadOriginalFormat": "下载原始格式",
         "shareOriginalFormat": "分享原始格式",
         "shareDialogTitle": "分享 %{resource} '%{name}'",
-        "shareBatchDialogTitle": "分享 1 个 %{resource} |||| 分享 %{smart_count} 个 %{resource}",
+        "shareBatchDialogTitle": "分享 %{smart_count} 个 %{resource}",
         "shareSuccess": "分享链接已复制: %{url}",
         "shareFailure": "分享链接复制失败: %{url}",
         "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",

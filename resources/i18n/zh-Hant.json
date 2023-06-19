@@ -54,7 +54,11 @@
                 "comment": "註釋",
                 "rating": "評分",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "立即播放",

@@ -54,7 +54,11 @@
                 "comment": "Commentaar",
                 "rating": "Beoordeling",
                 "createdAt": "Datum toegevoegd",
-                "size": "Grootte"
+                "size": "Grootte",
+                "originalDate": "Origineel",
+                "releaseDate": "Uitgegeven",
+                "releases": "Uitgave |||| Uitgaven",
+                "released": "Uitgegeven"
             },
             "actions": {
                 "playAll": "Afspelen",

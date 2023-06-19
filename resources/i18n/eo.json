@@ -54,7 +54,11 @@
                 "comment": "Komento",
                 "rating": "",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Ludi",

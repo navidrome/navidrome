@@ -54,7 +54,11 @@
                 "comment": "Comentario",
                 "rating": "Calificación",
                 "createdAt": "Creado el",
-                "size": "Tamaño del archivo"
+                "size": "Tamaño del archivo",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Reproducir",

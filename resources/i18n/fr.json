@@ -54,7 +54,11 @@
                 "comment": "Commentaire",
                 "rating": "Classement",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Lire",

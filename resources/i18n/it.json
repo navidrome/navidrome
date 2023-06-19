@@ -54,7 +54,11 @@
                 "comment": "Commento",
                 "rating": "Valutazione",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Riproduci",

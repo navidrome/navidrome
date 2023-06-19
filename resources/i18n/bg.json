@@ -54,7 +54,11 @@
                 "comment": "Коментар",
                 "rating": "Рейтинг",
                 "createdAt": "Добавено на",
-                "size": "Размер"
+                "size": "Размер",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Пусни",
