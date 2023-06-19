@@ -110,3 +110,9 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 	ctx = request.WithUsername(ctx, u.UserName)
 	return request.WithUser(ctx, *u)
 }
+
+// func TokenForDemoUser(r *http.Request) string {
+// 	// Get token from authorization header.
+// 	tokenString, _ := CreateToken(&model.DemoUser)
+// 	return tokenString
+// }

@@ -181,6 +181,7 @@ func authHeaderMapper(next http.Handler) http.Handler {
 
 func jwtVerifier(next http.Handler) http.Handler {
 	return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
+	// return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery, auth.TokenForDemoUser)(next)
 }
 
 func UsernameFromToken(r *http.Request) string {

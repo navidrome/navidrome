@@ -32,9 +32,7 @@ func (n *Router) routes() http.Handler {
 
 	// Protected
 	r.Group(func(r chi.Router) {
-		r.Use(server.Authenticator(n.ds))
 		r.Use(server.JWTRefresher)
-		n.R(r, "/user", model.User{}, true)
 		n.R(r, "/song", model.MediaFile{}, false)
 		n.R(r, "/album", model.Album{}, false)
 		n.R(r, "/artist", model.Artist{}, false)
@@ -46,6 +44,13 @@ func (n *Router) routes() http.Handler {
 		if conf.Server.EnableSharing {
 			n.RX(r, "/share", n.share.NewRepository, true)
 		}
+
+		r.Group(func(r chi.Router) {
+			r.Use(server.Authenticator(n.ds))
+			r.Use(server.JWTRefresher)
+			n.R(r, "/user", model.User{}, true)
+
+		})
 
 		n.addPlaylistTrackRoute(r)
 

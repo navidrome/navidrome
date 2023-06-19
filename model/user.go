@@ -1,6 +1,8 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
 	ID           string    `structs:"id" json:"id" orm:"column(id)"`
@@ -36,3 +38,13 @@ type UserRepository interface {
 	// FindByUsernameWithPassword is the same as above, but also returns the decrypted password
 	FindByUsernameWithPassword(username string) (*User, error)
 }
+
+// var (
+// 	DemoUser = User{
+// 		ID:       uuid.NewString(),
+// 		UserName: "DemoUser",
+// 		Name:     "demo",
+// 		Email:    "",
+// 		IsAdmin:  false,
+// 	}
+// )

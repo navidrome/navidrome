@@ -67,28 +67,28 @@ const authProvider = {
   },
 
   checkAuth: () =>
-    localStorage.getItem('is-authenticated')
-      ? Promise.resolve()
-      : Promise.reject(),
+  // Необходимо чтобы не авторизованные тоже могли просматривать
+  Promise.resolve(),
 
   checkError: ({ status }) => {
-    if (status === 401) {
-      removeItems()
-      return Promise.reject()
-    }
+      // Необходимо чтобы не авторизованные тоже могли просматривать
     return Promise.resolve()
   },
 
   getPermissions: () => {
     const role = localStorage.getItem('role')
-    return role ? Promise.resolve(role) : Promise.reject()
+    return role ? Promise.resolve(role) : Promise.resolve('regular')
   },
 
   getIdentity: () => {
+    var username = localStorage.getItem('username')
+    var name = localStorage.getItem('name')
+    var avatar = localStorage.getItem('avatar')
+
     return Promise.resolve({
-      id: localStorage.getItem('username'),
-      fullName: localStorage.getItem('name'),
-      avatar: localStorage.getItem('avatar'),
+      id: username ? username : "unauthorized_user",
+      fullName: name ? name : "unauthorized user",
+      avatar: avatar ? avatar : "",
     })
   },
 }

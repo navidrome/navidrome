@@ -66,16 +66,18 @@ func (api *Router) routes() http.Handler {
 
 	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
-	r.Use(authenticate(api.ds))
+
 	// TODO Validate version
 
 	// Subsonic endpoints, grouped by controller
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		h(r, "ping", api.Ping)
 		h(r, "getLicense", api.GetLicense)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		h(r, "getMusicFolders", api.GetMusicFolders)
 		h(r, "getIndexes", api.GetIndexes)
@@ -94,6 +96,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "getSimilarSongs2", api.GetSimilarSongs2)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		hr(r, "getAlbumList", api.GetAlbumList)
 		hr(r, "getAlbumList2", api.GetAlbumList2)
@@ -104,6 +107,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "getSongsByGenre", api.GetSongsByGenre)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		h(r, "setRating", api.SetRating)
 		h(r, "star", api.Star)
@@ -111,6 +115,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "scrobble", api.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		h(r, "getPlaylists", api.GetPlaylists)
 		h(r, "getPlaylist", api.GetPlaylist)
@@ -119,6 +124,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "updatePlaylist", api.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		h(r, "getBookmarks", api.GetBookmarks)
 		h(r, "createBookmark", api.CreateBookmark)
@@ -127,19 +133,23 @@ func (api *Router) routes() http.Handler {
 		h(r, "savePlayQueue", api.SavePlayQueue)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		h(r, "search2", api.Search2)
 		h(r, "search3", api.Search3)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		h(r, "getUser", api.GetUser)
 		h(r, "getUsers", api.GetUsers)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		h(r, "getScanStatus", api.GetScanStatus)
 		h(r, "startScan", api.StartScan)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		hr(r, "getAvatar", api.GetAvatar)
 		h(r, "getLyrics", api.GetLyrics)
 	})
@@ -155,17 +165,20 @@ func (api *Router) routes() http.Handler {
 		hr(r, "getCoverArt", api.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		r.Use(getPlayer(api.players))
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
 	})
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		h(r, "createInternetRadioStation", api.CreateInternetRadio)
 		h(r, "deleteInternetRadioStation", api.DeleteInternetRadio)
 		h(r, "getInternetRadioStations", api.GetInternetRadios)
 		h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 	})
 	if conf.Server.EnableSharing {
+		r.Use(authenticate(api.ds))
 		r.Group(func(r chi.Router) {
 			h(r, "getShares", api.GetShares)
 			h(r, "createShare", api.CreateShare)
@@ -176,6 +189,7 @@ func (api *Router) routes() http.Handler {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
 	r.Group(func(r chi.Router) {
+		r.Use(authenticate(api.ds))
 		h(r, "getOpenSubsonicExtensions", api.GetOpenSubsonicExtensions)
 	})
 
