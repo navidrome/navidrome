@@ -33,17 +33,10 @@ describe('formatDuration', () => {
 })
 
 describe('formatFullDate', () => {
-  beforeAll(() => {
-    const toLocaleString = Date.prototype.toLocaleString
-    // eslint-disable-next-line no-extend-native
-    Date.prototype.toLocaleString = function (locale = 'en-US', ...args) {
-      return toLocaleString.call(this, locale, ...args)
-    }
-  })
-  it('format bytes', () => {
-    expect(formatFullDate('2011')).toEqual('2011')
-    expect(formatFullDate('2011-06')).toEqual('Jun 2011')
-    expect(formatFullDate('1985-01-01')).toEqual('Jan 1, 1985')
+  it('format dates', () => {
+    expect(formatFullDate('2011', 'en-US')).toEqual('2011')
+    expect(formatFullDate('2011-06', 'en-US')).toEqual('Jun 2011')
+    expect(formatFullDate('1985-01-01', 'en-US')).toEqual('Jan 1, 1985')
     expect(formatFullDate('199704')).toEqual('')
   })
 })

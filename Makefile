@@ -45,6 +45,12 @@ lintall: lint ##@Development Lint Go and JS code
 	@(cd ./ui && npm run lint)
 .PHONY: lintall
 
+format: ##@Development Format code
+	@(cd ./ui && npm run prettier)
+	@go run golang.org/x/tools/cmd/goimports -w `find . -name '*.go' | grep -v _gen.go$$`
+	@go mod tidy
+.PHONY: format
+
 wire: check_go_env ##@Development Update Dependency Injection
 	go run github.com/google/wire/cmd/wire@latest ./...
 .PHONY: wire
