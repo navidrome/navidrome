@@ -103,12 +103,12 @@ func (t Tags) Date() (int, string)         { return t.getDate("date") }
 func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
-func (t Tags) Lyrics() string              {
+func (t Tags) Lyrics() string {
 	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 }
-func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation") }
-func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
+func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
+func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
+func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
 	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
 }
