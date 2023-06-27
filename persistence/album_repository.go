@@ -87,7 +87,7 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
 	if len(options) > 0 && options[0].Filters != nil {
-		s, _, _ := options[0].Filters.ToSql()
+		s, args, _ := options[0].Filters.ToSql()
 		// If there's any reference of genre in the filter, joins with genre
 		if strings.Contains(s, "genre") {
 			sql = r.withGenres(sql)
