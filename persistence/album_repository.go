@@ -40,7 +40,6 @@ func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRep
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
 	}
-
 	return r
 }
 
@@ -91,12 +90,12 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 		// If there's any reference of genre in the filter, joins with genre
 		if strings.Contains(s, "genre") {
 			sql = r.withGenres(sql)
-			// If there's no filter on genre_id, group the results by media_file.id
+			// If there's no filter on genre_id, group the results by album.id
 			if !strings.Contains(s, "genre_id") {
 				sql = sql.GroupBy("album.id")
 			}
 		}
-		if strings.Contains(s, "all_artist_ids"){
+		if strings.Contains(s, "all_artist_ids") {
 			artistID := strings.Trim(fmt.Sprintf("%s", args[0]), "%")
 			sql = sql.Column(Alias(Eq{"album_artist_id": artistID}, "match_album_artist"))
 			// OrderBy comes from the client: /artist/ArtistShow.js
