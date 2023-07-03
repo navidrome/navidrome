@@ -104,7 +104,7 @@ func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string {
-	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics", "lyrics-XXX")
+	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics", "lyrics-xxx")
 }
 func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
 func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
