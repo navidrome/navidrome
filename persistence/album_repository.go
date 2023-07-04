@@ -99,7 +99,6 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 			artistID := strings.Trim(fmt.Sprintf("%s", args[0]), "%")
 			sql = sql.Column(Alias(Eq{"album_artist_id": artistID}, "match_album_artist"))
 			// OrderBy comes from the client: /artist/ArtistShow.js
-			// this means Subsonic API clients have to perform their own ordering client-side!
 		}
 	}
 	return sql
