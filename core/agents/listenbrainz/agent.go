@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -47,7 +48,7 @@ func (l *listenBrainzAgent) AgentName() string {
 func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 	li := listenInfo{
 		TrackMetadata: trackMetadata{
-			ArtistName:  track.Artist,
+			ArtistName:  strings.Split(track.Artist, " · ")[0],
 			TrackName:   track.Title,
 			ReleaseName: track.Album,
 			AdditionalInfo: additionalInfo{
@@ -55,9 +56,8 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 				SubmissionClientVersion: consts.Version,
 				TrackNumber:             track.TrackNumber,
 				ArtistMbzIDs:            []string{track.MbzArtistID},
-				RecordingMbzID:          track.MbzRecordingID,
+				TrackMbzID:              track.MbzTrackID,
 				ReleaseMbID:             track.MbzAlbumID,
-				DurationMs:              int(track.Duration * 1000),
 			},
 		},
 	}
