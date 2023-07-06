@@ -126,7 +126,9 @@ func (t Tags) MbzReleaseTrackID() string {
 	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
 }
 
-func (t Tags) MbzTrackID() string { return t.getMbzID("musicbrainz_trackid", "musicbrainz track id") }
+func (t Tags) MbzRecordingID() string {
+	return t.getMbzID("musicbrainz_trackid", "musicbrainz track id")
+}
 func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
 func (t Tags) MbzArtistID() string {
 	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
