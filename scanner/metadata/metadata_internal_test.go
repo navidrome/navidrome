@@ -36,7 +36,7 @@ var _ = Describe("Tags", func() {
 				"musicbrainz_artistid":       {"89ad4ac3-39f7-470e-963a-56509c546377"},
 				"musicbrainz_albumartistid":  {"ada7a83c-e3e1-40f1-93f9-3e73dbc9298a"},
 			}
-			Expect(md.MbzRecordingID()).To(Equal("8f84da07-09a0-477b-b216-cc982dabcde1"))
+			Expect(md.MbzTrackID()).To(Equal("8f84da07-09a0-477b-b216-cc982dabcde1"))
 			Expect(md.MbzReleaseTrackID()).To(Equal("6caf16d3-0b20-3fe6-8020-52e31831bc11"))
 			Expect(md.MbzAlbumID()).To(Equal("f68c985d-f18b-4f4a-b7f0-87837cf3fbf9"))
 			Expect(md.MbzArtistID()).To(Equal("89ad4ac3-39f7-470e-963a-56509c546377"))
@@ -50,7 +50,7 @@ var _ = Describe("Tags", func() {
 				"musicbrainz_artistid":      {"200455"},
 				"musicbrainz_albumartistid": {"194"},
 			}
-			Expect(md.MbzRecordingID()).To(Equal(""))
+			Expect(md.MbzTrackID()).To(Equal(""))
 			Expect(md.MbzAlbumID()).To(Equal(""))
 			Expect(md.MbzArtistID()).To(Equal(""))
 			Expect(md.MbzAlbumArtistID()).To(Equal(""))
@@ -61,7 +61,7 @@ var _ = Describe("Tags", func() {
 		It("returns values from all tag names", func() {
 			md := &Tags{}
 			md.tags = map[string][]string{
-				"genre": {"Rock", "Pop", "New Wave"},
+				"genre": {"Rock ;  Pop", "New Wave", " Rock "},
 			}
 
 			Expect(md.Genres()).To(ConsistOf("Rock", "Pop", "New Wave"))
