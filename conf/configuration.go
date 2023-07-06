@@ -54,6 +54,7 @@ type configOptions struct {
 	IgnoredArticles              string
 	IndexGroups                  string
 	SubsonicArtistParticipations bool
+	OnlyAlbumArtists             bool
 	FFmpegPath                   string
 	CoverArtPriority             string
 	CoverJpegQuality             int
@@ -104,7 +105,10 @@ type configOptions struct {
 type scannerOptions struct {
 	Extractor          string
 	GenreSeparators    string
+	MultipleArtists    bool
+	ArtistSeparators   string
 	GroupAlbumReleases bool
+	RemixerToArtist    bool
 }
 
 type lastfmOptions struct {
@@ -288,6 +292,7 @@ func init() {
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("subsonicartistparticipations", false)
+	viper.SetDefault("onlyalbumartists", true)
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
@@ -314,8 +319,11 @@ func init() {
 	viper.SetDefault("prometheus.metricspath", "/metrics")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
+	viper.SetDefault("scanner.multipleartists", true)
 	viper.SetDefault("scanner.genreseparators", ";/,")
+	viper.SetDefault("scanner.artistseparators", ";")
 	viper.SetDefault("scanner.groupalbumreleases", false)
+	viper.SetDefault("scanner.remixertoartist", true)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
