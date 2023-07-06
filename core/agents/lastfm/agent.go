@@ -65,7 +65,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	}
 
 	response := agents.AlbumInfo{
-		Name:        a.Name,
+		Name:        strings.Split(a.Name, " · ")[0],
 		MBID:        a.MBID,
 		Description: a.Description.Summary,
 		URL:         a.URL,
@@ -257,7 +257,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 		track:       track.Title,
 		album:       track.Album,
 		trackNumber: track.TrackNumber,
-		mbid:        track.MbzRecordingID,
+		mbid:        track.MbzTrackID,
 		duration:    int(track.Duration),
 		albumArtist: track.AlbumArtist,
 	})
@@ -283,7 +283,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		track:       s.Title,
 		album:       s.Album,
 		trackNumber: s.TrackNumber,
-		mbid:        s.MbzRecordingID,
+		mbid:        s.MbzTrackID,
 		duration:    int(s.Duration),
 		albumArtist: s.AlbumArtist,
 		timestamp:   s.TimeStamp,
