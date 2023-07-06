@@ -13,6 +13,7 @@ var _ = Describe("Tags", func() {
 	Context("Extract", func() {
 		BeforeEach(func() {
 			conf.Server.Scanner.Extractor = "taglib"
+			conf.Server.Scanner.MultipleArtists = true
 		})
 
 		It("correctly parses metadata from all files in folder", func() {
@@ -23,10 +24,10 @@ var _ = Describe("Tags", func() {
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m.Title()).To(Equal("Song"))
 			Expect(m.Album()).To(Equal("Album"))
-			Expect(m.Artist()).To(Equal("Artist"))
-			Expect(m.AlbumArtist()).To(Equal("Album Artist"))
+			Expect(m.Artist()).To(Equal([]string{"Alice", "Bob"}))
+			Expect(m.AlbumArtist()).To(Equal([]string{"Alice", "Bob"}))
 			Expect(m.Compilation()).To(BeTrue())
-			Expect(m.Genres()).To(Equal([]string{"Rock"}))
+			Expect(m.Genres()).To(Equal([]string{"Rock", "Electronic", "Pop"}))
 			y, d := m.Date()
 			Expect(y).To(Equal(2014))
 			Expect(d).To(Equal("2014-05-21"))
