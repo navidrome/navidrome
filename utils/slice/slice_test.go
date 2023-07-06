@@ -69,4 +69,10 @@ var _ = Describe("Slice Utils", func() {
 			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
 		})
 	})
+
+	Describe("RemoveDuplicateStr", func() {
+		It("removes duplicates and keeps the order intact", func() {
+			Expect(slice.RemoveDuplicateStr([]string{"2", "1", "1", "2", "3", "2"})).To(Equal([]string{"2", "1", "3"}))
+		})
+	})
 })
