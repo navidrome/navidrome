@@ -133,6 +133,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 		albumArtistID = consts.VariousArtistsID
 	default:
 		albumArtistName = artistName
+		albumArtistID = artistID
 	}
 
 	allArtists := slice.RemoveDuplicateStr(append(artists, albumArtists...))
