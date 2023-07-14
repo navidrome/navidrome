@@ -96,20 +96,20 @@ func (s mediaFileMapper) mapTrackTitle(md metadata.Tags) string {
 
 func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, string, string) {
 	artists := utils.SanitizeChars(md.Artist())
+	artistsWithoutRemixers := slice.RemoveDuplicateStr(artists)
+	albumArtists := utils.SanitizeChars(md.AlbumArtist())
+	
 	if conf.Server.Scanner.RemixerToArtist {
 		remixers := utils.SanitizeChars(md.Remixer())
 		artists = append(artists, remixers...)
 	}
-	var artistName, artistID string
-
-	albumArtists := utils.SanitizeChars(md.AlbumArtist())
-	var albumArtistName, albumArtistID string
 
 	if !conf.Server.Scanner.MultipleArtists {
 		artists = artists[:1]
 		albumArtists = albumArtists[:1]
 	}
-
+	
+	var artistName, artistID string
 	switch {
 	case len(artists) > 1:
 		artists = slice.RemoveDuplicateStr(artists)
@@ -122,7 +122,8 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 		artistName = consts.UnknownArtist
 		artistID = consts.UnknownArtistID
 	}
-
+	
+	var albumArtistName, albumArtistID string
 	switch {
 	case len(albumArtists) > 0:
 		albumArtists = slice.RemoveDuplicateStr(albumArtists)
@@ -132,7 +133,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 		albumArtistName = consts.VariousArtists
 		albumArtistID = consts.VariousArtistsID
 	default:
-		albumArtistName = artistName
+		albumArtistName = strings.Join(artistsWithoutRemixers, " · ")
 		albumArtistID = artistID
 	}
 
