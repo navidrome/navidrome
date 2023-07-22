@@ -44,7 +44,6 @@ const DownloadMenuDialog = () => {
     <Dialog
       open={open}
       onClose={handleClose}
-      onBackdropClick={handleClose}
       aria-labelledby="download-dialog"
       fullWidth={true}
       maxWidth={'sm'}

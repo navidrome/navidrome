@@ -39,7 +39,7 @@ jobs:
         run: |
           git status --porcelain
           if [ -n "$(git status --porcelain)" ]; then
-            echo 'To fix this check, run "goimports -w $(find . -name '*.go' | grep -v '_gen.go$') && go mod tidy"'
+            echo 'To fix this check, run "make format" and commit the changes'
             exit 1
           fi
 
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 

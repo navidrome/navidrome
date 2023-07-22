@@ -60,7 +60,7 @@ var _ = Describe("MediaFiles", func() {
 		When("we have only one song", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
-					{Duration: 100.2, Size: 1024, Year: 1985, UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
 				}
 			})
 			It("calculates the aggregates correctly", func() {
@@ -69,17 +69,18 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.Size).To(Equal(int64(1024)))
 				Expect(album.MinYear).To(Equal(1985))
 				Expect(album.MaxYear).To(Equal(1985))
+				Expect(album.Date).To(Equal("1985-01-02"))
 				Expect(album.UpdatedAt).To(Equal(t("2022-12-19 09:30")))
 				Expect(album.CreatedAt).To(Equal(t("2022-12-19 08:30")))
 			})
 		})
 
-		When("we have multiple songs", func() {
+		When("we have multiple songs with different dates", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
-					{Duration: 100.2, Size: 1024, Year: 1985, UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
-					{Duration: 200.2, Size: 2048, Year: 0, UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
-					{Duration: 150.6, Size: 1000, Year: 1986, UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
+					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
 				}
 			})
 			It("calculates the aggregates correctly", func() {
@@ -88,6 +89,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.Size).To(Equal(int64(4072)))
 				Expect(album.MinYear).To(Equal(1985))
 				Expect(album.MaxYear).To(Equal(1986))
+				Expect(album.Date).To(BeEmpty())
 				Expect(album.UpdatedAt).To(Equal(t("2022-12-19 09:45")))
 				Expect(album.CreatedAt).To(Equal(t("2022-12-19 07:30")))
 			})
@@ -102,6 +104,21 @@ var _ = Describe("MediaFiles", func() {
 					a := mfs.ToAlbum()
 					Expect(a.MinYear).To(Equal(1999))
 				})
+			})
+		})
+		When("we have multiple songs with same dates", func() {
+			BeforeEach(func() {
+				mfs = MediaFiles{
+					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 200.2, Size: 2048, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 150.6, Size: 1000, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
+				}
+			})
+			It("sets the date field correctly", func() {
+				album := mfs.ToAlbum()
+				Expect(album.Date).To(Equal("1985-01-02"))
+				Expect(album.MinYear).To(Equal(1985))
+				Expect(album.MaxYear).To(Equal(1985))
 			})
 		})
 	})
