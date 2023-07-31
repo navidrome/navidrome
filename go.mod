@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
-	github.com/beego/beego/v2 v2.1.0
+	github.com/beego/beego/v2 v2.1.1
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
@@ -95,6 +95,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.uber.org/goleak v1.1.11 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
