@@ -4,7 +4,7 @@
 		"dockerfile": "Dockerfile",
 		"args": {
 			// Update the VARIANT arg to pick a version of Go: 1, 1.15, 1.14
-			"VARIANT": "1.20",
+			"VARIANT": "1.21",
 			// Options
 			"INSTALL_NODE": "true",
 			"NODE_VERSION": "v18"

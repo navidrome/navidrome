@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.20.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.21.0-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...

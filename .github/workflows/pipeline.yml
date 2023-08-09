@@ -16,10 +16,10 @@ jobs:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
-      - name: Set up Go 1.20
+      - name: Set up Go 1.21
         uses: actions/setup-go@v3
         with:
-          go-version: 1.20.x
+          go-version: 1.21.x
 
       - uses: actions/checkout@v3
 
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.20.x,1.19.x]
+        go_version: [1.21.x,1.20.x]
     steps:
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
@@ -126,7 +126,7 @@ jobs:
           path: ui/build
 
       - name: Config /github/workspace folder as trusted
-        uses: docker://deluan/ci-goreleaser:1.20.3-1
+        uses: docker://deluan/ci-goreleaser:1.21.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -134,7 +134,7 @@ jobs:
 
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.20.3-1
+        uses: docker://deluan/ci-goreleaser:1.21.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -142,7 +142,7 @@ jobs:
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.20.3-1
+        uses: docker://deluan/ci-goreleaser:1.21.0-1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

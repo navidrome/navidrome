@@ -1,6 +1,6 @@
 module github.com/navidrome/navidrome
 
-go 1.19
+go 1.20
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
