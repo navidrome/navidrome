@@ -3,7 +3,6 @@ package playback
 import (
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -100,7 +99,6 @@ func (pd *Queue) Shuffle() {
 		backupID = current.ID
 	}
 
-	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] })
 
 	var err error
