@@ -98,7 +98,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 	artists := utils.SanitizeChars(md.Artist())
 	artistsWithoutRemixers := slice.RemoveDuplicateStr(artists)
 	albumArtists := utils.SanitizeChars(md.AlbumArtist())
-	
+
 	if conf.Server.Scanner.RemixerToArtist {
 		remixers := utils.SanitizeChars(md.Remixer())
 		artists = append(artists, remixers...)
@@ -108,7 +108,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 		artists = artists[:1]
 		albumArtists = albumArtists[:1]
 	}
-	
+
 	var artistName, artistID string
 	switch {
 	case len(artists) > 1:
@@ -122,7 +122,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 		artistName = consts.UnknownArtist
 		artistID = consts.UnknownArtistID
 	}
-	
+
 	var albumArtistName, albumArtistID string
 	switch {
 	case len(albumArtists) > 0:
@@ -191,6 +191,15 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, i
 		(year >= originalYear)
 	if taggedLikePicard {
 		return originalYear, originalDate, originalYear, originalDate, year, date
+	}
+
+	// when there's no Date, first fall back to Original Date, then to Release Date.
+	if year == 0 {
+		if originalYear > 0 {
+			year, date = originalYear, originalDate
+		} else {
+			year, date = releaseYear, releaseDate
+		}
 	}
 	return year, date, originalYear, originalDate, releaseYear, releaseDate
 }
