@@ -24,6 +24,7 @@ const links = {
   source: 'github.com/navidrome/navidrome',
   bugReports: 'github.com/navidrome/navidrome/issues/new/choose',
   featureRequests: 'github.com/navidrome/navidrome/discussions/new',
+  lemmy: 'discuss.tchncs.de/c/navidrome',
 }
 
 const LinkToVersion = ({ version }) => {
