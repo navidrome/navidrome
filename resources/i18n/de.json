@@ -432,7 +432,8 @@
         "links": {
             "homepage": "Startseite",
             "source": "Quellcode",
-            "featureRequests": "Feature-Request"
+            "featureRequests": "Feature-Request",
+            "lemmy": "Lemmy (Inoffiziell)"
         }
     },
     "activity": {
