@@ -8,6 +8,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
+[![Lemmy](https://img.shields.io/lemmy/navidrome%40discuss.tchncs.de?style=flat-square&logo=lemmy&label=%2Fc%2Fnavidrome%20(unofficial))](https://discuss.tchncs.de/c/navidrome)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
 
 Navidrome is an open source web-based music collection server and streamer. It gives you freedom to listen to your
