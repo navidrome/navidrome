@@ -26,6 +26,7 @@ export const RatingField = ({
   className,
   size,
   color,
+  disabled,
   ...rest
 }) => {
   const record = useRecordContext(rest) || {}
@@ -56,6 +57,7 @@ export const RatingField = ({
         size={size}
         emptyIcon={<StarBorderIcon fontSize="inherit" />}
         onChange={(e, newValue) => handleRating(e, newValue)}
+        disabled={disabled}
       />
     </span>
   )
@@ -64,6 +66,7 @@ RatingField.propTypes = {
   resource: PropTypes.string.isRequired,
   record: PropTypes.object,
   visible: PropTypes.bool,
+  disabled: PropTypes.bool,
   size: PropTypes.string,
 }
 
@@ -71,4 +74,5 @@ RatingField.defaultProps = {
   visible: true,
   size: 'small',
   color: 'inherit',
+  disabled: false,
 }
