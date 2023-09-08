@@ -44,6 +44,11 @@ export const RatingField = ({
     [rate]
   )
 
+  // If the rating is not yet loaded or unset, it will be `undefined`.
+  // material-ui uses an `null` to indicate an unset value.
+  // Passing `undefined` will switch the component into "uncontrolled" mode.
+  const ratingValue = rating ?? null;
+  
   return (
     <span onClick={(e) => stopPropagation(e)}>
       <Rating
@@ -53,7 +58,7 @@ export const RatingField = ({
           classes.rating,
           rating > 0 ? classes.show : classes.hide
         )}
-        value={rating}
+        value={ratingValue}
         size={size}
         emptyIcon={<StarBorderIcon fontSize="inherit" />}
         onChange={(e, newValue) => handleRating(e, newValue)}
