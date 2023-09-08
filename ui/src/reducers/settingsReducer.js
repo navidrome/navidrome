@@ -9,7 +9,7 @@ const initialState = {
   notifications: false,
   toggleableFields: {},
   omittedFields: {},
-  playerRatingControl: localStorage.getItem('playerRating') ?? "love",
+  playerRatingControl: localStorage.getItem('playerRating') ?? 'love',
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
