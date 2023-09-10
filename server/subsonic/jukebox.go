@@ -136,9 +136,9 @@ func statusResponse(status playback.DeviceStatus) *responses.Subsonic {
 
 func deviceStatusToJukeboxStatus(status playback.DeviceStatus) *responses.JukeboxStatus {
 	return &responses.JukeboxStatus{
-		CurrentIndex: status.CurrentIndex,
+		CurrentIndex: int32(status.CurrentIndex),
 		Playing:      status.Playing,
 		Gain:         status.Gain,
-		Position:     status.Position,
+		Position:     int32(status.Position),
 	}
 }
