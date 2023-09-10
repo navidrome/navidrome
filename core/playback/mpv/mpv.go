@@ -26,7 +26,7 @@ func start(args []string) (Executor, error) {
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
 	j.PipeReader, j.out = io.Pipe()
-	err := j._start()
+	err := j.start()
 	if err != nil {
 		return Executor{}, err
 	}
@@ -49,7 +49,7 @@ type Executor struct {
 	ctx  context.Context
 }
 
-func (j *Executor) _start() error {
+func (j *Executor) start() error {
 	ctx := context.Background()
 	j.ctx = ctx
 	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
