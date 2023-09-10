@@ -33,3 +33,7 @@ issues:
     - linters:
         - gosec
       text: "(G501|G401|G505):"
+    - linters:
+        - staticcheck
+      path: "db/migration/"
+      text: "goose.AddMigration is deprecated"
