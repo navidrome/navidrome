@@ -85,6 +85,10 @@ build: warning-noui-build check_go_env  ##@Build Build only backend
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
+debug-build: warning-noui-build check_go_env  ##@Build Build only backend (with remote debug on)
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
+.PHONY: debug-build
+
 buildjs: check_node_env ##@Build Build only frontend
 	@(cd ./ui && npm run build)
 .PHONY: buildjs

@@ -18,6 +18,8 @@ import (
 type FFmpeg interface {
 	Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
 }
@@ -29,6 +31,8 @@ func New() FFmpeg {
 const (
 	extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
 	probeCmd        = "ffmpeg %s -f ffmetadata"
+	createWavCmd    = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
+	createFLACCmd   = "ffmpeg -i %s -f flac -"
 )
 
 type ffmpeg struct{}
@@ -46,6 +50,16 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 		return nil, err
 	}
 	args := createFFmpegCommand(extractImageCmd, path, 0)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := createFFmpegCommand(createWavCmd, path, 0)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := createFFmpegCommand(createFLACCmd, path, 0)
 	return e.start(ctx, args)
 }
 
