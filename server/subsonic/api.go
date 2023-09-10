@@ -188,7 +188,6 @@ func (api *Router) routes() http.Handler {
 	}
 
 	// Not Implemented (yet?)
-	h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
