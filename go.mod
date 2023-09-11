@@ -19,7 +19,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/faiface/beep v1.1.0
 	github.com/fatih/structs v1.1.0
-	github.com/go-chi/chi/v5 v5.0.8
+	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.7.4
 	github.com/go-chi/jwtauth/v5 v5.1.0
