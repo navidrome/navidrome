@@ -242,7 +242,6 @@ func (t Tags) getAllTagValues(separators string, tagNames ...string) []string {
 					}
 				}
 			}
-
 		}
 	}
 	return values
