@@ -37,10 +37,12 @@ var _ = Describe("Extractor", func() {
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m).To(HaveKeyWithValue("title", []string{"Song", "Song"}))
 			Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
-			Expect(m).To(HaveKeyWithValue("artist", []string{"Artist", "Artist"}))
-			Expect(m).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
+			Expect(m).To(HaveKeyWithValue("artist", []string{"Alice feat. Bob", "Alice feat. Bob"}))
+			Expect(m).To(HaveKeyWithValue("artists", []string{"Alice", "Bob"}))
+			Expect(m).To(HaveKeyWithValue("remixer", []string{"Carol"}))
+			Expect(m).To(HaveKeyWithValue("albumartist", []string{"Alice;Bob"}))
 			Expect(m).To(HaveKeyWithValue("tcmp", []string{"1"})) // Compilation
-			Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
+			Expect(m).To(HaveKeyWithValue("genre", []string{"Rock ;  Electronic", "Pop", "Rock"}))
 			Expect(m).To(HaveKeyWithValue("date", []string{"2014-05-21", "2014"}))
 			Expect(m).To(HaveKeyWithValue("originaldate", []string{"1996-11-21"}))
 			Expect(m).To(HaveKeyWithValue("releasedate", []string{"2020-12-31"}))
