@@ -121,6 +121,19 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MaxYear).To(Equal(1985))
 			})
 		})
+		When("we have multiple songs with different Album Artists", func() {
+			BeforeEach(func() {
+				mfs = MediaFiles{
+					{Duration: 100.2, Size: 1024, ArtistID: "11", Artist: "Artist1", AlbumArtistID: "11", AlbumArtist: "Artist1"},
+					{Duration: 200.2, Size: 2048, ArtistID: "11", Artist: "Artist1", AlbumArtistID: "22", AlbumArtist: "Artist2"},
+				}
+			})
+			It("aggregates correctly to the artists", func() {
+				artist := mfs.ToArtist()
+				Expect(artist.SongCount).To(Equal(2))
+				Expect(artist.Size).To(Equal(int64(2048))) // rest gets added by album.ToAlbumArtist()
+			})
+		})
 	})
 	Context("Calculated attributes", func() {
 		Context("Genres", func() {
@@ -190,9 +203,9 @@ var _ = Describe("MediaFiles", func() {
 		Context("AllArtistIds", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
-					{AlbumArtistID: "22", ArtistID: "11"},
-					{AlbumArtistID: "22", ArtistID: "33"},
-					{AlbumArtistID: "22", ArtistID: "11"},
+					{AlbumArtistID: "22", ArtistID: "11", AllArtistIDs: "11 22"},
+					{AlbumArtistID: "22", ArtistID: "33", AllArtistIDs: "33 22"},
+					{AlbumArtistID: "22", ArtistID: "11", AllArtistIDs: "11 22"},
 				}
 			})
 			It("removes duplications", func() {
@@ -215,7 +228,7 @@ var _ = Describe("MediaFiles", func() {
 			})
 			It("fills the fullText attribute correctly", func() {
 				album := mfs.ToAlbum()
-				Expect(album.FullText).To(Equal(" album1 albumartist1 albumartist2 artist1 artist2 artist3 discsubtitle1 discsubtitle2 sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
+				Expect(album.FullText).To(Equal(" album1 albumartist1 albumartist2 artist1 artist2 artist3 discsubtitle1 discsubtitle2"))
 			})
 		})
 		Context("MbzAlbumID", func() {
