@@ -99,7 +99,6 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 	albumArtists := utils.SanitizeChars(md.AlbumArtist())
 	var artistsWithoutRemixers []string
 	if conf.Server.Scanner.RemixerToArtist {
-
 		artistsWithoutRemixers = artists
 		remixers := utils.SanitizeChars(md.Remixer())
 		artists = append(artists, remixers...)
