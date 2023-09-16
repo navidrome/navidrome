@@ -1,0 +1,460 @@
+{
+    "languageName": "한국어",
+    "resources": {
+        "song": {
+            "name": "곡",
+            "fields": {
+                "albumArtist": "앨범 아티스트",
+                "duration": "길이",
+                "trackNumber": "#",
+                "playCount": "재생 수",
+                "title": "제목",
+                "artist": "아티스트",
+                "album": "앨범",
+                "path": "파일 경로",
+                "genre": "장르",
+                "compilation": "Compilation",
+                "year": "년",
+                "size": "파일 크기",
+                "updatedAt": "업데이트 날짜",
+                "bitRate": "비트레이트",
+                "discSubtitle": "디스크 서브타이틀",
+                "starred": "좋아요",
+                "comment": "코멘트",
+                "rating": "평가",
+                "quality": "품질",
+                "bpm": "BPM",
+                "playDate": "마지막 재생",
+                "channels": "채널",
+                "createdAt": "추가 날짜"
+            },
+            "actions": {
+                "addToQueue": "마지막에 재생",
+                "playNow": "바로 재생",
+                "addToPlaylist": "플레이리스트에 추가",
+                "shuffleAll": "모든 곡 셔플",
+                "download": "다운로드",
+                "playNext": "다음에 재생",
+                "info": "상세 정보"
+            }
+        },
+        "album": {
+            "name": "앨범",
+            "fields": {
+                "albumArtist": "앨범 아티스트",
+                "artist": "아티스트",
+                "duration": "길이",
+                "songCount": "곡",
+                "playCount": "재생 수",
+                "name": "이름",
+                "genre": "장르",
+                "compilation": "Compilation",
+                "year": "년",
+                "updatedAt": "업데이트 날짜",
+                "comment": "코멘트",
+                "rating": "평가",
+                "createdAt": "추가 날짜",
+                "size": "크기",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
+            },
+            "actions": {
+                "playAll": "재생",
+                "playNext": "다음에 재생",
+                "addToQueue": "마지막에 재생",
+                "shuffle": "셔플",
+                "addToPlaylist": "플레이리스트에 추가",
+                "download": "다운로드",
+                "info": "상세 정보",
+                "share": "공유"
+            },
+            "lists": {
+                "all": "전체",
+                "random": "랜덤",
+                "recentlyAdded": "최근 추가",
+                "recentlyPlayed": "최근 재생",
+                "mostPlayed": "가장 많이 재생",
+                "starred": "좋아요",
+                "topRated": "높은 평가"
+            }
+        },
+        "artist": {
+            "name": "아티스트",
+            "fields": {
+                "name": "이름",
+                "albumCount": "앨범 수",
+                "songCount": "곡 수",
+                "playCount": "재생 수",
+                "rating": "평가",
+                "genre": "장르",
+                "size": "크기"
+            }
+        },
+        "user": {
+            "name": "사용자",
+            "fields": {
+                "userName": "사용자명",
+                "isAdmin": "관리자",
+                "lastLoginAt": "최종 로그인",
+                "updatedAt": "업데이트 날짜",
+                "name": "이름",
+                "password": "비밀번호",
+                "createdAt": "생성 날짜",
+                "changePassword": "비밀번호를 변경하시겠습니까?",
+                "currentPassword": "현재 비밀번호",
+                "newPassword": "새로운 비밀번호",
+                "token": "토큰"
+            },
+            "helperTexts": {
+                "name": "이름 변경은 다음 로그인 이후에 반영됩니다"
+            },
+            "notifications": {
+                "created": "사용자가 생성되었습니다",
+                "updated": "사용자가 업데이트되었습니다",
+                "deleted": "사용자가 삭제되었습니다"
+            },
+            "message": {
+                "listenBrainzToken": "ListenBrainz 사용자 토큰을 입력하세요",
+                "clickHereForToken": "여기를 클릭하여 토큰을 얻으세요"
+            }
+        },
+        "player": {
+            "name": "플레이어",
+            "fields": {
+                "name": "이름",
+                "transcodingId": "트랜스코딩",
+                "maxBitRate": "최대 비트레이트",
+                "client": "클라이언트",
+                "userName": "사용자명",
+                "lastSeen": "마지막 사용",
+                "reportRealPath": "실제 파일 경로 반환",
+                "scrobbleEnabled": "다른 서비스에 scrobble"
+            }
+        },
+        "transcoding": {
+            "name": "트랜스코딩",
+            "fields": {
+                "name": "이름",
+                "targetFormat": "대상 포맷",
+                "defaultBitRate": "기본 비트레이트",
+                "command": "명령"
+            }
+        },
+        "playlist": {
+            "name": "플레이리스트",
+            "fields": {
+                "name": "이름",
+                "duration": "시간",
+                "ownerName": "소유자",
+                "public": "공개",
+                "updatedAt": "업데이트 날짜",
+                "createdAt": "생성 날짜",
+                "songCount": "곡",
+                "comment": "코멘트",
+                "sync": "자동 임포트",
+                "path": "임포트 원본"
+            },
+            "actions": {
+                "selectPlaylist": "플레이리스트 선택",
+                "addNewPlaylist": "'%{name}' 생성",
+                "export": "내보내기",
+                "makePublic": "공개하기",
+                "makePrivate": "비공개로 전환하기"
+            },
+            "message": {
+                "duplicate_song": "중복된 곡 추가",
+                "song_exist": "이미 플레이리스트에 존재하는 곡입니다. 추가하시겠습니까?"
+            }
+        },
+        "radio": {
+            "name": "라디오",
+            "fields": {
+                "name": "이름",
+                "streamUrl": "스트리밍 URL",
+                "homePageUrl": "홈페이지 URL",
+                "updatedAt": "업데이트 날짜",
+                "createdAt": "생성 날짜"
+            },
+            "actions": {
+                "playNow": "바로 재생"
+            }
+        },
+        "share": {
+            "name": "공유",
+            "fields": {
+                "username": "공유자",
+                "url": "URL",
+                "description": "설명",
+                "contents": "컨텐츠",
+                "expiresAt": "만료 날짜",
+                "lastVisitedAt": "최근 방문",
+                "visitCount": "방문 수",
+                "format": "포맷",
+                "maxBitRate": "최대 비트레이트",
+                "updatedAt": "업데이트 날짜",
+                "createdAt": "생성 날짜",
+                "downloadable": ""
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Navidrome을 설치해 주셔서 감사합니다!",
+            "welcome2": "관리자 사용자를 생성하고 시작해 보세요",
+            "confirmPassword": "비밀번호 확인",
+            "buttonCreateAdmin": "관리자 생성",
+            "auth_check_error": "인증에 실패했습니다. 다시 로그인하세요",
+            "user_menu": "프로필",
+            "username": "사용자명",
+            "password": "비밀번호",
+            "sign_in": "로그인",
+            "sign_in_error": "인증에 실패했습니다. 입력값을 확인하세요",
+            "logout": "로그아웃"
+        },
+        "validation": {
+            "invalidChars": "문자와 숫자만 사용하세요",
+            "passwordDoesNotMatch": "비밀번호가 일치하지 않습니다",
+            "required": "필수 항목입니다",
+            "minLength": "%{min}자 이상이어야 합니다",
+            "maxLength": "%{max}자 이하이어야 합니다",
+            "minValue": "%{min} 이상이어야 합니다",
+            "maxValue": "%{max} 이하이어야 합니다",
+            "number": "숫자여야 합니다",
+            "email": "유효한 이메일 주소여야 합니다",
+            "oneOf": "다음 중 하나여야 합니다: %{options}",
+            "regex": "다음과 같은 형식이어야 합니다: %{pattern}",
+            "unique": "고유해야 합니다",
+            "url": "유효한 URL을 입력하세요"
+        },
+        "action": {
+            "add_filter": "필터 추가",
+            "add": "추가",
+            "back": "뒤로",
+            "bulk_actions": "%{smart_count}개 선택",
+            "cancel": "취소",
+            "clear_input_value": "비우기",
+            "clone": "복제",
+            "confirm": "확인",
+            "create": "생성",
+            "delete": "삭제",
+            "edit": "편집",
+            "export": "내보내기",
+            "list": "목록",
+            "refresh": "새로고침",
+            "remove_filter": "필터 삭제",
+            "remove": "삭제",
+            "save": "저장",
+            "search": "검색",
+            "show": "상세 정보",
+            "sort": "정렬",
+            "undo": "실행 취소",
+            "expand": "확장",
+            "close": "닫기",
+            "open_menu": "메뉴 열기",
+            "close_menu": "메뉴 닫기",
+            "unselect": "선택 해제",
+            "skip": "스킵",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "공유",
+            "download": "다운로드"
+        },
+        "boolean": {
+            "true": "예",
+            "false": "아니요"
+        },
+        "page": {
+            "create": "%{name} 생성",
+            "dashboard": "대시보드",
+            "edit": "%{name} #%{id}",
+            "error": "문제가 발생했습니다",
+            "list": "%{name}",
+            "loading": "로딩 중입니다. 잠시 기다려주세요",
+            "not_found": "찾을 수 없습니다",
+            "show": "%{name} #%{id}",
+            "empty": "%{name}이(가) 없습니다",
+            "invite": "생성하시겠습니까?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "파일을 끌어 놓거나 클릭하여 업로드하세요",
+                "upload_single": "파일을 끌어 놓거나 클릭하여 업로드하세요"
+            },
+            "image": {
+                "upload_several": "이미지를 끌어 놓거나 클릭하여 업로드하세요",
+                "upload_single": "이미지를 끌어 놓거나 클릭하여 업로드하세요"
+            },
+            "references": {
+                "all_missing": "사용 가능한 데이터가 없습니다",
+                "many_missing": "선택한 데이터 중 일부가 사용 가능하지 않습니다",
+                "single_missing": "선택한 데이터가 사용 가능하지 않습니다"
+            },
+            "password": {
+                "toggle_visible": "숨기기",
+                "toggle_hidden": "보이기"
+            }
+        },
+        "message": {
+            "about": "정보",
+            "are_you_sure": "정말로 이 작업을 수행하시겠습니까?",
+            "bulk_delete_content": "%{name}을(를) 삭제하시겠습니까? |||| %{smart_count}개의 항목을 삭제하시겠습니까?",
+            "bulk_delete_title": "%{name} 삭제 |||| %{name} %{smart_count}개 삭제",
+            "delete_content": "삭제하시겠습니까?",
+            "delete_title": "%{name} #%{id} 삭제",
+            "details": "세부 정보",
+            "error": "클라이언트 오류로 처리를 완료할 수 없습니다",
+            "invalid_form": "입력값에 오류가 있습니다. 오류 메시지를 확인하세요",
+            "loading": "로딩 중입니다. 잠시만 기다려주세요",
+            "no": "아니요",
+            "not_found": "잘못된 URL을 입력하거나 잘못된 링크를 따라갔습니다",
+            "yes": "예",
+            "unsaved_changes": "변경 사항이 저장되지 않았습니다. 이 페이지를 떠나시겠습니까?"
+        },
+        "navigation": {
+            "no_results": "결과가 없습니다",
+            "no_more_results": "페이지 %{page}는 최대 페이지 수를 초과했습니다. 이전 페이지로 돌아가세요",
+            "page_out_of_boundaries": "페이지 %{page}는 최대 페이지 수를 초과했습니다",
+            "page_out_from_end": "마지막 페이지 이후로 이동할 수 없습니다",
+            "page_out_from_begin": "첫 페이지 이전으로 이동할 수 없습니다",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
+            "page_rows_per_page": "페이지당 항목 수:",
+            "next": "다음",
+            "prev": "이전",
+            "skip_nav": "메뉴 건너뛰기"
+        },
+        "notification": {
+            "updated": "업데이트되었습니다 |||| %{smart_count}개 업데이트되었습니다",
+            "created": "생성되었습니다",
+            "deleted": "삭제되었습니다 |||| %{smart_count}개 삭제되었습니다",
+            "bad_item": "잘못된 항목입니다",
+            "item_doesnt_exist": "항목이 존재하지 않습니다",
+            "http_error": "통신 오류가 발생했습니다",
+            "data_provider_error": "dataProvider 오류입니다. 자세한 내용은 콘솔을 확인하세요",
+            "i18n_error": "번역 파일을 로드할 수 없습니다",
+            "canceled": "취소되었습니다",
+            "logged_out": "인증에 실패했습니다. 다시 로그인하세요",
+            "new_version": "새로운 버전이 사용 가능합니다! 페이지를 새로 고쳐주세요."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "표시 열",
+            "layout": "레이아웃",
+            "grid": "그리드",
+            "table": "테이블"
+        }
+    },
+    "message": {
+        "note": "주의",
+        "transcodingDisabled": "보안상의 이유로 웹 인터페이스에서 트랜스코드 설정이 비활성화되어 있습니다.\n이를 설정하려면 환경 변수 %{config}를 설정하고 서버를 재시작하십시오.",
+        "transcodingEnabled": "Navidrome은 현재 %{config} 설정으로 실행되며, 웹 인터페이스의 트랜스코드 설정에 따라 명령을 실행할 수 있습니다.\n보안상의 이유로 이 설정은 트랜스코드 설정을 변경할 때만 활성화하는 것을 권장합니다.",
+        "songsAddedToPlaylist": "플레이리스트에 1곡 추가되었습니다 |||| 플레이리스트에 %{smart_count}곡 추가되었습니다",
+        "noPlaylistsAvailable": "사용 가능하지 않음",
+        "delete_user_title": "'%{name}' 삭제",
+        "delete_user_content": "이 사용자와 그의 모든 데이터(플레이리스트 및 설정 등)를 삭제하시겠습니까?",
+        "notifications_blocked": "브라우저의 설정으로 이 사이트의 알림이 차단되어 있습니다",
+        "notifications_not_available": "이 브라우저는 데스크톱 알림을 지원하지 않습니다",
+        "lastfmLinkSuccess": "Last.fm과 연결되어 scrobble이 활성화되었습니다",
+        "lastfmLinkFailure": "Last.fm과 연결할 수 없습니다",
+        "lastfmUnlinkSuccess": "설정이 해제되어 Last.fm으로의 scrobble이 비활성화되었습니다",
+        "lastfmUnlinkFailure": "Last.fm과 연결 해제를 실패했습니다",
+        "openIn": {
+            "lastfm": "Last.fm에서 열기",
+            "musicbrainz": "MusicBrainz에서 열기"
+        },
+        "lastfmLink": "계속 읽기",
+        "listenBrainzLinkSuccess": "%{user}에 대한 scrobbling 설정이 성공적으로 완료되었습니다",
+        "listenBrainzLinkFailure": "ListenBrainz와 연결에 실패했습니다: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz와의 연결과 scrobbling이 비활성화되었습니다",
+        "listenBrainzUnlinkFailure": "ListenBrainz와의 연결 해제를 실패했습니다",
+        "downloadOriginalFormat": "원본 형식으로 다운로드",
+        "shareOriginalFormat": "원본 형식으로 공유",
+        "shareDialogTitle": "%{resource} '%{name}' 공유",
+        "shareBatchDialogTitle": "1 %{resource} 공유 |||| %{smart_count} %{resource} 공유",
+        "shareSuccess": "복사되었습니다: %{url}",
+        "shareFailure": "복사하지 못했습니다 %{url}",
+        "downloadDialogTitle": "다운로드 %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": ""
+    },
+    "menu": {
+        "library": "라이브러리",
+        "settings": "설정",
+        "version": "버전",
+        "theme": "테마",
+        "personal": {
+            "name": "개인 설정",
+            "options": {
+                "theme": "테마",
+                "language": "언어",
+                "defaultView": "기본 뷰",
+                "desktop_notifications": "데스크톱 알림",
+                "lastfmScrobbling": "Last.fm으로 scrobble하기",
+                "listenBrainzScrobbling": "ListenBrainz로 scrobble하기",
+                "replaygain": "ReplayGain 모드",
+                "preAmp": "프리앰프",
+                "gain": {
+                    "none": "비활성화",
+                    "album": "앨범 Gain 사용",
+                    "track": "트랙 Gain 사용"
+                }
+            }
+        },
+        "albumList": "앨범",
+        "about": "상세 정보",
+        "playlists": "플레이리스트",
+        "sharedPlaylists": "공유된 플레이리스트"
+    },
+    "player": {
+        "playListsText": "재생 목록",
+        "openText": "열기",
+        "closeText": "닫기",
+        "notContentText": "음악이 없습니다",
+        "clickToPlayText": "클릭하여 재생",
+        "clickToPauseText": "일시 정지",
+        "nextTrackText": "다음 곡",
+        "previousTrackText": "이전 곡",
+        "reloadText": "새로 고침",
+        "volumeText": "음량",
+        "toggleLyricText": "가사 전환",
+        "toggleMiniModeText": "최소화",
+        "destroyText": "삭제",
+        "downloadText": "다운로드",
+        "removeAudioListsText": "목록 비우기",
+        "clickToDeleteText": "클릭하여 %{name} 삭제",
+        "emptyLyricText": "가사가 없습니다",
+        "playModeText": {
+            "order": "순서대로",
+            "orderLoop": "반복",
+            "singleLoop": "한 곡 반복",
+            "shufflePlay": "셔플"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "홈페이지",
+            "source": "소스 코드",
+            "featureRequests": "기능 요청"
+        }
+    },
+    "activity": {
+        "title": "활동",
+        "totalScanned": "스캔된 폴더",
+        "quickScan": "빠른 스캔",
+        "fullScan": "전체 스캔",
+        "serverUptime": "서버 가동 시간",
+        "serverDown": "서버 오프라인"
+    },
+    "help": {
+        "title": "Navidrome 단축키",
+        "hotkeys": {
+            "show_help": "도움말 표시",
+            "toggle_menu": "사이드바 표시/숨기기",
+            "toggle_play": "재생/정지",
+            "prev_song": "이전 곡",
+            "next_song": "다음 곡",
+            "vol_up": "음량 높이기",
+            "vol_down": "음량 낮추기",
+            "toggle_love": "별표 토글",
+            "current_song": "현재 곡으로 이동"
+        }
+    }
+}

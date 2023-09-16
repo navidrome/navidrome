@@ -56,6 +56,7 @@ type configOptions struct {
 	SubsonicArtistParticipations bool
 	OnlyAlbumArtists             bool
 	FFmpegPath                   string
+	MPVPath                      string
 	CoverArtPriority             string
 	CoverJpegQuality             int
 	ArtistArtPriority            string
@@ -79,6 +80,7 @@ type configOptions struct {
 	ReverseProxyWhitelist        string
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
+	Jukebox                      jukeboxOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -131,6 +133,14 @@ type listenBrainzOptions struct {
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
+}
+
+type AudioDeviceDefinition []string
+
+type jukeboxOptions struct {
+	Enabled bool
+	Devices []AudioDeviceDefinition
+	Default string
 }
 
 var (
@@ -317,6 +327,10 @@ func init() {
 
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", "/metrics")
+
+	viper.SetDefault("jukebox.enabled", false)
+	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
+	viper.SetDefault("jukebox.default", "")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.multipleartists", true)
