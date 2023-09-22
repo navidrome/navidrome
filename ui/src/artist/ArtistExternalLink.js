@@ -29,12 +29,20 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
     linkButtons.push(<span key={`link-${record.id}-${id}`}>{link}</span>)
   }
 
-  if (config.lastFMEnabled && lastFMlink) {
-    addLink(
-      lastFMlink[2],
-      'message.openIn.lastfm',
-      <ImLastfm2 className="lastfm-icon" />
-    )
+  if (config.lastFMEnabled) {
+    if (lastFMlink) {
+      addLink(
+        lastFMlink[2],
+        'message.openIn.lastfm',
+        <ImLastfm2 className="lastfm-icon" />
+      )
+    } else if (artistInfo.lastFmUrl) {
+      addLink(
+        artistInfo.lastFmUrl,
+        'message.openIn.lastfm',
+        <ImLastfm2 className="lastfm-icon" />
+      )
+    }
   }
 
   artistInfo?.musicBrainzId &&
