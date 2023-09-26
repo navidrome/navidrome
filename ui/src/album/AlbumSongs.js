@@ -99,7 +99,7 @@ const AlbumSongs = (props) => {
       trackNumber: isDesktop && (
         <TextField
           source="trackNumber"
-          sortBy="releaseDate asc, discNumber asc, trackNumber asc"
+          sortBy="releaseDate asc, mbzAlbumId asc, discNumber asc, trackNumber asc"
           label="#"
           sortable={false}
         />
