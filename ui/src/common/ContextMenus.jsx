@@ -15,6 +15,7 @@ import {
   shuffleTracks,
   openAddToPlaylist,
   openDownloadMenu,
+  openDeleteMenu,
   openExtendedInfoDialog,
   DOWNLOAD_MENU_ALBUM,
   DOWNLOAD_MENU_ARTIST,

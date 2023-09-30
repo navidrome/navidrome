@@ -22,6 +22,7 @@ import {
   playTracks,
   shuffleTracks,
   openDownloadMenu,
+  openDeleteMenu,
   DOWNLOAD_MENU_PLAY,
   openShareMenu,
 } from '../actions'
@@ -94,6 +95,10 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
     dispatch(openDownloadMenu(record, DOWNLOAD_MENU_PLAY))
   }, [dispatch, record])
 
+  const handleDelete = React.useCallback(() => {
+    dispatch(openDeleteMenu([record.id]))
+  }, [dispatch, record])
+
   const handleExport = React.useCallback(
     () =>
       httpClient(`${REST_URL}/playlist/${record.id}/tracks`, {
@@ -155,6 +160,12 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
               <CloudDownloadOutlinedIcon />
             </Button>
           )}
+          <Button
+            onClick={handleDelete}
+            label={translate('resources.album.actions.delete')}
+          >
+            <RiPlayList2Fill />
+          </Button>
           <Button
             onClick={handleExport}
             label={translate('resources.playlist.actions.export')}

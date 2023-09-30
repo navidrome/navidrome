@@ -28,6 +28,7 @@ import {
   settingsReducer,
   replayGainReducer,
   downloadMenuDialogReducer,
+  deleteMenuDialogReducer,
   shareDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
@@ -59,6 +60,7 @@ const adminStore = createAdminStore({
     theme: themeReducer,
     addToPlaylistDialog: addToPlaylistDialogReducer,
     downloadMenuDialog: downloadMenuDialogReducer,
+    deleteMenuDialog: deleteMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
     shareDialog: shareDialogReducer,

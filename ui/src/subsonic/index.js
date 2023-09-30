@@ -43,6 +43,8 @@ const star = (id) => httpClient(url('star', id))
 
 const unstar = (id) => httpClient(url('unstar', id))
 
+const remove = (id) => httpClient(url('delete', id))
+
 const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
 
 const download = (id, format = 'raw', bitrate = '0') =>
@@ -91,6 +93,7 @@ export default {
   scrobble,
   nowPlaying,
   download,
+  remove,
   star,
   unstar,
   setRating,
