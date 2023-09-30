@@ -158,6 +158,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(getPlayer(api.players))
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
+		hr(r, "delete", api.Delete)
 	})
 	r.Group(func(r chi.Router) {
 		h(r, "createInternetRadioStation", api.CreateInternetRadio)

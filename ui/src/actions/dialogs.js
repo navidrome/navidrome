@@ -2,6 +2,8 @@ export const ADD_TO_PLAYLIST_OPEN = 'ADD_TO_PLAYLIST_OPEN'
 export const ADD_TO_PLAYLIST_CLOSE = 'ADD_TO_PLAYLIST_CLOSE'
 export const DOWNLOAD_MENU_OPEN = 'DOWNLOAD_MENU_OPEN'
 export const DOWNLOAD_MENU_CLOSE = 'DOWNLOAD_MENU_CLOSE'
+export const DELETE_MENU_OPEN = 'DELETE_MENU_OPEN'
+export const DELETE_MENU_CLOSE = 'DELETE_MENU_CLOSE'
 export const DUPLICATE_SONG_WARNING_OPEN = 'DUPLICATE_SONG_WARNING_OPEN'
 export const DUPLICATE_SONG_WARNING_CLOSE = 'DUPLICATE_SONG_WARNING_CLOSE'
 export const EXTENDED_INFO_OPEN = 'EXTENDED_INFO_OPEN'
@@ -12,6 +14,10 @@ export const DOWNLOAD_MENU_ALBUM = 'album'
 export const DOWNLOAD_MENU_ARTIST = 'artist'
 export const DOWNLOAD_MENU_PLAY = 'playlist'
 export const DOWNLOAD_MENU_SONG = 'song'
+export const DELETE_MENU_ALBUM = 'album'
+export const DELETE_MENU_ARTIST = 'artist'
+export const DELETE_MENU_PLAY = 'playlist'
+export const DELETE_MENU_SONG = 'song'
 export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
 export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
 
@@ -45,9 +51,22 @@ export const openDownloadMenu = (record, recordType) => {
   }
 }
 
+export const openDeleteMenu = (record, recordType) => {
+  return {
+    type: DELETE_MENU_OPEN,
+    recordType,
+    record,
+  }
+}
+
 export const closeDownloadMenu = () => ({
   type: DOWNLOAD_MENU_CLOSE,
 })
+
+export const closeDeleteMenu = () => ({
+  type: DELETE_MENU_CLOSE,
+})
+
 
 export const openDuplicateSongWarning = (duplicateIds) => ({
   type: DUPLICATE_SONG_WARNING_OPEN,

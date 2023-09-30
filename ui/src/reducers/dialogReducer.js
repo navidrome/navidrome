@@ -7,6 +7,12 @@ import {
   DOWNLOAD_MENU_OPEN,
   DOWNLOAD_MENU_PLAY,
   DOWNLOAD_MENU_SONG,
+  DELETE_MENU_ALBUM,
+  DELETE_MENU_ARTIST,
+  DELETE_MENU_CLOSE,
+  DELETE_MENU_OPEN,
+  DELETE_MENU_PLAY,
+  DELETE_MENU_SONG,
   DUPLICATE_SONG_WARNING_OPEN,
   DUPLICATE_SONG_WARNING_CLOSE,
   EXTENDED_INFO_OPEN,
@@ -120,6 +126,50 @@ export const downloadMenuDialogReducer = (
       return previousState
   }
 }
+
+export const deleteMenuDialogReducer = (
+  previousState = {
+    open: false,
+  },
+  payload
+) => {
+  const { type } = payload
+  switch (type) {
+    case DELETE_MENU_OPEN: {
+      switch (payload.recordType) {
+        case DELETE_MENU_ALBUM:
+        case DELETE_MENU_ARTIST:
+        case DELETE_MENU_PLAY:
+        case DELETE_MENU_SONG: {
+          return {
+            ...previousState,
+            open: true,
+            record: payload.record,
+            recordType: payload.recordType,
+          }
+        }
+        default: {
+          return {
+            ...previousState,
+            open: true,
+            record: payload.record,
+            recordType: undefined,
+          }
+        }
+      }
+    }
+    case DELETE_MENU_CLOSE: {
+      return {
+        ...previousState,
+        open: false,
+        recordType: undefined,
+      }
+    }
+    default:
+      return previousState
+  }
+}
+
 
 export const expandInfoDialogReducer = (
   previousState = {

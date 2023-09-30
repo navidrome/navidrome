@@ -80,6 +80,22 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	return nil, nil
 }
 
+func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	println("hello")
+	id, err := requiredParamString(r, "id")
+	println(id)
+	return nil, err
+	//err = api.ds.Playlist(r.Context()).Delete(id)
+	//if errors.Is(err, model.ErrNotAuthorized) {
+	//	return nil, newError(responses.ErrorAuthorizationFail)
+	//}
+	//if err != nil {
+	//	log.Error(r, err)
+	//	return nil, err
+	//}
+	//return newResponse(), nil
+}
+
 func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	username, _ := request.UsernameFrom(ctx)
