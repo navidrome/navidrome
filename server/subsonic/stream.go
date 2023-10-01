@@ -81,7 +81,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 }
 
 func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	println("hello")
+	println("hello from go. Deleting...")
 	id, err := requiredParamString(r, "id")
 	println(id)
 	return nil, err

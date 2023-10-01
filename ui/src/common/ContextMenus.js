@@ -15,6 +15,7 @@ import {
   shuffleTracks,
   openAddToPlaylist,
   openDownloadMenu,
+  openDeleteMenu,
   openExtendedInfoDialog,
   DOWNLOAD_MENU_ALBUM,
   DOWNLOAD_MENU_ARTIST,
@@ -86,6 +87,12 @@ const ContextMenu = ({
       label: translate('ra.action.share'),
       action: (record) =>
         dispatch(openShareMenu([record.id], resource, record.name)),
+    },
+    delete: {
+      enabled: true,
+      needData: true,
+      label: translate('ra.action.delete'),
+      action: (data, ids) => dispatch(openDeleteMenu({ selectedIds: ids })),
     },
     download: {
       enabled: config.enableDownloads && record.size,

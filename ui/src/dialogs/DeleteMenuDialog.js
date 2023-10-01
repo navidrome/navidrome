@@ -11,9 +11,9 @@ import subsonic from '../subsonic'
 import { closeDeleteMenu } from '../actions'
 
 const DeleteMenuDialog = () => {
-  const { open, record, recordType } = useSelector(
-    (state) => state.deleteMenuDialog
-  )
+  const { open, selectedIds } =
+    useSelector((state) => state.deleteMenuDialog)
+
   const dispatch = useDispatch()
   const translate = useTranslate()
 
@@ -22,12 +22,10 @@ const DeleteMenuDialog = () => {
     e.stopPropagation()
   }
 
-  const handleDelete = (e) => {
-    if (record) {
-      const id = record.mediaFileId || record.id
-      subsonic.delete(id)
-      dispatch(closeDeleteMenu())
-    }
+  const handleDelete = (e, distinctIds) => {
+    const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
+    subsonic.remove(trackIds)
+    dispatch(closeDeleteMenu())
     e.stopPropagation()
   }
 
@@ -40,13 +38,7 @@ const DeleteMenuDialog = () => {
       maxWidth={'sm'}
     >
       <DialogTitle id="delete-dialog">
-        {recordType &&
-          translate('message.deleteDialogTitle', {
-            resource: translate(`resources.${recordType}.name`, {
-              smart_count: 1,
-            }).toLocaleLowerCase(),
-            name: record?.name || record?.title
-          })}
+        {translate('message.deleteDialogTitle')}
       </DialogTitle>
       <DialogActions>
         <Button onClick={handleClose} color="secondary">

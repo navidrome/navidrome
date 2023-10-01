@@ -51,14 +51,12 @@ export const openDownloadMenu = (record, recordType) => {
   }
 }
 
-export const openDeleteMenu = (record, recordType) => {
+export const openDeleteMenu = (selectedIds) => {
   return {
     type: DELETE_MENU_OPEN,
-    recordType,
-    record,
+    selectedIds,
   }
 }
-
 export const closeDownloadMenu = () => ({
   type: DOWNLOAD_MENU_CLOSE,
 })

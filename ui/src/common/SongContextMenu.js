@@ -13,7 +13,9 @@ import {
   openAddToPlaylist,
   openExtendedInfoDialog,
   openDownloadMenu,
+  openDeleteMenu,
   DOWNLOAD_MENU_SONG,
+  DELETE_MENU_SONG,
   openShareMenu,
 } from '../actions'
 import { LoveButton } from './LoveButton'
@@ -81,6 +83,12 @@ export const SongContextMenu = ({
       label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
       action: (record) =>
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
+    },
+    delete: {
+      enabled: true,
+      label: translate('ra.action.delete'),
+      action: (record) =>
+        dispatch(openDeleteMenu([record.mediaFileId || record.id])),
     },
     info: {
       enabled: true,

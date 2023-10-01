@@ -127,6 +127,7 @@ export const downloadMenuDialogReducer = (
   }
 }
 
+
 export const deleteMenuDialogReducer = (
   previousState = {
     open: false,
@@ -144,16 +145,14 @@ export const deleteMenuDialogReducer = (
           return {
             ...previousState,
             open: true,
-            record: payload.record,
-            recordType: payload.recordType,
+            selectedIds: payload.selectedIds,
           }
         }
         default: {
           return {
             ...previousState,
             open: true,
-            record: payload.record,
-            recordType: undefined,
+            selectedIds: payload.selectedIds,
           }
         }
       }
