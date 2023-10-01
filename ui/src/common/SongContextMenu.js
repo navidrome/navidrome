@@ -15,7 +15,6 @@ import {
   openDownloadMenu,
   openDeleteMenu,
   DOWNLOAD_MENU_SONG,
-  DELETE_MENU_SONG,
   openShareMenu,
 } from '../actions'
 import { LoveButton } from './LoveButton'

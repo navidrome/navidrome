@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { Button, useTranslate, useUnselectAll } from 'react-admin'
+import { Button, useTranslate } from 'react-admin'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { openDeleteMenu } from '../actions'
 

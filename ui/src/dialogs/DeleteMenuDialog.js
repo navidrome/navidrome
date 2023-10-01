@@ -1,10 +1,9 @@
-import { SimpleForm, useTranslate } from 'react-admin'
+import { useTranslate } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   Button,
   Dialog,
   DialogActions,
-  DialogContent,
   DialogTitle,
 } from '@material-ui/core'
 import subsonic from '../subsonic'
