@@ -1,11 +1,6 @@
 import { useTranslate } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogTitle,
-} from '@material-ui/core'
+import { Button, Dialog, DialogActions, DialogTitle } from '@material-ui/core'
 import subsonic from '../subsonic'
 import { closeDeleteMenu } from '../actions'
 
