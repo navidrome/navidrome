@@ -127,7 +127,6 @@ export const downloadMenuDialogReducer = (
   }
 }
 
-
 export const deleteMenuDialogReducer = (
   previousState = {
     open: false,
@@ -168,7 +167,6 @@ export const deleteMenuDialogReducer = (
       return previousState
   }
 }
-
 
 export const expandInfoDialogReducer = (
   previousState = {

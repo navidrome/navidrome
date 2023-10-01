@@ -65,7 +65,6 @@ export const closeDeleteMenu = () => ({
   type: DELETE_MENU_CLOSE,
 })
 
-
 export const openDuplicateSongWarning = (duplicateIds) => ({
   type: DUPLICATE_SONG_WARNING_OPEN,
   duplicateIds,

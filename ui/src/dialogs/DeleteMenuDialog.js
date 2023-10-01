@@ -11,8 +11,7 @@ import subsonic from '../subsonic'
 import { closeDeleteMenu } from '../actions'
 
 const DeleteMenuDialog = () => {
-  const { open, selectedIds } =
-    useSelector((state) => state.deleteMenuDialog)
+  const { open, selectedIds } = useSelector((state) => state.deleteMenuDialog)
 
   const dispatch = useDispatch()
   const translate = useTranslate()

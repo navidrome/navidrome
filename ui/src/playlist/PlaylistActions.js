@@ -99,7 +99,6 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
     dispatch(openDeleteMenu([record.id]))
   }, [dispatch, record])
 
-
   const handleExport = React.useCallback(
     () =>
       httpClient(`${REST_URL}/playlist/${record.id}/tracks`, {

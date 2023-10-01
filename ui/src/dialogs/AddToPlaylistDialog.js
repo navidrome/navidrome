@@ -45,7 +45,6 @@ export const AddToPlaylistDialog = () => {
   }
 
   const addToPlaylist = (playlistId, distinctIds) => {
-    
     console.log('hello add to playlist')
     console.log(distinctIds)
     console.log(selectedIds)

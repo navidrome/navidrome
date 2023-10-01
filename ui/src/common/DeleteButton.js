@@ -10,9 +10,7 @@ export const DeleteButton = ({ resource, selectedIds, className }) => {
   const dispatch = useDispatch()
 
   const handleClick = () => {
-    dispatch(
-      openDeleteMenu(selectedIds)
-    )
+    dispatch(openDeleteMenu(selectedIds))
   }
 
   return (
