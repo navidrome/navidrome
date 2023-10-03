@@ -185,11 +185,15 @@ func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Su
 		queryStr := fmt.Sprintf("artist:%s/title:%s", mf.Artist, mf.Title)
 		url := baseUrl + queryEndPoint + queryStr
 		fmt.Printf("query url: %s\n", url)
-		resp, err := http.Get(url)
+		resp, err := http.Get(url) // nolint
 		body, err := io.ReadAll(resp.Body)
 		sb := string(body)
 		var beetsItem BeetsItem
-		json.Unmarshal([]byte(sb), &beetsItem)
+		err = json.Unmarshal([]byte(sb), &beetsItem)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
 		length := len(beetsItem.Results)
 		if length != 1 {
 			log.Error("following query string matched: ", length, "tracks", queryStr)
