@@ -186,7 +186,15 @@ func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Su
 		url := baseUrl + queryEndPoint + queryStr
 		fmt.Printf("query url: %s\n", url)
 		resp, err := http.Get(url) // nolint
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
 		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
 		sb := string(body)
 		var beetsItem BeetsItem
 		err = json.Unmarshal([]byte(sb), &beetsItem)
