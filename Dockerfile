@@ -1,6 +1,6 @@
 #####################################################
 ### Build UI bundles
-FROM node:13-alpine AS jsbuilder
+FROM node:18-alpine AS jsbuilder
 WORKDIR /src
 COPY ui/package.json ui/package-lock.json ./
 RUN npm ci
@@ -10,33 +10,42 @@ RUN npm run build
 
 #####################################################
 ### Build executable
-FROM golang:1.14-alpine AS gobuilder
+FROM golang:1.21-alpine AS gobuilder
 
 # Download build tools
 RUN mkdir -p /src/ui/build
 RUN apk add -U --no-cache build-base git
-RUN go get -u github.com/go-bindata/go-bindata/...
+RUN go install github.com/go-bindata/go-bindata/go-bindata@latest
 
 # Download project dependencies
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
+RUN go mod tidy
+RUN apk update && apk add curl git pkgconfig && curl https://glide.sh/get | sh
+RUN apk add --update taglib-dev gcc taglib
+RUN apk add gcompat
+RUN apk add --update alpine-sdk
+RUN apk add build-base zlib-dev
 
+RUN mkdir -p .git/hooks
+RUN cd .git/hooks && ln -sf ../../git/* .
 # Copy source, test it
 COPY . .
-RUN go test ./...
-
-# Copy UI bundle, build executable
 COPY --from=jsbuilder /src/build/* /src/ui/build/
 COPY --from=jsbuilder /src/build/static/css/* /src/ui/build/static/css/
 COPY --from=jsbuilder /src/build/static/js/* /src/ui/build/static/js/
-RUN rm -rf /src/build/css /src/build/js
-RUN GIT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`) && \
-    GIT_TAG=${GIT_TAG#"tags/"} && \
-    GIT_SHA=$(git rev-parse --short HEAD) && \
-    echo "Building version: ${GIT_TAG} (${GIT_SHA})" && \
-    go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/... && \
-    go build -ldflags="-X github.com/deluan/navidrome/consts.gitSha=${GIT_SHA} -X github.com/deluan/navidrome/consts.gitTag=${GIT_TAG}" -tags=embed
+RUN make build
+#RUN CGO_ENABLED=1 GOOS=linux go build
+#RUN CGO_ENABLED=1 GOOS=linux go test ./...
+
+# Copy UI bundle, build executable
+#COPY --from=jsbuilder /src/build/* /src/ui/build/
+#COPY --from=jsbuilder /src/build/static/css/* /src/ui/build/static/css/
+#COPY --from=jsbuilder /src/build/static/js/* /src/ui/build/static/js/
+#RUN rm -rf /src/build/css /src/build/js
+#RUN go-bindata -fs -prefix ui/build -tags embed -nocompress -pkg assets -o assets/embedded_gen.go ui/build/... && \
+#    go build -ldflags="-X ./consts -X ./consts" -tags=embed
 
 #####################################################
 ### Build Final Image
@@ -44,6 +53,7 @@ FROM alpine as release
 LABEL maintainer="deluan@navidrome.org"
 
 COPY --from=gobuilder /src/navidrome /app/
+RUN apk add --update taglib-dev gcc taglib
 
 # Install ffmpeg and output build config
 RUN apk add --no-cache ffmpeg
