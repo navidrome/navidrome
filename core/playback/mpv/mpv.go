@@ -110,7 +110,7 @@ func fixCmd(cmd string) string {
 func mpvCommand() (string, error) {
 	mpvOnce.Do(func() {
 		if conf.Server.MPVPath != "" {
-			mpvPath = conf.Server.FFmpegPath
+			mpvPath = conf.Server.MPVPath
 			mpvPath, mpvErr = exec.LookPath(mpvPath)
 		} else {
 			mpvPath, mpvErr = exec.LookPath("mpv")
