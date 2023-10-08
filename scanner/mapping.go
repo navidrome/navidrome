@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
