@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/djherbis/atime"
 	"github.com/djherbis/fscache"
 	"github.com/djherbis/stream"
+	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -88,7 +88,8 @@ func (sfs *spreadFS) Stat(name string) (fscache.FileInfo, error) {
 	if err != nil {
 		return fscache.FileInfo{}, err
 	}
-	return fscache.FileInfo{FileInfo: stat, Atime: atime.Get(stat)}, nil
+	times, _ := times.Stat(name)
+	return fscache.FileInfo{FileInfo: stat, Atime: times.AccessTime()}, nil
 }
 
 func (sfs *spreadFS) RemoveAll() error {
