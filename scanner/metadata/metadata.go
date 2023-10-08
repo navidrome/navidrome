@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/djherbis/times"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -148,7 +149,14 @@ func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
 func (t Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
-
+func (t Tags) BirthTime() time.Time {
+	times, _ := times.Stat(t.filePath)
+	if times.HasBirthTime() {
+		return times.BirthTime()
+	} else {
+		return time.Now()
+	}
+}
 // Replaygain Properties
 func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
 func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
