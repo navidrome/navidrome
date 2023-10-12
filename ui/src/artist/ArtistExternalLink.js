@@ -9,18 +9,10 @@ import config from '../config'
 
 const ArtistExternalLinks = ({ artistInfo, record }) => {
   const translate = useTranslate()
-  let links = []
   let linkButtons = []
   const lastFMlink = artistInfo?.biography?.match(
     /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/
   )
-
-  if (lastFMlink) {
-    links.push(lastFMlink[2])
-  }
-  if (artistInfo && artistInfo.musicBrainzId) {
-    links.push(`https://musicbrainz.org/artist/${artistInfo.musicBrainzId}`)
-  }
 
   const addLink = (url, title, icon) => {
     const translatedTitle = translate(title)
@@ -38,16 +30,24 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
   }
 
   if (config.lastFMEnabled) {
-    addLink(
-      links[0],
-      'message.openIn.lastfm',
-      <ImLastfm2 className="lastfm-icon" />
-    )
+    if (lastFMlink) {
+      addLink(
+        lastFMlink[2],
+        'message.openIn.lastfm',
+        <ImLastfm2 className="lastfm-icon" />
+      )
+    } else if (artistInfo?.lastFmUrl) {
+      addLink(
+        artistInfo?.lastFmUrl,
+        'message.openIn.lastfm',
+        <ImLastfm2 className="lastfm-icon" />
+      )
+    }
   }
 
   artistInfo?.musicBrainzId &&
     addLink(
-      links[1],
+      `https://musicbrainz.org/artist/${artistInfo.musicBrainzId}`,
       'message.openIn.musicbrainz',
       <MusicBrainz className="musicbrainz-icon" />
     )
