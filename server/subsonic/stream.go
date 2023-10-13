@@ -180,9 +180,9 @@ func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Su
 		}
 		println(mf.Artist)
 		println(mf.Title)
-		// todo make this configurable
+		// todo set this base from env variable
 		//baseUrl := "http://127.0.0.1:8337"
-		baseUrl := "host.docker.internal:8337"
+		baseUrl := "http://host.docker.internal:8337"
 		queryEndPoint := "/item/query/"
 		queryStr := fmt.Sprintf("artist:%s/title:%s", mf.Artist, mf.Title)
 		url := baseUrl + queryEndPoint + queryStr
