@@ -125,7 +125,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 
 	var albumArtistName, albumArtistID string
 	switch {
-	case md.Compilation():
+	case md.Compilation() && len(albumArtists) == 0:
 		albumArtistName = consts.VariousArtists
 		albumArtistID = consts.VariousArtistsID
 	case len(albumArtists) > 1:
