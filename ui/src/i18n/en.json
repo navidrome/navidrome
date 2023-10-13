@@ -207,7 +207,7 @@
     },
     "ra": {
         "auth": {
-            "welcome1": "Thanks for installing Navidrome!",
+            "welcome1": "Welcome to subbox!",
             "welcome2": "To start, create an admin user",
             "confirmPassword": "Confirm Password",
             "buttonCreateAdmin": "Create Admin",
