@@ -184,7 +184,7 @@ func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Su
 		//baseUrl := "http://127.0.0.1:8337"
 		baseUrl := "http://host.docker.internal:8337"
 		queryEndPoint := "/item/query/"
-		queryStr := fmt.Sprintf("artist:%s/title:%s", mf.Artist, mf.Title)
+		queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s", mf.Artist, mf.Title, mf.Album)
 		url := baseUrl + queryEndPoint + queryStr
 		fmt.Printf("query url: %s\n", url)
 		resp, err := http.Get(url) // nolint
@@ -206,13 +206,16 @@ func (api *Router) Delete(w http.ResponseWriter, r *http.Request) (*responses.Su
 		}
 		length := len(beetsItem.Results)
 		if length != 1 {
-			log.Error("following query string matched: ", length, "tracks", queryStr)
+			log.Error("following query string matched n entries", "n", length, "queryStr", queryStr)
 			return nil, err
 		}
 		item := beetsItem.Results[0]
-		log.Info("deleting: ", item.Artist, " : ", item.Title)
+		log.Info("deleting: ", item.Artist, " : ", item.Title, " id: ", item.ID)
+
+		deleteStr := fmt.Sprintf("/item/%d", item.ID)
+
+		del_url := baseUrl + deleteStr
 		// Create request
-		del_url := url + "?delete"
 		req, err := http.NewRequest(http.MethodDelete, del_url, nil)
 		log.Info("delete request: ", req)
 		if err != nil {
