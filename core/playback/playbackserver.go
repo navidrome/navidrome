@@ -46,8 +46,11 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Info(ctx, fmt.Sprintf("%d audio devices found", len(conf.Server.Jukebox.Devices)))
-	log.Info(ctx, "Using default audio device: "+conf.Server.Jukebox.Default)
+	log.Info(ctx, fmt.Sprintf("%d audio devices found", len(devices)))
+
+	defaultDevice, _ := ps.getDefaultDevice()
+
+	log.Info(ctx, "Using audio device: "+defaultDevice.DeviceName)
 
 	ps.ctx = &ctx
 
@@ -61,15 +64,37 @@ func (ps *playbackServer) GetCtx() *context.Context {
 }
 
 func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
-	pbDevices := make([]PlaybackDevice, len(devices))
+	pbDevices := make([]PlaybackDevice, max(1, len(devices)))
 	defaultDeviceFound := false
 
-	for idx, audioDevice := range devices {
-		if len(audioDevice) != 3 {
-			return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 3 fields, found: %d ", len(audioDevice))
+	if defaultDevice == "" {
+		// if there are no devices given and no default device, we create a sythetic device named "auto"
+		if len(devices) == 0 {
+			pbDevices[0] = *NewPlaybackDevice(ps, "auto", "auto")
 		}
 
-		pbDevices[idx] = *NewPlaybackDevice(ps, audioDevice[0], audioDevice[1], audioDevice[2])
+		// if there is but only one entry and no default given, just use that.
+		if len(devices) == 1 {
+			if len(devices[0]) != 2 {
+				return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
+			}
+			pbDevices[0] = *NewPlaybackDevice(ps, devices[0][0], devices[0][1])
+		}
+
+		if len(devices) > 1 {
+			return []PlaybackDevice{}, fmt.Errorf("number of audio device found is %d, but no default device defined. Set Jukebox.Default", len(devices))
+		}
+
+		pbDevices[0].Default = true
+		return pbDevices, nil
+	}
+
+	for idx, audioDevice := range devices {
+		if len(audioDevice) != 2 {
+			return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
+		}
+
+		pbDevices[idx] = *NewPlaybackDevice(ps, audioDevice[0], audioDevice[1])
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true

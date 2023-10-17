@@ -24,7 +24,7 @@ type MpvTrack struct {
 	CloseCalled   bool
 }
 
-func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, error) {
+func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
 	log.Debug("loading track", "trackname", mf.Path, "mediatype", mf.ContentType())
 
 	if _, err := mpvCommand(); err != nil {
@@ -33,7 +33,7 @@ func NewTrack(playbackDoneChannel chan bool, mf model.MediaFile) (*MpvTrack, err
 
 	tmpSocketName := TempFileName("mpv-ctrl-", ".socket")
 
-	args := createMPVCommand(mpvComdTemplate, mf.Path, tmpSocketName)
+	args := createMPVCommand(mpvComdTemplate, deviceName, mf.Path, tmpSocketName)
 	exe, err := start(args)
 	if err != nil {
 		log.Error("error starting mpv process", "error", err)

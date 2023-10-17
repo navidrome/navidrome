@@ -19,7 +19,7 @@ import (
 
 // mpv --no-audio-display --pause 'Jack Johnson/On And On/01 Times Like These.m4a' --input-ipc-server=/tmp/gonzo.socket
 const (
-	mpvComdTemplate = "mpv --no-audio-display --pause %f --input-ipc-server=%s"
+	mpvComdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
 )
 
 func start(args []string) (Executor, error) {
@@ -81,9 +81,10 @@ func (j *Executor) wait() {
 }
 
 // Path will always be an absolute path
-func createMPVCommand(cmd, filename string, socketName string) []string {
+func createMPVCommand(cmd, deviceName string, filename string, socketName string) []string {
 	split := strings.Split(fixCmd(cmd), " ")
 	for i, s := range split {
+		s = strings.ReplaceAll(s, "%d", deviceName)
 		s = strings.ReplaceAll(s, "%f", filename)
 		s = strings.ReplaceAll(s, "%s", socketName)
 		split[i] = s
@@ -110,7 +111,7 @@ func fixCmd(cmd string) string {
 func mpvCommand() (string, error) {
 	mpvOnce.Do(func() {
 		if conf.Server.MPVPath != "" {
-			mpvPath = conf.Server.FFmpegPath
+			mpvPath = conf.Server.MPVPath
 			mpvPath, mpvErr = exec.LookPath(mpvPath)
 		} else {
 			mpvPath, mpvErr = exec.LookPath("mpv")
