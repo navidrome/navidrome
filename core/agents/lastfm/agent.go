@@ -65,7 +65,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 	}
 
 	response := agents.AlbumInfo{
-		Name:        strings.Split(a.Name, " · ")[0],
+		Name:        a.Name
 		MBID:        a.MBID,
 		Description: a.Description.Summary,
 		URL:         a.URL,
