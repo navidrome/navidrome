@@ -49,6 +49,7 @@ func (n *Router) routes() http.Handler {
 
 		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
+		n.addDeleteSongRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +128,17 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			})
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
+			})
+		})
+	})
+}
+
+func (n *Router) addDeleteSongRoute(r chi.Router) {
+	r.Route("/song", func(r chi.Router) {
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(server.URLParamsMiddleware)
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				deleteSong(n.ds)(w, r)
 			})
 		})
 	})
