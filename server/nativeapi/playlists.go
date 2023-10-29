@@ -44,7 +44,7 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
-func createPlaylistFromM3U(ds model.DataStore) http.HandlerFunc {
+func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, ok := request.UserFrom(ctx)
@@ -54,22 +54,20 @@ func createPlaylistFromM3U(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 
-		p := core.NewPlaylists(ds)
-		pls, err := p.ImportM3U(ctx, r.Body, user.ID)
+		pls, err := playlists.ImportM3U(ctx, r.Body, user.ID)
 		if err != nil {
 			log.Error(r.Context(), "Error parsing playlist", err)
 			// TODO: consider returning StatusBadRequest for playlists that are malformed
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		err = ds.Playlist(ctx).Put(pls)
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(pls.ToM3U8()))
 		if err != nil {
-			log.Error(r.Context(), "Error saving playlist", err)
+			log.Error(ctx, "Error sending m3u contents", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
 	}
 }
 

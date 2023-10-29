@@ -54,7 +54,17 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader, ownerID str
 		Public:  false,
 		Sync:    true,
 	}
-	return s.parseM3U(ctx, pls, "", reader)
+	pls, err := s.parseM3U(ctx, pls, "", reader)
+	if err != nil {
+		log.Error(ctx, "Error parsing playlist", err)
+		return nil, err
+	}
+	err = s.ds.Playlist(ctx).Put(pls)
+	if err != nil {
+		log.Error(ctx, "Error saving playlist", err)
+		return nil, err
+	}
+	return pls, nil
 }
 
 func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
@@ -143,10 +153,13 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 		}
 		mf, err := mediaFileRepository.FindByPath(line)
 		if err != nil {
-			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "line", line, err)
+			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", line, err)
 			continue
 		}
 		mfs = append(mfs, *mf)
+	}
+	if pls.Name == "" {
+		pls.Name = time.Now().Format(time.RFC3339)
 	}
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)

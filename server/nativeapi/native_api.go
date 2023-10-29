@@ -14,12 +14,13 @@ import (
 
 type Router struct {
 	http.Handler
-	ds    model.DataStore
-	share core.Share
+	ds        model.DataStore
+	share     core.Share
+	playlists core.Playlists
 }
 
-func New(ds model.DataStore, share core.Share) *Router {
-	r := &Router{ds: ds, share: share}
+func New(ds model.DataStore, share core.Share, playlists core.Playlists) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists}
 	r.Handler = r.routes()
 	return r
 }
@@ -90,11 +91,11 @@ func (n *Router) addPlaylistRoute(r chi.Router) {
 	r.Route("/playlist", func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("Content-type") == "audio/x-mpegurl" {
-				createPlaylistFromM3U(n.ds)(w, r)
+			if r.Header.Get("Content-type") == "application/json" {
+				rest.Post(constructor)(w, r)
 				return
 			}
-			rest.Post(constructor)(w, r)
+			createPlaylistFromM3U(n.playlists)(w, r)
 		})
 
 		r.Route("/{id}", func(r chi.Router) {
