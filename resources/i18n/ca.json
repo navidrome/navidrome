@@ -54,7 +54,11 @@
                 "comment": "Comentari",
                 "rating": "Valoració",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Reprodueix",
@@ -190,7 +194,8 @@
                 "format": "",
                 "maxBitRate": "",
                 "updatedAt": "",
-                "createdAt": ""
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },

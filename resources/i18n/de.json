@@ -54,7 +54,11 @@
                 "comment": "Kommentar",
                 "rating": "Bewertung",
                 "createdAt": "Hinzugefügt",
-                "size": "Größe"
+                "size": "Größe",
+                "originalDate": "Ursprünglich",
+                "releaseDate": "Erschienen",
+                "releases": "Veröffentlichung |||| Veröffentlichungen",
+                "released": "Erschienen"
             },
             "actions": {
                 "playAll": "Abspielen",
@@ -190,7 +194,8 @@
                 "format": "Format",
                 "maxBitRate": "Max. Bit Rate",
                 "updatedAt": "Geändert am",
-                "createdAt": "Erstellt am"
+                "createdAt": "Erstellt am",
+                "downloadable": "Downloads erlauben?"
             }
         }
     },

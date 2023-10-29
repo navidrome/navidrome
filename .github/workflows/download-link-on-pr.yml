@@ -1,7 +1,7 @@
 name: Add download link to PR
 on:
   workflow_run:
-    workflows: ['Pipeline']
+    workflows: ['Pipeline: Test, Lint, Build']
     types: [completed]
 jobs:
   pr_comment:

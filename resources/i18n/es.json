@@ -54,7 +54,11 @@
                 "comment": "Comentario",
                 "rating": "Calificación",
                 "createdAt": "Creado el",
-                "size": "Tamaño del archivo"
+                "size": "Tamaño del archivo",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -190,7 +194,8 @@
                 "format": "Formato",
                 "maxBitRate": "Tasa de bits Máx.",
                 "updatedAt": "Actualizado el",
-                "createdAt": "Creado el"
+                "createdAt": "Creado el",
+                "downloadable": ""
             }
         }
     },

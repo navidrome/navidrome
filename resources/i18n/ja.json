@@ -54,7 +54,11 @@
                 "comment": "コメント",
                 "rating": "レート",
                 "createdAt": "追加日",
-                "size": "サイズ"
+                "size": "サイズ",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "再生",
@@ -190,7 +194,8 @@
                 "format": "フォーマット",
                 "maxBitRate": "最大ビットレート",
                 "updatedAt": "更新日",
-                "createdAt": "作成日"
+                "createdAt": "作成日",
+                "downloadable": ""
             }
         }
     },

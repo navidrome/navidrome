@@ -28,14 +28,14 @@ var _ = Describe("File Caches", func() {
 			configtest.SetupConfig()
 			_ = os.RemoveAll(tmpDir)
 		})
-		conf.Server.DataFolder = tmpDir
+		conf.Server.CacheFolder = tmpDir
 	})
 
 	Describe("NewFileCache", func() {
 		It("creates the cache folder", func() {
 			Expect(callNewFileCache("test", "1k", "test", 0, nil)).ToNot(BeNil())
 
-			_, err := os.Stat(filepath.Join(conf.Server.DataFolder, "test"))
+			_, err := os.Stat(filepath.Join(conf.Server.CacheFolder, "test"))
 			Expect(os.IsNotExist(err)).To(BeFalse())
 		})
 

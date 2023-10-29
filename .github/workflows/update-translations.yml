@@ -1,4 +1,4 @@
-name: Update Translations
+name: POEditor import
 on:
   workflow_dispatch:
   schedule:
@@ -6,6 +6,7 @@ on:
 jobs:
   update-translations:
     runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'navidrome' }}
     steps:
       - uses: actions/checkout@v3
       - name: Get updated translations
@@ -14,6 +15,10 @@ jobs:
           POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
         run: |
           ./update-translations.sh
+      - name: Show changes, if any
+        run: |
+          git status --porcelain
+          git diff
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v4
         with:

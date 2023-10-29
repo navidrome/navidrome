@@ -76,9 +76,10 @@ type additionalInfo struct {
 	SubmissionClient        string   `json:"submission_client,omitempty"`
 	SubmissionClientVersion string   `json:"submission_client_version,omitempty"`
 	TrackNumber             int      `json:"tracknumber,omitempty"`
-	TrackMbzID              string   `json:"track_mbid,omitempty"`
+	RecordingMbzID          string   `json:"recording_mbid,omitempty"`
 	ArtistMbzIDs            []string `json:"artist_mbids,omitempty"`
 	ReleaseMbID             string   `json:"release_mbid,omitempty"`
+	DurationMs              int      `json:"duration_ms,omitempty"`
 }
 
 func (c *client) validateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {

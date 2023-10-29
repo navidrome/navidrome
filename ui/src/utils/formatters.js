@@ -24,3 +24,17 @@ export const formatDuration = (d) => {
 
   return `${days > 0 ? days + ':' : ''}${f}`
 }
+
+export const formatFullDate = (date, locale) => {
+  const dashes = date.split('-').length - 1
+  let options = {
+    year: 'numeric',
+    timeZone: 'UTC',
+    ...(dashes > 0 && { month: 'short' }),
+    ...(dashes > 1 && { day: 'numeric' }),
+  }
+  if (dashes > 2 || (dashes === 0 && date.length > 4)) {
+    return ''
+  }
+  return new Date(date).toLocaleDateString(locale, options)
+}

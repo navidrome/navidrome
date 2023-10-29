@@ -71,10 +71,10 @@ const (
 
 // Cache options
 const (
-	TranscodingCacheDir             = "cache/transcoding"
+	TranscodingCacheDir             = "transcoding"
 	DefaultTranscodingCacheMaxItems = 0 // Unlimited
 
-	ImageCacheDir             = "cache/images"
+	ImageCacheDir             = "images"
 	DefaultImageCacheMaxItems = 0 // Unlimited
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
@@ -94,19 +94,19 @@ var (
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",
 			"defaultBitRate": 192,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -",
+			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			"name":           "opus audio",
 			"targetFormat":   "opus",
 			"defaultBitRate": 128,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			"name":           "aac audio",
 			"targetFormat":   "aac",
 			"defaultBitRate": 256,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 
