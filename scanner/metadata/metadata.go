@@ -151,12 +151,13 @@ func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 func (t Tags) BirthTime() time.Time {
 	times, _ := times.Stat(t.filePath)
-	if times.HasBirthTime() {
-		return times.BirthTime()
-	} else {
+	if !times.HasBirthTime() {
 		return time.Now()
 	}
+
+	return times.BirthTime()
 }
+
 // Replaygain Properties
 func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
 func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
