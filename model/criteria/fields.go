@@ -40,7 +40,7 @@ var fieldMap = map[string]*mappedField{
 	"bitrate":         {field: "media_file.bit_rate"},
 	"bpm":             {field: "media_file.bpm"},
 	"channels":        {field: "media_file.channels"},
-	"genre":           {field: "genre.name"},
+	"genre":           {field: "COALESCE(genre.name, '')"},
 	"loved":           {field: "COALESCE(annotation.starred, false)"},
 	"dateloved":       {field: "annotation.starred_at"},
 	"lastplayed":      {field: "annotation.play_date"},
