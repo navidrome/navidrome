@@ -23,7 +23,7 @@ var _ = Describe("SanitizeStrings", func() {
 	})
 
 	It("remove symbols", func() {
-		Expect(SanitizeStrings("Tom’s Diner ' “40” ‘A’")).To(Equal("40 a toms diner"))
+		Expect(SanitizeStrings("Tom’s Diner ' “40” ‘A’")).To(Equal("40 a diner toms"))
 	})
 
 	It("remove opening brackets", func() {
