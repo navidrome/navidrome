@@ -414,7 +414,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 			},
 			squirrel.Like{"order_title": strings.TrimSpace(sanitize.Accents(title))},
 		},
-		Sort: "starred desc, rating desc, year asc",
+		Sort: "starred desc, rating desc, year asc, compilation asc ",
 		Max:  1,
 	})
 	if err != nil || len(mfs) == 0 {
