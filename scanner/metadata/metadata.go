@@ -151,7 +151,7 @@ func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 func (t Tags) BirthTime() time.Time {
 	fileProperties, err := times.Stat(t.filePath)
-	if err != nil || !fileProperties.HasBirthTime() != nil {
+	if err != nil || !fileProperties.HasBirthTime() {
 		return time.Now()
 	}
 
