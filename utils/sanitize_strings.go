@@ -3,6 +3,7 @@ package utils
 import (
 	"html"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/deluan/sanitize"
@@ -46,6 +47,7 @@ func SanitizeStrings(text ...string) string {
 	}
 	concatenatedString := strings.Join(fullText, " ")
 	allWords := slice.RemoveDuplicateStr(strings.Split(concatenatedString, " "))
+	sort.Strings(allWords)
 	return strings.Join(allWords, " ")
 }
 
