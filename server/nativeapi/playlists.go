@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -47,14 +46,7 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		user, ok := request.UserFrom(ctx)
-		if !ok {
-			log.Error(ctx, "Unable to retrieve user info from request contest")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		pls, err := playlists.ImportM3U(ctx, r.Body, user.ID)
+		pls, err := playlists.ImportM3U(ctx, r.Body)
 		if err != nil {
 			log.Error(r.Context(), "Error parsing playlist", err)
 			// TODO: consider returning StatusBadRequest for playlists that are malformed

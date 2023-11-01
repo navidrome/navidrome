@@ -23,7 +23,7 @@ import (
 type Playlists interface {
 	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
 	Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
-	ImportM3U(ctx context.Context, reader io.Reader, ownerID string) (*model.Playlist, error)
+	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 }
 
 type playlists struct {
@@ -48,9 +48,10 @@ func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*
 	return pls, err
 }
 
-func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader, ownerID string) (*model.Playlist, error) {
+func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
+	owner, _ := request.UserFrom(ctx)
 	pls := &model.Playlist{
-		OwnerID: ownerID,
+		OwnerID: owner.ID,
 		Public:  false,
 		Sync:    true,
 	}
