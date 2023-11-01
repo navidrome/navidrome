@@ -46,7 +46,8 @@ func SanitizeStrings(text ...string) string {
 		}
 	}
 	concatenatedString := strings.Join(fullText, " ")
-	allWords := slice.RemoveDuplicateStr(strings.Split(concatenatedString, " "))
+	allWords := strings.Split(concatenatedString, " ")
+	slice.RemoveDuplicateStr(allWords)
 	sort.Strings(allWords)
 	return strings.Join(allWords, " ")
 }
