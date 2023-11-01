@@ -12,12 +12,14 @@ import (
 var _ = Describe("Playlists", func() {
 	var ds model.DataStore
 	var ps Playlists
+	var mp mockedPlaylist
 	ctx := context.Background()
 
 	BeforeEach(func() {
+		mp = mockedPlaylist{}
 		ds = &tests.MockDataStore{
 			MockedMediaFile: &mockedMediaFile{},
-			MockedPlaylist:  &mockedPlaylist{},
+			MockedPlaylist:  &mp,
 		}
 	})
 
@@ -33,6 +35,7 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
 			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
 			Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
+			Expect(mp.last).To(Equal(pls))
 		})
 
 		It("parses playlists using LF ending", func() {
@@ -62,6 +65,7 @@ func (r *mockedMediaFile) FindByPath(s string) (*model.MediaFile, error) {
 }
 
 type mockedPlaylist struct {
+	last *model.Playlist
 	model.PlaylistRepository
 }
 
@@ -69,6 +73,7 @@ func (r *mockedPlaylist) FindByPath(string) (*model.Playlist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (r *mockedPlaylist) Put(*model.Playlist) error {
+func (r *mockedPlaylist) Put(pls *model.Playlist) error {
+	r.last = pls
 	return nil
 }
