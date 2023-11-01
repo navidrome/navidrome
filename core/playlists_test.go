@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -57,8 +58,10 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			ps = NewPlaylists(ds)
 		})
+
 		It("parses well-formed playlists", func() {
-			f, _ := os.Open("tests/fixtures/playlists/pls-post.m3u")
+			f, _ := os.Open("tests/fixtures/playlists/pls-post-with-name.m3u")
+			defer f.Close()
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).To(BeNil())
 			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
@@ -67,14 +70,15 @@ var _ = Describe("Playlists", func() {
 			Expect(mp.last).To(Equal(pls))
 			f.Close()
 
-			f, _ = os.Open("tests/fixtures/playlists/pls-post-with-name.m3u")
+		})
+
+		It("sets the playlist name as a timestamp if the #PLAYLIST directive is not present", func() {
+			f, _ := os.Open("tests/fixtures/playlists/pls-post.m3u")
 			defer f.Close()
-			pls, err = ps.ImportM3U(ctx, f)
+			_, err := ps.ImportM3U(ctx, f)
 			Expect(err).To(BeNil())
-			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
-			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
-			Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
-			Expect(mp.last).To(Equal(pls))
+			_, err = time.Parse(time.RFC3339, mp.last.Name)
+			Expect(err).To(BeNil())
 		})
 	})
 })
