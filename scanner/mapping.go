@@ -34,6 +34,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Year, mf.Date, mf.OriginalYear, mf.OriginalDate, mf.ReleaseYear, mf.ReleaseDate = s.mapDates(md)
 	mf.Title = s.mapTrackTitle(md)
 	mf.Album = md.Album()
+	mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID, mf.ReleaseDate, mf.MbzAlbumID)
 	mf.Album = s.mapAlbumName(md)
 	mf.ArtistID = s.artistID(md)
 	mf.Artist = s.mapArtistName(md)
@@ -74,8 +75,6 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Comment = utils.SanitizeText(md.Comment())
 	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
-	mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID, mf.ReleaseDate, mf.MbzAlbumID)
-	
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
 
