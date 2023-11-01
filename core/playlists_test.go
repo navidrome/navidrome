@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/navidrome/navidrome/model/request"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,6 +25,7 @@ var _ = Describe("Playlists", func() {
 			MockedMediaFile: &mockedMediaFile{},
 			MockedPlaylist:  &mp,
 		}
+		ctx = request.WithUser(ctx, model.User{ID: "123"})
 	})
 
 	Describe("ImportFile", func() {
@@ -33,6 +36,7 @@ var _ = Describe("Playlists", func() {
 		It("parses well-formed playlists", func() {
 			pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/pls1.m3u")
 			Expect(err).To(BeNil())
+			Expect(pls.OwnerID).To(Equal("123"))
 			Expect(pls.Tracks).To(HaveLen(3))
 			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
 			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
@@ -57,12 +61,15 @@ var _ = Describe("Playlists", func() {
 	Describe("ImportM3U", func() {
 		BeforeEach(func() {
 			ps = NewPlaylists(ds)
+			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
 
 		It("parses well-formed playlists", func() {
 			f, _ := os.Open("tests/fixtures/playlists/pls-post-with-name.m3u")
 			defer f.Close()
 			pls, err := ps.ImportM3U(ctx, f)
+			Expect(pls.OwnerID).To(Equal("123"))
+			Expect(pls.Name).To(Equal("playlist 1"))
 			Expect(err).To(BeNil())
 			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
 			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
@@ -75,9 +82,9 @@ var _ = Describe("Playlists", func() {
 		It("sets the playlist name as a timestamp if the #PLAYLIST directive is not present", func() {
 			f, _ := os.Open("tests/fixtures/playlists/pls-post.m3u")
 			defer f.Close()
-			_, err := ps.ImportM3U(ctx, f)
+			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).To(BeNil())
-			_, err = time.Parse(time.RFC3339, mp.last.Name)
+			_, err = time.Parse(time.RFC3339, pls.Name)
 			Expect(err).To(BeNil())
 		})
 	})
