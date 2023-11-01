@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
@@ -73,7 +72,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Comment = utils.SanitizeText(md.Comment())
 	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
-	mf.CreatedAt = time.Now()
+	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
 
 	return *mf
