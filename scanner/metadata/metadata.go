@@ -150,12 +150,10 @@ func (t Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 func (t Tags) BirthTime() time.Time {
-	fileProperties, err := times.Stat(t.filePath)
-	if err != nil || !fileProperties.HasBirthTime() {
-		return time.Now()
+	if ts := times.Get(t.fileInfo); ts.HasBirthTime() {
+		return ts.BirthTime()
 	}
-
-	return fileProperties.BirthTime()
+	return time.Now()
 }
 
 // Replaygain Properties
