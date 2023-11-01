@@ -625,7 +625,8 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
-				t, _ := time.Parse(time.RFC822, time.RFC822)
+				timeFmt := "2006-01-02 15:04:00"
+				t, _ := time.Parse(timeFmt, timeFmt)
 				response.ScanStatus = &ScanStatus{
 					Scanning:    true,
 					FolderCount: 123,

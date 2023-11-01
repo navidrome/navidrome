@@ -11,6 +11,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -39,6 +40,26 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 		wrapper(rest.GetAll)(w, r)
+	}
+}
+
+func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		pls, err := playlists.ImportM3U(ctx, r.Body)
+		if err != nil {
+			log.Error(r.Context(), "Error parsing playlist", err)
+			// TODO: consider returning StatusBadRequest for playlists that are malformed
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(pls.ToM3U8()))
+		if err != nil {
+			log.Error(ctx, "Error sending m3u contents", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

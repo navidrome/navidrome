@@ -59,7 +59,7 @@ var _ = Describe("playlistImporter", func() {
 			conf.Server.PlaylistsPath = "."
 			ps = newPlaylistImporter(ds, pls, cw, "tests/fixtures/playlists")
 
-			Expect(ps.processPlaylists(ctx, "tests/fixtures/playlists")).To(Equal(int64(3)))
+			Expect(ps.processPlaylists(ctx, "tests/fixtures/playlists")).To(Equal(int64(5)))
 			Expect(ps.processPlaylists(ctx, "tests/fixtures/playlists/subfolder1")).To(Equal(int64(0)))
 		})
 
