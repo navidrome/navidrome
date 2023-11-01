@@ -23,6 +23,7 @@ import (
 type Playlists interface {
 	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
 	Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
+	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 }
 
 type playlists struct {
@@ -45,6 +46,26 @@ func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*
 		log.Error(ctx, "Error updating playlist", "path", filepath.Join(dir, fname), err)
 	}
 	return pls, err
+}
+
+func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
+	owner, _ := request.UserFrom(ctx)
+	pls := &model.Playlist{
+		OwnerID: owner.ID,
+		Public:  false,
+		Sync:    true,
+	}
+	pls, err := s.parseM3U(ctx, pls, "", reader)
+	if err != nil {
+		log.Error(ctx, "Error parsing playlist", err)
+		return nil, err
+	}
+	err = s.ds.Playlist(ctx).Put(pls)
+	if err != nil {
+		log.Error(ctx, "Error saving playlist", err)
+		return nil, err
+	}
+	return pls, nil
 }
 
 func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
@@ -107,30 +128,39 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 	return pls, nil
 }
 
-func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, file io.Reader) (*model.Playlist, error) {
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) (*model.Playlist, error) {
 	mediaFileRepository := s.ds.MediaFile(ctx)
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
 	scanner.Split(scanLines)
 	var mfs model.MediaFiles
 	for scanner.Scan() {
-		path := strings.TrimSpace(scanner.Text())
-		// Skip empty lines and extended info
-		if path == "" || strings.HasPrefix(path, "#") {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "#PLAYLIST:") {
+			if split := strings.Split(line, ":"); len(split) >= 2 {
+				pls.Name = split[1]
+			}
 			continue
 		}
-		if strings.HasPrefix(path, "file://") {
-			path = strings.TrimPrefix(path, "file://")
-			path, _ = url.QueryUnescape(path)
+		// Skip empty lines and extended info
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(baseDir, path)
+		if strings.HasPrefix(line, "file://") {
+			line = strings.TrimPrefix(line, "file://")
+			line, _ = url.QueryUnescape(line)
 		}
-		mf, err := mediaFileRepository.FindByPath(path)
+		if baseDir != "" && !filepath.IsAbs(line) {
+			line = filepath.Join(baseDir, line)
+		}
+		mf, err := mediaFileRepository.FindByPath(line)
 		if err != nil {
-			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path, err)
+			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", line, err)
 			continue
 		}
 		mfs = append(mfs, *mf)
+	}
+	if pls.Name == "" {
+		pls.Name = time.Now().Format(time.RFC3339)
 	}
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)
