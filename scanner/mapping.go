@@ -76,7 +76,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
 	mf.AlbumID = s.albumID(md, mf.ReleaseDate, mf.MbzAlbumID)
-	mf.CreatedAt = time.Now()
+	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
 
 	return *mf
