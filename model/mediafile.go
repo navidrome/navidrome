@@ -265,12 +265,6 @@ func fixAlbumArtist(al Album, albumArtistIds []string) Album {
 		al.AlbumArtist = consts.VariousArtists
 		al.AlbumArtistID = consts.VariousArtistsID
 	}
-
-	if al.AlbumArtistID != al.ArtistID {
-		al.Artist = ""
-		al.ArtistID = ""
-	}
-
 	return al
 }
 
