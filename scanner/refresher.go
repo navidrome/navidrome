@@ -132,31 +132,6 @@ func (r *refresher) getImageFiles(dirs []string) (string, time.Time) {
 	return strings.Join(imageFiles, consts.Zwsp), updatedAt
 }
 
-func (r *refresher) refreshSongArtists(ctx context.Context, ids ...string) error {
-	mfs, err := r.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"artist_id": ids}})
-	if err != nil {
-		return err
-	}
-	if len(mfs) == 0 {
-		return nil
-	}
-
-	repo := r.ds.Artist(ctx)
-	grouped := slice.Group(mfs, func(m model.MediaFile) string { return m.ArtistID })
-	for _, group := range grouped {
-		a := model.MediaFiles(group).ToArtist()
-		// Force a external metadata lookup on next access
-		a.ExternalInfoUpdatedAt = time.Time{}
-
-		err := repo.Put(&a)
-		if err != nil {
-			return err
-		}
-		r.cacheWarmer.PreCache(a.CoverArtID())
-	}
-	return nil
-}
-
 func (r *refresher) refreshAlbumArtists(ctx context.Context, ids ...string) error {
 	albums, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": ids}})
 	if err != nil {
@@ -178,6 +153,31 @@ func (r *refresher) refreshAlbumArtists(ctx context.Context, ids ...string) erro
 		a.ExternalInfoUpdatedAt = time.Time{}
 
 		err = repo.Put(&a)
+		if err != nil {
+			return err
+		}
+		r.cacheWarmer.PreCache(a.CoverArtID())
+	}
+	return nil
+}
+
+func (r *refresher) refreshSongArtists(ctx context.Context, ids ...string) error {
+	mfs, err := r.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"artist_id": ids}})
+	if err != nil {
+		return err
+	}
+	if len(mfs) == 0 {
+		return nil
+	}
+
+	repo := r.ds.Artist(ctx)
+	grouped := slice.Group(mfs, func(m model.MediaFile) string { return m.ArtistID })
+	for _, group := range grouped {
+		a := model.MediaFiles(group).ToArtist()
+		// Force a external metadata lookup on next access
+		a.ExternalInfoUpdatedAt = time.Time{}
+
+		err := repo.Put(&a)
 		if err != nil {
 			return err
 		}
