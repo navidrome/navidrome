@@ -38,7 +38,7 @@ var _ = Describe("MediaFiles", func() {
 			album := mfs.ToAlbum()
 			Expect(album.ID).To(Equal("AlbumID"))
 			Expect(album.Name).To(Equal("Album"))
-			Expect(album.Artist).To(Equal("Artist"))
+			Expect(album.Artist).To(Equal(""))
 			Expect(album.ArtistID).To(Equal("ArtistID"))
 			Expect(album.AlbumArtist).To(Equal("AlbumArtist"))
 			Expect(album.AlbumArtistID).To(Equal("AlbumArtistID"))
