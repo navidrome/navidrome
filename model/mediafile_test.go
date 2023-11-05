@@ -215,7 +215,7 @@ var _ = Describe("MediaFiles", func() {
 			})
 			It("fills the fullText attribute correctly", func() {
 				album := mfs.ToAlbum()
-				Expect(album.FullText).To(Equal(" album1 albumartist1 albumartist2 artist1 artist2 artist3 discsubtitle1 discsubtitle2"))
+				Expect(album.FullText).To(Equal(" album1 albumartist1 artist1 artist2 discsubtitle1 discsubtitle2 sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
 			})
 		})
 		Context("MbzAlbumID", func() {
