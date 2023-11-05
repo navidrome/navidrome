@@ -295,7 +295,7 @@ var _ = Describe("listenBrainzAgent", func() {
 			})
 
 			Describe("Successful test", func() {
-				WithMbid := model.MediaFile{ID: "1", Title: "Take Control", MbzTrackID: "9f42783a-423b-4ed6-8a10-fdf4cb44456f", Artist: "Old Gods of Asgard"}
+				WithMbid := model.MediaFile{ID: "1", Title: "Take Control", MbzRecordingID: "9f42783a-423b-4ed6-8a10-fdf4cb44456f", Artist: "Old Gods of Asgard"}
 
 				BeforeEach(func() {
 					_ = ds.MediaFile(ctx).Put(&WithMbid)

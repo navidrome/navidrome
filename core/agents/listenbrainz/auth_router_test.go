@@ -27,6 +27,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		httpClient = &tests.FakeHttpClient{}
 		cl := newClient("http://localhost/", httpClient)
 		r = Router{
+			ds:          &tests.MockDataStore{},
 			sessionKeys: sk,
 			client:      cl,
 		}

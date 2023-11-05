@@ -58,6 +58,11 @@ var _ = Describe("client", func() {
 					Title:      "Daily Jams for example, 2023-03-18 Sat",
 					Extension: plsExtension{
 						Extension: playlistExtension{
+							AdditionalMetadata: additionalMeta{
+								AlgorithmMetadata: algoMeta{
+									SourcePatch: "daily-jams",
+								},
+							},
 							Collaborators: []string{"example"},
 							CreatedFor:    "example",
 							LastModified:  modified,
@@ -86,6 +91,11 @@ var _ = Describe("client", func() {
 				Title:      "Top Discoveries of 2022 for example",
 				Extension: plsExtension{
 					Extension: playlistExtension{
+						AdditionalMetadata: additionalMeta{
+							AlgorithmMetadata: algoMeta{
+								SourcePatch: "top-discoveries-for-year",
+							},
+						},
 						Collaborators: []string{"example"},
 						CreatedFor:    "example",
 						LastModified:  modified,
