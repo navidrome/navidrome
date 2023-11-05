@@ -71,7 +71,7 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	z := zip.NewWriter(out)
 	comment := "Downloaded from Navidrome"
-	if format != "raw" {
+	if format != "raw" && format != "" {
 		comment = fmt.Sprintf("%s, transcoded to %s %dbps", comment, format, bitrate)
 	}
 	_ = z.SetComment(comment)
@@ -86,7 +86,7 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc b
 	if isMultDisc {
 		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
 	}
-	return fmt.Sprintf("%s/%s", mf.Album, file)
+	return fmt.Sprintf("%s/%s", sanitizeName(mf.Album), file)
 }
 
 func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
@@ -127,11 +127,14 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id string, format string, 
 
 func (a *archiver) playlistFilename(mf model.MediaFile, format string, idx int) string {
 	ext := mf.Suffix
-	if format != "raw" {
+	if format != "" && format != "raw" {
 		ext = format
 	}
-	file := fmt.Sprintf("%02d - %s - %s.%s", idx+1, mf.Artist, mf.Title, ext)
-	return file
+	return fmt.Sprintf("%02d - %s - %s.%s", idx+1, sanitizeName(mf.Artist), sanitizeName(mf.Title), ext)
+}
+
+func sanitizeName(target string) string {
+	return strings.ReplaceAll(target, "/", "_")
 }
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {

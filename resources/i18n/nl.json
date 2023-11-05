@@ -54,7 +54,11 @@
                 "comment": "Commentaar",
                 "rating": "Beoordeling",
                 "createdAt": "Datum toegevoegd",
-                "size": "Grootte"
+                "size": "Grootte",
+                "originalDate": "Origineel",
+                "releaseDate": "Uitgegeven",
+                "releases": "Uitgave |||| Uitgaven",
+                "released": "Uitgegeven"
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -189,8 +193,9 @@
                 "visitCount": "Bezocht",
                 "format": "Formaat",
                 "maxBitRate": "Max. bitrate",
-                "updatedAt": "Geupdate op",
-                "createdAt": "Gecreëerd op"
+                "updatedAt": "Geüpdatet op",
+                "createdAt": "Gecreëerd op",
+                "downloadable": "Downloads toestaan?"
             }
         }
     },

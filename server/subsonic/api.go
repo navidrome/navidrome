@@ -175,9 +175,19 @@ func (api *Router) routes() http.Handler {
 	} else {
 		h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 	}
+	r.Group(func(r chi.Router) {
+		h(r, "getOpenSubsonicExtensions", api.GetOpenSubsonicExtensions)
+	})
+
+	if conf.Server.Jukebox.Enabled {
+		r.Group(func(r chi.Router) {
+			h(r, "jukeboxControl", api.JukeboxControl)
+		})
+	} else {
+		h501(r, "jukeboxControl")
+	}
 
 	// Not Implemented (yet?)
-	h501(r, "jukeboxControl")
 	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
 		"deletePodcastEpisode", "downloadPodcastEpisode")
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")

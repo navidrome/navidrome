@@ -54,7 +54,11 @@
                 "comment": "ความคิดเห็น",
                 "rating": "Rating",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "เล่นทั้งหมด",
@@ -190,7 +194,8 @@
                 "format": "",
                 "maxBitRate": "",
                 "updatedAt": "",
-                "createdAt": ""
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },

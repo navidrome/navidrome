@@ -54,7 +54,11 @@
                 "comment": "Opomba",
                 "rating": "Ocena",
                 "createdAt": "Datum dodano",
-                "size": "Velikost"
+                "size": "Velikost",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Predvajaj vse",
@@ -190,7 +194,8 @@
                 "format": "Oblika",
                 "maxBitRate": "Maks. bitna hitrost",
                 "updatedAt": "Posodobljeno ob",
-                "createdAt": "Ustvarjeno ob"
+                "createdAt": "Ustvarjeno ob",
+                "downloadable": ""
             }
         }
     },

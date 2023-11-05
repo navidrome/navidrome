@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -61,7 +62,7 @@ func preRun() {
 }
 
 func runNavidrome() {
-	db.EnsureLatestVersion()
+	db.Init()
 	defer func() {
 		if err := db.Close(); err != nil {
 			log.Error("Error closing DB", err)
@@ -74,6 +75,10 @@ func runNavidrome() {
 	g.Go(startSignaler(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+
+	if conf.Server.Jukebox.Enabled {
+		g.Go(startPlaybackServer(ctx))
+	}
 
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -103,7 +108,7 @@ func startServer(ctx context.Context) func() error {
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
-		return a.Run(ctx, fmt.Sprintf("%s:%d", conf.Server.Address, conf.Server.Port), conf.Server.TLSCert, conf.Server.TLSKey)
+		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
 	}
 }
 
@@ -146,6 +151,16 @@ func startScheduler(ctx context.Context) func() error {
 	}
 }
 
+func startPlaybackServer(ctx context.Context) func() error {
+	log.Info(ctx, "Starting playback server")
+
+	playbackInstance := playback.GetInstance()
+
+	return func() error {
+		return playbackInstance.Run(ctx)
+	}
+}
+
 // TODO: Implement some struct tags to map flags to viper
 func init() {
 	cobra.OnInitialize(func() {
@@ -155,11 +170,13 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
 	rootCmd.PersistentFlags().BoolVarP(&noBanner, "nobanner", "n", false, `don't show banner`)
 	rootCmd.PersistentFlags().String("musicfolder", viper.GetString("musicfolder"), "folder where your music is stored")
-	rootCmd.PersistentFlags().String("datafolder", viper.GetString("datafolder"), "folder to store application data (DB, cache...), needs write access")
+	rootCmd.PersistentFlags().String("datafolder", viper.GetString("datafolder"), "folder to store application data (DB), needs write access")
+	rootCmd.PersistentFlags().String("cachefolder", viper.GetString("cachefolder"), "folder to store cache data (transcoding, images...), needs write access")
 	rootCmd.PersistentFlags().StringP("loglevel", "l", viper.GetString("loglevel"), "log level, possible values: error, info, debug, trace")
 
 	_ = viper.BindPFlag("musicfolder", rootCmd.PersistentFlags().Lookup("musicfolder"))
 	_ = viper.BindPFlag("datafolder", rootCmd.PersistentFlags().Lookup("datafolder"))
+	_ = viper.BindPFlag("cachefolder", rootCmd.PersistentFlags().Lookup("cachefolder"))
 	_ = viper.BindPFlag("loglevel", rootCmd.PersistentFlags().Lookup("loglevel"))
 
 	rootCmd.Flags().StringP("address", "a", viper.GetString("address"), "IP address to bind to")

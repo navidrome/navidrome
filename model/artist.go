@@ -25,11 +25,11 @@ type Artist struct {
 }
 
 func (a Artist) ArtistImageUrl() string {
-	if a.MediumImageUrl != "" {
-		return a.MediumImageUrl
-	}
 	if a.LargeImageUrl != "" {
 		return a.LargeImageUrl
+	}
+	if a.MediumImageUrl != "" {
+		return a.MediumImageUrl
 	}
 	return a.SmallImageUrl
 }
