@@ -69,5 +69,4 @@ var _ = Describe("Slice Utils", func() {
 			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
 		})
 	})
-
 })
