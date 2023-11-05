@@ -134,7 +134,7 @@ func (s mediaFileMapper) albumID(values ...string) string {
 	var albumPath = strings.Builder{}
 	for _, value := range values {
 		if value != "" {
-			fmt.Fprintf(&albumPath, "//%s", value)
+			fmt.Fprintf(&albumPath, "\\%s", value)
 		}
 	}
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath.String())))
