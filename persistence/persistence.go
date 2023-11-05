@@ -124,11 +124,6 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 		log.Error(ctx, "Error removing dangling tracks", err)
 		return err
 	}
-	err = s.MediaFile(ctx).(*mediaFileRepository).removeNonAlbumArtistIds()
-	if err != nil {
-		log.Error(ctx, "Error removing non-album artist_ids", err)
-		return err
-	}
 	err = s.Album(ctx).(*albumRepository).purgeEmpty()
 	if err != nil {
 		log.Error(ctx, "Error removing empty albums", err)
