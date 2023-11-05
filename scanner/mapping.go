@@ -74,10 +74,14 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Comment = utils.SanitizeText(md.Comment())
 	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
-	mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID, mf.ReleaseDate, mf.MbzAlbumID)
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
-
+	if conf.Server.Scanner.GroupAlbumReleases {
+		mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID)
+	} else {
+		mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID, mf.ReleaseDate, mf.MbzAlbumID)
+	}
+	
 	return *mf
 }
 
@@ -127,17 +131,14 @@ func (s mediaFileMapper) trackID(md metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
 }
 
-func (s mediaFileMapper) albumID(albumName string, albumArtistID string, releaseDate string, mbzAlbumID string) string {
-	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", albumArtistID, albumName))
-	if !conf.Server.Scanner.GroupAlbumReleases {
-		if len(releaseDate) != 0 {
-			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
-		}
-		if len(mbzAlbumID) != 0 {
-			albumPath = fmt.Sprintf("%s\\%s", albumPath, mbzAlbumID)
+func (s mediaFileMapper) albumID(values ...string) string {
+	var albumPath = strings.Builder{}
+	for _, value := range values {
+		if value != "" {
+			fmt.Fprintf(&albumPath, "\\%s", value)
 		}
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
+	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath.String())))
 }
 
 func (s mediaFileMapper) artistID(md metadata.Tags) string {
