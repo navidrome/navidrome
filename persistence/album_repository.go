@@ -40,6 +40,7 @@ func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRep
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
 	}
+	
 	return r
 }
 
