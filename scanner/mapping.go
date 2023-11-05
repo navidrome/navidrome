@@ -33,7 +33,6 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.ID = s.trackID(md)
 	mf.Year, mf.Date, mf.OriginalYear, mf.OriginalDate, mf.ReleaseYear, mf.ReleaseDate = s.mapDates(md)
 	mf.Title = s.mapTrackTitle(md)
-	mf.Album = md.Album()
 	mf.Album = s.mapAlbumName(md)
 	mf.ArtistID = s.artistID(md)
 	mf.Artist = s.mapArtistName(md)
@@ -79,7 +78,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	if conf.Server.Scanner.GroupAlbumReleases {
 		mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID)
 	} else {
-		mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID, mf.ReleaseDate, mf.MbzAlbumID)
+		mf.AlbumID = s.albumID(mf.Album, mf.AlbumArtistID, mf.ReleaseDate)
 	}
 	
 	return *mf
