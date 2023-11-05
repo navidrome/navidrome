@@ -4,24 +4,42 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
 
+var (
+	errBadRange = errors.New("end must me greater than start")
+)
+
+type webError struct {
+	Error string `json:"error"`
+}
+
 func requiredParamString(w *http.ResponseWriter, r *http.Request, param string) (string, bool) {
 	p := utils.ParamString(r, param)
 	if p == "" {
-		http.Error(*w, "required param '"+param+"' is missing", http.StatusBadRequest)
+		replyError(r.Context(), *w, fmt.Errorf(`required param "%s" is missing`, param), http.StatusBadRequest)
 		return p, false
 	}
 	return p, true
+}
+
+func replyError(ctx context.Context, w http.ResponseWriter, err error, status int) {
+	w.WriteHeader(status)
+	w.Header().Set("Content-Type", "application/json")
+	error := webError{Error: err.Error()}
+	resp, _ := json.Marshal(error)
+	w.Write(resp)
 }
 
 func replyJson(ctx context.Context, w http.ResponseWriter, data interface{}) {
@@ -54,7 +72,7 @@ func (n *Router) getPlaylists() http.HandlerFunc {
 		end := utils.ParamInt(r, "_end", 0)
 
 		if start >= end {
-			http.Error(w, "End must me greater than start", http.StatusBadRequest)
+			replyError(ctx, w, errBadRange, http.StatusBadRequest)
 			return
 		}
 
@@ -73,7 +91,7 @@ func (n *Router) getPlaylists() http.HandlerFunc {
 		lists, err := n.pls.GetPlaylists(ctx, start, count, user.ID, agent, plsType)
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			replyError(ctx, w, err, http.StatusInternalServerError)
 		} else {
 			w.Header().Set("X-Total-Count", strconv.Itoa(lists.Total))
 
@@ -83,9 +101,9 @@ func (n *Router) getPlaylists() http.HandlerFunc {
 }
 
 type externalImport struct {
-	Agent     string            `json:"agent"`
-	Playlists map[string]string `json:"playlists"`
-	Update    bool              `json:"update"`
+	Agent     string                       `json:"agent"`
+	Playlists external_playlists.ImportMap `json:"playlists"`
+	Update    bool                         `json:"update"`
 }
 
 func (n *Router) fetchPlaylists() http.HandlerFunc {
@@ -98,7 +116,7 @@ func (n *Router) fetchPlaylists() http.HandlerFunc {
 		data, err := io.ReadAll(r.Body)
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			replyError(ctx, w, err, http.StatusBadRequest)
 			return
 		}
 
@@ -106,7 +124,7 @@ func (n *Router) fetchPlaylists() http.HandlerFunc {
 		err = json.Unmarshal(data, &plsImport)
 
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			replyError(ctx, w, err, http.StatusBadRequest)
 			return
 		}
 
@@ -114,9 +132,9 @@ func (n *Router) fetchPlaylists() http.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(model.ErrNotAuthorized, err) {
-				http.Error(w, err.Error(), http.StatusForbidden)
+				replyError(ctx, w, err, http.StatusForbidden)
 			} else {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				replyError(ctx, w, err, http.StatusInternalServerError)
 			}
 			return
 		}
@@ -144,7 +162,7 @@ func (n *Router) syncPlaylist() http.HandlerFunc {
 				code = http.StatusInternalServerError
 			}
 
-			http.Error(w, err.Error(), code)
+			replyError(ctx, w, err, code)
 		} else {
 			replyJson(ctx, w, "")
 		}

@@ -47,6 +47,16 @@ func (r userPropsRepository) Get(userId, key string) (string, error) {
 	return resp.Value, nil
 }
 
+func (r userPropsRepository) GetAllWithPrefix(key string) (model.UserProps, error) {
+	sel := Select("*").From(r.tableName).Where(Like{"key": key + "%"})
+	resp := model.UserProps{}
+	err := r.queryAll(sel, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 func (r userPropsRepository) DefaultGet(userId, key string, defaultValue string) (string, error) {
 	value, err := r.Get(userId, key)
 	if errors.Is(err, model.ErrNotFound) {

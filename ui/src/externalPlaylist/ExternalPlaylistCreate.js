@@ -59,6 +59,21 @@ const NameInput = (props) => {
   )
 }
 
+const SyncInput = (props) => {
+  const { id } = useRecordContext(props)
+
+  return (
+    <BooleanInput
+      sortable={false}
+      name={`sync[${id}]`}
+      label=""
+      onClick={(event) => {
+        event.stopPropagation()
+      }}
+    />
+  )
+}
+
 const MyDataGrid = forwardRef(
   ({ onUnselectItems, selectedIds, setIds, ...props }, ref) => {
     useEffect(() => {
@@ -72,6 +87,14 @@ const MyDataGrid = forwardRef(
       }
     }, [onUnselectItems])
 
+    const canSync = useMemo(() => {
+      let canSync = false
+      for (const id of props.ids) {
+        canSync ||= props.data[id].syncable
+      }
+      return canSync
+    }, [props.data, props.ids])
+
     ref.current = onUnselectItems
 
     return (
@@ -82,6 +105,7 @@ const MyDataGrid = forwardRef(
         selectedIds={selectedIds}
       >
         <NameInput source="name" sortable={false} />
+        {canSync && <SyncInput source="sync" sortable={false} />}
         <TextField source="creator" sortable={false} />
         <DateField source="createdAt" sortable={false} />
         <DateField source="updatedAt" sortable={false} />
@@ -191,13 +215,18 @@ const ExternalPlaylistCreate = (props) => {
 
   const save = useCallback(
     async (values) => {
-      const { agent, name, update, type } = values
-      const selectedNames = {}
+      const { agent, name, type, update } = values
+      const playlists = {}
+
+      let sync = values.sync ?? {}
 
       let count = 0
 
       for (const id of ids) {
-        selectedNames[id] = name[id]
+        playlists[id] = {
+          name: name[id],
+          sync: sync[id],
+        }
         count++
       }
 
@@ -207,7 +236,7 @@ const ExternalPlaylistCreate = (props) => {
             type: 'create',
             resource: 'externalPlaylist',
             payload: {
-              data: { agent, type, update, playlists: selectedNames },
+              data: { agent, type, update, playlists },
             },
           },
           { returnPromise: true }
@@ -218,9 +247,9 @@ const ExternalPlaylistCreate = (props) => {
         refresh()
         redirect('/playlist')
       } catch (error) {
-        if (error.body.errors) {
-          return error.body.errors
-        }
+        notify('resources.externalPlaylist.notifications.failed', 'error', {
+          cause: error.body.error,
+        })
       }
     },
     [ids, mutate, notify, redirect, refresh]

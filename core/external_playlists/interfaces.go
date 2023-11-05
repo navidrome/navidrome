@@ -7,7 +7,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type AgentType struct {
+type PlaylistSourceInfo struct {
 	Name  string   `json:"name"`
 	Types []string `json:"types"`
 }
@@ -21,6 +21,7 @@ type ExternalPlaylist struct {
 	CreatedAt   time.Time       `json:"createdAt"`
 	UpdatedAt   time.Time       `json:"updatedAt"`
 	Existing    bool            `json:"existing"`
+	Syncable    bool            `json:"syncable"`
 	Tracks      []ExternalTrack `json:"-"`
 }
 
@@ -38,9 +39,10 @@ type ExternalPlaylists struct {
 type PlaylistAgent interface {
 	GetPlaylistTypes() []string
 	GetPlaylists(ctx context.Context, offset, count int, userId, playlistType string) (*ExternalPlaylists, error)
-	ImportPlaylist(ctx context.Context, update bool, userId, id, name string) error
+	ImportPlaylist(ctx context.Context, update bool, sync bool, userId, id, name string) error
 	IsAuthorized(ctx context.Context, userId string) bool
 	SyncPlaylist(ctx context.Context, tx model.DataStore, pls *model.Playlist) error
+	SyncRecommended(ctx context.Context, userId string) error
 }
 
 type Constructor func(ds model.DataStore) PlaylistAgent

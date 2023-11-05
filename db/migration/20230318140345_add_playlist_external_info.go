@@ -20,11 +20,16 @@ alter table playlist
 	add external_id varchar default '' not null;
 alter table playlist
 	add external_url varchar default '' not null;
+alter table playlist
+	add external_sync bool default false;
+alter table playlist
+	add external_syncable bool default false;
+alter table playlist
+	add external_recommended bool default false;
 	`)
 	return err
 }
 
 func downAddPlaylistExternalInfo(tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }

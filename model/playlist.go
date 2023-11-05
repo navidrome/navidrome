@@ -27,9 +27,12 @@ type Playlist struct {
 	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// External Info
-	ExternalAgent string `structs:"external_agent" json:"external_agent"`
-	ExternalId    string `structs:"external_id" json:"externalId"`
-	ExternalUrl   string `structs:"external_url" json:"externalUrl"`
+	ExternalAgent       string `structs:"external_agent" json:"external_agent"`
+	ExternalId          string `structs:"external_id" json:"externalId"`
+	ExternalSync        bool   `structs:"external_sync" json:"externalSync"`
+	ExternalSyncable    bool   `structs:"external_syncable" json:"externalSyncable"`
+	ExternalUrl         string `structs:"external_url" json:"externalUrl"`
+	ExternalRecommended bool   `structs:"external_recommended" json:"externalRecommended"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"-" json:"rules"`
@@ -111,10 +114,12 @@ type PlaylistRepository interface {
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
+	GetSyncedPlaylists() (Playlists, error)
 	GetWithTracks(id string, refreshSmartPlaylist bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	CheckExternalIds(agent string, ids []string) ([]string, error)
 	GetByExternalInfo(agent, id string) (*Playlist, error)
+	GetRecommended(userId, agent string) (*Playlist, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository

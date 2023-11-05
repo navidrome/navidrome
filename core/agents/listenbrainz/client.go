@@ -73,10 +73,19 @@ type plsExtension struct {
 }
 
 type playlistExtension struct {
-	Collaborators []string  `json:"collaborators"`
-	CreatedFor    string    `json:"created_for"`
-	LastModified  time.Time `json:"last_modified_at"`
-	Public        bool      `json:"public"`
+	AdditionalMetadata additionalMeta `json:"additional_metadata"`
+	Collaborators      []string       `json:"collaborators"`
+	CreatedFor         string         `json:"created_for"`
+	LastModified       time.Time      `json:"last_modified_at"`
+	Public             bool           `json:"public"`
+}
+
+type additionalMeta struct {
+	AlgorithmMetadata algoMeta `json:"algorithm_metadata"`
+}
+
+type algoMeta struct {
+	SourcePatch string `json:"source_patch"`
 }
 
 type lbTrack struct {

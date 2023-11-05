@@ -11,11 +11,23 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
+const (
+	UserAgentKey = "agent-"
+)
+
+type playlistImportData struct {
+	Name string `json:"name"`
+	Sync bool   `json:"sync"`
+}
+
+type ImportMap = map[string]playlistImportData
+
 type PlaylistRetriever interface {
-	GetAvailableAgents(ctx context.Context, userId string) []AgentType
+	GetAvailableAgents(ctx context.Context, userId string) []PlaylistSourceInfo
 	GetPlaylists(ctx context.Context, offset, count int, userId, agent, playlistType string) (*ExternalPlaylists, error)
-	ImportPlaylists(ctx context.Context, update bool, userId, agent string, mapping map[string]string) error
+	ImportPlaylists(ctx context.Context, update bool, userId, agent string, mapping ImportMap) error
 	SyncPlaylist(ctx context.Context, playlistId string) error
+	SyncRecommended(ctx context.Context, userrId, agent string) error
 }
 
 type playlistRetriever struct {
@@ -26,6 +38,7 @@ type playlistRetriever struct {
 
 var (
 	ErrorMissingAgent    = errors.New("agent not found")
+	ErrSyncUnsupported   = errors.New("cannot sync playlist")
 	ErrorUnsupportedType = errors.New("unsupported playlist type")
 )
 
@@ -55,14 +68,14 @@ func newPlaylistRetriever(ds model.DataStore) *playlistRetriever {
 	return p
 }
 
-func (p *playlistRetriever) GetAvailableAgents(ctx context.Context, userId string) []AgentType {
+func (p *playlistRetriever) GetAvailableAgents(ctx context.Context, userId string) []PlaylistSourceInfo {
 	user, _ := request.UserFrom(ctx)
 
-	agents := []AgentType{}
+	agents := []PlaylistSourceInfo{}
 
 	for name, agent := range p.retrievers {
 		if agent.IsAuthorized(ctx, user.ID) {
-			agents = append(agents, AgentType{
+			agents = append(agents, PlaylistSourceInfo{
 				Name:  name,
 				Types: agent.GetPlaylistTypes(),
 			})
@@ -131,7 +144,7 @@ func (p *playlistRetriever) GetPlaylists(ctx context.Context, offset, count int,
 	return pls, nil
 }
 
-func (p *playlistRetriever) ImportPlaylists(ctx context.Context, update bool, userId, agent string, mapping map[string]string) error {
+func (p *playlistRetriever) ImportPlaylists(ctx context.Context, update bool, userId, agent string, mapping ImportMap) error {
 	ag, ok := p.retrievers[agent]
 
 	if !ok {
@@ -141,8 +154,8 @@ func (p *playlistRetriever) ImportPlaylists(ctx context.Context, update bool, us
 	fail := 0
 	var err error
 
-	for id, name := range mapping {
-		err = ag.ImportPlaylist(ctx, update, userId, id, name)
+	for id, data := range mapping {
+		err = ag.ImportPlaylist(ctx, update, data.Sync, userId, id, data.Name)
 
 		if err != nil {
 			fail++
@@ -184,6 +197,20 @@ func (p *playlistRetriever) SyncPlaylist(ctx context.Context, playlistId string)
 
 		return ag.SyncPlaylist(ctx, tx, pls)
 	})
+}
+
+func (p *playlistRetriever) SyncRecommended(ctx context.Context, userId, agent string) error {
+	ag, ok := p.retrievers[agent]
+
+	if !ok {
+		return ErrorMissingAgent
+	}
+
+	err := ag.SyncRecommended(ctx, userId)
+	if err != nil {
+		log.Error(ctx, "Failed to sync recommended playlists", "agent", agent, "user", userId, err)
+	}
+	return err
 }
 
 var constructors map[string]Constructor
