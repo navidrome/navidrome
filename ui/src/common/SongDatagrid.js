@@ -60,36 +60,40 @@ const ReleaseRow = forwardRef(
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
     const translate = useTranslate()
-    const handlePlaySubset = (releaseDate) => () => {
-      onClick(releaseDate)
+    const handlePlaySubset = (releaseDate, mbzAlbumId) => () => {
+      onClick(releaseDate, mbzAlbumId)
     }
 
     let releaseTitle = []
+
     if (record.releaseDate) {
-      releaseTitle.push(translate('resources.album.fields.released'))
-      releaseTitle.push(formatFullDate(record.releaseDate))
-      if (record.catalogNum && isDesktop) {
-        releaseTitle.push('· Cat #')
-        releaseTitle.push(record.catalogNum)
-      }
+      releaseTitle.push(
+        translate('resources.album.fields.released') +
+          ' ' +
+          formatFullDate(record.releaseDate)
+      )
+    }
+    if (record.catalogNum && isDesktop) {
+      releaseTitle.push('Cat # ' + record.catalogNum)
     }
 
     return (
       <TableRow
         hover
         ref={ref}
-        onClick={handlePlaySubset(record.releaseDate)}
+        onClick={handlePlaySubset(record.releaseDate, record.mbzAlbumId)}
         className={classes.row}
       >
         <TableCell colSpan={colSpan}>
           <Typography variant="h6" className={classes.subtitle}>
-            {releaseTitle.join(' ')}
+            {releaseTitle.join(' · ')}
           </Typography>
         </TableCell>
         <TableCell>
           <AlbumContextMenu
             record={{ id: record.albumId }}
             releaseDate={record.releaseDate}
+            mbzAlbumId={record.mbzAlbumId}
             showLove={false}
             className={classes.contextMenu}
             visible={contextAlwaysVisible}
@@ -104,8 +108,8 @@ const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
-    const handlePlaySubset = (releaseDate, discNumber) => () => {
-      onClick(releaseDate, discNumber)
+    const handlePlaySubset = (releaseDate, mbzAlbumId, discNumber) => () => {
+      onClick(releaseDate, mbzAlbumId, discNumber)
     }
 
     let subtitle = []
@@ -120,7 +124,11 @@ const DiscSubtitleRow = forwardRef(
       <TableRow
         hover
         ref={ref}
-        onClick={handlePlaySubset(record.releaseDate, record.discNumber)}
+        onClick={handlePlaySubset(
+          record.releaseDate,
+          record.mbzAlbumId,
+          record.discNumber
+        )}
         className={classes.row}
       >
         <TableCell colSpan={colSpan}>
@@ -134,6 +142,7 @@ const DiscSubtitleRow = forwardRef(
             record={{ id: record.albumId }}
             discNumber={record.discNumber}
             releaseDate={record.releaseDate}
+            mbzAlbumId={record.mbzAlbumId}
             showLove={false}
             className={classes.contextMenu}
             visible={contextAlwaysVisible}
@@ -167,6 +176,7 @@ export const SongDatagridRow = ({
           {
             albumId: record?.albumId,
             releaseDate: record?.releaseDate,
+            mbzAlbumId: record?.mbzAlbumId,
             discNumber: record?.discNumber,
           },
         ],
@@ -245,16 +255,21 @@ const SongDatagridBody = ({
   const { ids, data } = rest
 
   const playSubset = useCallback(
-    (releaseDate, discNumber) => {
+    (releaseDate, mbzAlbumId, discNumber) => {
       let idsToPlay = []
       if (discNumber !== undefined) {
         idsToPlay = ids.filter(
           (id) =>
             data[id].releaseDate === releaseDate &&
+            data[id].mbzAlbumId === mbzAlbumId &&
             data[id].discNumber === discNumber
         )
       } else {
-        idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
+        idsToPlay = ids.filter(
+          (id) =>
+            (releaseDate && data[id].releaseDate === releaseDate) ||
+            (mbzAlbumId && data[id].mbzAlbumId === mbzAlbumId)
+        )
       }
       dispatch(playTracks(data, idsToPlay))
     },
@@ -275,6 +290,7 @@ const SongDatagridBody = ({
           if (
             acc.length === 0 ||
             (last && data[id].discNumber !== data[last].discNumber) ||
+            (last && data[id].mbzAlbumId !== data[last].mbzAlbumId) ||
             (last && data[id].releaseDate !== data[last].releaseDate)
           ) {
             acc.push(id)
@@ -299,7 +315,8 @@ const SongDatagridBody = ({
           const last = acc && acc[acc.length - 1]
           if (
             acc.length === 0 ||
-            (last && data[id].releaseDate !== data[last].releaseDate)
+            (last && data[id].releaseDate !== data[last].releaseDate) ||
+            (last && data[id].mbzAlbumId !== data[last].mbzAlbumId)
           ) {
             acc.push(id)
           }

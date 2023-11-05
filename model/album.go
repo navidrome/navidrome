@@ -63,6 +63,7 @@ func (a Album) CoverArtID() ArtworkID {
 type DiscID struct {
 	AlbumID     string `json:"albumId"`
 	ReleaseDate string `json:"releaseDate"`
+	MbzAlbumID  string `json:"mbzAlbumID"`
 	DiscNumber  int    `json:"discNumber"`
 }
 
