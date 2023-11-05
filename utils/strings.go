@@ -57,3 +57,16 @@ func LongestCommonPrefix(list []string) string {
 	}
 	return list[0]
 }
+
+// removes duplicates but keeps the order intact
+func RemoveDuplicateStr(items []string) []string {
+	allKeys := make(map[string]bool)
+	list := []string{}
+	for _, item := range items {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}

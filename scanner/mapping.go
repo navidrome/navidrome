@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type mediaFileMapper struct {
@@ -79,8 +78,9 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 }
 
 func sanitizeFieldForSorting(originalValue string) string {
-	v := strings.Split(originalValue, "·")[0]
-	v = strings.TrimSpace(sanitize.Accents(v))
+	// note: to be fixed after multi-artists database refactoring
+	v := strings.Split(originalValue, " · ")[0]
+	v = sanitize.Accents(v)
 	return utils.NoArticle(v)
 }
 
@@ -94,12 +94,13 @@ func (s mediaFileMapper) mapTrackTitle(md metadata.Tags) string {
 }
 
 func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, string, string) {
-	artists := utils.SanitizeChars(md.Artist())
-	albumArtists := utils.SanitizeChars(md.AlbumArtist())
+	// note: to be fixed after multi-artists database refactoring
+	artists := utils.SanitizeProblematicChars(md.Artist())
+	albumArtists := utils.SanitizeProblematicChars(md.AlbumArtist())
 	var artistsWithoutRemixers []string
 	if conf.Server.Scanner.RemixerToArtist {
 		artistsWithoutRemixers = artists
-		remixers := utils.SanitizeChars(md.Remixer())
+		remixers := utils.SanitizeProblematicChars(md.Remixer())
 		artists = append(artists, remixers...)
 	}
 
@@ -111,7 +112,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 	var artistName, artistID string
 	switch {
 	case len(artists) > 1:
-		artists = slice.RemoveDuplicateStr(artists)
+		artists = utils.RemoveDuplicateStr(artists)
 		artistName = strings.Join(artists, " · ")
 		artistID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(artists[0])))) // ID only on first artist
 	case len(artists) == 1:
@@ -128,7 +129,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 		albumArtistName = consts.VariousArtists
 		albumArtistID = consts.VariousArtistsID
 	case len(albumArtists) > 1:
-		albumArtists = slice.RemoveDuplicateStr(albumArtists)
+		albumArtists = utils.RemoveDuplicateStr(albumArtists)
 		albumArtistName = strings.Join(albumArtists, " · ")
 		albumArtistID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(albumArtists[0])))) // ID only on first artist
 	case len(albumArtists) == 1:
@@ -139,12 +140,12 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags) (string, string, string, s
 			//if there's no album artist, use track artist without remixer!
 			artists = artistsWithoutRemixers
 		}
-		artists = slice.RemoveDuplicateStr(artists)
+		artists = utils.RemoveDuplicateStr(artists)
 		albumArtistName = strings.Join(artists, " · ")
 		albumArtistID = artistID
 	}
 
-	allArtists := slice.RemoveDuplicateStr(append(artists, albumArtists...))
+	allArtists := utils.RemoveDuplicateStr(append(artists, albumArtists...))
 	var allArtistIDs []string
 	for i := range allArtists {
 		allArtistIDs = append(allArtistIDs, fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(allArtists[i])))))
@@ -174,7 +175,7 @@ func (s mediaFileMapper) albumID(albumName string, albumArtistID string, release
 }
 
 func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
-	genres = utils.SanitizeChars(genres)
+	genres = utils.SanitizeProblematicChars(genres)
 	var result model.Genres
 	for _, g := range genres {
 		genre := model.Genre{Name: g}
@@ -198,15 +199,6 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, i
 		(year >= originalYear)
 	if taggedLikePicard {
 		return originalYear, originalDate, originalYear, originalDate, year, date
-	}
-
-	// when there's no Date, first fall back to Original Date, then to Release Date.
-	if year == 0 {
-		if originalYear > 0 {
-			year, date = originalYear, originalDate
-		} else {
-			year, date = releaseYear, releaseDate
-		}
 	}
 	return year, date, originalYear, originalDate, releaseYear, releaseDate
 }

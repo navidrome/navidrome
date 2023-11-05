@@ -70,9 +70,4 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
-	Describe("RemoveDuplicateStr", func() {
-		It("removes duplicates and keeps the order intact", func() {
-			Expect(slice.RemoveDuplicateStr([]string{"2", "1", "1", "2", "3", "2"})).To(Equal([]string{"2", "1", "3"}))
-		})
-	})
 })

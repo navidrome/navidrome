@@ -109,10 +109,10 @@ func (mfs MediaFiles) Dirs() []string {
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
-	al := Album{SongCount: len(mfs)}
+	a := Album{SongCount: len(mfs)}
 	var fullText []string
 	var albumArtistIds, allArtistIdsInSong, allArtistIdsInAlbum []string
-	var albumArtistText, artistText string
+	var artistText, albumArtistText, sortArtistText, sortAlbumArtistText string
 	var mbzAlbumIds []string
 	var comments []string
 	var years []int
@@ -122,31 +122,31 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var releaseDates []string
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
-		al.ID = m.AlbumID
-		al.Name = m.Album
-		al.AlbumArtist = m.AlbumArtist
-		al.AlbumArtistID = m.AlbumArtistID
-		al.SortAlbumName = m.SortAlbumName
-		al.SortAlbumArtistName = m.SortAlbumArtistName
-		al.OrderAlbumName = m.OrderAlbumName
-		al.OrderAlbumArtistName = m.OrderAlbumArtistName
-		al.MbzAlbumArtistID = m.MbzAlbumArtistID
-		al.MbzAlbumType = m.MbzAlbumType
-		al.MbzAlbumComment = m.MbzAlbumComment
-		al.CatalogNum = m.CatalogNum
-		al.Compilation = m.Compilation
+		a.ID = m.AlbumID
+		a.Name = m.Album
+		a.AlbumArtist = m.AlbumArtist
+		a.AlbumArtistID = m.AlbumArtistID
+		a.SortAlbumName = m.SortAlbumName
+		a.SortAlbumArtistName = m.SortAlbumArtistName
+		a.OrderAlbumName = m.OrderAlbumName
+		a.OrderAlbumArtistName = m.OrderAlbumArtistName
+		a.MbzAlbumArtistID = m.MbzAlbumArtistID
+		a.MbzAlbumType = m.MbzAlbumType
+		a.MbzAlbumComment = m.MbzAlbumComment
+		a.CatalogNum = m.CatalogNum
+		a.Compilation = m.Compilation
 
 		// Calculated attributes based on aggregations
-		al.Duration += m.Duration
-		al.Size += m.Size
+		a.Duration += m.Duration
+		a.Size += m.Size
 		years = append(years, m.Year)
 		dates = append(dates, m.Date)
 		originalYears = append(originalYears, m.OriginalYear)
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
-		al.UpdatedAt = newer(al.UpdatedAt, m.UpdatedAt)
-		al.CreatedAt = older(al.CreatedAt, m.CreatedAt)
-		al.Genres = append(al.Genres, m.Genres...)
+		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
+		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.Genres = append(a.Genres, m.Genres...)
 		comments = append(comments, m.Comment)
 		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		allArtistIdsInSong = strings.FieldsFunc(m.AllArtistIDs, func(r rune) bool {
@@ -154,63 +154,36 @@ func (mfs MediaFiles) ToAlbum() Album {
 		})
 		allArtistIdsInAlbum = append(allArtistIdsInAlbum, allArtistIdsInSong...)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
-		albumArtistText = strings.Replace(m.AlbumArtist, " · ", " ", -1)
+
+		// note: to be changed after multi-artists database refactoring
 		artistText = strings.Replace(m.Artist, " · ", " ", -1)
+		albumArtistText = strings.Replace(m.AlbumArtist, " · ", " ", -1)
+
+		sortArtistText = strings.Replace(m.SortArtistName, ",", " ", -1)
+		sortAlbumArtistText = strings.Replace(m.SortAlbumArtistName, ",", " ", -1)
 		fullText = append(fullText,
-			m.Album, albumArtistText, artistText,
-			//not the sort values, this creates duplicates
-			//m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName,
-			m.DiscSubtitle)
-		if m.HasCoverArt && al.EmbedArtPath == "" {
-			al.EmbedArtPath = m.Path
+			artistText, albumArtistText, sortArtistText, sortAlbumArtistText,
+			m.Album, m.SortAlbumName, m.DiscSubtitle)
+		if m.HasCoverArt && a.EmbedArtPath == "" {
+			a.EmbedArtPath = m.Path
 		}
 	}
 
-	al.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
-	al.Date, _ = allOrNothing(dates)
-	al.OriginalDate, _ = allOrNothing(originalDates)
-	al.ReleaseDate, al.Releases = allOrNothing(releaseDates)
-	al.MinYear, al.MaxYear = minMax(years)
-	al.MinOriginalYear, al.MaxOriginalYear = minMax(originalYears)
-	al.Comment, _ = allOrNothing(comments)
-	al.Comment, _ = allOrNothing(comments)
-	al.Genre = slice.MostFrequent(al.Genres).Name
-	slices.SortFunc(al.Genres, func(a, b Genre) bool { return a.ID < b.ID })
-	al.Genres = slices.Compact(al.Genres)
-	al.FullText = " " + utils.SanitizeStrings(fullText...)
-	al = fixAlbumArtist(al, albumArtistIds)
-	slices.Sort(allArtistIdsInAlbum)
-	al.AllArtistIDs = strings.Join(slices.Compact(allArtistIdsInAlbum), " ")
-	al.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
-
-	return al
-}
-
-// ToArtist creates an Artist object based on the attributes of this MediaFiles collection.
-// It assumes all MediaFiles have the same Artist, or else results are unpredictable.
-func (mfs MediaFiles) ToArtist() Artist {
-	a := Artist{SongCount: len(mfs)}
-	var mbzArtistIds []string
-	var artists []string
-	for _, m := range mfs {
-		a.ID = m.ArtistID
-		//when the artist name for the song is "Artist 1 · Artist 2", only use "Artist 1" as the Name for the artist record
-		//note: this will create an issue for the (rare) edge case where the Artist name contains a "·" character
-		artists = strings.Split(m.Artist, "·")
-		a.Name = strings.TrimSpace(artists[0])
-		a.SortArtistName = m.SortArtistName
-		a.OrderArtistName = m.OrderArtistName
-		if m.ArtistID != m.AlbumArtistID {
-			// avoids double counting of size
-			// size calculation for when artist = album artist is done in model/album.go, ToAlbumArtist()
-			a.Size += m.Size
-		}
-		a.Genres = append(a.Genres, m.Genres...)
-		mbzArtistIds = append(mbzArtistIds, m.MbzArtistID)
-	}
+	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
+	a.Date, _ = allOrNothing(dates)
+	a.OriginalDate, _ = allOrNothing(originalDates)
+	a.ReleaseDate, a.Releases = allOrNothing(releaseDates)
+	a.MinYear, a.MaxYear = minMax(years)
+	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
+	a.Comment, _ = allOrNothing(comments)
+	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
-	a.MbzArtistID = slice.MostFrequent(mbzArtistIds)
+	a.FullText = " " + utils.SanitizeStrings(fullText...)
+	a = fixAlbumArtist(a, albumArtistIds)
+	slices.Sort(allArtistIdsInAlbum)
+	a.AllArtistIDs = strings.Join(slices.Compact(allArtistIdsInAlbum), " ")
+	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 
 	return a
 }
@@ -258,21 +231,21 @@ func older(t1, t2 time.Time) time.Time {
 	return t1
 }
 
-func fixAlbumArtist(al Album, albumArtistIds []string) Album {
-	if !al.Compilation {
-		if al.AlbumArtistID == "" {
-			al.AlbumArtistID = al.ArtistID
-			al.AlbumArtist = al.Artist
+func fixAlbumArtist(a Album, albumArtistIds []string) Album {
+	if !a.Compilation {
+		if a.AlbumArtistID == "" {
+			a.AlbumArtistID = a.ArtistID
+			a.AlbumArtist = a.Artist
 		}
-		return al
+		return a
 	}
 
 	albumArtistIds = slices.Compact(albumArtistIds)
 	if len(albumArtistIds) > 1 {
-		al.AlbumArtist = consts.VariousArtists
-		al.AlbumArtistID = consts.VariousArtistsID
+		a.AlbumArtist = consts.VariousArtists
+		a.AlbumArtistID = consts.VariousArtistsID
 	}
-	return al
+	return a
 }
 
 type MediaFileRepository interface {

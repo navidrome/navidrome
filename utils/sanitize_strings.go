@@ -3,30 +3,17 @@ package utils
 import (
 	"html"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/deluan/sanitize"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/slices"
 )
 
-var hyphenRegex = regexp.MustCompile("[‐–—−―]")
+var quotesRegex = regexp.MustCompile("[“”‘’'·\"\\[\\(\\{\\]\\)\\}]")
 var singlequotesRegex = regexp.MustCompile("[‘’‛′]")
 var doublequotesRegex = regexp.MustCompile("[＂〃ˮײ᳓″‶˶ʺ“”˝‟]")
-
-func SanitizeChars(text []string) []string {
-	var fullText []string
-	for _, w := range text {
-		w = hyphenRegex.ReplaceAllString(w, "-")
-		w = singlequotesRegex.ReplaceAllString(w, "'")
-		w = doublequotesRegex.ReplaceAllString(w, "\"")
-		fullText = append(fullText, w)
-	}
-	return fullText
-}
-
-var quotesRegex = regexp.MustCompile("[“”‘’'·\"\\[\\(\\{\\]\\)\\}]")
+var hyphenRegex = regexp.MustCompile("[‐–—−―]")
 
 func SanitizeStrings(text ...string) string {
 	sanitizedText := strings.Builder{}
@@ -40,16 +27,16 @@ func SanitizeStrings(text ...string) string {
 	var fullText []string
 	for w := range words {
 		w = quotesRegex.ReplaceAllString(w, "")
+		w = singlequotesRegex.ReplaceAllString(w, "")
+		w = doublequotesRegex.ReplaceAllString(w, "")
 		w = hyphenRegex.ReplaceAllString(w, "-")
 		if w != "" {
 			fullText = append(fullText, w)
 		}
 	}
-	concatenatedString := strings.Join(fullText, " ")
-	allWords := strings.Split(concatenatedString, " ")
-	slice.RemoveDuplicateStr(allWords)
-	sort.Strings(allWords)
-	return strings.Join(allWords, " ")
+	slices.Sort(fullText)
+	slices.Compact(fullText)
+	return strings.Join(fullText, " ")
 }
 
 var policy = bluemonday.UGCPolicy()
@@ -57,4 +44,17 @@ var policy = bluemonday.UGCPolicy()
 func SanitizeText(text string) string {
 	s := policy.Sanitize(text)
 	return html.UnescapeString(s)
+}
+
+// replaces a set of problematic Unicode characters with their ascii equivalents
+// maybe better implemented upstream in sanitize.Accents()
+func SanitizeProblematicChars(text []string) []string {
+	var sanitizedText []string
+	for _, w := range text {
+		w = singlequotesRegex.ReplaceAllString(w, "'")
+		w = doublequotesRegex.ReplaceAllString(w, "\"")
+		w = hyphenRegex.ReplaceAllString(w, "-")
+		sanitizedText = append(sanitizedText, w)
+	}
+	return sanitizedText
 }

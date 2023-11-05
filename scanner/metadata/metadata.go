@@ -113,9 +113,9 @@ func (t Tags) Comment() string             { return t.getFirstTagValue("comment"
 func (t Tags) Lyrics() string {
 	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 }
-func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation") }
-func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
+func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
+func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
+func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
 	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
 }
@@ -216,7 +216,7 @@ func (t Tags) getAllTagValues(separators string, tagNames ...string) []string {
 	var values []string
 	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {
-			// avoids a bug in TagLib where, only for the 'artist' tag, it returns one additional value consisting of all previous values, separated by a space
+			// avoids a bug in TagLib where, specifically for the 'artist' tag, it returns one additional value consisting of all previous values, separated by a space
 			if (tag == "artist") && (len(v) > 2) && (conf.Server.Scanner.Extractor == "taglib") {
 				v = v[:len(v)-1]
 			}

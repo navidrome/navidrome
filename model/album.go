@@ -77,10 +77,12 @@ func (als Albums) ToAlbumArtist() Artist {
 	var albumArtists []string
 	for _, al := range als {
 		a.ID = al.AlbumArtistID
-		albumArtists = strings.Split(al.AlbumArtist, "·")
-		a.Name = strings.TrimSpace(albumArtists[0])
+		// note: to be changed after multi-artists database refactoring
+		albumArtists = strings.Split(al.AlbumArtist, " · ")
+		a.Name = albumArtists[0]
 		a.SortArtistName = al.SortAlbumArtistName
 		a.OrderArtistName = al.OrderAlbumArtistName
+		a.SongCount += al.SongCount
 		a.Size += al.Size
 		a.Genres = append(a.Genres, al.Genres...)
 		mbzArtistIds = append(mbzArtistIds, al.MbzAlbumArtistID)

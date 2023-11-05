@@ -86,19 +86,14 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
 	if len(options) > 0 && options[0].Filters != nil {
-		s, args, _ := options[0].Filters.ToSql()
+		s, _, _ := options[0].Filters.ToSql()
 		// If there's any reference of genre in the filter, joins with genre
 		if strings.Contains(s, "genre") {
 			sql = r.withGenres(sql)
-			// If there's no filter on genre_id, group the results by album.id
+			// If there's no filter on genre_id, group the results by media_file.id
 			if !strings.Contains(s, "genre_id") {
 				sql = sql.GroupBy("album.id")
 			}
-		}
-		if strings.Contains(s, "all_artist_ids") {
-			artistID := strings.Trim(fmt.Sprintf("%s", args[0]), "%")
-			sql = sql.Column(Alias(Eq{"album_artist_id": artistID}, "match_album_artist"))
-			// OrderBy comes from the client: /artist/ArtistShow.js
 		}
 	}
 	return sql

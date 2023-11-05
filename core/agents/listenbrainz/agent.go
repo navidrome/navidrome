@@ -48,6 +48,7 @@ func (l *listenBrainzAgent) AgentName() string {
 func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 	li := listenInfo{
 		TrackMetadata: trackMetadata{
+			// note: to be changed after multi-artist database refactoring
 			ArtistName:  strings.Split(track.Artist, " · ")[0],
 			TrackName:   track.Title,
 			ReleaseName: track.Album,

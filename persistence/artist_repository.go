@@ -61,7 +61,7 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist) error {
-	a.FullText = getFullText(a.Name) // not sortArtistName, since this can be "Dylan, Bob feat. Kanye West"
+	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
 	_, err := r.put(dba.ID, dba)
 	if err != nil {
@@ -88,13 +88,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	var minAlbumCount int
-	if conf.Server.OnlyAlbumArtists {
-		minAlbumCount = 1
-	} else {
-		minAlbumCount = 0
-	}
-	sel := r.selectArtist(options...).Where(GtOrEq{"artist.album_count": minAlbumCount})
+	sel := r.selectArtist(options...)
 	var dba []dbArtist
 	err := r.queryAll(sel, &dba)
 	if err != nil {
@@ -183,7 +177,7 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 }
 
 func (r *artistRepository) purgeEmpty() error {
-	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)").Where("id not in (select distinct(artist_id) from media_file)")
+	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
 	if err == nil {
 		if c > 0 {

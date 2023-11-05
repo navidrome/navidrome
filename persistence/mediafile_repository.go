@@ -50,9 +50,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
-		//not the sort values, this creates duplicates
-		//m.SortTitle, m.SortAlbumName, strings.Replace(m.SortArtistName, ",", " ", -1), strings.Replace(m.SortAlbumArtistName, ",", " ", -1),
-		m.DiscSubtitle)
+		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
 	_, err := r.put(m.ID, m)
 	if err != nil {
 		return err
@@ -177,6 +175,13 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", pathLen+2, string(os.PathSeparator)): 0}})
 	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
 	return r.executeSQL(del)
+}
+
+func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
+	upd := Update(r.tableName).Set("artist_id", "").Where(notExists("artist", ConcatExpr("id = artist_id")))
+	log.Debug(r.ctx, "Removing non-album artist_ids")
+	_, err := r.executeSQL(upd)
+	return err
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {

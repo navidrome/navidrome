@@ -38,9 +38,12 @@ var _ = Describe("MediaFiles", func() {
 			album := mfs.ToAlbum()
 			Expect(album.ID).To(Equal("AlbumID"))
 			Expect(album.Name).To(Equal("Album"))
+			Expect(album.Artist).To(Equal("Artist"))
+			Expect(album.ArtistID).To(Equal("ArtistID"))
 			Expect(album.AlbumArtist).To(Equal("AlbumArtist"))
 			Expect(album.AlbumArtistID).To(Equal("AlbumArtistID"))
 			Expect(album.SortAlbumName).To(Equal("SortAlbumName"))
+			Expect(album.SortArtistName).To(Equal("SortArtistName"))
 			Expect(album.SortAlbumArtistName).To(Equal("SortAlbumArtistName"))
 			Expect(album.OrderAlbumName).To(Equal("OrderAlbumName"))
 			Expect(album.OrderAlbumArtistName).To(Equal("OrderAlbumArtistName"))
@@ -116,19 +119,6 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.Date).To(Equal("1985-01-02"))
 				Expect(album.MinYear).To(Equal(1985))
 				Expect(album.MaxYear).To(Equal(1985))
-			})
-		})
-		When("we have multiple songs with different Album Artists", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{Duration: 100.2, Size: 1024, ArtistID: "11", Artist: "Artist1", AlbumArtistID: "11", AlbumArtist: "Artist1"},
-					{Duration: 200.2, Size: 2048, ArtistID: "11", Artist: "Artist1", AlbumArtistID: "22", AlbumArtist: "Artist2"},
-				}
-			})
-			It("aggregates correctly to the artists", func() {
-				artist := mfs.ToArtist()
-				Expect(artist.SongCount).To(Equal(2))
-				Expect(artist.Size).To(Equal(int64(2048))) // rest gets added by album.ToAlbumArtist()
 			})
 		})
 	})

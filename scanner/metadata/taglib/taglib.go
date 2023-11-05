@@ -28,7 +28,7 @@ func (e *Extractor) CustomMappings() metadata.ParsedTags {
 	return metadata.ParsedTags{
 		"title":       {"titlesort"},
 		"album":       {"albumsort"},
-		"tracknumber": {"trck", "track"},
+		"tracknumber": {"trck", "_track"},
 	}
 }
 
