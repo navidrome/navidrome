@@ -38,3 +38,8 @@ func SanitizeText(text string) string {
 	s := policy.Sanitize(text)
 	return html.UnescapeString(s)
 }
+
+func GetFullText(text ...string) string {
+	fullText := SanitizeStrings(text...)
+	return " " + fullText
+}

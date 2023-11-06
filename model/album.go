@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/slices"
 )
@@ -78,7 +79,7 @@ func (als Albums) ToAlbumArtist() Artist {
 		a.Name = al.AlbumArtist
 		a.SortArtistName = al.SortAlbumArtistName
 		a.OrderArtistName = al.OrderAlbumArtistName
-
+		a.FullText = utils.GetFullText(a.Name, a.SortArtistName)
 		a.SongCount += al.SongCount
 		a.Size += al.Size
 		a.Genres = append(a.Genres, al.Genres...)

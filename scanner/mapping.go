@@ -77,6 +77,9 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Bpm = md.Bpm()
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
+	mf.FullText = utils.GetFullText(mf.Title, mf.Album, mf.DiscSubtitle,
+		mf.AlbumArtist, mf.Artist,
+		mf.SortTitle, mf.SortAlbumName, mf.SortAlbumArtistName, mf.SortArtistName)
 
 	return *mf
 }
