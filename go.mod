@@ -46,7 +46,7 @@ require (
 	github.com/unrolled/secure v1.13.0
 	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
-	golang.org/x/image v0.12.0
+	golang.org/x/image v0.13.0
 	golang.org/x/sync v0.5.0
 	golang.org/x/text v0.13.0
 	golang.org/x/tools v0.13.0
