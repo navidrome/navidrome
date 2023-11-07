@@ -20,11 +20,11 @@ var _ = Describe("mapping", func() {
 		Describe("mapTrackTitle", func() {
 			It("returns the Title when it is available", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}})
-				Expect(mapper.mapTrackTitle(md)).To(Equal("This is not a love song"))
+				Expect(mapper.mapTrackTitle(md, false)).To(Equal("This is not a love song"))
 			})
 			It("returns the filename if Title is not set", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{})
-				Expect(mapper.mapTrackTitle(md)).To(Equal("artist/album01/Song"))
+				Expect(mapper.mapTrackTitle(md, false)).To(Equal("artist/album01/Song"))
 			})
 		})
 	})

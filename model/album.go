@@ -28,6 +28,7 @@ type Album struct {
 	ReleaseDate           string    `structs:"release_date" json:"releaseDate,omitempty"`
 	Releases              int       `structs:"releases" json:"releases"`
 	Compilation           bool      `structs:"compilation" json:"compilation"`
+	Classical             bool      `structs:"classical" json:"classical"`
 	Comment               string    `structs:"comment" json:"comment,omitempty"`
 	SongCount             int       `structs:"song_count" json:"songCount"`
 	Duration              float32   `structs:"duration" json:"duration"`

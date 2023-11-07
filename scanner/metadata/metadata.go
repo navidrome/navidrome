@@ -123,6 +123,18 @@ func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
 func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
 
+// Classical music tags
+func (t Tags) Composer() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "composer")
+}
+func (t Tags) Conductor() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "conductor")
+}
+func (t Tags) Work() string               { return t.getFirstTagValue("work", "tit1") }
+func (t Tags) SubTitle() string           { return t.getFirstTagValue("subtitle", "tit3") }
+func (t Tags) MovementName() string       { return t.getFirstTagValue("movementname", "mvnm") }
+func (t Tags) MovementNumber() (int, int) { return t.getTuple("movement", "mvin") }
+
 // MusicBrainz Identifiers
 
 func (t Tags) MbzReleaseTrackID() string {
