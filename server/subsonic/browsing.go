@@ -423,6 +423,7 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	}
 	dir.Year = int32(album.MaxYear)
 	dir.Genre = album.Genre
+	dir.Genres = itemGenresFromGenres(album.Genres)
 	dir.UserRating = int32(album.Rating)
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt
