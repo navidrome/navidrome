@@ -110,6 +110,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
+		MusicBrainzId:  a.MbzArtistID,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt

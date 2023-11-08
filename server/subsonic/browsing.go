@@ -431,6 +431,7 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	if album.Starred {
 		dir.Starred = &album.StarredAt
 	}
+	dir.MusicBrainzId = album.MbzAlbumID
 	dir.Song = childrenFromMediaFiles(ctx, mfs)
 	return dir
 }
