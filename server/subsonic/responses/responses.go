@@ -138,6 +138,8 @@ type Child struct {
 	SongCount             int32       `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	IsVideo               bool        `xml:"isVideo,attr"                            json:"isVideo"`
 	BookmarkPosition      int64       `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
+	Bpm                   int32       `xml:"bpm,attr,omitempty"                      json:"bpm,omitempty"`
+	Comment               string      `xml:"comment,attr,omitempty"                  json:"comment,omitempty"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/

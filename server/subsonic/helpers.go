@@ -186,6 +186,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.TranscodedContentType = mime.TypeByExtension("." + format)
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
+	child.Comment = mf.Comment
+	child.Bpm = int32(mf.Bpm)
 	return child
 }
 
