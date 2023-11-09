@@ -22,6 +22,7 @@ type MediaFile struct {
 	ID                   string  `structs:"id" json:"id"            orm:"pk;column(id)"`
 	Path                 string  `structs:"path" json:"path"`
 	Title                string  `structs:"title" json:"title"`
+	WorkTitle            string  `structs:"work_title" json:"workTitle"`
 	Album                string  `structs:"album" json:"album"`
 	ArtistID             string  `structs:"artist_id" json:"artistId"      orm:"pk;column(artist_id)"`
 	Artist               string  `structs:"artist" json:"artist"`

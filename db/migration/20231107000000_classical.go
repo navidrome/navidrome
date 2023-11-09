@@ -14,6 +14,8 @@ func Up20231107000000(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
 	add classical bool;
+alter table media_file
+    add work_title varchar(255) default '' not null;
 alter table album
 	add classical bool;
 `)

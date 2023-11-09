@@ -124,11 +124,20 @@ func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
 
 // Classical music tags
-func (t Tags) Composer() []string {
+func (t Tags) Classical() bool {
+	return t.getBool("is_classical", "classical", "showmovement", "showworkmovement")
+}
+func (t Tags) Composers() []string {
 	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "composer")
 }
-func (t Tags) Conductor() []string {
+func (t Tags) Conductors() []string {
 	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "conductor")
+}
+func (t Tags) Arrangers() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "arranger")
+}
+func (t Tags) Performers() []string {
+	return t.getPerformers(t.tags)
 }
 func (t Tags) Work() string               { return t.getFirstTagValue("work", "tit1") }
 func (t Tags) SubTitle() string           { return t.getFirstTagValue("subtitle", "tit3") }
@@ -152,7 +161,7 @@ func (t Tags) MbzAlbumArtistID() string {
 	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
 }
 func (t Tags) MbzAlbumType() string {
-	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type")
+	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type", "releasetype")
 }
 func (t Tags) MbzAlbumComment() string {
 	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
@@ -266,6 +275,40 @@ func (t Tags) getAllTagValues(separators string, tagNames ...string) []string {
 		}
 	}
 	return values
+}
+
+func (t Tags) getPerformers(tags ParsedTags) []string {
+	// returns a list of performers
+	var performers []string
+	separators := conf.Server.Scanner.ArtistSeparators
+
+	// 1. Vorbis Comments + MP4/etc
+	// TagLib passes on the FLAC/Vorbis/MP4 PERFORMER field unparsed
+	// Most tag editors write performer/instrument as:
+	// performer=[person1 (instrument) person2 (instrument)]
+	items := t.getAllTagValues(separators, "performer")
+	for i := range items {
+		persons := strings.FieldsFunc(items[i], func(r rune) bool {
+			return strings.ContainsRune(separators, r)
+		})
+		for _, p := range persons {
+			p = strings.Split(p, " (")[0]
+			performers = append(performers, p)
+		}
+	}
+
+	// 2. id3v2
+	// TagLib parses the id3 TMCL frame and returns the items as:
+	// performer:instrument=[person1 person2]
+	var tagNames []string
+	for tag := range tags {
+		if strings.Contains(tag, "performer:") {
+			tagNames = append(tagNames, tag)
+		}
+	}
+	performers = append(performers, t.getAllTagValues(separators, tagNames...)...)
+
+	return performers
 }
 
 func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
