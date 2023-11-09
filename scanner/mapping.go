@@ -259,7 +259,6 @@ func (s mediaFileMapper) detectClassical(md metadata.Tags) bool {
 	// - if one of the Genres is "Classical" -> true
 	classical := md.Classical()
 	if !classical && conf.Server.Scanner.AutoDetectClassical {
-
 		if md.MovementName() != "" && len(md.Composers()) > 0 {
 			return true
 		}
