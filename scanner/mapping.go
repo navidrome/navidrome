@@ -148,6 +148,7 @@ func (s mediaFileMapper) mapArtists(md metadata.Tags, classical bool) (string, s
 		conductors := utils.SanitizeProblematicChars(md.Conductors())
 		artists = append(artists, conductors...)
 		performers := utils.SanitizeProblematicChars(md.Performers())
+		slices.Sort(performers)
 		artists = append(artists, performers...)
 	}
 

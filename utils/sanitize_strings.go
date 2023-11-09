@@ -10,7 +10,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var quotesRegex = regexp.MustCompile("[“”‘’'·\"\\[\\(\\{\\]\\)\\}]")
+var quotesRegex = regexp.MustCompile("[“”‘’'·♫\"\\[\\(\\{\\]\\)\\}]")
 var singlequotesRegex = regexp.MustCompile("[‘’‛′]")
 var doublequotesRegex = regexp.MustCompile("[＂〃ˮײ᳓″‶˶ʺ“”˝‟]")
 var hyphenRegex = regexp.MustCompile("[‐–—−―]")

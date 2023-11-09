@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Extractor interface {
@@ -308,7 +309,7 @@ func (t Tags) getPerformers(tags ParsedTags) []string {
 	}
 	performers = append(performers, t.getAllTagValues(separators, tagNames...)...)
 
-	return performers
+	return utils.RemoveDuplicateStr(performers)
 }
 
 func (t Tags) getSortTag(originalTag string, tagNames ...string) string {

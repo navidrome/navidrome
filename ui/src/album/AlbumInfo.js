@@ -38,6 +38,7 @@ const AlbumInfo = (props) => {
       </ArrayField>
     ),
     compilation: <BooleanField source={'compilation'} />,
+    classical: <BooleanField source={'classical'} />,
     updatedAt: <DateField source={'updatedAt'} showTime />,
     comment: <MultiLineTextField source={'comment'} />,
   }
