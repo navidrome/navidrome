@@ -58,7 +58,7 @@
     "update-workbox": "bin/update-workbox.sh"
   },
   "homepage": ".",
-  "proxy": "http://127.0.0.1:4633/",
+  "proxy": "http://localhost:4633/",
   "eslintConfig": {
     "extends": [
       "react-app",

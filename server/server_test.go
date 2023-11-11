@@ -20,7 +20,7 @@ var _ = Describe("AbsoluteURL", func() {
 			Expect(actual).To(Equal("https://myserver.com/share/img/123?a=xyz"))
 		})
 		It("does not override provided schema/host", func() {
-			r, _ := http.NewRequest("GET", "http://127.0.0.1/rest/ping?id=123", nil)
+			r, _ := http.NewRequest("GET", "http://localhost/rest/ping?id=123", nil)
 			actual := AbsoluteURL(r, "http://public.myserver.com/share/img/123", url.Values{"a": []string{"xyz"}})
 			Expect(actual).To(Equal("http://public.myserver.com/share/img/123?a=xyz"))
 		})
@@ -35,7 +35,7 @@ var _ = Describe("AbsoluteURL", func() {
 			Expect(actual).To(Equal("https://myserver.com/music/share/img/123?a=xyz"))
 		})
 		It("does not override provided schema/host", func() {
-			r, _ := http.NewRequest("GET", "http://127.0.0.1/rest/ping?id=123", nil)
+			r, _ := http.NewRequest("GET", "http://localhost/rest/ping?id=123", nil)
 			actual := AbsoluteURL(r, "http://public.myserver.com/share/img/123", url.Values{"a": []string{"xyz"}})
 			Expect(actual).To(Equal("http://public.myserver.com/share/img/123?a=xyz"))
 		})
@@ -52,7 +52,7 @@ var _ = Describe("AbsoluteURL", func() {
 			Expect(actual).To(Equal("https://myserver.com:8080/music/share/img/123?a=xyz"))
 		})
 		It("does not override provided schema/host", func() {
-			r, _ := http.NewRequest("GET", "http://127.0.0.1/rest/ping?id=123", nil)
+			r, _ := http.NewRequest("GET", "http://localhost/rest/ping?id=123", nil)
 			actual := AbsoluteURL(r, "http://public.myserver.com/share/img/123", url.Values{"a": []string{"xyz"}})
 			Expect(actual).To(Equal("http://public.myserver.com/share/img/123?a=xyz"))
 		})
