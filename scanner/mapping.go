@@ -186,5 +186,13 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, i
 	if taggedLikePicard {
 		return originalYear, originalDate, originalYear, originalDate, year, date
 	}
+	// when there's no Date, first fall back to Original Date, then to Release Date.
+	if year == 0 {
+		if originalYear > 0 {
+			year, date = originalYear, originalDate
+		} else {
+			year, date = releaseYear, releaseDate
+		}
+	}
 	return year, date, originalYear, originalDate, releaseYear, releaseDate
 }
