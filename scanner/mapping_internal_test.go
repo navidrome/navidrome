@@ -26,7 +26,7 @@ var _ = Describe("mapping", func() {
 			})
 			It("returns the filename if Title is not set", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{})
-				t, w := mapper.mapTrackTitle(md, false)
+				t, w := mapper.mapTrackTitle(md, true)
 				Expect(t).To(Equal("artist/album01/Song"))
 				Expect(w).To(Equal(""))
 			})
@@ -58,7 +58,6 @@ var _ = Describe("mapping", func() {
 				Expect(gs[1].Name).To(Equal("Electronic"))
 			})
 
-			})
 			It("does not break on spaces", func() {
 				_, gs := mapper.mapGenres([]string{"New Wave"})
 				Expect(gs).To(HaveLen(1))
