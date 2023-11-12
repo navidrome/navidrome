@@ -18,17 +18,13 @@ var _ = Describe("mapping", func() {
 			BeforeEach(func() {
 				mapper = newMediaFileMapper("/music", nil)
 			})
-			It("returns the Title and Work when it is available", func() {
-				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}, "work": []string{"work title"}})
-				t, w := mapper.mapTrackTitle(md, true)
-				Expect(t).To(Equal("This is not a love song"))
-				Expect(w).To(Equal("work title"))
+			It("returns the Title when it is available", func() {
+				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}})
+				Expect(mapper.mapTrackTitle(md)).To(Equal("This is not a love song"))
 			})
 			It("returns the filename if Title is not set", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{})
-				t, w := mapper.mapTrackTitle(md, false)
-				Expect(t).To(Equal("artist/album01/Song"))
-				Expect(w).To(Equal(""))
+				Expect(mapper.mapTrackTitle(md)).To(Equal("artist/album01/Song"))
 			})
 		})
 
