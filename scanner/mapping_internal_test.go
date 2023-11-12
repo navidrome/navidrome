@@ -39,7 +39,7 @@ var _ = Describe("mapping", func() {
 				gr = newCachedGenreRepository(ctx, gr)
 				mapper = newMediaFileMapper("/", gr)
 			})
-			
+
 			It("returns empty if no genres are available", func() {
 				g, gs := mapper.mapGenres(nil)
 				Expect(g).To(BeEmpty())
@@ -53,7 +53,7 @@ var _ = Describe("mapping", func() {
 				Expect(gs[0].Name).To(Equal("Rock"))
 				Expect(gs[1].Name).To(Equal("Electronic"))
 			})
-			
+
 			It("does not break on spaces", func() {
 				_, gs := mapper.mapGenres([]string{"New Wave"})
 				Expect(gs).To(HaveLen(1))
