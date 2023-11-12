@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.20.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.21.0-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -84,6 +84,10 @@ buildall: buildjs build ##@Build Build the project, both frontend and backend
 build: warning-noui-build check_go_env  ##@Build Build only backend
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
+
+debug-build: warning-noui-build check_go_env  ##@Build Build only backend (with remote debug on)
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
+.PHONY: debug-build
 
 buildjs: check_node_env ##@Build Build only frontend
 	@(cd ./ui && npm run build)

@@ -40,7 +40,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
-	router := nativeapi.New(dataStore, share)
+	playlists := core.NewPlaylists(dataStore)
+	router := nativeapi.New(dataStore, share, playlists)
 	return router
 }
 

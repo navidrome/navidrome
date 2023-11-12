@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
@@ -76,7 +75,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Comment = utils.SanitizeText(md.Comment())
 	mf.Lyrics = utils.SanitizeText(md.Lyrics())
 	mf.Bpm = md.Bpm()
-	mf.CreatedAt = time.Now()
+	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
 
 	return *mf
@@ -186,6 +185,14 @@ func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, i
 		(year >= originalYear)
 	if taggedLikePicard {
 		return originalYear, originalDate, originalYear, originalDate, year, date
+	}
+	// when there's no Date, first fall back to Original Date, then to Release Date.
+	if year == 0 {
+		if originalYear > 0 {
+			year, date = originalYear, originalDate
+		} else {
+			year, date = releaseYear, releaseDate
+		}
 	}
 	return year, date, originalYear, originalDate, releaseYear, releaseDate
 }
