@@ -79,6 +79,8 @@ func (als Albums) ToAlbumArtist() Artist {
 		a.Name = al.AlbumArtist
 		a.SortArtistName = al.SortAlbumArtistName
 		a.OrderArtistName = al.OrderAlbumArtistName
+
+		a.SongCount += al.SongCount
 		a.Size += al.Size
 		a.Genres = append(a.Genres, al.Genres...)
 		mbzArtistIds = append(mbzArtistIds, al.MbzAlbumArtistID)

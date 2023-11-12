@@ -37,7 +37,7 @@ var _ = Describe("Albums", func() {
 			It("calculates the aggregates correctly", func() {
 				artist := albums.ToAlbumArtist()
 				Expect(artist.AlbumCount).To(Equal(2))
-				Expect(artist.SongCount).To(Equal(0)) // this gets done in mediafile.go ToArtist()
+				Expect(artist.SongCount).To(Equal(10))
 				Expect(artist.Size).To(Equal(int64(3072)))
 			})
 		})

@@ -54,7 +54,6 @@ type configOptions struct {
 	IgnoredArticles              string
 	IndexGroups                  string
 	SubsonicArtistParticipations bool
-	AlbumArtistsOnly             bool
 	FFmpegPath                   string
 	MPVPath                      string
 	CoverArtPriority             string
@@ -299,7 +298,6 @@ func init() {
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("subsonicartistparticipations", false)
-	viper.SetDefault("albumartistsonly", true)
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)

@@ -121,19 +121,6 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MaxYear).To(Equal(1985))
 			})
 		})
-		When("we have multiple songs with different Album Artists", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{Duration: 100.2, Size: 1024, ArtistID: "11", Artist: "Artist1", AlbumArtistID: "11", AlbumArtist: "Artist1"},
-					{Duration: 200.2, Size: 2048, ArtistID: "11", Artist: "Artist1", AlbumArtistID: "22", AlbumArtist: "Artist2"},
-				}
-			})
-			It("aggregates correctly to the artists", func() {
-				artist := mfs.ToArtist()
-				Expect(artist.SongCount).To(Equal(2))
-				Expect(artist.Size).To(Equal(int64(2048))) // rest gets added by album.ToAlbumArtist()
-			})
-		})
 	})
 	Context("Calculated attributes", func() {
 		Context("Genres", func() {
