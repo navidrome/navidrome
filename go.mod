@@ -35,7 +35,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.23
 	github.com/mileusna/useragent v1.3.2
 	github.com/onsi/ginkgo/v2 v2.13.0
-	github.com/onsi/gomega v1.29.0
+	github.com/onsi/gomega v1.30.0
 	github.com/pressly/goose/v3 v3.11.2
 	github.com/prometheus/client_golang v1.16.0
 	github.com/robfig/cron/v3 v3.0.1
