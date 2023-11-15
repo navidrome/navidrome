@@ -100,6 +100,29 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
+  // WMA/ASF files may have additional tags not captured by the general iterator
+  TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
+  if (asfFile != NULL) 
+  {
+    const TagLib::ASF::Tag *asfTags{asfFile->tag()};
+    const auto itemListMap = asfTags->attributeListMap();
+    for (const auto item : itemListMap) {
+      char *key = ::strdup(item.first.toCString(true));
+      char *val = ::strdup(item.second.front().toString().toCString());
+      go_map_put_str(id, key, val);
+      free(key);
+      free(val); 
+    }
+
+    // Compilation tag needs to be handled differently
+    const auto compilation = asfTags->attribute("WM/IsCompilation");
+    if (!compilation.isEmpty()) {
+      char *val = ::strdup(compilation.front().toString().toCString());
+      go_map_put_str(id, (char *)"compilation", val);
+      free(val);
+    }
+  }
+
   if (has_cover(f)) {
     go_map_put_str(id, (char *)"has_picture", (char *)"true");
   }
