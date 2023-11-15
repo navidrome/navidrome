@@ -116,7 +116,7 @@ type Child struct {
 	Track                 int32       `xml:"track,attr,omitempty"                    json:"track,omitempty"`
 	Year                  int32       `xml:"year,attr,omitempty"                     json:"year,omitempty"`
 	Genre                 string      `xml:"genre,attr,omitempty"                    json:"genre,omitempty"`
-	Genres                []ItemGenre `xml:"genres,omitempty"                        json:"genres,omitempty"`
+	Genres                []ItemGenre `xml:"genres"                                  json:"genres"`
 	CoverArt              string      `xml:"coverArt,attr,omitempty"                 json:"coverArt,omitempty"`
 	Size                  int64       `xml:"size,attr,omitempty"                     json:"size,omitempty"`
 	ContentType           string      `xml:"contentType,attr,omitempty"              json:"contentType,omitempty"`
@@ -138,8 +138,8 @@ type Child struct {
 	SongCount             int32       `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	IsVideo               bool        `xml:"isVideo,attr"                            json:"isVideo"`
 	BookmarkPosition      int64       `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
-	Bpm                   int32       `xml:"bpm,attr,omitempty"                      json:"bpm,omitempty"`
-	Comment               string      `xml:"comment,attr,omitempty"                  json:"comment,omitempty"`
+	Bpm                   int32       `xml:"bpm,attr"                                json:"bpm"`
+	Comment               string      `xml:"comment,attr"                            json:"comment"`
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/
@@ -198,11 +198,11 @@ type AlbumID3 struct {
 	Played        *time.Time  `xml:"played,attr,omitempty"              json:"played,omitempty"`
 	Created       *time.Time  `xml:"created,attr,omitempty"             json:"created,omitempty"`
 	Starred       *time.Time  `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	UserRating    int32       `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	UserRating    int32       `xml:"userRating,attr"                    json:"userRating"`
 	Year          int32       `xml:"year,attr,omitempty"                json:"year,omitempty"`
 	Genre         string      `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
-	Genres        []ItemGenre `xml:"genres,omitempty"                   json:"genres,omitempty"`
-	MusicBrainzId string      `xml:"musicBrainzId,attr,omitempty"       json:"musicBrainzId,omitempty"`
+	Genres        []ItemGenre `xml:"genres"                             json:"genres"`
+	MusicBrainzId string      `xml:"musicBrainzId,attr"                 json:"musicBrainzId"`
 }
 
 type ArtistWithAlbumsID3 struct {
