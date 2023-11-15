@@ -55,10 +55,10 @@
                 "rating": "レート",
                 "createdAt": "追加日",
                 "size": "サイズ",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "オリジナルの日付",
+                "releaseDate": "リリース日",
+                "releases": "リリース",
+                "released": "リリース"
             },
             "actions": {
                 "playAll": "再生",
@@ -195,7 +195,7 @@
                 "maxBitRate": "最大ビットレート",
                 "updatedAt": "更新日",
                 "createdAt": "作成日",
-                "downloadable": ""
+                "downloadable": "ダウンロードを許可しますか？"
             }
         }
     },
@@ -373,7 +373,7 @@
         "shareSuccess": "コピーしました: %{url}",
         "shareFailure": "コピーに失敗しました %{url}",
         "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": ""
+        "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter"
     },
     "menu": {
         "library": "ライブラリ",

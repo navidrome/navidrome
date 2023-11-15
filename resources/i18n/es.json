@@ -55,10 +55,10 @@
                 "rating": "Calificación",
                 "createdAt": "Creado el",
                 "size": "Tamaño del archivo",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Original",
+                "releaseDate": "Publicado",
+                "releases": "Lanzamiento |||| Lanzamientos",
+                "released": "Publicado"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -185,7 +185,7 @@
             "name": "Compartir",
             "fields": {
                 "username": "Nombre de usuario",
-                "url": "",
+                "url": "URL",
                 "description": "Descripción",
                 "contents": "Contenido",
                 "expiresAt": "Caduca el",
@@ -195,7 +195,7 @@
                 "maxBitRate": "Tasa de bits Máx.",
                 "updatedAt": "Actualizado el",
                 "createdAt": "Creado el",
-                "downloadable": ""
+                "downloadable": "¿Permitir descargas?"
             }
         }
     },
@@ -226,7 +226,7 @@
             "oneOf": "Debe ser uno de: %{options}",
             "regex": "Debe coincidir con un formato específico (regexp): %{pattern}",
             "unique": "Tiene que ser único",
-            "url": ""
+            "url": "Debe ser una URL válida"
         },
         "action": {
             "add_filter": "Añadir filtro",
@@ -256,7 +256,7 @@
             "close_menu": "Cerrar menú",
             "unselect": "Deseleccionado",
             "skip": "Omitir",
-            "bulk_actions_mobile": "",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "Compartir",
             "download": "Descargar"
         },
@@ -368,12 +368,12 @@
         "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
         "downloadOriginalFormat": "Descargar formato original",
         "shareOriginalFormat": "Compartir formato original",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "shareDialogTitle": "Compartir %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Share %{smart_count} %{resource}",
+        "shareSuccess": "URL copiada al portapapeles: %{url}",
+        "shareFailure": "Error al copiar la URL %{url} al portapapeles",
+        "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro"
     },
     "menu": {
         "library": "Biblioteca",
@@ -389,8 +389,8 @@
                 "desktop_notifications": "Notificaciones de escritorio",
                 "lastfmScrobbling": "Scrobble a Last.fm",
                 "listenBrainzScrobbling": "Scrobble a ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "Modo de ReplayGain",
+                "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {
                     "none": "Ninguno",
                     "album": "Álbum",

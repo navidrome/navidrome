@@ -2,7 +2,7 @@
     "languageName": "Pусский",
     "resources": {
         "song": {
-            "name": "Трек |||| Треки",
+            "name": "Трек |||| Треки |||| Треков",
             "fields": {
                 "albumArtist": "Исполнитель альбома",
                 "duration": "Длительность",
@@ -55,10 +55,10 @@
                 "rating": "Рейтинг",
                 "createdAt": "Дата добавления",
                 "size": "Размер",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Оригинал",
+                "releaseDate": "Релиз",
+                "releases": "Релиз |||| Релиза |||| Релизов",
+                "released": "Релиз"
             },
             "actions": {
                 "playAll": "Играть",
