@@ -200,8 +200,12 @@ export const AlbumContextMenu = (props) =>
       resource={'album'}
       songQueryParams={{
         pagination: { page: 1, perPage: -1 },
-        sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-        filter: { album_id: props.record.id, disc_number: props.discNumber },
+        sort: { field: 'releaseDate, discNumber, trackNumber', order: 'ASC' },
+        filter: {
+          album_id: props.record.id,
+          release_date: props.releaseDate,
+          disc_number: props.discNumber,
+        },
       }}
     />
   ) : null
@@ -226,7 +230,10 @@ export const ArtistContextMenu = (props) =>
       resource={'artist'}
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },
-        sort: { field: 'album, discNumber, trackNumber', order: 'ASC' },
+        sort: {
+          field: 'album, releaseDate, discNumber, trackNumber',
+          order: 'ASC',
+        },
         filter: { album_artist_id: props.record.id },
       }}
     />

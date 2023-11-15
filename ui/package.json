@@ -26,13 +26,13 @@
     "react-dnd-html5-backend": "^14.0.2",
     "react-dom": "^17.0.2",
     "react-drag-listview": "^0.1.8",
-    "react-ga": "^3.3.0",
+    "react-ga": "^3.3.1",
     "react-hotkeys": "^2.0.0",
     "react-icons": "^4.4.0",
     "react-image-lightbox": "^5.1.4",
     "react-measure": "^2.5.2",
     "react-redux": "^7.2.9",
-    "react-router-dom": "^5.3.0",
+    "react-router-dom": "^5.3.4",
     "redux": "^4.2.0",
     "redux-saga": "^1.1.3",
     "uuid": "^8.3.2"
@@ -58,7 +58,7 @@
     "update-workbox": "bin/update-workbox.sh"
   },
   "homepage": ".",
-  "proxy": "http://127.0.0.1:4633/",
+  "proxy": "http://localhost:4633/",
   "eslintConfig": {
     "extends": [
       "react-app",

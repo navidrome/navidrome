@@ -399,7 +399,7 @@ func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents
 func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
 	if mbid != "" {
 		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.Eq{"mbz_track_id": mbid},
+			Filters: squirrel.Eq{"mbz_recording_id": mbid},
 		})
 		if err == nil && len(mfs) > 0 {
 			return &mfs[0], nil
@@ -414,7 +414,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 			},
 			squirrel.Like{"order_title": strings.TrimSpace(sanitize.Accents(title))},
 		},
-		Sort: "starred desc, rating desc, year asc",
+		Sort: "starred desc, rating desc, year asc, compilation asc ",
 		Max:  1,
 	})
 	if err != nil || len(mfs) == 0 {

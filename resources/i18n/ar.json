@@ -54,7 +54,11 @@
                 "comment": "التعليق",
                 "rating": "التقييم",
                 "createdAt": "تاريخ الإضافة",
-                "size": "الحجم"
+                "size": "الحجم",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "شغّل",
