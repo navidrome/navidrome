@@ -7,10 +7,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(Up20231107000000, Down20231107000000)
+	goose.AddMigration(Up20231116000001, Down20231116000001)
 }
 
-func Up20231107000000(tx *sql.Tx) error {
+func Up20231116000001(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
 	add classical bool;
@@ -27,6 +27,6 @@ alter table album
 	return forceFullRescan(tx)
 }
 
-func Down20231107000000(tx *sql.Tx) error {
+func Down20231116000001(tx *sql.Tx) error {
 	return nil
 }
