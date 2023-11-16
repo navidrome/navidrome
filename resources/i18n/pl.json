@@ -55,10 +55,10 @@
                 "rating": "Ocena",
                 "createdAt": "Data dodania",
                 "size": "Rozmiar",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Pierwotna Data",
+                "releaseDate": "Data Wydania",
+                "releases": "Wydanie |||| Wydania",
+                "released": "Wydany"
             },
             "actions": {
                 "playAll": "Odtwarzaj",

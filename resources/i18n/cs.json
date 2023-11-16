@@ -26,7 +26,7 @@
                 "bpm": "BPM",
                 "playDate": "Poslední přehravaná skladba",
                 "channels": "Kanály",
-                "createdAt": ""
+                "createdAt": "Přidáno"
             },
             "actions": {
                 "addToQueue": "Přehrát později",
@@ -53,12 +53,12 @@
                 "updatedAt": "Aktualizováno",
                 "comment": "Komentář",
                 "rating": "Hodnocení",
-                "createdAt": "",
-                "size": "",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "createdAt": "Přidáno",
+                "size": "Velikost",
+                "originalDate": "Původní",
+                "releaseDate": "Vydáno",
+                "releases": "Vydání |||| Vydání",
+                "released": "Vydáno"
             },
             "actions": {
                 "playAll": "Přehrát",
@@ -68,7 +68,7 @@
                 "addToPlaylist": "Přidat do seznamu skladeb",
                 "download": "Stáhnout",
                 "info": "Získat informace",
-                "share": ""
+                "share": "Sdílet"
             },
             "lists": {
                 "all": "Všechno",
@@ -89,7 +89,7 @@
                 "playCount": "Přehrání",
                 "rating": "Hodnocení",
                 "genre": "Žánr",
-                "size": ""
+                "size": "Velikost"
             }
         },
         "user": {
@@ -169,33 +169,33 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Rádio |||| Rádia",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Název",
+                "streamUrl": "URL streamu",
+                "homePageUrl": "URL stránky",
+                "updatedAt": "Nahráno",
+                "createdAt": "Vytvořeno"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Spustit"
             }
         },
         "share": {
-            "name": "",
+            "name": "Sdílení |||| Sdílení",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
+                "username": "Sdíleno",
+                "url": "URL",
+                "description": "Popis",
+                "contents": "Obsah",
+                "expiresAt": "Vyprší",
+                "lastVisitedAt": "Naposledy navštíveno",
+                "visitCount": "Počet návšev",
+                "format": "Formát",
+                "maxBitRate": "Max. Bit Rate",
+                "updatedAt": "Nahráno",
+                "createdAt": "Vytvořeno",
+                "downloadable": "Povolit stahování?"
             }
         }
     },
@@ -226,7 +226,7 @@
             "oneOf": "Musí splňovat jedno z: %{options}",
             "regex": "Musí být ve specifickém formátu (regexp): %{pattern}",
             "unique": "Musí být jedinečný",
-            "url": ""
+            "url": "Musí být platná URL"
         },
         "action": {
             "add_filter": "Přidat filtr",
@@ -256,9 +256,9 @@
             "close_menu": "Zavřít nabídku",
             "unselect": "Zrušit výběr",
             "skip": "Přeskočit",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Sdílet",
+            "download": "Stáhnout"
         },
         "boolean": {
             "true": "Ano",
@@ -366,14 +366,14 @@
         "listenBrainzLinkFailure": "ListenBrainz nemohlo být připojeno: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz odpojeno a scrobblování vypnuto",
         "listenBrainzUnlinkFailure": "ListenBrainz nemohlo být odpojeno",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "downloadOriginalFormat": "Stáhnout v původním formátu",
+        "shareOriginalFormat": "Sdílet v původním formátu",
+        "shareDialogTitle": "Sdílet %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Sdílet 1 %{resource} |||| Sdílet %{smart_count} %{resource}",
+        "shareSuccess": "URL zkopírována do schránky: %{url}",
+        "shareFailure": "Chyba při kopírování URL %{url} do schránky",
+        "downloadDialogTitle": "Stáhnout %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Zkopírovat do schránky: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Knihovna",
@@ -389,12 +389,12 @@
                 "desktop_notifications": "Oznámení na ploše",
                 "lastfmScrobbling": "Scrobblovat na Last.fm",
                 "listenBrainzScrobbling": "Scrobblovat na ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "Mód ReplayGain",
+                "preAmp": "ReplayGain PreAmp (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Vypnuto",
+                    "album": "Použít Album Gain",
+                    "track": "Použít Track Gain"
                 }
             }
         },
