@@ -55,10 +55,10 @@
                 "rating": "Valoración",
                 "createdAt": "Engadido o",
                 "size": "Tamaño",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Orixinal",
+                "releaseDate": "Publicado",
+                "releases": "Publicación ||| Publicacións",
+                "released": "Publicado"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -182,7 +182,7 @@
             }
         },
         "share": {
-            "name": "´",
+            "name": "Compartición ||| Comparticións",
             "fields": {
                 "username": "Compartida por",
                 "url": "URL",
