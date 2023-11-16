@@ -10,7 +10,7 @@ func init() {
 	goose.AddMigration(Up20230615000000, Down20230615000000)
 }
 
-func Up20230615000000(tx *sql.Tx) error {
+func Up20231000000(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
 	add all_artist_ids varchar;
