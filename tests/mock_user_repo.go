@@ -56,3 +56,15 @@ func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.Use
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	return u.Error
 }
+
+func (u *MockedUserRepo) FindFirstAdmin() (*model.User, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	for _, user := range u.Data {
+		if user.IsAdmin {
+			return user, nil
+		}
+	}
+	return nil, model.ErrNotFound
+}

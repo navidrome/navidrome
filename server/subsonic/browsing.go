@@ -17,7 +17,7 @@ import (
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
-	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetAll()
+	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetRoot()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
 		folders[i].Id = f.ID
@@ -28,15 +28,15 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
-func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+func (api *Router) getArtistIndex(r *http.Request, mediaFolderId string, ifModifiedSince time.Time) (*responses.Indexes, error) {
 	ctx := r.Context()
-	folder, err := api.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
-	if err != nil {
+	folder, err := api.ds.MediaFolder(ctx).BrowserDirectory(mediaFolderId)
+	if err != nil || len(folder) == 0 {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
 		return nil, err
 	}
 
-	l, err := api.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
+	l, err := api.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder[0].Path, "-1")
 	if err != nil {
 		log.Error(ctx, "Error retrieving LastScan property", err)
 		return nil, err
@@ -63,11 +63,16 @@ func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModified
 		res.Index[i].Name = idx.ID
 		res.Index[i].Artists = toArtists(r, idx.Artists)
 	}
+
+	if len(folder) > 1 {
+		res.Child = childrenFromMediaFolderOrFiles(ctx, folder[1:])
+	}
+
 	return res, nil
 }
 
 func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
-	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
+	musicFolderId := utils.ParamString(r, "musicFolderId")
 	ifModifiedSince := utils.ParamTime(r, "ifModifiedSince", time.Time{})
 
 	res, err := api.getArtistIndex(r, musicFolderId, ifModifiedSince)
@@ -81,7 +86,7 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
-	musicFolderId := utils.ParamInt(r, "musicFolderId", 0)
+	musicFolderId := utils.ParamString(r, "musicFolderId")
 	res, err := api.getArtistIndex(r, musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
@@ -96,26 +101,45 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	id := utils.ParamString(r, "id")
 	ctx := r.Context()
 
-	entity, err := model.GetEntityByID(ctx, api.ds, id)
-	if errors.Is(err, model.ErrNotFound) {
-		log.Error(r, "Requested ID not found ", "id", id)
-		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+	var dir *responses.Directory
+
+	items, err := api.ds.MediaFolder(ctx).BrowserDirectory(id)
+	if err != nil || len(items) == 0 {
+		var entity interface{}
+		entity, err = model.GetEntityByID(ctx, api.ds, id)
+		if errors.Is(err, model.ErrNotFound) {
+			log.Error(r, "Requested ID not found ", "id", id, "items", items)
+			return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+		}
+
+		switch v := entity.(type) {
+		case *model.Artist:
+			dir, err = api.buildArtistDirectory(ctx, v)
+		case *model.Album:
+			dir, err = api.buildAlbumDirectory(ctx, v)
+		default:
+			log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
+			return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+		}
+	} else {
+		var children []responses.Child
+		if len(items) > 1 {
+			children = childrenFromMediaFolderOrFiles(ctx, items[1:])
+		} else {
+			children = []responses.Child{}
+		}
+
+		dir = &responses.Directory{
+			Id:     items[0].FolderId,
+			Name:   items[0].FolderName,
+			Parent: items[0].ParentId,
+			Child:  children,
+		}
 	}
+
 	if err != nil {
 		log.Error(err)
 		return nil, err
-	}
-
-	var dir *responses.Directory
-
-	switch v := entity.(type) {
-	case *model.Artist:
-		dir, err = api.buildArtistDirectory(ctx, v)
-	case *model.Album:
-		dir, err = api.buildAlbumDirectory(ctx, v)
-	default:
-		log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
-		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
 	}
 
 	if err != nil {

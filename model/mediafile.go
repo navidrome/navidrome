@@ -253,10 +253,10 @@ type MediaFileRepository interface {
 	Delete(id string) error
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
-	FindAllByPath(path string) (MediaFiles, error)
+	FindAllByParent(parent_id string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
 	FindPathsRecursively(basePath string) ([]string, error)
-	DeleteByPath(path string) (int64, error)
+	DeleteByPath(parent_id string) (int64, error)
 
 	AnnotatedRepository
 	BookmarkableRepository

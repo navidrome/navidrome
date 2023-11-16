@@ -16,11 +16,14 @@ import (
 
 var _ = Describe("MediaRepository", func() {
 	var mr model.MediaFileRepository
+	var mf model.MediaFolderRepository
 
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		mr = NewMediaFileRepository(ctx, orm.NewOrm())
+		orm := orm.NewOrm()
+		mr = NewMediaFileRepository(ctx, orm)
+		mf = NewMediaFolderRepository(ctx, orm)
 	})
 
 	It("gets mediafile from the DB", func() {
@@ -44,8 +47,13 @@ var _ = Describe("MediaRepository", func() {
 	It("finds tracks by path when using wildcards chars", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7001", Path: P("/Find:By'Path/_/123.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7002", Path: P("/Find:By'Path/1/123.mp3")})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/Find:By'Path", ID: "1234"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/Find:By'Path/_/", ID: "12345", ParentId: "1234"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/Find:By'Path/1/", ID: "12346", ParentId: "1235"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "7001", ParentId: "12345"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "7002", ParentId: "12346"})).To(BeNil())
 
-		found, err := mr.FindAllByPath(P("/Find:By'Path/_/"))
+		found, err := mr.FindAllByParent("12345")
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7001"))
@@ -54,8 +62,11 @@ var _ = Describe("MediaRepository", func() {
 	It("finds tracks by path when using UTF8 chars", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7010", Path: P("/Пётр Ильич Чайковский/123.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7011", Path: P("/Пётр Ильич Чайковский/222.mp3")})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/Пётр Ильич Чайковский", ID: "2345"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "7010", ParentId: "2345"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "7011", ParentId: "2345"})).To(BeNil())
 
-		found, err := mr.FindAllByPath(P("/Пётр Ильич Чайковский/"))
+		found, err := mr.FindAllByParent("2345")
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(2))
 	})
@@ -63,13 +74,17 @@ var _ = Describe("MediaRepository", func() {
 	It("finds tracks by path case sensitively", func() {
 		Expect(mr.Put(&model.MediaFile{ID: "7003", Path: P("/Casesensitive/file1.mp3")})).To(BeNil())
 		Expect(mr.Put(&model.MediaFile{ID: "7004", Path: P("/casesensitive/file2.mp3")})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/Casesensitive", ID: "3456"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/casesensitive", ID: "3457"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "7003", ParentId: "3456"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "7004", ParentId: "3457"})).To(BeNil())
 
-		found, err := mr.FindAllByPath(P("/Casesensitive"))
+		found, err := mr.FindAllByParent("3456")
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7003"))
 
-		found, err = mr.FindAllByPath(P("/casesensitive/"))
+		found, err = mr.FindAllByParent("3457")
 		Expect(err).To(BeNil())
 		Expect(found).To(HaveLen(1))
 		Expect(found[0].ID).To(Equal("7004"))
@@ -97,6 +112,17 @@ var _ = Describe("MediaRepository", func() {
 		id5 := "6005"
 		Expect(mr.Put(&model.MediaFile{ID: id5, Path: P("/Ab_/" + id5 + ".mp3")})).To(BeNil())
 
+		Expect(mf.Put(&model.MediaFolder{Path: "/", ID: "4567"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/abc", ID: "45678", ParentId: "4567"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/ab_", ID: "45679", ParentId: "4567"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/Ab_", ID: "45670", ParentId: "4567"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{Path: "/abc/123", ID: "456789", ParentId: "45678"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id1, ParentId: "456789"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id2, ParentId: "456789"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id3, ParentId: "45679"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id4, ParentId: "45678"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id5, ParentId: "45670"})).To(BeNil())
+
 		Expect(mr.DeleteByPath(P("/ab_"))).To(Equal(int64(1)))
 
 		Expect(mr.Get(id1)).ToNot(BeNil())
@@ -112,12 +138,16 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(&model.MediaFile{ID: id1, Path: P("/Legião Urbana/" + id1 + ".mp3")})).To(BeNil())
 		id2 := "6012"
 		Expect(mr.Put(&model.MediaFile{ID: id2, Path: P("/Legião Urbana/" + id2 + ".mp3")})).To(BeNil())
-		id3 := "6003"
+		id3 := "6013"
 		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/Legião Urbana/" + id3 + ".mp3")})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "5678", Path: "/Legião Urbana"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id1, ParentId: "5678"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id2, ParentId: "5678"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: id3, ParentId: "5678"})).To(BeNil())
 
-		Expect(mr.FindAllByPath(P("/Legião Urbana"))).To(HaveLen(3))
+		Expect(mr.FindAllByParent("5678")).To(HaveLen(3))
 		Expect(mr.DeleteByPath(P("/Legião Urbana"))).To(Equal(int64(3)))
-		Expect(mr.FindAllByPath(P("/Legião Urbana"))).To(HaveLen(0))
+		Expect(mr.FindAllByParent("5678")).To(HaveLen(0))
 	})
 
 	It("only deletes tracks that match exact path", func() {
@@ -127,10 +157,15 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.Put(&model.MediaFile{ID: id2, Path: P("/music/overlap/Ella Fitzgerald/" + id2 + ".mp3")})).To(BeNil())
 		id3 := "6023"
 		Expect(mr.Put(&model.MediaFile{ID: id3, Path: P("/music/overlap/Ella Fitzgerald & Louis Armstrong - They Can't Take That Away From Me.mp3")})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "6789", Path: "/music/overlap"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "67890", Path: "/music/overlap/Ella Fitzgerald", ParentId: "6789"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "6021", ParentId: "67890"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "6022", ParentId: "67890"})).To(BeNil())
+		Expect(mf.Put(&model.MediaFolder{ID: "6023", ParentId: "6789"})).To(BeNil())
 
-		Expect(mr.FindAllByPath(P("/music/overlap/Ella Fitzgerald"))).To(HaveLen(2))
+		Expect(mr.FindAllByParent("67890")).To(HaveLen(2))
 		Expect(mr.DeleteByPath(P("/music/overlap/Ella Fitzgerald"))).To(Equal(int64(2)))
-		Expect(mr.FindAllByPath(P("/music/overlap"))).To(HaveLen(1))
+		Expect(mr.FindAllByParent("6789")).To(HaveLen(1))
 	})
 
 	It("filters by genre", func() {

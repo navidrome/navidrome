@@ -125,14 +125,11 @@ func pathStartsWith(path string) Eq {
 }
 
 // FindAllByPath only return mediafiles that are direct children of requested path
-func (r *mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error) {
-	// Query by path based on https://stackoverflow.com/a/13911906/653632
-	path = cleanPath(path)
-	pathLen := utf8.RuneCountInString(path)
-	sel0 := r.newSelect().Columns("media_file.*", fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
-		Where(pathStartsWith(path))
-	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
-		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
+func (r *mediaFileRepository) FindAllByParent(parent_id string) (model.MediaFiles, error) {
+	sel := r.newSelect().Columns("media_file.*").Join("media_folder ON media_file.id = media_folder.id").Where(And{
+		Eq{"parent_id": parent_id},
+		Eq{"media_folder.path": ""},
+	})
 
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)

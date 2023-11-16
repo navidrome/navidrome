@@ -20,7 +20,7 @@ var _ = Describe("Agents", func() {
 	var mfRepo *tests.MockMediaFileRepo
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(context.Background())
-		mfRepo = tests.CreateMockMediaFileRepo()
+		mfRepo = tests.CreateMockMediaFileRepo(tests.CreateMockMediaFolderRepo())
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}
 	})
 

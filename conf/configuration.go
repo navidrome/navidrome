@@ -13,6 +13,8 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/path_hash"
+
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -22,6 +24,7 @@ type configOptions struct {
 	Address                      string
 	Port                         int
 	MusicFolder                  string
+	MusicFolderId                string
 	DataFolder                   string
 	CacheFolder                  string
 	DbPath                       string
@@ -214,6 +217,8 @@ func Load() {
 	if !Server.EnableExternalServices {
 		disableExternalServices()
 	}
+
+	Server.MusicFolderId = path_hash.PathToMd5Hash(Server.MusicFolder)
 
 	// Call init hooks
 	for _, hook := range hooks {

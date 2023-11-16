@@ -70,6 +70,31 @@ var (
 )
 
 var (
+	rootDir          = model.MediaFolder{ID: "0", Path: "/"}
+	beatlesDir       = model.MediaFolder{ID: "1", Path: "/beatles", ParentId: "0"}
+	beatles1Dir      = model.MediaFolder{ID: "2", Path: "/beatles/1", ParentId: "1"}
+	beatlesSgtDir    = model.MediaFolder{ID: "3", Path: "/beatles/sgt", ParentId: "2"}
+	beatlesADay      = model.MediaFolder{ID: "1001", ParentId: "3"}
+	beatlesATogether = model.MediaFolder{ID: "1002", ParentId: "3"}
+	kraftDir         = model.MediaFolder{ID: "4", Path: "/kraft", ParentId: "0"}
+	kraftRadioDir    = model.MediaFolder{ID: "5", Path: "/kraft/radio", ParentId: "4"}
+	kraftRadio       = model.MediaFolder{ID: "1003", ParentId: "5"}
+	kraftAntenna     = model.MediaFolder{ID: "1004", ParentId: "5"}
+	testFolders      = model.MediaFolders{
+		rootDir,
+		beatlesDir,
+		beatles1Dir,
+		beatlesSgtDir,
+		beatlesADay,
+		beatlesATogether,
+		kraftDir,
+		kraftRadioDir,
+		kraftRadio,
+		kraftAntenna,
+	}
+)
+
+var (
 	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage"}
 	radioWithHomePage    = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com"}
 	testRadios           = model.Radios{radioWithoutHomePage, radioWithHomePage}
@@ -139,6 +164,15 @@ var _ = BeforeSuite(func() {
 	for i := range testRadios {
 		r := testRadios[i]
 		err := rar.Put(&r)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	mfl := NewMediaFolderRepository(ctx, o)
+	for i := range testFolders {
+		f := testFolders[i]
+		err := mfl.Put(&f)
 		if err != nil {
 			panic(err)
 		}

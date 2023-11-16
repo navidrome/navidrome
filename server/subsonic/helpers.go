@@ -241,3 +241,28 @@ func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child
 	}
 	return children
 }
+
+func childFromMediaFileOrFolder(ctx context.Context, item model.MediaFolderOrFile) responses.Child {
+	if !item.IsDir {
+		child := childFromMediaFile(ctx, item.MediaFile)
+		child.Parent = item.ParentId
+		return child
+	}
+
+	child := responses.Child{
+		Id:     item.FolderId,
+		IsDir:  true,
+		Parent: item.ParentId,
+		Title:  item.FolderName,
+		Name:   item.FolderName,
+	}
+	return child
+}
+
+func childrenFromMediaFolderOrFiles(ctx context.Context, items model.MediaFolderOrFiles) []responses.Child {
+	children := make([]responses.Child, len(items))
+	for i, item := range items {
+		children[i] = childFromMediaFileOrFolder(ctx, item)
+	}
+	return children
+}

@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func CreateMockMediaFileRepo() *MockMediaFileRepo {
+func CreateMockMediaFileRepo(mfl model.MediaFolderRepository) *MockMediaFileRepo {
 	return &MockMediaFileRepo{
 		data: make(map[string]*model.MediaFile),
 	}
@@ -21,6 +21,7 @@ type MockMediaFileRepo struct {
 	model.MediaFileRepository
 	data map[string]*model.MediaFile
 	err  bool
+	mfl  MockMediaFolderRepo
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -99,6 +100,29 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	}
 
 	return res, nil
+}
+
+func (m *MockMediaFileRepo) FindAllByParent(parent_id string) (model.MediaFiles, error) {
+	if m.err {
+		return nil, errors.New("error")
+	}
+	mfs := model.MediaFiles{}
+
+	for _, folder := range m.mfl.Data {
+		if folder.ParentId == parent_id && folder.Path != "" {
+			file, ok := m.data[folder.ID]
+			if !ok {
+				return nil, model.ErrNotFound
+			}
+
+			mfs = append(mfs, *file)
+		}
+	}
+	return mfs, nil
+}
+
+func (r *MockMediaFileRepo) DeleteByPath(basePath string) (int64, error) {
+	return 0, errors.New(basePath)
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

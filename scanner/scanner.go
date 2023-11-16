@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
@@ -233,7 +234,47 @@ func (s *scanner) updateLastModifiedSince(folder string, t time.Time) {
 
 func (s *scanner) loadFolders() {
 	ctx := context.TODO()
-	fs, _ := s.ds.MediaFolder(ctx).GetAll()
+	fs := model.MediaFolders{}
+
+	err := s.ds.WithTx(func(tx model.DataStore) error {
+		folder := tx.MediaFolder(ctx)
+		existing, err := folder.GetDbRoot()
+		if err != nil {
+			return err
+		}
+
+		for _, f := range existing {
+			if f.Path != conf.Server.MusicFolder {
+				err = folder.Delete(f.ID)
+				if err != nil {
+					return err
+				}
+			} else {
+				fs = append(fs, f)
+			}
+		}
+
+		if len(fs) == 0 {
+			new_root := model.MediaFolder{
+				ID:   conf.Server.MusicFolderId,
+				Path: conf.Server.MusicFolder,
+				Name: "Music Folder",
+			}
+
+			fs = append(fs, new_root)
+			err = folder.Put(&new_root)
+			if err != nil {
+				return err
+			}
+		}
+
+		return err
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
 	for _, f := range fs {
 		log.Info("Configuring Media Folder", "name", f.Name, "path", f.Path)
 		s.folders[f.Path] = s.newScanner(f)

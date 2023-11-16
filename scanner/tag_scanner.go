@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/path_hash"
 )
 
 type TagScanner struct {
@@ -115,10 +117,33 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 		progress <- folderStats.AudioFilesCount
 		allFSDirs[folderStats.Path] = folderStats
 
+		dir_id, inDB := allDBDirs[folderStats.Path]
+
+		if !inDB {
+			dir_id = path_hash.PathToMd5Hash(folderStats.Path)
+			allDBDirs[folderStats.Path] = dir_id
+
+			parent_id, err := s.getParentId(ctx, allDBDirs, folderStats.Path)
+			if err != nil {
+				return 0, err
+			}
+
+			err = s.ds.MediaFolder(ctx).Put(&model.MediaFolder{
+				ID:       dir_id,
+				Name:     filepath.Base(folderStats.Path),
+				Path:     folderStats.Path,
+				ParentId: parent_id,
+			})
+
+			if err != nil {
+				return 0, err
+			}
+		}
+
 		if s.folderHasChanged(folderStats, allDBDirs, lastModifiedSince) {
 			changedDirs = append(changedDirs, folderStats.Path)
 			log.Debug("Processing changed folder", "dir", folderStats.Path)
-			err := s.processChangedDir(ctx, refresher, fullScan, folderStats.Path)
+			err := s.processChangedDir(ctx, refresher, fullScan, folderStats.Path, dir_id)
 			if err != nil {
 				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 			}
@@ -137,7 +162,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	}
 
 	for _, dir := range deletedDirs {
-		err := s.processDeletedDir(ctx, refresher, dir)
+		err := s.processDeletedDir(ctx, refresher, dir[0], dir[1])
 		if err != nil {
 			log.Error("Error removing deleted folder from DB", "dir", dir, err)
 		}
@@ -177,50 +202,90 @@ func isDirEmpty(ctx context.Context, rootFS fs.FS, dir string) (bool, error) {
 	return len(children) == 0 && stats.AudioFilesCount == 0, nil
 }
 
-func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, error) {
+func (s *TagScanner) getParentId(ctx context.Context, allDBDirs map[string]string, dir string) (string, error) {
+	parent_dir := filepath.Dir(dir)
+
+	if parent_dir == dir {
+		return "", model.ErrNotFound
+	}
+
+	parent_id, ok := allDBDirs[parent_dir]
+
+	if !ok {
+		var err error
+		parent_id, err = s.getParentId(ctx, allDBDirs, parent_dir)
+		if err != nil {
+			return "", err
+		}
+
+		id := path_hash.PathToMd5Hash(parent_dir)
+
+		err = s.ds.MediaFolder(ctx).Put(&model.MediaFolder{
+			ID:       id,
+			Name:     filepath.Base(parent_dir),
+			Path:     parent_dir,
+			ParentId: parent_id,
+		})
+
+		allDBDirs[parent_dir] = id
+
+		if err != nil {
+			return "", err
+		}
+
+		parent_id = id
+	}
+
+	return parent_id, nil
+}
+
+func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]string, error) {
 	start := time.Now()
 	log.Trace(ctx, "Loading directory tree from database", "folder", s.rootFolder)
 
-	repo := s.ds.MediaFile(ctx)
-	dirs, err := repo.FindPathsRecursively(s.rootFolder)
+	dirs, err := s.ds.MediaFolder(ctx).GetAllDirectories()
 	if err != nil {
 		return nil, err
 	}
-	resp := map[string]struct{}{}
+	resp := map[string]string{}
 	for _, d := range dirs {
-		resp[filepath.Clean(d)] = struct{}{}
+		resp[filepath.Clean(d.Path)] = d.ID
 	}
 
 	log.Debug("Directory tree loaded from DB", "total", len(resp), "elapsed", time.Since(start))
 	return resp, nil
 }
 
-func (s *TagScanner) folderHasChanged(folder dirStats, dbDirs map[string]struct{}, lastModified time.Time) bool {
+func (s *TagScanner) folderHasChanged(folder dirStats, dbDirs map[string]string, lastModified time.Time) bool {
 	_, inDB := dbDirs[folder.Path]
 	// If is a new folder with at least one song OR it was modified after lastModified
 	return (!inDB && (folder.AudioFilesCount > 0)) || folder.ModTime.After(lastModified)
 }
 
-func (s *TagScanner) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]struct{}) []string {
+func (s *TagScanner) getDeletedDirs(ctx context.Context, fsDirs dirMap, dbDirs map[string]string) [][2]string {
 	start := time.Now()
 	log.Trace(ctx, "Checking for deleted folders")
-	var deleted []string
+	var deleted [][2]string
 
 	for d := range dbDirs {
 		if _, ok := fsDirs[d]; !ok {
-			deleted = append(deleted, d)
+			deleted = append(deleted, [2]string{
+				d, dbDirs[d],
+			})
 		}
 	}
 
-	sort.Strings(deleted)
+	sort.Slice(deleted, func(i, j int) bool {
+		return strings.Compare(deleted[i][0], deleted[j][0]) < 0
+	})
 	log.Debug(ctx, "Finished deleted folders check", "total", len(deleted), "elapsed", time.Since(start))
 	return deleted
 }
 
-func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher, dir string) error {
+func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher, dir, parent_id string) error {
 	start := time.Now()
 
-	mfs, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
+	mfs, err := s.ds.MediaFile(ctx).FindAllByParent(parent_id)
 	if err != nil {
 		return err
 	}
@@ -231,6 +296,13 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher
 	}
 	s.cnt.deleted += c
 
+	// We do not need to delete the nested objects, because they are automatically
+	// removed due to foreign key constraint (parent_id)
+	err = s.ds.MediaFolder(ctx).Delete(parent_id)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return err
+	}
+
 	for _, t := range mfs {
 		refresher.accumulate(t)
 	}
@@ -240,12 +312,12 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher
 	return err
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher, fullScan bool, dir string) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher, fullScan bool, dir, dir_id string) error {
 	start := time.Now()
 
 	// Load folder's current tracks from DB into a map
 	currentTracks := map[string]model.MediaFile{}
-	ct, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
+	ct, err := s.ds.MediaFile(ctx).FindAllByParent(dir)
 	if err != nil {
 		return err
 	}
@@ -301,14 +373,14 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, dir, currentTracks, filesToUpdate)
+		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, dir, dir_id, currentTracks, filesToUpdate)
 		if err != nil {
 			return err
 		}
 	}
 
 	if len(orphanTracks) > 0 {
-		numPurgedTracks, err = s.deleteOrphanSongs(ctx, refresher, dir, orphanTracks)
+		numPurgedTracks, err = s.deleteOrphanSongs(ctx, refresher, dir, dir_id, orphanTracks)
 		if err != nil {
 			return err
 		}
@@ -323,7 +395,8 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 func (s *TagScanner) deleteOrphanSongs(
 	ctx context.Context,
 	refresher *refresher,
-	dir string,
+	dir,
+	dir_id string,
 	tracksToDelete map[string]model.MediaFile,
 ) (int, error) {
 	numPurgedTracks := 0
@@ -333,7 +406,12 @@ func (s *TagScanner) deleteOrphanSongs(
 	for _, ct := range tracksToDelete {
 		numPurgedTracks++
 		refresher.accumulate(ct)
-		if err := s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
+		err := s.ds.MediaFolder(ctx).Delete(ct.ID)
+		if err != nil {
+			return 0, err
+		}
+
+		if err = s.ds.MediaFile(ctx).Delete(ct.ID); err != nil {
 			return 0, err
 		}
 		s.cnt.deleted++
@@ -344,7 +422,8 @@ func (s *TagScanner) deleteOrphanSongs(
 func (s *TagScanner) addOrUpdateTracksInDB(
 	ctx context.Context,
 	refresher *refresher,
-	dir string,
+	dir,
+	dir_id string,
 	currentTracks map[string]model.MediaFile,
 	filesToUpdate []string,
 ) (int, error) {
@@ -368,7 +447,15 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 			if t, ok := currentTracks[n.Path]; ok {
 				n.Annotations = t.Annotations
 			}
-			err := s.ds.MediaFile(ctx).Put(&n)
+			err := s.ds.MediaFolder(ctx).Put(&model.MediaFolder{
+				ID:       n.ID,
+				ParentId: dir_id,
+			})
+			if err != nil {
+				return 0, err
+			}
+
+			err = s.ds.MediaFile(ctx).Put(&n)
 			if err != nil {
 				return 0, err
 			}

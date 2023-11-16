@@ -73,7 +73,7 @@ type License struct {
 }
 
 type MusicFolder struct {
-	Id   int32  `xml:"id,attr"                           json:"id"`
+	Id   string `xml:"id,attr"                           json:"id"`
 	Name string `xml:"name,attr"                         json:"name"`
 }
 
@@ -103,6 +103,7 @@ type Indexes struct {
 	Index           []Index `xml:"index"                  json:"index,omitempty"`
 	LastModified    int64   `xml:"lastModified,attr"      json:"lastModified"`
 	IgnoredArticles string  `xml:"ignoredArticles,attr"   json:"ignoredArticles"`
+	Child           []Child `xml:"child"                  json:"child,omitempty"`
 }
 
 type Child struct {
