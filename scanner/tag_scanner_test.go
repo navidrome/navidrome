@@ -68,14 +68,12 @@ var _ = Describe("TagScanner", func() {
 			scanner := NewTagScanner("tests/fixtures", ds, pls, cw)
 			count, err := scanner.Scan(ctx, time.Time{}, progress)
 			Expect(err).To(BeNil())
-			Expect(count).To(Equal(int64(6)))
+			Expect(count).To(Equal(int64(11)))
 
 			expected := model.MediaFolders{
 				{
-					ID:       "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
-					Name:     "",
-					Path:     "tests/fixtures",
-					ParentId: "",
+					ID:   "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
+					Path: "tests/fixtures",
 				},
 				{
 					ID:       "0ab3f79207dd4a2eeb529afea0932a14",
@@ -85,14 +83,10 @@ var _ = Describe("TagScanner", func() {
 				},
 				{
 					ID:       "d5aea55d20dca72cca2eaeb27caf4a2f",
-					Name:     "",
-					Path:     "",
 					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 				},
 				{
 					ID:       "2296dc9dbe127641d2718d9b0290c5c8",
-					Name:     "",
-					Path:     "",
 					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 				},
 				{
@@ -103,8 +97,6 @@ var _ = Describe("TagScanner", func() {
 				},
 				{
 					ID:       "859c18628cdac7e7fbb010133bc32729",
-					Name:     "",
-					Path:     "",
 					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 				},
 				{
@@ -121,14 +113,10 @@ var _ = Describe("TagScanner", func() {
 				},
 				{
 					ID:       "51c285f7f7390da6aa5182e646a120b0",
-					Name:     "",
-					Path:     "",
 					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 				},
 				{
 					ID:       "0129613054dcf67242ecc3fa8da90eb4",
-					Name:     "",
-					Path:     "",
 					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 				},
 				{
@@ -151,8 +139,6 @@ var _ = Describe("TagScanner", func() {
 				},
 				{
 					ID:       "ba7abd9ee1c34936ad6c30fb37250741",
-					Name:     "",
-					Path:     "",
 					ParentId: "671f1036b3fcd474946870cfe736a0a5",
 				},
 				{
@@ -167,6 +153,26 @@ var _ = Describe("TagScanner", func() {
 					Path:     "tests/fixtures/playlists/subfolder2",
 					ParentId: "502f80896b1adf58639fbe692c5f24bc",
 				},
+				{
+					ID:       "f7d67d0f9706769e59fae88a82065cf8",
+					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
+				},
+				{
+					ID:       "9101d69d497589e7b91938be55da4e1f",
+					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
+				},
+				{
+					ID:       "b1281a55b8e7dde7870c2a338178d9ef",
+					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
+				},
+				{
+					ID:       "fb951fa61daca15a9c76879d82e2c18e",
+					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
+				},
+				{
+					ID:       "f25d647bb956bbca9e98ec313c08457a",
+					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
+				},
 			}
 			folders := map[string]model.MediaFolder{}
 			for _, folder := range expected {
@@ -179,6 +185,9 @@ var _ = Describe("TagScanner", func() {
 
 			for _, folder := range dirs {
 				mapped, ok := folders[folder.ID]
+				if !ok {
+					Expect(folder).To(BeNil())
+				}
 				Expect(ok).To(BeTrue())
 				Expect(mapped).To(Equal(folder))
 			}
@@ -186,7 +195,7 @@ var _ = Describe("TagScanner", func() {
 			// Second scan
 			count, err = scanner.Scan(ctx, time.Time{}, progress)
 			Expect(err).To(BeNil())
-			Expect(count).To(Equal(int64(6)))
+			Expect(count).To(Equal(int64(11)))
 
 			dirs, err = ds.MediaFolder(ctx).GetAllDirectories()
 			Expect(err).To(BeNil())
