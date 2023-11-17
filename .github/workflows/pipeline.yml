@@ -206,7 +206,7 @@ jobs:
           labels: |
             maintainer=deluan
           images: |
-            name=${{secrets.DOCKER_IMAGE}},enable=${{env.GITHUB_REF_TYPE == 'tag' || github.ref == format('refs/heads/{0}', 'master')}}
+            name=${{secrets.DOCKER_IMAGE}}
             name=ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=pr
