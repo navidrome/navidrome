@@ -50,7 +50,7 @@ func (m *MockArtistRepo) Get(id string) (*model.Artist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockArtistRepo) Put(ar *model.Artist) error {
+func (m *MockArtistRepo) Put(ar *model.Artist, columsToUpdate ...string) error {
 	if m.err {
 		return errors.New("error")
 	}

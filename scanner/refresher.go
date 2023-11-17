@@ -142,7 +142,8 @@ func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
 		// Force a external metadata lookup on next access
 		a.ExternalInfoUpdatedAt = time.Time{}
 
-		err := repo.Put(&a)
+		// Do not remove old metadata
+		err := repo.Put(&a, "album_count", "genres", "external_info_updated_at", "mbz_artist_id", "name", "order_artist_name", "size", "sort_artist_name", "song_count")
 		if err != nil {
 			return err
 		}
