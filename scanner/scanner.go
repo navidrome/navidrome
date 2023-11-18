@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
@@ -234,35 +233,44 @@ func (s *scanner) updateLastModifiedSince(folder string, t time.Time) {
 
 func (s *scanner) loadFolders() {
 	ctx := context.TODO()
-	fs := model.MediaFolders{}
+	var fs model.MediaFolders
 
 	err := s.ds.WithTx(func(tx model.DataStore) error {
-		folder := tx.MediaFolder(ctx)
-		existing, err := folder.GetDbRoot()
+		fs, err := tx.MediaFolder(ctx).GetAll()
+		if err != nil {
+			return err
+		}
+
+		directories := tx.DirectoryEntry(ctx)
+		fsMapping := map[string]*model.MediaFolder{}
+
+		for _, folder := range fs {
+			fsMapping[folder.ID] = &folder
+		}
+
+		existing, err := directories.GetDbRoot()
 		if err != nil {
 			return err
 		}
 
 		for _, f := range existing {
-			if f.Path != conf.Server.MusicFolder {
-				err = folder.Delete(f.ID)
+			if _, ok := fsMapping[f.ID]; !ok {
+				err = directories.Delete(f.ID)
 				if err != nil {
 					return err
 				}
 			} else {
-				fs = append(fs, f)
+				delete(fsMapping, f.ID)
 			}
 		}
 
-		if len(fs) == 0 {
-			new_root := model.MediaFolder{
-				ID:   conf.Server.MusicFolderId,
-				Path: conf.Server.MusicFolder,
-				Name: "Music Folder",
-			}
+		for _, folder := range fsMapping {
+			err := directories.Put(&model.DirectoryEntry{
+				ID:   folder.ID,
+				Path: folder.Path,
+				Name: folder.Name,
+			})
 
-			fs = append(fs, new_root)
-			err = folder.Put(&new_root)
 			if err != nil {
 				return err
 			}

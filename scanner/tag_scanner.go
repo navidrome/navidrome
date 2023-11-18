@@ -128,7 +128,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 				return 0, err
 			}
 
-			err = s.ds.MediaFolder(ctx).Put(&model.MediaFolder{
+			err = s.ds.DirectoryEntry(ctx).Put(&model.DirectoryEntry{
 				ID:       dir_id,
 				Name:     filepath.Base(folderStats.Path),
 				Path:     folderStats.Path,
@@ -220,7 +220,7 @@ func (s *TagScanner) getParentId(ctx context.Context, allDBDirs map[string]strin
 
 		id := path_hash.PathToMd5Hash(parent_dir)
 
-		err = s.ds.MediaFolder(ctx).Put(&model.MediaFolder{
+		err = s.ds.DirectoryEntry(ctx).Put(&model.DirectoryEntry{
 			ID:       id,
 			Name:     filepath.Base(parent_dir),
 			Path:     parent_dir,
@@ -243,7 +243,7 @@ func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]string, error
 	start := time.Now()
 	log.Trace(ctx, "Loading directory tree from database", "folder", s.rootFolder)
 
-	dirs, err := s.ds.MediaFolder(ctx).GetAllDirectories()
+	dirs, err := s.ds.DirectoryEntry(ctx).GetAllDirectories()
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,7 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher
 
 	// We do not need to delete the nested objects, because they are automatically
 	// removed due to foreign key constraint (parent_id)
-	err = s.ds.MediaFolder(ctx).Delete(parent_id)
+	err = s.ds.DirectoryEntry(ctx).Delete(parent_id)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}
@@ -406,7 +406,7 @@ func (s *TagScanner) deleteOrphanSongs(
 	for _, ct := range tracksToDelete {
 		numPurgedTracks++
 		refresher.accumulate(ct)
-		err := s.ds.MediaFolder(ctx).Delete(ct.ID)
+		err := s.ds.DirectoryEntry(ctx).Delete(ct.ID)
 		if err != nil {
 			return 0, err
 		}
@@ -447,7 +447,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 			if t, ok := currentTracks[n.Path]; ok {
 				n.Annotations = t.Annotations
 			}
-			err := s.ds.MediaFolder(ctx).Put(&model.MediaFolder{
+			err := s.ds.DirectoryEntry(ctx).Put(&model.DirectoryEntry{
 				ID:       n.ID,
 				ParentId: dir_id,
 			})

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/beego/beego/v2/client/orm"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -12,15 +11,15 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("MediaFolderRepository", func() {
-	var mf model.MediaFolderRepository
+var _ = Describe("DirectoryEntryRepository", func() {
+	var mf model.DirectoryEntryRepository
 	var o orm.Ormer
 
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
 		o = orm.NewOrm()
-		mf = NewMediaFolderRepository(ctx, o)
+		mf = NewDirectoryEntryRepository(ctx, o)
 
 		mfs, err := mf.GetAllDirectories()
 		Expect(err).To(BeNil())
@@ -57,16 +56,7 @@ var _ = Describe("MediaFolderRepository", func() {
 	It("returns the root directories", func() {
 		mfs, err := mf.GetDbRoot()
 		Expect(err).To(BeNil())
-		Expect(mfs).To(Equal(model.MediaFolders{rootDir}))
-	})
-
-	It("returns the root directories (hardcoded)", func() {
-		mfs, err := mf.GetRoot()
-		Expect(err).To(BeNil())
-		Expect(mfs).To(Equal(model.MediaFolders{model.MediaFolder{
-			ID: conf.Server.MusicFolderId, Path: conf.Server.MusicFolder,
-			Name: "Music Library",
-		}}))
+		Expect(mfs).To(Equal(model.DirectoryEntries{rootDir}))
 	})
 
 	It("Deletes all directories on root", func() {
@@ -74,6 +64,6 @@ var _ = Describe("MediaFolderRepository", func() {
 		Expect(mf.Delete("0")).To(BeNil())
 		mfs, err := mf.GetAllDirectories()
 		Expect(err).To(BeNil())
-		Expect(mfs).To(Equal(model.MediaFolders{}))
+		Expect(mfs).To(Equal(model.DirectoryEntries{}))
 	})
 })

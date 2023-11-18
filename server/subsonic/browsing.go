@@ -17,7 +17,7 @@ import (
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
-	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetRoot()
+	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetAll()
 	folders := make([]responses.MusicFolder, len(mediaFolderList))
 	for i, f := range mediaFolderList {
 		folders[i].Id = f.ID
@@ -30,7 +30,7 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 
 func (api *Router) getArtistIndex(r *http.Request, mediaFolderId string, ifModifiedSince time.Time) (*responses.Indexes, error) {
 	ctx := r.Context()
-	folder, err := api.ds.MediaFolder(ctx).BrowserDirectory(mediaFolderId)
+	folder, err := api.ds.DirectoryEntry(ctx).BrowserDirectory(mediaFolderId)
 	if err != nil || len(folder) == 0 {
 		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
 		return nil, err
@@ -103,7 +103,7 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 
 	var dir *responses.Directory
 
-	items, err := api.ds.MediaFolder(ctx).BrowserDirectory(id)
+	items, err := api.ds.DirectoryEntry(ctx).BrowserDirectory(id)
 	if err != nil || len(items) == 0 {
 		var entity interface{}
 		entity, err = model.GetEntityByID(ctx, api.ds, id)

@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func CreateMockMediaFileRepo(mfl model.MediaFolderRepository) *MockMediaFileRepo {
+func CreateMockMediaFileRepo(mfl model.DirectoryEntryRepository) *MockMediaFileRepo {
 	return &MockMediaFileRepo{
 		data: make(map[string]*model.MediaFile),
 	}
@@ -21,7 +21,7 @@ type MockMediaFileRepo struct {
 	model.MediaFileRepository
 	data map[string]*model.MediaFile
 	err  bool
-	mfl  MockMediaFolderRepo
+	mfl  MockDirectoryEntryRepo
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {

@@ -126,9 +126,9 @@ func pathStartsWith(path string) Eq {
 
 // FindAllByPath only return mediafiles that are direct children of requested path
 func (r *mediaFileRepository) FindAllByParent(parent_id string) (model.MediaFiles, error) {
-	sel := r.newSelect().Columns("media_file.*").Join("media_folder ON media_file.id = media_folder.id").Where(And{
+	sel := r.newSelect().Columns("media_file.*").Join("directory_entry ON media_file.id = directory_entry.id").Where(And{
 		Eq{"parent_id": parent_id},
-		Eq{"media_folder.path": ""},
+		Eq{"directory_entry.path": ""},
 	})
 
 	res := model.MediaFiles{}

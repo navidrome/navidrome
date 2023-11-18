@@ -11,7 +11,7 @@ type MockDataStore struct {
 	MockedAlbum          model.AlbumRepository
 	MockedArtist         model.ArtistRepository
 	MockedMediaFile      model.MediaFileRepository
-	MockedMediaFolder    model.MediaFolderRepository
+	ModkedDirectoryEntry model.DirectoryEntryRepository
 	MockedUser           model.UserRepository
 	MockedProperty       model.PropertyRepository
 	MockedPlayer         model.PlayerRepository
@@ -39,16 +39,20 @@ func (db *MockDataStore) Artist(context.Context) model.ArtistRepository {
 
 func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
 	if db.MockedMediaFile == nil {
-		db.MockedMediaFile = CreateMockMediaFileRepo(db.MediaFolder(ctx))
+		db.MockedMediaFile = CreateMockMediaFileRepo(db.DirectoryEntry(ctx))
 	}
 	return db.MockedMediaFile
 }
 
 func (db *MockDataStore) MediaFolder(context.Context) model.MediaFolderRepository {
-	if db.MockedMediaFolder == nil {
-		db.MockedMediaFolder = CreateMockMediaFolderRepo()
+	return struct{ model.MediaFolderRepository }{}
+}
+
+func (db *MockDataStore) DirectoryEntry(context.Context) model.DirectoryEntryRepository {
+	if db.ModkedDirectoryEntry == nil {
+		db.ModkedDirectoryEntry = CreateMockDirectoryEntryRepo()
 	}
-	return db.MockedMediaFolder
+	return db.ModkedDirectoryEntry
 }
 
 func (db *MockDataStore) Genre(context.Context) model.GenreRepository {

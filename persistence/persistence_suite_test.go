@@ -70,17 +70,17 @@ var (
 )
 
 var (
-	rootDir          = model.MediaFolder{ID: "0", Path: "/"}
-	beatlesDir       = model.MediaFolder{ID: "1", Path: "/beatles", ParentId: "0"}
-	beatles1Dir      = model.MediaFolder{ID: "2", Path: "/beatles/1", ParentId: "1"}
-	beatlesSgtDir    = model.MediaFolder{ID: "3", Path: "/beatles/sgt", ParentId: "2"}
-	beatlesADay      = model.MediaFolder{ID: "1001", ParentId: "3"}
-	beatlesATogether = model.MediaFolder{ID: "1002", ParentId: "3"}
-	kraftDir         = model.MediaFolder{ID: "4", Path: "/kraft", ParentId: "0"}
-	kraftRadioDir    = model.MediaFolder{ID: "5", Path: "/kraft/radio", ParentId: "4"}
-	kraftRadio       = model.MediaFolder{ID: "1003", ParentId: "5"}
-	kraftAntenna     = model.MediaFolder{ID: "1004", ParentId: "5"}
-	testFolders      = model.MediaFolders{
+	rootDir          = model.DirectoryEntry{ID: "0", Path: "/"}
+	beatlesDir       = model.DirectoryEntry{ID: "1", Path: "/beatles", ParentId: "0"}
+	beatles1Dir      = model.DirectoryEntry{ID: "2", Path: "/beatles/1", ParentId: "1"}
+	beatlesSgtDir    = model.DirectoryEntry{ID: "3", Path: "/beatles/sgt", ParentId: "2"}
+	beatlesADay      = model.DirectoryEntry{ID: "1001", ParentId: "3"}
+	beatlesATogether = model.DirectoryEntry{ID: "1002", ParentId: "3"}
+	kraftDir         = model.DirectoryEntry{ID: "4", Path: "/kraft", ParentId: "0"}
+	kraftRadioDir    = model.DirectoryEntry{ID: "5", Path: "/kraft/radio", ParentId: "4"}
+	kraftRadio       = model.DirectoryEntry{ID: "1003", ParentId: "5"}
+	kraftAntenna     = model.DirectoryEntry{ID: "1004", ParentId: "5"}
+	testFolders      = model.DirectoryEntries{
 		rootDir,
 		beatlesDir,
 		beatles1Dir,
@@ -169,7 +169,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	mfl := NewMediaFolderRepository(ctx, o)
+	mfl := NewDirectoryEntryRepository(ctx, o)
 	for i := range testFolders {
 		f := testFolders[i]
 		err := mfl.Put(&f)

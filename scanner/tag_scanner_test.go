@@ -57,7 +57,7 @@ var _ = Describe("TagScanner", func() {
 		})
 
 		It("tests simple scan", func() {
-			err := ds.MediaFolder(ctx).Put(&model.MediaFolder{
+			err := ds.DirectoryEntry(ctx).Put(&model.DirectoryEntry{
 				ID:   path_hash.PathToMd5Hash("tests/fixtures"),
 				Path: "tests/fixtures",
 			})
@@ -70,7 +70,7 @@ var _ = Describe("TagScanner", func() {
 			Expect(err).To(BeNil())
 			Expect(count).To(Equal(int64(11)))
 
-			expected := model.MediaFolders{
+			expected := model.DirectoryEntries{
 				{
 					ID:   "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 					Path: "tests/fixtures",
@@ -174,12 +174,12 @@ var _ = Describe("TagScanner", func() {
 					ParentId: "da0b2b0b955ea5f4cd5a9eeaadb8cb79",
 				},
 			}
-			folders := map[string]model.MediaFolder{}
+			folders := map[string]model.DirectoryEntry{}
 			for _, folder := range expected {
 				folders[folder.ID] = folder
 			}
 
-			dirs, err := ds.MediaFolder(ctx).GetAllDirectories()
+			dirs, err := ds.DirectoryEntry(ctx).GetAllDirectories()
 			Expect(err).To(BeNil())
 			Expect(len(dirs)).To(Equal(len(folders)))
 
@@ -197,7 +197,7 @@ var _ = Describe("TagScanner", func() {
 			Expect(err).To(BeNil())
 			Expect(count).To(Equal(int64(11)))
 
-			dirs, err = ds.MediaFolder(ctx).GetAllDirectories()
+			dirs, err = ds.DirectoryEntry(ctx).GetAllDirectories()
 			Expect(err).To(BeNil())
 			Expect(len(dirs)).To(Equal(len(folders)))
 

@@ -18,18 +18,18 @@ func init() {
 
 func upAddFolderDb(tx *sql.Tx) error {
 	_, err := tx.Exec(`
-create table if not exists media_folder(
+create table if not exists directory_entry(
 	id varchar(255) not null
 		primary key,
 	path varchar(255) default '' not null,
 	name varchar(255) default '' not null,
 	parent_id varchar(255) default null
-		references media_folder (id)
+		references directory_entry (id)
 		 	on delete cascade
 );
 
-create index if not exists media_folder_parent
-	on media_folder (parent_id);
+create index if not exists directory_entry_parent
+	on directory_entry (parent_id);
 `)
 
 	if err != nil {
@@ -47,12 +47,12 @@ create index if not exists media_folder_parent
 	var path string
 	var id string
 
-	insertDir, err := tx.Prepare("INSERT INTO media_folder (id, path, name, parent_id) VALUES (?, ?, ?, ?);")
+	insertDir, err := tx.Prepare("INSERT INTO directory_entry (id, path, name, parent_id) VALUES (?, ?, ?, ?);")
 	if err != nil {
 		return err
 	}
 
-	insertMediaFile, err := tx.Prepare("INSERT INTO media_folder (id, parent_id) VALUES (?, ?);")
+	insertMediaFile, err := tx.Prepare("INSERT INTO directory_entry (id, parent_id) VALUES (?, ?);")
 	if err != nil {
 		return err
 	}
@@ -60,9 +60,8 @@ create index if not exists media_folder_parent
 	folders := map[string]string{
 		conf.Server.MusicFolder: root_id,
 	}
-	println("Root", root_id)
 	_, err = tx.Exec(
-		`INSERT INTO media_folder (id, path, name) VALUES (?, ?, ?);`,
+		`INSERT INTO directory_entry (id, path, name) VALUES (?, ?, ?);`,
 		root_id,
 		conf.Server.MusicFolder,
 		"Music Library",
