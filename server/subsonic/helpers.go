@@ -110,6 +110,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
+		MusicBrainzId:  a.MbzArtistID,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -151,6 +152,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
+	child.Genres = itemGenresFromGenres(mf.Genres)
 	child.Track = int32(mf.TrackNumber)
 	child.Duration = int32(mf.Duration)
 	child.Size = mf.Size
@@ -184,6 +186,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.TranscodedContentType = mime.TypeByExtension("." + format)
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
+	child.Comment = mf.Comment
+	child.Bpm = int32(mf.Bpm)
 	return child
 }
 
@@ -217,6 +221,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = int32(al.MaxYear)
 	child.Genre = al.Genre
+	child.Genres = itemGenresFromGenres(al.Genres)
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
@@ -240,4 +245,12 @@ func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child
 		children[i] = childFromAlbum(ctx, al)
 	}
 	return children
+}
+
+func itemGenresFromGenres(genres model.Genres) []responses.ItemGenre {
+	itemGenres := make([]responses.ItemGenre, len(genres))
+	for i, g := range genres {
+		itemGenres[i] = responses.ItemGenre{Name: g.Name}
+	}
+	return itemGenres
 }
