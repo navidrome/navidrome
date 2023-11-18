@@ -244,8 +244,8 @@ func (s *scanner) loadFolders() {
 		directories := tx.DirectoryEntry(ctx)
 		fsMapping := map[string]*model.MediaFolder{}
 
-		for _, folder := range fs {
-			fsMapping[folder.ID] = &folder
+		for idx, folder := range fs {
+			fsMapping[folder.ID] = &fs[idx]
 		}
 
 		existing, err := directories.GetDbRoot()
