@@ -1,1 +1,5 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true"><user username="deluan" email="navidrome@deluan.com" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false"><folder>1</folder></user></subsonic-response>
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+  <user username="deluan" email="navidrome@deluan.com" scrobblingEnabled="false" adminRole="false" settingsRole="false" downloadRole="false" uploadRole="false" playlistRole="false" coverArtRole="false" commentRole="false" podcastRole="false" streamRole="false" jukeboxRole="false" shareRole="false" videoConversionRole="false">
+    <folder>1</folder>
+  </user>
+</subsonic-response>

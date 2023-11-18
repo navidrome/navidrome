@@ -1,1 +1,15 @@
-{"status":"ok","version":"1.8.0","type":"navidrome","serverVersion":"v0.0.0","openSubsonic":true,"albumInfo":{"notes":"Believe is the twenty-third studio album by American singer-actress Cher...","musicBrainzId":"03c91c40-49a6-44a7-90e7-a700edf97a62","lastFmUrl":"https://www.last.fm/music/Cher/Believe","smallImageUrl":"https://lastfm.freetls.fastly.net/i/u/34s/3b54885952161aaea4ce2965b2db1638.png","mediumImageUrl":"https://lastfm.freetls.fastly.net/i/u/64s/3b54885952161aaea4ce2965b2db1638.png","largeImageUrl":"https://lastfm.freetls.fastly.net/i/u/174s/3b54885952161aaea4ce2965b2db1638.png"}}
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "albumInfo": {
+    "notes": "Believe is the twenty-third studio album by American singer-actress Cher...",
+    "musicBrainzId": "03c91c40-49a6-44a7-90e7-a700edf97a62",
+    "lastFmUrl": "https://www.last.fm/music/Cher/Believe",
+    "smallImageUrl": "https://lastfm.freetls.fastly.net/i/u/34s/3b54885952161aaea4ce2965b2db1638.png",
+    "mediumImageUrl": "https://lastfm.freetls.fastly.net/i/u/64s/3b54885952161aaea4ce2965b2db1638.png",
+    "largeImageUrl": "https://lastfm.freetls.fastly.net/i/u/174s/3b54885952161aaea4ce2965b2db1638.png"
+  }
+}

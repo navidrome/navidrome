@@ -1,1 +1,29 @@
-{"status":"ok","version":"1.8.0","type":"navidrome","serverVersion":"v0.0.0","openSubsonic":true,"artistInfo":{"biography":"Black Sabbath is an English \u003ca target='_blank' href=\"http://www.last.fm/tag/heavy%20metal\" class=\"bbcode_tag\" rel=\"tag\"\u003eheavy metal\u003c/a\u003e band","musicBrainzId":"5182c1d9-c7d2-4dad-afa0-ccfeada921a8","lastFmUrl":"https://www.last.fm/music/Black+Sabbath","smallImageUrl":"https://userserve-ak.last.fm/serve/64/27904353.jpg","mediumImageUrl":"https://userserve-ak.last.fm/serve/126/27904353.jpg","largeImageUrl":"https://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg","similarArtist":[{"id":"22","name":"Accept"},{"id":"101","name":"Bruce Dickinson"},{"id":"26","name":"Aerosmith"}]}}
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "artistInfo": {
+    "biography": "Black Sabbath is an English \u003ca target='_blank' href=\"http://www.last.fm/tag/heavy%20metal\" class=\"bbcode_tag\" rel=\"tag\"\u003eheavy metal\u003c/a\u003e band",
+    "musicBrainzId": "5182c1d9-c7d2-4dad-afa0-ccfeada921a8",
+    "lastFmUrl": "https://www.last.fm/music/Black+Sabbath",
+    "smallImageUrl": "https://userserve-ak.last.fm/serve/64/27904353.jpg",
+    "mediumImageUrl": "https://userserve-ak.last.fm/serve/126/27904353.jpg",
+    "largeImageUrl": "https://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg",
+    "similarArtist": [
+      {
+        "id": "22",
+        "name": "Accept"
+      },
+      {
+        "id": "101",
+        "name": "Bruce Dickinson"
+      },
+      {
+        "id": "26",
+        "name": "Aerosmith"
+      }
+    ]
+  }
+}
