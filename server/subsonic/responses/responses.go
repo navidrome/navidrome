@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"time"
 )
@@ -145,6 +146,20 @@ type Child struct {
 	*/
 }
 
+func (c Child) MarshalJSON() ([]byte, error) {
+	// ensure fields that need custom default values are set properly
+	type Alias Child
+	a := struct {
+		Alias
+	}{
+		Alias: (Alias)(c),
+	}
+	if a.Genres == nil {
+		a.Genres = make([]ItemGenre, 0)
+	}
+	return json.Marshal(a)
+}
+
 type Songs struct {
 	Songs []Child `xml:"song"                              json:"song,omitempty"`
 }
@@ -203,6 +218,20 @@ type AlbumID3 struct {
 	Genre         string      `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 	Genres        []ItemGenre `xml:"genres"                             json:"genres"`
 	MusicBrainzId string      `xml:"musicBrainzId,attr"                 json:"musicBrainzId"`
+}
+
+func (a AlbumID3) MarshalJSON() ([]byte, error) {
+	// ensure fields that need custom default values are set properly
+	type Alias AlbumID3
+	x := struct {
+		Alias
+	}{
+		Alias: (Alias)(a),
+	}
+	if x.Genres == nil {
+		x.Genres = make([]ItemGenre, 0)
+	}
+	return json.Marshal(x)
 }
 
 type ArtistWithAlbumsID3 struct {
