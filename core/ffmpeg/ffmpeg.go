@@ -19,6 +19,8 @@ import (
 type FFmpeg interface {
 	Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error)
+	ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
 }
@@ -28,9 +30,11 @@ func New() FFmpeg {
 }
 
 const (
-	extractImageCmd         = "ffmpeg -i %s -an -c:v copy -f image2pipe -"
+	extractImageCmd         = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
 	extractNonImageCoverCmd = "ffmpeg -i %s -an -c:v mjpeg -vf select=eq(n\\,0) -f image2pipe -"
 	probeCmd                = "ffmpeg %s -f ffmetadata"
+	createWavCmd            = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
+	createFLACCmd           = "ffmpeg -i %s -f flac -"
 )
 
 type ffmpeg struct{}
@@ -92,6 +96,16 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 	// If we want to ask ffmpeg to convert the buffer we just had, we'll need to magically know its file format (hint: we don't).
 	// Hence, we are asking ffmpeg to do the scan and convert again.
 	args = createFFmpegCommand(extractNonImageCoverCmd, path, 0)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := createFFmpegCommand(createWavCmd, path, 0)
+	return e.start(ctx, args)
+}
+
+func (e *ffmpeg) ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := createFFmpegCommand(createFLACCmd, path, 0)
 	return e.start(ctx, args)
 }
 

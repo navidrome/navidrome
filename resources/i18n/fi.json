@@ -54,7 +54,11 @@
                 "comment": "Kommentti",
                 "rating": "Arvostelu",
                 "createdAt": "Lisätty",
-                "size": "Koko"
+                "size": "Koko",
+                "originalDate": "Alkuperäinen",
+                "releaseDate": "Julkaistu",
+                "releases": "Julkaisu |||| Julkaisut",
+                "released": "Julkaistu"
             },
             "actions": {
                 "playAll": "Soita",

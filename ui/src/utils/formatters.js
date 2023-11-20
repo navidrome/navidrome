@@ -25,7 +25,7 @@ export const formatDuration = (d) => {
   return `${days > 0 ? days + ':' : ''}${f}`
 }
 
-export const formatFullDate = (date, locale = undefined) => {
+export const formatFullDate = (date, locale) => {
   const dashes = date.split('-').length - 1
   let options = {
     year: 'numeric',

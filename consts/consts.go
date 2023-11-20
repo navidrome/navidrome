@@ -71,10 +71,10 @@ const (
 
 // Cache options
 const (
-	TranscodingCacheDir             = "cache/transcoding"
+	TranscodingCacheDir             = "transcoding"
 	DefaultTranscodingCacheMaxItems = 0 // Unlimited
 
-	ImageCacheDir             = "cache/images"
+	ImageCacheDir             = "images"
 	DefaultImageCacheMaxItems = 0 // Unlimited
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB

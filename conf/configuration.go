@@ -23,6 +23,7 @@ type configOptions struct {
 	Port                         int
 	MusicFolder                  string
 	DataFolder                   string
+	CacheFolder                  string
 	DbPath                       string
 	LogLevel                     string
 	ScanInterval                 time.Duration
@@ -54,6 +55,7 @@ type configOptions struct {
 	IndexGroups                  string
 	SubsonicArtistParticipations bool
 	FFmpegPath                   string
+	MPVPath                      string
 	CoverArtPriority             string
 	CoverJpegQuality             int
 	ArtistArtPriority            string
@@ -77,6 +79,7 @@ type configOptions struct {
 	ReverseProxyWhitelist        string
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
+	Jukebox                      jukeboxOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -128,6 +131,14 @@ type prometheusOptions struct {
 	MetricsPath string
 }
 
+type AudioDeviceDefinition []string
+
+type jukeboxOptions struct {
+	Enabled bool
+	Devices []AudioDeviceDefinition
+	Default string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -135,6 +146,11 @@ var (
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
+		os.Exit(1)
+	}
 	Load()
 }
 
@@ -149,6 +165,16 @@ func Load() {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
+
+	if Server.CacheFolder == "" {
+		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
+	}
+	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", "path", Server.CacheFolder, err)
+		os.Exit(1)
+	}
+
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
@@ -242,6 +268,7 @@ func AddHook(hook func()) {
 
 func init() {
 	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
+	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
@@ -263,7 +290,7 @@ func init() {
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
-	viper.SetDefault("enableMediaFileCoverArt", true)
+	viper.SetDefault("enablemediafilecoverart", true)
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("searchfullstring", false)
@@ -296,9 +323,13 @@ func init() {
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", "/metrics")
 
+	viper.SetDefault("jukebox.enabled", false)
+	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
+	viper.SetDefault("jukebox.default", "")
+
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
-	viper.SetDefault("scanner.groupalbumreleases", true)
+	viper.SetDefault("scanner.groupalbumreleases", false)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)

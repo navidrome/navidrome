@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/djherbis/times"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -103,10 +104,12 @@ func (t Tags) Date() (int, string)         { return t.getDate("date") }
 func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
-func (t Tags) Lyrics() string              { return t.getFirstTagValue("lyrics", "lyrics-eng") }
-func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation") }
-func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
+func (t Tags) Lyrics() string {
+	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
+}
+func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
+func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
+func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
 	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
 }
@@ -120,7 +123,9 @@ func (t Tags) MbzReleaseTrackID() string {
 	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
 }
 
-func (t Tags) MbzTrackID() string { return t.getMbzID("musicbrainz_trackid", "musicbrainz track id") }
+func (t Tags) MbzRecordingID() string {
+	return t.getMbzID("musicbrainz_trackid", "musicbrainz track id")
+}
 func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
 func (t Tags) MbzArtistID() string {
 	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
@@ -144,6 +149,12 @@ func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
 func (t Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t Tags) FilePath() string            { return t.filePath }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
+func (t Tags) BirthTime() time.Time {
+	if ts := times.Get(t.fileInfo); ts.HasBirthTime() {
+		return ts.BirthTime()
+	}
+	return time.Now()
+}
 
 // Replaygain Properties
 func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
