@@ -2,8 +2,6 @@ module github.com/navidrome/navidrome
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
 	github.com/DexterLB/mpvipc v0.0.0-20221227161445-38b9935eae9d
