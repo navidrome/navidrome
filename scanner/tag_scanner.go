@@ -80,10 +80,9 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 
 	// Special case: if lastModifiedSince is zero, re-import all files
 	fullScan := lastModifiedSince.IsZero()
-	rootFS := os.DirFS(s.rootFolder)
 
 	// If the media folder is empty (no music and no subfolders), abort to avoid deleting all data from DB
-	empty, err := isDirEmpty(ctx, rootFS, ".")
+	empty, err := isDirEmpty(ctx, s.rootFolder)
 	if err != nil {
 		return 0, err
 	}
@@ -105,7 +104,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
 
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
-	foldersFound, walkerError := walkDirTree(ctx, rootFS, s.rootFolder)
+	foldersFound, walkerError := walkDirTree(ctx, s.rootFolder)
 
 	for {
 		folderStats, more := <-foldersFound
@@ -169,8 +168,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	return s.cnt.total(), err
 }
 
-func isDirEmpty(ctx context.Context, rootFS fs.FS, dir string) (bool, error) {
-	children, stats, err := loadDir(ctx, rootFS, dir)
+func isDirEmpty(ctx context.Context, dir string) (bool, error) {
+	children, stats, err := loadDir(ctx, dir)
 	if err != nil {
 		return false, err
 	}
