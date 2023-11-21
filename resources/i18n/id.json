@@ -1,5 +1,5 @@
 {
-    "languageName": "Indonesia",
+    "languageName": "Bahasa Indonesia",
     "resources": {
         "song": {
             "name": "Lagu |||| Lagu",
@@ -18,7 +18,6 @@
                 "size": "Ukuran file",
                 "updatedAt": "Diperbarui pada",
                 "bitRate": "Laju bit",
-                "channels": "Saluran",
                 "discSubtitle": "Subtitle Disk",
                 "starred": "Favorit",
                 "comment": "Komentar",
@@ -26,6 +25,7 @@
                 "quality": "Kualitas",
                 "bpm": "BPM",
                 "playDate": "Terakhir Dimainkan",
+                "channels": "Saluran",
                 "createdAt": "Tgl. Ditambahkan"
             },
             "actions": {
@@ -46,29 +46,29 @@
                 "duration": "Durasi",
                 "songCount": "Lagu",
                 "playCount": "Dimainkan",
-                "size": "Ukuran",
                 "name": "Nama",
                 "genre": "Genre",
                 "compilation": "Kompilasi",
                 "year": "Tahun",
-                "originalDate": "Tanggal",
-                "releaseDate": "Rilis",
-                "releases": "Rilis |||| Rilis",
-                "released": "Dirilis",
                 "updatedAt": "Diperbarui pada",
                 "comment": "Komentar",
                 "rating": "Peringkat",
-                "createdAt": "Tgl. Ditambahkan"
+                "createdAt": "Tgl. Ditambahkan",
+                "size": "Ukuran",
+                "originalDate": "Tanggal",
+                "releaseDate": "Rilis",
+                "releases": "Rilis |||| Rilis",
+                "released": "Dirilis"
             },
             "actions": {
                 "playAll": "Mainkan",
                 "playNext": "Mainkan selanjutnya",
                 "addToQueue": "Tambah ke antrean",
-                "share": "Bagikan",
                 "shuffle": "Acak",
                 "addToPlaylist": "Tambahkan ke Playlist",
                 "download": "Unduh",
-                "info": "Lihat Info"
+                "info": "Lihat Info",
+                "share": "Bagikan"
             },
             "lists": {
                 "all": "Semua",
@@ -86,10 +86,10 @@
                 "name": "Nama",
                 "albumCount": "Jumlah Album",
                 "songCount": "Jumlah Lagu",
-                "size": "Ukuran",
                 "playCount": "Dimainkan",
                 "rating": "Peringkat",
-                "genre": "Genre"
+                "genre": "Genre",
+                "size": "Ukuran"
             }
         },
         "user": {
@@ -187,7 +187,6 @@
                 "username": "Dibagikan Oleh",
                 "url": "URL",
                 "description": "Deskripsi",
-                "downloadable": "Izinkan Pengunduhan?",
                 "contents": "Konten",
                 "expiresAt": "Berakhir",
                 "lastVisitedAt": "Terakhir Dikunjungi",
@@ -195,11 +194,8 @@
                 "format": "Format",
                 "maxBitRate": "Maks. Laju Bit",
                 "updatedAt": "Diperbarui pada",
-                "createdAt": "Dibuat pada"
-            },
-            "notifications": {
-            },
-            "actions": {
+                "createdAt": "Dibuat pada",
+                "downloadable": "Izinkan Pengunduhan?"
             }
         }
     },
@@ -237,7 +233,6 @@
             "add": "Tambah",
             "back": "Kembali",
             "bulk_actions": "1 item dipilih |||| %{smart_count} item dipilih",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "Batalkan",
             "clear_input_value": "Hapus",
             "clone": "Klon",
@@ -261,8 +256,9 @@
             "close_menu": "Tutup menu",
             "unselect": "Batalkan pilihan",
             "skip": "Lewati",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "Bagikan",
-            "download":  "Unduh"
+            "download": "Unduh"
         },
         "boolean": {
             "true": "Ya",
@@ -361,23 +357,23 @@
         "lastfmLinkFailure": "Last.fm tidak dapat ditautkan",
         "lastfmUnlinkSuccess": "Tautan Last.fm dibatalkan dan scrobbling dinonaktifkan",
         "lastfmUnlinkFailure": "Tautan Last.fm tidak dapat dibatalkan",
-        "listenBrainzLinkSuccess": "ListenBrainz berhasil ditautkan dan scrobbling diaktifkan sebagai pengguna: %{user}",
-        "listenBrainzLinkFailure": "ListenBrainz tidak dapat ditautkan: %{error}",
-        "listenBrainzUnlinkSuccess": "Tautan ListenBrainz dibatalkan dan scrobbling dinonaktifkan",
-        "listenBrainzUnlinkFailure": "Tautan ListenBrainz tidak dapat dibatalkan",
         "openIn": {
             "lastfm": "Lihat di Last.fm",
             "musicbrainz": "Lihat di MusicBrainz"
         },
         "lastfmLink": "Baca selengkapnya...",
+        "listenBrainzLinkSuccess": "ListenBrainz berhasil ditautkan dan scrobbling diaktifkan sebagai pengguna: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz tidak dapat ditautkan: %{error}",
+        "listenBrainzUnlinkSuccess": "Tautan ListenBrainz dibatalkan dan scrobbling dinonaktifkan",
+        "listenBrainzUnlinkFailure": "Tautan ListenBrainz tidak dapat dibatalkan",
+        "downloadOriginalFormat": "Unduh dalam format asli",
         "shareOriginalFormat": "Bagikan dalam format asli",
         "shareDialogTitle": "Bagikan %{resource} '%{name}'",
         "shareBatchDialogTitle": "Bagikan 1 %{resource} |||| Bagikan %{smart_count} %{resource}",
-        "shareCopyToClipboard": "Salin ke papan klip: Ctrl+C, Enter",
         "shareSuccess": "URL disalin ke papan klip: %{url}",
         "shareFailure": "Terjadi kesalahan saat menyalin URL %{url} ke papan klip",
         "downloadDialogTitle": "Unduh %{resource} '%{name}' (%{size})",
-        "downloadOriginalFormat": "Unduh dalam format asli"
+        "shareCopyToClipboard": "Salin ke papan klip: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Perpustakaan",
@@ -403,9 +399,9 @@
             }
         },
         "albumList": "Album",
+        "about": "Tentang",
         "playlists": "Playlist",
-        "sharedPlaylists": "Playlist yang Dibagikan",
-        "about": "Tentang"
+        "sharedPlaylists": "Playlist yang Dibagikan"
     },
     "player": {
         "playListsText": "Mainkan Antrean",
@@ -431,7 +427,6 @@
             "singleLoop": "Ulangi Satu",
             "shufflePlay": "Acak"
         }
-
     },
     "about": {
         "links": {
@@ -456,10 +451,10 @@
             "toggle_play": "Mainkan / Jeda",
             "prev_song": "Lagu Sebelumnya",
             "next_song": "Lagu Selanjutnya",
-            "current_song": "Buka Lagu Saat Ini",
             "vol_up": "Volume Naik",
             "vol_down": "Volume Turun",
-            "toggle_love": "Tambahkan lagu ini ke favorit"
+            "toggle_love": "Tambahkan lagu ini ke favorit",
+            "current_song": "Buka Lagu Saat Ini"
         }
     }
 }

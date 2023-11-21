@@ -55,10 +55,10 @@
                 "rating": "Рейтинг",
                 "createdAt": "Добавено на",
                 "size": "Размер",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Оригинал",
+                "releaseDate": "Издаден",
+                "releases": "Издание |||| Издания",
+                "released": "Издаден"
             },
             "actions": {
                 "playAll": "Пусни",
@@ -195,7 +195,7 @@
                 "maxBitRate": "Макс. Bit Rate",
                 "updatedAt": "Актуализирана на",
                 "createdAt": "Създадена на",
-                "downloadable": ""
+                "downloadable": "Разреши изтегляния?"
             }
         }
     },
