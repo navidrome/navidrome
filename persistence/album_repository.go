@@ -154,6 +154,10 @@ func (r *albumRepository) purgeEmpty() error {
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
 	results := model.Albums{}
 	err := r.doSearch(q, offset, size, &results, "name")
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadAlbumGenres(&results)
 	return results, err
 }
 

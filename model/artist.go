@@ -49,7 +49,7 @@ type ArtistIndexes []ArtistIndex
 type ArtistRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
-	Put(m *Artist) error
+	Put(m *Artist, colsToUpdate ...string) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
