@@ -4,7 +4,11 @@
   "type": "navidrome",
   "serverVersion": "v0.0.0",
   "openSubsonic": true,
-  "lyrics": {
-    "value": ""
+  "album": {
+    "id": "",
+    "name": "",
+    "userRating": 0,
+    "genres": [],
+    "musicBrainzId": ""
   }
 }
