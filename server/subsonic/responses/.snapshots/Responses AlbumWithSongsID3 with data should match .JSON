@@ -4,8 +4,22 @@
   "type": "navidrome",
   "serverVersion": "v0.0.0",
   "openSubsonic": true,
-  "directory": {
-    "child": [
+  "album": {
+    "id": "1",
+    "name": "album",
+    "artist": "artist",
+    "userRating": 0,
+    "genre": "rock",
+    "genres": [
+      {
+        "name": "rock"
+      },
+      {
+        "name": "progressive"
+      }
+    ],
+    "musicBrainzId": "1234",
+    "song": [
       {
         "id": "1",
         "isDir": true,
@@ -36,8 +50,6 @@
         "bpm": 127,
         "comment": "a comment"
       }
-    ],
-    "id": "1",
-    "name": "N"
+    ]
   }
 }

@@ -1,0 +1,10 @@
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+  <album id="1" name="album" artist="artist" userRating="0" genre="rock" musicBrainzId="1234">
+    <genres name="rock"></genres>
+    <genres name="progressive"></genres>
+    <song id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" starred="2016-03-02T20:30:00Z" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320" isVideo="false" bpm="127" comment="a comment">
+      <genres name="rock"></genres>
+      <genres name="progressive"></genres>
+    </song>
+  </album>
+</subsonic-response>
