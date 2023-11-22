@@ -45,7 +45,7 @@ func (api *Router) getParams(r *http.Request) (*searchParams, error) {
 
 type searchFunc[T any] func(q string, offset int, size int) (T, error)
 
-func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q string, offset, size int, result *T) {
+func callSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q string, offset, size int, result *T) {
 	defer wg.Done()
 	if size == 0 {
 		return
@@ -74,9 +74,9 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams) (mediaFiles 
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
-	go doSearch(ctx, wg, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles)
-	go doSearch(ctx, wg, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums)
-	go doSearch(ctx, wg, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists)
+	go callSearch(ctx, wg, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles)
+	go callSearch(ctx, wg, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums)
+	go callSearch(ctx, wg, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists)
 	wg.Wait()
 
 	if ctx.Err() == nil {

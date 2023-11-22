@@ -187,6 +187,10 @@ func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
 	results := model.MediaFiles{}
 	err := r.doSearch(q, offset, size, &results, "title")
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadMediaFileGenres(&results)
 	return results, err
 }
 
