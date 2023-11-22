@@ -60,10 +60,10 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 	return r.exists(Select().Where(Eq{"artist.id": id}))
 }
 
-func (r *artistRepository) Put(a *model.Artist) error {
+func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
-	_, err := r.put(dba.ID, dba)
+	_, err := r.put(dba.ID, dba, colsToUpdate...)
 	if err != nil {
 		return err
 	}
