@@ -1,1 +1,47 @@
-{"status":"ok","version":"1.8.0","type":"navidrome","serverVersion":"v0.0.0","openSubsonic":true,"shares":{"share":[{"entry":[{"id":"1","isDir":false,"title":"title","album":"album","artist":"artist","duration":120,"isVideo":false},{"id":"2","isDir":false,"title":"title 2","album":"album","artist":"artist","duration":300,"isVideo":false}],"id":"ABC123","url":"http://localhost/p/ABC123","description":"Check it out!","username":"deluan","created":"0001-01-01T00:00:00Z","expires":"0001-01-01T00:00:00Z","lastVisited":"0001-01-01T00:00:00Z","visitCount":2}]}}
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "shares": {
+    "share": [
+      {
+        "entry": [
+          {
+            "id": "1",
+            "isDir": false,
+            "title": "title",
+            "album": "album",
+            "artist": "artist",
+            "genres": [],
+            "duration": 120,
+            "isVideo": false,
+            "bpm": 0,
+            "comment": ""
+          },
+          {
+            "id": "2",
+            "isDir": false,
+            "title": "title 2",
+            "album": "album",
+            "artist": "artist",
+            "genres": [],
+            "duration": 300,
+            "isVideo": false,
+            "bpm": 0,
+            "comment": ""
+          }
+        ],
+        "id": "ABC123",
+        "url": "http://localhost/p/ABC123",
+        "description": "Check it out!",
+        "username": "deluan",
+        "created": "0001-01-01T00:00:00Z",
+        "expires": "0001-01-01T00:00:00Z",
+        "lastVisited": "0001-01-01T00:00:00Z",
+        "visitCount": 2
+      }
+    ]
+  }
+}
