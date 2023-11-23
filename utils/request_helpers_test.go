@@ -105,35 +105,32 @@ var _ = Describe("Request Helpers", func() {
 		BeforeEach(func() {
 			r = httptest.NewRequest("GET", "/ping?i=123&inv=123.45", nil)
 		})
+		Context("int", func() {
+			It("returns default value if param does not exist", func() {
+				Expect(ParamInt(r, "xx", 999)).To(Equal(999))
+			})
 
-		It("returns default value if param does not exist", func() {
-			Expect(ParamInt(r, "xx", 999)).To(Equal(999))
+			It("returns default value if param is an invalid int", func() {
+				Expect(ParamInt(r, "inv", 999)).To(Equal(999))
+			})
+
+			It("returns parsed time", func() {
+				Expect(ParamInt(r, "i", 999)).To(Equal(123))
+			})
 		})
+		Context("int64", func() {
+			It("returns default value if param does not exist", func() {
+				Expect(ParamInt(r, "xx", int64(999))).To(Equal(int64(999)))
+			})
 
-		It("returns default value if param is an invalid int", func() {
-			Expect(ParamInt(r, "inv", 999)).To(Equal(999))
-		})
+			It("returns default value if param is an invalid int", func() {
+				Expect(ParamInt(r, "inv", int64(999))).To(Equal(int64(999)))
+			})
 
-		It("returns parsed time", func() {
-			Expect(ParamInt(r, "i", 999)).To(Equal(123))
-		})
-	})
+			It("returns parsed time", func() {
+				Expect(ParamInt(r, "i", int64(999))).To(Equal(int64(123)))
+			})
 
-	Describe("ParamInt64", func() {
-		BeforeEach(func() {
-			r = httptest.NewRequest("GET", "/ping?i=123&inv=123.45", nil)
-		})
-
-		It("returns default value if param does not exist", func() {
-			Expect(ParamInt64(r, "xx", 999)).To(Equal(int64(999)))
-		})
-
-		It("returns default value if param is an invalid int", func() {
-			Expect(ParamInt64(r, "inv", 999)).To(Equal(int64(999)))
-		})
-
-		It("returns parsed time", func() {
-			Expect(ParamInt64(r, "i", 999)).To(Equal(int64(123)))
 		})
 	})
 
