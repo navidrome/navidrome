@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -84,7 +85,7 @@ func (als Albums) ToAlbumArtist() Artist {
 		a.Genres = append(a.Genres, al.Genres...)
 		mbzArtistIds = append(mbzArtistIds, al.MbzAlbumArtistID)
 	}
-	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
+	slices.SortFunc(a.Genres, func(a, b Genre) int { return cmp.Compare(a.ID, b.ID) })
 	a.Genres = slices.Compact(a.Genres)
 	a.MbzArtistID = slice.MostFrequent(mbzArtistIds)
 
