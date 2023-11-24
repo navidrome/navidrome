@@ -95,7 +95,7 @@ buildjs: check_node_env ##@Build Build only frontend
 
 all: warning-noui-build ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
 	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser release --rm-dist --skip-publish --snapshot
+ 		goreleaser release --clean --skip=publish --snapshot
 .PHONY: all
 
 single: warning-noui-build ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
@@ -107,7 +107,7 @@ single: warning-noui-build ##@Cross_Compilation Build binaries for a single supp
 	fi
 	@echo "Building binaries for ${GOOS}/${GOARCH}"
 	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser build --rm-dist --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
+ 		goreleaser build --clean --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
 .PHONY: single
 
 warning-noui-build:
