@@ -24,7 +24,7 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.7.4
 	github.com/go-chi/jwtauth v4.0.4+incompatible
-	github.com/go-chi/jwtauth/v5 v5.1.1
+	github.com/go-chi/jwtauth/v5 v5.2.0
 	github.com/go-ldap/ldap v3.0.3+incompatible
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
@@ -49,7 +49,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.4
 	github.com/unrolled/secure v1.13.0
-	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/image v0.14.0
 	golang.org/x/sync v0.5.0
