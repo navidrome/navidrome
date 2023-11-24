@@ -3,8 +3,8 @@ module github.com/navidrome/navidrome
 go 1.21
 
 require (
-	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
-	github.com/DexterLB/mpvipc v0.0.0-20221227161445-38b9935eae9d
+	code.cloudfoundry.org/go-diodes v0.0.0-20231113191959-85adc333ee36
+	github.com/DexterLB/mpvipc v0.0.0-20230829142118-145d6eabdc37
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/beego/beego/v2 v2.1.3
@@ -87,7 +87,6 @@ require (
 	github.com/mewkiz/flac v1.0.7 // indirect
 	github.com/mewkiz/pkg v0.0.0-20190919212034-518ade7978e2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
