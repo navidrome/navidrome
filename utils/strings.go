@@ -17,31 +17,6 @@ func NoArticle(name string) string {
 	return name
 }
 
-func BreakUpStringSlice(items []string, chunkSize int) [][]string {
-	numTracks := len(items)
-	var chunks [][]string
-	for i := 0; i < numTracks; i += chunkSize {
-		end := i + chunkSize
-		if end > numTracks {
-			end = numTracks
-		}
-
-		chunks = append(chunks, items[i:end])
-	}
-	return chunks
-}
-
-func RangeByChunks(items []string, chunkSize int, cb func([]string) error) error {
-	chunks := BreakUpStringSlice(items, chunkSize)
-	for _, chunk := range chunks {
-		err := cb(chunk)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func LongestCommonPrefix(list []string) string {
 	if len(list) == 0 {
 		return ""

@@ -54,3 +54,28 @@ func Move[T any](slice []T, srcIndex int, dstIndex int) []T {
 	value := slice[srcIndex]
 	return Insert(Remove(slice, srcIndex), value, dstIndex)
 }
+
+func BreakUp[T any](items []T, chunkSize int) [][]T {
+	numTracks := len(items)
+	var chunks [][]T
+	for i := 0; i < numTracks; i += chunkSize {
+		end := i + chunkSize
+		if end > numTracks {
+			end = numTracks
+		}
+
+		chunks = append(chunks, items[i:end])
+	}
+	return chunks
+}
+
+func RangeByChunks[T any](items []T, chunkSize int, cb func([]T) error) error {
+	chunks := BreakUp(items, chunkSize)
+	for _, chunk := range chunks {
+		err := cb(chunk)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

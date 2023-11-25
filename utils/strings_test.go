@@ -35,27 +35,6 @@ var _ = Describe("Strings", func() {
 		})
 	})
 
-	Describe("BreakUpStringSlice", func() {
-		It("returns no chunks if slice is empty", func() {
-			var slice []string
-			chunks := BreakUpStringSlice(slice, 10)
-			Expect(chunks).To(HaveLen(0))
-		})
-		It("returns the slice in one chunk if len < chunkSize", func() {
-			slice := []string{"a", "b", "c"}
-			chunks := BreakUpStringSlice(slice, 10)
-			Expect(chunks).To(HaveLen(1))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
-		})
-		It("breaks up the slice if len > chunkSize", func() {
-			slice := []string{"a", "b", "c", "d", "e"}
-			chunks := BreakUpStringSlice(slice, 3)
-			Expect(chunks).To(HaveLen(2))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
-			Expect(chunks[1]).To(ConsistOf("d", "e"))
-		})
-	})
-
 	Describe("LongestCommonPrefix", func() {
 		It("finds the longest common prefix", func() {
 			Expect(LongestCommonPrefix(testPaths)).To(Equal("/Music/iTunes 1/iTunes Media/Music/"))

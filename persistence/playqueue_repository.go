@@ -9,7 +9,7 @@ import (
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type playQueueRepository struct {
@@ -113,7 +113,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	}
 
 	// Break the list in chunks, up to 50 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	chunks := utils.BreakUpStringSlice(ids, 50)
+	chunks := slice.BreakUp(ids, 50)
 
 	// Query each chunk of media_file ids and store results in a map
 	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)

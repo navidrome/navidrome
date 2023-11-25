@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/maps"
 )
@@ -71,7 +70,7 @@ func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity 
 	}
 
 	ids := maps.Keys(m)
-	chunks := utils.BreakUpStringSlice(ids, 100)
+	chunks := slice.BreakUp(ids, 100)
 	for _, chunk := range chunks {
 		err := refresh(ctx, chunk...)
 		if err != nil {
