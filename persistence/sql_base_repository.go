@@ -168,7 +168,7 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 		r.logSQL(query, args, nil, c, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, nil, c, start)
+	r.logSQL(query, args, err, c, start)
 	return err
 }
 
