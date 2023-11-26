@@ -77,7 +77,7 @@ var _ = Describe("Extractor", func() {
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m).To(HaveKey("bitrate"))
-			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40", "49"))
+			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40", "43", "49"))
 		})
 
 		DescribeTable("Format-Specific tests",
