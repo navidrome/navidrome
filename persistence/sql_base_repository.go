@@ -178,12 +178,11 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options 
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
-	if options.Offset > 0 {
+	if options.Offset > 50000 {
 		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
-		oidSq.RemoveOffset()
-		oidSq.RemoveLimit().Limit(uint64(options.Offset))
+		oidSq = oidSq.RemoveOffset().Limit(uint64(options.Offset))
 		oidSql, args, _ := oidSq.ToSql()
-		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
+		sq = sq.RemoveOffset().Where(r.tableName+".oid not in ("+oidSql+")", args...)
 	}
 	return sq
 }
