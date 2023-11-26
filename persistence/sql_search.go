@@ -32,11 +32,14 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 }
 
 func fullTextExpr(value string) Sqlizer {
+	q := utils.SanitizeStrings(value)
+	if q == "" {
+		return nil
+	}
 	var sep string
 	if !conf.Server.SearchFullString {
 		sep = " "
 	}
-	q := utils.SanitizeStrings(value)
 	parts := strings.Split(q, " ")
 	filters := And{}
 	for _, part := range parts {
