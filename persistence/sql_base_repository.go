@@ -10,6 +10,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -178,11 +179,12 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options 
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
-	if options.Offset > 50000 {
+	if options.Offset > conf.Server.DevOffsetOptimize {
+		sq = sq.RemoveOffset()
 		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
-		oidSq = oidSq.RemoveOffset().Limit(uint64(options.Offset))
+		oidSq = oidSq.Limit(uint64(options.Offset))
 		oidSql, args, _ := oidSq.ToSql()
-		sq = sq.RemoveOffset().Where(r.tableName+".oid not in ("+oidSql+")", args...)
+		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
 	}
 	return sq
 }
