@@ -182,8 +182,8 @@ func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryO
 		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
 		oidSq.RemoveOffset()
 		oidSq.RemoveLimit().Limit(uint64(options.Offset))
-		oidSql, _, _ := oidSq.ToSql()
-		sq = sq.Where(r.tableName + ".oid not in (" + oidSql + ")")
+		oidSql, args, _ := oidSq.ToSql()
+		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
 	}
 	return sq
 }

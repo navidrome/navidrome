@@ -22,11 +22,16 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	}
 
 	sq := r.newSelectWithAnnotation(r.tableName + ".id").Columns("*")
-	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
-	if len(orderBys) > 0 {
+	filter := fullTextExpr(q)
+	// If the filter is empty, we sort by id.
+	// This is to speed up the results of `search3?query=""`, for OpenSubsonic
+	if filter != nil && len(orderBys) > 0 {
 		sq = sq.OrderBy(orderBys...)
+	} else {
+		sq = sq.OrderBy("id")
 	}
-	sq = sq.Where(fullTextExpr(q))
+	sq = sq.Where(filter)
+	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	err := r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 	return err
 }
