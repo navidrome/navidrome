@@ -76,7 +76,6 @@ func artistFilter(field string, value interface{}) Sqlizer {
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("album.id")
-	sql = r.withGenres(sql)
 	return r.count(sql, options...)
 }
 
