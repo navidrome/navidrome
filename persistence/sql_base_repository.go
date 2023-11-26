@@ -168,7 +168,7 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 		r.logSQL(query, args, nil, c, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, nil, c, start)
+	r.logSQL(query, args, err, c, start)
 	return err
 }
 
@@ -180,7 +180,9 @@ func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
-	countQuery = countQuery.Columns("count(distinct " + r.tableName + ".id) as count").From(r.tableName)
+	countQuery = countQuery.
+		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
+		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
