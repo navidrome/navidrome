@@ -181,7 +181,8 @@ func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
-		RemoveColumns().Columns("count(*) as count").From(r.tableName)
+		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
+		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
