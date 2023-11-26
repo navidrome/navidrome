@@ -157,7 +157,10 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	return err
 }
 
-func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
+func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options ...model.QueryOptions) error {
+	if len(options) > 0 && options[0].Offset > 0 {
+		sq = r.optimizePagination(sq, options[0])
+	}
 	query, args, err := sq.ToSql()
 	if err != nil {
 		return err
@@ -170,6 +173,19 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 	}
 	r.logSQL(query, args, err, c, start)
 	return err
+}
+
+// optimizePagination uses a less inefficient pagination, by not using OFFSET.
+// See https://gist.github.com/ssokolow/262503
+func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
+	if options.Offset > 0 {
+		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
+		oidSq.RemoveOffset()
+		oidSq.RemoveLimit().Limit(uint64(options.Offset))
+		oidSql, _, _ := oidSq.ToSql()
+		sq = sq.Where(r.tableName + ".oid not in (" + oidSql + ")")
+	}
+	return sq
 }
 
 func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {

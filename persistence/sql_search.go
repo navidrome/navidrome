@@ -5,6 +5,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -26,7 +27,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 		sq = sq.OrderBy(orderBys...)
 	}
 	sq = sq.Where(fullTextExpr(q))
-	err := r.queryAll(sq, results)
+	err := r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 	return err
 }
 
