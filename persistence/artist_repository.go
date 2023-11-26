@@ -52,7 +52,6 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("artist.id")
-	sql = r.withGenres(sql)
 	return r.count(sql, options...)
 }
 
