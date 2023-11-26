@@ -75,6 +75,8 @@ var (
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
 	bitRateRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: Audio:.*, (\d+) kb/s`)
 
+	lyricTagRx = regexp.MustCompile(`(?i)lyrics(-([a-zA-Z]+))?`)
+
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
 	//    Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
 	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: Audio: (.*), (.* Hz), ([\w.]+),*(.*.,)*`)
@@ -111,6 +113,8 @@ func (e *Extractor) parseInfo(info string) map[string][]string {
 	reader := strings.NewReader(info)
 	scanner := bufio.NewScanner(reader)
 	lastTag := ""
+	lastEncoding := ""
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 {
@@ -121,7 +125,23 @@ func (e *Extractor) parseInfo(info string) map[string][]string {
 			tagName := strings.TrimSpace(strings.ToLower(match[1]))
 			if tagName != "" {
 				tagValue := strings.TrimSpace(match[2])
+				lyricMatch := lyricTagRx.FindStringSubmatch(tagName)
+				if len(lyricMatch) > 0 {
+					var encoding string
+					if lyricMatch[2] != "" {
+						encoding = lyricMatch[2]
+						tags[metadata.ENCODED_LYRICS_KEY] = []string{"1"}
+					} else {
+						encoding = "xxx"
+					}
+					lastEncoding = encoding
+					tagName = "lyrics"
+					tags["lyrics"] = append(tags["lyrics"], encoding)
+				} else {
+					lastEncoding = ""
+				}
 				tags[tagName] = append(tags[tagName], tagValue)
+
 				lastTag = tagName
 				continue
 			}
@@ -130,11 +150,20 @@ func (e *Extractor) parseInfo(info string) map[string][]string {
 		if lastTag != "" {
 			match = continuationRx.FindStringSubmatch(line)
 			if len(match) > 0 {
-				if tags[lastTag] == nil {
-					tags[lastTag] = []string{""}
+				if lastEncoding != "" {
+					if tags[lastTag] == nil {
+						tags[lastTag] = []string{lastEncoding}
+					}
+					tagList := tags[lastTag]
+					tags[lastTag][len(tagList)-1] += "\n" + strings.TrimSpace(match[1])
+				} else {
+					if tags[lastTag] == nil {
+						tags[lastTag] = []string{""}
+					}
+					tagValue := tags[lastTag][0]
+					tags[lastTag][0] = tagValue + "\n" + strings.TrimSpace(match[1])
 				}
-				tagValue := tags[lastTag][0]
-				tags[lastTag][0] = tagValue + "\n" + strings.TrimSpace(match[1])
+
 				continue
 			}
 		}

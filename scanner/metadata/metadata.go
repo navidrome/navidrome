@@ -17,6 +17,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+const ENCODED_LYRICS_KEY = "__navidrome__lyrics"
+
 type Extractor interface {
 	Parse(files ...string) (map[string]ParsedTags, error)
 	CustomMappings() ParsedTags
@@ -105,7 +107,26 @@ func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string {
-	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
+	result := ""
+
+	if t.getFirstTagValue(ENCODED_LYRICS_KEY) == "1" {
+		tags := t.getAllTagValues("lyrics")
+
+		for i := 0; i < len(tags); i += 2 {
+			result += fmt.Sprintf("%s\u200b%s\u200b", tags[i], tags[i+1])
+		}
+	} else {
+		tags := t.getAllTagValues("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
+
+		for _, tag := range tags {
+			result += fmt.Sprintf("xxx\u200b%s\u200b", tag)
+		}
+	}
+
+	if len(result) > 0 {
+		result = strings.TrimSuffix(result, consts.Zwsp)
+	}
+	return result
 }
 func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
 func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http/httptest"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -100,7 +102,127 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Artist).To(Equal(""))
 			Expect(response.Lyrics.Title).To(Equal(""))
 			Expect(response.Lyrics.Value).To(Equal(""))
+		})
+	})
 
+	Describe("getLyricsBySongId", func() {
+		const syncedLyrics = "[00:18.80]We're no strangers to love\n[00:22.801]You know the rules and so do I"
+		const unsyncedLyrics = "We're no strangers to love\nYou know the rules and so do I"
+		const metadata = "[ar:Rick Astley]\n[ti:That one song]\n[offset:-100]"
+		var times = []int64{int64(18800), int64(22801)}
+
+		compareResponses := func(actual *responses.LyricsList, expected responses.LyricsList) {
+			Expect(actual).ToNot(BeNil())
+			Expect(actual.StructuredLyrics).To(HaveLen(len(expected.StructuredLyrics)))
+			for i, realLyric := range actual.StructuredLyrics {
+				expectedLyric := expected.StructuredLyrics[i]
+
+				Expect(realLyric.DisplayArtist).To(Equal(expectedLyric.DisplayArtist))
+				Expect(realLyric.DisplayTitle).To(Equal(expectedLyric.DisplayTitle))
+				Expect(realLyric.Lang).To(Equal(expectedLyric.Lang))
+				Expect(realLyric.Synced).To(Equal(expectedLyric.Synced))
+
+				if expectedLyric.Offset == nil {
+					Expect(realLyric.Offset).To(BeNil())
+				} else {
+					Expect(*realLyric.Offset).To(Equal(*expectedLyric.Offset))
+				}
+
+				Expect(realLyric.Line).To(HaveLen(len(expectedLyric.Line)))
+				for j, realLine := range realLyric.Line {
+					expectedLine := expectedLyric.Line[j]
+					Expect(realLine.Value).To(Equal(expectedLine.Value))
+
+					if expectedLine.Start == nil {
+						Expect(realLine.Start).To(BeNil())
+					} else {
+						Expect(*realLine.Start).To(Equal(*expectedLine.Start))
+					}
+				}
+			}
+		}
+
+		It("should return mixed lyrics", func() {
+			r := newGetRequest("id=1")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: fmt.Sprintf("eng\u200b%s\u200bxxx\u200b%s", syncedLyrics, unsyncedLyrics),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: []responses.StructuredLyrics{
+					{
+						Lang:   "eng",
+						Synced: true,
+						Line: []responses.Line{
+							{
+								Start: &times[0],
+								Value: "We're no strangers to love",
+							},
+							{
+								Start: &times[1],
+								Value: "You know the rules and so do I",
+							},
+						},
+					},
+					{
+						Lang:   "xxx",
+						Synced: false,
+						Line: []responses.Line{
+							{
+								Value: "We're no strangers to love",
+							},
+							{
+								Value: "You know the rules and so do I",
+							},
+						},
+					},
+				},
+			})
+		})
+
+		It("should parse lrc metadata", func() {
+			r := newGetRequest("id=1")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: fmt.Sprintf("eng\u200b%s\n%s", metadata, syncedLyrics),
+				},
+			})
+
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+
+			offset := int64(-100)
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: []responses.StructuredLyrics{
+					{
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "That one song",
+						Lang:          "eng",
+						Synced:        true,
+						Line: []responses.Line{
+							{
+								Start: &times[0],
+								Value: "We're no strangers to love",
+							},
+							{
+								Start: &times[1],
+								Value: "You know the rules and so do I",
+							},
+						},
+						Offset: &offset,
+					},
+				},
+			})
 		})
 	})
 })
@@ -153,4 +275,13 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 
 func (m *mockedMediaFile) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
 	return m.data, nil
+}
+
+func (m *mockedMediaFile) Get(id string) (*model.MediaFile, error) {
+	for _, mf := range m.data {
+		if mf.ID == id {
+			return &mf, nil
+		}
+	}
+	return nil, model.ErrNotFound
 }

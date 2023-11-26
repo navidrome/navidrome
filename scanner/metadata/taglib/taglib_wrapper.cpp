@@ -3,15 +3,19 @@
 #include <typeinfo>
 
 #define TAGLIB_STATIC
+#include <aifffile.h>
 #include <asffile.h>
 #include <fileref.h>
 #include <flacfile.h>
 #include <id3v2tag.h>
+#include <unsynchronizedlyricsframe.h>
+#include <synchronizedlyricsframe.h>
 #include <mp4file.h>
 #include <mpegfile.h>
 #include <opusfile.h>
 #include <tpropertymap.h>
 #include <vorbisfile.h>
+#include <wavfile.h>
 
 #include "taglib_wrapper.h"
 
@@ -21,6 +25,9 @@ const char *RG_TAGS[] = {
     "replaygain_album_peak",
     "replaygain_track_gain",
     "replaygain_track_peak"};
+
+char *LYRICS_KEY = (char *) "lyrics";
+char *CUSTOM_LYRICS = (char *) "__navidrome__lyrics";
 
 char has_cover(const TagLib::FileRef f);
 
@@ -64,16 +71,61 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
+  TagLib::ID3v2::Tag *id3Tags = NULL;
+
   // Get some extended/non-standard ID3-only tags (ex: iTunes extended frames)
   TagLib::MPEG::File *mp3File(dynamic_cast<TagLib::MPEG::File *>(f.file()));
   if (mp3File != NULL) {
-    if (mp3File->ID3v2Tag()) {
-      const auto &frameListMap(mp3File->ID3v2Tag()->frameListMap());
+    id3Tags = mp3File->ID3v2Tag();
+  }
 
-      for (const auto &kv : frameListMap) {
-        if (!kv.second.isEmpty())
+  if (id3Tags == NULL) {
+    TagLib::RIFF::WAV::File *wavFile(dynamic_cast<TagLib::RIFF::WAV::File *>(f.file()));
+    if (wavFile != NULL && wavFile->hasID3v2Tag()) {
+      id3Tags = wavFile->ID3v2Tag();
+    }
+  }
+
+  if (id3Tags == NULL) {
+    TagLib::RIFF::AIFF::File *aiffFile(dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file()));
+    if (aiffFile && aiffFile->hasID3v2Tag()) {
+      id3Tags = aiffFile->tag();
+    }
+  }
+
+  // Yes, it is possible to have ID3v2 tags in FLAC. However, that can cause problems 
+  // with many players, so they will not be parsed
+
+  if (id3Tags != NULL) {
+    const auto &frameListMap(id3Tags->frameListMap());
+
+    for (const auto &kv : frameListMap) {
+      if (!kv.second.isEmpty())
+        if (kv.first == "USLT") {
+          bool hasLyrics = false;
+
+          for (const auto &uslt: kv.second) {
+            TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(uslt);
+            if (frame == NULL) continue;
+
+            char lang[4];
+            strncpy(lang, frame->language().data(), 3);
+            lang[3] = '\0';
+            char *val = ::strdup(frame->text().toCString(true));
+
+            go_map_put_str(id, LYRICS_KEY, lang);
+            go_map_put_str(id, LYRICS_KEY, val);
+            tags.erase("LYRICS");
+            hasLyrics = true;
+            free(val);
+          }
+
+          if (hasLyrics) {
+            go_map_put_int(id, CUSTOM_LYRICS, 1);
+          }
+        } else {
           tags.insert(kv.first, kv.second.front()->toString());
-      }
+        }
     }
   }
 
@@ -108,10 +160,12 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
       char *key = ::strdup(item.first.toCString(true));
-      char *val = ::strdup(item.second.front().toString().toCString());
-      go_map_put_str(id, key, val);
+      for (const auto &value: item.second) {
+        char *val = ::strdup(value.toString().toCString());
+        go_map_put_str(id, key, val);
+        free(val); 
+      }
       free(key);
-      free(val); 
     }
 
     // Compilation tag needs to be handled differently

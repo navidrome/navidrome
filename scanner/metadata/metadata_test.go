@@ -1,7 +1,10 @@
 package metadata_test
 
 import (
+	"strings"
+
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
@@ -10,6 +13,9 @@ import (
 )
 
 var _ = Describe("Tags", func() {
+	const englishLyric = "[00:00.00]This is\n[00:02.50]English"
+	const unspecifiedLyric = "[00:00.00]This is\n[00:02.50]unspecified"
+
 	Context("Extract", func() {
 		BeforeEach(func() {
 			conf.Server.Scanner.Extractor = "taglib"
@@ -61,10 +67,65 @@ var _ = Describe("Tags", func() {
 			Expect(m.Duration()).To(BeNumerically("~", 1.04, 0.01))
 			Expect(m.Suffix()).To(Equal("ogg"))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.ogg"))
-			Expect(m.Size()).To(Equal(int64(6333)))
+			Expect(m.Size()).To(Equal(int64(5534)))
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m.BitRate()).To(BeElementOf(18, 39, 40, 49))
 		})
+
+		DescribeTable("Lyrics test",
+			func(file string, langEncoded bool) {
+				path := "tests/fixtures/" + file
+				mds, err := metadata.Extract(path)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mds).To(HaveLen(1))
+
+				m := mds[path]
+				var lyrics string
+				if langEncoded {
+					lyrics = strings.Join([]string{"eng", englishLyric, "xxx", unspecifiedLyric}, consts.Zwsp)
+				} else {
+					lyrics = strings.Join([]string{"xxx", unspecifiedLyric, "xxx", englishLyric}, consts.Zwsp)
+				}
+				Expect(m.Lyrics()).To(Equal(lyrics))
+			},
+
+			Entry("Parses AIFF file", "test.aiff", true),
+			Entry("Parses FLAC files", "test.flac", false),
+			Entry("Parses M4A files", "01 Invisible (RED) Edit Version.m4a", false),
+			Entry("Parses MP3 files", "test.mp3", true),
+			Entry("Parses OGG Vorbis files", "test.ogg", false),
+			Entry("Parses WAV files", "test.wav", true),
+			Entry("Parses WMA files", "test.wma", false),
+			Entry("Parses WV files", "test.wv", false),
+		)
+	})
+
+	Context("Extract", func() {
+		BeforeEach(func() {
+			conf.Server.Scanner.Extractor = "ffmpeg"
+		})
+
+		DescribeTable("Lyrics test",
+			func(file string) {
+				path := "tests/fixtures/" + file
+				mds, err := metadata.Extract(path)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mds).To(HaveLen(1))
+
+				m := mds[path]
+				lyrics := strings.Join([]string{"eng", englishLyric, "xxx", unspecifiedLyric}, consts.Zwsp)
+
+				Expect(m.Lyrics()).To(Equal(lyrics))
+			},
+
+			Entry("Parses AIFF file", "test.aiff"),
+			Entry("Parses MP3 files", "test.mp3"),
+			Entry("Parses WAV files", "test.wav"),
+
+			// FFMPEG behaves very weirdly for multivalued tags for non-ID3
+			// Specifically, they are separated by ";, which is indistinguishable
+			// from other fields
+		)
 	})
 })

@@ -40,12 +40,21 @@ const mapToAudioLists = (item) => {
   }
 
   const { lyrics } = item
+  let lyricText = ''
+
+  if (lyrics) {
+    const split = lyrics.split('\u200B')
+    if (split.length > 1) {
+      lyricText = split[1]
+    }
+  }
+
   return {
     trackId,
     uuid: uuidv4(),
     song: item,
     name: item.title,
-    lyric: timestampRegex.test(lyrics) ? lyrics : '',
+    lyric: timestampRegex.test(lyricText) ? lyricText : '',
     singer: item.artist,
     duration: item.duration,
     musicSrc: subsonic.streamUrl(trackId),

@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/navidrome/navidrome/scanner/metadata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -50,7 +51,13 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("bitrate", []string{"192"}))
 			Expect(m).To(HaveKeyWithValue("channels", []string{"2"}))
 			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
-			Expect(m).To(HaveKeyWithValue("lyrics", []string{"Lyrics 1\rLyrics 2"}))
+			Expect(m).To(HaveKeyWithValue("lyrics", []string{
+				"eng",
+				"[00:00.00]This is\n[00:02.50]English",
+				"xxx",
+				"[00:00.00]This is\n[00:02.50]unspecified",
+			}))
+			Expect(m).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
 			Expect(m).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
 			Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
@@ -74,7 +81,7 @@ var _ = Describe("Extractor", func() {
 		})
 
 		DescribeTable("Format-Specific tests",
-			func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string) {
+			func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -105,7 +112,23 @@ var _ = Describe("Extractor", func() {
 
 				Expect(m).To(HaveKeyWithValue("channels", []string{channels}))
 				Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
-				Expect(m).To(HaveKeyWithValue("lyrics", []string{"Lyrics1\nLyrics 2"}))
+
+				if id3Lyrics {
+					Expect(m).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
+					Expect(m).To(HaveKeyWithValue("lyrics", []string{
+						"eng",
+						"[00:00.00]This is\n[00:02.50]English",
+						"xxx",
+						"[00:00.00]This is\n[00:02.50]unspecified",
+					}))
+				} else {
+					Expect(m).ToNot(HaveKey(metadata.ENCODED_LYRICS_KEY))
+					Expect(m).To(HaveKeyWithValue("lyrics", []string{
+						"[00:00.00]This is\n[00:02.50]unspecified",
+						"[00:00.00]This is\n[00:02.50]English",
+					}))
+				}
+
 				Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
 
 				Expect(m).To(HaveKey("tracknumber"))
@@ -115,25 +138,25 @@ var _ = Describe("Extractor", func() {
 			},
 
 			// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
-			Entry("correctly parses flac tags", "test.flac", "1.00", "1", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948"),
+			Entry("correctly parses flac tags", "test.flac", "1.00", "1", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false),
 
-			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48"),
+			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48", false),
 
-			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04", "2", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506"),
+			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04", "2", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
-			Entry("correctly parses wma/asf tags", "test.wma", "1.02", "1", "3.27 dB", "0.132914", "3.27 dB", "0.132914"),
+			// Weird note: for the tag parsing to work, the lyrics are actually stored in the reverse order
+			Entry("correctly parses wma/asf tags", "test.wma", "1.02", "1", "3.27 dB", "0.132914", "3.27 dB", "0.132914", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
-			Entry("correctly parses wv (wavpak) tags", "test.wv", "1.00", "1", "3.43 dB", "0.125061", "3.43 dB", "0.125061"),
+			Entry("correctly parses wv (wavpak) tags", "test.wv", "1.00", "1", "3.43 dB", "0.125061", "3.43 dB", "0.125061", false),
 
 			// TODO - these breaks in the pipeline as it uses TabLib 1.11. Once Ubuntu 24.04 is released we can uncomment these tests
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
-			//Entry("correctly parses wav tags", "test.wav", "1.00", "1", "3.06 dB", "0.125056", "3.06 dB", "0.125056"),
+			Entry("correctly parses wav tags", "test.wav", "1.00", "1", "3.06 dB", "0.125056", "3.06 dB", "0.125056", true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
-			//Entry("correctly parses aiff tags", "test.aiff", "1.00", "1", "2.00 dB", "0.124972", "2.00 dB", "0.124972"),
-
+			Entry("correctly parses aiff tags", "test.aiff", "1.00", "1", "2.00 dB", "0.124972", "2.00 dB", "0.124972", true),
 		)
 	})
 

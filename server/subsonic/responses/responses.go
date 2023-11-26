@@ -58,6 +58,7 @@ type Subsonic struct {
 	JukeboxPlaylist *JukeboxPlaylist `xml:"jukeboxPlaylist,omitempty"                     json:"jukeboxPlaylist,omitempty"`
 
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
+	LyricsList             *LyricsList             `xml:"lyricsList,omitempty" json:"lyricsList,omitempty"`
 }
 
 type JsonWrapper struct {
@@ -424,7 +425,44 @@ type JukeboxPlaylist struct {
 	JukeboxStatus
 	Entry []Child `xml:"entry,omitempty"         json:"entry,omitempty"`
 }
-type OpenSubsonicExtensions struct{}
+
+type Version struct {
+	Version int32 `xml:"version"`
+}
+
+func (v Version) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.Version)
+}
+
+type OpenSubsonicExtension struct {
+	Name     string    `xml:"name" json:"name"`
+	Versions []Version `xml:"versions" json:"versions"`
+}
+type OpenSubsonicExtensions struct {
+	OpenSubsonicExtensions []OpenSubsonicExtension `xml:"openSubsonicExtension" json:"openSubsonicExtension"`
+}
+
+func (o OpenSubsonicExtensions) MarshalJSON() ([]byte, error) {
+	return json.Marshal(o.OpenSubsonicExtensions)
+}
+
+type Line struct {
+	Start *int64 `xml:"start,attr,omitempty" json:"start,omitempty"`
+	Value string `xml:"value"                json:"value"`
+}
+
+type StructuredLyrics struct {
+	DisplayArtist string `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
+	Lang          string `xml:"lang,attr"                    json:"lang"`
+	Line          []Line `xml:"line"                         json:"line"`
+	Offset        *int64 `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
+	Synced        bool   `xml:"synced,attr"                  json:"synced"`
+}
+
+type LyricsList struct {
+	StructuredLyrics []StructuredLyrics `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+}
 
 // OpenSubsonic response type for multi-valued genres list
 type ItemGenre struct {

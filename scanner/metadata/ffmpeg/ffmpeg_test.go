@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"github.com/navidrome/navidrome/scanner/metadata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -315,5 +316,38 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		Expect(md).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
 		Expect(md).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
 
+	})
+
+	It("parses lyrics with language code", func() {
+		const output = `
+		Input #0, mp3, from 'test.mp3':
+  		Metadata:
+				lyrics-eng      : [00:00.00]This is
+												: [00:02.50]English
+				lyrics-xxx      : [00:00.00]This is
+												: [00:02.50]unspecified
+		`
+		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		Expect(md).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
+		Expect(md).To(HaveKeyWithValue("lyrics", []string{
+			"eng",
+			"[00:00.00]This is\n[00:02.50]English",
+			"xxx",
+			"[00:00.00]This is\n[00:02.50]unspecified",
+		}))
+	})
+
+	It("parses normal LYRICS tag", func() {
+		const output = `
+		Input #0, mp3, from 'test.mp3':
+  		Metadata:
+				LYRICS      : [00:00.00]This is
+										: [00:02.50]English
+		`
+		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+		Expect(md).To(HaveKeyWithValue("lyrics", []string{
+			"xxx",
+			"[00:00.00]This is\n[00:02.50]English",
+		}))
 	})
 })
