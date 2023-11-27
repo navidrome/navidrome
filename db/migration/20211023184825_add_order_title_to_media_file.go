@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -10,10 +11,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upAddOrderTitleToMediaFile, downAddOrderTitleToMediaFile)
+	goose.AddMigrationContext(upAddOrderTitleToMediaFile, downAddOrderTitleToMediaFile)
 }
 
-func upAddOrderTitleToMediaFile(tx *sql.Tx) error {
+func upAddOrderTitleToMediaFile(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table main.media_file
 	add order_title varchar null collate NOCASE;
@@ -56,6 +57,6 @@ func upAddOrderTitleToMediaFile_populateOrderTitle(tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downAddOrderTitleToMediaFile(tx *sql.Tx) error {
+func downAddOrderTitleToMediaFile(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

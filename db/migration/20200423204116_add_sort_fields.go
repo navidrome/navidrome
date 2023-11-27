@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200423204116, Down20200423204116)
+	goose.AddMigrationContext(Up20200423204116, Down20200423204116)
 }
 
-func Up20200423204116(tx *sql.Tx) error {
+func Up20200423204116(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table artist
 	add order_artist_name varchar(255) collate nocase;
@@ -60,6 +61,6 @@ create index if not exists media_file_order_artist_name
 	return forceFullRescan(tx)
 }
 
-func Down20200423204116(tx *sql.Tx) error {
+func Down20200423204116(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upDropEmailUniqueConstraint, downDropEmailUniqueConstraint)
+	goose.AddMigrationContext(upDropEmailUniqueConstraint, downDropEmailUniqueConstraint)
 }
 
-func upDropEmailUniqueConstraint(tx *sql.Tx) error {
+func upDropEmailUniqueConstraint(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table user_dg_tmp
 (
@@ -37,6 +38,6 @@ alter table user_dg_tmp rename to user;
 	return err
 }
 
-func downDropEmailUniqueConstraint(tx *sql.Tx) error {
+func downDropEmailUniqueConstraint(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

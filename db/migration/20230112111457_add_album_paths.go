@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
 	"strings"
@@ -12,10 +13,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upAddAlbumPaths, downAddAlbumPaths)
+	goose.AddMigrationContext(upAddAlbumPaths, downAddAlbumPaths)
 }
 
-func upAddAlbumPaths(tx *sql.Tx) error {
+func upAddAlbumPaths(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`alter table album add paths varchar;`)
 	if err != nil {
 		return err
@@ -62,6 +63,6 @@ func upAddAlbumPathsDirs(filePaths string) string {
 	return strings.Join(dirs, string(filepath.ListSeparator))
 }
 
-func downAddAlbumPaths(tx *sql.Tx) error {
+func downAddAlbumPaths(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

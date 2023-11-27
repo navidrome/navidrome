@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/navidrome/navidrome/log"
@@ -9,10 +10,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upUnescapeLyricsAndComments, downUnescapeLyricsAndComments)
+	goose.AddMigrationContext(upUnescapeLyricsAndComments, downUnescapeLyricsAndComments)
 }
 
-func upUnescapeLyricsAndComments(tx *sql.Tx) error {
+func upUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
 	rows, err := tx.Query(`select id, comment, lyrics, title from media_file`)
 	if err != nil {
 		return err
@@ -42,6 +43,6 @@ func upUnescapeLyricsAndComments(tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downUnescapeLyricsAndComments(tx *sql.Tx) error {
+func downUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

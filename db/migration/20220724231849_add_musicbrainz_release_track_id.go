@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddMusicbrainzReleaseTrackId, downAddMusicbrainzReleaseTrackId)
+	goose.AddMigrationContext(upAddMusicbrainzReleaseTrackId, downAddMusicbrainzReleaseTrackId)
 }
 
-func upAddMusicbrainzReleaseTrackId(tx *sql.Tx) error {
+func upAddMusicbrainzReleaseTrackId(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
 	add mbz_release_track_id varchar(255);
@@ -22,7 +23,7 @@ alter table media_file
 	return forceFullRescan(tx)
 }
 
-func downAddMusicbrainzReleaseTrackId(tx *sql.Tx) error {
+func downAddMusicbrainzReleaseTrackId(_ context.Context, tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	return nil
 }

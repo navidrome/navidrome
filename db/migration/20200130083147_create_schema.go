@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/navidrome/navidrome/log"
@@ -8,10 +9,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(Up20200130083147, Down20200130083147)
+	goose.AddMigrationContext(Up20200130083147, Down20200130083147)
 }
 
-func Up20200130083147(tx *sql.Tx) error {
+func Up20200130083147(_ context.Context, tx *sql.Tx) error {
 	log.Info("Creating DB Schema")
 	_, err := tx.Exec(`
 create table if not exists album
@@ -178,6 +179,6 @@ create table if not exists user
 	return err
 }
 
-func Down20200130083147(tx *sql.Tx) error {
+func Down20200130083147(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

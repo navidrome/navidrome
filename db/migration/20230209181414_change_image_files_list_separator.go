@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
 	"strings"
@@ -12,11 +13,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upChangeImageFilesListSeparator, downChangeImageFilesListSeparator)
+	goose.AddMigrationContext(upChangeImageFilesListSeparator, downChangeImageFilesListSeparator)
 }
 
-func upChangeImageFilesListSeparator(tx *sql.Tx) error {
-	//nolint:gosec
+func upChangeImageFilesListSeparator(_ context.Context, tx *sql.Tx) error {
 	rows, err := tx.Query(`select id, image_files from album`)
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func upChangeImageFilesListSeparatorDirs(filePaths string) string {
 	return strings.Join(allPaths, consts.Zwsp)
 }
 
-func downChangeImageFilesListSeparator(tx *sql.Tx) error {
+func downChangeImageFilesListSeparator(_ context.Context, tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	return nil
 }

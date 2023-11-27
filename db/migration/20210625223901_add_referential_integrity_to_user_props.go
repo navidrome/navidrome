@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddReferentialIntegrityToUserProps, downAddReferentialIntegrityToUserProps)
+	goose.AddMigrationContext(upAddReferentialIntegrityToUserProps, downAddReferentialIntegrityToUserProps)
 }
 
-func upAddReferentialIntegrityToUserProps(tx *sql.Tx) error {
+func upAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table user_props_dg_tmp
 (
@@ -33,6 +34,6 @@ alter table user_props_dg_tmp rename to user_props;
 	return err
 }
 
-func downAddReferentialIntegrityToUserProps(tx *sql.Tx) error {
+func downAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

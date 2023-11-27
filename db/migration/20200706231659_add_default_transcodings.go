@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/google/uuid"
@@ -9,10 +10,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upAddDefaultTranscodings, downAddDefaultTranscodings)
+	goose.AddMigrationContext(upAddDefaultTranscodings, downAddDefaultTranscodings)
 }
 
-func upAddDefaultTranscodings(tx *sql.Tx) error {
+func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	row := tx.QueryRow("SELECT COUNT(*) FROM transcoding")
 	var count int
 	err := row.Scan(&count)
@@ -37,6 +38,6 @@ func upAddDefaultTranscodings(tx *sql.Tx) error {
 	return nil
 }
 
-func downAddDefaultTranscodings(tx *sql.Tx) error {
+func downAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

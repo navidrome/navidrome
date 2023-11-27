@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddMediafileChannels, downAddMediafileChannels)
+	goose.AddMigrationContext(upAddMediafileChannels, downAddMediafileChannels)
 }
 
-func upAddMediafileChannels(tx *sql.Tx) error {
+func upAddMediafileChannels(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
     add channels integer;
@@ -25,6 +26,6 @@ create index if not exists media_file_channels
 	return forceFullRescan(tx)
 }
 
-func downAddMediafileChannels(tx *sql.Tx) error {
+func downAddMediafileChannels(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

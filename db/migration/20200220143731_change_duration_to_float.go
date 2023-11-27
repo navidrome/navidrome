@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200220143731, Down20200220143731)
+	goose.AddMigrationContext(Up20200220143731, Down20200220143731)
 }
 
-func Up20200220143731(tx *sql.Tx) error {
+func Up20200220143731(_ context.Context, tx *sql.Tx) error {
 	notice(tx, "This migration will force the next scan to be a full rescan!")
 	_, err := tx.Exec(`
 create table media_file_dg_tmp
@@ -124,6 +125,6 @@ update media_file set updated_at = '0001-01-01';
 	return err
 }
 
-func Down20200220143731(tx *sql.Tx) error {
+func Down20200220143731(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

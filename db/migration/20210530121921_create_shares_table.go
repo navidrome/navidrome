@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upCreateSharesTable, downCreateSharesTable)
+	goose.AddMigrationContext(upCreateSharesTable, downCreateSharesTable)
 }
 
-func upCreateSharesTable(tx *sql.Tx) error {
+func upCreateSharesTable(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table share
 (
@@ -29,6 +30,6 @@ create table share
 	return err
 }
 
-func downCreateSharesTable(tx *sql.Tx) error {
+func downCreateSharesTable(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upDropPlayerNameUniqueConstraint, downDropPlayerNameUniqueConstraint)
+	goose.AddMigrationContext(upDropPlayerNameUniqueConstraint, downDropPlayerNameUniqueConstraint)
 }
 
-func upDropPlayerNameUniqueConstraint(tx *sql.Tx) error {
+func upDropPlayerNameUniqueConstraint(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table player_dg_tmp
 (
@@ -42,6 +43,6 @@ create index if not exists player_name
 	return err
 }
 
-func downDropPlayerNameUniqueConstraint(tx *sql.Tx) error {
+func downDropPlayerNameUniqueConstraint(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

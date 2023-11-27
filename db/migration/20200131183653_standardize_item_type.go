@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200131183653, Down20200131183653)
+	goose.AddMigrationContext(Up20200131183653, Down20200131183653)
 }
 
-func Up20200131183653(tx *sql.Tx) error {
+func Up20200131183653(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table search_dg_tmp
 (
@@ -36,7 +37,7 @@ update annotation set item_type = 'media_file' where item_type = 'mediaFile';
 	return err
 }
 
-func Down20200131183653(tx *sql.Tx) error {
+func Down20200131183653(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table search_dg_tmp
 (

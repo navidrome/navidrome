@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -10,10 +11,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upFixAlbumComments, downFixAlbumComments)
+	goose.AddMigrationContext(upFixAlbumComments, downFixAlbumComments)
 }
 
-func upFixAlbumComments(tx *sql.Tx) error {
+func upFixAlbumComments(_ context.Context, tx *sql.Tx) error {
 	//nolint:gosec
 	rows, err := tx.Query(`
 	SELECT album.id, group_concat(media_file.comment, '` + consts.Zwsp + `') FROM album, media_file WHERE media_file.album_id = album.id GROUP BY album.id;
@@ -48,7 +49,7 @@ func upFixAlbumComments(tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downFixAlbumComments(tx *sql.Tx) error {
+func downFixAlbumComments(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
 

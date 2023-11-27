@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddUserPrefsPlayerScrobblerEnabled, downAddUserPrefsPlayerScrobblerEnabled)
+	goose.AddMigrationContext(upAddUserPrefsPlayerScrobblerEnabled, downAddUserPrefsPlayerScrobblerEnabled)
 }
 
-func upAddUserPrefsPlayerScrobblerEnabled(tx *sql.Tx) error {
+func upAddUserPrefsPlayerScrobblerEnabled(_ context.Context, tx *sql.Tx) error {
 	err := upAddUserPrefs(tx)
 	if err != nil {
 		return err
@@ -39,6 +40,6 @@ alter table player add scrobble_enabled bool default true;
 	return err
 }
 
-func downAddUserPrefsPlayerScrobblerEnabled(tx *sql.Tx) error {
+func downAddUserPrefsPlayerScrobblerEnabled(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

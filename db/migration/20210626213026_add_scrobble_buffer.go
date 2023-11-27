@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddScrobbleBuffer, downAddScrobbleBuffer)
+	goose.AddMigrationContext(upAddScrobbleBuffer, downAddScrobbleBuffer)
 }
 
-func upAddScrobbleBuffer(tx *sql.Tx) error {
+func upAddScrobbleBuffer(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table if not exists scrobble_buffer
 (
@@ -33,6 +34,6 @@ create table if not exists scrobble_buffer
 	return err
 }
 
-func downAddScrobbleBuffer(tx *sql.Tx) error {
+func downAddScrobbleBuffer(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upCreateInternetRadio, downCreateInternetRadio)
+	goose.AddMigrationContext(upCreateInternetRadio, downCreateInternetRadio)
 }
 
-func upCreateInternetRadio(tx *sql.Tx) error {
+func upCreateInternetRadio(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table if not exists radio
 (
@@ -25,6 +26,6 @@ create table if not exists radio
 	return err
 }
 
-func downCreateInternetRadio(tx *sql.Tx) error {
+func downCreateInternetRadio(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
