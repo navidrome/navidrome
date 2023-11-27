@@ -424,13 +424,18 @@ type JukeboxPlaylist struct {
 	JukeboxStatus
 	Entry []Child `xml:"entry,omitempty"         json:"entry,omitempty"`
 }
-type OpenSubsonicExtensions struct{}
+type OpenSubsonicExtension struct {
+	Name     string  `xml:"name,attr" json:"name"`
+	Versions []int32 `xml:"versions"  json:"versions"`
+}
 
-// OpenSubsonic response type for multi-valued genres list
+type OpenSubsonicExtensions []OpenSubsonicExtension
+
 type ItemGenre struct {
 	Name string `xml:"name,attr" json:"name"`
 }
 
+// ItemGenres holds a list of genres (OpenSubsonic). If it is null, it must be marshalled as an empty array.
 type ItemGenres []ItemGenre
 
 func (i ItemGenres) MarshalJSON() ([]byte, error) {

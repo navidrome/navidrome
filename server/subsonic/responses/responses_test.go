@@ -725,6 +725,36 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("OpenSubsonicExtensions", func() {
+		BeforeEach(func() {
+			response.OpenSubsonic = true
+			response.OpenSubsonicExtensions = &OpenSubsonicExtensions{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				response.OpenSubsonicExtensions = &OpenSubsonicExtensions{
+					OpenSubsonicExtension{Name: "template", Versions: []int32{1, 2}},
+				}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
 	Describe("InternetRadioStations", func() {
 		BeforeEach(func() {
 			response.InternetRadioStations = &InternetRadioStations{}
