@@ -10,7 +10,7 @@
 #
 # This script does not handle file names that contain spaces.
 
-gofmtcmd="go run golang.org/x/tools/cmd/goimports"
+gofmtcmd="go run golang.org/x/tools/cmd/goimports@latest"
 
 gofiles=$(git diff --cached --name-only --diff-filter=ACM | grep '.go$' | grep -v '_gen.go$')
 [ -z "$gofiles" ] && exit 0
