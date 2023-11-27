@@ -10,6 +10,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -157,7 +158,10 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	return err
 }
 
-func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
+func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options ...model.QueryOptions) error {
+	if len(options) > 0 && options[0].Offset > 0 {
+		sq = r.optimizePagination(sq, options[0])
+	}
 	query, args, err := sq.ToSql()
 	if err != nil {
 		return err
@@ -170,6 +174,19 @@ func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
 	}
 	r.logSQL(query, args, err, c, start)
 	return err
+}
+
+// optimizePagination uses a less inefficient pagination, by not using OFFSET.
+// See https://gist.github.com/ssokolow/262503
+func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
+	if options.Offset > conf.Server.DevOffsetOptimize {
+		sq = sq.RemoveOffset()
+		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
+		oidSq = oidSq.Limit(uint64(options.Offset))
+		oidSql, args, _ := oidSq.ToSql()
+		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
+	}
+	return sq
 }
 
 func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
