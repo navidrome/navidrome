@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddUseridToPlaylist, downAddUseridToPlaylist)
+	goose.AddMigrationContext(upAddUseridToPlaylist, downAddUseridToPlaylist)
 }
 
-func upAddUseridToPlaylist(tx *sql.Tx) error {
+func upAddUseridToPlaylist(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table playlist_dg_tmp
 (
@@ -55,6 +56,6 @@ create index playlist_updated_at
 	return err
 }
 
-func downAddUseridToPlaylist(tx *sql.Tx) error {
+func downAddUseridToPlaylist(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

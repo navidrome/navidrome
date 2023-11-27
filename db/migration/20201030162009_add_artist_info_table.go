@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddArtistImageUrl, downAddArtistImageUrl)
+	goose.AddMigrationContext(upAddArtistImageUrl, downAddArtistImageUrl)
 }
 
-func upAddArtistImageUrl(tx *sql.Tx) error {
+func upAddArtistImageUrl(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table artist
 	add biography varchar(255) default '' not null;
@@ -30,6 +31,6 @@ alter table artist
 	return err
 }
 
-func downAddArtistImageUrl(tx *sql.Tx) error {
+func downAddArtistImageUrl(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
