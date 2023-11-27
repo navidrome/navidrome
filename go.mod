@@ -3,8 +3,8 @@ module github.com/navidrome/navidrome
 go 1.21
 
 require (
-	code.cloudfoundry.org/go-diodes v0.0.0-20190809170250-f77fb823c7ee
-	github.com/DexterLB/mpvipc v0.0.0-20221227161445-38b9935eae9d
+	code.cloudfoundry.org/go-diodes v0.0.0-20231113191959-85adc333ee36
+	github.com/DexterLB/mpvipc v0.0.0-20230829142118-145d6eabdc37
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/beego/beego/v2 v2.1.3
@@ -23,7 +23,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.7.4
-	github.com/go-chi/jwtauth/v5 v5.1.1
+	github.com/go-chi/jwtauth/v5 v5.2.0
 	github.com/google/uuid v1.4.0
 	github.com/google/wire v0.5.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -44,7 +44,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.4
 	github.com/unrolled/secure v1.13.0
-	github.com/xrash/smetrics v0.0.0-20200730060457-89a2a8a1fb0b
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/image v0.14.0
 	golang.org/x/sync v0.5.0
@@ -87,7 +87,6 @@ require (
 	github.com/mewkiz/flac v1.0.7 // indirect
 	github.com/mewkiz/pkg v0.0.0-20190919212034-518ade7978e2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
