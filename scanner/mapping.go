@@ -116,6 +116,7 @@ func (s mediaFileMapper) mapTrackTitle(md metadata.Tags, classical bool) (string
 		}
 		if len(composers) > 0 || len(arrangers) > 0 {
 			people := append(composers, arrangers...)
+			utils.RemoveDuplicateStr(people)
 			peopleText := strings.Join(people, " · ")
 			work = strings.Join([]string{work, peopleText}, " ♫ ")
 		}

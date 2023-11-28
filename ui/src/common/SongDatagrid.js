@@ -380,7 +380,10 @@ const SongDatagridBody = ({
           const last = acc && acc[acc.length - 1]
           if (
             acc.length === 0 ||
-            (last && data[id].workTitle !== data[last].workTitle)
+            (last &&
+              data[id].workTitle.length > 0 &&
+              data[id].classical === true &&
+              data[id].workTitle !== data[last].workTitle)
           ) {
             acc.push(id)
           }
