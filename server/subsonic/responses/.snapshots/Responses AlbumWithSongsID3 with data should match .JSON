@@ -19,6 +19,8 @@
       }
     ],
     "musicBrainzId": "1234",
+    "isCompilation": true,
+    "sortName": "sorted album",
     "song": [
       {
         "id": "1",
@@ -39,10 +41,11 @@
         "duration": 146,
         "bitRate": 320,
         "isVideo": false,
-        "mediaType": "song",
-        "musicBrainzId": "4321",
         "bpm": 127,
         "comment": "a comment",
+        "sortName": "sorted song",
+        "mediaType": "song",
+        "musicBrainzId": "4321",
         "genres": [
           {
             "name": "rock"
