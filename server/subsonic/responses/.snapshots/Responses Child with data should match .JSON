@@ -25,10 +25,11 @@
         "duration": 146,
         "bitRate": 320,
         "isVideo": false,
-        "mediaType": "song",
-        "musicBrainzId": "4321",
         "bpm": 127,
         "comment": "a comment",
+        "sortName": "",
+        "mediaType": "song",
+        "musicBrainzId": "4321",
         "genres": [
           {
             "name": "rock"

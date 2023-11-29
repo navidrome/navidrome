@@ -16,10 +16,11 @@
             "artist": "artist",
             "duration": 120,
             "isVideo": false,
-            "mediaType": "",
-            "musicBrainzId": "",
             "bpm": 0,
             "comment": "",
+            "sortName": "",
+            "mediaType": "",
+            "musicBrainzId": "",
             "genres": []
           },
           {
@@ -30,10 +31,11 @@
             "artist": "artist",
             "duration": 300,
             "isVideo": false,
-            "mediaType": "",
-            "musicBrainzId": "",
             "bpm": 0,
             "comment": "",
+            "sortName": "",
+            "mediaType": "",
+            "musicBrainzId": "",
             "genres": []
           }
         ],

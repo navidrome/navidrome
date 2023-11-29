@@ -9,6 +9,8 @@
     "name": "",
     "userRating": 0,
     "genres": [],
-    "musicBrainzId": ""
+    "musicBrainzId": "",
+    "isCompilation": false,
+    "sortName": ""
   }
 }

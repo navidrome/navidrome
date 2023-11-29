@@ -171,8 +171,11 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
-				album := AlbumID3{Id: "1", Name: "album", Artist: "artist", Genre: "rock",
-					Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}}, MusicBrainzId: "1234"}
+				album := AlbumID3{
+					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
+				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
@@ -180,6 +183,7 @@ var _ = Describe("Responses", func() {
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321",
+					SortName: "sorted song",
 				}}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs

@@ -10,10 +10,11 @@
         "id": "1",
         "isDir": false,
         "isVideo": false,
-        "mediaType": "",
-        "musicBrainzId": "",
         "bpm": 0,
         "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
         "genres": []
       }
     ],

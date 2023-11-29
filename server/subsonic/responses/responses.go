@@ -150,10 +150,11 @@ type Child struct {
 	*/
 	// OpenSubsonic extensions
 	Played        *time.Time `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	MediaType     MediaType  `xml:"mediaType,attr"          json:"mediaType"`
-	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
 	Bpm           int32      `xml:"bpm,attr"                json:"bpm"`
 	Comment       string     `xml:"comment,attr"            json:"comment"`
+	SortName      string     `xml:"sortName,attr"           json:"sortName"`
+	MediaType     MediaType  `xml:"mediaType,attr"          json:"mediaType"`
+	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
 	Genres        ItemGenres `xml:"genres"                  json:"genres"`
 }
 
@@ -195,7 +196,10 @@ type ArtistID3 struct {
 	Starred        *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
 	UserRating     int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
-	MusicBrainzId  string     `xml:"musicBrainzId,attr,omitempty"       json:"musicBrainzId,omitempty"`
+
+	// OpenSubsonic extensions
+	MusicBrainzId string `xml:"musicBrainzId,attr,omitempty"       json:"musicBrainzId,omitempty"`
+	SortName      string `xml:"sortName,attr,omitempty"            json:"sortName,omitempty"`
 }
 
 type AlbumID3 struct {
@@ -217,6 +221,8 @@ type AlbumID3 struct {
 	UserRating    int32      `xml:"userRating,attr"       json:"userRating"`
 	Genres        ItemGenres `xml:"genres"                json:"genres"`
 	MusicBrainzId string     `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
+	IsCompilation bool       `xml:"isCompilation,attr"    json:"isCompilation"`
+	SortName      string     `xml:"sortName,attr"         json:"sortName"`
 }
 
 type ArtistWithAlbumsID3 struct {
