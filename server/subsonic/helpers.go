@@ -188,6 +188,8 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
 	child.Bpm = int32(mf.Bpm)
+	child.MediaType = responses.MediaTypeSong
+	child.MusicBrainzId = mf.MbzRecordingID
 	return child
 }
 
@@ -236,6 +238,8 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 		child.Played = &al.PlayDate
 	}
 	child.UserRating = int32(al.Rating)
+	child.MediaType = responses.MediaTypeAlbum
+	child.MusicBrainzId = al.MbzAlbumID
 	return child
 }
 

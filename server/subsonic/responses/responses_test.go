@@ -142,7 +142,7 @@ var _ = Describe("Responses", func() {
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					Comment: "a comment", Bpm: 127,
+					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321",
 				}
 				response.Directory.Child = child
 			})
@@ -179,7 +179,7 @@ var _ = Describe("Responses", func() {
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					Comment: "a comment", Bpm: 127,
+					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321",
 				}}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs
