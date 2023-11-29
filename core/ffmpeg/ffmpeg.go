@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -29,10 +30,11 @@ func New() FFmpeg {
 }
 
 const (
-	extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
-	probeCmd        = "ffmpeg %s -f ffmetadata"
-	createWavCmd    = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
-	createFLACCmd   = "ffmpeg -i %s -f flac -"
+	extractImageCmd         = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
+	extractNonImageCoverCmd = "ffmpeg -i %s -an -c:v mjpeg -vf select=eq(n\\,0) -f image2pipe -"
+	probeCmd                = "ffmpeg %s -f ffmetadata"
+	createWavCmd            = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
+	createFLACCmd           = "ffmpeg -i %s -f flac -"
 )
 
 type ffmpeg struct{}
@@ -45,11 +47,55 @@ func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate
 	return e.start(ctx, args)
 }
 
+func detectKnownImageHeader(data []byte) string {
+	// Probably can't hold much pixels in 16 bytes.
+	if len(data) < 16 {
+		return ""
+	}
+
+	if bytes.Equal([]byte{0x89, 'P', 'N', 'G'}, data[:4]) {
+		return "png"
+	}
+
+	if bytes.Equal([]byte{0xFF, 0xD8, 0xFF}, data[:3]) {
+		return "jpg"
+	}
+
+	if bytes.Equal([]byte{'G', 'I', 'F'}, data[:3]) {
+		return "gif"
+	}
+
+	if bytes.Equal([]byte{'R', 'I', 'F', 'F'}, data[:4]) && bytes.Equal([]byte{'W', 'E', 'B', 'P'}, data[8:12]) {
+		return "webp"
+	}
+
+	return ""
+}
+
 func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, error) {
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
+
 	args := createFFmpegCommand(extractImageCmd, path, 0)
+	r, err := e.start(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+
+	defer r.Close()
+	body, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	if detectKnownImageHeader(body) != "" {
+		return io.NopCloser(bytes.NewReader(body)), nil
+	}
+
+	// If we want to ask ffmpeg to convert the buffer we just had, we'll need to magically know its file format (hint: we don't).
+	// Hence, we are asking ffmpeg to do the scan and convert again.
+	args = createFFmpegCommand(extractNonImageCoverCmd, path, 0)
 	return e.start(ctx, args)
 }
 
