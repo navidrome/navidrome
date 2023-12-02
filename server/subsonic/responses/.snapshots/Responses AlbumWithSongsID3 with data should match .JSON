@@ -53,7 +53,15 @@
           {
             "name": "progressive"
           }
-        ]
+        ],
+        "replayGain": {
+          "trackGain": 1,
+          "albumGain": 2,
+          "trackPeak": 3,
+          "albumPeak": 4,
+          "baseGain": 5,
+          "fallbackGain": 6
+        }
       }
     ]
   }

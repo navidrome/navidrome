@@ -21,7 +21,8 @@
             "sortName": "",
             "mediaType": "",
             "musicBrainzId": "",
-            "genres": []
+            "genres": [],
+            "replayGain": {}
           },
           {
             "id": "2",
@@ -36,7 +37,8 @@
             "sortName": "",
             "mediaType": "",
             "musicBrainzId": "",
-            "genres": []
+            "genres": [],
+            "replayGain": {}
           }
         ],
         "id": "ABC123",

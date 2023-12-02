@@ -156,6 +156,7 @@ type Child struct {
 	MediaType     MediaType  `xml:"mediaType,attr"          json:"mediaType"`
 	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
 	Genres        ItemGenres `xml:"genres"                  json:"genres"`
+	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
 }
 
 type Songs struct {
@@ -464,4 +465,13 @@ func (i ItemGenres) MarshalJSON() ([]byte, error) {
 	type Alias []ItemGenre
 	a := (Alias)(i)
 	return json.Marshal(a)
+}
+
+type ReplayGain struct {
+	TrackGain    float64 `xml:"trackGain,omitempty,attr"    json:"trackGain,omitempty"`
+	AlbumGain    float64 `xml:"albumGain,omitempty,attr"    json:"albumGain,omitempty"`
+	TrackPeak    float64 `xml:"trackPeak,omitempty,attr"    json:"trackPeak,omitempty"`
+	AlbumPeak    float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
+	BaseGain     float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
+	FallbackGain float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
 }

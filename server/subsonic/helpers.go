@@ -192,6 +192,12 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Bpm = int32(mf.Bpm)
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
+	child.ReplayGain = responses.ReplayGain{
+		TrackGain: mf.RGTrackGain,
+		AlbumGain: mf.RGAlbumGain,
+		TrackPeak: mf.RGTrackPeak,
+		AlbumPeak: mf.RGAlbumPeak,
+	}
 	return child
 }
 
