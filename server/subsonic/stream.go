@@ -57,8 +57,9 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	}
 	maxBitRate := utils.ParamInt(r, "maxBitRate", 0)
 	format := utils.ParamString(r, "format")
+	timeOffset := utils.ParamInt(r, "timeOffset", 0)
 
-	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate)
+	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, timeOffset)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +127,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate)
+		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0)
 		if err != nil {
 			return nil, err
 		}
