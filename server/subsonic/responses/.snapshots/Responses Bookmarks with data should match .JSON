@@ -17,7 +17,8 @@
           "sortName": "",
           "mediaType": "",
           "musicBrainzId": "",
-          "genres": []
+          "genres": [],
+          "replayGain": {}
         },
         "position": 123,
         "username": "user2",
