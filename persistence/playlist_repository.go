@@ -108,7 +108,7 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	}
 	pls.UpdatedAt = time.Now()
 
-	id, err := r.put(pls.ID, pls)
+	id, err := r.put(pls.ID, pls, false)
 	if err != nil {
 		return err
 	}
@@ -405,7 +405,7 @@ func (r *playlistRepository) Update(id string, entity interface{}, cols ...strin
 	pls := entity.(*model.Playlist)
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
-	_, err = r.put(id, pls, append(cols, "updatedAt")...)
+	_, err = r.put(id, pls, false, append(cols, "updatedAt")...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}

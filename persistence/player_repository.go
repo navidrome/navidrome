@@ -27,7 +27,7 @@ func NewPlayerRepository(ctx context.Context, o orm.QueryExecutor) model.PlayerR
 }
 
 func (r *playerRepository) Put(p *model.Player) error {
-	_, err := r.put(p.ID, p)
+	_, err := r.put(p.ID, p, false)
 	return err
 }
 
@@ -102,7 +102,7 @@ func (r *playerRepository) Save(entity interface{}) (string, error) {
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
-	id, err := r.put(t.ID, t)
+	id, err := r.put(t.ID, t, false)
 	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
@@ -115,7 +115,7 @@ func (r *playerRepository) Update(id string, entity interface{}, cols ...string)
 	if !r.isPermitted(t) {
 		return rest.ErrPermissionDenied
 	}
-	_, err := r.put(id, t, cols...)
+	_, err := r.put(id, t, false, cols...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}

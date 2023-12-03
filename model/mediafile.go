@@ -71,7 +71,7 @@ type MediaFile struct {
 	RGTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain" orm:"column(rg_track_gain)"`
 	RGTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak" orm:"column(rg_track_peak)"`
 
-	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time of file creation (btime)
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
 

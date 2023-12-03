@@ -51,7 +51,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
-	_, err := r.put(m.ID, m)
+	_, err := r.put(m.ID, m, true)
 	if err != nil {
 		return err
 	}

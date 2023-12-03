@@ -47,7 +47,7 @@ func (r *playQueueRepository) Store(q *model.PlayQueue) error {
 		pq.CreatedAt = time.Now()
 	}
 	pq.UpdatedAt = time.Now()
-	_, err = r.put(pq.ID, pq)
+	_, err = r.put(pq.ID, pq, false)
 	if err != nil {
 		log.Error(r.ctx, "Error saving playqueue", "user", u.UserName, err)
 		return err

@@ -63,7 +63,7 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := r.fromModel(a)
-	_, err := r.put(dba.ID, dba, colsToUpdate...)
+	_, err := r.put(dba.ID, dba, false, colsToUpdate...)
 	if err != nil {
 		return err
 	}

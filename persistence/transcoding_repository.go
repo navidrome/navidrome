@@ -42,7 +42,7 @@ func (r *transcodingRepository) FindByFormat(format string) (*model.Transcoding,
 }
 
 func (r *transcodingRepository) Put(t *model.Transcoding) error {
-	_, err := r.put(t.ID, t)
+	_, err := r.put(t.ID, t, false)
 	return err
 }
 
@@ -71,7 +71,7 @@ func (r *transcodingRepository) NewInstance() interface{} {
 
 func (r *transcodingRepository) Save(entity interface{}) (string, error) {
 	t := entity.(*model.Transcoding)
-	id, err := r.put(t.ID, t)
+	id, err := r.put(t.ID, t, false)
 	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
@@ -81,7 +81,7 @@ func (r *transcodingRepository) Save(entity interface{}) (string, error) {
 func (r *transcodingRepository) Update(id string, entity interface{}, cols ...string) error {
 	t := entity.(*model.Transcoding)
 	t.ID = id
-	_, err := r.put(id, t)
+	_, err := r.put(id, t, false)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
