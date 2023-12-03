@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddAlbumImagePaths, downAddAlbumImagePaths)
+	goose.AddMigrationContext(upAddAlbumImagePaths, downAddAlbumImagePaths)
 }
 
-func upAddAlbumImagePaths(tx *sql.Tx) error {
+func upAddAlbumImagePaths(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table main.album add image_files varchar;
 `)
@@ -21,6 +22,6 @@ alter table main.album add image_files varchar;
 	return forceFullRescan(tx)
 }
 
-func downAddAlbumImagePaths(tx *sql.Tx) error {
+func downAddAlbumImagePaths(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20201012210022, Down20201012210022)
+	goose.AddMigrationContext(Up20201012210022, Down20201012210022)
 }
 
-func Up20201012210022(tx *sql.Tx) error {
+func Up20201012210022(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table artist
 	add size integer default 0 not null;
@@ -39,6 +40,6 @@ update playlist set size = ifnull((
 	return err
 }
 
-func Down20201012210022(tx *sql.Tx) error {
+func Down20201012210022(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

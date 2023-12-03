@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddPlaylistPath, downAddPlaylistPath)
+	goose.AddMigrationContext(upAddPlaylistPath, downAddPlaylistPath)
 }
 
-func upAddPlaylistPath(tx *sql.Tx) error {
+func upAddPlaylistPath(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table playlist
 	add path string default '' not null;
@@ -22,6 +23,6 @@ alter table playlist
 	return err
 }
 
-func downAddPlaylistPath(tx *sql.Tx) error {
+func downAddPlaylistPath(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
