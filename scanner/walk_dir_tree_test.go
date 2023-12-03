@@ -34,7 +34,7 @@ var _ = Describe("walk_dir_tree", func() {
 			Expect(collected[baseDir]).To(MatchFields(IgnoreExtras, Fields{
 				"Images":          BeEmpty(),
 				"HasPlaylist":     BeFalse(),
-				"AudioFilesCount": BeNumerically("==", 11),
+				"AudioFilesCount": BeNumerically("==", 12),
 			}))
 			Expect(collected[filepath.Join(baseDir, "artist", "an-album")]).To(MatchFields(IgnoreExtras, Fields{
 				"Images":          ConsistOf("cover.jpg", "front.png", "artist.png"),
