@@ -91,7 +91,6 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // with many players, so they will not be parsed
 
   if (id3Tags != NULL) {
-    const auto &frameListMap(id3Tags->frameListMap());
     bool hasLyrics = false;
     
     const auto usltList = id3Tags->frameList("USLT");
