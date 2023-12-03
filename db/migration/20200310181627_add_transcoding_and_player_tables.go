@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200310181627, Down20200310181627)
+	goose.AddMigrationContext(Up20200310181627, Down20200310181627)
 }
 
-func Up20200310181627(tx *sql.Tx) error {
+func Up20200310181627(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table transcoding
 (
@@ -44,7 +45,7 @@ create table player
 	return err
 }
 
-func Down20200310181627(tx *sql.Tx) error {
+func Down20200310181627(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 drop table transcoding;
 drop table player;
