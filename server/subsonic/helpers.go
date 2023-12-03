@@ -111,6 +111,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
 		MusicBrainzId:  a.MbzArtistID,
+		SortName:       a.SortArtistName,
 	}
 	if a.Starred {
 		artist.Starred = &a.StarredAt
@@ -187,7 +188,16 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
+	child.SortName = mf.SortTitle
 	child.Bpm = int32(mf.Bpm)
+	child.MediaType = responses.MediaTypeSong
+	child.MusicBrainzId = mf.MbzRecordingID
+	child.ReplayGain = responses.ReplayGain{
+		TrackGain: mf.RGTrackGain,
+		AlbumGain: mf.RGAlbumGain,
+		TrackPeak: mf.RGTrackPeak,
+		AlbumPeak: mf.RGAlbumPeak,
+	}
 	return child
 }
 
@@ -236,6 +246,9 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 		child.Played = &al.PlayDate
 	}
 	child.UserRating = int32(al.Rating)
+	child.SortName = al.SortAlbumName
+	child.MediaType = responses.MediaTypeAlbum
+	child.MusicBrainzId = al.MbzAlbumID
 	return child
 }
 

@@ -150,7 +150,7 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 
 	var r io.ReadCloser
 	if format != "raw" && format != "" {
-		r, err = a.ms.DoStream(ctx, &mf, format, bitrate)
+		r, err = a.ms.DoStream(ctx, &mf, format, bitrate, 0)
 	} else {
 		r, err = os.Open(mf.Path)
 	}

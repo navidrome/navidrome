@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200608153717, Down20200608153717)
+	goose.AddMigrationContext(Up20200608153717, Down20200608153717)
 }
 
-func Up20200608153717(tx *sql.Tx) error {
+func Up20200608153717(_ context.Context, tx *sql.Tx) error {
 	// First delete dangling players
 	_, err := tx.Exec(`
 delete from player where user_name not in (select user_name from user)`)
@@ -132,6 +133,6 @@ create unique index playlist_tracks_pos
 	return err
 }
 
-func Down20200608153717(tx *sql.Tx) error {
+func Down20200608153717(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

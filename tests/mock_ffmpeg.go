@@ -19,7 +19,7 @@ type MockFFmpeg struct {
 	Error  error
 }
 
-func (ff *MockFFmpeg) Transcode(_ context.Context, _, _ string, _ int) (f io.ReadCloser, err error) {
+func (ff *MockFFmpeg) Transcode(context.Context, string, string, int, int) (io.ReadCloser, error) {
 	if ff.Error != nil {
 		return nil, ff.Error
 	}
