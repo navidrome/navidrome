@@ -90,7 +90,6 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
 				Expect(m).To(HaveKeyWithValue("artist", []string{"Artist", "Artist"}))
 				Expect(m).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
-				Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
 				Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
 				Expect(m).To(HaveKeyWithValue("date", []string{"2014", "2014"}))
 
@@ -101,6 +100,13 @@ var _ = Describe("Extractor", func() {
 				discno := m["discnumber"]
 				Expect(discno).To(HaveLen(1))
 				Expect(discno[0]).To(BeElementOf([]string{"1", "1/2"}))
+
+				// WMA does not have a "compilation" tag, but "wm/iscompilation"
+				if _, ok := m["compilation"]; ok {
+					Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
+				} else {
+					Expect(m).To(HaveKeyWithValue("wm/iscompilation", []string{"1"}))
+				}
 
 				Expect(m).NotTo(HaveKeyWithValue("has_picture", []string{"true"}))
 				Expect(m).To(HaveKeyWithValue("duration", []string{duration}))

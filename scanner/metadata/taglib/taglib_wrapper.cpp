@@ -88,12 +88,6 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     for (const auto item : itemListMap) {
         tags.insert(item.first, item.second.front().toString());
     }
-
-    // Compilation tag needs to be handled differently
-    const auto compilation = asfTags->attribute("WM/IsCompilation");
-    if (!compilation.isEmpty()) {
-      tags.insert("compilation", compilation.front().toString());
-    }
   }
 
   // Send all collected tags to the Go map

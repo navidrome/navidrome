@@ -16,9 +16,9 @@ var _ = Describe("Tags", func() {
 		})
 
 		It("correctly parses metadata from all files in folder", func() {
-			mds, err := metadata.Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg")
+			mds, err := metadata.Extract("tests/fixtures/test.mp3", "tests/fixtures/test.ogg", "tests/fixtures/test.wma")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(mds).To(HaveLen(2))
+			Expect(mds).To(HaveLen(3))
 
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m.Title()).To(Equal("Song"))
@@ -65,6 +65,19 @@ var _ = Describe("Tags", func() {
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m.BitRate()).To(BeElementOf(18, 39, 40, 49))
+
+			m = mds["tests/fixtures/test.wma"]
+			Expect(err).To(BeNil())
+			Expect(m.Compilation()).To(BeTrue())
+			Expect(m.Title()).To(Equal("Title"))
+			Expect(m.HasPicture()).To(BeFalse())
+			Expect(m.Duration()).To(BeNumerically("~", 1.02, 0.01))
+			Expect(m.Suffix()).To(Equal("wma"))
+			Expect(m.FilePath()).To(Equal("tests/fixtures/test.wma"))
+			Expect(m.Size()).To(Equal(int64(21431)))
+			// TabLib 1.12 returns 18, previous versions return 39.
+			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
+			Expect(m.BitRate()).To(BeElementOf(128))
 		})
 	})
 })
