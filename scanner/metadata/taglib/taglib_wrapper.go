@@ -81,13 +81,23 @@ func deleteMap(id uint32) {
 	delete(maps, id)
 }
 
-//export go_map_put_str
-func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
+//export go_map_put_m4a_str
+func go_map_put_m4a_str(id C.ulong, key *C.char, val *C.char) {
 	k := strings.ToLower(C.GoString(key))
 
 	// Special for M4A, do not catch keys that have no actual name
 	k = strings.TrimPrefix(k, iTunesKeyPrefix)
-	if k == "" {
+	do_put_map(id, k, val)
+}
+
+//export go_map_put_str
+func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
+	k := strings.ToLower(C.GoString(key))
+	do_put_map(id, k, val)
+}
+
+func do_put_map(id C.ulong, key string, val *C.char) {
+	if key == "" {
 		return
 	}
 
@@ -95,7 +105,7 @@ func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
 	defer lock.RUnlock()
 	m := maps[uint32(id)]
 	v := strings.TrimSpace(C.GoString(val))
-	m[k] = append(m[k], v)
+	m[key] = append(m[key], v)
 }
 
 //export go_map_put_int

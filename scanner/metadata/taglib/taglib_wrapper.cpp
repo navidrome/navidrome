@@ -76,7 +76,13 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   if (m4afile != NULL) {
     const auto itemListMap = m4afile->tag()->itemMap();
     for (const auto item: itemListMap) {
-      tags.insert(item.first, item.second.toStringList());
+      char *key = ::strdup(item.first.toCString(true));
+      for (const auto value: item.second.toStringList()) {
+        char *val = ::strdup(value.toCString(true));
+        go_map_put_m4a_str(id, key, val);
+        free(val);
+      }
+      free(key);
     }
   }
 
