@@ -72,7 +72,6 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKey("bitrate"))
 			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40", "49"))
 		})
-
 		DescribeTable("Format-Specific tests",
 			func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string) {
 				file = "tests/fixtures/" + file
@@ -94,6 +93,9 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
 				Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
 				Expect(m).To(HaveKeyWithValue("date", []string{"2014", "2014"}))
+
+				// Special for M4A, do not catch keys that have no actual name
+				Expect(m).ToNot(HaveKey(""))
 
 				Expect(m).To(HaveKey("discnumber"))
 				discno := m["discnumber"]
@@ -118,6 +120,7 @@ var _ = Describe("Extractor", func() {
 			Entry("correctly parses flac tags", "test.flac", "1.00", "1", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948"),
 
 			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48"),
+			Entry("Correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48"),
 
 			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04", "2", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506"),
 
