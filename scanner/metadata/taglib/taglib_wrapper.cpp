@@ -35,6 +35,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   go_map_put_int(id, (char *)"bitrate", props->bitrate());
   go_map_put_int(id, (char *)"channels", props->channels());
 
+  // Create a map to collect all the tags
   TagLib::PropertyMap tags = f.file()->properties();
 
   // Make sure at least the basic properties are extracted
@@ -81,31 +82,21 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   // WMA/ASF files may have additional tags not captured by the general iterator
   TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
-  if (asfFile != NULL) 
-  {
+  if (asfFile != NULL) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      char *key = ::strdup(item.first.toCString(true));
-      char *val = ::strdup(item.second.front().toString().toCString());
-      go_map_put_str(id, key, val);
-      free(key);
-      free(val); 
+        tags.insert(item.first, item.second.front().toString());
     }
 
     // Compilation tag needs to be handled differently
     const auto compilation = asfTags->attribute("WM/IsCompilation");
     if (!compilation.isEmpty()) {
-      char *val = ::strdup(compilation.front().toString().toCString());
-      go_map_put_str(id, (char *)"compilation", val);
-      free(val);
+      tags.insert("compilation", compilation.front().toString());
     }
   }
 
-  if (has_cover(f)) {
-    go_map_put_str(id, (char *)"has_picture", (char *)"true");
-  }
-
+  // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
     for (TagLib::StringList::ConstIterator j = i->second.begin();
@@ -118,9 +109,15 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
+  // Cover art has to be handled separately
+  if (has_cover(f)) {
+    go_map_put_str(id, (char *)"has_picture", (char *)"true");
+  }
+
   return 0;
 }
 
+// Detect if the file has cover art. Returns 1 if the file has cover art, 0 otherwise.
 char has_cover(const TagLib::FileRef f) {
   char hasCover = 0;
   // ----- MP3

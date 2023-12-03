@@ -136,7 +136,6 @@ var _ = Describe("Extractor", func() {
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
 			//Entry("correctly parses aiff tags", "test.aiff", "1.00", "1", "2.00 dB", "0.124972", "2.00 dB", "0.124972"),
-
 		)
 	})
 
