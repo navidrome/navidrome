@@ -97,9 +97,9 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
+    char *key = (char *)i->first.toCString(true);
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
-      char *key = (char *)i->first.toCString(true);
       char *val = (char *)(*j).toCString(true);
       go_map_put_str(id, key, val);
     }

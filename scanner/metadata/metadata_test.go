@@ -75,8 +75,6 @@ var _ = Describe("Tags", func() {
 			Expect(m.Suffix()).To(Equal("wma"))
 			Expect(m.FilePath()).To(Equal("tests/fixtures/test.wma"))
 			Expect(m.Size()).To(Equal(int64(21431)))
-			// TabLib 1.12 returns 18, previous versions return 39.
-			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m.BitRate()).To(BeElementOf(128))
 		})
 	})
