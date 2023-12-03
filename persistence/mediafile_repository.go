@@ -89,7 +89,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...)
 	res := model.MediaFiles{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(sq, &res, options...)
 	if err != nil {
 		return nil, err
 	}

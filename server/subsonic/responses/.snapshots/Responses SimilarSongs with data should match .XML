@@ -1,5 +1,7 @@
 <subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
   <similarSongs>
-    <song id="1" isDir="false" title="title" isVideo="false" bpm="0" comment=""></song>
+    <song id="1" isDir="false" title="title" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="">
+      <replayGain></replayGain>
+    </song>
   </similarSongs>
 </subsonic-response>

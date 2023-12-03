@@ -19,7 +19,13 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 			"annotation.item_id = "+idField+
 			" AND annotation.item_type = '"+r.tableName+"'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating")
+		Columns(
+			"coalesce(starred, 0) as starred",
+			"coalesce(rating, 0) as rating",
+			"coalesce(play_count, 0) as play_count",
+			"starred_at",
+			"play_date",
+		)
 }
 
 func (r sqlRepository) annId(itemID ...string) And {

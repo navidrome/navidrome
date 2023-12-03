@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -9,10 +10,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(Up20200516140647, Down20200516140647)
+	goose.AddMigrationContext(Up20200516140647, Down20200516140647)
 }
 
-func Up20200516140647(tx *sql.Tx) error {
+func Up20200516140647(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table if not exists playlist_tracks
 (
@@ -95,6 +96,6 @@ func Up20200516140647UpdatePlaylistTracks(tx *sql.Tx, id string, tracks string) 
 	return nil
 }
 
-func Down20200516140647(tx *sql.Tx) error {
+func Down20200516140647(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

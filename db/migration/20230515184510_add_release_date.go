@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddRelRecYear, downAddRelRecYear)
+	goose.AddMigrationContext(upAddRelRecYear, downAddRelRecYear)
 }
 
-func upAddRelRecYear(tx *sql.Tx) error {
+func upAddRelRecYear(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
     add date varchar(255) default '' not null;
@@ -44,6 +45,6 @@ alter table album
 	return forceFullRescan(tx)
 }
 
-func downAddRelRecYear(tx *sql.Tx) error {
+func downAddRelRecYear(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

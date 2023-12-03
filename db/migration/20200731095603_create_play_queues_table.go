@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upCreatePlayQueuesTable, downCreatePlayQueuesTable)
+	goose.AddMigrationContext(upCreatePlayQueuesTable, downCreatePlayQueuesTable)
 }
 
-func upCreatePlayQueuesTable(tx *sql.Tx) error {
+func upCreatePlayQueuesTable(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table playqueue
 (
@@ -31,6 +32,6 @@ create table playqueue
 	return err
 }
 
-func downCreatePlayQueuesTable(tx *sql.Tx) error {
+func downCreatePlayQueuesTable(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
