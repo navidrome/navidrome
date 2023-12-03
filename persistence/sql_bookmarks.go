@@ -19,7 +19,7 @@ func (r sqlRepository) withBookmark(sql SelectBuilder, idField string) SelectBui
 			"bookmark.item_id = " + idField +
 			" AND bookmark.item_type = '" + r.tableName + "'" +
 			" AND bookmark.user_id = '" + userId(r.ctx) + "')").
-		Columns("position as bookmark_position")
+		Columns("coalesce(position, 0) as bookmark_position")
 }
 
 func (r sqlRepository) bmkID(itemID ...string) And {

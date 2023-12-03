@@ -97,7 +97,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 	}
 	if a.Starred {
-		artist.Starred = &a.StarredAt
+		artist.Starred = a.StarredAt
 	}
 	return artist
 }
@@ -114,7 +114,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		SortName:       a.SortArtistName,
 	}
 	if a.Starred {
-		artist.Starred = &a.StarredAt
+		artist.Starred = a.StarredAt
 	}
 	return artist
 }
@@ -174,10 +174,10 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Type = "music"
 	child.PlayCount = mf.PlayCount
 	if mf.PlayCount > 0 {
-		child.Played = &mf.PlayDate
+		child.Played = mf.PlayDate
 	}
 	if mf.Starred {
-		child.Starred = &mf.StarredAt
+		child.Starred = mf.StarredAt
 	}
 	child.UserRating = int32(mf.Rating)
 
@@ -239,11 +239,11 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Duration = int32(al.Duration)
 	child.SongCount = int32(al.SongCount)
 	if al.Starred {
-		child.Starred = &al.StarredAt
+		child.Starred = al.StarredAt
 	}
 	child.PlayCount = al.PlayCount
 	if al.PlayCount > 0 {
-		child.Played = &al.PlayDate
+		child.Played = al.PlayDate
 	}
 	child.UserRating = int32(al.Rating)
 	child.SortName = al.SortAlbumName
