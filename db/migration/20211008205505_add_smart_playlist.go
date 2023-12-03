@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddSmartPlaylist, downAddSmartPlaylist)
+	goose.AddMigrationContext(upAddSmartPlaylist, downAddSmartPlaylist)
 }
 
-func upAddSmartPlaylist(tx *sql.Tx) error {
+func upAddSmartPlaylist(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table playlist
 	add column rules varchar null;
@@ -32,6 +33,6 @@ create unique index playlist_fields_idx
 	return err
 }
 
-func downAddSmartPlaylist(tx *sql.Tx) error {
+func downAddSmartPlaylist(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

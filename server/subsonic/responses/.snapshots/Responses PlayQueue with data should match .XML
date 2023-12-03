@@ -1,5 +1,7 @@
 <subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
   <playQueue current="111" position="243" username="user1" changed="0001-01-01T00:00:00Z" changedBy="a_client">
-    <entry id="1" isDir="false" title="title" isVideo="false" bpm="0" comment=""></entry>
+    <entry id="1" isDir="false" title="title" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="">
+      <replayGain></replayGain>
+    </entry>
   </playQueue>
 </subsonic-response>
