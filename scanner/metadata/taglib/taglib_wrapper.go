@@ -23,6 +23,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+const iTunesKeyPrefix = "----:com.apple.itunes:"
+
 func Read(filename string) (tags map[string][]string, err error) {
 	// Do not crash on failures in the C code/library
 	debug.SetPanicOnFault(true)
@@ -81,10 +83,17 @@ func deleteMap(id uint32) {
 
 //export go_map_put_str
 func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
+	k := strings.ToLower(C.GoString(key))
+
+	// Special for M4A, do not catch keys that have no actual name
+	k = strings.TrimPrefix(k, iTunesKeyPrefix)
+	if k == "" {
+		return
+	}
+
 	lock.RLock()
 	defer lock.RUnlock()
 	m := maps[uint32(id)]
-	k := strings.ToLower(C.GoString(key))
 	v := strings.TrimSpace(C.GoString(val))
 	m[k] = append(m[k], v)
 }

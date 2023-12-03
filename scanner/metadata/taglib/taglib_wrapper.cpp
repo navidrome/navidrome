@@ -15,9 +15,6 @@
 
 #include "taglib_wrapper.h"
 
-const char *ITUNES_KEY = "----:com.apple.iTunes:";
-const size_t ITUNES_LEN = strlen(ITUNES_KEY);
-
 char has_cover(const TagLib::FileRef f);
 
 int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
@@ -73,23 +70,12 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
+  // M4A may have some iTunes specific tags
   TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
-  if (m4afile != NULL)
-  {
-    const auto tag = m4afile->tag();
-    const auto itemListMap = tag->itemMap();
+  if (m4afile != NULL) {
+    const auto itemListMap = m4afile->tag()->itemMap();
     for (const auto item: itemListMap) {
-      char *key = ::strdup(item.first.toCString(true));
-      // the strlen check is to deal with cases where there is a tag that is just
-      // ----:com.apple.iTunes:\x00. Note that the check at ITUNES_LEN is safe 
-      // because key (via toCString) is a C-string (null-terminated)
-      if (strncmp(key, ITUNES_KEY, ITUNES_LEN) == 0 && key[ITUNES_LEN] != '\0') {
-        char *val = ::strdup(item.second.toStringList().front().toCString(true));
-        go_map_put_str(id, (key + ITUNES_LEN), val);
-        free(val);
-      } 
-
-      free(key);
+      tags.insert(item.first, item.second.toStringList());
     }
   }
 
