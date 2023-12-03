@@ -11,6 +11,7 @@ extern "C" {
 #define FILENAME_CHAR_T char
 #endif
 
+extern void go_map_put_m4a_str(unsigned long id, char *key, char *val);
 extern void go_map_put_str(unsigned long id, char *key, char *val);
 extern void go_map_put_int(unsigned long id, char *key, int val);
 int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id);
