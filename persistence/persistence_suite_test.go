@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -21,9 +20,9 @@ import (
 func TestPersistence(t *testing.T) {
 	tests.Init(t, true)
 
-	os.Remove("./test-123.db")
-	conf.Server.DbPath = "./test-123.db"
-	//conf.Server.DbPath = "file::memory:?cache=shared"
+	//os.Remove("./test-123.db")
+	//conf.Server.DbPath = "./test-123.db"
+	conf.Server.DbPath = "file::memory:?cache=shared"
 	db.Init()
 	log.SetLevel(log.LevelError)
 	RegisterFailHandler(Fail)

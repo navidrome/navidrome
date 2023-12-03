@@ -7,7 +7,6 @@ require (
 	github.com/DexterLB/mpvipc v0.0.0-20230829142118-145d6eabdc37
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
-	github.com/beego/beego/v2 v2.1.3
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
@@ -70,7 +69,6 @@ require (
 	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
 	github.com/hajimehoshi/oto v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/icza/bitio v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -95,14 +93,12 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
-	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	go.uber.org/goleak v1.1.11 // indirect
 	golang.org/x/crypto v0.15.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20230515195305-f3d0a9c9a5cc // indirect

@@ -5,6 +5,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -106,6 +107,25 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(BeNil())
 			Expect(all[0].ID).To(Equal(plsBest.ID))
 			Expect(all[1].ID).To(Equal(plsCool.ID))
+		})
+	})
+
+	Context("Smart Playlists", func() {
+		var rules *criteria.Criteria
+		BeforeEach(func() {
+			rules = &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"title": "love"},
+				},
+			}
+		})
+		It("Put/Get", func() {
+			newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+
+			savedPls, err := repo.Get(newPls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(savedPls.Rules).To(Equal(rules))
 		})
 	})
 })

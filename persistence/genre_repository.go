@@ -32,8 +32,8 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	sq := r.newSelect(opt...).Columns(
 		"genre.id",
 		"genre.name",
-		"coalesce(a.album_count, 0)",
-		"coalesce(m.song_count, 0)",
+		"coalesce(a.album_count, 0) as album_count",
+		"coalesce(m.song_count, 0) as song_count",
 	).
 		LeftJoin("(select ag.genre_id, count(ag.album_id) as album_count from album_genres ag group by ag.genre_id) a on a.genre_id = genre.id").
 		LeftJoin("(select mg.genre_id, count(mg.media_file_id) as song_count from media_file_genres mg group by mg.genre_id) m on m.genre_id = genre.id")
