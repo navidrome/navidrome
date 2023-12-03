@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200319211049, Down20200319211049)
+	goose.AddMigrationContext(Up20200319211049, Down20200319211049)
 }
 
-func Up20200319211049(tx *sql.Tx) error {
+func Up20200319211049(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
 	add full_text varchar(255) default '';
@@ -36,6 +37,6 @@ drop table if exists search;
 	return forceFullRescan(tx)
 }
 
-func Down20200319211049(tx *sql.Tx) error {
+func Down20200319211049(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

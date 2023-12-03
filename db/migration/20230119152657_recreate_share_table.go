@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddMissingShareInfo, downAddMissingShareInfo)
+	goose.AddMigrationContext(upAddMissingShareInfo, downAddMissingShareInfo)
 }
 
-func upAddMissingShareInfo(tx *sql.Tx) error {
+func upAddMissingShareInfo(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 drop table if exists share;
 create table share
@@ -36,6 +37,6 @@ create table share
 	return err
 }
 
-func downAddMissingShareInfo(tx *sql.Tx) error {
+func downAddMissingShareInfo(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
 	"strings"
@@ -12,10 +13,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upChangePathListSeparator, downChangePathListSeparator)
+	goose.AddMigrationContext(upChangePathListSeparator, downChangePathListSeparator)
 }
 
-func upChangePathListSeparator(tx *sql.Tx) error {
+func upChangePathListSeparator(_ context.Context, tx *sql.Tx) error {
 	//nolint:gosec
 	rows, err := tx.Query(`
 	select album_id, group_concat(path, '` + consts.Zwsp + `') from media_file group by album_id
@@ -57,6 +58,6 @@ func upChangePathListSeparatorDirs(filePaths string) string {
 	return strings.Join(dirs, consts.Zwsp)
 }
 
-func downChangePathListSeparator(tx *sql.Tx) error {
+func downChangePathListSeparator(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
