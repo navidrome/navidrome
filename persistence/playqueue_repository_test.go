@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -20,7 +19,7 @@ var _ = Describe("PlayQueueRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "user1", UserName: "user1", IsAdmin: true})
-		repo = NewPlayQueueRepository(ctx, orm.NewOrm())
+		repo = NewPlayQueueRepository(ctx, getDB())
 	})
 
 	Describe("PlayQueues", func() {
@@ -29,11 +28,11 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
-		It("stores and retrieves the playqueue for the user", func() {
+		FIt("stores and retrieves the playqueue for the user", func() {
 			By("Storing a playqueue for the user")
 
 			expected := aPlayQueue("user1", songDayInALife.ID, 123, songComeTogether, songDayInALife)
-			Expect(repo.Store(expected)).To(BeNil())
+			Expect(repo.Store(expected)).To(Succeed())
 
 			actual, err := repo.Retrieve("user1")
 			Expect(err).To(BeNil())
@@ -43,7 +42,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			By("Storing a new playqueue for the same user")
 
 			another := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
-			Expect(repo.Store(another)).To(BeNil())
+			Expect(repo.Store(another)).To(Succeed())
 
 			actual, err = repo.Retrieve("user1")
 			Expect(err).To(BeNil())

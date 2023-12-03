@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -17,7 +16,7 @@ var _ = Describe("PlaylistRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, orm.NewOrm())
+		repo = NewPlaylistRepository(ctx, getDB())
 	})
 
 	Describe("Count", func() {
