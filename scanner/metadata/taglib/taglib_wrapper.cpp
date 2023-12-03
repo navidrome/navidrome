@@ -91,9 +91,10 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // with many players, so they will not be parsed
 
   if (id3Tags != NULL) {
+    const auto &frames = id3Tags->frameListMap();
     bool hasLyrics = false;
     
-    const auto usltList = id3Tags->frameList("USLT");
+    const auto usltList = frames["USLT"];
     if (!usltList.isEmpty()) {
       for (const auto &tag: usltList) {
         TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
@@ -115,7 +116,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
       }
     }
 
-    const auto syltList = id3Tags->frameList("SYLT");
+    const auto syltList = frames["SYLT"];
     if (!syltList.isEmpty()) {
 
       for (const auto &tag: syltList) {
