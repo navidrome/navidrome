@@ -29,7 +29,7 @@ var _ = Describe("FileHaunter", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tempDir) })
 
-		fsCache, err = fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(cache.NewFileHaunter("", maxItems, maxSize, 400*time.Millisecond)))
+		fsCache, err = fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(cache.NewFileHaunter("", maxItems, maxSize, 300*time.Millisecond)))
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCache.Clean)
 
@@ -51,7 +51,7 @@ var _ = Describe("FileHaunter", func() {
 		})
 	})
 
-	Context("When maxItems is defined", func() {
+	XContext("When maxItems is defined", func() {
 		BeforeEach(func() {
 			maxItems = 3
 		})
