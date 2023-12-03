@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type albumRepository struct {
@@ -18,10 +18,10 @@ type albumRepository struct {
 	sqlRestful
 }
 
-func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRepository {
+func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
 	r := &albumRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "album"
 	r.sortMappings = map[string]string{
 		"name":           "order_album_name asc, order_album_artist_name asc",

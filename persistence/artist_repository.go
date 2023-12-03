@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/pocketbase/dbx"
 )
 
 type artistRepository struct {
@@ -28,10 +28,10 @@ type dbArtist struct {
 	SimilarArtists string `structs:"similar_artists" json:"similarArtists"`
 }
 
-func NewArtistRepository(ctx context.Context, o orm.QueryExecutor) model.ArtistRepository {
+func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistRepository {
 	r := &artistRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist"
 	r.sortMappings = map[string]string{

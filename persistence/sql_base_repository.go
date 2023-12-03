@@ -2,24 +2,25 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/pocketbase/dbx"
 )
 
 type sqlRepository struct {
 	ctx          context.Context
 	tableName    string
-	ormer        orm.QueryExecutor
+	db           dbx.Builder
 	sortMappings map[string]string
 }
 
@@ -122,13 +123,13 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 }
 
 func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
-	query, args, err := sq.ToSql()
+	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return 0, err
 	}
 	start := time.Now()
 	var c int64
-	res, err := r.ormer.Raw(query, args...).Exec()
+	res, err := r.db.NewQuery(query).Bind(args).Execute()
 	if res != nil {
 		c, _ = res.RowsAffected()
 	}
@@ -141,16 +142,31 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	return res.RowsAffected()
 }
 
+func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
+	query, args, err := sq.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	// Replace query placeholders with named params
+	params := dbx.Params{}
+	for i, arg := range args {
+		p := fmt.Sprintf("p%d", i)
+		query = strings.Replace(query, "?", "{:"+p+"}", 1)
+		params[p] = arg
+	}
+	return query, params, nil
+}
+
 // Note: Due to a bug in the QueryRow method, this function does not map any embedded structs (ex: annotations)
 // In this case, use the queryAll method and get the first item of the returned list
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
-	query, args, err := sq.ToSql()
+	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
 	}
 	start := time.Now()
-	err = r.ormer.Raw(query, args...).QueryRow(response)
-	if errors.Is(err, orm.ErrNoRows) {
+	err = r.db.NewQuery(query).Bind(args).One(response)
+	if errors.Is(err, sql.ErrNoRows) {
 		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
@@ -162,17 +178,33 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options 
 	if len(options) > 0 && options[0].Offset > 0 {
 		sq = r.optimizePagination(sq, options[0])
 	}
-	query, args, err := sq.ToSql()
+	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
 	}
 	start := time.Now()
-	c, err := r.ormer.Raw(query, args...).QueryRows(response)
-	if errors.Is(err, orm.ErrNoRows) {
-		r.logSQL(query, args, nil, c, start)
+	err = r.db.NewQuery(query).Bind(args).All(response)
+	if errors.Is(err, sql.ErrNoRows) {
+		r.logSQL(query, args, nil, -1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, c, start)
+	r.logSQL(query, args, err, -1, start)
+	return err
+}
+
+// queryAllSlice is a helper function to query a single column and return the result in a slice
+func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) error {
+	query, args, err := r.toSQL(sq)
+	if err != nil {
+		return err
+	}
+	start := time.Now()
+	err = r.db.NewQuery(query).Bind(args).Column(response)
+	if errors.Is(err, sql.ErrNoRows) {
+		r.logSQL(query, args, nil, -1, start)
+		return model.ErrNotFound
+	}
+	r.logSQL(query, args, err, -1, start)
 	return err
 }
 
@@ -246,28 +278,28 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 func (r sqlRepository) delete(cond Sqlizer) error {
 	del := Delete(r.tableName).Where(cond)
 	_, err := r.executeSQL(del)
-	if errors.Is(err, orm.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return model.ErrNotFound
 	}
 	return err
 }
 
-func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAffected int64, start time.Time) {
+func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	var fmtArgs []string
-	for i := range args {
-		var f string
-		switch a := args[i].(type) {
-		case string:
-			f = `'` + a + `'`
-		default:
-			f = fmt.Sprintf("%v", a)
-		}
-		fmtArgs = append(fmtArgs, f)
-	}
+	//var fmtArgs []string
+	//for name, val := range args {
+	//	var f string
+	//	switch a := args[val].(type) {
+	//	case string:
+	//		f = `'` + a + `'`
+	//	default:
+	//		f = fmt.Sprintf("%v", a)
+	//	}
+	//	fmtArgs = append(fmtArgs, f)
+	//}
 	if err != nil {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	} else {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
 	}
 }

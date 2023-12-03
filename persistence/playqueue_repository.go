@@ -6,20 +6,20 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/pocketbase/dbx"
 )
 
 type playQueueRepository struct {
 	sqlRepository
 }
 
-func NewPlayQueueRepository(ctx context.Context, o orm.QueryExecutor) model.PlayQueueRepository {
+func NewPlayQueueRepository(ctx context.Context, db dbx.Builder) model.PlayQueueRepository {
 	r := &playQueueRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "playqueue"
 	return r
 }
@@ -116,7 +116,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	chunks := slice.BreakUp(ids, 50)
 
 	// Query each chunk of media_file ids and store results in a map
-	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+	mfRepo := NewMediaFileRepository(r.ctx, r.db)
 	trackMap := map[string]model.MediaFile{}
 	for i := range chunks {
 		idsFilter := Eq{"media_file.id": chunks[i]}

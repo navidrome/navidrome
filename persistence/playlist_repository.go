@@ -8,12 +8,12 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/pocketbase/dbx"
 )
 
 type playlistRepository struct {
@@ -26,10 +26,10 @@ type dbPlaylist struct {
 	RawRules       string `structs:"rules" orm:"column(rules)"`
 }
 
-func NewPlaylistRepository(ctx context.Context, o orm.QueryExecutor) model.PlaylistRepository {
+func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRepository {
 	r := &playlistRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "playlist"
 	r.filterMappings = map[string]filterFunc{
 		"q":     playlistFilter,

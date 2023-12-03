@@ -21,7 +21,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.playlistRepo = r
 	p.playlistId = playlistId
 	p.ctx = r.ctx
-	p.ormer = r.ormer
+	p.db = r.db
 	p.tableName = "playlist_tracks"
 	p.sortMappings = map[string]string{
 		"id": "playlist_tracks.id",
