@@ -12,10 +12,10 @@ import (
 )
 
 func init() {
-	goose.AddMigration(upEncodeAllPasswords, downEncodeAllPasswords)
+	goose.AddMigrationContext(upEncodeAllPasswords, downEncodeAllPasswords)
 }
 
-func upEncodeAllPasswords(tx *sql.Tx) error {
+func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
 	rows, err := tx.Query(`SELECT id, user_name, password from user;`)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func upEncodeAllPasswords(tx *sql.Tx) error {
 			return err
 		}
 
-		password, err = utils.Encrypt(context.Background(), encKey, password)
+		password, err = utils.Encrypt(ctx, encKey, password)
 		if err != nil {
 			log.Error("Error encrypting user's password", "id", id, "username", username, err)
 		}
@@ -51,6 +51,6 @@ func upEncodeAllPasswords(tx *sql.Tx) error {
 	return rows.Err()
 }
 
-func downEncodeAllPasswords(tx *sql.Tx) error {
+func downEncodeAllPasswords(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

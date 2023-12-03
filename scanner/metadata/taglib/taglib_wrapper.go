@@ -21,7 +21,10 @@ import (
 	"unsafe"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata"
 )
+
+const iTunesKeyPrefix = "----:com.apple.itunes:"
 
 func Read(filename string) (tags map[string][]string, err error) {
 	// Do not crash on failures in the C code/library
@@ -79,14 +82,31 @@ func deleteMap(id uint32) {
 	delete(maps, id)
 }
 
+//export go_map_put_m4a_str
+func go_map_put_m4a_str(id C.ulong, key *C.char, val *C.char) {
+	k := strings.ToLower(C.GoString(key))
+
+	// Special for M4A, do not catch keys that have no actual name
+	k = strings.TrimPrefix(k, iTunesKeyPrefix)
+	do_put_map(id, k, val)
+}
+
 //export go_map_put_str
 func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
+	k := strings.ToLower(C.GoString(key))
+	do_put_map(id, k, val)
+}
+
+func do_put_map(id C.ulong, key string, val *C.char) {
+	if key == "" {
+		return
+	}
+
 	lock.RLock()
 	defer lock.RUnlock()
 	m := maps[uint32(id)]
-	k := strings.ToLower(C.GoString(key))
 	v := strings.TrimSpace(C.GoString(val))
-	m[k] = append(m[k], v)
+	m[key] = append(m[key], v)
 }
 
 //export go_map_put_int
@@ -95,4 +115,35 @@ func go_map_put_int(id C.ulong, key *C.char, val C.int) {
 	vp := C.CString(valStr)
 	defer C.free(unsafe.Pointer(vp))
 	go_map_put_str(id, key, vp)
+}
+
+//export go_map_put_lyric_line
+func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.uint) {
+	language := C.GoString(lang)
+	line := C.GoString(text)
+	timeGo := uint64(time)
+
+	ms := timeGo % 1000
+	timeGo /= 1000
+	sec := timeGo % 60
+	timeGo /= 60
+	min := timeGo % 60
+	formatted_line := fmt.Sprintf("[%02d:%02d.%02d]%s\n", min, sec, ms/10, line)
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	m := maps[uint32(id)]
+	existing, ok := m[metadata.NAVIDROME_SYNCHRONIZED_KEY]
+	if ok {
+		length := len(existing)
+
+		if existing[length-2] == language {
+			existing[length-1] += formatted_line
+		} else {
+			m[metadata.NAVIDROME_SYNCHRONIZED_KEY] = append(existing, language, formatted_line)
+		}
+	} else {
+		m[metadata.NAVIDROME_SYNCHRONIZED_KEY] = append(existing, language, formatted_line)
+	}
 }

@@ -40,7 +40,7 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
 			Expect(m).To(HaveKeyWithValue("artist", []string{"Artist", "Artist"}))
 			Expect(m).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
-			Expect(m).To(HaveKeyWithValue("tcmp", []string{"1"})) // Compilation
+			Expect(m).To(HaveKeyWithValue("compilation", []string{"1"})) // Compilation
 			Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
 			Expect(m).To(HaveKeyWithValue("date", []string{"2014-05-21", "2014"}))
 			Expect(m).To(HaveKeyWithValue("originaldate", []string{"1996-11-21"}))
@@ -57,6 +57,12 @@ var _ = Describe("Extractor", func() {
 				"xxx",
 				"[00:00.00]This is\n[00:02.50]unspecified",
 			}))
+			Expect(m).To(HaveKeyWithValue(metadata.NAVIDROME_SYNCHRONIZED_KEY, []string{
+				"eng",
+				"[00:00.00]This is\n[00:02.50]English\n",
+				"xxx",
+				"[00:00.00]This is\n[00:02.50]unspecified\n",
+			}))
 			Expect(m).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
 			Expect(m).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
@@ -66,7 +72,7 @@ var _ = Describe("Extractor", func() {
 
 			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10"}))
 			m = m.Map(e.CustomMappings())
-			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2/10", "2"}))
+			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2"}))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
@@ -79,7 +85,6 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKey("bitrate"))
 			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40", "43", "49"))
 		})
-
 		DescribeTable("Format-Specific tests",
 			func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
 				file = "tests/fixtures/" + file
@@ -98,14 +103,23 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
 				Expect(m).To(HaveKeyWithValue("artist", []string{"Artist", "Artist"}))
 				Expect(m).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
-				Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
 				Expect(m).To(HaveKeyWithValue("genre", []string{"Rock"}))
 				Expect(m).To(HaveKeyWithValue("date", []string{"2014", "2014"}))
+
+				// Special for M4A, do not catch keys that have no actual name
+				Expect(m).ToNot(HaveKey(""))
 
 				Expect(m).To(HaveKey("discnumber"))
 				discno := m["discnumber"]
 				Expect(discno).To(HaveLen(1))
 				Expect(discno[0]).To(BeElementOf([]string{"1", "1/2"}))
+
+				// WMA does not have a "compilation" tag, but "wm/iscompilation"
+				if _, ok := m["compilation"]; ok {
+					Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
+				} else {
+					Expect(m).To(HaveKeyWithValue("wm/iscompilation", []string{"1"}))
+				}
 
 				Expect(m).NotTo(HaveKeyWithValue("has_picture", []string{"true"}))
 				Expect(m).To(HaveKeyWithValue("duration", []string{duration}))
@@ -141,6 +155,7 @@ var _ = Describe("Extractor", func() {
 			Entry("correctly parses flac tags", "test.flac", "1.00", "1", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false),
 
 			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48", false),
+			Entry("Correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48", false),
 
 			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04", "2", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false),
 

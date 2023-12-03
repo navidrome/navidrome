@@ -19,13 +19,6 @@
 
 #include "taglib_wrapper.h"
 
-// Tags necessary for M4a parsing
-const char *RG_TAGS[] = {
-    "replaygain_album_gain",
-    "replaygain_album_peak",
-    "replaygain_track_gain",
-    "replaygain_track_peak"};
-
 char *LYRICS_KEY = (char *) "lyrics";
 char *CUSTOM_LYRICS = (char *) "__navidrome__lyrics";
 
@@ -49,6 +42,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   go_map_put_int(id, (char *)"bitrate", props->bitrate());
   go_map_put_int(id, (char *)"channels", props->channels());
 
+  // Create a map to collect all the tags
   TagLib::PropertyMap tags = f.file()->properties();
 
   // Make sure at least the basic properties are extracted
@@ -98,104 +92,113 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   if (id3Tags != NULL) {
     const auto &frameListMap(id3Tags->frameListMap());
+    bool hasLyrics = false;
+    
+    const auto usltList = id3Tags->frameList("USLT");
+    if (!usltList.isEmpty()) {
+      for (const auto &tag: usltList) {
+        TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
+        if (frame == NULL) continue;
 
-    for (const auto &kv : frameListMap) {
-      if (!kv.second.isEmpty())
-        if (kv.first == "USLT") {
-          bool hasLyrics = false;
+        hasLyrics = true;
 
-          for (const auto &uslt: kv.second) {
-            TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(uslt);
-            if (frame == NULL) continue;
+        char lang[4];
+        strncpy(lang, frame->language().data(), 3);
+        lang[3] = '\0';
+        char *val = (char *)frame->text().toCString(true);
 
-            char lang[4];
-            strncpy(lang, frame->language().data(), 3);
-            lang[3] = '\0';
-            char *val = ::strdup(frame->text().toCString(true));
+        go_map_put_str(id, LYRICS_KEY, lang);
+        go_map_put_str(id, LYRICS_KEY, val);
+      }
 
-            go_map_put_str(id, LYRICS_KEY, lang);
-            go_map_put_str(id, LYRICS_KEY, val);
-            tags.erase("LYRICS");
+      if (hasLyrics) {
+        tags.erase("LYRICS");
+      }
+    }
+
+    const auto syltList = id3Tags->frameList("SYLT");
+    if (!syltList.isEmpty()) {
+
+      for (const auto &tag: syltList) {
+        TagLib::ID3v2::SynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame *>(tag);
+        if (frame == NULL) continue;
+  
+
+        char lang[4];
+        strncpy(lang, frame->language().data(), 3);
+        lang[3] = '\0';
+
+        const auto format = frame->timestampFormat();
+        if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
+          hasLyrics = true;
+
+          for (const auto &line: frame->synchedText()) {
+            char *text = (char *)line.text.toCString(true);
+            go_map_put_lyric_line(id, lang, text, line.time);
+          }
+        } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
+          const int sampleRate = props->sampleRate();
+
+          if (sampleRate != 0) {
             hasLyrics = true;
-            free(val);
+            for (const auto &line: frame->synchedText()) {
+              const uint timeInMs = (line.time * 1000) / sampleRate;
+              char *text = (char *)line.text.toCString(true);
+              go_map_put_lyric_line(id, lang, text, timeInMs);
+            }
           }
-
-          if (hasLyrics) {
-            go_map_put_int(id, CUSTOM_LYRICS, 1);
-          }
-        } else {
-          tags.insert(kv.first, kv.second.front()->toString());
         }
+      }
+    }
+
+    if (hasLyrics) {
+      go_map_put_int(id, CUSTOM_LYRICS, 1);
     }
   }
 
+  // M4A may have some iTunes specific tags
   TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
-  if (m4afile != NULL)
-  {
-    const auto itemListMap = m4afile->tag();
-    {
-      char buf[200];
-
-      for (const char *key : RG_TAGS)
-      {
-        snprintf(buf, sizeof(buf), "----:com.apple.iTunes:%s", key);
-        const auto item = itemListMap->item(buf);
-        if (item.isValid())
-        {
-          char *dup = ::strdup(key);
-          char *val = ::strdup(item.toStringList().front().toCString(true));
-          go_map_put_str(id, dup, val);
-          free(dup);
-          free(val);
-        }
+  if (m4afile != NULL) {
+    const auto itemListMap = m4afile->tag()->itemMap();
+    for (const auto item: itemListMap) {
+      char *key = (char *)item.first.toCString(true);
+      for (const auto value: item.second.toStringList()) {
+        char *val = (char *)value.toCString(true);
+        go_map_put_m4a_str(id, key, val);
       }
     }
   }
 
   // WMA/ASF files may have additional tags not captured by the general iterator
   TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
-  if (asfFile != NULL) 
-  {
+  if (asfFile != NULL) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      char *key = ::strdup(item.first.toCString(true));
-      for (const auto &value: item.second) {
-        char *val = ::strdup(value.toString().toCString());
-        go_map_put_str(id, key, val);
-        free(val); 
-      }
-      free(key);
-    }
-
-    // Compilation tag needs to be handled differently
-    const auto compilation = asfTags->attribute("WM/IsCompilation");
-    if (!compilation.isEmpty()) {
-      char *val = ::strdup(compilation.front().toString().toCString());
-      go_map_put_str(id, (char *)"compilation", val);
-      free(val);
+      tags.insert(item.first, item.second.front().toString());
     }
   }
 
-  if (has_cover(f)) {
-    go_map_put_str(id, (char *)"has_picture", (char *)"true");
-  }
-
+  // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
+    char *key = (char *)i->first.toCString(true);
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
-      char *key = ::strdup(i->first.toCString(true));
-      char *val = ::strdup((*j).toCString(true));
+      char *val = (char *)(*j).toCString(true);
       go_map_put_str(id, key, val);
-      free(key);
-      free(val);
     }
+  }
+
+  // Cover art has to be handled separately
+  if (has_cover(f)) {
+    go_map_put_str(id, (char *)"has_picture", (char *)"true");
   }
 
   return 0;
 }
 
+// Detect if the file has cover art. Returns 1 if the file has cover art, 0 otherwise.
 char has_cover(const TagLib::FileRef f) {
   char hasCover = 0;
   // ----- MP3

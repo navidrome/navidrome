@@ -18,6 +18,7 @@ import (
 )
 
 const ENCODED_LYRICS_KEY = "__navidrome__lyrics"
+const NAVIDROME_SYNCHRONIZED_KEY = "__navidrome__synched__lyrics"
 
 type Extractor interface {
 	Parse(files ...string) (map[string]ParsedTags, error)
@@ -110,7 +111,7 @@ func (t Tags) Lyrics() string {
 	result := ""
 
 	if t.getFirstTagValue(ENCODED_LYRICS_KEY) == "1" {
-		tags := t.getAllTagValues("lyrics")
+		tags := t.getAllTagValues("lyrics", NAVIDROME_SYNCHRONIZED_KEY)
 
 		for i := 0; i < len(tags); i += 2 {
 			result += fmt.Sprintf("%s\u200b%s\u200b", tags[i], tags[i+1])
@@ -128,7 +129,7 @@ func (t Tags) Lyrics() string {
 	}
 	return result
 }
-func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
+func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
 func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
 func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
