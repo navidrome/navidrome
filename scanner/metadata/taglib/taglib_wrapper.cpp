@@ -95,11 +95,9 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
        ++i) {
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
-      char *key = ::strdup(i->first.toCString(true));
-      char *val = ::strdup((*j).toCString(true));
+      char *key = (char *)i->first.toCString(true);
+      char *val = (char *)(*j).toCString(true);
       go_map_put_str(id, key, val);
-      free(key);
-      free(val);
     }
   }
 
