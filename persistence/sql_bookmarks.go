@@ -96,7 +96,7 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	user, _ := request.UserFrom(r.ctx)
 
 	idField := r.tableName + ".id"
-	sql := r.newSelectWithAnnotation(idField).Columns("*")
+	sql := r.newSelectWithAnnotation(idField).Columns(r.tableName + ".*")
 	sql = r.withBookmark(sql, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
 	var mfs model.MediaFiles
 	err := r.queryAll(sql, &mfs)

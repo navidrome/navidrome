@@ -55,7 +55,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 		It("returns all tracks", func() {
 			pls, err := repo.GetWithTracks(plsBest.ID, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal(plsBest.Name))
 			Expect(pls.Tracks).To(HaveLen(2))
 			Expect(pls.Tracks[0].ID).To(Equal("1"))

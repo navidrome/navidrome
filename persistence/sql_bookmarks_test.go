@@ -15,7 +15,7 @@ var _ = Describe("sqlBookmarks", func() {
 
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "user1"})
+		ctx = request.WithUser(ctx, model.User{ID: "userid"})
 		mr = NewMediaFileRepository(ctx, getDB())
 	})
 
@@ -29,7 +29,7 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(mr.AddBookmark(songAntenna.ID, "this is a comment", 123)).To(BeNil())
 
 			bms, err := mr.GetBookmarks()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bms).To(HaveLen(1))
 			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
@@ -45,7 +45,7 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(mr.AddBookmark(songAntenna.ID, "another comment", 333)).To(BeNil())
 
 			bms, err = mr.GetBookmarks()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
 			Expect(bms[0].Comment).To(Equal("another comment"))
@@ -56,13 +56,13 @@ var _ = Describe("sqlBookmarks", func() {
 			By("Saving another bookmark")
 			Expect(mr.AddBookmark(songComeTogether.ID, "one more comment", 444)).To(BeNil())
 			bms, err = mr.GetBookmarks()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(bms).To(HaveLen(2))
 
 			By("Delete bookmark")
 			Expect(mr.DeleteBookmark(songAntenna.ID))
 			bms, err = mr.GetBookmarks()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(bms).To(HaveLen(1))
 			Expect(bms[0].Item.ID).To(Equal(songComeTogether.ID))
 			Expect(bms[0].Item.Title).To(Equal(songComeTogether.Title))

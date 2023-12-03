@@ -211,6 +211,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	// Never refresh other users' playlists
 	usr := loggedUser(r.ctx)
 	if pls.OwnerID != usr.ID {
+		log.Trace(r.ctx, "Not refreshing smart playlist from other user", "playlist", pls.Name, "id", pls.ID)
 		return false
 	}
 
@@ -221,6 +222,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	del := Delete("playlist_tracks").Where(Eq{"playlist_id": pls.ID})
 	_, err := r.executeSQL(del)
 	if err != nil {
+		log.Error(r.ctx, "Error deleting old smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
@@ -347,7 +349,15 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
 	tracksQuery := sel.
-		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*", "playlist_tracks.*").
+		Columns(
+			"coalesce(starred, 0)",
+			"starred_at",
+			"coalesce(play_count, 0)",
+			"play_date",
+			"coalesce(rating, 0)",
+			"f.*",
+			"playlist_tracks.*",
+		).
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +
 			" AND annotation.item_type = 'media_file'" +

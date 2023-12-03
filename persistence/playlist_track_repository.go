@@ -47,7 +47,15 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			"annotation.item_id = media_file_id"+
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*", "playlist_tracks.*").
+		Columns(
+			"coalesce(starred, 0)",
+			"coalesce(play_count, 0)",
+			"coalesce(rating, 0)",
+			"starred_at",
+			"play_date",
+			"f.*",
+			"playlist_tracks.*",
+		).
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
 	var trk model.PlaylistTrack
