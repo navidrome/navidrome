@@ -138,7 +138,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
             if (sampleRate != 0) {
               hasLyrics = true;
               for (const auto &line: frame->synchedText()) {
-                const uint timeInMs = (line.time * 1000) / sampleRate;
+                const int timeInMs = (line.time * 1000) / sampleRate;
                 char *text = (char *)line.text.toCString(true);
                 go_map_put_lyric_line(id, lang, text, timeInMs);
               }

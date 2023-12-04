@@ -118,10 +118,10 @@ func go_map_put_int(id C.ulong, key *C.char, val C.int) {
 }
 
 //export go_map_put_lyric_line
-func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.uint) {
+func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
 	language := C.GoString(lang)
 	line := C.GoString(text)
-	timeGo := uint64(time)
+	timeGo := int64(time)
 
 	ms := timeGo % 1000
 	timeGo /= 1000
