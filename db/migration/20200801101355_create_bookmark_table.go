@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upCreateBookmarkTable, downCreateBookmarkTable)
+	goose.AddMigrationContext(upCreateBookmarkTable, downCreateBookmarkTable)
 }
 
-func upCreateBookmarkTable(tx *sql.Tx) error {
+func upCreateBookmarkTable(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table bookmark
 (
@@ -48,6 +49,6 @@ alter table playqueue_dg_tmp rename to playqueue;
 	return err
 }
 
-func downCreateBookmarkTable(tx *sql.Tx) error {
+func downCreateBookmarkTable(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

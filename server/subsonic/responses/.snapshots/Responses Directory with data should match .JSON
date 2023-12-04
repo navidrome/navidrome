@@ -10,10 +10,14 @@
         "id": "1",
         "isDir": false,
         "title": "title",
-        "genres": [],
         "isVideo": false,
         "bpm": 0,
-        "comment": ""
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "genres": [],
+        "replayGain": {}
       }
     ],
     "id": "1",

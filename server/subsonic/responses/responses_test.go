@@ -142,7 +142,8 @@ var _ = Describe("Responses", func() {
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					Comment: "a comment", Bpm: 127,
+					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321",
+					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
 				}
 				response.Directory.Child = child
 			})
@@ -171,15 +172,19 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
-				album := AlbumID3{Id: "1", Name: "album", Artist: "artist", Genre: "rock",
-					Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}}, MusicBrainzId: "1234"}
+				album := AlbumID3{
+					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
+				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					Comment: "a comment", Bpm: 127,
+					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
+					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
 				}}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs
@@ -722,6 +727,36 @@ var _ = Describe("Responses", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
 
+		})
+	})
+
+	Describe("OpenSubsonicExtensions", func() {
+		BeforeEach(func() {
+			response.OpenSubsonic = true
+			response.OpenSubsonicExtensions = &OpenSubsonicExtensions{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				response.OpenSubsonicExtensions = &OpenSubsonicExtensions{
+					OpenSubsonicExtension{Name: "template", Versions: []int32{1, 2}},
+				}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
 		})
 	})
 

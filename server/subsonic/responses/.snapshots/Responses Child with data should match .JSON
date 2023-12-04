@@ -15,14 +15,6 @@
         "track": 1,
         "year": 1985,
         "genre": "Rock",
-        "genres": [
-          {
-            "name": "rock"
-          },
-          {
-            "name": "progressive"
-          }
-        ],
         "coverArt": "1",
         "size": 8421341,
         "contentType": "audio/flac",
@@ -34,7 +26,26 @@
         "bitRate": 320,
         "isVideo": false,
         "bpm": 127,
-        "comment": "a comment"
+        "comment": "a comment",
+        "sortName": "",
+        "mediaType": "song",
+        "musicBrainzId": "4321",
+        "genres": [
+          {
+            "name": "rock"
+          },
+          {
+            "name": "progressive"
+          }
+        ],
+        "replayGain": {
+          "trackGain": 1,
+          "albumGain": 2,
+          "trackPeak": 3,
+          "albumPeak": 4,
+          "baseGain": 5,
+          "fallbackGain": 6
+        }
       }
     ],
     "id": "1",

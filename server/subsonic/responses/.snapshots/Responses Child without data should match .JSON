@@ -9,10 +9,14 @@
       {
         "id": "1",
         "isDir": false,
-        "genres": [],
         "isVideo": false,
         "bpm": 0,
-        "comment": ""
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "genres": [],
+        "replayGain": {}
       }
     ],
     "id": "",

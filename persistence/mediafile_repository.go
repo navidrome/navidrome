@@ -40,7 +40,7 @@ func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFile
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("media_file.id")
-	sql = r.withGenres(sql)
+	sql = r.withGenres(sql) // Required for filtering by genre
 	return r.count(sql, options...)
 }
 
@@ -91,7 +91,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...)
 	res := model.MediaFiles{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(sq, &res, options...)
 	if err != nil {
 		return nil, err
 	}

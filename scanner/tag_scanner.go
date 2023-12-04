@@ -19,7 +19,7 @@ import (
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type TagScanner struct {
@@ -351,7 +351,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
-	chunks := utils.BreakUpStringSlice(filesToUpdate, filesBatchSize)
+	chunks := slice.BreakUp(filesToUpdate, filesBatchSize)
 	for _, chunk := range chunks {
 		// Load tracks Metadata from the folder
 		newTracks, err := s.loadTracks(chunk)

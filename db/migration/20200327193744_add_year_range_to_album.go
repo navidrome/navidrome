@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200327193744, Down20200327193744)
+	goose.AddMigrationContext(Up20200327193744, Down20200327193744)
 }
 
-func Up20200327193744(tx *sql.Tx) error {
+func Up20200327193744(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 create table album_dg_tmp
 (
@@ -75,6 +76,6 @@ create index album_max_year
 	return forceFullRescan(tx)
 }
 
-func Down20200327193744(tx *sql.Tx) error {
+func Down20200327193744(_ context.Context, tx *sql.Tx) error {
 	return nil
 }
