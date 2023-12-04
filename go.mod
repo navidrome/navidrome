@@ -7,7 +7,7 @@ require (
 	github.com/DexterLB/mpvipc v0.0.0-20230829142118-145d6eabdc37
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/ReneKroon/ttlcache/v2 v2.11.0
-	github.com/beego/beego/v2 v2.1.3
+	github.com/beego/beego/v2 v2.1.4
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211101235434-380523c4bb47
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
