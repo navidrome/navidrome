@@ -87,67 +87,66 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
-  // Yes, it is possible to have ID3v2 tags in FLAC. However, that can cause problems 
+  // Yes, it is possible to have ID3v2 tags in FLAC. However, that can cause problems
   // with many players, so they will not be parsed
 
   if (id3Tags != NULL) {
     const auto &frames = id3Tags->frameListMap();
     bool hasLyrics = false;
-    
-    const auto usltList = frames["USLT"];
-    if (!usltList.isEmpty()) {
-      for (const auto &tag: usltList) {
-        TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
-        if (frame == NULL) continue;
 
-        hasLyrics = true;
+    for (const auto &kv: frames) {
+      if (kv.first == "USLT") {
+        for (const auto &tag: kv.second) {
+          TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
+          if (frame == NULL) continue;
 
-        char lang[4];
-        strncpy(lang, frame->language().data(), 3);
-        lang[3] = '\0';
-        char *val = (char *)frame->text().toCString(true);
-
-        go_map_put_str(id, LYRICS_KEY, lang);
-        go_map_put_str(id, LYRICS_KEY, val);
-      }
-
-      if (hasLyrics) {
-        tags.erase("LYRICS");
-      }
-    }
-
-    const auto syltList = frames["SYLT"];
-    if (!syltList.isEmpty()) {
-
-      for (const auto &tag: syltList) {
-        TagLib::ID3v2::SynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame *>(tag);
-        if (frame == NULL) continue;
-  
-
-        char lang[4];
-        strncpy(lang, frame->language().data(), 3);
-        lang[3] = '\0';
-
-        const auto format = frame->timestampFormat();
-        if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
           hasLyrics = true;
 
-          for (const auto &line: frame->synchedText()) {
-            char *text = (char *)line.text.toCString(true);
-            go_map_put_lyric_line(id, lang, text, line.time);
-          }
-        } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
-          const int sampleRate = props->sampleRate();
+          char lang[4];
+          strncpy(lang, frame->language().data(), 3);
+          lang[3] = '\0';
+          char *val = (char *)frame->text().toCString(true);
 
-          if (sampleRate != 0) {
+          go_map_put_str(id, LYRICS_KEY, lang);
+          go_map_put_str(id, LYRICS_KEY, val);
+        }
+
+        if (hasLyrics) {
+          tags.erase("LYRICS");
+        }
+      } else if (kv.first == "SYLT") {
+        for (const auto &tag: kv.second) {
+          TagLib::ID3v2::SynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame *>(tag);
+          if (frame == NULL) continue;
+
+
+          char lang[4];
+          strncpy(lang, frame->language().data(), 3);
+          lang[3] = '\0';
+
+          const auto format = frame->timestampFormat();
+          if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
             hasLyrics = true;
+
             for (const auto &line: frame->synchedText()) {
-              const uint timeInMs = (line.time * 1000) / sampleRate;
               char *text = (char *)line.text.toCString(true);
-              go_map_put_lyric_line(id, lang, text, timeInMs);
+              go_map_put_lyric_line(id, lang, text, line.time);
+            }
+          } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
+            const int sampleRate = props->sampleRate();
+
+            if (sampleRate != 0) {
+              hasLyrics = true;
+              for (const auto &line: frame->synchedText()) {
+                const uint timeInMs = (line.time * 1000) / sampleRate;
+                char *text = (char *)line.text.toCString(true);
+                go_map_put_lyric_line(id, lang, text, timeInMs);
+              }
             }
           }
         }
+      } else {
+        tags.insert(kv.first, kv.second.front()->toString());
       }
     }
 

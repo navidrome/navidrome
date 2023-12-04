@@ -72,7 +72,7 @@ var _ = Describe("Extractor", func() {
 
 			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10"}))
 			m = m.Map(e.CustomMappings())
-			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2"}))
+			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2/10", "2"}))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
