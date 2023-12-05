@@ -12,15 +12,15 @@ var _ = Describe("Albums", func() {
 	Context("Simple attributes", func() {
 		BeforeEach(func() {
 			albums = Albums{
-				{ID: "1", AlbumArtist: "Artist", AlbumArtistID: "11", SortAlbumArtistName: "SortAlbumArtistName", OrderAlbumArtistName: "OrderAlbumArtistName"},
-				{ID: "2", AlbumArtist: "Artist", AlbumArtistID: "11", SortAlbumArtistName: "SortAlbumArtistName", OrderAlbumArtistName: "OrderAlbumArtistName"},
+				{ID: "1", AlbumArtist: "Artist1 · Artist2", AlbumArtistID: "11", SortAlbumArtistName: "SortAlbumArtistName", OrderAlbumArtistName: "OrderAlbumArtistName"},
+				{ID: "2", AlbumArtist: "Artist1", AlbumArtistID: "11", SortAlbumArtistName: "SortAlbumArtistName", OrderAlbumArtistName: "OrderAlbumArtistName"},
 			}
 		})
 
 		It("sets the single values correctly", func() {
 			artist := albums.ToAlbumArtist()
 			Expect(artist.ID).To(Equal("11"))
-			Expect(artist.Name).To(Equal("Artist"))
+			Expect(artist.Name).To(Equal("Artist1"))
 			Expect(artist.SortArtistName).To(Equal("SortAlbumArtistName"))
 			Expect(artist.OrderArtistName).To(Equal("OrderAlbumArtistName"))
 		})

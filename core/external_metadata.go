@@ -174,14 +174,11 @@ func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist
 	return &artist, nil
 }
 
-// Replace some Unicode chars with their equivalent ASCII
+// Replace some problematic Unicode chars with their equivalent ASCII & only take the first value
 func clearName(name string) string {
-	name = strings.ReplaceAll(name, "–", "-")
-	name = strings.ReplaceAll(name, "‐", "-")
-	name = strings.ReplaceAll(name, "“", `"`)
-	name = strings.ReplaceAll(name, "”", `"`)
-	name = strings.ReplaceAll(name, "‘", `'`)
-	name = strings.ReplaceAll(name, "’", `'`)
+	// note: to be changed after multi-artist database refactoring
+	name = strings.Split(name, " · ")[0]
+	name = utils.SanitizeProblematicChars([]string{name})[0]
 	return name
 }
 

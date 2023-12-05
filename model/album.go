@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -73,12 +74,14 @@ type Albums []Album
 func (als Albums) ToAlbumArtist() Artist {
 	a := Artist{AlbumCount: len(als)}
 	var mbzArtistIds []string
+	var albumArtists []string
 	for _, al := range als {
 		a.ID = al.AlbumArtistID
-		a.Name = al.AlbumArtist
+		// note: to be changed after multi-artists database refactoring
+		albumArtists = strings.Split(al.AlbumArtist, " · ")
+		a.Name = albumArtists[0]
 		a.SortArtistName = al.SortAlbumArtistName
 		a.OrderArtistName = al.OrderAlbumArtistName
-
 		a.SongCount += al.SongCount
 		a.Size += al.Size
 		a.Genres = append(a.Genres, al.Genres...)
