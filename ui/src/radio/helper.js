@@ -1,4 +1,7 @@
-export async function songFromRadio(radio) {
+import config from '../config'
+import subsonic from '../subsonic'
+
+export async function songFromRadio(radio, subStream) {
   if (!radio) {
     return undefined
   }
@@ -7,18 +10,42 @@ export async function songFromRadio(radio) {
   try {
     const url = new URL(radio.homePageUrl ?? radio.streamUrl)
     url.pathname = '/favicon.ico'
-    await resourceExists(url)
-    cover = url.toString()
+
+    let urlString
+
+    if (config.enableProxy) {
+      urlString = subsonic.url('proxy/icon', '', {
+        url: url.toString(),
+      })
+    } else {
+      urlString = url.toString()
+    }
+
+    await resourceExists(urlString)
+    cover = urlString
   } catch {}
 
-  return {
-    ...radio,
-    title: radio.name,
-    album: radio.homePageUrl || radio.name,
-    artist: radio.name,
-    cover,
-    isRadio: true,
+  let radioName, targetUrl
+
+  if (subStream) {
+    radioName = `${subStream.name} (${radio.name})`
+    targetUrl = subStream.url
+  } else {
+    radioName = radio.name
+    targetUrl = radio.streamUrl
   }
+
+  let streamUrl
+
+  if (config.enableProxy) {
+    streamUrl = subsonic.url('proxy/stream', '', {
+      url: targetUrl,
+    })
+  } else {
+    streamUrl = targetUrl
+  }
+
+  return { ...radio, cover, name: radioName, streamUrl }
 }
 
 const resourceExists = (url) => {

@@ -109,6 +109,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "star", api.Star)
 		h(r, "unstar", api.Unstar)
 		h(r, "scrobble", api.Scrobble)
+		h(r, "scrobbleRadio", api.ScrobbleRadio)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(getPlayer(api.players))
@@ -185,6 +186,27 @@ func (api *Router) routes() http.Handler {
 		})
 	} else {
 		h501(r, "jukeboxControl")
+	}
+
+	if conf.Server.EnableProxy {
+		r.Route("/proxy", func(r chi.Router) {
+			r.Get("/icon", api.proxyIcon)
+
+			r.Group(func(r chi.Router) {
+				// These are not official subsonic routes. However, they use subsonic
+				// as opposed to native API because it makes authentication easier from the
+				// client side (namely, fetching audio and images)
+				throttle := conf.Server.MaxRadioStreams
+
+				if throttle == 0 {
+					return
+				} else if throttle != -1 {
+					r.Use(middleware.Throttle(conf.Server.DevArtworkMaxRequests))
+				}
+
+				r.Get("/stream", api.proxyRadio)
+			})
+		})
 	}
 
 	// Not Implemented (yet?)

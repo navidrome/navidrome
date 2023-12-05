@@ -100,9 +100,15 @@ var _ = Describe("MediaAnnotationController", func() {
 	})
 })
 
+type radioInfo struct {
+	Artist  string
+	Playing bool
+}
+
 type fakePlayTracker struct {
 	Submissions []scrobbler.Submission
 	Playing     map[string]string
+	Radio       map[string]radioInfo
 	Error       error
 }
 
@@ -117,6 +123,19 @@ func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ strin
 	return nil
 }
 
+func (f *fakePlayTracker) NowPlayingRadio(_ context.Context, artist, title string) {
+	if f.Error != nil {
+		return
+	}
+	if f.Radio == nil {
+		f.Radio = make(map[string]radioInfo)
+	}
+	f.Radio[title] = radioInfo{
+		Artist:  artist,
+		Playing: true,
+	}
+}
+
 func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.NowPlayingInfo, error) {
 	return nil, f.Error
 }
@@ -127,6 +146,19 @@ func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Subm
 	}
 	f.Submissions = append(f.Submissions, submissions...)
 	return nil
+}
+
+func (f *fakePlayTracker) SubmitRadio(_ context.Context, artist, title string) {
+	if f.Error != nil {
+		return
+	}
+	if f.Radio == nil {
+		f.Radio = make(map[string]radioInfo)
+	}
+	f.Radio[title] = radioInfo{
+		Artist:  artist,
+		Playing: false,
+	}
 }
 
 var _ scrobbler.PlayTracker = (*fakePlayTracker)(nil)

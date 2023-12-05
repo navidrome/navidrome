@@ -32,6 +32,15 @@ const scrobble = (id, time, submission = true) =>
 
 const nowPlaying = (id) => scrobble(id, null, false)
 
+const scrobbleRadio = (artist, title, submission = true) =>
+  httpClient(
+    url('scrobbleRadio', '', {
+      artist,
+      title,
+      submission,
+    })
+  )
+
 const star = (id) => httpClient(url('star', id))
 
 const unstar = (id) => httpClient(url('unstar', id))
@@ -92,4 +101,5 @@ export default {
   streamUrl,
   getAlbumInfo,
   getArtistInfo,
+  scrobbleRadio,
 }

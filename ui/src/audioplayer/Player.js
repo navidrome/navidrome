@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useMediaQuery } from '@material-ui/core'
 import { ThemeProvider } from '@material-ui/core/styles'
@@ -23,6 +29,8 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+
+const RadioPlayer = React.lazy(() => import('../radio/RadioPlayer'))
 
 function calculateReplayGain(preAmp, gain, peak) {
   if (gain === undefined || peak === undefined) {
@@ -53,10 +61,13 @@ const Player = () => {
 
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
-  const isRadio = playerState.current?.isRadio || false
+  const isRadio = playerState.radio?.streamUrl !== undefined
   const classes = useStyle({
-    isRadio,
     visible,
+    enableCoverAnimation: config.enableCoverAnimation,
+  })
+  const radioClasses = useStyle({
+    visible: isRadio,
     enableCoverAnimation: config.enableCoverAnimation,
   })
   const showNotifications = useSelector(
@@ -128,6 +139,8 @@ const Player = () => {
     playerState,
   ])
 
+  const playerLocale = locale(translate)
+
   const defaultOptions = useMemo(
     () => ({
       theme: playerTheme,
@@ -158,9 +171,9 @@ const Player = () => {
           isMobile={isMobile}
         />
       ),
-      locale: locale(translate),
+      locale: playerLocale,
     }),
-    [gainInfo, isDesktop, playerTheme, translate]
+    [gainInfo, isDesktop, playerTheme, playerLocale]
   )
 
   const options = useMemo(() => {
@@ -171,11 +184,8 @@ const Player = () => {
       playIndex: playerState.playIndex,
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
-      extendsContent: (
-        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
-      ),
+      extendsContent: <PlayerToolbar id={current.trackId} />,
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
-      showMediaSession: !current.isRadio,
     }
   }, [playerState, defaultOptions, isMobilePlayer])
 
@@ -199,10 +209,6 @@ const Player = () => {
 
       const progress = (info.currentTime / info.duration) * 100
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
-        return
-      }
-
-      if (info.isRadio) {
         return
       }
 
@@ -245,9 +251,7 @@ const Player = () => {
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
-        if (!info.isRadio) {
-          subsonic.nowPlaying(info.trackId)
-        }
+        subsonic.nowPlaying(info.trackId)
         setPreload(false)
         if (config.gaTrackingId) {
           ReactGA.event({
@@ -338,6 +342,16 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
+      {isRadio && (
+        <Suspense fallback={<div></div>}>
+          <RadioPlayer
+            className={radioClasses.player}
+            locale={playerLocale}
+            theme={playerTheme}
+            {...(playerState.radio || {})}
+          />
+        </Suspense>
+      )}
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )

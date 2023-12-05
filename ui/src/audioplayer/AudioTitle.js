@@ -23,14 +23,7 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   }
 
   return (
-    <Link
-      to={
-        audioInfo.isRadio
-          ? `/radio/${audioInfo.trackId}/show`
-          : `/album/${song.albumId}/show`
-      }
-      className={className}
-    >
+    <Link to={`/album/${song.albumId}/show`} className={className}>
       <span>
         <span className={clsx(classes.songTitle, 'songTitle')}>
           {song.title}

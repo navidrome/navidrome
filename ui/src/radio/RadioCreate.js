@@ -1,27 +1,10 @@
-import {
-  Create,
-  required,
-  SimpleForm,
-  TextInput,
-  useTranslate,
-} from 'react-admin'
-import { Title } from '../common'
+import { Create, required, SimpleForm, TextInput } from 'react-admin'
 import { urlValidate } from '../utils/validations'
-
-const RadioTitle = () => {
-  const translate = useTranslate()
-  const resourceName = translate('resources.radio.name', {
-    smart_count: 1,
-  })
-  const title = translate('ra.page.create', {
-    name: `${resourceName}`,
-  })
-  return <Title subTitle={title} />
-}
+import RadioPageTitle from './RadioPageTitle'
 
 const RadioCreate = (props) => {
   return (
-    <Create title={<RadioTitle />} {...props}>
+    <Create title={<RadioPageTitle />} {...props}>
       <SimpleForm redirect="list" variant={'outlined'}>
         <TextInput source="name" validate={[required()]} />
         <TextInput

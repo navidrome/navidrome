@@ -67,6 +67,8 @@ const (
 	DefaultScannerExtractor = "taglib"
 
 	Zwsp = string('\u200b')
+
+	MaxRadioStreams = 100 // Unlimited
 )
 
 // Cache options
