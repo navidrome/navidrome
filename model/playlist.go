@@ -27,7 +27,7 @@ type Playlist struct {
 	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
-	Rules       *criteria.Criteria `structs:"-" json:"rules"`
+	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
 	EvaluatedAt time.Time          `structs:"evaluated_at" json:"evaluatedAt"`
 }
 

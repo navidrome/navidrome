@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"regexp"
 	"strings"
@@ -10,14 +11,30 @@ import (
 	"github.com/fatih/structs"
 )
 
+type PostMapper interface {
+	PostMapArgs(map[string]any) error
+}
+
 func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
 	m := structs.Map(rec)
 	for k, v := range m {
-		if t, ok := v.(time.Time); ok {
+		switch t := v.(type) {
+		case time.Time:
 			m[k] = t.Format(time.RFC3339Nano)
+		case *time.Time:
+			m[k] = t.Format(time.RFC3339Nano)
+		case driver.Valuer:
+			var err error
+			m[k], err = t.Value()
+			if err != nil {
+				return nil, err
+			}
 		}
-		if t, ok := v.(*time.Time); ok && t != nil {
-			m[k] = t.Format(time.RFC3339Nano)
+	}
+	if r, ok := rec.(PostMapper); ok {
+		err := r.PostMapArgs(m)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return m, nil

@@ -2,9 +2,9 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
-	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -23,7 +23,24 @@ type playlistRepository struct {
 
 type dbPlaylist struct {
 	model.Playlist `structs:",flatten"`
-	RawRules       string `structs:"rules" db:"rules"`
+	Rules          sql.NullString `structs:"-"`
+}
+
+func (p *dbPlaylist) PostScan() error {
+	if p.Rules.String != "" {
+		return json.Unmarshal([]byte(p.Rules.String), &p.Playlist.Rules)
+	}
+	return nil
+}
+
+func (p dbPlaylist) PostMapArgs(args map[string]any) error {
+	var err error
+	if p.Playlist.IsSmartPlaylist() {
+		args["rules"], err = json.Marshal(p.Playlist.Rules)
+		return err
+	}
+	delete(args, "rules")
+	return nil
 }
 
 func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRepository {
@@ -64,8 +81,8 @@ func (r *playlistRepository) userFilter() Sqlizer {
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := Select().Where(r.userFilter())
-	return r.count(sql, options...)
+	sq := Select().Where(r.userFilter())
+	return r.count(sq, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
@@ -89,11 +106,11 @@ func (r *playlistRepository) Delete(id string) error {
 func (r *playlistRepository) Put(p *model.Playlist) error {
 	pls := dbPlaylist{Playlist: *p}
 	if p.IsSmartPlaylist() {
-		j, err := json.Marshal(p.Rules)
-		if err != nil {
-			return err
-		}
-		pls.RawRules = string(j)
+		//j, err := json.Marshal(p.Rules)
+		//if err != nil {
+		//	return err
+		//}
+		//pls.Rules = string(j)
 	}
 	if pls.ID == "" {
 		pls.CreatedAt = time.Now()
@@ -161,22 +178,7 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 		return nil, model.ErrNotFound
 	}
 
-	return r.toModel(pls[0])
-}
-
-func (r *playlistRepository) toModel(pls dbPlaylist) (*model.Playlist, error) {
-	var err error
-	if strings.TrimSpace(pls.RawRules) != "" {
-		var c criteria.Criteria
-		err = json.Unmarshal([]byte(pls.RawRules), &c)
-		if err != nil {
-			return nil, err
-		}
-		pls.Playlist.Rules = &c
-	} else {
-		pls.Playlist.Rules = nil
-	}
-	return &pls.Playlist, err
+	return &pls[0].Playlist, nil
 }
 
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
@@ -188,11 +190,7 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	}
 	playlists := make(model.Playlists, len(res))
 	for i, p := range res {
-		pls, err := r.toModel(p)
-		if err != nil {
-			return nil, err
-		}
-		playlists[i] = *pls
+		playlists[i] = p.Playlist
 	}
 	return playlists, err
 }
@@ -228,15 +226,15 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Re-populate playlist based on Smart Playlist criteria
 	rules := *pls.Rules
-	sql := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
+	sq := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
 		" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		LeftJoin("media_file_genres ag on media_file.id = ag.media_file_id").
 		LeftJoin("genre on ag.genre_id = genre.id").GroupBy("media_file.id")
-	sql = r.addCriteria(sql, rules)
-	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sql)
+	sq = r.addCriteria(sq, rules)
+	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	_, err = r.executeSQL(insSql)
 	if err != nil {
 		log.Error(r.ctx, "Error refreshing smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
@@ -457,8 +455,8 @@ func (r *playlistRepository) removeOrphans() error {
 
 func (r *playlistRepository) renumber(id string) error {
 	var ids []string
-	sql := Select("media_file_id").From("playlist_tracks").Where(Eq{"playlist_id": id}).OrderBy("id")
-	err := r.queryAll(sql, &ids)
+	sq := Select("media_file_id").From("playlist_tracks").Where(Eq{"playlist_id": id}).OrderBy("id")
+	err := r.queryAll(sq, &ids)
 	if err != nil {
 		return err
 	}
