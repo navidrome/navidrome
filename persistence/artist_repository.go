@@ -24,8 +24,34 @@ type artistRepository struct {
 }
 
 type dbArtist struct {
-	model.Artist   `structs:",flatten"`
-	SimilarArtists string `structs:"similar_artists" json:"similarArtists"`
+	*model.Artist  `structs:",flatten"`
+	SimilarArtists string `structs:"-" json:"similarArtists"`
+}
+
+func (a *dbArtist) PostScan() error {
+	if a.SimilarArtists == "" {
+		return nil
+	}
+	for _, s := range strings.Split(a.SimilarArtists, ";") {
+		fields := strings.Split(s, ":")
+		if len(fields) != 2 {
+			continue
+		}
+		name, _ := url.QueryUnescape(fields[1])
+		a.Artist.SimilarArtists = append(a.Artist.SimilarArtists, model.Artist{
+			ID:   fields[0],
+			Name: name,
+		})
+	}
+	return nil
+}
+func (a *dbArtist) PostMapArgs(m map[string]any) error {
+	var sa []string
+	for _, s := range a.Artist.SimilarArtists {
+		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
+	}
+	m["similar_artists"] = strings.Join(sa, ";")
+	return nil
 }
 
 func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistRepository {
@@ -62,7 +88,7 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	a.FullText = getFullText(a.Name, a.SortArtistName)
-	dba := r.fromModel(a)
+	dba := &dbArtist{Artist: a}
 	_, err := r.put(dba.ID, dba, colsToUpdate...)
 	if err != nil {
 		return err
@@ -102,39 +128,9 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 	res := model.Artists{}
 	for i := range dba {
-		a := dba[i]
-		res = append(res, *r.toModel(&a))
+		res = append(res, *dba[i].Artist)
 	}
 	return res
-}
-
-func (r *artistRepository) toModel(dba *dbArtist) *model.Artist {
-	a := dba.Artist
-	a.SimilarArtists = nil
-	for _, s := range strings.Split(dba.SimilarArtists, ";") {
-		fields := strings.Split(s, ":")
-		if len(fields) != 2 {
-			continue
-		}
-		name, _ := url.QueryUnescape(fields[1])
-		a.SimilarArtists = append(a.SimilarArtists, model.Artist{
-			ID:   fields[0],
-			Name: name,
-		})
-	}
-	return &a
-}
-
-func (r *artistRepository) fromModel(a *model.Artist) *dbArtist {
-	dba := &dbArtist{Artist: *a}
-	var sa []string
-
-	for _, s := range a.SimilarArtists {
-		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
-	}
-
-	dba.SimilarArtists = strings.Join(sa, ";")
-	return dba
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {

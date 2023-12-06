@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 
+	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -70,8 +71,17 @@ var _ = Describe("ArtistRepository", func() {
 			}}
 		})
 		It("maps fields", func() {
-			dba := repo.(*artistRepository).fromModel(a)
-			actual := repo.(*artistRepository).toModel(dba)
+			dba := &dbArtist{Artist: a}
+			m := structs.Map(dba)
+			Expect(dba.PostMapArgs(m)).To(Succeed())
+			Expect(m).To(HaveKeyWithValue("similar_artists", "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"))
+
+			other := dbArtist{SimilarArtists: m["similar_artists"].(string), Artist: &model.Artist{
+				ID: "1", Name: "Van Halen",
+			}}
+			Expect(other.PostScan()).To(Succeed())
+
+			actual := other.Artist
 			Expect(*actual).To(MatchFields(IgnoreExtras, Fields{
 				"ID":   Equal(a.ID),
 				"Name": Equal(a.Name),
