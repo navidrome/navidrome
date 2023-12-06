@@ -3,7 +3,7 @@ package model
 import "time"
 
 type User struct {
-	ID           string    `structs:"id" json:"id" orm:"column(id)"`
+	ID           string    `structs:"id" json:"id"`
 	UserName     string    `structs:"user_name" json:"userName"`
 	Name         string    `structs:"name" json:"name"`
 	Email        string    `structs:"email" json:"email"`
