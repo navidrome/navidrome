@@ -154,9 +154,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 		songArtistIds = append(songArtistIds, m.ArtistID)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		fullText = append(fullText,
-			m.Album, m.AlbumArtist, m.Artist,
-			m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName,
-			m.DiscSubtitle)
+			m.Album, m.DiscSubtitle,
+			m.AlbumArtist, m.Artist,
+			m.SortAlbumName, m.SortAlbumArtistName, m.SortArtistName)
 		if m.HasCoverArt && a.EmbedArtPath == "" {
 			a.EmbedArtPath = m.Path
 		}
@@ -173,7 +173,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
 	a.Genres = slices.Compact(a.Genres)
-	a.FullText = " " + utils.SanitizeStrings(fullText...)
+	a.FullText = utils.GetFullText(fullText...)
 	a = fixAlbumArtist(a, albumArtistIds)
 	songArtistIds = append(songArtistIds, a.AlbumArtistID, a.ArtistID)
 	slices.Sort(songArtistIds)

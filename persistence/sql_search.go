@@ -9,11 +9,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 )
 
-func getFullText(text ...string) string {
-	fullText := utils.SanitizeStrings(text...)
-	return " " + fullText
-}
-
 func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
