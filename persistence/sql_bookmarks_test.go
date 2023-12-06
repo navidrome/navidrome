@@ -60,12 +60,15 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(bms).To(HaveLen(2))
 
 			By("Delete bookmark")
-			Expect(mr.DeleteBookmark(songAntenna.ID))
+			Expect(mr.DeleteBookmark(songAntenna.ID)).To(Succeed())
 			bms, err = mr.GetBookmarks()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bms).To(HaveLen(1))
 			Expect(bms[0].Item.ID).To(Equal(songComeTogether.ID))
 			Expect(bms[0].Item.Title).To(Equal(songComeTogether.Title))
+
+			Expect(mr.DeleteBookmark(songComeTogether.ID)).To(Succeed())
+			Expect(mr.GetBookmarks()).To(BeEmpty())
 		})
 	})
 })
