@@ -18,7 +18,7 @@ var _ = Describe("UserRepository", func() {
 	var repo model.UserRepository
 
 	BeforeEach(func() {
-		repo = NewUserRepository(log.NewContext(context.TODO()), getDB())
+		repo = NewUserRepository(log.NewContext(context.TODO()), getDBXBuilder())
 	})
 
 	Describe("Put/Get/FindByUsername", func() {

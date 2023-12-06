@@ -19,7 +19,7 @@ var _ = Describe("PlayQueueRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlayQueueRepository(ctx, getDB())
+		repo = NewPlayQueueRepository(ctx, getDBXBuilder())
 	})
 
 	Describe("PlayQueues", func() {

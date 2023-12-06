@@ -20,63 +20,63 @@ func New(conn *sql.DB) model.DataStore {
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
-	return NewAlbumRepository(ctx, s.getConn())
+	return NewAlbumRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
-	return NewArtistRepository(ctx, s.getConn())
+	return NewArtistRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	return NewMediaFileRepository(ctx, s.getConn())
+	return NewMediaFileRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
-	return NewMediaFolderRepository(ctx, s.getConn())
+	return NewMediaFolderRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
-	return NewGenreRepository(ctx, s.getConn())
+	return NewGenreRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	return NewPlayQueueRepository(ctx, s.getConn())
+	return NewPlayQueueRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	return NewPlaylistRepository(ctx, s.getConn())
+	return NewPlaylistRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
-	return NewPropertyRepository(ctx, s.getConn())
+	return NewPropertyRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
-	return NewRadioRepository(ctx, s.getConn())
+	return NewRadioRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
-	return NewUserPropsRepository(ctx, s.getConn())
+	return NewUserPropsRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
-	return NewShareRepository(ctx, s.getConn())
+	return NewShareRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) User(ctx context.Context) model.UserRepository {
-	return NewUserRepository(ctx, s.getConn())
+	return NewUserRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository {
-	return NewTranscodingRepository(ctx, s.getConn())
+	return NewTranscodingRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
-	return NewPlayerRepository(ctx, s.getConn())
+	return NewPlayerRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
-	return NewScrobbleBufferRepository(ctx, s.getConn())
+	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
@@ -170,7 +170,7 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	return err
 }
 
-func (s *SQLStore) getConn() dbx.Builder {
+func (s *SQLStore) getDBXBuilder() dbx.Builder {
 	if s.db == nil {
 		return dbx.NewFromDB(db.Db(), db.Driver)
 	}

@@ -13,7 +13,7 @@ var _ = Describe("Property Repository", func() {
 	var pr model.PropertyRepository
 
 	BeforeEach(func() {
-		pr = NewPropertyRepository(log.NewContext(context.TODO()), getDB())
+		pr = NewPropertyRepository(log.NewContext(context.TODO()), getDBXBuilder())
 	})
 
 	It("saves and restore a new property", func() {

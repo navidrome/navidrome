@@ -29,7 +29,7 @@ func TestPersistence(t *testing.T) {
 	RunSpecs(t, "Persistence Suite")
 }
 
-func getDB() *dbx.DB {
+func getDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Driver)
 }
 
@@ -91,7 +91,7 @@ func P(path string) string {
 // Initialize test DB
 // TODO Load this data setup from file(s)
 var _ = BeforeSuite(func() {
-	conn := getDB()
+	conn := getDBXBuilder()
 	ctx := log.NewContext(context.TODO())
 	user := model.User{ID: "userid", UserName: "userid", IsAdmin: true}
 	ctx = request.WithUser(ctx, user)

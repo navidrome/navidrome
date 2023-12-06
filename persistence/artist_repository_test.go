@@ -17,7 +17,7 @@ var _ = Describe("ArtistRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		repo = NewArtistRepository(ctx, getDB())
+		repo = NewArtistRepository(ctx, getDBXBuilder())
 	})
 
 	Describe("Count", func() {

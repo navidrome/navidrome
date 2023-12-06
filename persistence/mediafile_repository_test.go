@@ -19,7 +19,7 @@ var _ = Describe("MediaRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		mr = NewMediaFileRepository(ctx, getDB())
+		mr = NewMediaFileRepository(ctx, getDBXBuilder())
 	})
 
 	It("gets mediafile from the DB", func() {

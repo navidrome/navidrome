@@ -17,7 +17,7 @@ var _ = Describe("PlaylistRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, getDB())
+		repo = NewPlaylistRepository(ctx, getDBXBuilder())
 	})
 
 	Describe("Count", func() {

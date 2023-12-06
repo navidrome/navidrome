@@ -22,7 +22,7 @@ var _ = Describe("RadioRepository", func() {
 		BeforeEach(func() {
 			ctx := log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			repo = NewRadioRepository(ctx, getDB())
+			repo = NewRadioRepository(ctx, getDBXBuilder())
 			_ = repo.Put(&radioWithHomePage)
 		})
 
@@ -119,7 +119,7 @@ var _ = Describe("RadioRepository", func() {
 		BeforeEach(func() {
 			ctx := log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: false})
-			repo = NewRadioRepository(ctx, getDB())
+			repo = NewRadioRepository(ctx, getDBXBuilder())
 		})
 
 		Describe("Count", func() {
