@@ -85,7 +85,7 @@ func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]
 		Join("media_file mf on mf.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
 	var ids []string
-	err := r.queryAll(sql, &ids)
+	err := r.queryAllSlice(sql, &ids)
 	if err != nil {
 		return nil, err
 	}

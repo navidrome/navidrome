@@ -105,13 +105,6 @@ func (r *playlistRepository) Delete(id string) error {
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
 	pls := dbPlaylist{Playlist: *p}
-	if p.IsSmartPlaylist() {
-		//j, err := json.Marshal(p.Rules)
-		//if err != nil {
-		//	return err
-		//}
-		//pls.Rules = string(j)
-	}
 	if pls.ID == "" {
 		pls.CreatedAt = time.Now()
 	} else {
@@ -262,7 +255,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 }
 
 func (r *playlistRepository) addCriteria(sql SelectBuilder, c criteria.Criteria) SelectBuilder {
-	sql = sql.Where(c.ToSql())
+	sql = sql.Where(c)
 	if c.Limit > 0 {
 		sql = sql.Limit(uint64(c.Limit)).Offset(uint64(c.Offset))
 	}
@@ -318,7 +311,11 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 
 // RefreshStatus updates total playlist duration, size and count
 func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
-	statsSql := Select("sum(duration) as duration", "sum(size) as size", "count(*) as count").
+	statsSql := Select(
+		"coalesce(sum(duration), 0) as duration",
+		"coalesce(sum(size), 0) as size",
+		"count(*) as count",
+	).
 		From("media_file").
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
 		Where(Eq{"playlist_id": pls.ID})
@@ -410,7 +407,7 @@ func (r *playlistRepository) Update(id string, entity interface{}, cols ...strin
 	if !usr.IsAdmin && current.OwnerID != usr.ID {
 		return rest.ErrPermissionDenied
 	}
-	pls := entity.(*model.Playlist)
+	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err = r.put(id, pls, append(cols, "updatedAt")...)
