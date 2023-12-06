@@ -15,7 +15,7 @@ type PostMapper interface {
 	PostMapArgs(map[string]any) error
 }
 
-func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
+func toSQLArgs(rec interface{}) (map[string]interface{}, error) {
 	m := structs.Map(rec)
 	for k, v := range m {
 		switch t := v.(type) {

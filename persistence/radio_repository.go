@@ -73,9 +73,9 @@ func (r *radioRepository) Put(radio *model.Radio) error {
 	if radio.ID == "" {
 		radio.CreatedAt = time.Now()
 		radio.ID = strings.ReplaceAll(uuid.NewString(), "-", "")
-		values, _ = toSqlArgs(*radio)
+		values, _ = toSQLArgs(*radio)
 	} else {
-		values, _ = toSqlArgs(*radio)
+		values, _ = toSQLArgs(*radio)
 		update := Update(r.tableName).Where(Eq{"id": radio.ID}).SetMap(values)
 		count, err := r.executeSQL(update)
 
