@@ -453,7 +453,7 @@ func (r *playlistRepository) removeOrphans() error {
 func (r *playlistRepository) renumber(id string) error {
 	var ids []string
 	sq := Select("media_file_id").From("playlist_tracks").Where(Eq{"playlist_id": id}).OrderBy("id")
-	err := r.queryAll(sq, &ids)
+	err := r.queryAllSlice(sq, &ids)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"database/sql"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
@@ -120,20 +122,20 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 	}
 
 	// Get next pos (ID) in playlist
-	sql := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
-	var max int
-	err := r.queryOne(sql, &max)
+	sq := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
+	var res struct{ Max sql.NullInt32 }
+	err := r.queryOne(sq, &res)
 	if err != nil {
 		return 0, err
 	}
 
-	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, max+1, mediaFileIds)
+	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, int(res.Max.Int32+1), mediaFileIds)
 }
 
 func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {
 	sq := Select("id").From("media_file").Where(cond).OrderBy("album_artist, album, release_date, disc_number, track_number")
 	var ids []string
-	err := r.queryAll(sq, &ids)
+	err := r.queryAllSlice(sq, &ids)
 	if err != nil {
 		log.Error(r.ctx, "Error getting tracks to add to playlist", err)
 		return 0, err
@@ -164,7 +166,7 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 func (r *playlistTrackRepository) getTracks() ([]string, error) {
 	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")
 	var ids []string
-	err := r.queryAll(all, &ids)
+	err := r.queryAllSlice(all, &ids)
 	if err != nil {
 		log.Error(r.ctx, "Error querying current tracks from playlist", "playlistId", r.playlistId, err)
 		return nil, err
