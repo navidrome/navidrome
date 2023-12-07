@@ -40,7 +40,19 @@ var _ = Describe("Strings", func() {
 			Expect(LongestCommonPrefix(testPaths)).To(Equal("/Music/iTunes 1/iTunes Media/Music/"))
 		})
 	})
-
+	Describe("RemoveDuplicateStr", func() {
+		It("removes duplicates and keeps the order intact", func() {
+			Expect(RemoveDuplicateStr([]string{"2", "1", "1", "2", "3", "2"})).To(Equal([]string{"2", "1", "3"}))
+		})
+	})
+	Describe("IntToRoman", func() {
+		It("converts an integer to Roman numeral", func() {
+			Expect(IntToRoman(5)).To(Equal("V"))
+			Expect(IntToRoman(1993)).To(Equal("MCMXCIII"))
+			Expect(IntToRoman(444)).To(Equal("CDXLIV"))
+			Expect(IntToRoman(666)).To(Equal("DCLXVI"))
+		})
+	})
 })
 
 var testPaths = []string{

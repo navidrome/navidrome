@@ -78,9 +78,9 @@ var _ = Describe("MediaFiles", func() {
 		When("we have multiple songs with different dates", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
-					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
-					{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
-					{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
+					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", Classical: true, UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 200.2, Size: 2048, Year: 0, Date: "", Classical: true, UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
+					{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", Classical: false, UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
 				}
 			})
 			It("calculates the aggregates correctly", func() {
@@ -92,6 +92,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.Date).To(BeEmpty())
 				Expect(album.UpdatedAt).To(Equal(t("2022-12-19 09:45")))
 				Expect(album.CreatedAt).To(Equal(t("2022-12-19 07:30")))
+				Expect(album.Classical).To(BeFalse())
 			})
 			Context("MinYear", func() {
 				It("returns 0 when all values are 0", func() {
@@ -190,9 +191,9 @@ var _ = Describe("MediaFiles", func() {
 		Context("AllArtistIds", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
-					{AlbumArtistID: "22", ArtistID: "11"},
-					{AlbumArtistID: "22", ArtistID: "33"},
-					{AlbumArtistID: "22", ArtistID: "11"},
+					{AlbumArtistID: "22", ArtistID: "11", AllArtistIDs: "11 22"},
+					{AlbumArtistID: "22", ArtistID: "33", AllArtistIDs: "33 22"},
+					{AlbumArtistID: "22", ArtistID: "11", AllArtistIDs: "11 22"},
 				}
 			})
 			It("removes duplications", func() {
@@ -208,14 +209,14 @@ var _ = Describe("MediaFiles", func() {
 						SortAlbumName: "SortAlbumName1", SortAlbumArtistName: "SortAlbumArtistName1", SortArtistName: "SortArtistName1",
 					},
 					{
-						Album: "Album1", AlbumArtist: "AlbumArtist1", Artist: "Artist2", DiscSubtitle: "DiscSubtitle2",
+						Album: "Album1", AlbumArtist: "AlbumArtist1 · AlbumArtist2", Artist: "Artist2 · Artist3", DiscSubtitle: "DiscSubtitle2",
 						SortAlbumName: "SortAlbumName1", SortAlbumArtistName: "SortAlbumArtistName1", SortArtistName: "SortArtistName2",
 					},
 				}
 			})
 			It("fills the fullText attribute correctly", func() {
 				album := mfs.ToAlbum()
-				Expect(album.FullText).To(Equal(" album1 albumartist1 artist1 artist2 discsubtitle1 discsubtitle2 sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
+				Expect(album.FullText).To(Equal(" album1 albumartist1 albumartist2 artist1 artist2 artist3 discsubtitle1 discsubtitle2 sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
 			})
 		})
 		Context("MbzAlbumID", func() {

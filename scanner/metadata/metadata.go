@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
 )
 
 type Extractor interface {
@@ -88,18 +89,24 @@ type Tags struct {
 }
 
 // Common tags
-
-func (t Tags) Title() string  { return t.getFirstTagValue("title", "sort_name", "titlesort") }
-func (t Tags) Album() string  { return t.getFirstTagValue("album", "sort_album", "albumsort") }
-func (t Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist", "artistsort") }
-func (t Tags) AlbumArtist() string {
-	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
+func (t Tags) Title() string { return t.getFirstTagValue("title", "sort_name", "titlesort") }
+func (t Tags) Album() string { return t.getFirstTagValue("album", "sort_album", "albumsort") }
+func (t Tags) Artist() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "artist")
 }
-func (t Tags) SortTitle() string           { return t.getSortTag("", "title", "name") }
-func (t Tags) SortAlbum() string           { return t.getSortTag("", "album") }
-func (t Tags) SortArtist() string          { return t.getSortTag("", "artist") }
-func (t Tags) SortAlbumArtist() string     { return t.getSortTag("tso2", "albumartist", "album_artist") }
-func (t Tags) Genres() []string            { return t.getAllTagValues("genre") }
+func (t Tags) AlbumArtist() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "albumartist")
+}
+func (t Tags) Remixer() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "remixer")
+}
+func (t Tags) SortTitle() string       { return t.getSortTag("", "title", "name") }
+func (t Tags) SortAlbum() string       { return t.getSortTag("", "album") }
+func (t Tags) SortArtist() string      { return t.getSortTag("", "artist") }
+func (t Tags) SortAlbumArtist() string { return t.getSortTag("tso2", "albumartist", "album_artist") }
+func (t Tags) Genres() []string {
+	return t.getAllTagValues(conf.Server.Scanner.GenreSeparators, "genre")
+}
 func (t Tags) Date() (int, string)         { return t.getDate("date") }
 func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
@@ -116,6 +123,27 @@ func (t Tags) DiscSubtitle() string {
 func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
 func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
+
+// Classical music tags
+func (t Tags) Classical() bool {
+	return t.getBool("is_classical", "classical", "showmovement", "showworkmovement")
+}
+func (t Tags) Composers() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "composer")
+}
+func (t Tags) Conductors() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "conductor")
+}
+func (t Tags) Arrangers() []string {
+	return t.getAllTagValues(conf.Server.Scanner.ArtistSeparators, "arranger")
+}
+func (t Tags) Performers() []string {
+	return t.getPerformers(t.tags)
+}
+func (t Tags) Work() string               { return t.getFirstTagValue("work", "tit1") }
+func (t Tags) SubTitle() string           { return t.getFirstTagValue("subtitle", "tit3") }
+func (t Tags) MovementName() string       { return t.getFirstTagValue("movementname", "mvnm") }
+func (t Tags) MovementNumber() (int, int) { return t.getTuple("movement", "mvin") }
 
 // MusicBrainz Identifiers
 
@@ -134,7 +162,7 @@ func (t Tags) MbzAlbumArtistID() string {
 	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
 }
 func (t Tags) MbzAlbumType() string {
-	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type")
+	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type", "releasetype")
 }
 func (t Tags) MbzAlbumComment() string {
 	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
@@ -201,19 +229,87 @@ func (t Tags) getTags(tagNames ...string) []string {
 func (t Tags) getFirstTagValue(tagNames ...string) string {
 	ts := t.getTags(tagNames...)
 	if len(ts) > 0 {
-		return ts[0]
+		return strings.TrimSpace(ts[0])
 	}
 	return ""
 }
 
-func (t Tags) getAllTagValues(tagNames ...string) []string {
+func (t Tags) getAllTagValues(separators string, tagNames ...string) []string {
 	var values []string
 	for _, tag := range tagNames {
 		if v, ok := t.tags[tag]; ok {
-			values = append(values, v...)
+			// avoids a bug in TagLib where, specifically for the 'artist' tag, it returns one additional value consisting of all previous values, separated by a space
+			if (tag == "artist") && (len(v) > 2) && (conf.Server.Scanner.Extractor == "taglib") {
+				v = v[:len(v)-1]
+			}
+
+			unique := map[string]struct{}{}
+			var all []string
+			for i := range v {
+				w := strings.FieldsFunc(v[i], func(r rune) bool {
+					return strings.ContainsRune(separators, r)
+				})
+				for j := range w {
+					value := strings.TrimSpace(w[j])
+					key := strings.ToLower(value)
+					if _, ok := unique[key]; ok {
+						continue
+					}
+					if len(value) > 0 {
+						all = append(all, value)
+					}
+					unique[key] = struct{}{}
+				}
+			}
+
+			values = append(values, all...)
+			// supports the custom multivalued ARTISTS/ALBUMARTISTS tag written by MusicBrainz Picard: if it exists, this is used instead of ARTIST
+			if conf.Server.Scanner.MultipleArtists && (tag == "artist" || tag == "albumartist") && len(all) < 2 {
+				tag2 := tag + "s"
+				if v2, ok := t.tags[tag2]; ok {
+					if len(v2) > 1 {
+						values = values[:len(values)-len(all)]
+						values = append(values, v2...)
+					}
+				}
+			}
 		}
 	}
 	return values
+}
+
+func (t Tags) getPerformers(tags ParsedTags) []string {
+	// returns a list of performers
+	var performers []string
+	separators := conf.Server.Scanner.ArtistSeparators
+
+	// 1. Vorbis Comments + MP4/etc
+	// TagLib passes on the FLAC/Vorbis/MP4 PERFORMER field unparsed
+	// Most tag editors write performer/instrument as:
+	// performer=[person1 (instrument) person2 (instrument)]
+	items := t.getAllTagValues(separators, "performer")
+	for i := range items {
+		persons := strings.FieldsFunc(items[i], func(r rune) bool {
+			return strings.ContainsRune(separators, r)
+		})
+		for _, p := range persons {
+			p = strings.Split(p, " (")[0]
+			performers = append(performers, p)
+		}
+	}
+
+	// 2. id3v2
+	// TagLib parses the id3 TMCL frame and returns the items as:
+	// performer:instrument=[person1 person2]
+	var tagNames []string
+	for tag := range tags {
+		if strings.Contains(tag, "performer:") {
+			tagNames = append(tagNames, tag)
+		}
+	}
+	performers = append(performers, t.getAllTagValues(separators, tagNames...)...)
+
+	return utils.RemoveDuplicateStr(performers)
 }
 
 func (t Tags) getSortTag(originalTag string, tagNames ...string) string {

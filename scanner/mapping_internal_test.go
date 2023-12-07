@@ -19,12 +19,16 @@ var _ = Describe("mapping", func() {
 				mapper = newMediaFileMapper("/music", nil)
 			})
 			It("returns the Title when it is available", func() {
-				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}})
-				Expect(mapper.mapTrackTitle(md)).To(Equal("This is not a love song"))
+				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}, "work": []string{"work title"}})
+				t, w := mapper.mapTrackTitle(md, true)
+				Expect(t).To(Equal("This is not a love song"))
+				Expect(w).To(Equal("work title"))
 			})
 			It("returns the filename if Title is not set", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{})
-				Expect(mapper.mapTrackTitle(md)).To(Equal("artist/album01/Song"))
+				t, w := mapper.mapTrackTitle(md, true)
+				Expect(t).To(Equal("artist/album01/Song"))
+				Expect(w).To(Equal(""))
 			})
 		})
 
@@ -54,21 +58,6 @@ var _ = Describe("mapping", func() {
 				Expect(gs[1].Name).To(Equal("Electronic"))
 			})
 
-			It("parses multi-valued genres", func() {
-				g, gs := mapper.mapGenres([]string{"Rock;Dance", "Electronic", "Rock"})
-				Expect(g).To(Equal("Rock"))
-				Expect(gs).To(HaveLen(3))
-				Expect(gs[0].Name).To(Equal("Rock"))
-				Expect(gs[1].Name).To(Equal("Dance"))
-				Expect(gs[2].Name).To(Equal("Electronic"))
-			})
-			It("trims genres names", func() {
-				_, gs := mapper.mapGenres([]string{"Rock ;  Dance", " Electronic "})
-				Expect(gs).To(HaveLen(3))
-				Expect(gs[0].Name).To(Equal("Rock"))
-				Expect(gs[1].Name).To(Equal("Dance"))
-				Expect(gs[2].Name).To(Equal("Electronic"))
-			})
 			It("does not break on spaces", func() {
 				_, gs := mapper.mapGenres([]string{"New Wave"})
 				Expect(gs).To(HaveLen(1))

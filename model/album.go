@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -27,6 +28,7 @@ type Album struct {
 	ReleaseDate           string    `structs:"release_date" json:"releaseDate,omitempty"`
 	Releases              int       `structs:"releases" json:"releases"`
 	Compilation           bool      `structs:"compilation" json:"compilation"`
+	Classical             bool      `structs:"classical" json:"classical"`
 	Comment               string    `structs:"comment" json:"comment,omitempty"`
 	SongCount             int       `structs:"song_count" json:"songCount"`
 	Duration              float32   `structs:"duration" json:"duration"`
@@ -73,12 +75,14 @@ type Albums []Album
 func (als Albums) ToAlbumArtist() Artist {
 	a := Artist{AlbumCount: len(als)}
 	var mbzArtistIds []string
+	var albumArtists []string
 	for _, al := range als {
 		a.ID = al.AlbumArtistID
-		a.Name = al.AlbumArtist
+		// note: to be changed after multi-artists database refactoring
+		albumArtists = strings.Split(al.AlbumArtist, " · ")
+		a.Name = albumArtists[0]
 		a.SortArtistName = al.SortAlbumArtistName
 		a.OrderArtistName = al.OrderAlbumArtistName
-
 		a.SongCount += al.SongCount
 		a.Size += al.Size
 		a.Genres = append(a.Genres, al.Genres...)

@@ -34,6 +34,7 @@ func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRep
 		"id":              idFilter(r.tableName),
 		"name":            fullTextFilter,
 		"compilation":     booleanFilter,
+		"classical":       booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
 		"recently_played": recentlyPlayedFilter,
