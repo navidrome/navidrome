@@ -195,7 +195,7 @@ func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) Selec
 
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	// Only refresh if it is a smart playlist and was not refreshed in the last 5 seconds
-	if !pls.IsSmartPlaylist() || time.Since(pls.EvaluatedAt) < 5*time.Second {
+	if !pls.IsSmartPlaylist() || (pls.EvaluatedAt != nil && time.Since(*pls.EvaluatedAt) < 5*time.Second) {
 		return false
 	}
 
