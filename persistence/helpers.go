@@ -22,7 +22,9 @@ func toSQLArgs(rec interface{}) (map[string]interface{}, error) {
 		case time.Time:
 			m[k] = t.Format(time.RFC3339Nano)
 		case *time.Time:
-			m[k] = t.Format(time.RFC3339Nano)
+			if t != nil {
+				m[k] = t.Format(time.RFC3339Nano)
+			}
 		case driver.Valuer:
 			var err error
 			m[k], err = t.Value()
