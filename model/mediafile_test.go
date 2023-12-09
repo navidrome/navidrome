@@ -139,7 +139,7 @@ var _ = Describe("MediaFiles", func() {
 				})
 				It("sets the correct Discs", func() {
 					album := mfs.ToAlbum()
-					Expect(album.Discs).To(Equal(Discs{"1": "DiscSubtitle"}))
+					Expect(album.Discs).To(Equal(Discs{1: "DiscSubtitle"}))
 				})
 			})
 			When("we have multiple discs", func() {
@@ -148,7 +148,7 @@ var _ = Describe("MediaFiles", func() {
 				})
 				It("sets the correct Discs", func() {
 					album := mfs.ToAlbum()
-					Expect(album.Discs).To(Equal(Discs{"1": "DiscSubtitle", "2": "DiscSubtitle2"}))
+					Expect(album.Discs).To(Equal(Discs{1: "DiscSubtitle", 2: "DiscSubtitle2"}))
 				})
 			})
 		})
