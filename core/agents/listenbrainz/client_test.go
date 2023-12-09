@@ -116,4 +116,39 @@ var _ = Describe("client", func() {
 			})
 		})
 	})
+
+	Describe("starring", func() {
+		BeforeEach(func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)),
+				StatusCode: 200,
+			}
+		})
+
+		It("should star", func() {
+			Expect(client.Star(context.Background(), "LB-TOKEN", true, "1234")).To(Succeed())
+
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/feedback/recording-feedback"))
+			Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+
+			body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+			f, _ := os.ReadFile("tests/fixtures/listenbrainz.love.request.json")
+			Expect(body).To(MatchJSON(f))
+		})
+
+		It("should unstar", func() {
+			Expect(client.Star(context.Background(), "LB-TOKEN", false, "1234")).To(Succeed())
+
+			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/feedback/recording-feedback"))
+			Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
+
+			body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+			f, _ := os.ReadFile("tests/fixtures/listenbrainz.unlove.request.json")
+			Expect(body).To(MatchJSON(f))
+		})
+	})
 })

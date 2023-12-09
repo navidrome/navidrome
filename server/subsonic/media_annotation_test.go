@@ -129,6 +129,10 @@ func (f *fakePlayTracker) Submit(_ context.Context, submissions []scrobbler.Subm
 	return nil
 }
 
+func (f *fakePlayTracker) ProxyStar(_ context.Context, star bool, id ...string) error {
+	return nil
+}
+
 var _ scrobbler.PlayTracker = (*fakePlayTracker)(nil)
 
 type fakeEventBroker struct {

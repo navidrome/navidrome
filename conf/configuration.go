@@ -111,10 +111,11 @@ type scannerOptions struct {
 }
 
 type lastfmOptions struct {
-	Enabled  bool
-	ApiKey   string
-	Secret   string
-	Language string
+	Enabled    bool
+	ApiKey     string
+	Secret     string
+	Language   string
+	ProxyStars bool
 }
 
 type spotifyOptions struct {
@@ -123,8 +124,9 @@ type spotifyOptions struct {
 }
 
 type listenBrainzOptions struct {
-	Enabled bool
-	BaseURL string
+	Enabled    bool
+	BaseURL    string
+	ProxyStars bool
 }
 
 type prometheusOptions struct {
@@ -337,10 +339,12 @@ func init() {
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
 	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
+	viper.SetDefault("lastfm.proxystars", false)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+	viper.SetDefault("listenbrainz.proxystars", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

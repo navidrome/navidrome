@@ -1,5 +1,10 @@
 package lastfm
 
+type StarResponse struct {
+	Error   int    `json:"error"`
+	Message string `json:"message"`
+}
+
 type Response struct {
 	Artist         Artist         `json:"artist"`
 	SimilarArtists SimilarArtists `json:"similarartists"`
