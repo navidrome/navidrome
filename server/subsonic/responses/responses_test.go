@@ -176,6 +176,7 @@ var _ = Describe("Responses", func() {
 					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
+					DiscTitles: DiscTitles{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{

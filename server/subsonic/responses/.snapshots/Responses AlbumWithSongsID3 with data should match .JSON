@@ -21,6 +21,16 @@
     "musicBrainzId": "1234",
     "isCompilation": true,
     "sortName": "sorted album",
+    "discTitles": [
+      {
+        "disc": 1,
+        "title": "disc 1"
+      },
+      {
+        "disc": 2,
+        "title": "disc 2"
+      }
+    ],
     "song": [
       {
         "id": "1",
