@@ -160,6 +160,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 		if m.HasCoverArt && a.EmbedArtPath == "" {
 			a.EmbedArtPath = m.Path
 		}
+		if m.DiscNumber > 0 {
+			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
+		}
 	}
 
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
