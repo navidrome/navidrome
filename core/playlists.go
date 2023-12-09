@@ -187,7 +187,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 		newPls.Comment = pls.Comment
 		newPls.OwnerID = pls.OwnerID
 		newPls.Public = pls.Public
-		newPls.EvaluatedAt = time.Time{}
+		newPls.EvaluatedAt = &time.Time{}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID

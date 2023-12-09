@@ -25,3 +25,4 @@ tags
 .gitinfo
 docker-compose.yml
 !contrib/docker-compose.yml
+test-123.db
