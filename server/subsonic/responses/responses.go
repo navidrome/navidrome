@@ -225,6 +225,7 @@ type AlbumID3 struct {
 	MusicBrainzId string     `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
 	IsCompilation bool       `xml:"isCompilation,attr"    json:"isCompilation"`
 	SortName      string     `xml:"sortName,attr"         json:"sortName"`
+	DiscTitles    DiscTitles `xml:"discTitles"            json:"discTitles"`
 }
 
 type ArtistWithAlbumsID3 struct {
@@ -276,7 +277,7 @@ type SearchResult2 struct {
 
 type SearchResult3 struct {
 	Artist []ArtistID3 `xml:"artist"                                 json:"artist,omitempty"`
-	Album  []Child     `xml:"album"                                  json:"album,omitempty"`
+	Album  []AlbumID3  `xml:"album"                                  json:"album,omitempty"`
 	Song   []Child     `xml:"song"                                   json:"song,omitempty"`
 }
 
@@ -479,12 +480,7 @@ type ItemGenre struct {
 type ItemGenres []ItemGenre
 
 func (i ItemGenres) MarshalJSON() ([]byte, error) {
-	if len(i) == 0 {
-		return json.Marshal([]ItemGenre{})
-	}
-	type Alias []ItemGenre
-	a := (Alias)(i)
-	return json.Marshal(a)
+	return marshalJSONArray(i)
 }
 
 type ReplayGain struct {
@@ -494,4 +490,25 @@ type ReplayGain struct {
 	AlbumPeak    float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
 	BaseGain     float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
 	FallbackGain float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
+}
+
+type DiscTitle struct {
+	Disc  int    `xml:"disc,attr,omitempty" json:"disc,omitempty"`
+	Title string `xml:"title,attr,omitempty" json:"title,omitempty"`
+}
+
+type DiscTitles []DiscTitle
+
+func (d DiscTitles) MarshalJSON() ([]byte, error) {
+	return marshalJSONArray(d)
+}
+
+// marshalJSONArray marshals a slice of any type to JSON. If the slice is empty, it is marshalled as an
+// empty array instead of null.
+func marshalJSONArray[T any](v []T) ([]byte, error) {
+	if len(v) == 0 {
+		return json.Marshal([]T{})
+	}
+	a := v
+	return json.Marshal(a)
 }

@@ -5,8 +5,8 @@ import (
 )
 
 type PlayQueue struct {
-	ID        string     `structs:"id" json:"id"          orm:"column(id)"`
-	UserID    string     `structs:"user_id" json:"userId"      orm:"column(user_id)"`
+	ID        string     `structs:"id" json:"id"`
+	UserID    string     `structs:"user_id" json:"userId"`
 	Current   string     `structs:"current" json:"current"`
 	Position  int64      `structs:"position" json:"position"`
 	ChangedBy string     `structs:"changed_by" json:"changedBy"`

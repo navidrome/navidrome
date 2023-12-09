@@ -110,7 +110,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
 		}
 		if artist.Starred {
-			searchResult2.Artist[i].Starred = &as[i].StarredAt
+			searchResult2.Artist[i].Starred = as[i].StarredAt
 		}
 	}
 	searchResult2.Album = childrenFromAlbums(ctx, als)
@@ -133,7 +133,7 @@ func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 	for i, artist := range as {
 		searchResult3.Artist[i] = toArtistID3(r, artist)
 	}
-	searchResult3.Album = childrenFromAlbums(ctx, als)
+	searchResult3.Album = buildAlbumsID3(ctx, als)
 	searchResult3.Song = childrenFromMediaFiles(ctx, mfs)
 	response.SearchResult3 = searchResult3
 	return response, nil

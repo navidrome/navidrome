@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
@@ -97,7 +98,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 	}
 	if a.Starred {
-		artist.Starred = &a.StarredAt
+		artist.Starred = a.StarredAt
 	}
 	return artist
 }
@@ -114,7 +115,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		SortName:       a.SortArtistName,
 	}
 	if a.Starred {
-		artist.Starred = &a.StarredAt
+		artist.Starred = a.StarredAt
 	}
 	return artist
 }
@@ -153,7 +154,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
-	child.Genres = itemGenresFromGenres(mf.Genres)
+	child.Genres = buildItemGenres(mf.Genres)
 	child.Track = int32(mf.TrackNumber)
 	child.Duration = int32(mf.Duration)
 	child.Size = mf.Size
@@ -174,10 +175,10 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Type = "music"
 	child.PlayCount = mf.PlayCount
 	if mf.PlayCount > 0 {
-		child.Played = &mf.PlayDate
+		child.Played = mf.PlayDate
 	}
 	if mf.Starred {
-		child.Starred = &mf.StarredAt
+		child.Starred = mf.StarredAt
 	}
 	child.UserRating = int32(mf.Rating)
 
@@ -231,7 +232,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = int32(al.MaxYear)
 	child.Genre = al.Genre
-	child.Genres = itemGenresFromGenres(al.Genres)
+	child.Genres = buildItemGenres(al.Genres)
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
@@ -239,11 +240,11 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Duration = int32(al.Duration)
 	child.SongCount = int32(al.SongCount)
 	if al.Starred {
-		child.Starred = &al.StarredAt
+		child.Starred = al.StarredAt
 	}
 	child.PlayCount = al.PlayCount
 	if al.PlayCount > 0 {
-		child.Played = &al.PlayDate
+		child.Played = al.PlayDate
 	}
 	child.UserRating = int32(al.Rating)
 	child.SortName = al.SortAlbumName
@@ -260,10 +261,62 @@ func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child
 	return children
 }
 
-func itemGenresFromGenres(genres model.Genres) []responses.ItemGenre {
+func buildItemGenres(genres model.Genres) []responses.ItemGenre {
 	itemGenres := make([]responses.ItemGenre, len(genres))
 	for i, g := range genres {
 		itemGenres[i] = responses.ItemGenre{Name: g.Name}
 	}
 	return itemGenres
+}
+
+func buildDiscSubtitles(_ context.Context, a model.Album) responses.DiscTitles {
+	if len(a.Discs) == 0 {
+		return nil
+	}
+	discTitles := responses.DiscTitles{}
+	for num, title := range a.Discs {
+		discTitles = append(discTitles, responses.DiscTitle{Disc: num, Title: title})
+	}
+	sort.Slice(discTitles, func(i, j int) bool {
+		return discTitles[i].Disc < discTitles[j].Disc
+	})
+	return discTitles
+}
+
+func buildAlbumsID3(ctx context.Context, albums model.Albums) []responses.AlbumID3 {
+	res := make([]responses.AlbumID3, len(albums))
+	for i, album := range albums {
+		res[i] = buildAlbumID3(ctx, album)
+	}
+	return res
+}
+
+func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
+	dir := responses.AlbumID3{}
+	dir.Id = album.ID
+	dir.Name = album.Name
+	dir.Artist = album.AlbumArtist
+	dir.ArtistId = album.AlbumArtistID
+	dir.CoverArt = album.CoverArtID().String()
+	dir.SongCount = int32(album.SongCount)
+	dir.Duration = int32(album.Duration)
+	dir.PlayCount = album.PlayCount
+	if album.PlayCount > 0 {
+		dir.Played = album.PlayDate
+	}
+	dir.Year = int32(album.MaxYear)
+	dir.Genre = album.Genre
+	dir.Genres = buildItemGenres(album.Genres)
+	dir.DiscTitles = buildDiscSubtitles(ctx, album)
+	dir.UserRating = int32(album.Rating)
+	if !album.CreatedAt.IsZero() {
+		dir.Created = &album.CreatedAt
+	}
+	if album.Starred {
+		dir.Starred = album.StarredAt
+	}
+	dir.MusicBrainzId = album.MbzAlbumID
+	dir.IsCompilation = album.Compilation
+	dir.SortName = album.SortAlbumName
+	return dir
 }

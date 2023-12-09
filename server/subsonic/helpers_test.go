@@ -1,7 +1,10 @@
 package subsonic
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,6 +34,27 @@ var _ = Describe("helpers", func() {
 	Describe("mapSlashToDash", func() {
 		It("maps / to _", func() {
 			Expect(mapSlashToDash("AC/DC")).To(Equal("AC_DC"))
+		})
+	})
+
+	Describe("buildDiscTitles", func() {
+		It("should return nil when album has no discs", func() {
+			album := model.Album{}
+			Expect(buildDiscSubtitles(context.Background(), album)).To(BeNil())
+		})
+
+		It("should return correct disc titles when album has discs with valid disc numbers", func() {
+			album := model.Album{
+				Discs: map[int]string{
+					1: "Disc 1",
+					2: "Disc 2",
+				},
+			}
+			expected := responses.DiscTitles{
+				{Disc: 1, Title: "Disc 1"},
+				{Disc: 2, Title: "Disc 2"},
+			}
+			Expect(buildDiscSubtitles(context.Background(), album)).To(Equal(expected))
 		})
 	})
 })

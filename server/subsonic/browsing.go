@@ -352,12 +352,12 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	dir.Name = artist.Name
 	dir.PlayCount = artist.PlayCount
 	if artist.PlayCount > 0 {
-		dir.Played = &artist.PlayDate
+		dir.Played = artist.PlayDate
 	}
 	dir.AlbumCount = int32(artist.AlbumCount)
 	dir.UserRating = int32(artist.Rating)
 	if artist.Starred {
-		dir.Starred = &artist.StarredAt
+		dir.Starred = artist.StarredAt
 	}
 
 	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
@@ -390,13 +390,13 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 	dir.Parent = album.AlbumArtistID
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {
-		dir.Played = &album.PlayDate
+		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
 	dir.SongCount = int32(album.SongCount)
 	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {
-		dir.Starred = &album.StarredAt
+		dir.Starred = album.StarredAt
 	}
 
 	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
@@ -410,30 +410,7 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 
 func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model.MediaFiles) *responses.AlbumWithSongsID3 {
 	dir := &responses.AlbumWithSongsID3{}
-	dir.Id = album.ID
-	dir.Name = album.Name
-	dir.Artist = album.AlbumArtist
-	dir.ArtistId = album.AlbumArtistID
-	dir.CoverArt = album.CoverArtID().String()
-	dir.SongCount = int32(album.SongCount)
-	dir.Duration = int32(album.Duration)
-	dir.PlayCount = album.PlayCount
-	if album.PlayCount > 0 {
-		dir.Played = &album.PlayDate
-	}
-	dir.Year = int32(album.MaxYear)
-	dir.Genre = album.Genre
-	dir.Genres = itemGenresFromGenres(album.Genres)
-	dir.UserRating = int32(album.Rating)
-	if !album.CreatedAt.IsZero() {
-		dir.Created = &album.CreatedAt
-	}
-	if album.Starred {
-		dir.Starred = &album.StarredAt
-	}
-	dir.MusicBrainzId = album.MbzAlbumID
-	dir.IsCompilation = album.Compilation
-	dir.SortName = album.SortAlbumName
+	dir.AlbumID3 = buildAlbumID3(ctx, *album)
 	dir.Song = childrenFromMediaFiles(ctx, mfs)
 	return dir
 }

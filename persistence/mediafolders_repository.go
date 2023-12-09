@@ -3,16 +3,16 @@ package persistence
 import (
 	"context"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type mediaFolderRepository struct {
 	ctx context.Context
 }
 
-func NewMediaFolderRepository(ctx context.Context, o orm.QueryExecutor) model.MediaFolderRepository {
+func NewMediaFolderRepository(ctx context.Context, _ dbx.Builder) model.MediaFolderRepository {
 	return &mediaFolderRepository{ctx}
 }
 
