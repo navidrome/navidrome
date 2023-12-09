@@ -1,7 +1,7 @@
 package model
 
 type Transcoding struct {
-	ID             string `structs:"id" json:"id"            orm:"column(id)"`
+	ID             string `structs:"id" json:"id"`
 	Name           string `structs:"name" json:"name"`
 	TargetFormat   string `structs:"target_format" json:"targetFormat"`
 	Command        string `structs:"command" json:"command"`

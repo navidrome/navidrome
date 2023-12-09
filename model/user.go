@@ -3,15 +3,15 @@ package model
 import "time"
 
 type User struct {
-	ID           string    `structs:"id" json:"id" orm:"column(id)"`
-	UserName     string    `structs:"user_name" json:"userName"`
-	Name         string    `structs:"name" json:"name"`
-	Email        string    `structs:"email" json:"email"`
-	IsAdmin      bool      `structs:"is_admin" json:"isAdmin"`
-	LastLoginAt  time.Time `structs:"last_login_at" json:"lastLoginAt"`
-	LastAccessAt time.Time `structs:"last_access_at" json:"lastAccessAt"`
-	CreatedAt    time.Time `structs:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time `structs:"updated_at" json:"updatedAt"`
+	ID           string     `structs:"id" json:"id"`
+	UserName     string     `structs:"user_name" json:"userName"`
+	Name         string     `structs:"name" json:"name"`
+	Email        string     `structs:"email" json:"email"`
+	IsAdmin      bool       `structs:"is_admin" json:"isAdmin"`
+	LastLoginAt  *time.Time `structs:"last_login_at" json:"lastLoginAt"`
+	LastAccessAt *time.Time `structs:"last_access_at" json:"lastAccessAt"`
+	CreatedAt    time.Time  `structs:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
 
 	// This is only available on the backend, and it is never sent over the wire
 	Password string `structs:"-" json:"-"`

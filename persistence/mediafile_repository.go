@@ -9,10 +9,10 @@ import (
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type mediaFileRepository struct {
@@ -20,10 +20,10 @@ type mediaFileRepository struct {
 	sqlRestful
 }
 
-func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFileRepository {
+func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepository {
 	r := &mediaFileRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "media_file"
 	r.sortMappings = map[string]string{
 		"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
@@ -146,7 +146,7 @@ func (r *mediaFileRepository) FindPathsRecursively(basePath string) ([]string, e
 	sel := r.newSelect().Columns(fmt.Sprintf("distinct rtrim(path, replace(path, '%s', ''))", string(os.PathSeparator))).
 		Where(pathStartsWith(path))
 	var res []string
-	err := r.queryAll(sel, &res)
+	err := r.queryAllSlice(sel, &res)
 	return res, err
 }
 

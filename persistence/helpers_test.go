@@ -23,7 +23,7 @@ var _ = Describe("Helpers", func() {
 			Expect(toSnakeCase("snake_case")).To(Equal("snake_case"))
 		})
 	})
-	Describe("toSqlArgs", func() {
+	Describe("toSQLArgs", func() {
 		type Embed struct{}
 		type Model struct {
 			Embed     `structs:"-"`
@@ -37,10 +37,11 @@ var _ = Describe("Helpers", func() {
 		It("returns a map with snake_case keys", func() {
 			now := time.Now()
 			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
-			args, err := toSqlArgs(m)
+			args, err := toSQLArgs(m)
 			Expect(err).To(BeNil())
 			Expect(args).To(HaveKeyWithValue("id", "123"))
 			Expect(args).To(HaveKeyWithValue("album_id", "456"))
+			Expect(args).To(HaveKeyWithValue("play_count", 2))
 			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
 			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
 			Expect(args).ToNot(HaveKey("Embed"))

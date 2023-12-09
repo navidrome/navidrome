@@ -5,7 +5,7 @@ import "time"
 type ScrobbleEntry struct {
 	MediaFile
 	Service     string
-	UserID      string `structs:"user_id" orm:"column(user_id)"`
+	UserID      string `structs:"user_id"`
 	PlayTime    time.Time
 	EnqueueTime time.Time
 }

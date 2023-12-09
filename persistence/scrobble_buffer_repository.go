@@ -6,18 +6,18 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type scrobbleBufferRepository struct {
 	sqlRepository
 }
 
-func NewScrobbleBufferRepository(ctx context.Context, o orm.QueryExecutor) model.ScrobbleBufferRepository {
+func NewScrobbleBufferRepository(ctx context.Context, db dbx.Builder) model.ScrobbleBufferRepository {
 	r := &scrobbleBufferRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "scrobble_buffer"
 	return r
 }
@@ -31,7 +31,7 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 		GroupBy("user_id").
 		OrderBy("count(*)")
 	var userIds []string
-	err := r.queryAll(sql, &userIds)
+	err := r.queryAllSlice(sql, &userIds)
 	return userIds, err
 }
 

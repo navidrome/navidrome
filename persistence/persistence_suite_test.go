@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/beego/beego/v2/client/orm"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
@@ -15,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 func TestPersistence(t *testing.T) {
@@ -23,11 +23,14 @@ func TestPersistence(t *testing.T) {
 	//os.Remove("./test-123.db")
 	//conf.Server.DbPath = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared"
-	_ = orm.RegisterDataBase("default", db.Driver, conf.Server.DbPath)
 	db.Init()
 	log.SetLevel(log.LevelError)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
+}
+
+func getDBXBuilder() *dbx.DB {
+	return dbx.NewFromDB(db.Db(), db.Driver)
 }
 
 var (
@@ -88,18 +91,18 @@ func P(path string) string {
 // Initialize test DB
 // TODO Load this data setup from file(s)
 var _ = BeforeSuite(func() {
-	o := orm.NewOrm()
+	conn := getDBXBuilder()
 	ctx := log.NewContext(context.TODO())
 	user := model.User{ID: "userid", UserName: "userid", IsAdmin: true}
 	ctx = request.WithUser(ctx, user)
 
-	ur := NewUserRepository(ctx, o)
+	ur := NewUserRepository(ctx, conn)
 	err := ur.Put(&user)
 	if err != nil {
 		panic(err)
 	}
 
-	gr := NewGenreRepository(ctx, o)
+	gr := NewGenreRepository(ctx, conn)
 	for i := range testGenres {
 		g := testGenres[i]
 		err := gr.Put(&g)
@@ -108,7 +111,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	mr := NewMediaFileRepository(ctx, o)
+	mr := NewMediaFileRepository(ctx, conn)
 	for i := range testSongs {
 		s := testSongs[i]
 		err := mr.Put(&s)
@@ -117,7 +120,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	alr := NewAlbumRepository(ctx, o).(*albumRepository)
+	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
 		a := testAlbums[i]
 		err := alr.Put(&a)
@@ -126,7 +129,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	arr := NewArtistRepository(ctx, o)
+	arr := NewArtistRepository(ctx, conn)
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
@@ -135,7 +138,7 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	rar := NewRadioRepository(ctx, o)
+	rar := NewRadioRepository(ctx, conn)
 	for i := range testRadios {
 		r := testRadios[i]
 		err := rar.Put(&r)
@@ -157,7 +160,7 @@ var _ = BeforeSuite(func() {
 	plsCool.AddTracks([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
-	pr := NewPlaylistRepository(ctx, o)
+	pr := NewPlaylistRepository(ctx, conn)
 	for i := range testPlaylists {
 		err := pr.Put(testPlaylists[i])
 		if err != nil {

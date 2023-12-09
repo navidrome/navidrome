@@ -3,10 +3,10 @@ package model
 import "time"
 
 type Radio struct {
-	ID          string    `structs:"id"            json:"id" orm:"pk;column(id)"`
+	ID          string    `structs:"id"            json:"id"`
 	StreamUrl   string    `structs:"stream_url"    json:"streamUrl"`
 	Name        string    `structs:"name"          json:"name"`
-	HomePageUrl string    `structs:"home_page_url" json:"homePageUrl" orm:"column(home_page_url)"`
+	HomePageUrl string    `structs:"home_page_url" json:"homePageUrl"`
 	CreatedAt   time.Time `structs:"created_at"    json:"createdAt"`
 	UpdatedAt   time.Time `structs:"updated_at"    json:"updatedAt"`
 }

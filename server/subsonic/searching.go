@@ -110,7 +110,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
 		}
 		if artist.Starred {
-			searchResult2.Artist[i].Starred = &as[i].StarredAt
+			searchResult2.Artist[i].Starred = as[i].StarredAt
 		}
 	}
 	searchResult2.Album = childrenFromAlbums(ctx, als)

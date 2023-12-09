@@ -10,14 +10,14 @@ import (
 type Album struct {
 	Annotations `structs:"-"`
 
-	ID                    string    `structs:"id" json:"id"            orm:"column(id)"`
+	ID                    string    `structs:"id" json:"id"`
 	Name                  string    `structs:"name" json:"name"`
 	EmbedArtPath          string    `structs:"embed_art_path" json:"embedArtPath"`
-	ArtistID              string    `structs:"artist_id" json:"artistId"      orm:"column(artist_id)"`
+	ArtistID              string    `structs:"artist_id" json:"artistId"`
 	Artist                string    `structs:"artist" json:"artist"`
-	AlbumArtistID         string    `structs:"album_artist_id" json:"albumArtistId" orm:"column(album_artist_id)"`
+	AlbumArtistID         string    `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist           string    `structs:"album_artist" json:"albumArtist"`
-	AllArtistIDs          string    `structs:"all_artist_ids" json:"allArtistIds"  orm:"column(all_artist_ids)"`
+	AllArtistIDs          string    `structs:"all_artist_ids" json:"allArtistIds"`
 	MaxYear               int       `structs:"max_year" json:"maxYear"`
 	MinYear               int       `structs:"min_year" json:"minYear"`
 	Date                  string    `structs:"date" json:"date,omitempty"`
@@ -40,8 +40,8 @@ type Album struct {
 	OrderAlbumName        string    `structs:"order_album_name" json:"orderAlbumName"`
 	OrderAlbumArtistName  string    `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
 	CatalogNum            string    `structs:"catalog_num" json:"catalogNum,omitempty"`
-	MbzAlbumID            string    `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"         orm:"column(mbz_album_id)"`
-	MbzAlbumArtistID      string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"   orm:"column(mbz_album_artist_id)"`
+	MbzAlbumID            string    `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
+	MbzAlbumArtistID      string    `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
 	MbzAlbumType          string    `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment       string    `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
 	ImageFiles            string    `structs:"image_files" json:"imageFiles,omitempty"`
@@ -50,7 +50,7 @@ type Album struct {
 	SmallImageUrl         string    `structs:"small_image_url" json:"smallImageUrl,omitempty"`
 	MediumImageUrl        string    `structs:"medium_image_url" json:"mediumImageUrl,omitempty"`
 	LargeImageUrl         string    `structs:"large_image_url" json:"largeImageUrl,omitempty"`
-	ExternalUrl           string    `structs:"external_url" json:"externalUrl,omitempty"      orm:"column(external_url)"`
+	ExternalUrl           string    `structs:"external_url" json:"externalUrl,omitempty"`
 	ExternalInfoUpdatedAt time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
 	CreatedAt             time.Time `structs:"created_at" json:"createdAt"`
 	UpdatedAt             time.Time `structs:"updated_at" json:"updatedAt"`

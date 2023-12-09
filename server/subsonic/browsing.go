@@ -352,12 +352,12 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 	dir.Name = artist.Name
 	dir.PlayCount = artist.PlayCount
 	if artist.PlayCount > 0 {
-		dir.Played = &artist.PlayDate
+		dir.Played = artist.PlayDate
 	}
 	dir.AlbumCount = int32(artist.AlbumCount)
 	dir.UserRating = int32(artist.Rating)
 	if artist.Starred {
-		dir.Starred = &artist.StarredAt
+		dir.Starred = artist.StarredAt
 	}
 
 	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
@@ -390,13 +390,13 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 	dir.Parent = album.AlbumArtistID
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {
-		dir.Played = &album.PlayDate
+		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
 	dir.SongCount = int32(album.SongCount)
 	dir.CoverArt = album.CoverArtID().String()
 	if album.Starred {
-		dir.Starred = &album.StarredAt
+		dir.Starred = album.StarredAt
 	}
 
 	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
@@ -419,7 +419,7 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount
 	if album.PlayCount > 0 {
-		dir.Played = &album.PlayDate
+		dir.Played = album.PlayDate
 	}
 	dir.Year = int32(album.MaxYear)
 	dir.Genre = album.Genre
@@ -429,7 +429,7 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 		dir.Created = &album.CreatedAt
 	}
 	if album.Starred {
-		dir.Starred = &album.StarredAt
+		dir.Starred = album.StarredAt
 	}
 	dir.MusicBrainzId = album.MbzAlbumID
 	dir.IsCompilation = album.Compilation

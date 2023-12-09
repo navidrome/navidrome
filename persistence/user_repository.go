@@ -10,7 +10,6 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
@@ -18,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/pocketbase/dbx"
 )
 
 type userRepository struct {
@@ -30,10 +30,10 @@ var (
 	encKey []byte
 )
 
-func NewUserRepository(ctx context.Context, o orm.QueryExecutor) model.UserRepository {
+func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository {
 	r := &userRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "user"
 	once.Do(func() {
 		_ = r.initPasswordEncryptionKey()
@@ -67,7 +67,7 @@ func (r *userRepository) Put(u *model.User) error {
 	if u.NewPassword != "" {
 		_ = r.encryptPassword(u)
 	}
-	values, _ := toSqlArgs(*u)
+	values, _ := toSQLArgs(*u)
 	delete(values, "current_password")
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
 	count, err := r.executeSQL(update)
@@ -268,7 +268,7 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 	key := keyTo32Bytes(conf.Server.PasswordEncryptionKey)
 	keySum := fmt.Sprintf("%x", sha256.Sum256(key))
 
-	props := NewPropertyRepository(r.ctx, r.ormer)
+	props := NewPropertyRepository(r.ctx, r.db)
 	savedKeySum, err := props.Get(consts.PasswordsEncryptedKey)
 
 	// If passwords are already encrypted

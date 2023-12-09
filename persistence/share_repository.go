@@ -8,11 +8,11 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/pocketbase/dbx"
 )
 
 type shareRepository struct {
@@ -20,10 +20,10 @@ type shareRepository struct {
 	sqlRestful
 }
 
-func NewShareRepository(ctx context.Context, o orm.QueryExecutor) model.ShareRepository {
+func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareRepository {
 	r := &shareRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "share"
 	return r
 }
@@ -79,27 +79,27 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	}
 	switch share.ResourceType {
 	case "artist":
-		albumRepo := NewAlbumRepository(r.ctx, r.ormer)
+		albumRepo := NewAlbumRepository(r.ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: Eq{"album_artist_id": ids}, Sort: "artist"})
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+		mfRepo := NewMediaFileRepository(r.ctx, r.db)
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: Eq{"album_artist_id": ids}, Sort: "artist"})
 		return err
 	case "album":
-		albumRepo := NewAlbumRepository(r.ctx, r.ormer)
+		albumRepo := NewAlbumRepository(r.ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+		mfRepo := NewMediaFileRepository(r.ctx, r.db)
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: Eq{"album_id": ids}, Sort: "album"})
 		return err
 	case "playlist":
 		// Create a context with a fake admin user, to be able to access all playlists
 		ctx := request.WithUser(r.ctx, model.User{IsAdmin: true})
-		plsRepo := NewPlaylistRepository(ctx, r.ormer)
+		plsRepo := NewPlaylistRepository(ctx, r.db)
 		tracks, err := plsRepo.Tracks(ids[0], true).GetAll(model.QueryOptions{Sort: "id"})
 		if err != nil {
 			return err
@@ -109,7 +109,7 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		}
 		return nil
 	case "media_file":
-		mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+		mfRepo := NewMediaFileRepository(r.ctx, r.db)
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
 		share.Tracks = sortByIdPosition(tracks, ids)
 		return err

@@ -3,11 +3,11 @@ package model
 import "time"
 
 type Annotations struct {
-	PlayCount int64     `structs:"-" json:"playCount"`
-	PlayDate  time.Time `structs:"-" json:"playDate" `
-	Rating    int       `structs:"-" json:"rating"   `
-	Starred   bool      `structs:"-" json:"starred"  `
-	StarredAt time.Time `structs:"-" json:"starredAt"`
+	PlayCount int64      `structs:"-" json:"playCount"`
+	PlayDate  *time.Time `structs:"-" json:"playDate" `
+	Rating    int        `structs:"-" json:"rating"   `
+	Starred   bool       `structs:"-" json:"starred"  `
+	StarredAt *time.Time `structs:"-" json:"starredAt"`
 }
 
 type AnnotatedRepository interface {

@@ -3,9 +3,9 @@ package persistence
 import (
 	"context"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,7 +17,7 @@ var _ = Describe("PlaylistRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, orm.NewOrm())
+		repo = NewPlaylistRepository(ctx, getDBXBuilder())
 	})
 
 	Describe("Count", func() {
@@ -56,7 +56,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 		It("returns all tracks", func() {
 			pls, err := repo.GetWithTracks(plsBest.ID, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal(plsBest.Name))
 			Expect(pls.Tracks).To(HaveLen(2))
 			Expect(pls.Tracks[0].ID).To(Equal("1"))
@@ -107,6 +107,25 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(BeNil())
 			Expect(all[0].ID).To(Equal(plsBest.ID))
 			Expect(all[1].ID).To(Equal(plsCool.ID))
+		})
+	})
+
+	Context("Smart Playlists", func() {
+		var rules *criteria.Criteria
+		BeforeEach(func() {
+			rules = &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"title": "love"},
+				},
+			}
+		})
+		It("Put/Get", func() {
+			newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+			Expect(repo.Put(&newPls)).To(Succeed())
+
+			savedPls, err := repo.Get(newPls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(savedPls.Rules).To(Equal(rules))
 		})
 	})
 })

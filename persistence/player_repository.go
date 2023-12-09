@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type playerRepository struct {
@@ -15,10 +15,10 @@ type playerRepository struct {
 	sqlRestful
 }
 
-func NewPlayerRepository(ctx context.Context, o orm.QueryExecutor) model.PlayerRepository {
+func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerRepository {
 	r := &playerRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "player"
 	r.filterMappings = map[string]filterFunc{
 		"name": containsFilter,
