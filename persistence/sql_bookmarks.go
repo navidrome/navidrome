@@ -96,10 +96,10 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	user, _ := request.UserFrom(r.ctx)
 
 	idField := r.tableName + ".id"
-	sql := r.newSelectWithAnnotation(idField).Columns(r.tableName + ".*")
-	sql = r.withBookmark(sql, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
+	sq := r.newSelectWithAnnotation(idField).Columns(r.tableName + ".*")
+	sq = r.withBookmark(sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
 	var mfs model.MediaFiles
-	err := r.queryAll(sql, &mfs)
+	err := r.queryAll(sq, &mfs)
 	if err != nil {
 		log.Error(r.ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
 		return nil, err
@@ -117,9 +117,9 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 		mfMap[mf.ID] = i
 	}
 
-	sql = Select("*").From(bookmarkTable).Where(r.bmkID(ids...))
+	sq = Select("*").From(bookmarkTable).Where(r.bmkID(ids...))
 	var bmks []bookmark
-	err = r.queryAll(sql, &bmks)
+	err = r.queryAll(sq, &bmks)
 	if err != nil {
 		log.Error(r.ctx, "Error getting bookmarks", "user", user.UserName, "ids", ids, err)
 		return nil, err
