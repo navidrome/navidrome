@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/public"
@@ -153,7 +156,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
-	child.Genres = itemGenresFromGenres(mf.Genres)
+	child.Genres = buildItemGenres(mf.Genres)
 	child.Track = int32(mf.TrackNumber)
 	child.Duration = int32(mf.Duration)
 	child.Size = mf.Size
@@ -231,7 +234,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = int32(al.MaxYear)
 	child.Genre = al.Genre
-	child.Genres = itemGenresFromGenres(al.Genres)
+	child.Genres = buildItemGenres(al.Genres)
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
@@ -260,10 +263,29 @@ func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child
 	return children
 }
 
-func itemGenresFromGenres(genres model.Genres) []responses.ItemGenre {
+func buildItemGenres(genres model.Genres) []responses.ItemGenre {
 	itemGenres := make([]responses.ItemGenre, len(genres))
 	for i, g := range genres {
 		itemGenres[i] = responses.ItemGenre{Name: g.Name}
 	}
 	return itemGenres
+}
+
+func buildDiscSubtitles(ctx context.Context, a model.Album) responses.DiscTitles {
+	if len(a.Discs) == 0 {
+		return nil
+	}
+	discTitles := responses.DiscTitles{}
+	for num, title := range a.Discs {
+		n, err := strconv.Atoi(num)
+		if err != nil {
+			log.Warn(ctx, "Invalid disc number", "num", num, "title", title, "album", a.Name, "artist", a.AlbumArtist, err)
+			continue
+		}
+		discTitles = append(discTitles, responses.DiscTitle{Disc: n, Title: title})
+	}
+	sort.Slice(discTitles, func(i, j int) bool {
+		return discTitles[i].Disc < discTitles[j].Disc
+	})
+	return discTitles
 }
