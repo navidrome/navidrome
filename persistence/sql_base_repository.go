@@ -206,7 +206,7 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, err
 }
 
-func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
+func (r sqlRepository) put(id string, m interface{}, updateCreatedAt bool, colsToUpdate ...string) (newId string, err error) {
 	values, _ := toSqlArgs(m)
 	// If there's an ID, try to update first
 	if id != "" {
@@ -223,7 +223,9 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 			}
 		}
 
-		delete(updateValues, "created_at")
+		if !updateCreatedAt {
+			delete(updateValues, "created_at")
+		}
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
 		if err != nil {
