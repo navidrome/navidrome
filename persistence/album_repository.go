@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -16,6 +17,32 @@ import (
 type albumRepository struct {
 	sqlRepository
 	sqlRestful
+}
+
+type dbAlbum struct {
+	*model.Album `structs:",flatten"`
+	Discs        string `structs:"-" json:"discs"`
+}
+
+func (a *dbAlbum) PostScan() error {
+	if a.Discs == "" {
+		a.Album.Discs = model.Discs{}
+		return nil
+	}
+	return json.Unmarshal([]byte(a.Discs), &a.Album.Discs)
+}
+
+func (a *dbAlbum) PostMapArgs(m map[string]any) error {
+	if len(a.Album.Discs) == 0 {
+		m["discs"] = "{}"
+		return nil
+	}
+	b, err := json.Marshal(a.Album.Discs)
+	if err != nil {
+		return err
+	}
+	m["discs"] = string(b)
+	return nil
 }
 
 func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
@@ -102,19 +129,20 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
 	sq := r.selectAlbum().Where(Eq{"album.id": id})
-	var res model.Albums
-	if err := r.queryAll(sq, &res); err != nil {
+	var dba []dbAlbum
+	if err := r.queryAll(sq, &dba); err != nil {
 		return nil, err
 	}
-	if len(res) == 0 {
+	if len(dba) == 0 {
 		return nil, model.ErrNotFound
 	}
+	res := r.toModels(dba)
 	err := r.loadAlbumGenres(&res)
 	return &res[0], err
 }
 
 func (r *albumRepository) Put(m *model.Album) error {
-	_, err := r.put(m.ID, m)
+	_, err := r.put(m.ID, &dbAlbum{Album: m})
 	if err != nil {
 		return err
 	}
@@ -130,14 +158,22 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res, err
 }
 
+func (r *albumRepository) toModels(dba []dbAlbum) model.Albums {
+	res := model.Albums{}
+	for i := range dba {
+		res = append(res, *dba[i].Album)
+	}
+	return res
+}
+
 func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...)
-	res := model.Albums{}
-	err := r.queryAll(sq, &res)
+	var dba []dbAlbum
+	err := r.queryAll(sq, &dba)
 	if err != nil {
 		return nil, err
 	}
-	return res, err
+	return r.toModels(dba), err
 }
 
 func (r *albumRepository) purgeEmpty() error {
@@ -152,13 +188,14 @@ func (r *albumRepository) purgeEmpty() error {
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	results := model.Albums{}
-	err := r.doSearch(q, offset, size, &results, "name")
+	var dba []dbAlbum
+	err := r.doSearch(q, offset, size, &dba, "name")
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadAlbumGenres(&results)
-	return results, err
+	res := r.toModels(dba)
+	err = r.loadAlbumGenres(&res)
+	return res, err
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

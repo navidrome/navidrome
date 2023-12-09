@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -33,6 +34,7 @@ type Album struct {
 	Size                  int64     `structs:"size" json:"size"`
 	Genre                 string    `structs:"genre" json:"genre"`
 	Genres                Genres    `structs:"-" json:"genres"`
+	Discs                 Discs     `structs:"discs" json:"discs,omitempty"`
 	FullText              string    `structs:"full_text" json:"fullText"`
 	SortAlbumName         string    `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName        string    `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
@@ -58,6 +60,15 @@ type Album struct {
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+type Discs map[string]string
+
+func (d *Discs) Add(discNumber int, discSubtitle string) {
+	if *d == nil {
+		*d = Discs{}
+	}
+	(*d)[strconv.Itoa(discNumber)] = discSubtitle
 }
 
 type DiscID struct {
