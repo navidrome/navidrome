@@ -276,7 +276,7 @@ type SearchResult2 struct {
 
 type SearchResult3 struct {
 	Artist []ArtistID3 `xml:"artist"                                 json:"artist,omitempty"`
-	Album  []Child     `xml:"album"                                  json:"album,omitempty"`
+	Album  []AlbumID3  `xml:"album"                                  json:"album,omitempty"`
 	Song   []Child     `xml:"song"                                   json:"song,omitempty"`
 }
 

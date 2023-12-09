@@ -282,3 +282,41 @@ func buildDiscSubtitles(_ context.Context, a model.Album) responses.DiscTitles {
 	})
 	return discTitles
 }
+
+func buildAlbumsID3(ctx context.Context, albums model.Albums) []responses.AlbumID3 {
+	res := make([]responses.AlbumID3, len(albums))
+	for i, album := range albums {
+		res[i] = buildAlbumID3(ctx, album)
+	}
+	return res
+}
+
+func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
+	dir := responses.AlbumID3{}
+	dir.Id = album.ID
+	dir.Name = album.Name
+	dir.Artist = album.AlbumArtist
+	dir.ArtistId = album.AlbumArtistID
+	dir.CoverArt = album.CoverArtID().String()
+	dir.SongCount = int32(album.SongCount)
+	dir.Duration = int32(album.Duration)
+	dir.PlayCount = album.PlayCount
+	if album.PlayCount > 0 {
+		dir.Played = album.PlayDate
+	}
+	dir.Year = int32(album.MaxYear)
+	dir.Genre = album.Genre
+	dir.Genres = buildItemGenres(album.Genres)
+	dir.DiscTitles = buildDiscSubtitles(ctx, album)
+	dir.UserRating = int32(album.Rating)
+	if !album.CreatedAt.IsZero() {
+		dir.Created = &album.CreatedAt
+	}
+	if album.Starred {
+		dir.Starred = album.StarredAt
+	}
+	dir.MusicBrainzId = album.MbzAlbumID
+	dir.IsCompilation = album.Compilation
+	dir.SortName = album.SortAlbumName
+	return dir
+}
