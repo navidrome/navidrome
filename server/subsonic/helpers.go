@@ -6,11 +6,9 @@ import (
 	"mime"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/public"
@@ -271,18 +269,13 @@ func buildItemGenres(genres model.Genres) []responses.ItemGenre {
 	return itemGenres
 }
 
-func buildDiscSubtitles(ctx context.Context, a model.Album) responses.DiscTitles {
+func buildDiscSubtitles(_ context.Context, a model.Album) responses.DiscTitles {
 	if len(a.Discs) == 0 {
 		return nil
 	}
 	discTitles := responses.DiscTitles{}
 	for num, title := range a.Discs {
-		n, err := strconv.Atoi(num)
-		if err != nil {
-			log.Warn(ctx, "Invalid disc number", "num", num, "title", title, "album", a.Name, "artist", a.AlbumArtist, err)
-			continue
-		}
-		discTitles = append(discTitles, responses.DiscTitle{Disc: n, Title: title})
+		discTitles = append(discTitles, responses.DiscTitle{Disc: num, Title: title})
 	}
 	sort.Slice(discTitles, func(i, j int) bool {
 		return discTitles[i].Disc < discTitles[j].Disc

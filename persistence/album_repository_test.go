@@ -76,7 +76,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(other.Album.Discs).To(Equal(a.Discs))
 		})
 		It("maps the discs field", func() {
-			a.Discs = model.Discs{"1": "disc1", "2": "disc2"}
+			a.Discs = model.Discs{1: "disc1", 2: "disc2"}
 			dba := dbAlbum{Album: a}
 
 			m := structs.Map(dba)

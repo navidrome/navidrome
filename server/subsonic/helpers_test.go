@@ -45,27 +45,14 @@ var _ = Describe("helpers", func() {
 
 		It("should return correct disc titles when album has discs with valid disc numbers", func() {
 			album := model.Album{
-				Discs: map[string]string{
-					"1": "Disc 1",
-					"2": "Disc 2",
+				Discs: map[int]string{
+					1: "Disc 1",
+					2: "Disc 2",
 				},
 			}
 			expected := responses.DiscTitles{
 				{Disc: 1, Title: "Disc 1"},
 				{Disc: 2, Title: "Disc 2"},
-			}
-			Expect(buildDiscSubtitles(context.Background(), album)).To(Equal(expected))
-		})
-
-		It("should skip discs with invalid disc numbers", func() {
-			album := model.Album{
-				Discs: map[string]string{
-					"1":   "Disc 1",
-					"two": "Disc 2",
-				},
-			}
-			expected := responses.DiscTitles{
-				{Disc: 1, Title: "Disc 1"},
 			}
 			Expect(buildDiscSubtitles(context.Background(), album)).To(Equal(expected))
 		})
