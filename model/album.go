@@ -1,7 +1,6 @@
 package model
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -62,13 +61,14 @@ func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
 }
 
-type Discs map[string]string
+type Discs map[int]string
 
+// Add adds a disc to the Discs map. If the map is nil, it is initialized.
 func (d *Discs) Add(discNumber int, discSubtitle string) {
 	if *d == nil {
 		*d = Discs{}
 	}
-	(*d)[strconv.Itoa(discNumber)] = discSubtitle
+	(*d)[discNumber] = discSubtitle
 }
 
 type DiscID struct {
