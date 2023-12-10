@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -26,7 +27,7 @@ type Lyric struct {
 const timeRegexString = `(\[(([0-9]{1,2}):)?([0-9]{1,2}):([0-9]{1,2})(\.([0-9]{1,3}))?\])`
 
 var (
-	lineRegex  = regexp.MustCompile(timeRegexString + "([^\n]+)")
+	lineRegex  = regexp.MustCompile(timeRegexString + "([^\n]+)?")
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^\]]+)\]`)
 )
 
@@ -54,18 +55,18 @@ func ToLyrics(language, text string) (*Lyric, error) {
 			if idTag != nil {
 				switch idTag[1] {
 				case "ar":
-					artist = idTag[2]
+					artist = utils.SanitizeText(strings.TrimSpace(idTag[2]))
 				case "offset":
 					{
-						off, err := strconv.ParseInt(idTag[2], 10, 64)
+						off, err := strconv.ParseInt(strings.TrimSpace(idTag[2]), 10, 64)
 						if err != nil {
-							return nil, err
+							log.Warn("Error parsing offset", "offset", idTag[2], "error", err)
+						} else {
+							offset = &off
 						}
-
-						offset = &off
 					}
 				case "ti":
-					title = idTag[2]
+					title = utils.SanitizeText(strings.TrimSpace(idTag[2]))
 				}
 
 				continue
@@ -74,9 +75,9 @@ func ToLyrics(language, text string) (*Lyric, error) {
 			syncedMatch := lineRegex.FindStringSubmatch(line)
 			if syncedMatch == nil {
 				synced = false
-				text = line
+				text = utils.SanitizeText(line)
 			} else {
-				var hours int64
+				var hours, millis int64
 				var err error
 
 				if syncedMatch[3] != "" {
@@ -96,18 +97,20 @@ func ToLyrics(language, text string) (*Lyric, error) {
 					return nil, err
 				}
 
-				millis, err := strconv.ParseInt(syncedMatch[7], 10, 64)
-				if err != nil {
-					return nil, err
-				}
+				if syncedMatch[7] != "" {
+					millis, err = strconv.ParseInt(syncedMatch[7], 10, 64)
+					if err != nil {
+						return nil, err
+					}
 
-				if len(syncedMatch[7]) == 2 {
-					millis *= 10
+					if len(syncedMatch[7]) == 2 {
+						millis *= 10
+					}
 				}
 
 				timeInMillis := (((((hours * 60) + min) * 60) + sec) * 1000) + millis
 				time = &timeInMillis
-				text = syncedMatch[8]
+				text = utils.SanitizeText(syncedMatch[8])
 			}
 		} else {
 			text = line
