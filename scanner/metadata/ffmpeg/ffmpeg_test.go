@@ -1,7 +1,6 @@
 package ffmpeg
 
 import (
-	"github.com/navidrome/navidrome/scanner/metadata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -328,11 +327,10 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 												: [00:02.50]unspecified
 		`
 		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-		Expect(md).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
-		Expect(md).To(HaveKeyWithValue("lyrics", []string{
-			"eng",
+		Expect(md).To(HaveKeyWithValue("lyrics-eng", []string{
 			"[00:00.00]This is\n[00:02.50]English",
-			"xxx",
+		}))
+		Expect(md).To(HaveKeyWithValue("lyrics-xxx", []string{
 			"[00:00.00]This is\n[00:02.50]unspecified",
 		}))
 	})
@@ -346,7 +344,6 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 		`
 		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
 		Expect(md).To(HaveKeyWithValue("lyrics", []string{
-			"xxx",
 			"[00:00.00]This is\n[00:02.50]English",
 		}))
 	})

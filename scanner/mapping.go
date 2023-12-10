@@ -73,7 +73,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.RGTrackGain = md.RGTrackGain()
 	mf.RGTrackPeak = md.RGTrackPeak()
 	mf.Comment = utils.SanitizeText(md.Comment())
-	mf.Lyrics = utils.SanitizeText(md.Lyrics())
+	mf.Lyrics = md.Lyrics()
 	mf.Bpm = md.Bpm()
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()

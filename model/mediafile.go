@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"mime"
 	"path/filepath"
 	"sort"
@@ -56,7 +57,7 @@ type MediaFile struct {
 	OrderAlbumArtistName string  `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
 	Compilation          bool    `structs:"compilation" json:"compilation"`
 	Comment              string  `structs:"comment" json:"comment,omitempty"`
-	Lyrics               string  `structs:"lyrics" json:"lyrics,omitempty"`
+	Lyrics               string  `structs:"lyrics" json:"lyrics"`
 	Bpm                  int     `structs:"bpm" json:"bpm,omitempty"`
 	CatalogNum           string  `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzRecordingID       string  `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
@@ -90,6 +91,15 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
+}
+
+func (mf MediaFile) StructuredLyrics() (Lyrics, error) {
+	lyrics := Lyrics{}
+	err := json.Unmarshal([]byte(mf.Lyrics), &lyrics)
+	if err != nil {
+		return nil, err
+	}
+	return lyrics, nil
 }
 
 type MediaFiles []MediaFile

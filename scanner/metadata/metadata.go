@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -15,10 +16,8 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
-
-const ENCODED_LYRICS_KEY = "__navidrome__lyrics"
-const NAVIDROME_SYNCHRONIZED_KEY = "__navidrome__synched__lyrics"
 
 type Extractor interface {
 	Parse(files ...string) (map[string]ParsedTags, error)
@@ -108,27 +107,47 @@ func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string {
-	result := ""
+	lyrics := model.Lyrics{}
+	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
-	if t.getFirstTagValue(ENCODED_LYRICS_KEY) == "1" {
-		tags := t.getAllTagValues("lyrics", NAVIDROME_SYNCHRONIZED_KEY)
-
-		for i := 0; i < len(tags); i += 2 {
-			result += fmt.Sprintf("%s\u200b%s\u200b", tags[i], tags[i+1])
+	for _, value := range basicLyrics {
+		lyric, err := model.ToLyrics("xxx", value)
+		if err != nil {
+			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+			continue
 		}
-	} else {
-		tags := t.getAllTagValues("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
-		for _, tag := range tags {
-			result += fmt.Sprintf("xxx\u200b%s\u200b", tag)
+		lyrics = append(lyrics, *lyric)
+	}
+
+	for tag, value := range t.tags {
+		if strings.HasPrefix(tag, "lyrics-") {
+			language := strings.TrimSpace(strings.TrimPrefix(tag, "lyrics-"))
+
+			if language == "" {
+				language = "xxx"
+			}
+
+			for _, text := range value {
+				lyric, err := model.ToLyrics(language, text)
+				if err != nil {
+					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+					continue
+				}
+
+				lyrics = append(lyrics, *lyric)
+			}
 		}
 	}
 
-	if len(result) > 0 {
-		result = strings.TrimSuffix(result, consts.Zwsp)
+	res, err := json.Marshal(lyrics)
+	if err != nil {
+		log.Warn("Unexpected error occurred when serializing lyrics", "file", t.filePath, "error", err)
+		return ""
 	}
-	return result
+	return string(res[:])
 }
+
 func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
 func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
 func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }

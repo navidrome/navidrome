@@ -20,8 +20,14 @@ const initialState = {
   savedPlayIndex: 0,
 }
 
-const timestampRegex =
-  /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])/g
+const pad = (value) => {
+  const str = value.toString()
+  if (str.length === 1) {
+    return `0${str}`
+  } else {
+    return str
+  }
+}
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
@@ -43,9 +49,21 @@ const mapToAudioLists = (item) => {
   let lyricText = ''
 
   if (lyrics) {
-    const split = lyrics.split('\u200B')
-    if (split.length > 1) {
-      lyricText = split[1]
+    const structured = JSON.parse(lyrics)
+    for (const structuredLyric of structured) {
+      if (structuredLyric.synced) {
+        for (const line of structuredLyric.line) {
+          let time = Math.floor(line.start / 10)
+          const ms = time % 100
+          time = Math.floor(time / 100)
+          const sec = time % 60
+          time = Math.floor(time / 60)
+          const min = time % 60
+
+          ms.toString()
+          lyricText += `[${pad(min)}:${pad(sec)}.${pad(ms)}] ${line.value}\n`
+        }
+      }
     }
   }
 
@@ -54,7 +72,7 @@ const mapToAudioLists = (item) => {
     uuid: uuidv4(),
     song: item,
     name: item.title,
-    lyric: timestampRegex.test(lyricText) ? lyricText : '',
+    lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
     musicSrc: subsonic.streamUrl(trackId),

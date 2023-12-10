@@ -3,8 +3,8 @@ package subsonic
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http/httptest"
 	"time"
@@ -74,12 +74,18 @@ var _ = Describe("MediaRetrievalController", func() {
 	Describe("GetLyrics", func() {
 		It("should return data for given artist & title", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			lyrics, _ := model.ToLyrics("eng", "[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I")
+			lyricsJson, err := json.Marshal(model.Lyrics{
+				*lyrics,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
 			mockRepo.SetData(model.MediaFiles{
 				{
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
-					Lyrics: "[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I",
+					Lyrics: string(lyricsJson[:]),
 				},
 			})
 			response, err := router.GetLyrics(r)
@@ -89,7 +95,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(err).To(BeNil())
 			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
 			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
-			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I"))
+			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
 		})
 		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
 			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
@@ -144,23 +150,30 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		It("should return mixed lyrics", func() {
 			r := newGetRequest("id=1")
+			synced, _ := model.ToLyrics("eng", syncedLyrics)
+			unsynced, _ := model.ToLyrics("xxx", unsyncedLyrics)
+			lyricsJson, err := json.Marshal(model.Lyrics{
+				*synced, *unsynced,
+			})
+			Expect(err).ToNot(HaveOccurred())
+
 			mockRepo.SetData(model.MediaFiles{
 				{
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
-					Lyrics: fmt.Sprintf("eng\u200b%s\u200bxxx\u200b%s", syncedLyrics, unsyncedLyrics),
+					Lyrics: string(lyricsJson[:]),
 				},
 			})
 
 			response, err := router.GetLyricsBySongId(r)
 			Expect(err).ToNot(HaveOccurred())
 			compareResponses(response.LyricsList, responses.LyricsList{
-				StructuredLyrics: []responses.StructuredLyrics{
+				StructuredLyrics: model.Lyrics{
 					{
 						Lang:   "eng",
 						Synced: true,
-						Line: []responses.Line{
+						Line: []model.Line{
 							{
 								Start: &times[0],
 								Value: "We're no strangers to love",
@@ -174,7 +187,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					{
 						Lang:   "xxx",
 						Synced: false,
-						Line: []responses.Line{
+						Line: []model.Line{
 							{
 								Value: "We're no strangers to love",
 							},
@@ -189,12 +202,17 @@ var _ = Describe("MediaRetrievalController", func() {
 
 		It("should parse lrc metadata", func() {
 			r := newGetRequest("id=1")
+			synced, _ := model.ToLyrics("eng", metadata+"\n"+syncedLyrics)
+			lyricsJson, err := json.Marshal(model.Lyrics{
+				*synced,
+			})
+			Expect(err).ToNot(HaveOccurred())
 			mockRepo.SetData(model.MediaFiles{
 				{
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
-					Lyrics: fmt.Sprintf("eng\u200b%s\n%s", metadata, syncedLyrics),
+					Lyrics: string(lyricsJson[:]),
 				},
 			})
 
@@ -203,13 +221,13 @@ var _ = Describe("MediaRetrievalController", func() {
 
 			offset := int64(-100)
 			compareResponses(response.LyricsList, responses.LyricsList{
-				StructuredLyrics: []responses.StructuredLyrics{
+				StructuredLyrics: model.Lyrics{
 					{
 						DisplayArtist: "Rick Astley",
 						DisplayTitle:  "That one song",
 						Lang:          "eng",
 						Synced:        true,
-						Line: []responses.Line{
+						Line: []model.Line{
 							{
 								Start: &times[0],
 								Value: "We're no strangers to love",
@@ -243,26 +261,6 @@ func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int) (
 	c.recvSize = size
 	return io.NopCloser(bytes.NewReader([]byte(c.data))), time.Time{}, nil
 }
-
-var _ = Describe("isSynced", func() {
-	It("returns false if lyrics contain no timestamps", func() {
-		Expect(isSynced("Just in case my car goes off the highway")).To(Equal(false))
-		Expect(isSynced("[02.50] Just in case my car goes off the highway")).To(Equal(false))
-	})
-	It("returns false if lyrics is an empty string", func() {
-		Expect(isSynced("")).To(Equal(false))
-	})
-	It("returns true if lyrics contain timestamps", func() {
-		Expect(isSynced(`NF Real Music
-		[00:00] First line
-		[00:00.85] JUST LIKE YOU
-		[00:00.85] Just in case my car goes off the highway`)).To(Equal(true))
-		Expect(isSynced("[04:02:50.85] Never gonna give you up")).To(Equal(true))
-		Expect(isSynced("[02:50.85] Never gonna give you up")).To(Equal(true))
-		Expect(isSynced("[02:50] Never gonna give you up")).To(Equal(true))
-	})
-
-})
 
 type mockedMediaFile struct {
 	model.MediaFileRepository

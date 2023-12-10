@@ -5,9 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -90,21 +87,6 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	return nil, err
 }
 
-const timeRegexString = `(\[(([0-9]{1,2}):)?([0-9]{1,2}):([0-9]{1,2})(\.([0-9]{1,3}))?\])`
-
-var (
-	timeRegex  = regexp.MustCompile(timeRegexString)
-	lineRegex  = regexp.MustCompile(timeRegexString + "([^\n]+)")
-	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^\]]+)\]`)
-)
-
-func isSynced(rawLyrics string) bool {
-	// Eg: [04:02:50.85]
-	// [02:50.85]
-	// [02:50]
-	return timeRegex.MatchString(rawLyrics)
-}
-
 func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	artist := utils.ParamString(r, "artist")
 	title := utils.ParamString(r, "title")
@@ -121,14 +103,24 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
+	structuredLyrics, err := mediaFiles[0].StructuredLyrics()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(structuredLyrics) == 0 {
+		return response, nil
+	}
+
 	lyrics.Artist = artist
 	lyrics.Title = title
 
-	if isSynced(mediaFiles[0].Lyrics) {
-		lyrics.Value = timeRegex.ReplaceAllString(mediaFiles[0].Lyrics, "")
-	} else {
-		lyrics.Value = mediaFiles[0].Lyrics
+	lyricsText := ""
+	for _, line := range structuredLyrics[0].Line {
+		lyricsText += line.Value + "\n"
 	}
+
+	lyrics.Value = lyricsText
 
 	return response, nil
 }
@@ -141,112 +133,16 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	response := newResponse()
-	allLyrics := responses.LyricsList{}
-	response.LyricsList = &allLyrics
-
-	if mediaFile.Lyrics != "" {
-		lyricsResult := strings.Split(mediaFile.Lyrics, consts.Zwsp)
-
-		for i := 0; i < len(lyricsResult); i += 2 {
-			encoding := lyricsResult[i]
-			textLines := strings.Split(lyricsResult[i+1], "\n")
-
-			lines := []responses.Line{}
-			synced := true
-
-			artist := ""
-			title := ""
-			var offset *int64 = nil
-
-			for _, line := range textLines {
-				line := strings.TrimSpace(line)
-
-				if line == "" {
-					continue
-				}
-
-				var text string
-				var time *int64 = nil
-
-				if synced {
-					idTag := lrcIdRegex.FindStringSubmatch(line)
-					if idTag != nil {
-						switch idTag[1] {
-						case "ar":
-							artist = idTag[2]
-						case "offset":
-							{
-								off, err := strconv.ParseInt(idTag[2], 10, 64)
-								if err != nil {
-									return nil, err
-								}
-
-								offset = &off
-							}
-						case "ti":
-							title = idTag[2]
-						}
-
-						continue
-					}
-
-					syncedMatch := lineRegex.FindStringSubmatch(line)
-					if syncedMatch == nil {
-						synced = false
-						text = line
-					} else {
-						var hours int64
-						if syncedMatch[3] != "" {
-							hours, err = strconv.ParseInt(syncedMatch[3], 10, 64)
-							if err != nil {
-								return nil, err
-							}
-						}
-
-						min, err := strconv.ParseInt(syncedMatch[4], 10, 64)
-						if err != nil {
-							return nil, err
-						}
-
-						sec, err := strconv.ParseInt(syncedMatch[5], 10, 64)
-						if err != nil {
-							return nil, err
-						}
-
-						millis, err := strconv.ParseInt(syncedMatch[7], 10, 64)
-						if err != nil {
-							return nil, err
-						}
-
-						if len(syncedMatch[7]) == 2 {
-							millis *= 10
-						}
-
-						timeInMillis := (((((hours * 60) + min) * 60) + sec) * 1000) + millis
-						time = &timeInMillis
-						text = syncedMatch[8]
-					}
-				} else {
-					text = line
-				}
-
-				lines = append(lines, responses.Line{
-					Start: time,
-					Value: text,
-				})
-			}
-
-			response.LyricsList.StructuredLyrics = append(response.LyricsList.StructuredLyrics, responses.StructuredLyrics{
-				DisplayArtist: artist,
-				DisplayTitle:  title,
-				Lang:          encoding,
-				Line:          lines,
-				Offset:        offset,
-				Synced:        synced,
-			})
-		}
+	lyrics, err := mediaFile.StructuredLyrics()
+	if err != nil {
+		return nil, err
 	}
+
+	response := newResponse()
+	allLyrics := responses.LyricsList{
+		StructuredLyrics: lyrics,
+	}
+	response.LyricsList = &allLyrics
 
 	return response, nil
 }

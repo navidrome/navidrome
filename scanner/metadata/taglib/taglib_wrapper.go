@@ -20,7 +20,6 @@ import (
 	"unsafe"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
 const iTunesKeyPrefix = "----:com.apple.itunes:"
@@ -133,16 +132,10 @@ func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
 	defer lock.RUnlock()
 
 	m := maps[uint32(id)]
-	existing, ok := m[metadata.NAVIDROME_SYNCHRONIZED_KEY]
+	existing, ok := m[language]
 	if ok {
-		length := len(existing)
-
-		if existing[length-2] == language {
-			existing[length-1] += formatted_line
-		} else {
-			m[metadata.NAVIDROME_SYNCHRONIZED_KEY] = append(existing, language, formatted_line)
-		}
+		existing[0] += formatted_line
 	} else {
-		m[metadata.NAVIDROME_SYNCHRONIZED_KEY] = append(existing, language, formatted_line)
+		m[language] = []string{formatted_line}
 	}
 }

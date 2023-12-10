@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/navidrome/navidrome/scanner/metadata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -54,19 +53,21 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("bitrate", []string{"192"}))
 			Expect(m).To(HaveKeyWithValue("channels", []string{"2"}))
 			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
-			Expect(m).To(HaveKeyWithValue("lyrics", []string{
-				"eng",
+			Expect(m).ToNot(HaveKey("lyrics"))
+			Expect(m).To(Or(HaveKeyWithValue("lyrics-eng", []string{
+				"[00:00.00]This is\n[00:02.50]English SYLT\n",
 				"[00:00.00]This is\n[00:02.50]English",
-				"xxx",
+			}), HaveKeyWithValue("lyrics-eng", []string{
+				"[00:00.00]This is\n[00:02.50]English",
+				"[00:00.00]This is\n[00:02.50]English SYLT\n",
+			})))
+			Expect(m).To(Or(HaveKeyWithValue("lyrics-xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
 				"[00:00.00]This is\n[00:02.50]unspecified",
-			}))
-			Expect(m).To(HaveKeyWithValue(metadata.NAVIDROME_SYNCHRONIZED_KEY, []string{
-				"eng",
-				"[00:00.00]This is\n[00:02.50]English\n",
-				"xxx",
-				"[00:00.00]This is\n[00:02.50]unspecified\n",
-			}))
-			Expect(m).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
+			}), HaveKeyWithValue("lyrics-xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified",
+				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
+			})))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))
 			Expect(m).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
 			Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
@@ -131,15 +132,13 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 
 				if id3Lyrics {
-					Expect(m).To(HaveKeyWithValue(metadata.ENCODED_LYRICS_KEY, []string{"1"}))
-					Expect(m).To(HaveKeyWithValue("lyrics", []string{
-						"eng",
+					Expect(m).To(HaveKeyWithValue("lyrics-eng", []string{
 						"[00:00.00]This is\n[00:02.50]English",
-						"xxx",
+					}))
+					Expect(m).To(HaveKeyWithValue("lyrics-xxx", []string{
 						"[00:00.00]This is\n[00:02.50]unspecified",
 					}))
 				} else {
-					Expect(m).ToNot(HaveKey(metadata.ENCODED_LYRICS_KEY))
 					Expect(m).To(HaveKeyWithValue("lyrics", []string{
 						"[00:00.00]This is\n[00:02.50]unspecified",
 						"[00:00.00]This is\n[00:02.50]English",

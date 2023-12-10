@@ -1,20 +1,61 @@
 package metadata_test
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/exp/slices"
 )
 
 var _ = Describe("Tags", func() {
-	const englishLyric = "[00:00.00]This is\n[00:02.50]English"
-	const unspecifiedLyric = "[00:00.00]This is\n[00:02.50]unspecified"
+	var zero int64 = 0
+	var secondTs int64 = 2500
+
+	makeLyrics := func(synced bool, lang, secondLine string) model.Lyric {
+		lines := []model.Line{
+			{Value: "This is"},
+			{Value: secondLine},
+		}
+
+		if synced {
+			lines[0].Start = &zero
+			lines[1].Start = &secondTs
+		}
+
+		lyric := model.Lyric{
+			Lang:   lang,
+			Line:   lines,
+			Synced: synced,
+		}
+
+		return lyric
+	}
+
+	sortLyrics := func(lines model.Lyrics) model.Lyrics {
+		slices.SortFunc(lines, func(a, b model.Lyric) bool {
+			langDiff := strings.Compare(a.Lang, b.Lang)
+			if langDiff == 0 {
+				return strings.Compare(a.Line[1].Value, b.Line[1].Value) < 0
+			} else {
+				return langDiff < 0
+			}
+		})
+
+		return lines
+	}
+
+	compareLyrics := func(m metadata.Tags, expected model.Lyrics) {
+		lyrics := model.Lyrics{}
+		Expect(json.Unmarshal([]byte(m.Lyrics()), &lyrics)).To(BeNil())
+		Expect(sortLyrics(lyrics)).To(Equal(sortLyrics(expected)))
+	}
 
 	Context("Extract", func() {
 		BeforeEach(func() {
@@ -92,14 +133,14 @@ var _ = Describe("Tags", func() {
 				Expect(mds).To(HaveLen(1))
 
 				m := mds[path]
-				var lyrics string
-				if langEncoded {
-					lyrics = strings.Join([]string{"eng", englishLyric, "xxx", unspecifiedLyric}, consts.Zwsp)
-				} else {
-					lyrics = strings.Join([]string{"xxx", unspecifiedLyric, "xxx", englishLyric}, consts.Zwsp)
+				lyrics := model.Lyrics{
+					makeLyrics(true, "xxx", "English"),
+					makeLyrics(true, "xxx", "unspecified"),
 				}
-				println(m.Lyrics())
-				Expect(m.Lyrics()).To(Equal(lyrics))
+				if langEncoded {
+					lyrics[0].Lang = "eng"
+				}
+				compareLyrics(m, lyrics)
 			},
 
 			Entry("Parses AIFF file", "test.aiff", true),
@@ -118,9 +159,12 @@ var _ = Describe("Tags", func() {
 			Expect(mds).To(HaveLen(1))
 
 			m := mds[path]
-			lyrics := strings.Join([]string{"eng", englishLyric, "xxx", unspecifiedLyric, "eng", englishLyric + "\n", "xxx", unspecifiedLyric + "\n"}, consts.Zwsp)
-			Expect(m.Lyrics()).To(Equal(lyrics))
-
+			compareLyrics(m, model.Lyrics{
+				makeLyrics(true, "eng", "English SYLT"),
+				makeLyrics(true, "eng", "English"),
+				makeLyrics(true, "xxx", "unspecified SYLT"),
+				makeLyrics(true, "xxx", "unspecified"),
+			})
 		})
 	})
 
@@ -137,9 +181,10 @@ var _ = Describe("Tags", func() {
 				Expect(mds).To(HaveLen(1))
 
 				m := mds[path]
-				lyrics := strings.Join([]string{"eng", englishLyric, "xxx", unspecifiedLyric}, consts.Zwsp)
-
-				Expect(m.Lyrics()).To(Equal(lyrics))
+				compareLyrics(m, model.Lyrics{
+					makeLyrics(true, "eng", "English"),
+					makeLyrics(true, "xxx", "unspecified"),
+				})
 			},
 
 			Entry("Parses AIFF file", "test.aiff"),

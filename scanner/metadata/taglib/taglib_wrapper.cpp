@@ -19,8 +19,7 @@
 
 #include "taglib_wrapper.h"
 
-char *LYRICS_KEY = (char *) "lyrics";
-char *CUSTOM_LYRICS = (char *) "__navidrome__lyrics";
+char *LYRICS_KEY = (char *) "lyrics-";
 
 char has_cover(const TagLib::FileRef f);
 
@@ -92,7 +91,6 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   if (id3Tags != NULL) {
     const auto &frames = id3Tags->frameListMap();
-    bool hasLyrics = false;
 
     for (const auto &kv: frames) {
       if (kv.first == "USLT") {
@@ -100,19 +98,15 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
           TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
           if (frame == NULL) continue;
 
-          hasLyrics = true;
+          tags.erase("LYRICS");
 
-          char lang[4];
-          strncpy(lang, frame->language().data(), 3);
-          lang[3] = '\0';
+          char lyricsTag[11];
+          strncpy(lyricsTag, LYRICS_KEY, 7);
+          strncpy(lyricsTag+7, frame->language().data(), 3);
+          lyricsTag[10] = '\0';
           char *val = (char *)frame->text().toCString(true);
 
-          go_map_put_str(id, LYRICS_KEY, lang);
-          go_map_put_str(id, LYRICS_KEY, val);
-        }
-
-        if (hasLyrics) {
-          tags.erase("LYRICS");
+          go_map_put_str(id, lyricsTag, val);
         }
       } else if (kv.first == "SYLT") {
         for (const auto &tag: kv.second) {
@@ -120,27 +114,26 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
           if (frame == NULL) continue;
 
 
-          char lang[4];
-          strncpy(lang, frame->language().data(), 3);
-          lang[3] = '\0';
+          char lyricsTag[11];
+          strncpy(lyricsTag, LYRICS_KEY, 7);
+          strncpy(lyricsTag+7, frame->language().data(), 3);
+          lyricsTag[10] = '\0';
 
           const auto format = frame->timestampFormat();
           if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
-            hasLyrics = true;
 
             for (const auto &line: frame->synchedText()) {
               char *text = (char *)line.text.toCString(true);
-              go_map_put_lyric_line(id, lang, text, line.time);
+              go_map_put_lyric_line(id, lyricsTag, text, line.time);
             }
           } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
             const int sampleRate = props->sampleRate();
 
             if (sampleRate != 0) {
-              hasLyrics = true;
               for (const auto &line: frame->synchedText()) {
                 const int timeInMs = (line.time * 1000) / sampleRate;
                 char *text = (char *)line.text.toCString(true);
-                go_map_put_lyric_line(id, lang, text, timeInMs);
+                go_map_put_lyric_line(id, lyricsTag, text, timeInMs);
               }
             }
           }
@@ -148,10 +141,6 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
       } else {
         tags.insert(kv.first, kv.second.front()->toString());
       }
-    }
-
-    if (hasLyrics) {
-      go_map_put_int(id, CUSTOM_LYRICS, 1);
     }
   }
 
