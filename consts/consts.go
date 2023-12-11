@@ -81,12 +81,6 @@ const (
 	DefaultCacheCleanUpInterval = 10 * time.Minute
 )
 
-// Shared secrets (only add here "secrets" that can be public)
-const (
-	LastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e" // nolint:gosec
-	LastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // nolint:gosec
-)
-
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []map[string]interface{}{
