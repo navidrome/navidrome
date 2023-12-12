@@ -10,6 +10,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -25,15 +26,22 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 	r.ctx = ctx
 	r.db = db
 	r.tableName = "media_file"
+	r.filterMappings = map[string]filterFunc{
+		"id":      idFilter(r.tableName),
+		"title":   fullTextFilter,
+		"starred": booleanFilter,
+	}
 	r.sortMappings = map[string]string{
 		"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
 		"album":  "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
 		"random": "RANDOM()",
 	}
-	r.filterMappings = map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"title":   fullTextFilter,
-		"starred": booleanFilter,
+	if conf.Server.PreferSortTags {
+		r.sortMappings = map[string]string{
+			"title":  "COALESCE(NULLIF(sort_title,''),title)",
+			"artist": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
+			"album":  "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
+		}
 	}
 	return r
 }
