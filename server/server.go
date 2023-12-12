@@ -34,8 +34,8 @@ type Server struct {
 
 func New(ds model.DataStore, broker events.Broker) *Server {
 	s := &Server{ds: ds, broker: broker}
-	auth.Init(s.ds)
 	initialSetup(ds)
+	auth.Init(s.ds)
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
 	s.mountRootRedirector()
