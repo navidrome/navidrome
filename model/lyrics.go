@@ -139,17 +139,21 @@ func ToLyrics(language, text string) (*Lyric, error) {
 					return nil, err
 				}
 
-				secStart := match[8]
-				if secStart != -1 {
-					secEnd := match[9]
+				msStart := match[8]
+				if msStart != -1 {
+					msEnd := match[9]
 					// +1 offset since this capture group contains .
-					millis, err = strconv.ParseInt(line[secStart+1:secEnd], 10, 64)
+					millis, err = strconv.ParseInt(line[msStart+1:msEnd], 10, 64)
 					if err != nil {
 						return nil, err
 					}
 
-					if secEnd-secStart == 3 {
+					len := msEnd - msStart
+
+					if len == 3 {
 						millis *= 10
+					} else if len == 2 {
+						millis *= 100
 					}
 				}
 

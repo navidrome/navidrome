@@ -89,4 +89,16 @@ var _ = Describe("ToLyrics", func() {
 			{Start: &a, Value: "Text"},
 		}))
 	})
+
+	It("Handles all possible ms cases", func() {
+		a, b, c := int64(1), int64(10), int64(100)
+		lyrics, err := ToLyrics("xxx", "[00:00.001]a\n[00:00.01]b\n[00:00.1]c")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "a"},
+			{Start: &b, Value: "b"},
+			{Start: &c, Value: "c"},
+		}))
+	})
 })
