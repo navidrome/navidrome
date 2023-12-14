@@ -32,8 +32,8 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 		"starred": booleanFilter,
 	}
 	r.sortMappings = map[string]string{
-		"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
-		"album":  "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+		"artist": "order_artist_name asc, order_album_name asc, release_date asc, mbz_album_id asc, disc_number asc, track_number asc",
+		"album":  "order_album_name asc, release_date asc, mbz_album_id asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
 		"random": "RANDOM()",
 	}
 	if conf.Server.PreferSortTags {
