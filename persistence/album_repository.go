@@ -60,19 +60,22 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
 	}
-	r.sortMappings = map[string]string{
-		"name":           "order_album_name asc, order_album_artist_name asc",
-		"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
-		"random":         "RANDOM()",
-		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
-		"recently_added": recentlyAddedSort(),
-	}
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"name":        "COALESCE(NULLIF(sort_album_name,''),order_album_name)",
-			"artist":      "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"albumArtist": "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"max_year":    "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"name":           "COALESCE(NULLIF(sort_album_name,''),order_album_name)",
+			"artist":         "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"albumArtist":    "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"random":         "RANDOM()",
+			"recently_added": recentlyAddedSort(),
+		}
+	} else {
+		r.sortMappings = map[string]string{
+			"name":           "order_album_name asc, order_album_artist_name asc",
+			"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
+			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
+			"random":         "RANDOM()",
+			"recently_added": recentlyAddedSort(),
 		}
 	}
 
