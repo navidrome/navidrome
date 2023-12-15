@@ -140,6 +140,7 @@ func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context
 }
 
 func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
+	ctx = context.WithoutCancel(ctx)
 	if !isScanning.TryLock() {
 		log.Debug("Scanner already running, ignoring request for rescan.")
 		return ErrAlreadyScanning
