@@ -139,28 +139,6 @@ func (s *scanner) startProgressTracker(mediaFolder string) (chan uint32, context
 	return progress, cancel
 }
 
-func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
-	ctx = context.WithoutCancel(ctx)
-	if !isScanning.TryLock() {
-		log.Debug("Scanner already running, ignoring request for rescan.")
-		return ErrAlreadyScanning
-	}
-	defer isScanning.Unlock()
-
-	var hasError bool
-	for folder := range s.folders {
-		err := s.rescan(ctx, folder, fullRescan)
-		hasError = hasError || err != nil
-	}
-	if hasError {
-		log.Error("Errors while scanning media. Please check the logs")
-		core.WriteAfterScanMetrics(ctx, s.ds, false)
-		return ErrScanError
-	}
-	core.WriteAfterScanMetrics(ctx, s.ds, true)
-	return nil
-}
-
 func (s *scanner) getStatus(folder string) (scanStatus, bool) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
