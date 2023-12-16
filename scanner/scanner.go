@@ -177,6 +177,27 @@ func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
 	}
 }
 
+func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
+	ctx = contextWithoutCancel(ctx)
+	if !isScanning.TryLock() {
+		log.Debug(ctx, "Scanner already running, ignoring request for rescan.")
+		return ErrAlreadyScanning
+	}
+	defer isScanning.Unlock()
+
+	var hasError bool
+	for folder := range s.folders {
+		err := s.rescan(ctx, folder, fullRescan)
+		hasError = hasError || err != nil
+	}
+	if hasError {
+		log.Error(ctx, "Errors while scanning media. Please check the logs")
+		core.WriteAfterScanMetrics(ctx, s.ds, false)
+		return ErrScanError
+	}
+	core.WriteAfterScanMetrics(ctx, s.ds, true)
+	return nil
+}
 func (s *scanner) Status(mediaFolder string) (*StatusInfo, error) {
 	status, ok := s.getStatus(mediaFolder)
 	if !ok {
