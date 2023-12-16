@@ -60,13 +60,19 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.db = db
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist"
-	r.sortMappings = map[string]string{
-		"name": "order_artist_name",
-	}
 	r.filterMappings = map[string]filterFunc{
 		"id":      idFilter(r.tableName),
 		"name":    fullTextFilter,
 		"starred": booleanFilter,
+	}
+	if conf.Server.PreferSortTags {
+		r.sortMappings = map[string]string{
+			"name": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
+		}
+	} else {
+		r.sortMappings = map[string]string{
+			"name": "order_artist_name",
+		}
 	}
 	return r
 }
