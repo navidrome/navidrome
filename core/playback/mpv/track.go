@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/DexterLB/mpvipc"
+	"github.com/dexterlb/mpvipc"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
