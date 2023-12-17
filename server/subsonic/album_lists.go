@@ -64,13 +64,13 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	albums, err := api.ds.Album(r.Context()).GetAllWithoutGenres(opts)
 
 	if err != nil {
-		log.Error(r, "Error retrieving albums", "error", err)
+		log.Error(r, "Error retrieving albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
 	count, err := api.ds.Album(r.Context()).CountAll(opts)
 	if err != nil {
-		log.Error(r, "Error counting albums", "error", err)
+		log.Error(r, "Error counting albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
@@ -108,17 +108,17 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 	options := filter.Starred()
 	artists, err := api.ds.Artist(ctx).GetAll(options)
 	if err != nil {
-		log.Error(r, "Error retrieving starred artists", "error", err)
+		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
 	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(options)
 	if err != nil {
-		log.Error(r, "Error retrieving starred albums", "error", err)
+		log.Error(r, "Error retrieving starred albums", err)
 		return nil, err
 	}
 	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(options)
 	if err != nil {
-		log.Error(r, "Error retrieving starred mediaFiles", "error", err)
+		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
 	}
 
@@ -145,7 +145,7 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	npInfo, err := api.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
-		log.Error(r, "Error retrieving now playing list", "error", err)
+		log.Error(r, "Error retrieving now playing list", err)
 		return nil, err
 	}
 
@@ -170,7 +170,7 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 
 	songs, err := api.getSongs(r.Context(), 0, size, filter.SongsByRandom(genre, fromYear, toYear))
 	if err != nil {
-		log.Error(r, "Error retrieving random songs", "error", err)
+		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
 	}
 
@@ -187,7 +187,7 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 
 	songs, err := api.getSongs(r.Context(), offset, count, filter.SongsByGenre(genre))
 	if err != nil {
-		log.Error(r, "Error retrieving random songs", "error", err)
+		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
 	}
 
