@@ -39,8 +39,6 @@ dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DATA-DOG/go-sqlmock v1.3.3/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
-github.com/DexterLB/mpvipc v0.0.0-20230829142118-145d6eabdc37 h1:/oQBAuySCcme0DLhicWkr7FaAT5nh1XbbbnCMR2WdPA=
-github.com/DexterLB/mpvipc v0.0.0-20230829142118-145d6eabdc37/go.mod h1:nMVB54ifXmC1hpgfq7gTpotbv891pd2wAX/whuUj1q4=
 github.com/Masterminds/squirrel v1.5.4 h1:uUcX/aBc8O7Fg9kaISIUsHXdKuqehiXAMQTYX8afzqM=
 github.com/Masterminds/squirrel v1.5.4/go.mod h1:NNaOrjSoIDfDA40n7sr2tPNZRfjzjA400rg+riTZj10=
 github.com/ReneKroon/ttlcache/v2 v2.11.0 h1:OvlcYFYi941SBN3v9dsDcC2N8vRxyHcCmJb3Vl4QMoM=
@@ -74,6 +72,8 @@ github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf h1:tb246l2Zmpt/GpF9EcH
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf/go.mod h1:tSgDythFsl0QgS/PFWfIZqcJKnkADWneY80jaVRlqK8=
 github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1 h1:mGvOb3zxl4vCLv+dbf7JA6CAaM2UH/AGP1KX4DsJmTI=
 github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1/go.mod h1:ZNCLJfehvEf34B7BbLKjgpsL9lyW7q938w/GY1XgV4E=
+github.com/dexterlb/mpvipc v0.0.0-20230829142118-145d6eabdc37 h1:s+qNFsO3VsdsKroqapcogQxcQBHrRPDK1nVxGc+HBbg=
+github.com/dexterlb/mpvipc v0.0.0-20230829142118-145d6eabdc37/go.mod h1:CXCwawNJCtFDip7gvbaQVgw0cGjldpyHDIp7oA5prOg=
 github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25 h1:simG0vMYFvNriGhaaat7QVVkaVkXzvqcohaBoLZl9Hg=
 github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25/go.mod h1:Z3Lomva4pyMWYezjMAU5QWRh0p1VvO4199OHlFnyKkM=
 github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=
