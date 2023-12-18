@@ -129,7 +129,7 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	}
 	start := time.Now()
 	var c int64
-	res, err := r.db.NewQuery(query).Bind(args).Execute()
+	res, err := r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Execute()
 	if res != nil {
 		c, _ = res.RowsAffected()
 	}
@@ -165,7 +165,7 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 		return err
 	}
 	start := time.Now()
-	err = r.db.NewQuery(query).Bind(args).One(response)
+	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).One(response)
 	if errors.Is(err, sql.ErrNoRows) {
 		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
@@ -183,7 +183,7 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options 
 		return err
 	}
 	start := time.Now()
-	err = r.db.NewQuery(query).Bind(args).All(response)
+	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).All(response)
 	if errors.Is(err, sql.ErrNoRows) {
 		r.logSQL(query, args, nil, -1, start)
 		return model.ErrNotFound
@@ -199,7 +199,7 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) err
 		return err
 	}
 	start := time.Now()
-	err = r.db.NewQuery(query).Bind(args).Column(response)
+	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Column(response)
 	if errors.Is(err, sql.ErrNoRows) {
 		r.logSQL(query, args, nil, -1, start)
 		return model.ErrNotFound
