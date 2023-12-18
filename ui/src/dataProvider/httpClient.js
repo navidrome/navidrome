@@ -2,7 +2,7 @@ import { fetchUtils } from 'react-admin'
 import { v4 as uuidv4 } from 'uuid'
 import { baseUrl } from '../utils'
 import config from '../config'
-import jwtDecode from 'jwt-decode'
+import { jwtDecode } from 'jwt-decode'
 
 const customAuthorizationHeader = 'X-ND-Authorization'
 const clientUniqueIdHeader = 'X-ND-Client-Unique-Id'
