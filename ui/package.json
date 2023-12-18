@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@material-ui/core": "^4.11.4",
-    "@material-ui/icons": "^4.11.2",
+    "@material-ui/icons": "^4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.58",
     "@material-ui/styles": "^4.11.5",
     "blueimp-md5": "^2.19.0",
