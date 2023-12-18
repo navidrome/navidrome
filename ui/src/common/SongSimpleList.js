@@ -47,7 +47,7 @@ const useStyles = makeStyles(
       top: '26px',
     },
   },
-  { name: 'RaSongSimpleList' }
+  { name: 'RaSongSimpleList' },
 )
 
 export const SongSimpleList = ({
@@ -108,7 +108,7 @@ export const SongSimpleList = ({
                   </ListItemSecondaryAction>
                 </ListItem>
               </span>
-            )
+            ),
         )}
       </List>
     )

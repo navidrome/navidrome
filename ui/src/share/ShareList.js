@@ -48,7 +48,7 @@ const ShareList = (props) => {
               type: 'warning',
               multiLine: true,
               duration: 0,
-            }
+            },
           )
         })
     } else prompt(translate('message.shareCopyToClipboard'), url)

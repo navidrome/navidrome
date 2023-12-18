@@ -18,8 +18,8 @@ export const BatchShareButton = ({ resource, selectedIds, className }) => {
           _: 'ra.action.bulk_actions',
           smart_count: selectedIds.length,
         }),
-        'message.shareBatchDialogTitle'
-      )
+        'message.shareBatchDialogTitle',
+      ),
     )
     unselectAll(resource)
   }

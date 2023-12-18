@@ -26,7 +26,7 @@ export const StreamField = (props) => {
       evt.preventDefault()
       dispatch(setTrack(await songFromRadio(record)))
     },
-    [dispatch, record]
+    [dispatch, record],
   )
 
   return (

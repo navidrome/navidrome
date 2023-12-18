@@ -54,7 +54,7 @@ const HelpTable = (props) => {
         </TableContainer>
       </DialogContent>
     </Dialog>,
-    document.body
+    document.body,
   )
 }
 

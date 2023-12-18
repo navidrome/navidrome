@@ -12,7 +12,7 @@ export const useSelectedFields = ({
 }) => {
   const dispatch = useDispatch()
   const resourceFields = useSelector(
-    (state) => state.settings.toggleableFields
+    (state) => state.settings.toggleableFields,
   )?.[resource]
   const omittedFields = useSelector((state) => state.settings.omittedFields)?.[
     resource
@@ -81,7 +81,7 @@ useSelectedFields.propTypes = {
 export const useSetToggleableFields = (
   resource,
   toggleableColumns,
-  defaultOff = []
+  defaultOff = [],
 ) => {
   const current = useSelector((state) => state.settings.toggleableFields)?.album
   const dispatch = useDispatch()
@@ -95,7 +95,7 @@ export const useSetToggleableFields = (
               ...{ [cur]: true },
             }
           }, {}),
-        })
+        }),
       )
       dispatch(setOmittedFields({ [resource]: defaultOff }))
     }

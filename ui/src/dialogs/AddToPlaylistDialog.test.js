@@ -59,7 +59,7 @@ const createTestUtils = (mockDataProvider) =>
       >
         <AddToPlaylistDialog />
       </TestContext>
-    </DataProviderContext.Provider>
+    </DataProviderContext.Provider>,
   )
 
 jest.mock('../dataProvider', () => ({
@@ -104,7 +104,7 @@ describe('AddToPlaylistDialog', () => {
         {
           data: { ids: selectedIds },
           filter: { playlist_id: 'sample-id1' },
-        }
+        },
       )
     })
     await waitFor(() => {
@@ -114,7 +114,7 @@ describe('AddToPlaylistDialog', () => {
         {
           data: { ids: selectedIds },
           filter: { playlist_id: 'sample-id2' },
-        }
+        },
       )
     })
   })
@@ -153,7 +153,7 @@ describe('AddToPlaylistDialog', () => {
       {
         data: { ids: selectedIds },
         filter: { playlist_id: 'created-id1' },
-      }
+      },
     )
   })
 

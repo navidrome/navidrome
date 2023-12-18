@@ -78,7 +78,7 @@ const useStyles = makeStyles(
     albumContainer: {},
     albumPlayButton: { color: 'white' },
   }),
-  { name: 'NDAlbumGridView' }
+  { name: 'NDAlbumGridView' },
 )
 
 const useCoverStyles = makeStyles({
@@ -98,32 +98,34 @@ const getColsForWidth = (width) => {
   return 9
 }
 
-const Cover = withContentRect('bounds')(
-  ({ record, measureRef, contentRect }) => {
-    // Force height to be the same as the width determined by the GridList
-    // noinspection JSSuspiciousNameCombination
-    const classes = useCoverStyles({ height: contentRect.bounds.width })
-    const [, dragAlbumRef] = useDrag(
-      () => ({
-        type: DraggableTypes.ALBUM,
-        item: { albumIds: [record.id] },
-        options: { dropEffect: 'copy' },
-      }),
-      [record]
-    )
-    return (
-      <div ref={measureRef}>
-        <div ref={dragAlbumRef}>
-          <img
-            src={subsonic.getCoverArtUrl(record, 300)}
-            alt={record.name}
-            className={classes.cover}
-          />
-        </div>
+const Cover = withContentRect('bounds')(({
+  record,
+  measureRef,
+  contentRect,
+}) => {
+  // Force height to be the same as the width determined by the GridList
+  // noinspection JSSuspiciousNameCombination
+  const classes = useCoverStyles({ height: contentRect.bounds.width })
+  const [, dragAlbumRef] = useDrag(
+    () => ({
+      type: DraggableTypes.ALBUM,
+      item: { albumIds: [record.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [record],
+  )
+  return (
+    <div ref={measureRef}>
+      <div ref={dragAlbumRef}>
+        <img
+          src={subsonic.getCoverArtUrl(record, 300)}
+          alt={record.name}
+          className={classes.cover}
+        />
       </div>
-    )
-  }
-)
+    </div>
+  )
+})
 
 const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   const classes = useStyles()

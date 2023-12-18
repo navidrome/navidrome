@@ -72,7 +72,7 @@ const useStyles = makeStyles(
       wordBreak: 'break-word',
     },
   }),
-  { name: 'NDMobileArtistDetails' }
+  { name: 'NDMobileArtistDetails' },
 )
 
 const MobileArtistDetails = ({ artistInfo, biography, record }) => {
@@ -85,7 +85,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
     () => setLightboxOpen(false),
-    []
+    [],
   )
 
   return (
