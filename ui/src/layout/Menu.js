@@ -121,7 +121,7 @@ const Menu = ({ dense = false }) => {
         dense={dense}
       >
         {Object.keys(albumLists).map((type) =>
-          renderAlbumMenuItemLink(type, albumLists[type])
+          renderAlbumMenuItemLink(type, albumLists[type]),
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}

@@ -24,7 +24,7 @@ const useStyles = makeStyles(
       },
     },
   }),
-  { name: 'RaDeleteWithConfirmButton' }
+  { name: 'RaDeleteWithConfirmButton' },
 )
 
 const DeleteUserButton = (props) => {

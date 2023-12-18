@@ -82,7 +82,7 @@ const useStyles = makeStyles(
       textDecoration: 'none',
     },
   }),
-  { name: 'NDLogin' }
+  { name: 'NDLogin' },
 )
 
 const renderInput = ({
@@ -263,14 +263,14 @@ const Login = ({ location }) => {
             typeof error === 'string'
               ? error
               : typeof error === 'undefined' || !error.message
-              ? 'ra.auth.sign_in_error'
-              : error.message,
-            'warning'
+                ? 'ra.auth.sign_in_error'
+                : error.message,
+            'warning',
           )
-        }
+        },
       )
     },
-    [dispatch, login, notify, setLoading, location]
+    [dispatch, login, notify, setLoading, location],
   )
 
   const validateLogin = useCallback(
@@ -284,7 +284,7 @@ const Login = ({ location }) => {
       }
       return errors
     },
-    [translate]
+    [translate],
   )
 
   const validateSignup = useCallback(
@@ -302,7 +302,7 @@ const Login = ({ location }) => {
       }
       return errors
     },
-    [translate, validateLogin]
+    [translate, validateLogin],
   )
 
   if (config.firstTime) {
@@ -348,7 +348,7 @@ const LoginWithTheme = (props) => {
         })
         .catch((e) => {
           throw new Error(
-            'Cannot load language "' + config.defaultLanguage + '": ' + e
+            'Cannot load language "' + config.defaultLanguage + '": ' + e,
           )
         })
     }

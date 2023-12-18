@@ -65,7 +65,7 @@ const TogglePublicInput = ({ resource, source }) => {
         console.log(error)
         notify('ra.page.error', 'warning')
       },
-    }
+    },
   )
 
   const handleClick = (e) => {
@@ -108,7 +108,7 @@ const PlaylistList = (props) => {
       ),
       comment: <TextField source="comment" />,
     }),
-    [isDesktop, isXsmall]
+    [isDesktop, isXsmall],
   )
 
   const columns = useSelectedFields({

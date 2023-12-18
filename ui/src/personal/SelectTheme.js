@@ -21,7 +21,7 @@ export const SelectTheme = (props) => {
   themeChoices.push(
     ...Object.keys(themes).map((key) => {
       return { id: key, name: themes[key].themeName }
-    })
+    }),
   )
   themeChoices.push({
     id: helpKey,

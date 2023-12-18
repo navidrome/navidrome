@@ -35,7 +35,7 @@ const AlbumExternalLinks = (props) => {
         encodeURIComponent(record.name)
       }`,
       'message.openIn.lastfm',
-      <ImLastfm2 className="lastfm-icon" />
+      <ImLastfm2 className="lastfm-icon" />,
     )
   }
 
@@ -43,7 +43,7 @@ const AlbumExternalLinks = (props) => {
     addLink(
       `https://musicbrainz.org/release/${record.mbzAlbumId}`,
       'message.openIn.musicbrainz',
-      <MusicBrainz className="musicbrainz-icon" />
+      <MusicBrainz className="musicbrainz-icon" />,
     )
 
   return <div className={className}>{intersperse(links, ' ')}</div>
