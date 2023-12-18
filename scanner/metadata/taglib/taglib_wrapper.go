@@ -95,6 +95,12 @@ func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
 	do_put_map(id, k, val)
 }
 
+//export go_map_put_lyrics
+func go_map_put_lyrics(id C.ulong, lang *C.char, val *C.char) {
+	k := "lyrics-" + strings.ToLower(C.GoString(lang))
+	do_put_map(id, k, val)
+}
+
 func do_put_map(id C.ulong, key string, val *C.char) {
 	if key == "" {
 		return
@@ -131,11 +137,13 @@ func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
 	lock.RLock()
 	defer lock.RUnlock()
 
+	key := "lyrics-" + language
+
 	m := maps[uint32(id)]
-	existing, ok := m[language]
+	existing, ok := m[key]
 	if ok {
 		existing[0] += formatted_line
 	} else {
-		m[language] = []string{formatted_line}
+		m[key] = []string{formatted_line}
 	}
 }

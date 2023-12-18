@@ -19,8 +19,6 @@
 
 #include "taglib_wrapper.h"
 
-char *LYRICS_KEY = (char *) "lyrics-";
-
 char has_cover(const TagLib::FileRef f);
 
 int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
@@ -100,31 +98,33 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
           tags.erase("LYRICS");
 
-          char lyricsTag[11];
-          strncpy(lyricsTag, LYRICS_KEY, 7);
-          strncpy(lyricsTag+7, frame->language().data(), 3);
-          lyricsTag[10] = '\0';
+          const auto bv = frame->language();
+          char language[4] = {'x', 'x', 'x', '\0'};
+          if (bv.size() == 3) {
+            strncpy(language, bv.data(), 3);
+          }
+
           char *val = (char *)frame->text().toCString(true);
 
-          go_map_put_str(id, lyricsTag, val);
+          go_map_put_lyrics(id, language, val);
         }
       } else if (kv.first == "SYLT") {
         for (const auto &tag: kv.second) {
           TagLib::ID3v2::SynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame *>(tag);
           if (frame == NULL) continue;
 
-
-          char lyricsTag[11];
-          strncpy(lyricsTag, LYRICS_KEY, 7);
-          strncpy(lyricsTag+7, frame->language().data(), 3);
-          lyricsTag[10] = '\0';
+          const auto bv = frame->language();
+          char language[4] = {'x', 'x', 'x', '\0'};
+          if (bv.size() == 3) {
+            strncpy(language, bv.data(), 3);
+          }
 
           const auto format = frame->timestampFormat();
           if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
 
             for (const auto &line: frame->synchedText()) {
               char *text = (char *)line.text.toCString(true);
-              go_map_put_lyric_line(id, lyricsTag, text, line.time);
+              go_map_put_lyric_line(id, language, text, line.time);
             }
           } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
             const int sampleRate = props->sampleRate();
@@ -133,7 +133,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
               for (const auto &line: frame->synchedText()) {
                 const int timeInMs = (line.time * 1000) / sampleRate;
                 char *text = (char *)line.text.toCString(true);
-                go_map_put_lyric_line(id, lyricsTag, text, timeInMs);
+                go_map_put_lyric_line(id, language, text, timeInMs);
               }
             }
           }

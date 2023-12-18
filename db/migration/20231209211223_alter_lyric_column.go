@@ -34,14 +34,19 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	var id, lyrics string
+	var id string
+	var lyrics sql.NullString
 	for rows.Next() {
 		err = rows.Scan(&id, &lyrics)
 		if err != nil {
 			return err
 		}
 
-		lyrics, err := model.ToLyrics("xxx", lyrics)
+		if !lyrics.Valid {
+			continue
+		}
+
+		lyrics, err := model.ToLyrics("xxx", lyrics.String)
 		if err != nil {
 			return err
 		}
@@ -51,7 +56,7 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 			return err
 		}
 
-		_, err = stmt.Exec(string(text[:]), id)
+		_, err = stmt.Exec(string(text), id)
 		if err != nil {
 			return err
 		}

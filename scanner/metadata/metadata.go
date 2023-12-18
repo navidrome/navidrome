@@ -145,7 +145,7 @@ func (t Tags) Lyrics() string {
 		log.Warn("Unexpected error occurred when serializing lyrics", "file", t.filePath, "error", err)
 		return ""
 	}
-	return string(res[:])
+	return string(res)
 }
 
 func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
