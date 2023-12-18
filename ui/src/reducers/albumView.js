@@ -4,7 +4,7 @@ export const albumViewReducer = (
   previousState = {
     grid: true,
   },
-  payload
+  payload,
 ) => {
   const { type } = payload
   switch (type) {

@@ -30,7 +30,7 @@ describe('<LinkToVersion />', () => {
 
     const link = screen.queryByRole('link')
     expect(link.href).toBe(
-      'https://github.com/navidrome/navidrome/releases/tag/v0.40.0'
+      'https://github.com/navidrome/navidrome/releases/tag/v0.40.0',
     )
     expect(link.textContent).toBe('0.40.0')
 
@@ -44,7 +44,7 @@ describe('<LinkToVersion />', () => {
 
     const link = screen.queryByRole('link')
     expect(link.href).toBe(
-      'https://github.com/navidrome/navidrome/compare/v0.40.0...300a0292'
+      'https://github.com/navidrome/navidrome/compare/v0.40.0...300a0292',
     )
     expect(link.textContent).toBe('0.40.0-SNAPSHOT')
 

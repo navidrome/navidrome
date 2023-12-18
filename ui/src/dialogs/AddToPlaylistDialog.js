@@ -72,7 +72,7 @@ export const AddToPlaylistDialog = () => {
         const tracks = res.json
         if (tracks) {
           const dupSng = tracks.filter((song) =>
-            selectedIds.some((id) => id === song.mediaFileId)
+            selectedIds.some((id) => id === song.mediaFileId),
           )
 
           if (dupSng.length) {
@@ -128,7 +128,7 @@ export const AddToPlaylistDialog = () => {
   }
   const handleSkip = () => {
     const distinctSongs = selectedIds.filter(
-      (id) => duplicateIds.indexOf(id) < 0
+      (id) => duplicateIds.indexOf(id) < 0,
     )
     value.slice(-1).pop().distinctIds = distinctSongs
     dispatch(closeDuplicateSongDialog())

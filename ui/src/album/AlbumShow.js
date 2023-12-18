@@ -18,7 +18,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDAlbumShow',
-  }
+  },
 )
 
 const AlbumShowLayout = (props) => {

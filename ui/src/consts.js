@@ -16,7 +16,7 @@ DraggableTypes.ALL.push(
   DraggableTypes.SONG,
   DraggableTypes.ALBUM,
   DraggableTypes.DISC,
-  DraggableTypes.ARTIST
+  DraggableTypes.ARTIST,
 )
 
 export const DEFAULT_SHARE_BITRATE = 128

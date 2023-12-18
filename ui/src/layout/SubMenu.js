@@ -42,7 +42,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDSubMenu',
-  }
+  },
 )
 
 const SubMenu = ({

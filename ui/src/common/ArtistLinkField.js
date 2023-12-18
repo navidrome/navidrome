@@ -14,28 +14,31 @@ export const useGetHandleArtistClick = (width) => {
   }
 }
 
-export const ArtistLinkField = withWidth()(
-  ({ record, className, width, source }) => {
-    const artistLink = useGetHandleArtistClick(width)
+export const ArtistLinkField = withWidth()(({
+  record,
+  className,
+  width,
+  source,
+}) => {
+  const artistLink = useGetHandleArtistClick(width)
 
-    const id = record[source + 'Id']
-    return (
-      <>
-        {id ? (
-          <Link
-            to={artistLink(id)}
-            onClick={(e) => e.stopPropagation()}
-            className={className}
-          >
-            {record[source]}
-          </Link>
-        ) : (
-          record[source]
-        )}
-      </>
-    )
-  }
-)
+  const id = record[source + 'Id']
+  return (
+    <>
+      {id ? (
+        <Link
+          to={artistLink(id)}
+          onClick={(e) => e.stopPropagation()}
+          className={className}
+        >
+          {record[source]}
+        </Link>
+      ) : (
+        record[source]
+      )}
+    </>
+  )
+})
 
 ArtistLinkField.propTypes = {
   record: PropTypes.object,

@@ -20,9 +20,9 @@ describe('<MultiLineTextField />', () => {
           record={{ id: 123, body }}
           emptyText="NA"
           source="body"
-        />
+        />,
       )
       expect(screen.getByText('NA')).toBeInTheDocument()
-    }
+    },
   )
 })

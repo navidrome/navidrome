@@ -48,7 +48,7 @@ const Player = () => {
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
+      navigator.userAgent,
     )
 
   const { authenticated } = useAuthState()
@@ -60,7 +60,7 @@ const Player = () => {
     enableCoverAnimation: config.enableCoverAnimation,
   })
   const showNotifications = useSelector(
-    (state) => state.settings.notifications || false
+    (state) => state.settings.notifications || false,
   )
   const gainInfo = useSelector((state) => state.replayGain)
   const [context, setContext] = useState(null)
@@ -100,7 +100,7 @@ const Player = () => {
           numericGain = calculateReplayGain(
             gainInfo.preAmp,
             song.rgAlbumGain,
-            song.rgAlbumPeak
+            song.rgAlbumPeak,
           )
           break
         }
@@ -108,7 +108,7 @@ const Player = () => {
           numericGain = calculateReplayGain(
             gainInfo.preAmp,
             song.rgTrackGain,
-            song.rgTrackPeak
+            song.rgTrackPeak,
           )
           break
         }
@@ -160,7 +160,7 @@ const Player = () => {
       ),
       locale: locale(translate),
     }),
-    [gainInfo, isDesktop, playerTheme, translate]
+    [gainInfo, isDesktop, playerTheme, translate],
   )
 
   const options = useMemo(() => {
@@ -181,12 +181,12 @@ const Player = () => {
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
-    [dispatch]
+    [dispatch],
   )
 
   const nextSong = useCallback(() => {
     const idx = playerState.queue.findIndex(
-      (item) => item.uuid === playerState.current.uuid
+      (item) => item.uuid === playerState.current.uuid,
     )
     return idx !== null ? playerState.queue[idx + 1] : null
   }, [playerState])
@@ -221,13 +221,13 @@ const Player = () => {
         setScrobbled(true)
       }
     },
-    [startTime, scrobbled, nextSong, preloaded]
+    [startTime, scrobbled, nextSong, preloaded],
   )
 
   const onAudioVolumeChange = useCallback(
     // sqrt to compensate for the logarithmic volume
     (volume) => dispatch(setVolume(Math.sqrt(volume))),
-    [dispatch]
+    [dispatch],
   )
 
   const onAudioPlay = useCallback(
@@ -260,12 +260,12 @@ const Player = () => {
           sendNotification(
             song.title,
             `${song.artist} - ${song.album}`,
-            info.cover
+            info.cover,
           )
         }
       }
     },
-    [context, dispatch, showNotifications, startTime]
+    [context, dispatch, showNotifications, startTime],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
@@ -279,7 +279,7 @@ const Player = () => {
 
   const onAudioPause = useCallback(
     (info) => dispatch(currentPlaying(info)),
-    [dispatch]
+    [dispatch],
   )
 
   const onAudioEnded = useCallback(
@@ -291,7 +291,7 @@ const Player = () => {
         .getOne('keepalive', { id: info.trackId })
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider]
+    [dispatch, dataProvider],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
@@ -313,7 +313,7 @@ const Player = () => {
 
   const handlers = useMemo(
     () => keyHandlers(audioInstance, playerState),
-    [audioInstance, playerState]
+    [audioInstance, playerState],
   )
 
   useEffect(() => {

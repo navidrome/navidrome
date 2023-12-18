@@ -10,7 +10,7 @@ const useStyles = makeStyles(
       color: theme.palette.primary.main,
     },
   }),
-  { name: 'RaLink' }
+  { name: 'RaLink' },
 )
 
 const Linkify = ({ text, ...rest }) => {
@@ -45,7 +45,7 @@ const Linkify = ({ text, ...rest }) => {
           href={href}
         >
           {href}
-        </Link>
+        </Link>,
       )
 
       lastIndex = match.index + href.length
@@ -57,7 +57,7 @@ const Linkify = ({ text, ...rest }) => {
         <span
           key={'last-span-key'}
           dangerouslySetInnerHTML={{ __html: text.substring(lastIndex) }}
-        />
+        />,
       )
     }
 

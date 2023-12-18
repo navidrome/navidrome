@@ -87,7 +87,7 @@ const useStyle = makeStyles(
       },
     },
   }),
-  { name: 'NDAudioPlayer' }
+  { name: 'NDAudioPlayer' },
 )
 
 export default useStyle

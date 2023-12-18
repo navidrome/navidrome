@@ -64,7 +64,7 @@ const AlbumViewToggler = React.forwardRef(
         </ButtonGroup>
       </div>
     )
-  }
+  },
 )
 
 const AlbumListActions = ({

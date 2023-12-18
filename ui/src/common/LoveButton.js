@@ -36,7 +36,7 @@ export const LoveButton = ({
       toggleLove()
       e.stopPropagation()
     },
-    [toggleLove]
+    [toggleLove],
   )
 
   if (!config.enableFavourites) {

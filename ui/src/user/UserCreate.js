@@ -33,7 +33,7 @@ const UserCreate = (props) => {
             resource: 'user',
             payload: { data: values },
           },
-          { returnPromise: true }
+          { returnPromise: true },
         )
         notify('resources.user.notifications.created', 'info', {
           smart_count: 1,
@@ -45,7 +45,7 @@ const UserCreate = (props) => {
         }
       }
     },
-    [mutate, notify, redirect]
+    [mutate, notify, redirect],
   )
 
   return (

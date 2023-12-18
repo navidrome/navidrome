@@ -30,7 +30,7 @@ const startEventStream = async (dispatchFn) => {
       newStream.addEventListener('serverStart', eventHandler(dispatchFn))
       newStream.addEventListener(
         'scanStatus',
-        throttledEventHandler(dispatchFn)
+        throttledEventHandler(dispatchFn),
       )
       newStream.addEventListener('refreshResource', eventHandler(dispatchFn))
       newStream.addEventListener('keepAlive', eventHandler(dispatchFn))

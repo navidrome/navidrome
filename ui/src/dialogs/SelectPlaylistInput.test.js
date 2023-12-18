@@ -65,7 +65,7 @@ describe('SelectPlaylistInput', () => {
         >
           <SelectPlaylistInput onChange={onChangeHandler} />
         </TestContext>
-      </DataProviderContext.Provider>
+      </DataProviderContext.Provider>,
     )
 
     await waitFor(() => {

@@ -113,7 +113,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDAlbumDetails',
-  }
+  },
 )
 
 const AlbumComment = ({ record }) => {
@@ -141,7 +141,7 @@ const AlbumComment = ({ record }) => {
       timeout={'auto'}
       className={clsx(
         classes.commentBlock,
-        lines.length > 1 && classes.pointerCursor
+        lines.length > 1 && classes.pointerCursor,
       )}
     >
       <Typography variant={'body1'} onClick={handleExpandClick}>
@@ -216,9 +216,9 @@ const Details = (props) => {
     addDetail(
       <>
         {[translate('resources.album.fields.originalDate'), originalDate].join(
-          '  '
+          '  ',
         )}
-      </>
+      </>,
     )
 
   yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
@@ -230,7 +230,7 @@ const Details = (props) => {
           ? [translate('resources.album.fields.releaseDate'), releaseDate]
           : ['○', record.releaseDate.substring(0, 4)]
         ).join('  ')}
-      </>
+      </>,
     )
 
   const showReleases = record.releases > 1
@@ -245,7 +245,7 @@ const Details = (props) => {
               }),
             ].join(' ')
           : ['(', record.releases, ')))'].join(' ')}
-      </>
+      </>,
     )
 
   addDetail(
@@ -255,7 +255,7 @@ const Details = (props) => {
         translate('resources.song.name', {
           smart_count: record.songCount,
         })}
-    </>
+    </>,
   )
   !isXsmall && addDetail(<DurationField source={'duration'} />)
   !isXsmall && addDetail(<SizeField source="size" />)
@@ -299,7 +299,7 @@ const AlbumDetails = (props) => {
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
     () => setLightboxOpen(false),
-    []
+    [],
   )
   return (
     <Card className={classes.root}>

@@ -16,7 +16,7 @@ const useStyle = makeStyles(
   }),
   {
     name: 'NDQualityInfo',
-  }
+  },
 )
 
 export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {

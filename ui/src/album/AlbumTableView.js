@@ -59,7 +59,7 @@ const AlbumDatagridRow = (props) => {
       item: { albumIds: [record?.id] },
       options: { dropEffect: 'copy' },
     }),
-    [record]
+    [record],
   )
   return <DatagridRow ref={dragAlbumRef} {...props} />
 }

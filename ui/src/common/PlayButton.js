@@ -10,7 +10,7 @@ export const PlayButton = ({ record, size, className }) => {
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
-      {}
+      {},
     )
     const ids = response.data.map((r) => r.id)
     return { data, ids }

@@ -12,7 +12,10 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
 
   const handleClick = () => {
     dispatch(
-      openAddToPlaylist({ selectedIds, onSuccess: () => unselectAll(resource) })
+      openAddToPlaylist({
+        selectedIds,
+        onSuccess: () => unselectAll(resource),
+      }),
     )
   }
 

@@ -36,7 +36,7 @@ export const ToggleFieldsMenu = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const toggleableColumns = useSelector(
-    (state) => state.settings.toggleableFields[resource]
+    (state) => state.settings.toggleableFields[resource],
   )
   const omittedColumns =
     useSelector((state) => state.settings.omittedFields[resource]) || []
@@ -58,7 +58,7 @@ export const ToggleFieldsMenu = ({
           ...toggleableColumns,
           [selectedColumn]: !toggleableColumns[selectedColumn],
         },
-      })
+      }),
     )
   }
 
@@ -95,7 +95,7 @@ export const ToggleFieldsMenu = ({
                     <Checkbox checked={val} />
                     {translate(`resources.${resource}.fields.${key}`)}
                   </MenuItem>
-                ) : null
+                ) : null,
               )}
             </div>
           </div>

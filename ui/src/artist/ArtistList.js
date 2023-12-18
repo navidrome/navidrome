@@ -90,7 +90,7 @@ const ArtistDatagridRow = (props) => {
       item: { artistIds: [record?.id] },
       options: { dropEffect: 'copy' },
     }),
-    [record]
+    [record],
   )
   return <DatagridRow ref={dragArtistRef} {...props} />
 }
@@ -132,7 +132,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       resource: 'artist',
       columns: toggleableFields,
     },
-    ['size']
+    ['size'],
   )
 
   return isXsmall ? (

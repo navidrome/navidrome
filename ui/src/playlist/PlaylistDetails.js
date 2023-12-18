@@ -38,7 +38,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDPlaylistDetails',
-  }
+  },
 )
 
 const PlaylistDetails = (props) => {

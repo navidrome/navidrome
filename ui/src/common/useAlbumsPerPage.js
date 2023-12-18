@@ -19,7 +19,7 @@ const getPerPageOptions = (width) => {
 export const useAlbumsPerPage = (width) => {
   const perPage =
     useSelector(
-      (state) => state?.admin.resources?.album?.list?.params?.perPage
+      (state) => state?.admin.resources?.album?.list?.params?.perPage,
     ) || getPerPage(width)
 
   return [perPage, getPerPageOptions(width)]

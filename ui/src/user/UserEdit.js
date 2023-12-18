@@ -85,7 +85,7 @@ const UserEdit = (props) => {
             resource: 'user',
             payload: { id: values.id, data: values },
           },
-          { returnPromise: true }
+          { returnPromise: true },
         )
         notify('resources.user.notifications.updated', 'info', {
           smart_count: 1,
@@ -97,7 +97,7 @@ const UserEdit = (props) => {
         }
       }
     },
-    [mutate, notify, permissions, redirect, refresh]
+    [mutate, notify, permissions, redirect, refresh],
   )
 
   return (

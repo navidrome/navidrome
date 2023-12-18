@@ -83,7 +83,7 @@ const useStyles = makeStyles(
       visibility: 'hidden',
     },
   }),
-  { name: 'RaList' }
+  { name: 'RaList' },
 )
 
 const AlbumSongs = (props) => {

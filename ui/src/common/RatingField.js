@@ -40,7 +40,7 @@ export const RatingField = ({
     (e, val) => {
       rate(val, e.target.name)
     },
-    [rate]
+    [rate],
   )
 
   return (
@@ -50,7 +50,7 @@ export const RatingField = ({
         className={clsx(
           className,
           classes.rating,
-          rating > 0 ? classes.show : classes.hide
+          rating > 0 ? classes.show : classes.hide,
         )}
         value={rating}
         size={size}

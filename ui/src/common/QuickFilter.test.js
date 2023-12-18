@@ -22,7 +22,7 @@ describe('QuickFilter', () => {
         resource={'song'}
         source={'name'}
         label={<StarIcon data-testid="label-icon-test" />}
-      />
+      />,
     )
     expect(screen.getByTestId('label-icon-test')).not.toBeNull()
   })

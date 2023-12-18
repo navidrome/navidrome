@@ -118,7 +118,7 @@ const UserMenu = (props) => {
               ? cloneElement(menuItem, {
                   onClick: handleClose,
                 })
-              : null
+              : null,
           )}
           {!config.auth && logout}
         </MenuList>

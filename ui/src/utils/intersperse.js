@@ -15,6 +15,6 @@ export const intersperse = (arr, sep) => {
     function (xs, x, i) {
       return xs.concat([sep, x])
     },
-    [arr[0]]
+    [arr[0]],
   )
 }

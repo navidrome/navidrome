@@ -20,7 +20,7 @@ export const useTranscodingOptions = () => {
       page: 1,
       perPage: 1000,
     },
-    { field: 'name', order: 'ASC' }
+    { field: 'name', order: 'ASC' },
   )
 
   const formatOptions = useMemo(
@@ -30,7 +30,7 @@ export const useTranscodingOptions = () => {
         : Object.values(formats).map((f) => {
             return { id: f.targetFormat, name: f.name }
           }),
-    [formats, loadingFormats]
+    [formats, loadingFormats],
   )
 
   const handleOriginal = useCallback(
@@ -41,7 +41,7 @@ export const useTranscodingOptions = () => {
         setMaxBitRate(DEFAULT_SHARE_BITRATE)
       }
     },
-    [setUseOriginalFormat, setFormat, setMaxBitRate]
+    [setUseOriginalFormat, setFormat, setMaxBitRate],
   )
 
   const TranscodingOptionsInput = useMemo(() => {
