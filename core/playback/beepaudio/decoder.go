@@ -7,10 +7,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/flac"
-	"github.com/faiface/beep/mp3"
-	"github.com/faiface/beep/wav"
+	"github.com/gopxl/beep"
+	"github.com/gopxl/beep/flac"
+	"github.com/gopxl/beep/mp3"
+	"github.com/gopxl/beep/wav"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 )

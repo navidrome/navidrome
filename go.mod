@@ -16,7 +16,6 @@ require (
 	github.com/djherbis/stream v1.4.0
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/faiface/beep v1.1.0
 	github.com/fatih/structs v1.1.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/cors v1.2.1
@@ -24,6 +23,7 @@ require (
 	github.com/go-chi/jwtauth/v5 v5.3.0
 	github.com/google/uuid v1.5.0
 	github.com/google/wire v0.5.0
+	github.com/gopxl/beep v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.18
@@ -57,6 +57,8 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
+	github.com/ebitengine/oto/v3 v3.1.0 // indirect
+	github.com/ebitengine/purego v0.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
@@ -66,10 +68,9 @@ require (
 	github.com/google/pprof v0.0.0-20230323073829-e72429f035bd // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
-	github.com/hajimehoshi/oto v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/icza/bitio v1.0.0 // indirect
+	github.com/icza/bitio v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
@@ -81,8 +82,8 @@ require (
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/mewkiz/flac v1.0.7 // indirect
-	github.com/mewkiz/pkg v0.0.0-20190919212034-518ade7978e2 // indirect
+	github.com/mewkiz/flac v1.0.8 // indirect
+	github.com/mewkiz/pkg v0.0.0-20230226050401-4010bf0fec14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -100,8 +101,6 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.uber.org/goleak v1.1.11 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/exp/shiny v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
-	golang.org/x/mobile v0.0.0-20230427221453-e8d11dd0ba41 // indirect
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
