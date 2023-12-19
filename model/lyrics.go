@@ -10,17 +10,17 @@ import (
 )
 
 type Line struct {
-	Start *int64 `structs:"start,omitempty" xml:"start,attr,omitempty" json:"start,omitempty"`
-	Value string `structs:"value"           xml:"value"                json:"value"`
+	Start *int64 `structs:"start,omitempty" json:"start,omitempty"`
+	Value string `structs:"value"           json:"value"`
 }
 
 type Lyric struct {
-	DisplayArtist string `structs:"displayArtist,omitempty" xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string `structs:"displayTitle,omitempty"  xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
-	Lang          string `structs:"lang"                    xml:"lang,attr"                    json:"lang"`
-	Line          []Line `structs:"line"                    xml:"line"                         json:"line"`
-	Offset        *int64 `structs:"offset,omitempty"        xml:"offset,attr,omitempty"        json:"offset,omitempty"`
-	Synced        bool   `structs:"synced"                  xml:"synced,attr"                  json:"synced"`
+	DisplayArtist string `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
+	Lang          string `structs:"lang"                    json:"lang"`
+	Line          []Line `structs:"line"                    json:"line"`
+	Offset        *int64 `structs:"offset,omitempty"        json:"offset,omitempty"`
+	Synced        bool   `structs:"synced"                  json:"synced"`
 }
 
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]

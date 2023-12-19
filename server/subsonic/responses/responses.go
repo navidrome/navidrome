@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"time"
-
-	"github.com/navidrome/navidrome/model"
 )
 
 type Subsonic struct {
@@ -448,8 +446,24 @@ type JukeboxPlaylist struct {
 	JukeboxStatus
 	Entry []Child `xml:"entry,omitempty"         json:"entry,omitempty"`
 }
+
+type Line struct {
+	Start *int64 `xml:"start,attr,omitempty" json:"start,omitempty"`
+	Value string `xml:"value"                json:"value"`
+}
+
+type StructuredLyric struct {
+	DisplayArtist string `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
+	Lang          string `xml:"lang,attr"                    json:"lang"`
+	Line          []Line `xml:"line"                         json:"line"`
+	Offset        *int64 `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
+	Synced        bool   `xml:"synced,attr"                  json:"synced"`
+}
+
+type StructuredLyrics []StructuredLyric
 type LyricsList struct {
-	StructuredLyrics model.Lyrics `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+	StructuredLyrics []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
 }
 
 type OpenSubsonicExtension struct {

@@ -320,3 +320,38 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.SortName = album.SortAlbumName
 	return dir
 }
+
+func buildStructuredLyric(lyric model.Lyric) responses.StructuredLyric {
+	lines := make([]responses.Line, len(lyric.Line))
+
+	for i, line := range lyric.Line {
+		lines[i] = responses.Line{
+			Start: line.Start,
+			Value: line.Value,
+		}
+	}
+
+	structured := responses.StructuredLyric{
+		DisplayArtist: lyric.DisplayArtist,
+		DisplayTitle:  lyric.DisplayTitle,
+		Lang:          lyric.Lang,
+		Line:          lines,
+		Offset:        lyric.Offset,
+		Synced:        lyric.Synced,
+	}
+
+	return structured
+}
+
+func buildStructuredLyrics(lyrics model.Lyrics) *responses.LyricsList {
+	lyricList := make(responses.StructuredLyrics, len(lyrics))
+
+	for i, lyric := range lyrics {
+		lyricList[i] = buildStructuredLyric(lyric)
+	}
+
+	res := &responses.LyricsList{
+		StructuredLyrics: lyricList,
+	}
+	return res
+}

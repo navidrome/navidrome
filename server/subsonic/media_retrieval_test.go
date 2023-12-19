@@ -169,11 +169,11 @@ var _ = Describe("MediaRetrievalController", func() {
 			response, err := router.GetLyricsBySongId(r)
 			Expect(err).ToNot(HaveOccurred())
 			compareResponses(response.LyricsList, responses.LyricsList{
-				StructuredLyrics: model.Lyrics{
+				StructuredLyrics: responses.StructuredLyrics{
 					{
 						Lang:   "eng",
 						Synced: true,
-						Line: []model.Line{
+						Line: []responses.Line{
 							{
 								Start: &times[0],
 								Value: "We're no strangers to love",
@@ -187,7 +187,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					{
 						Lang:   "xxx",
 						Synced: false,
-						Line: []model.Line{
+						Line: []responses.Line{
 							{
 								Value: "We're no strangers to love",
 							},
@@ -221,13 +221,13 @@ var _ = Describe("MediaRetrievalController", func() {
 
 			offset := int64(-100)
 			compareResponses(response.LyricsList, responses.LyricsList{
-				StructuredLyrics: model.Lyrics{
+				StructuredLyrics: responses.StructuredLyrics{
 					{
 						DisplayArtist: "Rick Astley",
 						DisplayTitle:  "That one song",
 						Lang:          "eng",
 						Synced:        true,
-						Line: []model.Line{
+						Line: []responses.Line{
 							{
 								Start: &times[0],
 								Value: "We're no strangers to love",

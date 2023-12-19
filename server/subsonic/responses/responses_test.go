@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -815,11 +814,11 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				times := []int64{int64(18800), int64(22801)}
 
-				response.LyricsList.StructuredLyrics = model.Lyrics{
+				response.LyricsList.StructuredLyrics = StructuredLyrics{
 					{
 						Lang:   "eng",
 						Synced: true,
-						Line: []model.Line{
+						Line: []Line{
 							{
 								Start: &times[0],
 								Value: "We're no strangers to love",
@@ -833,7 +832,7 @@ var _ = Describe("Responses", func() {
 					{
 						Lang:   "xxx",
 						Synced: false,
-						Line: []model.Line{
+						Line: []Line{
 							{
 								Value: "We're no strangers to love",
 							},
