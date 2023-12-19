@@ -85,7 +85,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJson[:]),
+					Lyrics: string(lyricsJson),
 				},
 			})
 			response, err := router.GetLyrics(r)
@@ -162,7 +162,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJson[:]),
+					Lyrics: string(lyricsJson),
 				},
 			})
 
@@ -212,7 +212,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJson[:]),
+					Lyrics: string(lyricsJson),
 				},
 			})
 
