@@ -1,5 +1,5 @@
 // Package playback implements audio playback using PlaybackDevices. It is used to implement the Jukebox mode in turn.
-// It makes use of the BEEP library to do the playback. Major parts are:
+// It makes use of the MPV library to do the playback. Major parts are:
 // - decoder which includes decoding and transcoding of various audio file formats
 // - device implementing the basic functions to work with audio devices like set, play, stop, skip, ...
 // - queue a simple playlist
