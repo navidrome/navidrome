@@ -35,7 +35,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 	return p
 }
 
-func (p *Router) routes() http.Handler {
+func (pub *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
 	r.Group(func(r chi.Router) {
@@ -48,16 +48,16 @@ func (p *Router) routes() http.Handler {
 				r.Use(middleware.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
 					conf.Server.DevArtworkThrottleBacklogTimeout))
 			}
-			r.HandleFunc("/img/{id}", p.handleImages)
+			r.HandleFunc("/img/{id}", pub.handleImages)
 		})
 		if conf.Server.EnableSharing {
-			r.HandleFunc("/s/{id}", p.handleStream)
+			r.HandleFunc("/s/{id}", pub.handleStream)
 			if conf.Server.EnableDownloads {
-				r.HandleFunc("/d/{id}", p.handleDownloads)
+				r.HandleFunc("/d/{id}", pub.handleDownloads)
 			}
-			r.HandleFunc("/{id}", p.handleShares)
-			r.HandleFunc("/", p.handleShares)
-			r.Handle("/*", p.assetsHandler)
+			r.HandleFunc("/{id}", pub.handleShares)
+			r.HandleFunc("/", pub.handleShares)
+			r.Handle("/*", pub.assetsHandler)
 		}
 	})
 	return r

@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *http.Request, stream *core.Stream, id string) {
@@ -25,7 +25,7 @@ func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *ht
 		w.Header().Set("Accept-Ranges", "none")
 		w.Header().Set("Content-Type", stream.ContentType())
 
-		estimateContentLength := utils.ParamBool(r, "estimateContentLength", false)
+		estimateContentLength := req.Params(r).BoolOr("estimateContentLength", false)
 
 		// if Client requests the estimated content-length, send it
 		if estimateContentLength {
@@ -51,13 +51,14 @@ func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *ht
 
 func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
-	maxBitRate := utils.ParamInt(r, "maxBitRate", 0)
-	format := utils.ParamString(r, "format")
-	timeOffset := utils.ParamInt(r, "timeOffset", 0)
+	maxBitRate := p.IntOr("maxBitRate", 0)
+	format, _ := p.String("format")
+	timeOffset := p.IntOr("timeOffset", 0)
 
 	stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, timeOffset)
 	if err != nil {
@@ -82,7 +83,8 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	username, _ := request.UsernameFrom(ctx)
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
@@ -97,8 +99,8 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, err
 	}
 
-	maxBitRate := utils.ParamInt(r, "bitrate", 0)
-	format := utils.ParamString(r, "format")
+	maxBitRate := p.IntOr("bitrate", 0)
+	format, _ := p.String("format")
 
 	if format == "" {
 		if conf.Server.AutoTranscodeDownload {

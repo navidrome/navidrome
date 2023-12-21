@@ -2,15 +2,17 @@ package public
 
 import (
 	"net/http"
+
+	"github.com/navidrome/navidrome/utils/req"
 )
 
-func (p *Router) handleDownloads(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get(":id")
-	if id == "" {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+func (pub *Router) handleDownloads(w http.ResponseWriter, r *http.Request) {
+	id, err := req.Params(r).String(":id")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err := p.archiver.ZipShare(r.Context(), id, w)
+	err = pub.archiver.ZipShare(r.Context(), id, w)
 	checkShareError(r.Context(), w, err, id)
 }

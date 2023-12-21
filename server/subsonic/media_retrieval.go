@@ -15,15 +15,16 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gravatar"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	if !conf.Server.EnableGravatar {
 		return api.getPlaceHolderAvatar(w, r)
 	}
-	username, err := requiredParamString(r, "username")
+	p := req.Params(r)
+	username, err := p.String("username")
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +62,9 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	id := utils.ParamString(r, "id")
-	size := utils.ParamInt(r, "size", 0)
+	p := req.Params(r)
+	id, _ := p.String("id")
+	size := p.IntOr("size", 0)
 
 	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size)
 	w.Header().Set("cache-control", "public, max-age=315360000")
@@ -99,8 +101,9 @@ func isSynced(rawLyrics string) bool {
 }
 
 func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
-	artist := utils.ParamString(r, "artist")
-	title := utils.ParamString(r, "title")
+	p := req.Params(r)
+	artist, _ := p.String("artist")
+	title, _ := p.String("title")
 	response := newResponse()
 	lyrics := responses.Lyrics{}
 	response.Lyrics = &lyrics

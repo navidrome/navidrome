@@ -10,31 +10,32 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/ui"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
-func (p *Router) handleShares(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get(":id")
-	if id == "" {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+func (pub *Router) handleShares(w http.ResponseWriter, r *http.Request) {
+	id, err := req.Params(r).String(":id")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// If requested file is a UI asset, just serve it
-	_, err := ui.BuildAssets().Open(id)
+	_, err = ui.BuildAssets().Open(id)
 	if err == nil {
-		p.assetsHandler.ServeHTTP(w, r)
+		pub.assetsHandler.ServeHTTP(w, r)
 		return
 	}
 
 	// If it is not, consider it a share ID
-	s, err := p.share.Load(r.Context(), id)
+	s, err := pub.share.Load(r.Context(), id)
 	if err != nil {
 		checkShareError(r.Context(), w, err, id)
 		return
 	}
 
-	s = p.mapShareInfo(r, *s)
-	server.IndexWithShare(p.ds, ui.BuildAssets(), s)(w, r)
+	s = pub.mapShareInfo(r, *s)
+	server.IndexWithShare(pub.ds, ui.BuildAssets(), s)(w, r)
 }
 
 func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
@@ -54,7 +55,7 @@ func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id s
 	}
 }
 
-func (p *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
+func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 	s.URL = ShareURL(r, s.ID)
 	s.ImageURL = ImageURL(r, s.CoverArtID(), consts.UICoverArtSize)
 	for i := range s.Tracks {

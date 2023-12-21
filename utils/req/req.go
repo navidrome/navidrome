@@ -68,8 +68,11 @@ func (r *Values) TimeOr(param string, def time.Time) time.Time {
 	return t
 }
 
-func (r *Values) Times(param string) []time.Time {
-	pStr, _ := r.Strings(param)
+func (r *Values) Times(param string) ([]time.Time, error) {
+	pStr, err := r.Strings(param)
+	if err != nil {
+		return nil, err
+	}
 	times := make([]time.Time, len(pStr))
 	for i, t := range pStr {
 		ti, err := strconv.ParseInt(t, 10, 64)
@@ -80,7 +83,7 @@ func (r *Values) Times(param string) []time.Time {
 		}
 		times[i] = utils.ToTime(ti)
 	}
-	return times
+	return times, nil
 }
 
 func (r *Values) Int64(param string) (int64, error) {
@@ -119,8 +122,11 @@ func (r *Values) Int64Or(param string, def int64) int64 {
 	return v
 }
 
-func (r *Values) Ints(param string) []int {
-	pStr, _ := r.Strings(param)
+func (r *Values) Ints(param string) ([]int, error) {
+	pStr, err := r.Strings(param)
+	if err != nil {
+		return nil, err
+	}
 	ints := make([]int, 0, len(pStr))
 	for _, s := range pStr {
 		i, err := strconv.ParseInt(s, 10, 64)
@@ -128,13 +134,21 @@ func (r *Values) Ints(param string) []int {
 			ints = append(ints, int(i))
 		}
 	}
-	return ints
+	return ints, nil
+}
+
+func (r *Values) Bool(param string) (bool, error) {
+	v, err := r.String(param)
+	if err != nil {
+		return false, err
+	}
+	return strings.Contains("/true/on/1/", "/"+strings.ToLower(v)+"/"), nil
 }
 
 func (r *Values) BoolOr(param string, def bool) bool {
-	v, _ := r.String(param)
-	if v == "" {
+	v, err := r.Bool(param)
+	if err != nil {
 		return def
 	}
-	return strings.Contains("/true/on/1/", "/"+strings.ToLower(v)+"/")
+	return v
 }

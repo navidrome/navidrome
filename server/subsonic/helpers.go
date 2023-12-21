@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 )
 
 func newResponse() *responses.Subsonic {
@@ -25,30 +24,6 @@ func newResponse() *responses.Subsonic {
 		ServerVersion: consts.Version,
 		OpenSubsonic:  true,
 	}
-}
-
-func requiredParamString(r *http.Request, param string) (string, error) {
-	p := utils.ParamString(r, param)
-	if p == "" {
-		return "", newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
-	}
-	return p, nil
-}
-
-func requiredParamStrings(r *http.Request, param string) ([]string, error) {
-	ps := utils.ParamStrings(r, param)
-	if len(ps) == 0 {
-		return nil, newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
-	}
-	return ps, nil
-}
-
-func requiredParamInt(r *http.Request, param string) (int, error) {
-	p := utils.ParamString(r, param)
-	if p == "" {
-		return 0, newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
-	}
-	return utils.ParamInt(r, param, 0), nil
 }
 
 type subError struct {

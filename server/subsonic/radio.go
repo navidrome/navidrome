@@ -5,21 +5,22 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) CreateInternetRadio(r *http.Request) (*responses.Subsonic, error) {
-	streamUrl, err := requiredParamString(r, "streamUrl")
+	p := req.Params(r)
+	streamUrl, err := p.String("streamUrl")
 	if err != nil {
 		return nil, err
 	}
 
-	name, err := requiredParamString(r, "name")
+	name, err := p.String("name")
 	if err != nil {
 		return nil, err
 	}
 
-	homepageUrl := utils.ParamString(r, "homepageUrl")
+	homepageUrl, _ := p.String("homepageUrl")
 	ctx := r.Context()
 
 	radio := &model.Radio{
@@ -36,7 +37,8 @@ func (api *Router) CreateInternetRadio(r *http.Request) (*responses.Subsonic, er
 }
 
 func (api *Router) DeleteInternetRadio(r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 
 	if err != nil {
 		return nil, err
@@ -75,22 +77,23 @@ func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, erro
 }
 
 func (api *Router) UpdateInternetRadio(r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
 
-	streamUrl, err := requiredParamString(r, "streamUrl")
+	streamUrl, err := p.String("streamUrl")
 	if err != nil {
 		return nil, err
 	}
 
-	name, err := requiredParamString(r, "name")
+	name, err := p.String("name")
 	if err != nil {
 		return nil, err
 	}
 
-	homepageUrl := utils.ParamString(r, "homepageUrl")
+	homepageUrl, _ := p.String("homepageUrl")
 	ctx := r.Context()
 
 	radio := &model.Radio{
