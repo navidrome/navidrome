@@ -160,7 +160,7 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	times := p.Times("time")
+	times, _ := p.Times("time")
 	if len(times) > 0 && len(times) != len(ids) {
 		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}

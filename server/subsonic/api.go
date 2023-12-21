@@ -18,7 +18,6 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -283,7 +282,8 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic) {
-	f := utils.ParamString(r, "f")
+	p := req.Params(r)
+	f, _ := p.String("f")
 	var response []byte
 	switch f {
 	case "json":
@@ -292,7 +292,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		response, _ = json.Marshal(wrapper)
 	case "jsonp":
 		w.Header().Set("Content-Type", "application/javascript")
-		callback := utils.ParamString(r, "callback")
+		callback, _ := p.String("callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		data, _ := json.Marshal(wrapper)
 		response = []byte(fmt.Sprintf("%s(%s)", callback, data))

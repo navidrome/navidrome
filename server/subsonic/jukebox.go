@@ -7,7 +7,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 const (
@@ -27,8 +27,9 @@ const (
 func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	user := getUser(ctx)
+	p := req.Params(r)
 
-	actionString, err := requiredParamString(r, "action")
+	actionString, err := p.String("action")
 	if err != nil {
 		return nil, err
 	}
@@ -58,31 +59,31 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionStatus:
 		return createResponse(pb.Status(ctx))
 	case ActionSet:
-		ids := utils.ParamStrings(r, "id")
+		ids, _ := p.Strings("id")
 		return createResponse(pb.Set(ctx, ids))
 	case ActionStart:
 		return createResponse(pb.Start(ctx))
 	case ActionStop:
 		return createResponse(pb.Stop(ctx))
 	case ActionSkip:
-		index, err := requiredParamInt(r, "index")
+		index, err := p.Int("index")
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
 
-		offset := utils.ParamInt(r, "offset", 0)
+		offset := p.IntOr("offset", 0)
 		if err != nil {
 			offset = 0
 		}
 
 		return createResponse(pb.Skip(ctx, index, offset))
 	case ActionAdd:
-		ids := utils.ParamStrings(r, "id")
+		ids, _ := p.Strings("id")
 		return createResponse(pb.Add(ctx, ids))
 	case ActionClear:
 		return createResponse(pb.Clear(ctx))
 	case ActionRemove:
-		index, err := requiredParamInt(r, "index")
+		index, err := p.Int("index")
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +92,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionShuffle:
 		return createResponse(pb.Shuffle(ctx))
 	case ActionSetGain:
-		gainStr, err := requiredParamString(r, "gain")
+		gainStr, err := p.String("gain")
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
 		}

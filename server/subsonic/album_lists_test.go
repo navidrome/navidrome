@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/req"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -36,7 +37,7 @@ var _ = Describe("Album Lists", func() {
 			})
 			resp, err := router.GetAlbumList(w, r)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList.Album[0].Id).To(Equal("1"))
 			Expect(resp.AlbumList.Album[1].Id).To(Equal("2"))
 			Expect(w.Header().Get("x-total-count")).To(Equal("2"))
@@ -47,12 +48,8 @@ var _ = Describe("Album Lists", func() {
 		It("should fail if missing type parameter", func() {
 			r := newGetRequest()
 			_, err := router.GetAlbumList(w, r)
-			var subErr subError
-			isSubError := errors.As(err, &subErr)
 
-			Expect(isSubError).To(BeTrue())
-			Expect(subErr).To(MatchError("required 'type' parameter is missing"))
-			Expect(subErr.code).To(Equal(responses.ErrorMissingParameter))
+			Expect(err).To(MatchError(req.ErrMissingParam))
 		})
 
 		It("should return error if call fails", func() {
@@ -61,7 +58,7 @@ var _ = Describe("Album Lists", func() {
 
 			_, err := router.GetAlbumList(w, r)
 
-			Expect(err).ToNot(BeNil())
+			Expect(err).To(MatchError(errSubsonic))
 			var subErr subError
 			errors.As(err, &subErr)
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
@@ -76,7 +73,7 @@ var _ = Describe("Album Lists", func() {
 			})
 			resp, err := router.GetAlbumList2(w, r)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.AlbumList2.Album[0].Id).To(Equal("1"))
 			Expect(resp.AlbumList2.Album[1].Id).To(Equal("2"))
 			Expect(w.Header().Get("x-total-count")).To(Equal("2"))
@@ -86,13 +83,10 @@ var _ = Describe("Album Lists", func() {
 
 		It("should fail if missing type parameter", func() {
 			r := newGetRequest()
+
 			_, err := router.GetAlbumList2(w, r)
 
-			var subErr subError
-			errors.As(err, &subErr)
-
-			Expect(subErr).To(MatchError("required 'type' parameter is missing"))
-			Expect(subErr.code).To(Equal(responses.ErrorMissingParameter))
+			Expect(err).To(MatchError(req.ErrMissingParam))
 		})
 
 		It("should return error if call fails", func() {
@@ -101,9 +95,9 @@ var _ = Describe("Album Lists", func() {
 
 			_, err := router.GetAlbumList2(w, r)
 
+			Expect(err).To(MatchError(errSubsonic))
 			var subErr subError
 			errors.As(err, &subErr)
-			Expect(subErr).ToNot(BeNil())
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 	})

@@ -102,13 +102,16 @@ var _ = Describe("Request Helpers", func() {
 		})
 
 		It("returns empty string if param does not exist", func() {
-			Expect(r.Times("xx")).To(BeEmpty())
+			v, err := r.Times("xx")
+			Expect(err).To(MatchError(req.ErrMissingParam))
+			Expect(v).To(BeEmpty())
 		})
 
 		It("returns current time as default if param is invalid", func() {
 			now := time.Now()
 			r = req.Params(httptest.NewRequest("GET", "/ping?t=null", nil))
-			times := r.Times("t")
+			times, err := r.Times("t")
+			Expect(err).ToNot(HaveOccurred())
 			Expect(times).To(HaveLen(1))
 			Expect(times[0]).To(BeTemporally(">=", now))
 		})
@@ -130,18 +133,28 @@ var _ = Describe("Request Helpers", func() {
 			It("returns default value if param is an invalid int", func() {
 				Expect(r.IntOr("inv", 999)).To(Equal(999))
 			})
+
+			It("returns error if param is an invalid int", func() {
+				_, err := r.Int("inv")
+				Expect(err).To(MatchError(req.ErrInvalidParam))
+			})
 		})
 		Context("int64", func() {
 			It("returns parsed int64", func() {
-				Expect(r.IntOr("i", 999)).To(Equal(123))
+				Expect(r.Int64Or("i", 999)).To(Equal(int64(123)))
 			})
 
 			It("returns default value if param does not exist", func() {
-				Expect(r.IntOr("xx", 999)).To(Equal(999))
+				Expect(r.Int64Or("xx", 999)).To(Equal(int64(999)))
 			})
 
 			It("returns default value if param is an invalid int", func() {
-				Expect(r.IntOr("inv", 999)).To(Equal(999))
+				Expect(r.Int64Or("inv", 999)).To(Equal(int64(999)))
+			})
+
+			It("returns error if param is an invalid int", func() {
+				_, err := r.Int64("inv")
+				Expect(err).To(MatchError(req.ErrInvalidParam))
 			})
 		})
 	})
@@ -156,7 +169,9 @@ var _ = Describe("Request Helpers", func() {
 		})
 
 		It("returns empty array if param does not exist", func() {
-			Expect(r.Ints("xx")).To(BeEmpty())
+			v, err := r.Ints("xx")
+			Expect(err).To(MatchError(req.ErrMissingParam))
+			Expect(v).To(BeEmpty())
 		})
 	})
 
