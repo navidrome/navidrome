@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -60,6 +61,13 @@ func newError(code int, message ...interface{}) error {
 		code:     code,
 		messages: message,
 	}
+}
+
+// errSubsonic and Unwrap are used to allow `errors.Is(err, errSubsonic)` to work
+var errSubsonic = errors.New("subsonic API error")
+
+func (e subError) Unwrap() error {
+	return fmt.Errorf("%w: %d", errSubsonic, e.code)
 }
 
 func (e subError) Error() string {

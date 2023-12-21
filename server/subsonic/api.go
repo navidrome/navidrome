@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 const Version = "1.16.1"
@@ -211,15 +212,6 @@ func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
 		if err != nil {
-			// If it is not a Subsonic error, convert it to an ErrorGeneric
-			var subErr subError
-			if !errors.As(err, &subErr) {
-				if errors.Is(err, model.ErrNotFound) {
-					err = newError(responses.ErrorDataNotFound, "data not found")
-				} else {
-					err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
-				}
-			}
 			sendError(w, r, err)
 			return
 		}
@@ -264,15 +256,28 @@ func addHandler(r chi.Router, path string, handle func(w http.ResponseWriter, r 
 	r.HandleFunc("/"+path+".view", handle)
 }
 
-func sendError(w http.ResponseWriter, r *http.Request, err error) {
-	response := newResponse()
-	code := responses.ErrorGeneric
-	var subErr subError
-	if errors.As(err, &subErr) {
-		code = subErr.code
+func mapToSubsonicError(err error) subError {
+	switch {
+	case errors.Is(err, errSubsonic): // do nothing
+	case errors.Is(err, req.ErrMissingParam):
+		err = newError(responses.ErrorMissingParameter, err.Error())
+	case errors.Is(err, req.ErrInvalidParam):
+		err = newError(responses.ErrorGeneric, err.Error())
+	case errors.Is(err, model.ErrNotFound):
+		err = newError(responses.ErrorDataNotFound, "data not found")
+	default:
+		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}
+	var subErr subError
+	errors.As(err, &subErr)
+	return subErr
+}
+
+func sendError(w http.ResponseWriter, r *http.Request, err error) {
+	subErr := mapToSubsonicError(err)
+	response := newResponse()
 	response.Status = "failed"
-	response.Error = &responses.Error{Code: int32(code), Message: err.Error()}
+	response.Error = &responses.Error{Code: int32(subErr.code), Message: subErr.Error()}
 
 	sendResponse(w, r, response)
 }
