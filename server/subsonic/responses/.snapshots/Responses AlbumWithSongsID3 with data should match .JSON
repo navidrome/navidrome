@@ -31,6 +31,11 @@
         "title": "disc 2"
       }
     ],
+    "originalReleaseDate": {
+      "year": 1994,
+      "month": 2,
+      "day": 4
+    },
     "song": [
       {
         "id": "1",

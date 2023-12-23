@@ -57,4 +57,15 @@ var _ = Describe("helpers", func() {
 			Expect(buildDiscSubtitles(context.Background(), album)).To(Equal(expected))
 		})
 	})
+
+	DescribeTable("toItemDate",
+		func(date string, expected responses.ItemDate) {
+			Expect(toItemDate(date)).To(Equal(expected))
+		},
+		Entry("1994-02-04", "1994-02-04", responses.ItemDate{Year: 1994, Month: 2, Day: 4}),
+		Entry("1994-02", "1994-02", responses.ItemDate{Year: 1994, Month: 2}),
+		Entry("1994", "1994", responses.ItemDate{Year: 1994}),
+		Entry("19940201", "", responses.ItemDate{}),
+		Entry("", "", responses.ItemDate{}),
+	)
 })
