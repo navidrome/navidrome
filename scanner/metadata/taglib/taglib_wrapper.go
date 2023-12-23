@@ -39,6 +39,7 @@ func Read(filename string) (tags map[string][]string, err error) {
 	id, m := newMap()
 	defer deleteMap(id)
 
+	log.Trace("TagLib: reading tags", "filename", filename, "map_id", id)
 	res := C.taglib_read(fp, C.ulong(id))
 	switch res {
 	case C.TAGLIB_ERR_PARSE:
