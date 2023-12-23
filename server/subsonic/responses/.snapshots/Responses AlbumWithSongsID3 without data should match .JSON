@@ -12,6 +12,7 @@
     "musicBrainzId": "",
     "isCompilation": false,
     "sortName": "",
-    "discTitles": []
+    "discTitles": [],
+    "originalReleaseDate": {}
   }
 }
