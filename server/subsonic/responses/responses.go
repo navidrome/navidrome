@@ -218,13 +218,14 @@ type AlbumID3 struct {
 	Genre     string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 
 	// OpenSubsonic extensions
-	Played        *time.Time `xml:"played,attr,omitempty" json:"played,omitempty"`
-	UserRating    int32      `xml:"userRating,attr"       json:"userRating"`
-	Genres        ItemGenres `xml:"genres"                json:"genres"`
-	MusicBrainzId string     `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
-	IsCompilation bool       `xml:"isCompilation,attr"    json:"isCompilation"`
-	SortName      string     `xml:"sortName,attr"         json:"sortName"`
-	DiscTitles    DiscTitles `xml:"discTitles"            json:"discTitles"`
+	Played              *time.Time `xml:"played,attr,omitempty" json:"played,omitempty"`
+	UserRating          int32      `xml:"userRating,attr"       json:"userRating"`
+	Genres              ItemGenres `xml:"genres"                json:"genres"`
+	MusicBrainzId       string     `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
+	IsCompilation       bool       `xml:"isCompilation,attr"    json:"isCompilation"`
+	SortName            string     `xml:"sortName,attr"         json:"sortName"`
+	DiscTitles          DiscTitles `xml:"discTitles"            json:"discTitles"`
+	OriginalReleaseDate ItemDate   `xml:"originalReleaseDate"   json:"originalReleaseDate"`
 }
 
 type ArtistWithAlbumsID3 struct {
@@ -491,4 +492,10 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 	}
 	a := v
 	return json.Marshal(a)
+}
+
+type ItemDate struct {
+	Year  int `xml:"year,attr,omitempty" json:"year,omitempty"`
+	Month int `xml:"month,attr,omitempty" json:"month,omitempty"`
+	Day   int `xml:"day,attr,omitempty" json:"day,omitempty"`
 }
