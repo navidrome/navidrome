@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type BeetsItem struct {
@@ -100,7 +100,7 @@ type BeetsItem struct {
 func deleteSong(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// todo: tests, use proper url parsing lib
-		id := utils.ParamString(r, ":id")
+		id := chi.URLParam(r, "id")
 		ctx := r.Context()
 		ids := strings.Split(id, ",")
 		for _, id := range ids {
