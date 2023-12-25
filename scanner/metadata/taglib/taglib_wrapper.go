@@ -58,7 +58,7 @@ func Read(filename string) (tags map[string][]string, err error) {
 	case C.TAGLIB_ERR_AUDIO_PROPS:
 		return nil, fmt.Errorf("can't get audio properties from file")
 	}
-	if log.CurrentLevel() >= log.LevelDebug {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		j, _ := json.Marshal(m)
 		log.Trace("TagLib: read tags", "tags", string(j), "filename", filename, "id", id)
 	} else {

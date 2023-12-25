@@ -38,7 +38,7 @@ func (api *Router) serveStream(ctx context.Context, w http.ResponseWriter, r *ht
 			go func() { _, _ = io.Copy(io.Discard, stream) }()
 		} else {
 			c, err := io.Copy(w, stream)
-			if log.CurrentLevel() >= log.LevelDebug {
+			if log.IsGreaterOrEqualTo(log.LevelDebug) {
 				if err != nil {
 					log.Error(ctx, "Error sending transcoded file", "id", id, err)
 				} else {
@@ -67,7 +67,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 
 	// Make sure the stream will be closed at the end, to avoid leakage
 	defer func() {
-		if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
+		if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
 			log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
 		}
 	}()
@@ -136,7 +136,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 
 		// Make sure the stream will be closed at the end, to avoid leakage
 		defer func() {
-			if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
+			if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
 				log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
 			}
 		}()
