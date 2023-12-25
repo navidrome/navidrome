@@ -42,15 +42,13 @@ type (
 		username       string
 		userAgent      string
 		clientUniqueId string
+		displayString  string
 		msgC           chan message
 	}
 )
 
 func (c client) String() string {
-	if log.CurrentLevel() >= log.LevelTrace {
-		return fmt.Sprintf("%s (%s - %s - %s - %s)", c.id, c.username, c.address, c.clientUniqueId, c.userAgent)
-	}
-	return fmt.Sprintf("%s (%s - %s - %s)", c.id, c.username, c.address, c.clientUniqueId)
+	return c.displayString
 }
 
 type broker struct {
@@ -172,6 +170,12 @@ func (b *broker) subscribe(r *http.Request) client {
 		userAgent:      r.UserAgent(),
 		clientUniqueId: clientUniqueId,
 	}
+	if log.IsGreaterOrEqualTo(log.LevelTrace) {
+		c.displayString = fmt.Sprintf("%s (%s - %s - %s - %s)", c.id, c.username, c.address, c.clientUniqueId, c.userAgent)
+	} else {
+		c.displayString = fmt.Sprintf("%s (%s - %s - %s)", c.id, c.username, c.address, c.clientUniqueId)
+	}
+
 	c.msgC = make(chan message, bufferSize)
 
 	// Signal the broker that we have a new client
@@ -260,7 +264,7 @@ func sendOrDrop(client client, msg message) {
 	select {
 	case client.msgC <- msg:
 	default:
-		if log.CurrentLevel() >= log.LevelTrace {
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Trace("Event dropped because client's channel is full", "event", msg, "client", client.String())
 		}
 	}

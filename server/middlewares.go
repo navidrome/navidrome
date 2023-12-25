@@ -42,7 +42,7 @@ func requestLogger(next http.Handler) http.Handler {
 			"httpStatus", ww.Status(),
 			"responseSize", ww.BytesWritten(),
 		}
-		if log.CurrentLevel() >= log.LevelDebug {
+		if log.IsGreaterOrEqualTo(log.LevelDebug) {
 			logArgs = append(logArgs, "userAgent", r.UserAgent())
 		}
 

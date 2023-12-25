@@ -134,7 +134,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 		}
 		similar, err := agent.GetSimilarArtists(ctx, id, name, mbid, limit)
 		if len(similar) > 0 && err == nil {
-			if log.CurrentLevel() >= log.LevelTrace {
+			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
 			} else {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similarReceived", len(similar), "elapsed", time.Since(start))

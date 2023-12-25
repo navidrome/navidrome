@@ -215,7 +215,7 @@ func hr(r chi.Router, path string, f handlerRaw) {
 			return
 		}
 		if r.Context().Err() != nil {
-			if log.CurrentLevel() >= log.LevelDebug {
+			if log.IsGreaterOrEqualTo(log.LevelDebug) {
 				log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
 			}
 			return
@@ -301,7 +301,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		response, _ = xml.Marshal(payload)
 	}
 	if payload.Status == "ok" {
-		if log.CurrentLevel() >= log.LevelTrace {
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
 		} else {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK")

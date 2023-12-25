@@ -32,7 +32,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	// Make sure the stream will be closed at the end, to avoid leakage
 	defer func() {
-		if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
+		if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
 			log.Error("Error closing shared stream", "id", info.id, "file", stream.Name(), err)
 		}
 	}()
@@ -60,7 +60,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 			go func() { _, _ = io.Copy(io.Discard, stream) }()
 		} else {
 			c, err := io.Copy(w, stream)
-			if log.CurrentLevel() >= log.LevelDebug {
+			if log.IsGreaterOrEqualTo(log.LevelDebug) {
 				if err != nil {
 					log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
 				} else {

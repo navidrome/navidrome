@@ -137,6 +137,37 @@ var _ = Describe("Logger", func() {
 		})
 	})
 
+	Describe("IsGreaterOrEqualTo", func() {
+		It("returns false if log level is below provided level", func() {
+			SetLevel(LevelError)
+			Expect(IsGreaterOrEqualTo(LevelWarn)).To(BeFalse())
+		})
+
+		It("returns true if log level is equal to provided level", func() {
+			SetLevel(LevelWarn)
+			Expect(IsGreaterOrEqualTo(LevelWarn)).To(BeTrue())
+		})
+
+		It("returns true if log level is above provided level", func() {
+			SetLevel(LevelTrace)
+			Expect(IsGreaterOrEqualTo(LevelDebug)).To(BeTrue())
+		})
+
+		It("returns true if log level for the current code path is equal provided level", func() {
+			SetLevel(LevelError)
+			SetLogLevels(map[string]string{
+				"log/log_test": "debug",
+			})
+
+			// Need to nest it in a function to get the correct code path
+			var result = func() bool {
+				return IsGreaterOrEqualTo(LevelDebug)
+			}()
+
+			Expect(result).To(BeTrue())
+		})
+	})
+
 	Describe("extractLogger", func() {
 		It("returns an error if the context is nil", func() {
 			_, err := extractLogger(nil)
