@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -98,12 +96,19 @@ type BeetsItem struct {
 }
 
 func deleteSong(ds model.DataStore) http.HandlerFunc {
+	type deleteSongPayload struct {
+		Ids []string `json:"ids"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		// todo: tests, use proper url parsing lib
-		id := chi.URLParam(r, "id")
+		var payload deleteSongPayload
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		ctx := r.Context()
-		ids := strings.Split(id, ",")
-		for _, id := range ids {
+		for _, id := range payload.Ids {
 			println(id)
 			mf, err := ds.MediaFile(ctx).Get(id)
 			if err != nil {

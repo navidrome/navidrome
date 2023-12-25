@@ -148,12 +148,10 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 }
 
 func (n *Router) addDeleteSongRoute(r chi.Router) {
-	r.Route("/song", func(r chi.Router) {
-		r.Route("/{id}", func(r chi.Router) {
-			r.Use(server.URLParamsMiddleware)
-			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				deleteSong(n.ds)(w, r)
-			})
+	r.Route("/deleteSong", func(r chi.Router) {
+		r.Use(server.URLParamsMiddleware)
+		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+			deleteSong(n.ds)(w, r)
 		})
 	})
 }
