@@ -57,11 +57,27 @@ func Extract(files ...string) (map[string]Tags, error) {
 }
 
 func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
+	for t, values := range tags {
+		tags[t] = removeDuplicates(values)
+	}
 	return Tags{
 		filePath: filePath,
 		fileInfo: fileInfo,
 		tags:     tags,
 	}
+}
+
+func removeDuplicates(values []string) []string {
+	encountered := map[string]struct{}{}
+	var result []string
+	for _, v := range values {
+		if _, ok := encountered[v]; ok {
+			continue
+		}
+		encountered[v] = struct{}{}
+		result = append(result, v)
+	}
+	return result
 }
 
 type ParsedTags map[string][]string

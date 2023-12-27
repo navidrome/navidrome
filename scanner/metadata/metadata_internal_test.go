@@ -68,6 +68,19 @@ var _ = Describe("Tags", func() {
 		})
 	})
 
+	Describe("removeDuplicates", func() {
+		It("removes duplicates", func() {
+			md := NewTag("/music/artist/album01/Song.mp3", nil, ParsedTags{
+				"genre": []string{"pop", "rock", "pop"},
+				"date":  []string{"2023-03-01", "2023-03-01"},
+				"mood":  []string{"happy", "sad"},
+			})
+			Expect(md.tags).To(HaveKeyWithValue("genre", []string{"pop", "rock"}))
+			Expect(md.tags).To(HaveKeyWithValue("date", []string{"2023-03-01"}))
+			Expect(md.tags).To(HaveKeyWithValue("mood", []string{"happy", "sad"}))
+		})
+	})
+
 	Describe("Bpm", func() {
 		var t *Tags
 		BeforeEach(func() {
