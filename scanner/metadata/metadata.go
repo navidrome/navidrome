@@ -59,11 +59,37 @@ func Extract(files ...string) (map[string]Tags, error) {
 }
 
 func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
+	for t, values := range tags {
+		values = removeDuplicatesAndEmpty(values)
+		if len(values) == 0 {
+			delete(tags, t)
+			continue
+		}
+		tags[t] = values
+	}
 	return Tags{
 		filePath: filePath,
 		fileInfo: fileInfo,
-		tags:     tags,
+		Tags:     tags,
 	}
+}
+
+func removeDuplicatesAndEmpty(values []string) []string {
+	encountered := map[string]struct{}{}
+	empty := true
+	var result []string
+	for _, v := range values {
+		if _, ok := encountered[v]; ok {
+			continue
+		}
+		encountered[v] = struct{}{}
+		empty = empty && v == ""
+		result = append(result, v)
+	}
+	if empty {
+		return nil
+	}
+	return result
 }
 
 type ParsedTags map[string][]string
@@ -86,7 +112,7 @@ func (p ParsedTags) Map(customMappings ParsedTags) ParsedTags {
 type Tags struct {
 	filePath string
 	fileInfo os.FileInfo
-	tags     ParsedTags
+	Tags     ParsedTags
 }
 
 // Common tags
@@ -232,7 +258,7 @@ func (t Tags) getPeakValue(tagName string) float64 {
 
 func (t Tags) getTags(tagNames ...string) []string {
 	for _, tag := range tagNames {
-		if v, ok := t.tags[tag]; ok {
+		if v, ok := t.Tags[tag]; ok {
 			return v
 		}
 	}
@@ -250,7 +276,7 @@ func (t Tags) getFirstTagValue(tagNames ...string) string {
 func (t Tags) getAllTagValues(tagNames ...string) []string {
 	var values []string
 	for _, tag := range tagNames {
-		if v, ok := t.tags[tag]; ok {
+		if v, ok := t.Tags[tag]; ok {
 			values = append(values, v...)
 		}
 	}

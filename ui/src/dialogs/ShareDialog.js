@@ -33,7 +33,7 @@ export const ShareDialog = () => {
   const translate = useTranslate()
   const [description, setDescription] = useState('')
   const [downloadable, setDownloadable] = useState(
-    config.defaultDownloadableShare && config.enableDownloads
+    config.defaultDownloadableShare && config.enableDownloads,
   )
   useEffect(() => {
     setDescription('')
@@ -66,7 +66,7 @@ export const ShareDialog = () => {
                   type: 'warning',
                   multiLine: true,
                   duration: 0,
-                }
+                },
               )
             })
         } else prompt(translate('message.shareCopyToClipboard'), url)
@@ -75,7 +75,7 @@ export const ShareDialog = () => {
         notify(translate('ra.page.error') + ': ' + error.message, {
           type: 'warning',
         }),
-    }
+    },
   )
 
   const handleShare = (e) => {

@@ -82,7 +82,7 @@ const mapToAudioLists = (item) => {
         updatedAt: item.updatedAt,
         album: item.album,
       },
-      300
+      300,
     ),
   }
 }
@@ -167,7 +167,7 @@ const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
 const reduceCurrent = (state, { data }) => {
   const current = data.ended ? {} : data
   const savedPlayIndex = state.queue.findIndex(
-    (item) => item.uuid === current.uuid
+    (item) => item.uuid === current.uuid,
   )
   return {
     ...state,

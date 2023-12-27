@@ -2,7 +2,6 @@ package subsonic
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,26 +12,22 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) SetRating(r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
-	rating, err := requiredParamInt(r, "rating")
+	rating, err := p.Int("rating")
 	if err != nil {
 		return nil, err
 	}
 
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
 	err = api.setRating(r.Context(), id, rating)
-
-	if errors.Is(err, model.ErrNotFound) {
-		log.Error(r, err)
-		return nil, newError(responses.ErrorDataNotFound, "ID not found")
-	}
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -70,9 +65,10 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 }
 
 func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
-	ids := utils.ParamStrings(r, "id")
-	albumIds := utils.ParamStrings(r, "albumId")
-	artistIds := utils.ParamStrings(r, "artistId")
+	p := req.Params(r)
+	ids, _ := p.Strings("id")
+	albumIds, _ := p.Strings("albumId")
+	artistIds, _ := p.Strings("artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -88,9 +84,10 @@ func (api *Router) Star(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) Unstar(r *http.Request) (*responses.Subsonic, error) {
-	ids := utils.ParamStrings(r, "id")
-	albumIds := utils.ParamStrings(r, "albumId")
-	artistIds := utils.ParamStrings(r, "artistId")
+	p := req.Params(r)
+	ids, _ := p.Strings("id")
+	albumIds, _ := p.Strings("albumId")
+	artistIds, _ := p.Strings("artistId")
 	if len(ids)+len(albumIds)+len(artistIds) == 0 {
 		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
 	}
@@ -150,11 +147,6 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		api.broker.SendMessage(ctx, event)
 		return nil
 	})
-
-	if errors.Is(err, model.ErrNotFound) {
-		log.Error(ctx, err)
-		return newError(responses.ErrorDataNotFound, "ID not found")
-	}
 	if err != nil {
 		log.Error(ctx, err)
 		return err
@@ -163,15 +155,16 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 }
 
 func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
-	ids, err := requiredParamStrings(r, "id")
+	p := req.Params(r)
+	ids, err := p.Strings("id")
 	if err != nil {
 		return nil, err
 	}
-	times := utils.ParamTimes(r, "time")
+	times, _ := p.Times("time")
 	if len(times) > 0 && len(times) != len(ids) {
 		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
-	submission := utils.ParamBool(r, "submission", true)
+	submission := p.BoolOr("submission", true)
 	ctx := r.Context()
 
 	if submission {

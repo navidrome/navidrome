@@ -48,7 +48,9 @@ const createAdminStore = ({
   const store = createStore(
     resettableAppReducer,
     persistedState,
-    composeEnhancers(applyMiddleware(sagaMiddleware, routerMiddleware(history)))
+    composeEnhancers(
+      applyMiddleware(sagaMiddleware, routerMiddleware(history)),
+    ),
   )
 
   store.subscribe(
@@ -61,7 +63,7 @@ const createAdminStore = ({
         settings: state.settings,
       })
     }),
-    1000
+    1000,
   )
 
   sagaMiddleware.run(saga)

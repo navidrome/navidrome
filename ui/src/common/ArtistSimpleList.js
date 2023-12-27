@@ -23,7 +23,7 @@ const useStyles = makeStyles(
       top: '26px',
     },
   },
-  { name: 'RaArtistSimpleList' }
+  { name: 'RaArtistSimpleList' },
 )
 
 export const ArtistSimpleList = ({
@@ -69,7 +69,7 @@ export const ArtistSimpleList = ({
                   </ListItemSecondaryAction>
                 </ListItem>
               </span>
-            )
+            ),
         )}
       </List>
     )

@@ -2,10 +2,12 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
@@ -13,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 )
 
 func newResponse() *responses.Subsonic {
@@ -26,30 +27,6 @@ func newResponse() *responses.Subsonic {
 	}
 }
 
-func requiredParamString(r *http.Request, param string) (string, error) {
-	p := utils.ParamString(r, param)
-	if p == "" {
-		return "", newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
-	}
-	return p, nil
-}
-
-func requiredParamStrings(r *http.Request, param string) ([]string, error) {
-	ps := utils.ParamStrings(r, param)
-	if len(ps) == 0 {
-		return nil, newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
-	}
-	return ps, nil
-}
-
-func requiredParamInt(r *http.Request, param string) (int, error) {
-	p := utils.ParamString(r, param)
-	if p == "" {
-		return 0, newError(responses.ErrorMissingParameter, "required '%s' parameter is missing", param)
-	}
-	return utils.ParamInt(r, param, 0), nil
-}
-
 type subError struct {
 	code     int
 	messages []interface{}
@@ -60,6 +37,13 @@ func newError(code int, message ...interface{}) error {
 		code:     code,
 		messages: message,
 	}
+}
+
+// errSubsonic and Unwrap are used to allow `errors.Is(err, errSubsonic)` to work
+var errSubsonic = errors.New("subsonic API error")
+
+func (e subError) Unwrap() error {
+	return fmt.Errorf("%w: %d", errSubsonic, e.code)
 }
 
 func (e subError) Error() string {
@@ -261,6 +245,24 @@ func childrenFromAlbums(ctx context.Context, als model.Albums) []responses.Child
 	return children
 }
 
+// toItemDate converts a string date in the formats 'YYYY-MM-DD', 'YYYY-MM' or 'YYYY' to an OS ItemDate
+func toItemDate(date string) responses.ItemDate {
+	itemDate := responses.ItemDate{}
+	if date == "" {
+		return itemDate
+	}
+	parts := strings.Split(date, "-")
+	if len(parts) > 2 {
+		itemDate.Day, _ = strconv.Atoi(parts[2])
+	}
+	if len(parts) > 1 {
+		itemDate.Month, _ = strconv.Atoi(parts[1])
+	}
+	itemDate.Year, _ = strconv.Atoi(parts[0])
+
+	return itemDate
+}
+
 func buildItemGenres(genres model.Genres) []responses.ItemGenre {
 	itemGenres := make([]responses.ItemGenre, len(genres))
 	for i, g := range genres {
@@ -318,6 +320,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.MusicBrainzId = album.MbzAlbumID
 	dir.IsCompilation = album.Compilation
 	dir.SortName = album.SortAlbumName
+	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	return dir
 }
 

@@ -6,7 +6,7 @@ const useGetLanguageChoices = () => {
     'translation',
     { page: 1, perPage: -1 },
     { field: '', order: '' },
-    {}
+    {},
   )
 
   const choices = [{ id: 'en', name: 'English' }]

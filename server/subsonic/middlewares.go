@@ -20,8 +20,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func postFormToQueryParams(next http.Handler) http.Handler {
@@ -45,19 +45,18 @@ func postFormToQueryParams(next http.Handler) http.Handler {
 func checkRequiredParameters(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requiredParameters := []string{"u", "v", "c"}
-
-		for _, p := range requiredParameters {
-			if utils.ParamString(r, p) == "" {
-				msg := fmt.Sprintf(`Missing required parameter "%s"`, p)
-				log.Warn(r, msg)
-				sendError(w, r, newError(responses.ErrorMissingParameter, msg))
+		p := req.Params(r)
+		for _, param := range requiredParameters {
+			if _, err := p.String(param); err != nil {
+				log.Warn(r, err)
+				sendError(w, r, err)
 				return
 			}
 		}
 
-		username := utils.ParamString(r, "u")
-		client := utils.ParamString(r, "c")
-		version := utils.ParamString(r, "v")
+		username, _ := p.String("u")
+		client, _ := p.String("c")
+		version, _ := p.String("v")
 		ctx := r.Context()
 		ctx = request.WithUsername(ctx, username)
 		ctx = request.WithClient(ctx, client)
@@ -73,12 +72,13 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			username := utils.ParamString(r, "u")
+			p := req.Params(r)
+			username, _ := p.String("u")
 
-			pass := utils.ParamString(r, "p")
-			token := utils.ParamString(r, "t")
-			salt := utils.ParamString(r, "s")
-			jwt := utils.ParamString(r, "jwt")
+			pass, _ := p.String("p")
+			token, _ := p.String("t")
+			salt, _ := p.String("s")
+			jwt, _ := p.String("jwt")
 
 			usr, err := validateUser(ctx, ds, username, pass, token, salt, jwt)
 			if errors.Is(err, model.ErrInvalidAuth) {

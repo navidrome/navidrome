@@ -205,7 +205,7 @@ func Load() {
 	}
 
 	// Print current configuration if log level is Debug
-	if log.CurrentLevel() >= log.LevelDebug {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)

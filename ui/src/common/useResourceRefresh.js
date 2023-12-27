@@ -7,7 +7,7 @@ export const useResourceRefresh = (...visibleResources) => {
   const refresh = useRefresh()
   const dataProvider = useDataProvider()
   const refreshData = useSelector(
-    (state) => state.activity?.refresh || { lastReceived: lastTime }
+    (state) => state.activity?.refresh || { lastReceived: lastTime },
   )
   const { resources, lastReceived } = refreshData
 

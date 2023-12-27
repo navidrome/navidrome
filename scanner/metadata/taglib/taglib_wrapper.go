@@ -11,6 +11,7 @@ package taglib
 */
 import "C"
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -57,7 +58,13 @@ func Read(filename string) (tags map[string][]string, err error) {
 	case C.TAGLIB_ERR_AUDIO_PROPS:
 		return nil, fmt.Errorf("can't get audio properties from file")
 	}
-	log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
+		j, _ := json.Marshal(m)
+		log.Trace("TagLib: read tags", "tags", string(j), "filename", filename, "id", id)
+	} else {
+		log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
+	}
+
 	return m, nil
 }
 
@@ -113,6 +120,10 @@ func do_put_map(id C.ulong, key string, val *C.char) {
 	v := strings.TrimSpace(C.GoString(val))
 	m[key] = append(m[key], v)
 }
+
+/*
+As I'm working on the new scanner, I see that the `properties` from TagLib is ill-suited to extract multi-valued ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there, instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving us more flexibility, including parsing the USLT / SYLT frames in Go
+*/
 
 //export go_map_put_int
 func go_map_put_int(id C.ulong, key *C.char, val C.int) {
