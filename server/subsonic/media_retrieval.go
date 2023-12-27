@@ -145,7 +145,7 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 	}
 
 	response := newResponse()
-	response.LyricsList = buildStructuredLyrics(lyrics)
+	response.LyricsList = buildStructuredLyrics(mediaFile, lyrics)
 
 	return response, nil
 }
