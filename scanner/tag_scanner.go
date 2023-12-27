@@ -27,7 +27,7 @@ type TagScanner struct {
 	ds          model.DataStore
 	plsSync     *playlistImporter
 	cnt         *counters
-	mapper      *mediaFileMapper
+	mapper      *MediaFileMapper
 	cacheWarmer artwork.CacheWarmer
 }
 
@@ -100,7 +100,7 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	var changedDirs []string
 	s.cnt = &counters{}
 	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
-	s.mapper = newMediaFileMapper(s.rootFolder, genres)
+	s.mapper = NewMediaFileMapper(s.rootFolder, genres)
 	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
 
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
@@ -386,7 +386,7 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
-		mf := s.mapper.toMediaFile(md)
+		mf := s.mapper.ToMediaFile(md)
 		mfs = append(mfs, mf)
 	}
 	return mfs, nil
