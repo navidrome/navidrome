@@ -187,6 +187,12 @@ var _ = Describe("Extractor", func() {
 			_, err := e.extractMetadata(testFilePath)
 			Expect(err).To(MatchError(fs.ErrNotExist))
 		})
+		It("does not throw a SIGSEGV error when reading a file with an invalid frame", func() {
+			// File has an empty TDAT frame
+			md, err := e.extractMetadata("tests/fixtures/invalid-files/test-invalid-frame.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(md).To(HaveKeyWithValue("albumartist", []string{"Elvis Presley"}))
+		})
 	})
 
 })

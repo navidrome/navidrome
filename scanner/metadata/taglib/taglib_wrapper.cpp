@@ -139,7 +139,9 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
           }
         }
       } else {
-        tags.insert(kv.first, kv.second.front()->toString());
+        if (!kv.second.isEmpty()) {
+          tags.insert(kv.first, kv.second.front()->toString());
+        }
       }
     }
   }
