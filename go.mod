@@ -38,6 +38,7 @@ require (
 	github.com/mileusna/useragent v1.3.4
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
+	github.com/pelletier/go-toml/v2 v2.0.6
 	github.com/pocketbase/dbx v1.10.1
 	github.com/pressly/goose/v3 v3.15.1
 	github.com/prometheus/client_golang v1.17.0
@@ -89,7 +90,6 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.4.1-0.20230718164431-9a2bf3000d16 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
