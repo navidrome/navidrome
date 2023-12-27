@@ -13,6 +13,9 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
+      - name: Update ubuntu repo
+        run: sudo apt-get update
+
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
@@ -50,6 +53,9 @@ jobs:
       matrix:
         go_version: [1.21.x, 1.20.x]
     steps:
+      - name: Update ubuntu repo
+        run: sudo apt-get update
+
       - name: Install taglib
         run: sudo apt-get install libtag1-dev ffmpeg
 
