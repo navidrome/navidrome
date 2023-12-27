@@ -30,7 +30,7 @@ var (
 	// Should either be at the beginning of file, or beginning of line
 	syncRegex  = regexp.MustCompile(`(^|\n)\s*` + timeRegexString)
 	timeRegex  = regexp.MustCompile(timeRegexString)
-	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^\]]+)\]`)
+	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^]]+)]`)
 )
 
 func ToLyrics(language, text string) (*Lyric, error) {
@@ -46,7 +46,7 @@ func ToLyrics(language, text string) (*Lyric, error) {
 	synced := syncRegex.MatchString(text)
 	priorLine := ""
 	validLine := false
-	timestamps := []int64{}
+	var timestamps []int64
 
 	for _, line := range lines {
 		line := strings.TrimSpace(line)
@@ -129,7 +129,7 @@ func ToLyrics(language, text string) (*Lyric, error) {
 					}
 				}
 
-				min, err := strconv.ParseInt(line[match[4]:match[5]], 10, 64)
+				minutes, err := strconv.ParseInt(line[match[4]:match[5]], 10, 64)
 				if err != nil {
 					return nil, err
 				}
@@ -148,16 +148,16 @@ func ToLyrics(language, text string) (*Lyric, error) {
 						return nil, err
 					}
 
-					len := msEnd - msStart
+					length := msEnd - msStart
 
-					if len == 3 {
+					if length == 3 {
 						millis *= 10
-					} else if len == 2 {
+					} else if length == 2 {
 						millis *= 100
 					}
 				}
 
-				timeInMillis := (((((hours * 60) + min) * 60) + sec) * 1000) + millis
+				timeInMillis := (((((hours * 60) + minutes) * 60) + sec) * 1000) + millis
 				timestamps = append(timestamps, timeInMillis)
 			}
 
