@@ -146,7 +146,7 @@ func (t Tags) Lyrics() string {
 		lyrics = append(lyrics, *lyric)
 	}
 
-	for tag, value := range t.tags {
+	for tag, value := range t.Tags {
 		if strings.HasPrefix(tag, "lyrics-") {
 			language := strings.TrimSpace(strings.TrimPrefix(tag, "lyrics-"))
 
