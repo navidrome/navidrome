@@ -12,11 +12,11 @@ import (
 )
 
 var _ = Describe("mapping", func() {
-	Describe("mediaFileMapper", func() {
-		var mapper *mediaFileMapper
+	Describe("MediaFileMapper", func() {
+		var mapper *MediaFileMapper
 		Describe("mapTrackTitle", func() {
 			BeforeEach(func() {
-				mapper = newMediaFileMapper("/music", nil)
+				mapper = NewMediaFileMapper("/music", nil)
 			})
 			It("returns the Title when it is available", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}})
@@ -37,7 +37,7 @@ var _ = Describe("mapping", func() {
 				ds := &tests.MockDataStore{}
 				gr = ds.Genre(ctx)
 				gr = newCachedGenreRepository(ctx, gr)
-				mapper = newMediaFileMapper("/", gr)
+				mapper = NewMediaFileMapper("/", gr)
 			})
 
 			It("returns empty if no genres are available", func() {
@@ -79,7 +79,7 @@ var _ = Describe("mapping", func() {
 		Describe("mapDates", func() {
 			var md metadata.Tags
 			BeforeEach(func() {
-				mapper = newMediaFileMapper("/", nil)
+				mapper = NewMediaFileMapper("/", nil)
 			})
 			Context("when all date fields are provided", func() {
 				BeforeEach(func() {
