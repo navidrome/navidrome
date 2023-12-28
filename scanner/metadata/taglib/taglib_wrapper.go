@@ -103,6 +103,12 @@ func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
 	do_put_map(id, k, val)
 }
 
+//export go_map_put_lyrics
+func go_map_put_lyrics(id C.ulong, lang *C.char, val *C.char) {
+	k := "lyrics-" + strings.ToLower(C.GoString(lang))
+	do_put_map(id, k, val)
+}
+
 func do_put_map(id C.ulong, key string, val *C.char) {
 	if key == "" {
 		return
@@ -125,4 +131,31 @@ func go_map_put_int(id C.ulong, key *C.char, val C.int) {
 	vp := C.CString(valStr)
 	defer C.free(unsafe.Pointer(vp))
 	go_map_put_str(id, key, vp)
+}
+
+//export go_map_put_lyric_line
+func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
+	language := C.GoString(lang)
+	line := C.GoString(text)
+	timeGo := int64(time)
+
+	ms := timeGo % 1000
+	timeGo /= 1000
+	sec := timeGo % 60
+	timeGo /= 60
+	min := timeGo % 60
+	formatted_line := fmt.Sprintf("[%02d:%02d.%02d]%s\n", min, sec, ms/10, line)
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	key := "lyrics-" + language
+
+	m := maps[uint32(id)]
+	existing, ok := m[key]
+	if ok {
+		existing[0] += formatted_line
+	} else {
+		m[key] = []string{formatted_line}
+	}
 }

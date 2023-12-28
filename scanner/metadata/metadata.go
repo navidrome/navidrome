@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 type Extractor interface {
@@ -131,8 +133,47 @@ func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string {
-	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
+	lyricList := model.LyricList{}
+	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
+
+	for _, value := range basicLyrics {
+		lyrics, err := model.ToLyrics("xxx", value)
+		if err != nil {
+			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+			continue
+		}
+
+		lyricList = append(lyricList, *lyrics)
+	}
+
+	for tag, value := range t.Tags {
+		if strings.HasPrefix(tag, "lyrics-") {
+			language := strings.TrimSpace(strings.TrimPrefix(tag, "lyrics-"))
+
+			if language == "" {
+				language = "xxx"
+			}
+
+			for _, text := range value {
+				lyrics, err := model.ToLyrics(language, text)
+				if err != nil {
+					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+					continue
+				}
+
+				lyricList = append(lyricList, *lyrics)
+			}
+		}
+	}
+
+	res, err := json.Marshal(lyricList)
+	if err != nil {
+		log.Warn("Unexpected error occurred when serializing lyrics", "file", t.filePath, "error", err)
+		return ""
+	}
+	return string(res)
 }
+
 func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
 func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
 func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }

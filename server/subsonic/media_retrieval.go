@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"regexp"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -90,16 +89,6 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	return nil, err
 }
 
-const timeStampRegex string = `(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])`
-
-func isSynced(rawLyrics string) bool {
-	r := regexp.MustCompile(timeStampRegex)
-	// Eg: [04:02:50.85]
-	// [02:50.85]
-	// [02:50]
-	return r.MatchString(rawLyrics)
-}
-
 func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	artist, _ := p.String("artist")
@@ -117,15 +106,46 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
+	structuredLyrics, err := mediaFiles[0].StructuredLyrics()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(structuredLyrics) == 0 {
+		return response, nil
+	}
+
 	lyrics.Artist = artist
 	lyrics.Title = title
 
-	if isSynced(mediaFiles[0].Lyrics) {
-		r := regexp.MustCompile(timeStampRegex)
-		lyrics.Value = r.ReplaceAllString(mediaFiles[0].Lyrics, "")
-	} else {
-		lyrics.Value = mediaFiles[0].Lyrics
+	lyricsText := ""
+	for _, line := range structuredLyrics[0].Line {
+		lyricsText += line.Value + "\n"
 	}
+
+	lyrics.Value = lyricsText
+
+	return response, nil
+}
+
+func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, error) {
+	id, err := req.Params(r).String("id")
+	if err != nil {
+		return nil, err
+	}
+
+	mediaFile, err := api.ds.MediaFile(r.Context()).Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	lyrics, err := mediaFile.StructuredLyrics()
+	if err != nil {
+		return nil, err
+	}
+
+	response := newResponse()
+	response.LyricsList = buildLyricsList(mediaFile, lyrics)
 
 	return response, nil
 }
