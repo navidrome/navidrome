@@ -813,7 +813,7 @@ var _ = Describe("Responses", func() {
 
 		Describe("with data", func() {
 			BeforeEach(func() {
-				times := []int64{int64(18800), int64(22801)}
+				times := []int64{18800, 22801}
 
 				response.LyricsList.StructuredLyrics = StructuredLyrics{
 					{

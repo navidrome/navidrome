@@ -115,7 +115,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		const syncedLyrics = "[00:18.80]We're no strangers to love\n[00:22.801]You know the rules and so do I"
 		const unsyncedLyrics = "We're no strangers to love\nYou know the rules and so do I"
 		const metadata = "[ar:Rick Astley]\n[ti:That one song]\n[offset:-100]"
-		var times = []int64{int64(18800), int64(22801)}
+		var times = []int64{18800, 22801}
 
 		compareResponses := func(actual *responses.LyricsList, expected responses.LyricsList) {
 			Expect(actual).ToNot(BeNil())
@@ -171,8 +171,10 @@ var _ = Describe("MediaRetrievalController", func() {
 			compareResponses(response.LyricsList, responses.LyricsList{
 				StructuredLyrics: responses.StructuredLyrics{
 					{
-						Lang:   "eng",
-						Synced: true,
+						Lang:          "eng",
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Synced:        true,
 						Line: []responses.Line{
 							{
 								Start: &times[0],
@@ -185,8 +187,10 @@ var _ = Describe("MediaRetrievalController", func() {
 						},
 					},
 					{
-						Lang:   "xxx",
-						Synced: false,
+						Lang:          "xxx",
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Synced:        false,
 						Line: []responses.Line{
 							{
 								Value: "We're no strangers to love",
