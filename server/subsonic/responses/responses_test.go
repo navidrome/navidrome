@@ -797,7 +797,7 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
-	Describe("getLyricsBySongId", func() {
+	Describe("LyricsList", func() {
 		BeforeEach(func() {
 			response.LyricsList = &LyricsList{}
 		})
@@ -814,11 +814,15 @@ var _ = Describe("Responses", func() {
 		Describe("with data", func() {
 			BeforeEach(func() {
 				times := []int64{18800, 22801}
+				offset := int64(100)
 
 				response.LyricsList.StructuredLyrics = StructuredLyrics{
 					{
-						Lang:   "eng",
-						Synced: true,
+						Lang:          "eng",
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Offset:        &offset,
+						Synced:        true,
 						Line: []Line{
 							{
 								Start: &times[0],
@@ -831,8 +835,11 @@ var _ = Describe("Responses", func() {
 						},
 					},
 					{
-						Lang:   "xxx",
-						Synced: false,
+						Lang:          "xxx",
+						DisplayArtist: "Rick Astley",
+						DisplayTitle:  "Never Gonna Give You Up",
+						Offset:        &offset,
+						Synced:        false,
 						Line: []Line{
 							{
 								Value: "We're no strangers to love",

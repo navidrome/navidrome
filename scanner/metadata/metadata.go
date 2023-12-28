@@ -133,17 +133,17 @@ func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
 func (t Tags) Lyrics() string {
-	lyrics := model.Lyrics{}
+	lyricList := model.LyricList{}
 	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
 	for _, value := range basicLyrics {
-		lyric, err := model.ToLyrics("xxx", value)
+		lyrics, err := model.ToLyrics("xxx", value)
 		if err != nil {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
 			continue
 		}
 
-		lyrics = append(lyrics, *lyric)
+		lyricList = append(lyricList, *lyrics)
 	}
 
 	for tag, value := range t.Tags {
@@ -155,18 +155,18 @@ func (t Tags) Lyrics() string {
 			}
 
 			for _, text := range value {
-				lyric, err := model.ToLyrics(language, text)
+				lyrics, err := model.ToLyrics(language, text)
 				if err != nil {
 					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
 					continue
 				}
 
-				lyrics = append(lyrics, *lyric)
+				lyricList = append(lyricList, *lyrics)
 			}
 		}
 	}
 
-	res, err := json.Marshal(lyrics)
+	res, err := json.Marshal(lyricList)
 	if err != nil {
 		log.Warn("Unexpected error occurred when serializing lyrics", "file", t.filePath, "error", err)
 		return ""

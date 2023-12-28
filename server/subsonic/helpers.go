@@ -324,10 +324,10 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	return dir
 }
 
-func buildStructuredLyric(mf *model.MediaFile, lyric model.Lyric) responses.StructuredLyric {
-	lines := make([]responses.Line, len(lyric.Line))
+func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
+	lines := make([]responses.Line, len(lyrics.Line))
 
-	for i, line := range lyric.Line {
+	for i, line := range lyrics.Line {
 		lines[i] = responses.Line{
 			Start: line.Start,
 			Value: line.Value,
@@ -335,12 +335,12 @@ func buildStructuredLyric(mf *model.MediaFile, lyric model.Lyric) responses.Stru
 	}
 
 	structured := responses.StructuredLyric{
-		DisplayArtist: lyric.DisplayArtist,
-		DisplayTitle:  lyric.DisplayTitle,
-		Lang:          lyric.Lang,
+		DisplayArtist: lyrics.DisplayArtist,
+		DisplayTitle:  lyrics.DisplayTitle,
+		Lang:          lyrics.Lang,
 		Line:          lines,
-		Offset:        lyric.Offset,
-		Synced:        lyric.Synced,
+		Offset:        lyrics.Offset,
+		Synced:        lyrics.Synced,
 	}
 
 	if structured.DisplayArtist == "" {
@@ -353,11 +353,11 @@ func buildStructuredLyric(mf *model.MediaFile, lyric model.Lyric) responses.Stru
 	return structured
 }
 
-func buildStructuredLyrics(mf *model.MediaFile, lyrics model.Lyrics) *responses.LyricsList {
-	lyricList := make(responses.StructuredLyrics, len(lyrics))
+func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses.LyricsList {
+	lyricList := make(responses.StructuredLyrics, len(lyricsList))
 
-	for i, lyric := range lyrics {
-		lyricList[i] = buildStructuredLyric(mf, lyric)
+	for i, lyrics := range lyricsList {
+		lyricList[i] = buildStructuredLyric(mf, lyrics)
 	}
 
 	res := &responses.LyricsList{

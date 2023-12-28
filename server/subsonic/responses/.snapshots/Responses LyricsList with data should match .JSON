@@ -7,6 +7,8 @@
   "lyricsList": {
     "structuredLyrics": [
       {
+        "displayArtist": "Rick Astley",
+        "displayTitle": "Never Gonna Give You Up",
         "lang": "eng",
         "line": [
           {
@@ -18,9 +20,12 @@
             "value": "You know the rules and so do I"
           }
         ],
+        "offset": 100,
         "synced": true
       },
       {
+        "displayArtist": "Rick Astley",
+        "displayTitle": "Never Gonna Give You Up",
         "lang": "xxx",
         "line": [
           {
@@ -30,6 +35,7 @@
             "value": "You know the rules and so do I"
           }
         ],
+        "offset": 100,
         "synced": false
       }
     ]

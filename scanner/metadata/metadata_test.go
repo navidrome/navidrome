@@ -20,7 +20,7 @@ var _ = Describe("Tags", func() {
 	var zero int64 = 0
 	var secondTs int64 = 2500
 
-	makeLyrics := func(synced bool, lang, secondLine string) model.Lyric {
+	makeLyrics := func(synced bool, lang, secondLine string) model.Lyrics {
 		lines := []model.Line{
 			{Value: "This is"},
 			{Value: secondLine},
@@ -31,17 +31,17 @@ var _ = Describe("Tags", func() {
 			lines[1].Start = &secondTs
 		}
 
-		lyric := model.Lyric{
+		lyrics := model.Lyrics{
 			Lang:   lang,
 			Line:   lines,
 			Synced: synced,
 		}
 
-		return lyric
+		return lyrics
 	}
 
-	sortLyrics := func(lines model.Lyrics) model.Lyrics {
-		slices.SortFunc(lines, func(a, b model.Lyric) bool {
+	sortLyrics := func(lines model.LyricList) model.LyricList {
+		slices.SortFunc(lines, func(a, b model.Lyrics) bool {
 			langDiff := strings.Compare(a.Lang, b.Lang)
 			if langDiff == 0 {
 				return strings.Compare(a.Line[1].Value, b.Line[1].Value) < 0
@@ -53,8 +53,8 @@ var _ = Describe("Tags", func() {
 		return lines
 	}
 
-	compareLyrics := func(m metadata.Tags, expected model.Lyrics) {
-		lyrics := model.Lyrics{}
+	compareLyrics := func(m metadata.Tags, expected model.LyricList) {
+		lyrics := model.LyricList{}
 		Expect(json.Unmarshal([]byte(m.Lyrics()), &lyrics)).To(BeNil())
 		Expect(sortLyrics(lyrics)).To(Equal(sortLyrics(expected)))
 	}
@@ -135,7 +135,7 @@ var _ = Describe("Tags", func() {
 				Expect(mds).To(HaveLen(1))
 
 				m := mds[path]
-				lyrics := model.Lyrics{
+				lyrics := model.LyricList{
 					makeLyrics(true, "xxx", "English"),
 					makeLyrics(true, "xxx", "unspecified"),
 				}
@@ -161,7 +161,7 @@ var _ = Describe("Tags", func() {
 			Expect(mds).To(HaveLen(1))
 
 			m := mds[path]
-			compareLyrics(m, model.Lyrics{
+			compareLyrics(m, model.LyricList{
 				makeLyrics(true, "eng", "English SYLT"),
 				makeLyrics(true, "eng", "English"),
 				makeLyrics(true, "xxx", "unspecified SYLT"),
@@ -189,7 +189,7 @@ var _ = Describe("Tags", func() {
 				Expect(mds).To(HaveLen(1))
 
 				m := mds[path]
-				compareLyrics(m, model.Lyrics{
+				compareLyrics(m, model.LyricList{
 					makeLyrics(true, "eng", "English"),
 					makeLyrics(true, "xxx", "unspecified"),
 				})

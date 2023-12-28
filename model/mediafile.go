@@ -93,8 +93,8 @@ func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
 }
 
-func (mf MediaFile) StructuredLyrics() (Lyrics, error) {
-	lyrics := Lyrics{}
+func (mf MediaFile) StructuredLyrics() (LyricList, error) {
+	lyrics := LyricList{}
 	err := json.Unmarshal([]byte(mf.Lyrics), &lyrics)
 	if err != nil {
 		return nil, err

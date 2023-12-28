@@ -51,7 +51,7 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 			return err
 		}
 
-		text, err := json.Marshal(model.Lyrics{*lyrics})
+		text, err := json.Marshal(model.LyricList{*lyrics})
 		if err != nil {
 			return err
 		}

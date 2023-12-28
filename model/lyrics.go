@@ -14,7 +14,7 @@ type Line struct {
 	Value string `structs:"value"           json:"value"`
 }
 
-type Lyric struct {
+type Lyrics struct {
 	DisplayArtist string `structs:"displayArtist,omitempty" json:"displayArtist,omitempty"`
 	DisplayTitle  string `structs:"displayTitle,omitempty"  json:"displayTitle,omitempty"`
 	Lang          string `structs:"lang"                    json:"lang"`
@@ -33,7 +33,7 @@ var (
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^]]+)]`)
 )
 
-func ToLyrics(language, text string) (*Lyric, error) {
+func ToLyrics(language, text string) (*Lyrics, error) {
 	text = utils.SanitizeText(text)
 
 	lines := strings.Split(text, "\n")
@@ -186,7 +186,7 @@ func ToLyrics(language, text string) (*Lyric, error) {
 		}
 	}
 
-	lyric := Lyric{
+	lyrics := Lyrics{
 		DisplayArtist: artist,
 		DisplayTitle:  title,
 		Lang:          language,
@@ -195,7 +195,7 @@ func ToLyrics(language, text string) (*Lyric, error) {
 		Synced:        synced,
 	}
 
-	return &lyric, nil
+	return &lyrics, nil
 }
 
-type Lyrics []Lyric
+type LyricList []Lyrics

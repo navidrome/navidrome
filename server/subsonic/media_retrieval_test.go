@@ -75,7 +75,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should return data for given artist & title", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
 			lyrics, _ := model.ToLyrics("eng", "[00:18.80]We're no strangers to love\n[00:22.80]You know the rules and so do I")
-			lyricsJson, err := json.Marshal(model.Lyrics{
+			lyricsJson, err := json.Marshal(model.LyricList{
 				*lyrics,
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -152,7 +152,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			r := newGetRequest("id=1")
 			synced, _ := model.ToLyrics("eng", syncedLyrics)
 			unsynced, _ := model.ToLyrics("xxx", unsyncedLyrics)
-			lyricsJson, err := json.Marshal(model.Lyrics{
+			lyricsJson, err := json.Marshal(model.LyricList{
 				*synced, *unsynced,
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -207,7 +207,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should parse lrc metadata", func() {
 			r := newGetRequest("id=1")
 			synced, _ := model.ToLyrics("eng", metadata+"\n"+syncedLyrics)
-			lyricsJson, err := json.Marshal(model.Lyrics{
+			lyricsJson, err := json.Marshal(model.LyricList{
 				*synced,
 			})
 			Expect(err).ToNot(HaveOccurred())
