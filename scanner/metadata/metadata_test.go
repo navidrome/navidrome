@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
@@ -168,8 +170,14 @@ var _ = Describe("Tags", func() {
 		})
 	})
 
-	Context("Extract", func() {
+	// Only run these tests if FFmpeg is available
+	FFmpegContext := XContext
+	if ffmpeg.New().IsAvailable() {
+		FFmpegContext = Context
+	}
+	FFmpegContext("Extract with FFmpeg", func() {
 		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
 			conf.Server.Scanner.Extractor = "ffmpeg"
 		})
 
