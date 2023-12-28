@@ -53,32 +53,51 @@ var _ = Describe("GetInstance", func() {
 	})
 
 	It("only calls the constructor once when called concurrently", func() {
-		const maxCalls = 80000
-		var numCalls int32
+		// This test creates 80000 goroutines that call GetInstance concurrently. If the constructor is called more than once, the test will fail.
+		const numCallsToDo = 80000
+		var numCallsDone atomic.Uint32
+
+		// This WaitGroup is used to make sure all goroutines are ready before the test starts
+		prepare := sync.WaitGroup{}
+		prepare.Add(numCallsToDo)
+
+		// This WaitGroup is used to synchronize the start of all goroutines as simultaneous as possible
 		start := sync.WaitGroup{}
 		start.Add(1)
-		prepare := sync.WaitGroup{}
-		prepare.Add(maxCalls)
+
+		// This WaitGroup is used to wait for all goroutines to be done
 		done := sync.WaitGroup{}
-		done.Add(maxCalls)
+		done.Add(numCallsToDo)
+
 		numInstancesCreated = 0
-		for i := 0; i < maxCalls; i++ {
+		for i := 0; i < numCallsToDo; i++ {
 			go func() {
+				// This is needed to make sure the test does not hang if it fails
+				defer GinkgoRecover()
+
+				// Wait for all goroutines to be ready
 				start.Wait()
-				singleton.GetInstance(func() struct{ I int } {
+				instance := singleton.GetInstance(func() struct{ I int } {
 					numInstancesCreated++
-					return struct{ I int }{I: 1}
+					return struct{ I int }{I: numInstancesCreated}
 				})
-				atomic.AddInt32(&numCalls, 1)
+				// Increment the number of calls done
+				numCallsDone.Add(1)
+
+				// Flag the main WaitGroup that this goroutine is done
 				done.Done()
+
+				// Make sure the instance we get is always the same one
+				Expect(instance.I).To(Equal(1))
 			}()
+			// Flag that this goroutine is ready to start
 			prepare.Done()
 		}
-		prepare.Wait()
-		start.Done()
-		done.Wait()
+		prepare.Wait() // Wait for all goroutines to be ready
+		start.Done()   // Start all goroutines
+		done.Wait()    // Wait for all goroutines to be done
 
-		Expect(numCalls).To(Equal(int32(maxCalls)))
+		Expect(numCallsDone.Load()).To(Equal(uint32(numCallsToDo)))
 		Expect(numInstancesCreated).To(Equal(1))
 	})
 })

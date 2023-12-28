@@ -14,7 +14,7 @@ var (
 )
 
 // GetInstance returns an existing instance of object. If it is not yet created, calls `constructor`, stores the
-// result for future calls and return it
+// result for future calls and returns it
 func GetInstance[T any](constructor func() T) T {
 	var v T
 	name := reflect.TypeOf(v).String()
