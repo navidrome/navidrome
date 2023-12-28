@@ -197,8 +197,7 @@ var _ = Describe("Tags", func() {
 
 			Entry("Parses AIFF file", "test.aiff"),
 			Entry("Parses MP3 files", "test.mp3"),
-			// Disabled, because it fails in pipeline
-			// Entry("Parses WAV files", "test.wav"),
+			Entry("Parses WAV files", "test.wav"),
 
 			// FFMPEG behaves very weirdly for multivalued tags for non-ID3
 			// Specifically, they are separated by ";, which is indistinguishable
