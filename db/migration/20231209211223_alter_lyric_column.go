@@ -72,8 +72,8 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	notice(tx, "A full rescan will be performed to pick up additional lyrics (existing lyrics have been preserved)")
-	return forceFullRescan(tx)
+	notice(tx, "A full rescan should be performed to pick up additional lyrics (existing lyrics have been preserved)")
+	return nil
 }
 
 func downAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
