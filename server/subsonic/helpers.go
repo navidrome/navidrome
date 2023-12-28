@@ -323,3 +323,45 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	return dir
 }
+
+func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
+	lines := make([]responses.Line, len(lyrics.Line))
+
+	for i, line := range lyrics.Line {
+		lines[i] = responses.Line{
+			Start: line.Start,
+			Value: line.Value,
+		}
+	}
+
+	structured := responses.StructuredLyric{
+		DisplayArtist: lyrics.DisplayArtist,
+		DisplayTitle:  lyrics.DisplayTitle,
+		Lang:          lyrics.Lang,
+		Line:          lines,
+		Offset:        lyrics.Offset,
+		Synced:        lyrics.Synced,
+	}
+
+	if structured.DisplayArtist == "" {
+		structured.DisplayArtist = mf.Artist
+	}
+	if structured.DisplayTitle == "" {
+		structured.DisplayTitle = mf.Title
+	}
+
+	return structured
+}
+
+func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses.LyricsList {
+	lyricList := make(responses.StructuredLyrics, len(lyricsList))
+
+	for i, lyrics := range lyricsList {
+		lyricList[i] = buildStructuredLyric(mf, lyrics)
+	}
+
+	res := &responses.LyricsList{
+		StructuredLyrics: lyricList,
+	}
+	return res
+}

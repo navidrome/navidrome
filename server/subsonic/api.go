@@ -142,6 +142,7 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		hr(r, "getAvatar", api.GetAvatar)
 		h(r, "getLyrics", api.GetLyrics)
+		h(r, "getLyricsBySongId", api.GetLyricsBySongId)
 	})
 	r.Group(func(r chi.Router) {
 		// configure request throttling

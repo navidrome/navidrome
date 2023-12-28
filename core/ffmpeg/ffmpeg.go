@@ -22,6 +22,7 @@ type FFmpeg interface {
 	ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
+	IsAvailable() bool
 }
 
 func New() FFmpeg {
@@ -76,6 +77,11 @@ func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
 
 func (e *ffmpeg) CmdPath() (string, error) {
 	return ffmpegCmd()
+}
+
+func (e *ffmpeg) IsAvailable() bool {
+	_, err := ffmpegCmd()
+	return err == nil
 }
 
 func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {

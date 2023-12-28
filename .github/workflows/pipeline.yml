@@ -1,4 +1,4 @@
-name: 'Pipeline: Test, Lint, Build'
+name: "Pipeline: Test, Lint, Build"
 on:
   push:
     branches:
@@ -13,6 +13,9 @@ jobs:
     name: Lint Go code
     runs-on: ubuntu-latest
     steps:
+      - name: Update ubuntu repo
+        run: sudo apt-get update
+
       - name: Install taglib
         run: sudo apt-get install libtag1-dev
 
@@ -48,10 +51,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.21.x,1.20.x]
+        go_version: [1.21.x, 1.20.x]
     steps:
+      - name: Update ubuntu repo
+        run: sudo apt-get update
+
       - name: Install taglib
-        run: sudo apt-get install libtag1-dev
+        run: sudo apt-get install libtag1-dev ffmpeg
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -75,14 +81,14 @@ jobs:
     name: Build JS bundle
     runs-on: ubuntu-latest
     env:
-      NODE_OPTIONS: '--max_old_space_size=4096'
+      NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
       - name: npm install dependencies
         run: |
