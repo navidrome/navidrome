@@ -150,7 +150,9 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 
 			deleteStr := fmt.Sprintf("/item/%d", item.ID)
 
-			del_url := baseUrl + deleteStr
+			deleteFromDiskStr := "?delete"
+
+			del_url := baseUrl + deleteStr + deleteFromDiskStr
 			// Create request
 			req, err := http.NewRequest(http.MethodDelete, del_url, nil)
 			log.Info("delete request: ", req)
