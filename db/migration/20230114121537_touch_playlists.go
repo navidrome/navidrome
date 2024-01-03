@@ -13,7 +13,6 @@ func init() {
 }
 
 func upTouchPlaylists(_ context.Context, tx *sql.Tx) error {
-
 	var err error
 	switch conf.Server.DbDriver {
 	case "sqlite3":
@@ -21,6 +20,7 @@ func upTouchPlaylists(_ context.Context, tx *sql.Tx) error {
 	case "pgx":
 		_, err = tx.Exec(`update playlist set updated_at = now();`)
 	}
+
 	return err
 }
 

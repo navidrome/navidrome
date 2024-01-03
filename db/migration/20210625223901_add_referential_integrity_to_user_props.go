@@ -13,7 +13,6 @@ func init() {
 }
 
 func upAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
-
 	var err error
 	switch conf.Server.DbDriver {
 	case "sqlite3":
