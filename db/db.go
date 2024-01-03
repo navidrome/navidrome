@@ -27,7 +27,9 @@ const migrationsFolder = "migration"
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		Path = conf.Server.DbPath
-		Driver = conf.Server.DbDriver
+		if conf.Server.DbDriver != "" {
+			Driver = conf.Server.DbDriver
+		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		instance, err := sql.Open(Driver, Path)
 		if err != nil {
