@@ -30,6 +30,7 @@ func Db() *sql.DB {
 		if conf.Server.DbDriver != "" {
 			Driver = conf.Server.DbDriver
 		}
+		conf.Server.DbDriver = Driver
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		instance, err := sql.Open(Driver, Path)
 		if err != nil {
