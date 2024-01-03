@@ -13,7 +13,6 @@ func init() {
 }
 
 func Up20200423204116(_ context.Context, tx *sql.Tx) error {
-
 	if conf.Server.DbDriver == "pgx" {
 		_, err := tx.Exec(`
 		create collation nocase (
@@ -77,7 +76,6 @@ create index if not exists media_file_order_artist_name
 }
 
 func Down20200423204116(_ context.Context, tx *sql.Tx) error {
-
 	if conf.Server.DbDriver == "pgx" {
 		_, err := tx.Exec(`
 		drop collation nocase;

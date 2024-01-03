@@ -13,7 +13,6 @@ func init() {
 }
 
 func upDropEmailUniqueConstraint(_ context.Context, tx *sql.Tx) error {
-
 	var err error
 	switch conf.Server.DbDriver {
 	case "sqlite3":
@@ -44,8 +43,8 @@ alter table user_dg_tmp rename to user;
 		_, err = tx.Exec(`
 alter table "user" DROP CONSTRAINT IF EXISTS "user_email_key";
 `)
-
 	}
+
 	return err
 }
 
