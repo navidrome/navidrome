@@ -18,19 +18,19 @@ alter table artist
 create index if not exists artist_size
 	on artist(size);
 
-update artist set size = ifnull((
+update artist set size = coalesce((
    select sum(f.size)
    from album f
    where f.album_artist_id = artist.id
 ), 0)
-where id not null;
+where id is not null;
 
 alter table playlist
 	add size integer default 0 not null;
 create index if not exists playlist_size
 	on playlist(size);
 
-update playlist set size = ifnull((
+update playlist set size = coalesce((
     select sum(size)
     from media_file f
              left join playlist_tracks pt on f.id = pt.media_file_id

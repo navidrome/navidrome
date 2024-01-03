@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose/v3"
 )
 
@@ -12,7 +13,14 @@ func init() {
 }
 
 func upTouchPlaylists(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`update playlist set updated_at = datetime('now');`)
+
+	var err error
+	switch conf.Server.DbDriver {
+	case "sqlite3":
+		_, err = tx.Exec(`update playlist set updated_at = datetime('now');`)
+	case "pgx":
+		_, err = tx.Exec(`update playlist set updated_at = now();`)
+	}
 	return err
 }
 

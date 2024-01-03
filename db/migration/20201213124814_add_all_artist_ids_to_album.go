@@ -30,7 +30,7 @@ create index if not exists album_all_artist_ids
 
 func updateAlbums20201213124814(tx *sql.Tx) error {
 	rows, err := tx.Query(`
-select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, ' ') 
+select a.id, a.name, a.artist_id, a.album_artist_id, string_agg(mf.artist_id, ' ') 
        from album a left join media_file mf on a.id = mf.album_id group by a.id
    `)
 	if err != nil {
@@ -38,8 +38,13 @@ select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, 
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update album set all_artist_ids = ? where id = ?")
+	stmt, err := tx.Prepare(`
+update album
+set all_artist_ids = $1
+where id = $2
+`)
 	if err != nil {
+		log.Error("failed here: ", err)
 		return err
 	}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose/v3"
 )
 
@@ -12,6 +13,20 @@ func init() {
 }
 
 func Up20200423204116(_ context.Context, tx *sql.Tx) error {
+
+	if conf.Server.DbDriver == "pgx" {
+		_, err := tx.Exec(`
+		create collation nocase (
+			provider = icu,
+			locale = 'und-u-ks-level2',
+			deterministic = false
+			);
+		`)
+		if err != nil {
+			return err
+		}
+	}
+
 	_, err := tx.Exec(`
 alter table artist
 	add order_artist_name varchar(255) collate nocase;
@@ -62,5 +77,15 @@ create index if not exists media_file_order_artist_name
 }
 
 func Down20200423204116(_ context.Context, tx *sql.Tx) error {
+
+	if conf.Server.DbDriver == "pgx" {
+		_, err := tx.Exec(`
+		drop collation nocase;
+		`)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

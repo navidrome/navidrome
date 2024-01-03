@@ -16,15 +16,15 @@ func upCreateBookmarkTable(_ context.Context, tx *sql.Tx) error {
 create table bookmark
 (
     user_id    varchar(255) not null
-        references user
+        references "user"
             on update cascade on delete cascade,
     item_id    varchar(255) not null,
     item_type  varchar(255) not null,
     comment    varchar(255),
     position   integer,
     changed_by varchar(255),
-    created_at datetime,
-    updated_at datetime,
+    created_at timestamp,
+    updated_at timestamp,
     constraint bookmark_pk
         unique (user_id, item_id, item_type)
 );
@@ -33,14 +33,14 @@ create table playqueue_dg_tmp
 (
 	id varchar(255) not null,
 	user_id varchar(255) not null
-		references user
+		references "user"
 			on update cascade on delete cascade,
 	current varchar(255),
 	position real,
 	changed_by varchar(255),
 	items varchar(255),
-	created_at datetime,
-	updated_at datetime
+	created_at timestamp,
+	updated_at timestamp
 );
 drop table playqueue;
 alter table playqueue_dg_tmp rename to playqueue;

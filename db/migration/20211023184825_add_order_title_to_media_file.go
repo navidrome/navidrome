@@ -16,7 +16,7 @@ func init() {
 
 func upAddOrderTitleToMediaFile(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
-alter table main.media_file
+alter table media_file
 	add order_title varchar null collate NOCASE;
 create index if not exists media_file_order_title
     on media_file (order_title);
@@ -36,7 +36,7 @@ func upAddOrderTitleToMediaFile_populateOrderTitle(tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update media_file set order_title = ? where id = ?")
+	stmt, err := tx.Prepare("update media_file set order_title = $1 where id = $2")
 	if err != nil {
 		return err
 	}

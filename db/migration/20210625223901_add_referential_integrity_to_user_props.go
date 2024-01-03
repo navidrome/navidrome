@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose/v3"
 )
 
@@ -12,7 +13,11 @@ func init() {
 }
 
 func upAddReferentialIntegrityToUserProps(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+
+	var err error
+	switch conf.Server.DbDriver {
+	case "sqlite3":
+		_, err = tx.Exec(`
 create table user_props_dg_tmp
 (
 	user_id varchar not null
@@ -31,6 +36,15 @@ drop table user_props;
 
 alter table user_props_dg_tmp rename to user_props;
 `)
+	case "pgx":
+		_, err = tx.Exec(`
+alter table user_props
+add constraint user_props_user_id_fk
+foreign key (user_id) references "user" (id)
+on update cascade on delete cascade;
+`)
+	}
+
 	return err
 }
 

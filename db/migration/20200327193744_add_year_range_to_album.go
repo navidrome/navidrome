@@ -29,8 +29,8 @@ create table album_dg_tmp
 	song_count integer default 0 not null,
 	duration real default 0 not null,
 	genre varchar(255) default '' not null,
-	created_at datetime,
-	updated_at datetime,
+	created_at timestamp,
+	updated_at timestamp,
 	full_text varchar(255) default '',
 	album_artist_id varchar(255) default ''
 );

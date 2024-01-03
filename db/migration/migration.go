@@ -36,7 +36,7 @@ var (
 
 func isDBInitialized(tx *sql.Tx) bool {
 	once.Do(func() {
-		rows, err := tx.Query("select count(*) from property where id=?", consts.InitialSetupFlagKey)
+		rows, err := tx.Query("select count(*) from property where id=$1", consts.InitialSetupFlagKey)
 		checkErr(err)
 		initialized = checkCount(rows) > 0
 	})

@@ -18,9 +18,9 @@ create table share
 	id             varchar(255) not null primary key,
 	name           varchar(255) not null unique,
 	description    varchar(255),
-	expires        datetime,
-	created        datetime,
-	last_visited   datetime,
+	expires        timestamp,
+	created        timestamp,
+	last_visited   timestamp,
 	resource_ids   varchar not null,
 	resource_type  varchar(255) not null,
 	visit_count    integer default 0

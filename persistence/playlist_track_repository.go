@@ -50,7 +50,7 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
 		Columns(
-			"coalesce(starred, 0)",
+			"coalesce(starred, false)",
 			"coalesce(play_count, 0)",
 			"coalesce(rating, 0)",
 			"starred_at",

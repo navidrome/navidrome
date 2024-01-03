@@ -49,13 +49,13 @@ func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, 
 
 func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.ScrobbleEntry, error) {
 	sql := Select().Columns("s.*, m.*").
-		From(r.tableName+" s").
+		From(r.tableName + " s").
 		LeftJoin("media_file m on m.id = s.media_file_id").
 		Where(And{
 			Eq{"service": service},
 			Eq{"user_id": userId},
 		}).
-		OrderBy("play_time", "s.rowid").Limit(1)
+		OrderBy("play_time").Limit(1)
 
 	res := model.ScrobbleEntries{}
 	// TODO Rewrite queryOne to use QueryRows, to workaround the recursive embedded structs issue
