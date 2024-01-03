@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
@@ -56,5 +58,31 @@ var _ = Describe("AbsoluteURL", func() {
 			actual := AbsoluteURL(r, "http://public.myserver.com/share/img/123", url.Values{"a": []string{"xyz"}})
 			Expect(actual).To(Equal("http://public.myserver.com/share/img/123?a=xyz"))
 		})
+	})
+})
+
+var _ = Describe("updateSocketPermission", func() {
+	tempDir, _ := os.MkdirTemp("", "")
+	socketPath := filepath.Join(tempDir, "test.sock")
+	file, _ := os.Create(socketPath)
+	file.Close()
+
+	When("unixSocketPerm is valid", func() {
+		It("updates the permission of the unix socket file and returns nil", func() {
+			err := updateSocketPermission(socketPath, "0017")
+			fileInfo, _ := os.Stat(socketPath)
+			actualPermission := fileInfo.Mode().Perm()
+
+			Expect(actualPermission).To(Equal(os.FileMode(0017)))
+			Expect(err).To(BeNil())
+		})
+	})
+
+	When("unixSocketPerm is invalid", func() {
+		It("returns an error", func() {
+			err := updateSocketPermission(socketPath, "invalid")
+			Expect(err).NotTo(BeNil())
+		})
+
 	})
 })

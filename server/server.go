@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -53,6 +54,7 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 }
 
 // Run starts the server with the given address, and if specified, with TLS enabled.
+// Updates the permission of the created unix socket file based on the provided conf.Server.UnixSocketPerm (default 0017)
 func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) error {
 	// Mount the router for the frontend assets
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
@@ -78,6 +80,10 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 		listener, err = net.Listen("unix", socketPath)
 		if err != nil {
 			return fmt.Errorf("error creating unix socket listener: %w", err)
+		}
+		err = updateSocketPermission(socketPath, conf.Server.UnixSocketPerm)
+		if err != nil {
+			return fmt.Errorf("error updating permission of unix socket file: %w", err)
 		}
 	} else {
 		addr = fmt.Sprintf("%s:%d", addr, port)
@@ -220,6 +226,19 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 	r.Handle("/", Index(s.ds, ui.BuildAssets()))
 	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
+}
+
+// Converts the unixSocketPerm to uint and updates the  permission of the unix socket file
+func updateSocketPermission(socketPath string, unixSocketPerm string) error {
+	perm, err := strconv.ParseUint(unixSocketPerm, 8, 32)
+	if err != nil {
+		return err
+	}
+	err = os.Chmod(socketPath, os.FileMode(perm))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func AbsoluteURL(r *http.Request, u string, params url.Values) string {
