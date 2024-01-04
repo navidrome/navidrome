@@ -24,7 +24,7 @@ func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 		return nil
 	}
 
-	stmt, err := tx.Prepare("insert into transcoding (id, name, target_format, default_bit_rate, command) values (?, ?, ?, ?, ?)")
+	stmt, err := tx.Prepare("insert into transcoding (id, name, target_format, default_bit_rate, command) values ($1, $2, $3, $4, $5)")
 	if err != nil {
 		return err
 	}

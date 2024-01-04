@@ -34,7 +34,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r := &userRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "user"
+	r.tableName = `"user"`
 	once.Do(func() {
 		_ = r.initPasswordEncryptionKey()
 	})

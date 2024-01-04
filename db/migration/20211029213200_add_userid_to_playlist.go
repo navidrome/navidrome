@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose/v3"
 )
 
@@ -12,7 +13,10 @@ func init() {
 }
 
 func upAddUseridToPlaylist(_ context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	var err error
+	switch conf.Server.DbDriver {
+	case "sqlite3":
+		_, err = tx.Exec(`
 create table playlist_dg_tmp
 (
 	id varchar(255) not null
@@ -51,8 +55,19 @@ create index playlist_size
 	on playlist (size);
 create index playlist_updated_at
 	on playlist (updated_at);
-
 `)
+	case "pgx":
+		_, err = tx.Exec(`
+alter table playlist add column owner_id varchar(255) not null default '';
+
+update playlist set owner_id = (select id from "user" where user_name = owner);
+
+alter table playlist drop column owner;
+
+alter table playlist add constraint playlist_user_user_id_fk foreign key (owner_id) references "user" (id) on update cascade on delete cascade;
+`)
+	}
+
 	return err
 }
 

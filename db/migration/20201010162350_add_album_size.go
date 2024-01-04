@@ -18,12 +18,12 @@ alter table album
 create index if not exists album_size
 	on album(size);
 
-update album set size = ifnull((
+update album set size = coalesce((
 select sum(f.size)
 from media_file f
 where f.album_id = album.id
 ), 0)
-where id not null;`)
+where id is not null;`)
 
 	return err
 }

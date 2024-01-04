@@ -35,8 +35,8 @@ create table media_file_dg_tmp
 	bit_rate integer default 0 not null,
 	genre varchar(255) default '' not null,
 	compilation bool default FALSE not null,
-	created_at datetime,
-	updated_at datetime
+	created_at timestamp,
+	updated_at timestamp
 );
 
 insert into media_file_dg_tmp(id, path, title, album, artist, artist_id, album_artist, album_id, has_cover_art, track_number, disc_number, year, size, suffix, duration, bit_rate, genre, compilation, created_at, updated_at) select id, path, title, album, artist, artist_id, album_artist, album_id, has_cover_art, track_number, disc_number, year, size, suffix, duration, bit_rate, genre, compilation, created_at, updated_at from media_file;
@@ -72,8 +72,8 @@ create table album_dg_tmp
 	song_count integer default 0 not null,
 	duration real default 0 not null,
 	genre varchar(255) default '' not null,
-	created_at datetime,
-	updated_at datetime
+	created_at timestamp,
+	updated_at timestamp
 );
 
 insert into album_dg_tmp(id, name, artist_id, cover_art_path, cover_art_id, artist, album_artist, year, compilation, song_count, duration, genre, created_at, updated_at) select id, name, artist_id, cover_art_path, cover_art_id, artist, album_artist, year, compilation, song_count, duration, genre, created_at, updated_at from album;

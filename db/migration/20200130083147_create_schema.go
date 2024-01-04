@@ -30,8 +30,8 @@ create table if not exists album
 	song_count integer default 0 not null,
 	duration integer default 0 not null,
 	genre varchar(255) default '' not null,
-	created_at datetime,
-	updated_at datetime
+	created_at timestamp,
+	updated_at timestamp
 );
 
 create index if not exists album_artist
@@ -57,10 +57,10 @@ create table if not exists annotation
 	item_id varchar(255) default '' not null,
 	item_type varchar(255) default '' not null,
 	play_count integer,
-	play_date datetime,
+	play_date timestamp,
 	rating integer,
 	starred bool default FALSE not null,
-	starred_at datetime,
+	starred_at timestamp,
 	unique (user_id, item_id, item_type)
 );
 
@@ -108,8 +108,8 @@ create table if not exists media_file
 	bit_rate integer default 0 not null,
 	genre varchar(255) default '' not null,
 	compilation bool default FALSE not null,
-	created_at datetime,
-	updated_at datetime
+	created_at timestamp,
+	updated_at timestamp
 );
 
 create index if not exists media_file_album_id
@@ -160,7 +160,7 @@ create index if not exists search_full_text
 create index if not exists search_table
 	on search ("table");
 
-create table if not exists user
+create table if not exists "user"
 (
 	id varchar(255) not null
 		primary key,
@@ -171,10 +171,10 @@ create table if not exists user
 		unique,
 	password varchar(255) default '' not null,
 	is_admin bool default FALSE not null,
-	last_login_at datetime,
-	last_access_at datetime,
-	created_at datetime not null,
-	updated_at datetime not null
+	last_login_at timestamp,
+	last_access_at timestamp,
+	created_at timestamp not null,
+	updated_at timestamp not null
 );`)
 	return err
 }

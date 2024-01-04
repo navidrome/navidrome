@@ -20,7 +20,7 @@ func upUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("update media_file set comment = ?, lyrics = ? where id = ?")
+	stmt, err := tx.Prepare("update media_file set comment = $1, lyrics = $2 where id = $3")
 	if err != nil {
 		return err
 	}

@@ -79,7 +79,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
-	return r.withGenres(sql).GroupBy("artist.id")
+	return r.withGenres(sql)
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {

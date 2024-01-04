@@ -60,8 +60,8 @@ create table playlist_dg_tmp
 	song_count integer default 0 not null,
 	owner varchar(255) default '' not null,
 	public bool default FALSE not null,
-	created_at datetime,
-	updated_at datetime
+	created_at timestamp,
+	updated_at timestamp
 );
 
 insert into playlist_dg_tmp(id, name, comment, duration, owner, public, created_at, updated_at) 

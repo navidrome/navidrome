@@ -141,8 +141,8 @@ func (r *mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, erro
 	pathLen := utf8.RuneCountInString(path)
 	sel0 := r.newSelect().Columns("media_file.*", fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
 		Where(pathStartsWith(path))
-	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
-		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
+	sel := r.newSelect().Columns("*").
+		Where(Eq{"item NOT LIKE '*" + string(os.PathSeparator) + "*'": true}).FromSelect(sel0, "sel0")
 
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)

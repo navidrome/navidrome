@@ -24,7 +24,7 @@ alter table album
 alter table album
 	add external_url varchar(255) default '' not null;
 alter table album
-	add external_info_updated_at datetime;
+	add external_info_updated_at timestamp;
 `)
 	return err
 }

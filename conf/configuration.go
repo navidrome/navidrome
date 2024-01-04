@@ -25,6 +25,7 @@ type configOptions struct {
 	DataFolder                   string
 	CacheFolder                  string
 	DbPath                       string
+	DbDriver                     string
 	LogLevel                     string
 	ScanInterval                 time.Duration
 	ScanSchedule                 string
@@ -180,6 +181,13 @@ func Load() {
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
+		Server.DbDriver = "sqlite3"
+	}
+	if strings.HasPrefix(Server.DbPath, "postgres://") {
+		Server.DbDriver = "pgx"
+	} else if Server.DbPath == ":memory:" {
+		Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
+		Server.DbDriver = "sqlite3"
 	}
 
 	log.SetLevelString(Server.LogLevel)

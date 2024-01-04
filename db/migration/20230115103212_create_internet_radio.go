@@ -19,8 +19,8 @@ create table if not exists radio
 	name          varchar not null unique,
 	stream_url    varchar not null,
 	home_page_url varchar default '' not null,
-	created_at    datetime,
-	updated_at    datetime
+	created_at    timestamp,
+	updated_at    timestamp
 );
 `)
 	return err

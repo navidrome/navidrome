@@ -24,7 +24,7 @@ func upAlterLyricColumn(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`update media_file SET lyrics = ? where id = ?`)
+	stmt, err := tx.Prepare(`update media_file SET lyrics = $1 where id = $2`)
 	if err != nil {
 		return err
 	}

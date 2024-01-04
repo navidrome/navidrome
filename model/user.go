@@ -22,6 +22,12 @@ type User struct {
 	CurrentPassword string `structs:"current_password,omitempty" json:"currentPassword,omitempty"`
 }
 
+// TableName overrides the table name used by User to '"user"' instead of 'user'. This is to support Postgres
+// which has 'user' as a reserved word.
+func (User) TableName() string {
+	return `"user"`
+}
+
 type Users []User
 
 type UserRepository interface {
