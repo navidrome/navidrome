@@ -183,7 +183,7 @@ func Load() {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 		Server.DbDriver = "sqlite3"
 	}
-	if strings.HasPrefix(Server.DbPath, "postgres://") {
+	if strings.HasPrefix(Server.DbPath, "postgres://") || strings.HasPrefix(Server.DbPath, "postgresql://") {
 		Server.DbDriver = "pgx"
 	} else if Server.DbPath == ":memory:" {
 		Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
