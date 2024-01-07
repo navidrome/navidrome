@@ -137,7 +137,7 @@ var (
 
 func randomSocketName(prefix, suffix string) string {
 	randBytes := make([]byte, 16)
-	// we can saely ignore the return value since we're loading into a precreated, fixedsized buffer
+	// we can safely ignore the return value since we're loading into a precreated, fixedsized buffer
 	_, _ = rand.Read(randBytes)
 
 	socketPath := os.TempDir()
