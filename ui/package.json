@@ -43,7 +43,7 @@
     "@testing-library/react-hooks": "^7.0.2",
     "@testing-library/user-event": "^14.5.1",
     "css-mediaquery": "^0.1.2",
-    "prettier": "3.1.1",
+    "prettier": "3.2.2",
     "ra-test": "^3.19.12",
     "react-scripts": "5.0.1",
     "workbox-cli": "^6.3.0"
