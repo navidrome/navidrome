@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -61,28 +62,48 @@ var _ = Describe("AbsoluteURL", func() {
 	})
 })
 
-var _ = Describe("updateSocketPermission", func() {
-	tempDir, _ := os.MkdirTemp("", "")
-	socketPath := filepath.Join(tempDir, "test.sock")
-	file, _ := os.Create(socketPath)
-	file.Close()
+var _ = Describe("createUnixSocketFile", func() {
+	var socketPath string
+
+	BeforeEach(func() {
+		tempDir, _ := os.MkdirTemp("", "create_unix_socket_file_test")
+		socketPath = filepath.Join(tempDir, "test.sock")
+		DeferCleanup(func() {
+			_ = os.RemoveAll(tempDir)
+		})
+	})
 
 	When("unixSocketPerm is valid", func() {
 		It("updates the permission of the unix socket file and returns nil", func() {
-			err := updateSocketPermission(socketPath, "0017")
+			_, err := createUnixSocketFile(socketPath, "0777")
 			fileInfo, _ := os.Stat(socketPath)
 			actualPermission := fileInfo.Mode().Perm()
 
-			Expect(actualPermission).To(Equal(os.FileMode(0017)))
-			Expect(err).To(BeNil())
+			Expect(actualPermission).To(Equal(os.FileMode(0777)))
+			Expect(err).ToNot(HaveOccurred())
+
 		})
 	})
 
 	When("unixSocketPerm is invalid", func() {
 		It("returns an error", func() {
-			err := updateSocketPermission(socketPath, "invalid")
-			Expect(err).NotTo(BeNil())
-		})
+			_, err := createUnixSocketFile(socketPath, "invalid")
+			Expect(err).To(HaveOccurred())
 
+		})
+	})
+
+	When("file already exists", func() {
+		It("recreates the file as a socket with the right permissions", func() {
+			_, err := os.Create(socketPath)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(os.Chmod(socketPath, os.FileMode(0777))).To(Succeed())
+
+			_, err = createUnixSocketFile(socketPath, "0600")
+			Expect(err).ToNot(HaveOccurred())
+			fileInfo, _ := os.Stat(socketPath)
+			Expect(fileInfo.Mode().Perm()).To(Equal(os.FileMode(0600)))
+			Expect(fileInfo.Mode().Type()).To(Equal(fs.ModeSocket))
+		})
 	})
 })

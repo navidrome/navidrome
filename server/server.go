@@ -73,17 +73,9 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	var err error
 	if strings.HasPrefix(addr, "unix:") {
 		socketPath := strings.TrimPrefix(addr, "unix:")
-		// Remove the socket file if it already exists
-		if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("error removing previous unix socket file: %w", err)
-		}
-		listener, err = net.Listen("unix", socketPath)
+		listener, err = createUnixSocketFile(socketPath, conf.Server.UnixSocketPerm)
 		if err != nil {
-			return fmt.Errorf("error creating unix socket listener: %w", err)
-		}
-		err = updateSocketPermission(socketPath, conf.Server.UnixSocketPerm)
-		if err != nil {
-			return fmt.Errorf("error updating permission of unix socket file: %w", err)
+			return err
 		}
 	} else {
 		addr = fmt.Sprintf("%s:%d", addr, port)
@@ -140,6 +132,28 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 		log.Error(ctx, "Unexpected error in http.Shutdown()", err)
 	}
 	return nil
+}
+
+func createUnixSocketFile(socketPath string, socketPerm string) (net.Listener, error) {
+	// Remove the socket file if it already exists
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("error removing previous unix socket file: %w", err)
+	}
+	// Create listener
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating unix socket listener: %w", err)
+	}
+	// Converts the socketPerm to uint and updates the permission of the unix socket file
+	perm, err := strconv.ParseUint(socketPerm, 8, 32)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing unix socket file permissions: %w", err)
+	}
+	err = os.Chmod(socketPath, os.FileMode(perm))
+	if err != nil {
+		return nil, fmt.Errorf("error updating permission of unix socket file: %w", err)
+	}
+	return listener, nil
 }
 
 func (s *Server) initRoutes() {
@@ -226,19 +240,6 @@ func (s *Server) frontendAssetsHandler() http.Handler {
 	r.Handle("/", Index(s.ds, ui.BuildAssets()))
 	r.Handle("/*", http.StripPrefix(s.appRoot, http.FileServer(http.FS(ui.BuildAssets()))))
 	return r
-}
-
-// Converts the unixSocketPerm to uint and updates the  permission of the unix socket file
-func updateSocketPermission(socketPath string, unixSocketPerm string) error {
-	perm, err := strconv.ParseUint(unixSocketPerm, 8, 32)
-	if err != nil {
-		return err
-	}
-	err = os.Chmod(socketPath, os.FileMode(perm))
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func AbsoluteURL(r *http.Request, u string, params url.Values) string {
