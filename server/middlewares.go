@@ -157,6 +157,15 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// realIPMiddleware wraps the middleware.RealIP middleware function, bypassing it if the
+// ReverseProxyWhitelist configuration option is set.
+func realIPMiddleware(h http.Handler) http.Handler {
+	if conf.Server.ReverseProxyWhitelist == "" {
+		return middleware.RealIP(h)
+	}
+	return h
+}
+
 // serverAddressMiddleware is a middleware function that modifies the request object
 // to reflect the address of the server handling the request, as determined by the
 // presence of X-Forwarded-* headers or the scheme and host of the request URL.

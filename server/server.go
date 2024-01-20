@@ -164,18 +164,13 @@ func (s *Server) initRoutes() {
 		secureMiddleware(),
 		corsHandler(),
 		middleware.RequestID,
-	}
-	if conf.Server.ReverseProxyWhitelist == "" {
-		middlewares = append(middlewares, middleware.RealIP)
-	}
-
-	middlewares = append(middlewares,
+		realIPMiddleware,
 		middleware.Recoverer,
 		middleware.Heartbeat("/ping"),
 		robotsTXT(ui.BuildAssets()),
 		serverAddressMiddleware,
 		clientUniqueIDMiddleware,
-	)
+	}
 
 	// Mount the Native API /events endpoint with all middlewares, except the compress and request logger,
 	// adding the authentication middlewares
