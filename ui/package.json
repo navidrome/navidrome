@@ -9,7 +9,7 @@
     "@material-ui/styles": "^4.11.5",
     "blueimp-md5": "^2.19.0",
     "clsx": "^2.1.0",
-    "connected-react-router": "^6.9.1",
+    "connected-react-router": "^6.9.3",
     "deepmerge": "^4.3.1",
     "history": "^4.10.1",
     "inflection": "^1.13.1",
