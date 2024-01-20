@@ -54,7 +54,6 @@ func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler
 }
 
 // Run starts the server with the given address, and if specified, with TLS enabled.
-// Updates the permission of the created unix socket file based on the provided conf.Server.UnixSocketPerm (default 0017)
 func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) error {
 	// Mount the router for the frontend assets
 	s.MountRouter("WebUI", consts.URLPathUI, s.frontendAssetsHandler())
