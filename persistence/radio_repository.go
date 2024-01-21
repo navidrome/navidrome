@@ -35,7 +35,7 @@ func (r *radioRepository) isPermitted() bool {
 }
 
 func (r *radioRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelect(options...)
+	sql := r.newSelect()
 	return r.count(sql, options...)
 }
 
