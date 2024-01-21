@@ -77,37 +77,36 @@ func (t *MpvTrack) SetVolume(value float32) {
 	// mpv's volume as described in the --volume parameter:
 	// Set the startup volume. 0 means silence, 100 means no volume reduction or amplification.
 	//  Negative values can be passed for compatibility, but are treated as 0.
-	log.Debug("request for gain", "gain", value)
+	log.Debug("Setting volume", "volume", value, "track", t)
 	vol := int(value * 100)
 
 	err := t.Conn.Set("volume", vol)
 	if err != nil {
-		log.Error(err)
+		log.Error("Error setting volume", "volume", value, "track", t, err)
 	}
-	log.Debug("set volume", "volume", vol)
 }
 
 func (t *MpvTrack) Unpause() {
+	log.Debug("Unpausing track", "track", t)
 	err := t.Conn.Set("pause", false)
 	if err != nil {
-		log.Error(err)
+		log.Error("Error unpausing track", "track", t, err)
 	}
-	log.Debug("Unpaused track", "track", t)
 }
 
 func (t *MpvTrack) Pause() {
+	log.Debug("Pausing track", "track", t)
 	err := t.Conn.Set("pause", true)
 	if err != nil {
-		log.Error(err)
+		log.Error("Error pausing track", "track", t, err)
 	}
-	log.Info("paused track")
 }
 
 func (t *MpvTrack) Close() {
-	log.Debug("closing resources")
+	log.Debug("Closing resources", "track", t)
 	t.CloseCalled = true
 	// trying to shutdown mpv process using socket
-	if t.isSocketfilePresent() {
+	if t.isSocketFilePresent() {
 		log.Debug("sending shutdown command")
 		_, err := t.Conn.Call("quit")
 		if err != nil {
@@ -117,22 +116,22 @@ func (t *MpvTrack) Close() {
 				log.Debug("cancelling executor")
 				err = t.Exe.Cancel()
 				if err != nil {
-					log.Error("error canceling executor")
+					log.Error("Error canceling executor", err)
 				}
 			}
 		}
 	}
 
-	if t.isSocketfilePresent() {
+	if t.isSocketFilePresent() {
 		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
 		err := os.Remove(t.IPCSocketName)
 		if err != nil {
-			log.Error("error cleaning up socketfile: ", t.IPCSocketName)
+			log.Error("Error cleaning up socketfile", "socketfile", t.IPCSocketName, err)
 		}
 	}
 }
 
-func (t *MpvTrack) isSocketfilePresent() bool {
+func (t *MpvTrack) isSocketFilePresent() bool {
 	if len(t.IPCSocketName) < 1 {
 		return false
 	}
@@ -158,13 +157,13 @@ func (t *MpvTrack) Position() int {
 		}
 
 		if err != nil {
-			log.Error("Error getting position in track", err)
+			log.Error("Error getting position in track", "track", t, err)
 			return 0
 		}
 
 		pos, ok := position.(float64)
 		if !ok {
-			log.Error("Could not cast position from mpv into float64", "position", position)
+			log.Error("Could not cast position from mpv into float64", "position", position, "track", t)
 			return 0
 		} else {
 			return int(pos)
@@ -174,30 +173,31 @@ func (t *MpvTrack) Position() int {
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {
+	log.Debug("Setting position", "offset", offset, "track", t)
 	pos := t.Position()
 	if pos == offset {
-		log.Debug("no position difference, skipping operation")
+		log.Debug("No position difference, skipping operation", "track", t)
 		return nil
 	}
 	err := t.Conn.Set("time-pos", float64(offset))
 	if err != nil {
-		log.Error("could not set the position in track", "offset", offset, err)
+		log.Error("Could not set the position in track", "track", t, "offset", offset, err)
 		return err
 	}
-	log.Info("set position", "offset", offset)
 	return nil
 }
 
 func (t *MpvTrack) IsPlaying() bool {
+	log.Debug("Checking if track is playing", "track", t)
 	pausing, err := t.Conn.Get("pause")
 	if err != nil {
-		log.Error("problem getting paused status", err)
+		log.Error("Problem getting paused status", "track", t, err)
 		return false
 	}
 
 	pause, ok := pausing.(bool)
 	if !ok {
-		log.Error("could not cast pausing to boolean")
+		log.Error("Could not cast pausing to boolean", "track", t, "value", pausing)
 		return false
 	}
 	return !pause
