@@ -101,6 +101,6 @@ func (d *mergedDir) ReadDir(count int) ([]fs.DirEntry, error) {
 
 func (d *mergedDir) Close() error               { return nil }
 func (d *mergedDir) Stat() (fs.FileInfo, error) { return d.info, nil }
-func (d *mergedDir) Read([]byte) (n int, err error) {
+func (d *mergedDir) Read([]byte) (int, error) {
 	return 0, &fs.PathError{Op: "read", Path: d.name, Err: errors.New("is a directory")}
 }
