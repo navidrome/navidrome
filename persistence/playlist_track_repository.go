@@ -30,6 +30,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	}
 	pls, err := r.Get(playlistId)
 	if err != nil {
+		log.Error(r.ctx, "Error getting playlist's tracks - THIS SHOULD NOT HAPPEN!", "playlistId", playlistId, err)
 		return nil
 	}
 	if refreshSmartPlaylist {
