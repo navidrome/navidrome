@@ -160,7 +160,7 @@ func (s *Server) initRoutes() {
 
 	r := chi.NewRouter()
 
-	middlewares := chi.Middlewares{
+	defaultMiddlewares := chi.Middlewares{
 		secureMiddleware(),
 		corsHandler(),
 		middleware.RequestID,
@@ -170,30 +170,26 @@ func (s *Server) initRoutes() {
 		robotsTXT(ui.BuildAssets()),
 		serverAddressMiddleware,
 		clientUniqueIDMiddleware,
+		compressMiddleware(),
+		loggerInjector,
+		authHeaderMapper,
+		jwtVerifier,
 	}
 
-	// Mount the Native API /events endpoint with all middlewares, except the compress and request logger,
-	// adding the authentication middlewares
+	// Mount the Native API /events endpoint with all default middlewares, adding the authentication middlewares
 	if conf.Server.DevActivityPanel {
 		r.Group(func(r chi.Router) {
-			r.Use(middlewares...)
-			r.Use(loggerInjector)
-			r.Use(authHeaderMapper)
-			r.Use(jwtVerifier)
+			r.Use(defaultMiddlewares...)
 			r.Use(Authenticator(s.ds))
 			r.Use(JWTRefresher)
 			r.Handle(path.Join(conf.Server.BasePath, consts.URLPathNativeAPI, "events"), s.broker)
 		})
 	}
 
-	// Configure the router with the default middlewares
+	// Configure the router with the default middlewares and requestLogger
 	r.Group(func(r chi.Router) {
-		r.Use(middlewares...)
-		r.Use(compressMiddleware())
-		r.Use(loggerInjector)
+		r.Use(defaultMiddlewares...)
 		r.Use(requestLogger)
-		r.Use(authHeaderMapper)
-		r.Use(jwtVerifier)
 		s.router = r
 	})
 }

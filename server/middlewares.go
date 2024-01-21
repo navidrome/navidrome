@@ -116,6 +116,7 @@ func compressMiddleware() func(http.Handler) http.Handler {
 		"text/plain",
 		"text/css",
 		"text/javascript",
+		"text/event-stream",
 	)
 }
 
