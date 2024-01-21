@@ -16,12 +16,13 @@ import (
 )
 
 type FFmpeg interface {
-	Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error)
+	Transcode(ctx context.Context, command, path string, maxBitRate, offset int) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error)
 	ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
+	IsAvailable() bool
 }
 
 func New() FFmpeg {
@@ -37,11 +38,11 @@ const (
 
 type ffmpeg struct{}
 
-func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate int) (io.ReadCloser, error) {
+func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate, offset int) (io.ReadCloser, error) {
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
-	args := createFFmpegCommand(command, path, maxBitRate)
+	args := createFFmpegCommand(command, path, maxBitRate, offset)
 	return e.start(ctx, args)
 }
 
@@ -49,17 +50,17 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
-	args := createFFmpegCommand(extractImageCmd, path, 0)
+	args := createFFmpegCommand(extractImageCmd, path, 0, 0)
 	return e.start(ctx, args)
 }
 
 func (e *ffmpeg) ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error) {
-	args := createFFmpegCommand(createWavCmd, path, 0)
+	args := createFFmpegCommand(createWavCmd, path, 0, 0)
 	return e.start(ctx, args)
 }
 
 func (e *ffmpeg) ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error) {
-	args := createFFmpegCommand(createFLACCmd, path, 0)
+	args := createFFmpegCommand(createFLACCmd, path, 0, 0)
 	return e.start(ctx, args)
 }
 
@@ -76,6 +77,11 @@ func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
 
 func (e *ffmpeg) CmdPath() (string, error) {
 	return ffmpegCmd()
+}
+
+func (e *ffmpeg) IsAvailable() bool {
+	_, err := ffmpegCmd()
+	return err == nil
 }
 
 func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {
@@ -100,7 +106,7 @@ type ffCmd struct {
 func (j *ffCmd) start() error {
 	cmd := exec.Command(j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
-	if log.CurrentLevel() >= log.LevelTrace {
+	if log.IsGreaterOrEqualTo(log.LevelTrace) {
 		cmd.Stderr = os.Stderr
 	} else {
 		cmd.Stderr = io.Discard
@@ -127,15 +133,25 @@ func (j *ffCmd) wait() {
 }
 
 // Path will always be an absolute path
-func createFFmpegCommand(cmd, path string, maxBitRate int) []string {
+func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 	split := strings.Split(fixCmd(cmd), " ")
-	for i, s := range split {
-		s = strings.ReplaceAll(s, "%s", path)
-		s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
-		split[i] = s
+	var parts []string
+
+	for _, s := range split {
+		if strings.Contains(s, "%s") {
+			s = strings.ReplaceAll(s, "%s", path)
+			parts = append(parts, s)
+			if offset > 0 && !strings.Contains(cmd, "%t") {
+				parts = append(parts, "-ss", strconv.Itoa(offset))
+			}
+		} else {
+			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
+			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
+			parts = append(parts, s)
+		}
 	}
 
-	return split
+	return parts
 }
 
 func createProbeCommand(cmd string, inputs []string) []string {

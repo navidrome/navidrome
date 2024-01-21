@@ -140,7 +140,7 @@ const TogglePublicInput = ({ resource, source }) => {
         console.log(error)
         notify('ra.page.error', 'warning')
       },
-    }
+    },
   )
 
   const handleClick = (e) => {
@@ -185,7 +185,7 @@ const PlaylistList = (props) => {
       external: <BooleanField source="externalId" looseValue />,
       externalSync: <BooleanField source="externalSync" />,
     }),
-    [isDesktop, isXsmall]
+    [isDesktop, isXsmall],
   )
 
   const columns = useSelectedFields({

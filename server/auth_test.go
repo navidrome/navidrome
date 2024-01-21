@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -31,9 +32,11 @@ var _ = Describe("Auth", func() {
 		})
 
 		Describe("createAdmin", func() {
+			var createdAt time.Time
 			BeforeEach(func() {
 				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
+				createdAt = time.Now()
 				createAdmin(ds)(resp, req)
 			})
 
@@ -43,6 +46,7 @@ var _ = Describe("Auth", func() {
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
+				Expect(*u.LastLoginAt).To(BeTemporally(">=", createdAt, time.Second))
 			})
 
 			It("returns the expected payload", func() {

@@ -21,7 +21,7 @@ export const ListenBrainzPlaylistToggle = () => {
           notify('message.agentRecommendedUnsyncFail', 'warning', {
             agent: 'ListenBrainz',
             error: error.body?.error || error.message,
-          })
+          }),
         )
     } else {
       httpClient('/api/listenbrainz/playlist', { method: 'PUT' })
@@ -35,7 +35,7 @@ export const ListenBrainzPlaylistToggle = () => {
           notify('message.agentRecommendedSyncFail', 'warning', {
             agent: 'ListenBrainz',
             error: error.body?.error || error.message,
-          })
+          }),
         )
     }
   }

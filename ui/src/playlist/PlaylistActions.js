@@ -67,7 +67,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
         .then((res) => {
           const data = res.data.reduce(
             (acc, curr) => ({ ...acc, [curr.id]: curr }),
-            {}
+            {},
           )
           dispatch(action(data))
         })
@@ -75,7 +75,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
           notify('ra.page.error', 'warning')
         })
     },
-    [dataProvider, dispatch, record, data, ids, notify]
+    [dataProvider, dispatch, record, data, ids, notify],
   )
 
   const handlePlay = React.useCallback(() => {
@@ -116,7 +116,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
         link.click()
         link.parentNode.removeChild(link)
       }),
-    [record]
+    [record],
   )
 
   const handleResync = React.useCallback(async () => {

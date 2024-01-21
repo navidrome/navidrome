@@ -54,7 +54,7 @@ func (j *Executor) start() error {
 	j.ctx = ctx
 	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
-	if log.CurrentLevel() >= log.LevelTrace {
+	if log.IsGreaterOrEqualTo(log.LevelTrace) {
 		cmd.Stderr = os.Stderr
 	} else {
 		cmd.Stderr = io.Discard

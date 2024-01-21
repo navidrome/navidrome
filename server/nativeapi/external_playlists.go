@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -14,7 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 var (
@@ -23,15 +22,6 @@ var (
 
 type webError struct {
 	Error string `json:"error"`
-}
-
-func requiredParamString(w *http.ResponseWriter, r *http.Request, param string) (string, bool) {
-	p := utils.ParamString(r, param)
-	if p == "" {
-		replyError(r.Context(), *w, fmt.Errorf(`required param "%s" is missing`, param), http.StatusBadRequest)
-		return p, false
-	}
-	return p, true
 }
 
 func replyError(ctx context.Context, w http.ResponseWriter, err error, status int) {
@@ -71,8 +61,9 @@ func (n *Router) getPlaylists() http.HandlerFunc {
 		ctx := r.Context()
 		user, _ := request.UserFrom(r.Context())
 
-		start := utils.ParamInt(r, "_start", 0)
-		end := utils.ParamInt(r, "_end", 0)
+		param := req.Params(r)
+		start := param.IntOr("_start", 0)
+		end := param.IntOr("_end", 0)
 
 		if start >= end {
 			replyError(ctx, w, errBadRange, http.StatusBadRequest)
@@ -81,13 +72,15 @@ func (n *Router) getPlaylists() http.HandlerFunc {
 
 		count := end - start
 
-		agent, ok := requiredParamString(&w, r, "agent")
-		if !ok {
+		agent, err := param.String("agent")
+		if err != nil {
+			replyError(ctx, w, err, http.StatusBadRequest)
 			return
 		}
 
-		plsType, ok := requiredParamString(&w, r, "type")
-		if !ok {
+		plsType, err := param.String("type")
+		if err != nil {
+			replyError(ctx, w, err, http.StatusBadRequest)
 			return
 		}
 
@@ -131,7 +124,8 @@ func (n *Router) fetchPlaylists() http.HandlerFunc {
 			return
 		}
 
-		err = n.pls.ImportPlaylists(ctx, plsImport.Update, user.ID, plsImport.Agent, plsImport.Playlists)
+		err = n.pls.ImportPlaylists(
+			ctx, plsImport.Update, user.ID, plsImport.Agent, plsImport.Playlists)
 
 		if err != nil {
 			if errors.Is(model.ErrNotAuthorized, err) {

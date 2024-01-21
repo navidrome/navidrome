@@ -41,7 +41,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
-	playlistRetriever := external_playlists.GetPlaylistRetriever(dataStore)
+	playlistRetriever := external_playlists.NewPlaylistRetriever(dataStore)
 	playlists := core.NewPlaylists(dataStore)
 	router := nativeapi.New(dataStore, share, playlistRetriever, playlists)
 	return router
@@ -98,6 +98,13 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	return router
 }
 
+func CreatePlaylistRetriever() external_playlists.PlaylistRetriever {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	playlistRetriever := external_playlists.NewPlaylistRetriever(dataStore)
+	return playlistRetriever
+}
+
 func createScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
@@ -109,8 +116,7 @@ func createScanner() scanner.Scanner {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	playlistRetriever := external_playlists.GetPlaylistRetriever(dataStore)
-	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker, playlistRetriever)
+	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
 	return scannerScanner
 }
 

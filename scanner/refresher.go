@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/maps"
 )
@@ -71,7 +70,7 @@ func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity 
 	}
 
 	ids := maps.Keys(m)
-	chunks := utils.BreakUpStringSlice(ids, 100)
+	chunks := slice.BreakUp(ids, 100)
 	for _, chunk := range chunks {
 		err := refresh(ctx, chunk...)
 		if err != nil {
@@ -142,7 +141,8 @@ func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
 		// Force a external metadata lookup on next access
 		a.ExternalInfoUpdatedAt = time.Time{}
 
-		err := repo.Put(&a)
+		// Do not remove old metadata
+		err := repo.Put(&a, "album_count", "genres", "external_info_updated_at", "mbz_artist_id", "name", "order_artist_name", "size", "sort_artist_name", "song_count")
 		if err != nil {
 			return err
 		}

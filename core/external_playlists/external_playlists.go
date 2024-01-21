@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils/singleton"
 )
 
 const (
@@ -16,8 +16,8 @@ const (
 )
 
 type playlistImportData struct {
-	Name string `json:"name"`
-	Sync bool   `json:"sync"`
+	Name string `json:"name" xml:"name"`
+	Sync bool   `json:"sync" xml:"sync"`
 }
 
 type ImportMap = map[string]playlistImportData
@@ -27,7 +27,7 @@ type PlaylistRetriever interface {
 	GetPlaylists(ctx context.Context, offset, count int, userId, agent, playlistType string) (*ExternalPlaylists, error)
 	ImportPlaylists(ctx context.Context, update bool, userId, agent string, mapping ImportMap) error
 	SyncPlaylist(ctx context.Context, playlistId string) error
-	SyncRecommended(ctx context.Context, userrId, agent string) error
+	SyncPlaylists(ctx context.Context) error
 }
 
 type playlistRetriever struct {
@@ -42,13 +42,7 @@ var (
 	ErrorUnsupportedType = errors.New("unsupported playlist type")
 )
 
-func GetPlaylistRetriever(ds model.DataStore) PlaylistRetriever {
-	return singleton.GetInstance(func() *playlistRetriever {
-		return newPlaylistRetriever(ds)
-	})
-}
-
-func newPlaylistRetriever(ds model.DataStore) *playlistRetriever {
+func NewPlaylistRetriever(ds model.DataStore) PlaylistRetriever {
 	p := &playlistRetriever{
 		ds:             ds,
 		retrievers:     make(map[string]PlaylistAgent),
@@ -210,6 +204,46 @@ func (p *playlistRetriever) SyncRecommended(ctx context.Context, userId, agent s
 	if err != nil {
 		log.Error(ctx, "Failed to sync recommended playlists", "agent", agent, "user", userId, err)
 	}
+	return err
+}
+
+func (p *playlistRetriever) SyncPlaylists(ctx context.Context) error {
+	playlists, err := p.ds.Playlist(ctx).GetSyncedPlaylists()
+
+	if err != nil {
+		return err
+	}
+
+	for _, playlist := range playlists {
+		user := model.User{
+			ID: playlist.OwnerID,
+		}
+		nestedCtx := request.WithUser(ctx, user)
+		err = p.SyncPlaylist(nestedCtx, playlist.ID)
+		if err != nil {
+			log.Error(nestedCtx, "Failed to sync playlist", "id", playlist.ID, err)
+		}
+	}
+
+	props, err := p.ds.UserProps(ctx).GetAllWithPrefix(UserAgentKey)
+
+	if err != nil {
+		return err
+	}
+
+	for _, prop := range props {
+		split := strings.Split(prop.Key, UserAgentKey)
+		user := model.User{
+			ID: prop.UserID,
+		}
+		nestedCtx := request.WithUser(ctx, user)
+		err = p.SyncRecommended(nestedCtx, prop.UserID, split[1])
+
+		if err != nil {
+			log.Error(ctx, "Failed to fetch recommended playlists", "user", prop.UserID, "agent", split[1])
+		}
+	}
+
 	return err
 }
 

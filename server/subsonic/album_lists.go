@@ -10,12 +10,13 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
-	typ, err := requiredParamString(r, "type")
+	p := req.Params(r)
+	typ, err := p.String("type")
 	if err != nil {
 		return nil, 0, err
 	}
@@ -39,17 +40,17 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	case "highest":
 		opts = filter.AlbumsByRating()
 	case "byGenre":
-		genre, err := requiredParamString(r, "genre")
+		genre, err := p.String("genre")
 		if err != nil {
 			return nil, 0, err
 		}
 		opts = filter.AlbumsByGenre(genre)
 	case "byYear":
-		fromYear, err := requiredParamInt(r, "fromYear")
+		fromYear, err := p.Int("fromYear")
 		if err != nil {
 			return nil, 0, err
 		}
-		toYear, err := requiredParamInt(r, "toYear")
+		toYear, err := p.Int("toYear")
 		if err != nil {
 			return nil, 0, err
 		}
@@ -59,18 +60,18 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 		return nil, 0, newError(responses.ErrorGeneric, "type '%s' not implemented", typ)
 	}
 
-	opts.Offset = utils.ParamInt(r, "offset", 0)
-	opts.Max = number.Min(utils.ParamInt(r, "size", 10), 500)
+	opts.Offset = p.IntOr("offset", 0)
+	opts.Max = number.Min(p.IntOr("size", 10), 500)
 	albums, err := api.ds.Album(r.Context()).GetAllWithoutGenres(opts)
 
 	if err != nil {
-		log.Error(r, "Error retrieving albums", "error", err)
+		log.Error(r, "Error retrieving albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
 	count, err := api.ds.Album(r.Context()).CountAll(opts)
 	if err != nil {
-		log.Error(r, "Error counting albums", "error", err)
+		log.Error(r, "Error counting albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
@@ -108,17 +109,17 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 	options := filter.Starred()
 	artists, err := api.ds.Artist(ctx).GetAll(options)
 	if err != nil {
-		log.Error(r, "Error retrieving starred artists", "error", err)
+		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
 	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(options)
 	if err != nil {
-		log.Error(r, "Error retrieving starred albums", "error", err)
+		log.Error(r, "Error retrieving starred albums", err)
 		return nil, err
 	}
 	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(options)
 	if err != nil {
-		log.Error(r, "Error retrieving starred mediaFiles", "error", err)
+		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
 	}
 
@@ -145,7 +146,7 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	npInfo, err := api.scrobbler.GetNowPlaying(ctx)
 	if err != nil {
-		log.Error(r, "Error retrieving now playing list", "error", err)
+		log.Error(r, "Error retrieving now playing list", err)
 		return nil, err
 	}
 
@@ -163,14 +164,15 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) {
-	size := number.Min(utils.ParamInt(r, "size", 10), 500)
-	genre := utils.ParamString(r, "genre")
-	fromYear := utils.ParamInt(r, "fromYear", 0)
-	toYear := utils.ParamInt(r, "toYear", 0)
+	p := req.Params(r)
+	size := number.Min(p.IntOr("size", 10), 500)
+	genre, _ := p.String("genre")
+	fromYear := p.IntOr("fromYear", 0)
+	toYear := p.IntOr("toYear", 0)
 
 	songs, err := api.getSongs(r.Context(), 0, size, filter.SongsByRandom(genre, fromYear, toYear))
 	if err != nil {
-		log.Error(r, "Error retrieving random songs", "error", err)
+		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
 	}
 
@@ -181,13 +183,14 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 }
 
 func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error) {
-	count := number.Min(utils.ParamInt(r, "count", 10), 500)
-	offset := utils.ParamInt(r, "offset", 0)
-	genre := utils.ParamString(r, "genre")
+	p := req.Params(r)
+	count := number.Min(p.IntOr("count", 10), 500)
+	offset := p.IntOr("offset", 0)
+	genre, _ := p.String("genre")
 
 	songs, err := api.getSongs(r.Context(), offset, count, filter.SongsByGenre(genre))
 	if err != nil {
-		log.Error(r, "Error retrieving random songs", "error", err)
+		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
 	}
 

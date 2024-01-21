@@ -18,7 +18,7 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 const Version = "1.16.1"
@@ -142,6 +142,7 @@ func (api *Router) routes() http.Handler {
 	r.Group(func(r chi.Router) {
 		hr(r, "getAvatar", api.GetAvatar)
 		h(r, "getLyrics", api.GetLyrics)
+		h(r, "getLyricsBySongId", api.GetLyricsBySongId)
 	})
 	r.Group(func(r chi.Router) {
 		// configure request throttling
@@ -211,20 +212,11 @@ func hr(r chi.Router, path string, f handlerRaw) {
 	handle := func(w http.ResponseWriter, r *http.Request) {
 		res, err := f(w, r)
 		if err != nil {
-			// If it is not a Subsonic error, convert it to an ErrorGeneric
-			var subErr subError
-			if !errors.As(err, &subErr) {
-				if errors.Is(err, model.ErrNotFound) {
-					err = newError(responses.ErrorDataNotFound, "data not found")
-				} else {
-					err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
-				}
-			}
 			sendError(w, r, err)
 			return
 		}
 		if r.Context().Err() != nil {
-			if log.CurrentLevel() >= log.LevelDebug {
+			if log.IsGreaterOrEqualTo(log.LevelDebug) {
 				log.Warn(r.Context(), "Request was interrupted", "endpoint", r.URL.Path, r.Context().Err())
 			}
 			return
@@ -264,21 +256,35 @@ func addHandler(r chi.Router, path string, handle func(w http.ResponseWriter, r 
 	r.HandleFunc("/"+path+".view", handle)
 }
 
-func sendError(w http.ResponseWriter, r *http.Request, err error) {
-	response := newResponse()
-	code := responses.ErrorGeneric
-	var subErr subError
-	if errors.As(err, &subErr) {
-		code = subErr.code
+func mapToSubsonicError(err error) subError {
+	switch {
+	case errors.Is(err, errSubsonic): // do nothing
+	case errors.Is(err, req.ErrMissingParam):
+		err = newError(responses.ErrorMissingParameter, err.Error())
+	case errors.Is(err, req.ErrInvalidParam):
+		err = newError(responses.ErrorGeneric, err.Error())
+	case errors.Is(err, model.ErrNotFound):
+		err = newError(responses.ErrorDataNotFound, "data not found")
+	default:
+		err = newError(responses.ErrorGeneric, fmt.Sprintf("Internal Server Error: %s", err))
 	}
+	var subErr subError
+	errors.As(err, &subErr)
+	return subErr
+}
+
+func sendError(w http.ResponseWriter, r *http.Request, err error) {
+	subErr := mapToSubsonicError(err)
+	response := newResponse()
 	response.Status = "failed"
-	response.Error = &responses.Error{Code: int32(code), Message: err.Error()}
+	response.Error = &responses.Error{Code: int32(subErr.code), Message: subErr.Error()}
 
 	sendResponse(w, r, response)
 }
 
 func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Subsonic) {
-	f := utils.ParamString(r, "f")
+	p := req.Params(r)
+	f, _ := p.String("f")
 	var response []byte
 	switch f {
 	case "json":
@@ -287,7 +293,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		response, _ = json.Marshal(wrapper)
 	case "jsonp":
 		w.Header().Set("Content-Type", "application/javascript")
-		callback := utils.ParamString(r, "callback")
+		callback, _ := p.String("callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
 		data, _ := json.Marshal(wrapper)
 		response = []byte(fmt.Sprintf("%s(%s)", callback, data))
@@ -296,7 +302,7 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		response, _ = xml.Marshal(payload)
 	}
 	if payload.Status == "ok" {
-		if log.CurrentLevel() >= log.LevelTrace {
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
 		} else {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK")

@@ -1,5 +1,5 @@
 // Package playback implements audio playback using PlaybackDevices. It is used to implement the Jukebox mode in turn.
-// It makes use of the BEEP library to do the playback. Major parts are:
+// It makes use of the MPV library to do the playback. Major parts are:
 // - decoder which includes decoding and transcoding of various audio file formats
 // - device implementing the basic functions to work with audio devices like set, play, stop, skip, ...
 // - queue a simple playlist
@@ -19,7 +19,7 @@ import (
 
 type PlaybackServer interface {
 	Run(ctx context.Context) error
-	GetDeviceForUser(user string) (*PlaybackDevice, error)
+	GetDeviceForUser(user string) (*playbackDevice, error)
 	GetMediaFile(id string) (*model.MediaFile, error)
 	GetCtx() *context.Context
 }
@@ -27,7 +27,7 @@ type PlaybackServer interface {
 type playbackServer struct {
 	ctx             *context.Context
 	datastore       model.DataStore
-	playbackDevices []PlaybackDevice
+	playbackDevices []playbackDevice
 }
 
 // GetInstance returns the playback-server singleton
@@ -63,8 +63,8 @@ func (ps *playbackServer) GetCtx() *context.Context {
 	return ps.ctx
 }
 
-func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]PlaybackDevice, error) {
-	pbDevices := make([]PlaybackDevice, max(1, len(devices)))
+func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
+	pbDevices := make([]playbackDevice, max(1, len(devices)))
 	defaultDeviceFound := false
 
 	if defaultDevice == "" {
@@ -76,13 +76,13 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 		// if there is but only one entry and no default given, just use that.
 		if len(devices) == 1 {
 			if len(devices[0]) != 2 {
-				return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
+				return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
 			}
 			pbDevices[0] = *NewPlaybackDevice(ps, devices[0][0], devices[0][1])
 		}
 
 		if len(devices) > 1 {
-			return []PlaybackDevice{}, fmt.Errorf("number of audio device found is %d, but no default device defined. Set Jukebox.Default", len(devices))
+			return []playbackDevice{}, fmt.Errorf("number of audio device found is %d, but no default device defined. Set Jukebox.Default", len(devices))
 		}
 
 		pbDevices[0].Default = true
@@ -91,7 +91,7 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 
 	for idx, audioDevice := range devices {
 		if len(audioDevice) != 2 {
-			return []PlaybackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
+			return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
 		}
 
 		pbDevices[idx] = *NewPlaybackDevice(ps, audioDevice[0], audioDevice[1])
@@ -103,18 +103,18 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 	}
 
 	if !defaultDeviceFound {
-		return []PlaybackDevice{}, fmt.Errorf("default device name not found: %s ", defaultDevice)
+		return []playbackDevice{}, fmt.Errorf("default device name not found: %s ", defaultDevice)
 	}
 	return pbDevices, nil
 }
 
-func (ps *playbackServer) getDefaultDevice() (*PlaybackDevice, error) {
+func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
 	for idx, audioDevice := range ps.playbackDevices {
 		if audioDevice.Default {
 			return &ps.playbackDevices[idx], nil
 		}
 	}
-	return &PlaybackDevice{}, fmt.Errorf("no default device found")
+	return &playbackDevice{}, fmt.Errorf("no default device found")
 }
 
 // GetMediaFile retrieves the MediaFile given by the id parameter
@@ -123,12 +123,12 @@ func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
 }
 
 // GetDeviceForUser returns the audio playback device for the given user. As of now this is but only the default device.
-func (ps *playbackServer) GetDeviceForUser(user string) (*PlaybackDevice, error) {
-	log.Debug("processing GetDevice")
+func (ps *playbackServer) GetDeviceForUser(user string) (*playbackDevice, error) {
+	log.Debug("Processing GetDevice", "user", user)
 	// README: here we might plug-in the user-device mapping one fine day
 	device, err := ps.getDefaultDevice()
 	if err != nil {
-		return &PlaybackDevice{}, err
+		return &playbackDevice{}, err
 	}
 	device.User = user
 	return device, nil

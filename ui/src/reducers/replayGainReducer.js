@@ -18,7 +18,7 @@ const initialState = {
 
 export const replayGainReducer = (
   previousState = initialState,
-  { type, payload }
+  { type, payload },
 ) => {
   switch (type) {
     case CHANGE_GAIN: {

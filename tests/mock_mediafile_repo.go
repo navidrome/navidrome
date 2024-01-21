@@ -79,7 +79,7 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 	}
 	if d, ok := m.data[id]; ok {
 		d.PlayCount++
-		d.PlayDate = timestamp
+		d.PlayDate = &timestamp
 		return nil
 	}
 	return model.ErrNotFound

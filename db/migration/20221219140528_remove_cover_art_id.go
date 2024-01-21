@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upRemoveCoverArtId, downRemoveCoverArtId)
+	goose.AddMigrationContext(upRemoveCoverArtId, downRemoveCoverArtId)
 }
 
-func upRemoveCoverArtId(tx *sql.Tx) error {
+func upRemoveCoverArtId(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table album drop column cover_art_id;
 alter table album rename column cover_art_path to embed_art_path
@@ -22,6 +23,6 @@ alter table album rename column cover_art_path to embed_art_path
 	return forceFullRescan(tx)
 }
 
-func downRemoveCoverArtId(tx *sql.Tx) error {
+func downRemoveCoverArtId(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

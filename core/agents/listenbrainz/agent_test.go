@@ -203,6 +203,7 @@ var _ = Describe("listenBrainzAgent", func() {
 					Expect(list.Tracks).To(BeNil())
 				}
 
+				// IMPORTANT: this must NOT allow the <script> element or onclck js
 				match(0, external_playlists.ExternalPlaylist{
 					Name:        "Daily Jams for example, 2023-03-18 Sat",
 					Description: "Daily jams playlist!",
@@ -215,7 +216,7 @@ var _ = Describe("listenBrainzAgent", func() {
 				})
 				match(1, external_playlists.ExternalPlaylist{
 					Name:        "Top Discoveries of 2022 for example",
-					Description: "<p>\n              This playlist contains the top tracks for example that were first listened to in 2022.\n              </p>\n              <p>\n                For more information on how this playlist is generated, please see our\n                <a href=\"https://musicbrainz.org/doc/YIM2022Playlists\" rel=\"nofollow\">Year in Music 2022 Playlists</a> page.\n              </p>\n           ",
+					Description: "<p>Hi there</p><p>\n              This playlist contains the top tracks for example that were first listened to in 2022.\n              </p>\n              <p>\n                For more information on how this playlist is generated, please see our\n                <a href=\"https://musicbrainz.org/doc/YIM2022Playlists\" rel=\"nofollow\">Year in Music 2022 Playlists</a> page.\n              </p>\n           ",
 					ID:          "00000000-0000-0000-0000-000000000001",
 					Url:         "https://listenbrainz.org/playlist/00000000-0000-0000-0000-000000000001",
 					Creator:     "troi-bot",

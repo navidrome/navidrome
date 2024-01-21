@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+// TODO Remove on Go 1.22, in favor of builtin `min` function.
 func Min[T constraints.Ordered](vs ...T) T {
 	if len(vs) == 0 {
 		var zero T
@@ -21,6 +22,7 @@ func Min[T constraints.Ordered](vs ...T) T {
 	return min
 }
 
+// TODO Remove on Go 1.22, in favor of builtin `max` function.
 func Max[T constraints.Ordered](vs ...T) T {
 	if len(vs) == 0 {
 		var zero T

@@ -50,7 +50,7 @@ func (m *MockArtistRepo) Get(id string) (*model.Artist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockArtistRepo) Put(ar *model.Artist) error {
+func (m *MockArtistRepo) Put(ar *model.Artist, columsToUpdate ...string) error {
 	if m.err {
 		return errors.New("error")
 	}
@@ -67,7 +67,7 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 	}
 	if d, ok := m.data[id]; ok {
 		d.PlayCount++
-		d.PlayDate = timestamp
+		d.PlayDate = &timestamp
 		return nil
 	}
 	return model.ErrNotFound

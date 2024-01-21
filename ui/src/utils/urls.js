@@ -10,7 +10,7 @@ export const baseUrl = (path) => {
 export const shareUrl = (id) => {
   const url = new URL(
     baseUrl(config.publicBaseUrl + '/' + id),
-    window.location.href
+    window.location.href,
   )
   return url.href
 }

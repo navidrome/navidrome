@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -14,7 +13,7 @@ var _ = Describe("Property Repository", func() {
 	var pr model.PropertyRepository
 
 	BeforeEach(func() {
-		pr = NewPropertyRepository(log.NewContext(context.TODO()), orm.NewOrm())
+		pr = NewPropertyRepository(log.NewContext(context.TODO()), getDBXBuilder())
 	})
 
 	It("saves and restore a new property", func() {

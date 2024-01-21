@@ -20,7 +20,6 @@ import (
 const (
 	listenBrainzAgentName = "listenbrainz"
 	sessionKeyProperty    = "ListenBrainzSessionKey"
-	troiBot               = "troi-bot"
 	playlistTypeUser      = "user"
 	playlistTypeCollab    = "collab"
 	playlistTypeCreated   = "created"
@@ -153,6 +152,7 @@ func (l *listenBrainzAgent) GetPlaylists(ctx context.Context, offset, count int,
 	}
 
 	lists := make([]external_playlists.ExternalPlaylist, len(resp.Playlists))
+	syncable := playlistType != playlistTypeCreated
 
 	for i, playlist := range resp.Playlists {
 		pls := playlist.Playlist
@@ -165,7 +165,7 @@ func (l *listenBrainzAgent) GetPlaylists(ctx context.Context, offset, count int,
 			Url:         pls.Identifier,
 			CreatedAt:   pls.Date,
 			UpdatedAt:   pls.Extension.Extension.LastModified,
-			Syncable:    pls.Creator != troiBot,
+			Syncable:    syncable,
 		}
 	}
 
@@ -186,7 +186,10 @@ func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, syn
 		return err
 	}
 
-	syncable := pls.Playlist.Creator != troiBot
+	// From observation, playlists that are created by the user `listenbrainz` (Weekly Jams,
+	// Exploration) are immutable playlists. While `troi-bot` Daily Jams will
+	// be deleted after some period of time, they can be modified for that duration.
+	syncable := pls.Playlist.Creator != listenBrainzAgentName
 
 	if sync && !syncable {
 		return external_playlists.ErrSyncUnsupported

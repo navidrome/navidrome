@@ -5,18 +5,18 @@ import (
 	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type userPropsRepository struct {
 	sqlRepository
 }
 
-func NewUserPropsRepository(ctx context.Context, o orm.QueryExecutor) model.UserPropsRepository {
+func NewUserPropsRepository(ctx context.Context, db dbx.Builder) model.UserPropsRepository {
 	r := &userPropsRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "user_props"
 	return r
 }

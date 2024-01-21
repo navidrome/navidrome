@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 type searchParams struct {
@@ -28,24 +28,25 @@ type searchParams struct {
 }
 
 func (api *Router) getParams(r *http.Request) (*searchParams, error) {
+	p := req.Params(r)
 	var err error
 	sp := &searchParams{}
-	sp.query, err = requiredParamString(r, "query")
+	sp.query, err = p.String("query")
 	if err != nil {
 		return nil, err
 	}
-	sp.artistCount = utils.ParamInt(r, "artistCount", 20)
-	sp.artistOffset = utils.ParamInt(r, "artistOffset", 0)
-	sp.albumCount = utils.ParamInt(r, "albumCount", 20)
-	sp.albumOffset = utils.ParamInt(r, "albumOffset", 0)
-	sp.songCount = utils.ParamInt(r, "songCount", 20)
-	sp.songOffset = utils.ParamInt(r, "songOffset", 0)
+	sp.artistCount = p.IntOr("artistCount", 20)
+	sp.artistOffset = p.IntOr("artistOffset", 0)
+	sp.albumCount = p.IntOr("albumCount", 20)
+	sp.albumOffset = p.IntOr("albumOffset", 0)
+	sp.songCount = p.IntOr("songCount", 20)
+	sp.songOffset = p.IntOr("songOffset", 0)
 	return sp, nil
 }
 
 type searchFunc[T any] func(q string, offset int, size int) (T, error)
 
-func doSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q string, offset, size int, result *T) {
+func callSearch[T any](ctx context.Context, wg *sync.WaitGroup, s searchFunc[T], q string, offset, size int, result *T) {
 	defer wg.Done()
 	if size == 0 {
 		return
@@ -74,9 +75,9 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams) (mediaFiles 
 	q := sanitize.Accents(strings.ToLower(strings.TrimSuffix(sp.query, "*")))
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
-	go doSearch(ctx, wg, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles)
-	go doSearch(ctx, wg, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums)
-	go doSearch(ctx, wg, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists)
+	go callSearch(ctx, wg, api.ds.MediaFile(ctx).Search, q, sp.songOffset, sp.songCount, &mediaFiles)
+	go callSearch(ctx, wg, api.ds.Album(ctx).Search, q, sp.albumOffset, sp.albumCount, &albums)
+	go callSearch(ctx, wg, api.ds.Artist(ctx).Search, q, sp.artistOffset, sp.artistCount, &artists)
 	wg.Wait()
 
 	if ctx.Err() == nil {
@@ -110,7 +111,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
 		}
 		if artist.Starred {
-			searchResult2.Artist[i].Starred = &as[i].StarredAt
+			searchResult2.Artist[i].Starred = as[i].StarredAt
 		}
 	}
 	searchResult2.Album = childrenFromAlbums(ctx, als)
@@ -133,7 +134,7 @@ func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 	for i, artist := range as {
 		searchResult3.Artist[i] = toArtistID3(r, artist)
 	}
-	searchResult3.Album = childrenFromAlbums(ctx, als)
+	searchResult3.Album = buildAlbumsID3(ctx, als)
 	searchResult3.Song = childrenFromMediaFiles(ctx, mfs)
 	response.SearchResult3 = searchResult3
 	return response, nil

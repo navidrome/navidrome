@@ -81,12 +81,6 @@ const (
 	DefaultCacheCleanUpInterval = 10 * time.Minute
 )
 
-// Shared secrets (only add here "secrets" that can be public)
-const (
-	LastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e" // nolint:gosec
-	LastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // nolint:gosec
-)
-
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []map[string]interface{}{
@@ -94,19 +88,19 @@ var (
 			"name":           "mp3 audio",
 			"targetFormat":   "mp3",
 			"defaultBitRate": 192,
-			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+			"command":        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
 			"name":           "opus audio",
 			"targetFormat":   "opus",
 			"defaultBitRate": 128,
-			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			"command":        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
 			"name":           "aac audio",
 			"targetFormat":   "aac",
 			"defaultBitRate": 256,
-			"command":        "ffmpeg -i %s -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			"command":        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 

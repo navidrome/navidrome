@@ -2,7 +2,6 @@ package taglib
 
 /*
 #cgo pkg-config: taglib
-#cgo !illumos LDFLAGS: -lstdc++
 #cgo illumos LDFLAGS: -lstdc++ -lsendfile
 #cgo linux darwin CXXFLAGS: -std=c++11
 #include <stdio.h>
@@ -12,6 +11,7 @@ package taglib
 */
 import "C"
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -22,6 +22,8 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 )
+
+const iTunesKeyPrefix = "----:com.apple.itunes:"
 
 func Read(filename string) (tags map[string][]string, err error) {
 	// Do not crash on failures in the C code/library
@@ -38,6 +40,7 @@ func Read(filename string) (tags map[string][]string, err error) {
 	id, m := newMap()
 	defer deleteMap(id)
 
+	log.Trace("TagLib: reading tags", "filename", filename, "map_id", id)
 	res := C.taglib_read(fp, C.ulong(id))
 	switch res {
 	case C.TAGLIB_ERR_PARSE:
@@ -55,7 +58,13 @@ func Read(filename string) (tags map[string][]string, err error) {
 	case C.TAGLIB_ERR_AUDIO_PROPS:
 		return nil, fmt.Errorf("can't get audio properties from file")
 	}
-	log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
+		j, _ := json.Marshal(m)
+		log.Trace("TagLib: read tags", "tags", string(j), "filename", filename, "id", id)
+	} else {
+		log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
+	}
+
 	return m, nil
 }
 
@@ -79,15 +88,42 @@ func deleteMap(id uint32) {
 	delete(maps, id)
 }
 
+//export go_map_put_m4a_str
+func go_map_put_m4a_str(id C.ulong, key *C.char, val *C.char) {
+	k := strings.ToLower(C.GoString(key))
+
+	// Special for M4A, do not catch keys that have no actual name
+	k = strings.TrimPrefix(k, iTunesKeyPrefix)
+	do_put_map(id, k, val)
+}
+
 //export go_map_put_str
 func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
+	k := strings.ToLower(C.GoString(key))
+	do_put_map(id, k, val)
+}
+
+//export go_map_put_lyrics
+func go_map_put_lyrics(id C.ulong, lang *C.char, val *C.char) {
+	k := "lyrics-" + strings.ToLower(C.GoString(lang))
+	do_put_map(id, k, val)
+}
+
+func do_put_map(id C.ulong, key string, val *C.char) {
+	if key == "" {
+		return
+	}
+
 	lock.RLock()
 	defer lock.RUnlock()
 	m := maps[uint32(id)]
-	k := strings.ToLower(C.GoString(key))
 	v := strings.TrimSpace(C.GoString(val))
-	m[k] = append(m[k], v)
+	m[key] = append(m[key], v)
 }
+
+/*
+As I'm working on the new scanner, I see that the `properties` from TagLib is ill-suited to extract multi-valued ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there, instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving us more flexibility, including parsing the USLT / SYLT frames in Go
+*/
 
 //export go_map_put_int
 func go_map_put_int(id C.ulong, key *C.char, val C.int) {
@@ -95,4 +131,31 @@ func go_map_put_int(id C.ulong, key *C.char, val C.int) {
 	vp := C.CString(valStr)
 	defer C.free(unsafe.Pointer(vp))
 	go_map_put_str(id, key, vp)
+}
+
+//export go_map_put_lyric_line
+func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
+	language := C.GoString(lang)
+	line := C.GoString(text)
+	timeGo := int64(time)
+
+	ms := timeGo % 1000
+	timeGo /= 1000
+	sec := timeGo % 60
+	timeGo /= 60
+	min := timeGo % 60
+	formatted_line := fmt.Sprintf("[%02d:%02d.%02d]%s\n", min, sec, ms/10, line)
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	key := "lyrics-" + language
+
+	m := maps[uint32(id)]
+	existing, ok := m[key]
+	if ok {
+		existing[0] += formatted_line
+	} else {
+		m[key] = []string{formatted_line}
+	}
 }

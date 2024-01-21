@@ -19,7 +19,7 @@ import (
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type TagScanner struct {
@@ -27,7 +27,7 @@ type TagScanner struct {
 	ds          model.DataStore
 	plsSync     *playlistImporter
 	cnt         *counters
-	mapper      *mediaFileMapper
+	mapper      *MediaFileMapper
 	cacheWarmer artwork.CacheWarmer
 }
 
@@ -80,10 +80,9 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 
 	// Special case: if lastModifiedSince is zero, re-import all files
 	fullScan := lastModifiedSince.IsZero()
-	rootFS := os.DirFS(s.rootFolder)
 
 	// If the media folder is empty (no music and no subfolders), abort to avoid deleting all data from DB
-	empty, err := isDirEmpty(ctx, rootFS, ".")
+	empty, err := isDirEmpty(ctx, s.rootFolder)
 	if err != nil {
 		return 0, err
 	}
@@ -101,11 +100,11 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	var changedDirs []string
 	s.cnt = &counters{}
 	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
-	s.mapper = newMediaFileMapper(s.rootFolder, genres)
+	s.mapper = NewMediaFileMapper(s.rootFolder, genres)
 	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
 
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
-	foldersFound, walkerError := walkDirTree(ctx, rootFS, s.rootFolder)
+	foldersFound, walkerError := walkDirTree(ctx, s.rootFolder)
 
 	for {
 		folderStats, more := <-foldersFound
@@ -169,8 +168,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	return s.cnt.total(), err
 }
 
-func isDirEmpty(ctx context.Context, rootFS fs.FS, dir string) (bool, error) {
-	children, stats, err := loadDir(ctx, rootFS, dir)
+func isDirEmpty(ctx context.Context, dir string) (bool, error) {
+	children, stats, err := loadDir(ctx, dir)
 	if err != nil {
 		return false, err
 	}
@@ -352,7 +351,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
-	chunks := utils.BreakUpStringSlice(filesToUpdate, filesBatchSize)
+	chunks := slice.BreakUp(filesToUpdate, filesBatchSize)
 	for _, chunk := range chunks {
 		// Load tracks Metadata from the folder
 		newTracks, err := s.loadTracks(chunk)
@@ -387,7 +386,7 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
-		mf := s.mapper.toMediaFile(md)
+		mf := s.mapper.ToMediaFile(md)
 		mfs = append(mfs, mf)
 	}
 	return mfs, nil

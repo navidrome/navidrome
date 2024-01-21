@@ -112,7 +112,7 @@ const MyDataGrid = forwardRef(
         <BooleanField source="existing" sortable={false} />
       </Datagrid>
     )
-  }
+  },
 )
 
 const Dummy = () => <span></span>
@@ -133,7 +133,7 @@ const ExternalPlaylistSelect = forwardRef(
         </List>
       </>
     )
-  }
+  },
 )
 
 const ExternalPlaylistCreate = (props) => {
@@ -183,7 +183,7 @@ const ExternalPlaylistCreate = (props) => {
       agents === null
         ? []
         : Object.keys(agents).map((k) => ({ id: k, name: k })),
-    [agents]
+    [agents],
   )
 
   const agentKeys = useMemo(
@@ -193,10 +193,10 @@ const ExternalPlaylistCreate = (props) => {
         : agents[selectedAgent].map((type) => ({
             id: type,
             name: translate(
-              `resources.externalPlaylist.agent.${selectedAgent}.${type}`
+              `resources.externalPlaylist.agent.${selectedAgent}.${type}`,
             ),
           })),
-    [agents, selectedAgent, translate]
+    [agents, selectedAgent, translate],
   )
 
   const changeAgent = (event) => {
@@ -239,7 +239,7 @@ const ExternalPlaylistCreate = (props) => {
               data: { agent, type, update, playlists },
             },
           },
-          { returnPromise: true }
+          { returnPromise: true },
         )
         notify('resources.externalPlaylist.notifications.created', 'info', {
           smart_count: count,
@@ -252,7 +252,7 @@ const ExternalPlaylistCreate = (props) => {
         })
       }
     },
-    [ids, mutate, notify, redirect, refresh]
+    [ids, mutate, notify, redirect, refresh],
   )
 
   let formBody
