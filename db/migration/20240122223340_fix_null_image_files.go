@@ -12,7 +12,6 @@ func init() {
 }
 
 func Up20240122223340(ctx context.Context, tx *sql.Tx) error {
-	// This code is executed when the migration is applied.
 	_, err := tx.Exec(`
 	alter table album add image_files_new varchar not null default '';
 	update album set image_files_new = image_files where image_files is not null;
@@ -23,6 +22,5 @@ func Up20240122223340(ctx context.Context, tx *sql.Tx) error {
 }
 
 func Down20240122223340(ctx context.Context, tx *sql.Tx) error {
-	// This code is executed when the migration is rolled back.
 	return nil
 }
