@@ -12,7 +12,7 @@ func init() {
 }
 
 func Up20240122223340(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.Exec(`
+	_, err := tx.ExecContext(ctx, `
 	alter table album add image_files_new varchar not null default '';
 	update album set image_files_new = image_files where image_files is not null;
 	alter table album drop image_files;
@@ -21,6 +21,6 @@ func Up20240122223340(ctx context.Context, tx *sql.Tx) error {
 	return err
 }
 
-func Down20240122223340(ctx context.Context, tx *sql.Tx) error {
+func Down20240122223340(context.Context, *sql.Tx) error {
 	return nil
 }
