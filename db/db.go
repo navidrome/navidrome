@@ -77,26 +77,26 @@ func Init() {
 }
 
 func isSchemaEmpty(db *sql.DB) bool {
-	empty := true
+	var (
+		query string
+	)
+
 	switch Driver {
 	case "sqlite3":
-		rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
-		if err != nil {
-			log.Fatal("Database could not be opened!", err)
-		}
-		defer rows.Close()
-		empty = !rows.Next()
+		query = "SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';"
 	case "pgx":
-		rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'goose_db_version';") // nolint:rowserrcheck
-		if err != nil {
-			log.Fatal("Database could not be opened!", err)
-		}
-		defer rows.Close()
-		empty = !rows.Next()
+		query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'goose_db_version';"
 	default:
 		log.Fatal("Invalid DB driver", "driver", Driver)
 	}
-	return empty
+
+	rows, err := db.Query(query) // nolint:rowserrcheck
+	if err != nil {
+		log.Fatal("Database could not be opened!", err)
+	}
+	defer rows.Close()
+
+	return !rows.Next()
 }
 
 type logAdapter struct {
