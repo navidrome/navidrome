@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/navidrome/navidrome/scanner/metadata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -193,6 +194,48 @@ var _ = Describe("Extractor", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(md).To(HaveKeyWithValue("albumartist", []string{"Elvis Presley"}))
 		})
+	})
+
+	Describe("parseTIPL", func() {
+		var tags metadata.ParsedTags
+
+		BeforeEach(func() {
+			tags = metadata.ParsedTags{}
+		})
+
+		Context("when the TIPL string is populated", func() {
+			It("correctly parses roles and names", func() {
+				tags["tipl"] = []string{"arranger Andrew Powell dj-mix François Kevorkian engineer Chris Blair"}
+				parseTIPL(tags)
+				Expect(tags["arranger"]).To(Equal([]string{"Andrew Powell"}))
+				Expect(tags["engineer"]).To(Equal([]string{"Chris Blair"}))
+				Expect(tags["djmixer"]).To(Equal([]string{"François Kevorkian"}))
+			})
+
+			It("handles multiple names for a single role", func() {
+				tags["tipl"] = []string{"engineer Pat Stapley producer Eric Woolfson engineer Chris Blair"}
+				parseTIPL(tags)
+				Expect(tags["producer"]).To(Equal([]string{"Eric Woolfson"}))
+				Expect(tags["engineer"]).To(ConsistOf("Pat Stapley", "Chris Blair"))
+			})
+		})
+
+		Context("when the TIPL string is empty", func() {
+			It("does nothing", func() {
+				tags["tipl"] = []string{""}
+				parseTIPL(tags)
+				Expect(tags).To(BeEmpty())
+			})
+		})
+
+		Context("when the TIPL is not present", func() {
+			It("does nothing", func() {
+				parseTIPL(tags)
+				Expect(tags).To(BeEmpty())
+			})
+		})
+
+		// Add any additional edge cases if necessary
 	})
 
 })
