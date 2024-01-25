@@ -78,7 +78,7 @@ func parseTIPL(tags metadata.ParsedTags) {
 	}
 
 	addRole := func(tags metadata.ParsedTags, currentRole string, currentValue []string) {
-		if currentRole != "" {
+		if currentRole != "" && len(currentValue) > 0 {
 			role := tiplMapping[currentRole]
 			tags[role] = append(tags[currentRole], strings.Join(currentValue, " "))
 		}
