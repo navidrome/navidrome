@@ -345,11 +345,11 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.PlaylistTracks, error) {
 	tracksQuery := sel.
 		Columns(
-			"coalesce(starred, 0)",
+			"coalesce(starred, 0) as starred",
 			"starred_at",
-			"coalesce(play_count, 0)",
+			"coalesce(play_count, 0) as play_count",
 			"play_date",
-			"coalesce(rating, 0)",
+			"coalesce(rating, 0) as rating",
 			"f.*",
 			"playlist_tracks.*",
 		).
