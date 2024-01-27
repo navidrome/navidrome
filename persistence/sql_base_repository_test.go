@@ -31,6 +31,45 @@ var _ = Describe("sqlRepository", func() {
 		})
 	})
 
+	Describe("toSQL", func() {
+		var r sqlRepository
+
+		BeforeEach(func() {
+			r = sqlRepository{}
+		})
+
+		It("returns error for invalid SQL", func() {
+			sq := squirrel.Select("*").From("test").Where(1)
+			_, _, err := r.toSQL(sq)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns the same query when there are no placeholders", func() {
+			sq := squirrel.Select("*").From("test")
+			query, params, err := r.toSQL(sq)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("SELECT * FROM test"))
+			Expect(params).To(BeEmpty())
+		})
+
+		It("replaces one placeholder correctly", func() {
+			sq := squirrel.Select("*").From("test").Where(squirrel.Eq{"id": 1})
+			query, params, err := r.toSQL(sq)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("SELECT * FROM test WHERE id = {:p0}"))
+			Expect(params).To(HaveKeyWithValue("p0", 1))
+		})
+
+		It("replaces multiple placeholders correctly", func() {
+			sq := squirrel.Select("*").From("test").Where(squirrel.Eq{"id": 1, "name": "test"})
+			query, params, err := r.toSQL(sq)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("SELECT * FROM test WHERE id = {:p0} AND name = {:p1}"))
+			Expect(params).To(HaveKeyWithValue("p0", 1))
+			Expect(params).To(HaveKeyWithValue("p1", "test"))
+		})
+	})
+
 	Describe("buildSortOrder", func() {
 		Context("single field", func() {
 			It("sorts by specified field", func() {
