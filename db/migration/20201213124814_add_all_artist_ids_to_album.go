@@ -44,7 +44,6 @@ set all_artist_ids = $1
 where id = $2
 `)
 	if err != nil {
-		log.Error("failed here: ", err)
 		return err
 	}
 
