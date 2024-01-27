@@ -123,9 +123,9 @@ func (t Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist
 func (t Tags) AlbumArtist() string {
 	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
 }
-func (t Tags) SortTitle() string           { return t.getSortTag("", "title", "name") }
-func (t Tags) SortAlbum() string           { return t.getSortTag("", "album") }
-func (t Tags) SortArtist() string          { return t.getSortTag("", "artist") }
+func (t Tags) SortTitle() string           { return t.getSortTag("tsot", "title", "name") }
+func (t Tags) SortAlbum() string           { return t.getSortTag("tsoa", "album") }
+func (t Tags) SortArtist() string          { return t.getSortTag("tsop", "artist") }
 func (t Tags) SortAlbumArtist() string     { return t.getSortTag("tso2", "albumartist", "album_artist") }
 func (t Tags) Genres() []string            { return t.getAllTagValues("genre") }
 func (t Tags) Date() (int, string)         { return t.getDate("date") }
