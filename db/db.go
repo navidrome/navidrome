@@ -60,17 +60,44 @@ func Init() {
 	}
 
 	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
-	goose.SetLogger(gooseLogger)
 	goose.SetBaseFS(embedMigrations)
 
 	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
+	if !isSchemaEmpty(db) && hasPendingMigrations(db, migrationsFolder) {
+		log.Info("Upgrading DB Schema to latest version")
+	}
+	goose.SetLogger(gooseLogger)
 	err = goose.Up(db, migrationsFolder)
 	if err != nil {
 		log.Fatal("Failed to apply new migrations", err)
 	}
+}
+
+type statusLogger struct{ numPending int }
+
+func (*statusLogger) Fatalf(format string, v ...interface{}) { log.Fatal(fmt.Sprintf(format, v...)) }
+func (l *statusLogger) Printf(format string, v ...interface{}) {
+	if len(v) < 1 {
+		return
+	}
+	if v0, ok := v[0].(string); !ok {
+		return
+	} else if v0 == "Pending" {
+		l.numPending++
+	}
+}
+
+func hasPendingMigrations(db *sql.DB, folder string) bool {
+	l := &statusLogger{}
+	goose.SetLogger(l)
+	err := goose.Status(db, folder)
+	if err != nil {
+		log.Fatal("Failed to check for pending migrations", err)
+	}
+	return l.numPending > 0
 }
 
 func isSchemaEmpty(db *sql.DB) bool {
