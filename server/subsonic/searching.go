@@ -27,14 +27,10 @@ type searchParams struct {
 	songOffset   int
 }
 
-func (api *Router) getParams(r *http.Request) (*searchParams, error) {
+func (api *Router) getSearchParams(r *http.Request) (*searchParams, error) {
 	p := req.Params(r)
-	var err error
 	sp := &searchParams{}
-	sp.query, err = p.String("query")
-	if err != nil {
-		return nil, err
-	}
+	sp.query = p.StringOr("query", `""`)
 	sp.artistCount = p.IntOr("artistCount", 20)
 	sp.artistOffset = p.IntOr("artistOffset", 0)
 	sp.albumCount = p.IntOr("albumCount", 20)
@@ -91,7 +87,7 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams) (mediaFiles 
 
 func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	sp, err := api.getParams(r)
+	sp, err := api.getSearchParams(r)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +118,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	sp, err := api.getParams(r)
+	sp, err := api.getSearchParams(r)
 	if err != nil {
 		return nil, err
 	}
