@@ -38,7 +38,7 @@ export const RatingField = ({
 
   const handleRating = useCallback(
     (e, val) => {
-      rate(val, e.target.name)
+      rate(val ?? 0, e.target.name)
     },
     [rate],
   )
