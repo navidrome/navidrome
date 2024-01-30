@@ -281,6 +281,10 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	It("sets the lastFMEnabled", func() {
+		conf.Server.LastFM.Enabled = true
+		conf.Server.LastFM.ApiKey = "123"
+		conf.Server.LastFM.Secret = "456"
+
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
@@ -288,17 +292,6 @@ var _ = Describe("serveIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMEnabled", true))
-	})
-
-	It("sets the lastFMApiKey", func() {
-		conf.Server.LastFM.ApiKey = "APIKEY-123"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
 	})
 
 	It("sets the devShowArtistPage", func() {
