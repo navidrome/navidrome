@@ -152,21 +152,21 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetArtistImages", func() {
 			It("returns on first match", func() {
-				Expect(ag.GetArtistImages(ctx, "123", "test", "mb123")).To(Equal([]ExternalImage{{
+				Expect(ag.GetArtistImages(ctx, "123", "test", "test", "mb123")).To(Equal([]ExternalImage{{
 					URL:  "imageUrl",
 					Size: 100,
 				}}))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(ConsistOf("123", "test", "test", "mb123"))
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
-				_, err := ag.GetArtistImages(ctx, "123", "test", "mb123")
+				_, err := ag.GetArtistImages(ctx, "123", "test", "test", "mb123")
 				Expect(err).To(MatchError("not found"))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(ConsistOf("123", "test", "test", "mb123"))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
-				_, err := ag.GetArtistImages(ctx, "123", "test", "mb123")
+				_, err := ag.GetArtistImages(ctx, "123", "test", "test", "mb123")
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
 			})
@@ -287,8 +287,8 @@ func (a *mockAgent) GetArtistBiography(_ context.Context, id, name, mbid string)
 	return "bio", nil
 }
 
-func (a *mockAgent) GetArtistImages(_ context.Context, id, name, mbid string) ([]ExternalImage, error) {
-	a.Args = []interface{}{id, name, mbid}
+func (a *mockAgent) GetArtistImages(_ context.Context, id, name, sortName, mbid string) ([]ExternalImage, error) {
+	a.Args = []interface{}{id, name, sortName, mbid}
 	if a.Err != nil {
 		return nil, a.Err
 	}

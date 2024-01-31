@@ -44,8 +44,8 @@ func (s *spotifyAgent) AgentName() string {
 	return spotifyAgentName
 }
 
-func (s *spotifyAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
-	a, err := s.searchArtist(ctx, name)
+func (s *spotifyAgent) GetArtistImages(ctx context.Context, id, name, sortName, mbid string) ([]agents.ExternalImage, error) {
+	a, err := s.searchArtist(ctx, name, sortName)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			log.Warn(ctx, "Artist not found in Spotify", "artist", name)
@@ -65,7 +65,7 @@ func (s *spotifyAgent) GetArtistImages(ctx context.Context, id, name, mbid strin
 	return res, nil
 }
 
-func (s *spotifyAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
+func (s *spotifyAgent) searchArtist(ctx context.Context, name string, sortName string) (*Artist, error) {
 	artists, err := s.client.searchArtists(ctx, name, 40)
 	if err != nil || len(artists) == 0 {
 		return nil, model.ErrNotFound
@@ -79,11 +79,36 @@ func (s *spotifyAgent) searchArtist(ctx context.Context, name string) (*Artist, 
 		return ai < aj
 	})
 
-	// If the first one has the same name, that's the one
-	if strings.ToLower(artists[0].Name) != name {
-		return nil, model.ErrNotFound
+	// If the first result sorted by name matches the name, return that artist (should cover most use cases with English names)
+	if strings.ToLower(artists[0].Name) == name {
+		return &artists[0], err
 	}
-	return &artists[0], err
+
+	// If matching by name doesn't work(non-Latin alphabet names), match by sortName
+	sortName = strings.ToLower(sortName)
+	sort.Slice(artists, func(i, j int) bool {
+		ai := fmt.Sprintf("%-5t-%03d-%04d", len(artists[i].Images) == 0, customMetric(strings.ToLower(artists[i].Name), sortName), 1000-artists[i].Popularity)
+		aj := fmt.Sprintf("%-5t-%03d-%04d", len(artists[j].Images) == 0, customMetric(strings.ToLower(artists[j].Name), sortName), 1000-artists[j].Popularity)
+		return ai < aj
+	})
+
+	// If the first one has a similar name to sortName, that is the one
+	if customMetric(strings.ToLower(artists[0].Name), sortName) < 1 {
+		return &artists[0], err
+	}
+	return nil, model.ErrNotFound
+}
+
+func customMetric(name string, sortName string) int {
+	// Because sortNames often have commas and have different word orders(e.g. "John Williams" -> "Williams, John", "The Beatles"->"Beatles, The"),
+	// this custom metric returns the number of letters that are different from "name" and "sortName" but irrespective of the word order
+	name = strings.ReplaceAll(name, " ", "")
+	sortName = strings.ReplaceAll(sortName, " ", "")
+	substrings := strings.Split(sortName, ",")
+	for _, ss := range substrings {
+		name = strings.Replace(name, ss, "", 1)
+	}
+	return len(name)
 }
 
 func init() {

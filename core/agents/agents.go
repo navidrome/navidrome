@@ -145,7 +145,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 	return nil, ErrNotFound
 }
 
-func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error) {
+func (a *Agents) GetArtistImages(ctx context.Context, id, name, sortName, mbid string) ([]ExternalImage, error) {
 	switch id {
 	case consts.UnknownArtistID:
 		return nil, ErrNotFound
@@ -161,7 +161,7 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 		if !ok {
 			continue
 		}
-		images, err := agent.GetArtistImages(ctx, id, name, mbid)
+		images, err := agent.GetArtistImages(ctx, id, name, sortName, mbid)
 		if len(images) > 0 && err == nil {
 			log.Debug(ctx, "Got Images", "agent", ag.AgentName(), "artist", name, "images", images, "elapsed", time.Since(start))
 			return images, nil
