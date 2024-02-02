@@ -28,8 +28,6 @@ drop index if exists media_file_order_title;
 drop index if exists media_file_bpm;
 drop index if exists media_file_channels;
 
-drop index if exists playlist_evaluated_at;
-
 alter table album
     add image_files_new varchar not null default '';
 update album
@@ -141,16 +139,6 @@ alter table album
     rename paths_new to paths;
 
 alter table album
-    add external_info_updated_at_new datetime not null default '0000-00-00 00:00:00';
-update album
-set external_info_updated_at_new = external_info_updated_at
-where external_info_updated_at is not null;
-alter table album
-    drop external_info_updated_at;
-alter table album
-    rename external_info_updated_at_new to external_info_updated_at;
-
-alter table album
     add discs_new jsonb not null default '{}';
 update album
 set discs_new = discs
@@ -190,16 +178,6 @@ alter table artist
     drop sort_artist_name;
 alter table artist
     rename sort_artist_name_new to sort_artist_name;
-
-alter table artist
-    add external_info_updated_at_new datetime not null default '0000-00-00 00:00:00';
-update artist
-set external_info_updated_at_new = external_info_updated_at
-where external_info_updated_at is not null;
-alter table artist
-    drop external_info_updated_at;
-alter table artist
-    rename external_info_updated_at_new to external_info_updated_at;
 
 --  MEDIA_FILE
 alter table media_file
@@ -465,26 +443,6 @@ alter table share
     rename format_new to format;
 
 alter table share
-    add expires_at_new datetime not null default '0000-00-00 00:00:00';
-update share
-set expires_at_new = expires_at
-where expires_at is not null;
-alter table share
-    drop expires_at;
-alter table share
-    rename expires_at_new to expires_at;
-
-alter table share
-    add last_visited_at_new datetime not null default '0000-00-00 00:00:00';
-update share
-set last_visited_at_new = last_visited_at
-where last_visited_at is not null;
-alter table share
-    drop last_visited_at;
-alter table share
-    rename last_visited_at_new to last_visited_at;
-
-alter table share
     add max_bit_rate_new integer not null default 0;
 update share
 set max_bit_rate_new = max_bit_rate
@@ -503,27 +461,6 @@ alter table share
     drop visit_count;
 alter table share
     rename visit_count_new to visit_count;
-
--- PLAYLIST
-alter table playlist
-    add rules_new varchar not null default '';
-update playlist
-set rules_new = rules
-where rules is not null;
-alter table playlist
-    drop rules;
-alter table playlist
-    rename rules_new to rules;
-
-alter table playlist
-    add evaluated_at_new datetime not null default '0000-00-00 00:00:00';
-update playlist
-set evaluated_at_new = evaluated_at
-where evaluated_at is not null;
-alter table playlist
-    drop evaluated_at;
-alter table playlist
-    rename evaluated_at_new to evaluated_at;
 
 -- INDEX
 select full_text,
@@ -579,12 +516,6 @@ create index media_file_bpm
 
 create index media_file_channels
     on media_file (channels);
-
-select evaluated_at
-from playlist;
-
-create index playlist_evaluated_at
-    on playlist (evaluated_at)
  	 	
 `)
 	return err
