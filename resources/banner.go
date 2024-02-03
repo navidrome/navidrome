@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"unicode"
 
@@ -9,7 +10,11 @@ import (
 )
 
 func loadBanner() string {
-	data, _ := Asset("banner.txt")
+	f, err := embedFS.Open("banner.txt")
+	if err != nil {
+		return ""
+	}
+	data, _ := io.ReadAll(f)
 	return strings.TrimRightFunc(string(data), unicode.IsSpace)
 }
 
