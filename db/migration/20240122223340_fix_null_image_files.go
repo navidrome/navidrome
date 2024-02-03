@@ -360,27 +360,6 @@ alter table media_file
 alter table media_file
     rename lyrics_new to lyrics;
 
--- RADIO
-alter table radio
-    add stream_url_new varchar not null default '';
-update radio
-set stream_url_new = stream_url
-where stream_url is not null;
-alter table radio
-    drop stream_url;
-alter table radio
-    rename stream_url_new to stream_url;
-
-alter table radio
-    add home_page_url_new varchar not null default '';
-update radio
-set home_page_url_new = home_page_url
-where home_page_url is not null;
-alter table radio
-    drop home_page_url;
-alter table radio
-    rename home_page_url_new to home_page_url;
-
 -- SHARE
 alter table share
     add description_new varchar not null default '';
