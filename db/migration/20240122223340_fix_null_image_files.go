@@ -119,16 +119,6 @@ alter table album
     rename comment_new to comment;
 
 alter table album
-    add image_files_new varchar not null default '';
-update album
-set image_files_new = image_files
-where image_files is not null;
-alter table album
-    drop image_files;
-alter table album
-    rename image_files_new to image_files;
-
-alter table album
     add paths_new varchar not null default '';
 update album
 set paths_new = paths
@@ -299,16 +289,6 @@ alter table media_file
     drop order_title;
 alter table media_file
     rename order_title_new to order_title;
-
-alter table media_file
-    add bpm_new integer not null default 0;
-update media_file
-set bpm_new = bpm
-where bpm is not null;
-alter table media_file
-    drop bpm;
-alter table media_file
-    rename bpm_new to bpm;
 
 alter table media_file
     add bpm_new integer not null default 0;
