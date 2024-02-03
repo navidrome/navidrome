@@ -13,15 +13,12 @@ func init() {
 
 func Up20240122223340(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
-drop index if exists album_full_text;
 drop index if exists album_alphabetical_by_artist;
 drop index if exists album_order_album_name;
 drop index if exists album_order_album_artist_name;
 
-drop index if exists artist_full_text;
 drop index if exists artist_order_artist_name;
 
-drop index if exists media_file_full_text;
 drop index if exists media_file_order_album_name;
 drop index if exists media_file_order_artist_name;
 drop index if exists media_file_order_title;
@@ -37,16 +34,6 @@ alter table album
     drop image_files;
 alter table album
     rename image_files_new to image_files;
-
-alter table album
-    add full_text_new varchar not null default '';
-update album
-set full_text_new = full_text
-where full_text is not null;
-alter table album
-    drop full_text;
-alter table album
-    rename full_text_new to full_text;
 
 alter table album
     add order_album_name_new varchar not null default '';
@@ -140,16 +127,6 @@ alter table album
 
 --  ARTIST
 alter table artist
-    add full_text_new varchar not null default '';
-update artist
-set full_text_new = full_text
-where full_text is not null;
-alter table artist
-    drop full_text;
-alter table artist
-    rename full_text_new to full_text;
-
-alter table artist
     add order_artist_name_new varchar not null default '';
 update artist
 set order_artist_name_new = order_artist_name
@@ -170,16 +147,6 @@ alter table artist
     rename sort_artist_name_new to sort_artist_name;
 
 --  MEDIA_FILE
-alter table media_file
-    add full_text_new varchar not null default '';
-update media_file
-set full_text_new = full_text
-where full_text is not null;
-alter table media_file
-    drop full_text;
-alter table media_file
-    rename full_text_new to full_text;
-
 alter table media_file
     add order_album_name_new varchar not null default '';
 update media_file
@@ -422,10 +389,6 @@ alter table share
     rename visit_count_new to visit_count;
 
 -- INDEX
-
-create index album_full_text
-    on album (full_text);
-
 create index album_alphabetical_by_artist
     on album (compilation, order_album_artist_name, order_album_name);
 
@@ -435,14 +398,8 @@ create index album_order_album_name
 create index album_order_album_artist_name
     on album (order_album_artist_name);
 
-create index artist_full_text
-    on artist (full_text);
-
 create index artist_order_artist_name
     on artist (order_artist_name);
-
-create index media_file_full_text
-    on media_file (full_text);
 
 create index media_file_order_album_name
     on media_file (order_album_name);
