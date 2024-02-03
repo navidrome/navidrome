@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/navidrome/navidrome/scanner/metadata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -23,7 +24,8 @@ var _ = Describe("Extractor", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
-	Context("Parse", func() {
+
+	Describe("Parse", func() {
 		It("correctly parses metadata from all files in folder", func() {
 			mds, err := e.Parse(
 				"tests/fixtures/test.mp3",
@@ -89,6 +91,7 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKey("bitrate"))
 			Expect(m["bitrate"][0]).To(BeElementOf("18", "39", "40", "43", "49"))
 		})
+
 		DescribeTable("Format-Specific tests",
 			func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
 				file = "tests/fixtures/" + file
@@ -177,7 +180,7 @@ var _ = Describe("Extractor", func() {
 		)
 	})
 
-	Context("Error Checking", func() {
+	Describe("Error Checking", func() {
 		It("correctly handle unreadable file due to insufficient read permission", func() {
 			_, err := e.extractMetadata(accessForbiddenFile)
 			Expect(err).To(MatchError(os.ErrPermission))
@@ -192,6 +195,53 @@ var _ = Describe("Extractor", func() {
 			md, err := e.extractMetadata("tests/fixtures/invalid-files/test-invalid-frame.mp3")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(md).To(HaveKeyWithValue("albumartist", []string{"Elvis Presley"}))
+		})
+	})
+
+	Describe("parseTIPL", func() {
+		var tags metadata.ParsedTags
+
+		BeforeEach(func() {
+			tags = metadata.ParsedTags{}
+		})
+
+		Context("when the TIPL string is populated", func() {
+			It("correctly parses roles and names", func() {
+				tags["tipl"] = []string{"arranger Andrew Powell dj-mix François Kevorkian engineer Chris Blair"}
+				parseTIPL(tags)
+				Expect(tags["arranger"]).To(ConsistOf("Andrew Powell"))
+				Expect(tags["engineer"]).To(ConsistOf("Chris Blair"))
+				Expect(tags["djmixer"]).To(ConsistOf("François Kevorkian"))
+			})
+
+			It("handles multiple names for a single role", func() {
+				tags["tipl"] = []string{"engineer Pat Stapley producer Eric Woolfson engineer Chris Blair"}
+				parseTIPL(tags)
+				Expect(tags["producer"]).To(ConsistOf("Eric Woolfson"))
+				Expect(tags["engineer"]).To(ConsistOf("Pat Stapley", "Chris Blair"))
+			})
+
+			It("discards roles without names", func() {
+				tags["tipl"] = []string{"engineer Pat Stapley producer engineer Chris Blair"}
+				parseTIPL(tags)
+				Expect(tags).ToNot(HaveKey("producer"))
+				Expect(tags["engineer"]).To(ConsistOf("Pat Stapley", "Chris Blair"))
+			})
+		})
+
+		Context("when the TIPL string is empty", func() {
+			It("does nothing", func() {
+				tags["tipl"] = []string{""}
+				parseTIPL(tags)
+				Expect(tags).To(BeEmpty())
+			})
+		})
+
+		Context("when the TIPL is not present", func() {
+			It("does nothing", func() {
+				parseTIPL(tags)
+				Expect(tags).To(BeEmpty())
+			})
 		})
 	})
 

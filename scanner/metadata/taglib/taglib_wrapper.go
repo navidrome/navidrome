@@ -69,7 +69,7 @@ func Read(filename string) (tags map[string][]string, err error) {
 }
 
 var lock sync.RWMutex
-var maps = make(map[uint32]map[string][]string)
+var allMaps = make(map[uint32]map[string][]string)
 var mapsNextID uint32
 
 func newMap() (id uint32, m map[string][]string) {
@@ -78,14 +78,14 @@ func newMap() (id uint32, m map[string][]string) {
 	id = mapsNextID
 	mapsNextID++
 	m = make(map[string][]string)
-	maps[id] = m
+	allMaps[id] = m
 	return
 }
 
 func deleteMap(id uint32) {
 	lock.Lock()
 	defer lock.Unlock()
-	delete(maps, id)
+	delete(allMaps, id)
 }
 
 //export go_map_put_m4a_str
@@ -116,7 +116,7 @@ func do_put_map(id C.ulong, key string, val *C.char) {
 
 	lock.RLock()
 	defer lock.RUnlock()
-	m := maps[uint32(id)]
+	m := allMaps[uint32(id)]
 	v := strings.TrimSpace(C.GoString(val))
 	m[key] = append(m[key], v)
 }
@@ -151,7 +151,7 @@ func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
 
 	key := "lyrics-" + language
 
-	m := maps[uint32(id)]
+	m := allMaps[uint32(id)]
 	existing, ok := m[key]
 	if ok {
 		existing[0] += formatted_line
