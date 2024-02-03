@@ -358,7 +358,7 @@ where rg_track_gain is not null;
 alter table media_file
     drop rg_track_gain;
 alter table media_file
-    rename rg_track_gain_new to rg_album_again;
+    rename rg_track_gain_new to rg_track_gain;
 
 alter table media_file
     add rg_track_peak_new real not null default 0;
