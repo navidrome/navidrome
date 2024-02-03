@@ -463,11 +463,6 @@ alter table share
     rename visit_count_new to visit_count;
 
 -- INDEX
-select full_text,
-       compilation,
-       order_album_artist_name,
-       order_album_name
-from album;
 
 create index album_full_text
     on album (full_text);
@@ -481,23 +476,11 @@ create index album_order_album_name
 create index album_order_album_artist_name
     on album (order_album_artist_name);
 
-select full_text,
-       order_artist_name
-from artist;
-
 create index artist_full_text
     on artist (full_text);
 
 create index artist_order_artist_name
     on artist (order_artist_name);
-
-select full_text,
-       order_album_name,
-       order_artist_name,
-       order_title,
-       bpm,
-       channels
-from media_file;
 
 create index media_file_full_text
     on media_file (full_text);
