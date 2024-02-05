@@ -16,6 +16,7 @@ func Up20240122223340(ctx context.Context, tx *sql.Tx) error {
 drop index if exists album_alphabetical_by_artist;
 drop index if exists album_order_album_name;
 drop index if exists album_order_album_artist_name;
+drop index if exists album_mbz_album_type;
 
 drop index if exists artist_order_artist_name;
 
@@ -24,6 +25,7 @@ drop index if exists media_file_order_artist_name;
 drop index if exists media_file_order_title;
 drop index if exists media_file_bpm;
 drop index if exists media_file_channels;
+drop index if exists media_file_mbz_track_id;
 
 alter table album
     add image_files_new varchar not null default '';
@@ -116,6 +118,46 @@ alter table album
     rename paths_new to paths;
 
 alter table album
+    add mbz_album_id_new varchar not null default '';
+update album
+set mbz_album_id_new = mbz_album_id
+where mbz_album_id is not null;
+alter table album
+    drop mbz_album_id;
+alter table album
+    rename mbz_album_id_new to mbz_album_id;
+
+alter table album
+    add mbz_album_artist_id_new varchar not null default '';
+update album
+set mbz_album_artist_id_new = mbz_album_artist_id
+where mbz_album_artist_id is not null;
+alter table album
+    drop mbz_album_artist_id;
+alter table album
+    rename mbz_album_artist_id_new to mbz_album_artist_id;
+
+alter table album
+    add mbz_album_type_new varchar not null default '';
+update album
+set mbz_album_type_new = mbz_album_type
+where mbz_album_type is not null;
+alter table album
+    drop mbz_album_type;
+alter table album
+    rename mbz_album_type_new to mbz_album_type;
+
+alter table album
+    add mbz_album_comment_new varchar not null default '';
+update album
+set mbz_album_comment_new = mbz_album_comment
+where mbz_album_comment is not null;
+alter table album
+    drop mbz_album_comment;
+alter table album
+    rename mbz_album_comment_new to mbz_album_comment;
+
+alter table album
     add discs_new jsonb not null default '{}';
 update album
 set discs_new = discs
@@ -145,6 +187,16 @@ alter table artist
     drop sort_artist_name;
 alter table artist
     rename sort_artist_name_new to sort_artist_name;
+
+alter table artist
+    add mbz_artist_id_new varchar not null default '';
+update artist
+set mbz_artist_id_new = mbz_artist_id
+where mbz_artist_id is not null;
+alter table artist
+    drop mbz_artist_id;
+alter table artist
+    rename mbz_artist_id_new to mbz_artist_id;
 
 --  MEDIA_FILE
 alter table media_file
@@ -256,6 +308,86 @@ alter table media_file
     drop order_title;
 alter table media_file
     rename order_title_new to order_title;
+
+alter table media_file
+    add mbz_recording_id_new varchar not null default '';
+update media_file
+set mbz_recording_id_new = mbz_recording_id
+where mbz_recording_id is not null;
+alter table media_file
+    drop mbz_recording_id;
+alter table media_file
+    rename mbz_recording_id_new to mbz_recording_id;
+
+alter table media_file
+    add mbz_album_id_new varchar not null default '';
+update media_file
+set mbz_album_id_new = mbz_album_id
+where mbz_album_id is not null;
+alter table media_file
+    drop mbz_album_id;
+alter table media_file
+    rename mbz_album_id_new to mbz_album_id;
+
+alter table media_file
+    add mbz_artist_id_new varchar not null default '';
+update media_file
+set mbz_artist_id_new = mbz_artist_id
+where mbz_artist_id is not null;
+alter table media_file
+    drop mbz_artist_id;
+alter table media_file
+    rename mbz_artist_id_new to mbz_artist_id;
+
+alter table media_file
+    add mbz_artist_id_new varchar not null default '';
+update media_file
+set mbz_artist_id_new = mbz_artist_id
+where mbz_artist_id is not null;
+alter table media_file
+    drop mbz_artist_id;
+alter table media_file
+    rename mbz_artist_id_new to mbz_artist_id;
+
+alter table media_file
+    add mbz_album_artist_id_new varchar not null default '';
+update media_file
+set mbz_album_artist_id_new = mbz_album_artist_id
+where mbz_album_artist_id is not null;
+alter table media_file
+    drop mbz_album_artist_id;
+alter table media_file
+    rename mbz_album_artist_id_new to mbz_album_artist_id;
+
+alter table media_file
+    add mbz_album_type_new varchar not null default '';
+update media_file
+set mbz_album_type_new = mbz_album_type
+where mbz_album_type is not null;
+alter table media_file
+    drop mbz_album_type;
+alter table media_file
+    rename mbz_album_type_new to mbz_album_type;
+
+alter table media_file
+    add mbz_album_comment_new varchar not null default '';
+update media_file
+set mbz_album_comment_new = mbz_album_comment
+where mbz_album_comment is not null;
+alter table media_file
+    drop mbz_album_comment;
+alter table media_file
+    rename mbz_album_comment_new to mbz_album_comment;
+
+alter table media_file
+    add mbz_release_track_id_new varchar not null default '';
+update media_file
+set mbz_release_track_id_new = mbz_release_track_id
+where mbz_release_track_id is not null;
+alter table media_file
+    drop mbz_release_track_id;
+alter table media_file
+    rename mbz_release_track_id_new to mbz_release_track_id;
 
 alter table media_file
     add bpm_new integer not null default 0;
@@ -398,6 +530,9 @@ create index album_order_album_name
 create index album_order_album_artist_name
     on album (order_album_artist_name);
 
+create index album_mbz_album_type
+	on album (mbz_album_type);
+
 create index artist_order_artist_name
     on artist (order_artist_name);
 
@@ -415,6 +550,9 @@ create index media_file_bpm
 
 create index media_file_channels
     on media_file (channels);
+
+create index media_file_mbz_track_id
+	on media_file (mbz_recording_id);
  	 	
 `)
 	return err
