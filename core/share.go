@@ -10,6 +10,7 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -34,10 +35,11 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	if err != nil {
 		return nil, err
 	}
-	if !share.ExpiresAt.IsZero() && share.ExpiresAt.Before(time.Now()) {
+	expiresAt := V(share.ExpiresAt)
+	if !expiresAt.IsZero() && expiresAt.Before(time.Now()) {
 		return nil, model.ErrExpired
 	}
-	share.LastVisitedAt = time.Now()
+	share.LastVisitedAt = P(time.Now())
 	share.VisitCount++
 
 	err = repo.(rest.Persistable).Update(id, share, "last_visited_at", "visit_count")
@@ -90,8 +92,8 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 		return "", err
 	}
 	s.ID = id
-	if s.ExpiresAt.IsZero() {
-		s.ExpiresAt = time.Now().Add(365 * 24 * time.Hour)
+	if V(s.ExpiresAt).IsZero() {
+		s.ExpiresAt = P(time.Now().Add(365 * 24 * time.Hour))
 	}
 
 	firstId := strings.SplitN(s.ResourceIDs, ",", 2)[0]
@@ -128,7 +130,7 @@ func (r *shareRepositoryWrapper) Update(id string, entity interface{}, _ ...stri
 	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration
-	if !entity.(*model.Share).ExpiresAt.IsZero() {
+	if !V(entity.(*model.Share).ExpiresAt).IsZero() {
 		cols = append(cols, "expires_at")
 	}
 	return r.Persistable.Update(id, entity, cols...)
