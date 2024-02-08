@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"golang.org/x/sync/errgroup"
 )
@@ -90,15 +91,16 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 		return nil, err
 	}
 
-	if album.ExternalInfoUpdatedAt.IsZero() {
-		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", album.ExternalInfoUpdatedAt, "id", id, "name", album.Name)
+	updatedAt := V(album.ExternalInfoUpdatedAt)
+	if updatedAt.IsZero() {
+		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", album.Name)
 		err = e.populateAlbumInfo(ctx, album)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if time.Since(album.ExternalInfoUpdatedAt) > conf.Server.DevAlbumInfoTimeToLive {
+	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
 		enqueueRefresh(e.albumQueue, album)
 	}
@@ -118,7 +120,7 @@ func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album *auxAlbu
 		return err
 	}
 
-	album.ExternalInfoUpdatedAt = time.Now()
+	album.ExternalInfoUpdatedAt = P(time.Now())
 	album.ExternalUrl = info.URL
 
 	if info.Description != "" {
@@ -202,8 +204,9 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*a
 	}
 
 	// If we don't have any info, retrieves it now
-	if artist.ExternalInfoUpdatedAt.IsZero() {
-		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", artist.ExternalInfoUpdatedAt, "id", id, "name", artist.Name)
+	updatedAt := V(artist.ExternalInfoUpdatedAt)
+	if updatedAt.IsZero() {
+		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artist.Name)
 		err := e.populateArtistInfo(ctx, artist)
 		if err != nil {
 			return nil, err
@@ -211,8 +214,8 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*a
 	}
 
 	// If info is expired, trigger a populateArtistInfo in the background
-	if time.Since(artist.ExternalInfoUpdatedAt) > conf.Server.DevArtistInfoTimeToLive {
-		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", artist.ExternalInfoUpdatedAt, "name", artist.Name)
+	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
+		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artist.Name)
 		enqueueRefresh(e.artistQueue, artist)
 	}
 	return artist, nil
@@ -242,7 +245,7 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist *auxAr
 		return ctx.Err()
 	}
 
-	artist.ExternalInfoUpdatedAt = time.Now()
+	artist.ExternalInfoUpdatedAt = P(time.Now())
 	err := e.ds.Artist(ctx).Put(&artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artist.Name,
