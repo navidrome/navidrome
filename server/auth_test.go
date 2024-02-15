@@ -62,6 +62,11 @@ var _ = Describe("Auth", func() {
 		})
 
 		Describe("Login from HTTP headers", func() {
+			const TRUSTED_IPV4 = "192.168.0.42"
+			const UNTRUSTED_IPV4 = "8.8.8.8"
+			const TRUSTED_IPV6 = "2001:4860:4860:1234:5678:0000:4242:8888"
+			const UNTRUSTED_IPV6 = "5005:0:3003"
+
 			fs := os.DirFS("tests/fixtures")
 
 			BeforeEach(func() {
@@ -75,7 +80,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
-				req.RemoteAddr = "192.168.0.42:25293"
+				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -85,7 +90,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
-				req.RemoteAddr = "8.8.8.8:25293"
+				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, UNTRUSTED_IPV4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -93,7 +98,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv6 matches whitelist", func() {
-				req.RemoteAddr = "[2001:4860:4860:1234:5678:0000:4242:8888]:25293"
+				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -103,7 +108,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
-				req.RemoteAddr = "[5005:0:3003]:25293"
+				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, UNTRUSTED_IPV6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -111,6 +116,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if user does not exist", func() {
+				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
 				req.Header.Set("Remote-User", "INVALID_USER")
 				serveIndex(ds, fs, nil)(resp, req)
 
@@ -119,7 +125,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if user exists", func() {
-				req.RemoteAddr = "192.168.0.42:25293"
+				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
