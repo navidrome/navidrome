@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -115,13 +117,17 @@ var _ = Describe("Auth", func() {
 				Expect(config["auth"]).To(BeNil())
 			})
 
-			It("sets no auth data if user does not exist", func() {
+			It("creates user and sets auth data if user does not exist", func() {
+				newUser := "NEW_USER_" + uuid.NewString()
+
 				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
-				req.Header.Set("Remote-User", "INVALID_USER")
+				req.Header.Set("Remote-User", newUser)
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				Expect(config["auth"]).To(BeNil())
+				parsed := config["auth"].(map[string]interface{})
+
+				Expect(parsed["username"]).To(Equal(newUser))
 			})
 
 			It("sets auth data if user exists", func() {
