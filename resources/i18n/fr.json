@@ -192,7 +192,7 @@
                 "lastVisitedAt": "Visité pour la dernière fois",
                 "visitCount": "Nombre de visites",
                 "format": "Format",
-                "maxBitRate": "",
+                "maxBitRate": "Bitrate maximum",
                 "updatedAt": "Mis à jour le",
                 "createdAt": "Créé le",
                 "downloadable": "Autoriser les téléchargements?"
@@ -389,12 +389,12 @@
                 "desktop_notifications": "Notifications de bureau",
                 "lastfmScrobbling": "Scrobbler vers Last.fm",
                 "listenBrainzScrobbling": "Scrobbler vers ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "Mode ReplayGain",
+                "preAmp": "Pre-amplification ReplayGain (dB)",
                 "gain": {
                     "none": "Désactivé",
-                    "album": "",
-                    "track": ""
+                    "album": "Utiliser le gain de l'album",
+                    "track": "Utiliser le gain des pistes"
                 }
             }
         },
