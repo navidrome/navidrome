@@ -19,11 +19,6 @@ func ShortDur(d time.Duration) string {
 	default:
 		s = d.String()
 	}
-	if strings.HasSuffix(s, "m0s") {
-		s = s[:len(s)-2]
-	}
-	if strings.HasSuffix(s, "h0m") {
-		s = s[:len(s)-2]
-	}
-	return s
+	s = strings.TrimSuffix(s, "0s")
+	return strings.TrimSuffix(s, "0m")
 }
