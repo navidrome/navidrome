@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -36,9 +37,10 @@ func initialSetup(ds model.DataStore) {
 	})
 }
 
+// If the Dev Admin user is not present, create it
 func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 	users := ds.User(context.TODO())
-	c, err := users.CountAll()
+	c, err := users.CountAll(model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
 	if err != nil {
 		panic(fmt.Sprintf("Could not access User table: %s", err))
 	}

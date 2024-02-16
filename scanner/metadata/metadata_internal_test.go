@@ -101,4 +101,32 @@ var _ = Describe("Tags", func() {
 			Expect(t.Bpm()).To(Equal(142))
 		})
 	})
+
+	Describe("ReplayGain", func() {
+		DescribeTable("getGainValue",
+			func(tag string, expected float64) {
+				md := &Tags{}
+				md.Tags = map[string][]string{"replaygain_track_gain": {tag}}
+				Expect(md.RGTrackGain()).To(Equal(expected))
+
+			},
+			Entry("0", "0", 0.0),
+			Entry("1.2dB", "1.2dB", 1.2),
+			Entry("Infinity", "Infinity", 0.0),
+			Entry("Invalid value", "INVALID VALUE", 0.0),
+		)
+		DescribeTable("getPeakValue",
+			func(tag string, expected float64) {
+				md := &Tags{}
+				md.Tags = map[string][]string{"replaygain_track_peak": {tag}}
+				Expect(md.RGTrackPeak()).To(Equal(expected))
+
+			},
+			Entry("0", "0", 0.0),
+			Entry("0.5", "0.5", 0.5),
+			Entry("Invalid dB suffix", "0.7dB", 1.0),
+			Entry("Infinity", "Infinity", 1.0),
+			Entry("Invalid value", "INVALID VALUE", 1.0),
+		)
+	})
 })
