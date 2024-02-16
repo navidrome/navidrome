@@ -286,20 +286,24 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	p := req.Params(r)
 	f, _ := p.String("f")
 	var response []byte
+	var err error
 	switch f {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
-		response, _ = json.Marshal(wrapper)
+		response, err = json.Marshal(wrapper)
 	case "jsonp":
 		w.Header().Set("Content-Type", "application/javascript")
 		callback, _ := p.String("callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
-		data, _ := json.Marshal(wrapper)
-		response = []byte(fmt.Sprintf("%s(%s)", callback, data))
+		response, err = json.Marshal(wrapper)
+		response = []byte(fmt.Sprintf("%s(%s)", callback, response))
 	default:
 		w.Header().Set("Content-Type", "application/xml")
-		response, _ = xml.Marshal(payload)
+		response, err = xml.Marshal(payload)
+	}
+	if err != nil {
+		log.Error(r.Context(), "Error marshalling response", "format", f, err)
 	}
 	if payload.Status == "ok" {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
