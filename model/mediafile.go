@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"encoding/json"
 	"mime"
 	"path/filepath"
@@ -182,9 +183,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
-	a.Comment, _ = allOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
-	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
+	slices.SortFunc(a.Genres, func(a, b Genre) int { return cmp.Compare(a.ID, b.ID) })
 	a.Genres = slices.Compact(a.Genres)
 	a.FullText = " " + utils.SanitizeStrings(fullText...)
 	a = fixAlbumArtist(a, albumArtistIds)

@@ -1,8 +1,8 @@
 package metadata_test
 
 import (
+	"cmp"
 	"encoding/json"
-	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -41,13 +41,12 @@ var _ = Describe("Tags", func() {
 	}
 
 	sortLyrics := func(lines model.LyricList) model.LyricList {
-		slices.SortFunc(lines, func(a, b model.Lyrics) bool {
-			langDiff := strings.Compare(a.Lang, b.Lang)
-			if langDiff == 0 {
-				return strings.Compare(a.Line[1].Value, b.Line[1].Value) < 0
-			} else {
-				return langDiff < 0
+		slices.SortFunc(lines, func(a, b model.Lyrics) int {
+			langDiff := cmp.Compare(a.Lang, b.Lang)
+			if langDiff != 0 {
+				return langDiff
 			}
+			return cmp.Compare(a.Line[1].Value, b.Line[1].Value)
 		})
 
 		return lines
