@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -61,7 +60,7 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	}
 
 	opts.Offset = p.IntOr("offset", 0)
-	opts.Max = number.Min(p.IntOr("size", 10), 500)
+	opts.Max = min(p.IntOr("size", 10), 500)
 	albums, err := api.ds.Album(r.Context()).GetAllWithoutGenres(opts)
 
 	if err != nil {
@@ -165,7 +164,7 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	size := number.Min(p.IntOr("size", 10), 500)
+	size := min(p.IntOr("size", 10), 500)
 	genre, _ := p.String("genre")
 	fromYear := p.IntOr("fromYear", 0)
 	toYear := p.IntOr("toYear", 0)
@@ -184,7 +183,7 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 
 func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	count := number.Min(p.IntOr("count", 10), 500)
+	count := min(p.IntOr("count", 10), 500)
 	offset := p.IntOr("offset", 0)
 	genre, _ := p.String("genre")
 

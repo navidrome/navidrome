@@ -16,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/number"
 )
 
 type resizedArtworkReader struct {
@@ -113,7 +112,7 @@ func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
 
 	// Don't upscale the image
 	bounds := img.Bounds()
-	originalSize := number.Max(bounds.Max.X, bounds.Max.Y)
+	originalSize := max(bounds.Max.X, bounds.Max.Y)
 	if originalSize <= size {
 		return nil, originalSize, nil
 	}
