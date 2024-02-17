@@ -159,8 +159,8 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RealIPMiddleware applies middleware.RealIP if navidrome is behind a reverse proxy, and additionally saves the
-// request's original RemoteAddr to the request's context.
+// RealIPMiddleware applies middleware.RealIP, and additionally saves the request's original RemoteAddr to the request's
+// context if navidrome is behind a trusted reverse proxy.
 func RealIPMiddleware(next http.Handler) http.Handler {
 	if conf.Server.ReverseProxyWhitelist != "" {
 		return chi.Chain(
@@ -168,7 +168,11 @@ func RealIPMiddleware(next http.Handler) http.Handler {
 			middleware.RealIP,
 		).Handler(next)
 	}
-	return next
+
+	// The middleware is applied without a trusted reverse proxy to support other use-cases such as multiple clients
+	// behind a caching proxy. In this case, navidrome only uses the request's RemoteAddr for logging, so the security
+	// impact of reading the headers from untrusted sources is limited.
+	return middleware.RealIP(next)
 }
 
 // reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
