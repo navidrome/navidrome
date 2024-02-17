@@ -22,12 +22,19 @@ import (
 type Extractor interface {
 	Parse(files ...string) (map[string]ParsedTags, error)
 	CustomMappings() ParsedTags
+	Version() string
 }
 
 var extractors = map[string]Extractor{}
 
 func RegisterExtractor(id string, parser Extractor) {
 	extractors[id] = parser
+}
+
+func LogExtractors() {
+	for id, p := range extractors {
+		log.Debug("Registered metadata extractor", "id", id, "version", p.Version())
+	}
 }
 
 func Extract(files ...string) (map[string]Tags, error) {

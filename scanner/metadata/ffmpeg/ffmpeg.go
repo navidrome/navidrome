@@ -49,6 +49,10 @@ func (e *Extractor) CustomMappings() metadata.ParsedTags {
 	}
 }
 
+func (e *Extractor) Version() string {
+	return e.ffmpeg.Version()
+}
+
 func (e *Extractor) extractMetadata(filePath, info string) (metadata.ParsedTags, error) {
 	tags := e.parseInfo(info)
 	if len(tags) == 0 {

@@ -21,6 +21,13 @@
 
 char has_cover(const TagLib::FileRef f);
 
+static char TAGLIB_VERSION[16];
+
+char* taglib_version() {
+    snprintf((char *)TAGLIB_VERSION, 16, "%d.%d.%d", TAGLIB_MAJOR_VERSION, TAGLIB_MINOR_VERSION, TAGLIB_PATCH_VERSION);
+    return (char *)TAGLIB_VERSION;
+}
+
 int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   TagLib::FileRef f(filename, true, TagLib::AudioProperties::Fast);
 

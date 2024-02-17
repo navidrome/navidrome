@@ -34,6 +34,10 @@ func (e *Extractor) CustomMappings() metadata.ParsedTags {
 	}
 }
 
+func (e *Extractor) Version() string {
+	return Version()
+}
+
 func (e *Extractor) extractMetadata(filePath string) (metadata.ParsedTags, error) {
 	tags, err := Read(filePath)
 	if err != nil {

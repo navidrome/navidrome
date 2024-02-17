@@ -23,6 +23,7 @@ type FFmpeg interface {
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
+	Version() string
 }
 
 func New() FFmpeg {
@@ -82,6 +83,24 @@ func (e *ffmpeg) CmdPath() (string, error) {
 func (e *ffmpeg) IsAvailable() bool {
 	_, err := ffmpegCmd()
 	return err == nil
+}
+
+// Version executes ffmpeg -version and extracts the version from the output.
+// Sample output: ffmpeg version 6.0 Copyright (c) 2000-2023 the FFmpeg developers
+func (e *ffmpeg) Version() string {
+	cmd, err := ffmpegCmd()
+	if err != nil {
+		return "N/A"
+	}
+	out, err := exec.Command(cmd, "-version").CombinedOutput() // #nosec
+	if err != nil {
+		return "N/A"
+	}
+	parts := strings.Split(string(out), " ")
+	if len(parts) < 3 {
+		return "N/A"
+	}
+	return parts[2]
 }
 
 func (e *ffmpeg) start(ctx context.Context, args []string) (io.ReadCloser, error) {
