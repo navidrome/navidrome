@@ -302,8 +302,12 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 		w.Header().Set("Content-Type", "application/xml")
 		response, err = xml.Marshal(payload)
 	}
+	// This should never happen, but if it does, we need to know
 	if err != nil {
 		log.Error(r.Context(), "Error marshalling response", "format", f, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("Internal Server Error: " + err.Error()))
+		return
 	}
 	if payload.Status == "ok" {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
