@@ -5,10 +5,9 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jellydator/ttlcache/v2"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-
-	"github.com/ReneKroon/ttlcache/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
