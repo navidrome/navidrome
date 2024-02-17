@@ -178,7 +178,7 @@ func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
 }
 
 func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
-	ctx = contextWithoutCancel(ctx)
+	ctx = context.WithoutCancel(ctx)
 	if !isScanning.TryLock() {
 		log.Debug(ctx, "Scanner already running, ignoring request for rescan.")
 		return ErrAlreadyScanning
