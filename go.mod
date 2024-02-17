@@ -9,7 +9,7 @@ require (
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
 	github.com/dexterlb/mpvipc v0.0.0-20230829142118-145d6eabdc37
-	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25
+	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20220222230828-2909c950912d
