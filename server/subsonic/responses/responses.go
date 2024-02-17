@@ -61,6 +61,11 @@ type Subsonic struct {
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty" json:"lyricsList,omitempty"`
 }
 
+const (
+	StatusOK     = "ok"
+	StatusFailed = "failed"
+)
+
 type JsonWrapper struct {
 	Subsonic Subsonic `json:"subsonic-response"`
 }

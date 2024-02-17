@@ -31,13 +31,15 @@ Input #0, ape, from './Capture/02 01 - Symphony No. 5 in C minor, Op. 67 I. Alle
     CatalogNumber   : PLD 1201
 `
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md).To(HaveKeyWithValue("catalognumber", []string{"PLD 1201"}))
-			Expect(md).To(HaveKeyWithValue("musicbrainz_trackid", []string{"ffe06940-727a-415a-b608-b7e45737f9d8"}))
-			Expect(md).To(HaveKeyWithValue("musicbrainz_albumid", []string{"71eb5e4a-90e2-4a31-a2d1-a96485fcb667"}))
-			Expect(md).To(HaveKeyWithValue("musicbrainz_artistid", []string{"1f9df192-a621-4f54-8850-2c5373b7eac9"}))
-			Expect(md).To(HaveKeyWithValue("musicbrainz_albumartistid", []string{"89ad4ac3-39f7-470e-963a-56509c546377"}))
-			Expect(md).To(HaveKeyWithValue("musicbrainz_albumtype", []string{"album"}))
-			Expect(md).To(HaveKeyWithValue("musicbrainz_albumcomment", []string{"MP3"}))
+			Expect(md).To(SatisfyAll(
+				HaveKeyWithValue("catalognumber", []string{"PLD 1201"}),
+				HaveKeyWithValue("musicbrainz_trackid", []string{"ffe06940-727a-415a-b608-b7e45737f9d8"}),
+				HaveKeyWithValue("musicbrainz_albumid", []string{"71eb5e4a-90e2-4a31-a2d1-a96485fcb667"}),
+				HaveKeyWithValue("musicbrainz_artistid", []string{"1f9df192-a621-4f54-8850-2c5373b7eac9"}),
+				HaveKeyWithValue("musicbrainz_albumartistid", []string{"89ad4ac3-39f7-470e-963a-56509c546377"}),
+				HaveKeyWithValue("musicbrainz_albumtype", []string{"album"}),
+				HaveKeyWithValue("musicbrainz_albumcomment", []string{"MP3"}),
+			))
 		})
 
 		It("detects embedded cover art correctly", func() {
@@ -244,14 +246,16 @@ Input #0, mp3, from '/Users/deluan/Downloads/椎名林檎 - 加爾基 精液 栗
     ALBUMARTISTSORT : Shiina, Ringo
 `
 			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-			Expect(md).To(HaveKeyWithValue("title", []string{"ドツペルゲンガー"}))
-			Expect(md).To(HaveKeyWithValue("album", []string{"加爾基 精液 栗ノ花"}))
-			Expect(md).To(HaveKeyWithValue("artist", []string{"椎名林檎"}))
-			Expect(md).To(HaveKeyWithValue("album_artist", []string{"椎名林檎"}))
-			Expect(md).To(HaveKeyWithValue("title-sort", []string{"Dopperugengā"}))
-			Expect(md).To(HaveKeyWithValue("albumsort", []string{"Kalk Samen Kuri No Hana"}))
-			Expect(md).To(HaveKeyWithValue("artist_sort", []string{"Shiina, Ringo"}))
-			Expect(md).To(HaveKeyWithValue("albumartistsort", []string{"Shiina, Ringo"}))
+			Expect(md).To(SatisfyAll(
+				HaveKeyWithValue("title", []string{"ドツペルゲンガー"}),
+				HaveKeyWithValue("album", []string{"加爾基 精液 栗ノ花"}),
+				HaveKeyWithValue("artist", []string{"椎名林檎"}),
+				HaveKeyWithValue("album_artist", []string{"椎名林檎"}),
+				HaveKeyWithValue("title-sort", []string{"Dopperugengā"}),
+				HaveKeyWithValue("albumsort", []string{"Kalk Samen Kuri No Hana"}),
+				HaveKeyWithValue("artist_sort", []string{"Shiina, Ringo"}),
+				HaveKeyWithValue("albumartistsort", []string{"Shiina, Ringo"}),
+			))
 		})
 
 		It("ignores cover comment", func() {
@@ -310,11 +314,12 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 					replaygain: track gain - -1.480000, track peak - 0.000011, album gain - 3.215180, album peak - 0.000021, 
 		`
 		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-		Expect(md).To(HaveKeyWithValue("replaygain_track_gain", []string{"-1.48 dB"}))
-		Expect(md).To(HaveKeyWithValue("replaygain_track_peak", []string{"0.4512"}))
-		Expect(md).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
-		Expect(md).To(HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}))
-
+		Expect(md).To(SatisfyAll(
+			HaveKeyWithValue("replaygain_track_gain", []string{"-1.48 dB"}),
+			HaveKeyWithValue("replaygain_track_peak", []string{"0.4512"}),
+			HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}),
+			HaveKeyWithValue("replaygain_album_peak", []string{"0.9125"}),
+		))
 	})
 
 	It("parses lyrics with language code", func() {
@@ -327,12 +332,14 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 												: [00:02.50]unspecified
 		`
 		md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
-		Expect(md).To(HaveKeyWithValue("lyrics-eng", []string{
-			"[00:00.00]This is\n[00:02.50]English",
-		}))
-		Expect(md).To(HaveKeyWithValue("lyrics-xxx", []string{
-			"[00:00.00]This is\n[00:02.50]unspecified",
-		}))
+		Expect(md).To(SatisfyAll(
+			HaveKeyWithValue("lyrics-eng", []string{
+				"[00:00.00]This is\n[00:02.50]English",
+			}),
+			HaveKeyWithValue("lyrics-xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified",
+			}),
+		))
 	})
 
 	It("parses normal LYRICS tag", func() {

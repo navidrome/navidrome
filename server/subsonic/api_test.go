@@ -24,12 +24,12 @@ var _ = Describe("sendResponse", func() {
 		w = httptest.NewRecorder()
 		r = httptest.NewRequest("GET", "/somepath", nil)
 		payload = &responses.Subsonic{
-			Status:  "ok",
+			Status:  responses.StatusOK,
 			Version: "1.16.1",
 		}
 	})
 
-	Context("when format is JSON", func() {
+	When("format is JSON", func() {
 		It("should set Content-Type to application/json and return the correct body", func() {
 			q := r.URL.Query()
 			q.Add("f", "json")
@@ -48,7 +48,7 @@ var _ = Describe("sendResponse", func() {
 		})
 	})
 
-	Context("when format is JSONP", func() {
+	When("format is JSONP", func() {
 		It("should set Content-Type to application/javascript and return the correct callback body", func() {
 			q := r.URL.Query()
 			q.Add("f", "jsonp")
@@ -60,8 +60,8 @@ var _ = Describe("sendResponse", func() {
 			Expect(w.Header().Get("Content-Type")).To(Equal("application/javascript"))
 			body := w.Body.String()
 			Expect(body).To(SatisfyAll(
-				ContainSubstring("testCallback("),
-				ContainSubstring(")"),
+				HavePrefix("testCallback("),
+				HaveSuffix(")"),
 			))
 
 			// Extract JSON from the JSONP response
@@ -73,7 +73,7 @@ var _ = Describe("sendResponse", func() {
 		})
 	})
 
-	Context("when format is XML or unspecified", func() {
+	When("format is XML or unspecified", func() {
 		It("should set Content-Type to application/xml and return the correct body", func() {
 			// No format specified, expecting XML by default
 			sendResponse(w, r, payload)
@@ -87,19 +87,25 @@ var _ = Describe("sendResponse", func() {
 		})
 	})
 
-	Context("when an error occurs during marshalling", func() {
-		It("should return HTTP 500", func() {
+	When("an error occurs during marshalling", func() {
+		It("should return a fail response", func() {
 			payload.Song = &responses.Child{
+				// An +Inf value will cause an error when marshalling to JSON
 				ReplayGain: responses.ReplayGain{TrackGain: math.Inf(1)},
-			} // This will cause an error when marshalling to JSON
+			}
 			q := r.URL.Query()
 			q.Add("f", "json")
 			r.URL.RawQuery = q.Encode()
+
 			sendResponse(w, r, payload)
 
-			Expect(w.Code).To(Equal(http.StatusInternalServerError))
-			body := w.Body.String()
-			Expect(body).To(ContainSubstring("Internal Server Error"))
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var wrapper responses.JsonWrapper
+			err := json.Unmarshal(w.Body.Bytes(), &wrapper)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(wrapper.Subsonic.Status).To(Equal(responses.StatusFailed))
+			Expect(wrapper.Subsonic.Version).To(Equal(payload.Version))
+			Expect(wrapper.Subsonic.Error.Message).To(ContainSubstring("json: unsupported value: +Inf"))
 		})
 	})
 

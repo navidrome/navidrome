@@ -19,7 +19,7 @@ import (
 
 func newResponse() *responses.Subsonic {
 	return &responses.Subsonic{
-		Status:        "ok",
+		Status:        responses.StatusOK,
 		Version:       Version,
 		Type:          consts.AppName,
 		ServerVersion: consts.Version,

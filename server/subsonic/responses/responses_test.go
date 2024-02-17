@@ -20,7 +20,7 @@ var _ = Describe("Responses", func() {
 	var response *Subsonic
 	BeforeEach(func() {
 		response = &Subsonic{
-			Status:        "ok",
+			Status:        StatusOK,
 			Version:       "1.8.0",
 			Type:          consts.AppName,
 			ServerVersion: "v0.0.0",
