@@ -164,7 +164,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 func RealIPMiddleware(next http.Handler) http.Handler {
 	if conf.Server.ReverseProxyWhitelist != "" {
 		return chi.Chain(
-			reqToCtx(consts.ReverseProxyIpCtxKey, func(r *http.Request) any { return r.RemoteAddr }),
+			reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr }),
 			middleware.RealIP,
 		).Handler(next)
 	}
@@ -177,7 +177,7 @@ func RealIPMiddleware(next http.Handler) http.Handler {
 
 // reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
 // can only be set once.
-func reqToCtx(key string, fn func(req *http.Request) any) func(http.Handler) http.Handler {
+func reqToCtx(key any, fn func(req *http.Request) any) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Context().Value(key) == nil {

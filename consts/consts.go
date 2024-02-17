@@ -20,7 +20,6 @@ const (
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 24 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
-	ReverseProxyIpCtxKey   = "Reverse-Proxy-IP"
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option

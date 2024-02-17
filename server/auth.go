@@ -199,7 +199,7 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 	if conf.Server.ReverseProxyWhitelist == "" && !strings.HasPrefix(conf.Server.Address, "unix:") {
 		return ""
 	}
-	reverseProxyIp, ok := r.Context().Value(consts.ReverseProxyIpCtxKey).(string)
+	reverseProxyIp, ok := request.ReverseProxyIpFrom(r.Context())
 	if !ok {
 		log.Error("ReverseProxyWhitelist enabled but no proxy IP found in request context. Please report this error.")
 		return ""

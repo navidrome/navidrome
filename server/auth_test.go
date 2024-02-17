@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/model/request"
+
 	"github.com/google/uuid"
 
 	"github.com/navidrome/navidrome/conf"
@@ -82,7 +84,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
-				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -92,7 +94,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
-				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, UNTRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), UNTRUSTED_IPV4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -100,7 +102,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv6 matches whitelist", func() {
-				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV6))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -110,7 +112,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
-				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, UNTRUSTED_IPV6))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), UNTRUSTED_IPV6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -120,7 +122,7 @@ var _ = Describe("Auth", func() {
 			It("creates user and sets auth data if user does not exist", func() {
 				newUser := "NEW_USER_" + uuid.NewString()
 
-				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV4))
 				req.Header.Set("Remote-User", newUser)
 				serveIndex(ds, fs, nil)(resp, req)
 
@@ -131,7 +133,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if user exists", func() {
-				req = req.WithContext(context.WithValue(req.Context(), consts.ReverseProxyIpCtxKey, TRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
