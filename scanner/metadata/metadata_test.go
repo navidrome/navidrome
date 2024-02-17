@@ -3,6 +3,7 @@ package metadata_test
 import (
 	"cmp"
 	"encoding/json"
+	"slices"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -13,7 +14,6 @@ import (
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"golang.org/x/exp/slices"
 )
 
 var _ = Describe("Tags", func() {

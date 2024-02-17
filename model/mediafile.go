@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"mime"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/slices"
 )
 
 type MediaFile struct {
