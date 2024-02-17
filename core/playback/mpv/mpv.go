@@ -2,14 +2,11 @@ package mpv
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -133,10 +130,3 @@ var (
 	mpvPath string
 	mpvErr  error
 )
-
-func TempFileName(prefix, suffix string) string {
-	randBytes := make([]byte, 16)
-	// we can savely ignore the return value since we're loading into a precreated, fixedsized buffer
-	_, _ = rand.Read(randBytes)
-	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
-}

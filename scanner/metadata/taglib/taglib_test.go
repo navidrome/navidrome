@@ -4,8 +4,8 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/navidrome/navidrome/core/playback/mpv"
 	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -181,7 +181,7 @@ var _ = Describe("Extractor", func() {
 			// Only run permission tests if we are not root
 			RegularUserContext("when run without root privileges", func() {
 				BeforeEach(func() {
-					accessForbiddenFile = mpv.TempFileName("access_forbidden", ".mp3")
+					accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
 
 					f, err := os.OpenFile(accessForbiddenFile, os.O_WRONLY|os.O_CREATE, 0222)
 					Expect(err).ToNot(HaveOccurred())
