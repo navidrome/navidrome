@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
-	"golang.org/x/exp/slices"
 )
 
 const (

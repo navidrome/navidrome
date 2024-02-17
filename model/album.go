@@ -2,10 +2,10 @@ package model
 
 import (
 	"cmp"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/slices"
 )
 
 type Album struct {
