@@ -34,7 +34,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   // Add audio properties to the tags
   const TagLib::AudioProperties *props(f.audioProperties());
-  go_map_put_int(id, (char *)"duration", props->length());
+  go_map_put_int(id, (char *)"duration", props->lengthInSeconds());
   go_map_put_int(id, (char *)"lengthinmilliseconds", props->lengthInMilliseconds());
   go_map_put_int(id, (char *)"bitrate", props->bitrate());
   go_map_put_int(id, (char *)"channels", props->channels());
