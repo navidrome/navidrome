@@ -32,7 +32,6 @@ func (r *albumRepository) AddHook(hook Hook) {
 	r.hooks = append(r.hooks, hook)
 }
 
-
 func (a *dbAlbum) PostScan() error {
 	if a.Discs == "" {
 		a.Album.Discs = model.Discs{}
@@ -88,7 +87,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		}
 	}
 
-	if conf.Server.AlbumPlaycountMode == "kodi" {
+	if conf.Server.AlbumPlaycountMode == "normalized" {
 		r.AddHook(func(album *model.Album) {
 			if album.SongCount != 0 {
 				album.PlayCount = album.PlayCount / int64(album.SongCount)
@@ -196,9 +195,6 @@ func (r *albumRepository) toModels(dba []dbAlbum) model.Albums {
 	}
 	return res
 }
-
-
-
 
 func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
 	sq := r.selectAlbum(options...)
