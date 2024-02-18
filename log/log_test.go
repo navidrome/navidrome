@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -91,8 +92,19 @@ var _ = Describe("Logger", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
 			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:92"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:93"))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
+		})
+
+		It("logs fmt.Stringer as a string", func() {
+			t := time.Now()
+			Error("Simple Message", "key1", t)
+			Expect(hook.LastEntry().Data["key1"]).To(Equal(t.String()))
+		})
+		It("logs nil fmt.Stringer as nil", func() {
+			var t *time.Time
+			Error("Simple Message", "key1", t)
+			Expect(hook.LastEntry().Data["key1"]).To(Equal("nil"))
 		})
 	})
 
