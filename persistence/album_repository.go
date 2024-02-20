@@ -14,22 +14,14 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-type Hook func(*model.Album)
-
 type albumRepository struct {
 	sqlRepository
 	sqlRestful
-
-	hooks []Hook
 }
 
 type dbAlbum struct {
 	*model.Album `structs:",flatten"`
 	Discs        string `structs:"-" json:"discs"`
-}
-
-func (r *albumRepository) AddHook(hook Hook) {
-	r.hooks = append(r.hooks, hook)
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -85,14 +77,6 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"random":         "RANDOM()",
 			"recently_added": recentlyAddedSort(),
 		}
-	}
-
-	if conf.Server.AlbumPlaycountMode == "normalized" {
-		r.AddHook(func(album *model.Album) {
-			if album.SongCount != 0 {
-				album.PlayCount = album.PlayCount / int64(album.SongCount)
-			}
-		})
 	}
 
 	return r
@@ -188,8 +172,8 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 func (r *albumRepository) toModels(dba []dbAlbum) model.Albums {
 	res := model.Albums{}
 	for i := range dba {
-		for _, hook := range r.hooks {
-			hook(dba[i].Album)
+		if conf.Server.AlbumPlaycountMode == "normalized" && dba[i].Album.SongCount != 0 {
+			dba[i].Album.PlayCount = (dba[i].Album.PlayCount + (int64(dba[i].Album.SongCount) - 1)) / int64(dba[i].Album.SongCount)
 		}
 		res = append(res, *dba[i].Album)
 	}
