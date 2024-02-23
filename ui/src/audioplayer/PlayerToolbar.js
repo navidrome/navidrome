@@ -1,14 +1,15 @@
 import React, { useCallback } from 'react'
 import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
-import { LoveButton, useToggleLove } from '../common'
+import { LoveButton, useToggleLove, RatingField, useRating } from '../common'
 import { keyMap } from '../hotkeys'
 
 const Placeholder = () => <LoveButton disabled={true} resource={'song'} />
 
 const Toolbar = ({ id }) => {
   const { data, loading } = useGetOne('song', id)
-  const [toggleLove, toggling] = useToggleLove('song', data)
+  const [toggleLove, togglingLove] = useToggleLove('song', data)
+  const [, , loadingRating] = useRating('song', data)
 
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
@@ -17,10 +18,15 @@ const Toolbar = ({ id }) => {
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
+      <RatingField
+        record={data}
+        resource={'song'}
+        disabled={loading || loadingRating}
+      />
       <LoveButton
         record={data}
         resource={'song'}
-        disabled={loading || toggling}
+        disabled={loading || togglingLove}
       />
     </>
   )
