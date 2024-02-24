@@ -24,7 +24,8 @@
         "videoConversionRole": false,
         "folder": [
           1
-        ]
+        ],
+        "syncPlayqueue": false
       }
     ]
   }

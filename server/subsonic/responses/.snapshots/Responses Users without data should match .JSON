@@ -20,7 +20,8 @@
         "streamRole": false,
         "jukeboxRole": false,
         "shareRole": false,
-        "videoConversionRole": false
+        "videoConversionRole": false,
+        "syncPlayqueue": false
       }
     ]
   }
