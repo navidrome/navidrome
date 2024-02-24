@@ -19,6 +19,7 @@ func (api *Router) GetUser(r *http.Request) (*responses.Subsonic, error) {
 	response.User.Username = loggedUser.UserName
 	response.User.AdminRole = loggedUser.IsAdmin
 	response.User.Email = loggedUser.Email
+	response.User.SyncPlayqueue = loggedUser.SyncPlayqueue
 	response.User.StreamRole = true
 	response.User.ScrobblingEnabled = true
 	response.User.DownloadRole = conf.Server.EnableDownloads
@@ -43,6 +44,7 @@ func (api *Router) GetUsers(r *http.Request) (*responses.Subsonic, error) {
 	if conf.Server.Jukebox.Enabled {
 		user.JukeboxRole = !conf.Server.Jukebox.AdminOnly || loggedUser.IsAdmin
 	}
+	user.SyncPlayqueue = loggedUser.SyncPlayqueue
 	response := newResponse()
 	response.Users = &responses.Users{User: []responses.User{user}}
 	return response, nil
