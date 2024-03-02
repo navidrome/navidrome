@@ -20,7 +20,7 @@ create table player_dg_tmp
 	name varchar not null,
 	user_agent varchar,
 	user_name varchar not null
-		references user (user_name)
+		references "user" (user_name)
 			on update cascade on delete cascade,
 	client varchar not null,
 	ip_address varchar,

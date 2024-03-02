@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migration"
@@ -26,10 +27,10 @@ const migrationsFolder = "migration"
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		Path = conf.Server.DbPath
-		if Path == ":memory:" {
-			Path = "file::memory:?cache=shared&_foreign_keys=on"
-			conf.Server.DbPath = Path
+		if conf.Server.DbDriver != "" {
+			Driver = conf.Server.DbDriver
 		}
+		conf.Server.DbDriver = Driver
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		instance, err := sql.Open(Driver, Path)
 		if err != nil {
@@ -47,22 +48,24 @@ func Close() error {
 func Init() {
 	db := Db()
 
-	// Disable foreign_keys to allow re-creating tables in migrations
-	_, err := db.Exec("PRAGMA foreign_keys=off")
-	defer func() {
-		_, err := db.Exec("PRAGMA foreign_keys=on")
+	// Disable foreign_keys to allow re-creating tables in migrations (sqlite only)
+	if Driver == "sqlite3" {
+		_, err := db.Exec("PRAGMA foreign_keys=off")
+		defer func() {
+			_, err := db.Exec("PRAGMA foreign_keys=on")
+			if err != nil {
+				log.Error("Error re-enabling foreign_keys", err)
+			}
+		}()
 		if err != nil {
-			log.Error("Error re-enabling foreign_keys", err)
+			log.Error("Error disabling foreign_keys", err)
 		}
-	}()
-	if err != nil {
-		log.Error("Error disabling foreign_keys", err)
 	}
 
 	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
 	goose.SetBaseFS(embedMigrations)
 
-	err = goose.SetDialect(Driver)
+	err := goose.SetDialect(Driver)
 	if err != nil {
 		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
@@ -101,11 +104,25 @@ func hasPendingMigrations(db *sql.DB, folder string) bool {
 }
 
 func isSchemaEmpty(db *sql.DB) bool {
-	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
+	var (
+		query string
+	)
+
+	switch Driver {
+	case "sqlite3":
+		query = "SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';"
+	case "pgx":
+		query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'goose_db_version';"
+	default:
+		log.Fatal("Invalid DB driver", "driver", Driver)
+	}
+
+	rows, err := db.Query(query) // nolint:rowserrcheck
 	if err != nil {
 		log.Fatal("Database could not be opened!", err)
 	}
 	defer rows.Close()
+
 	return !rows.Next()
 }
 

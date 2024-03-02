@@ -19,19 +19,19 @@ create table share
     id              varchar(255) not null
         primary key,
     description     varchar(255),
-    expires_at      datetime,
-    last_visited_at datetime,
+    expires_at      timestamp,
+    last_visited_at timestamp,
     resource_ids    varchar      not null,
     resource_type   varchar(255) not null,
     contents        varchar,
     format 			varchar,
 	max_bit_rate 	integer,
     visit_count     integer default 0,
-    created_at      datetime,
-    updated_at      datetime,
+    created_at      timestamp,
+    updated_at      timestamp,
     user_id         varchar(255) not null
         constraint share_user_id_fk
-            references user
+            references "user"
 );
 `)
 	return err

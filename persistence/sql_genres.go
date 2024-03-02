@@ -47,7 +47,7 @@ func (r *sqlRepository) loadMediaFileGenres(mfs *model.MediaFiles) error {
 
 	return slice.RangeByChunks(ids, 900, func(ids []string) error {
 		sql := Select("g.*", "mg.media_file_id").From("genre g").Join("media_file_genres mg on mg.genre_id = g.id").
-			Where(Eq{"mg.media_file_id": ids}).OrderBy("mg.media_file_id", "mg.rowid")
+			Where(Eq{"mg.media_file_id": ids}).OrderBy("mg.media_file_id")
 		var genres []struct {
 			model.Genre
 			MediaFileId string
@@ -76,7 +76,7 @@ func (r *sqlRepository) loadAlbumGenres(mfs *model.Albums) error {
 
 	return slice.RangeByChunks(ids, 900, func(ids []string) error {
 		sql := Select("g.*", "ag.album_id").From("genre g").Join("album_genres ag on ag.genre_id = g.id").
-			Where(Eq{"ag.album_id": ids}).OrderBy("ag.album_id", "ag.rowid")
+			Where(Eq{"ag.album_id": ids}).OrderBy("ag.album_id")
 		var genres []struct {
 			model.Genre
 			AlbumId string
@@ -105,7 +105,7 @@ func (r *sqlRepository) loadArtistGenres(mfs *model.Artists) error {
 
 	return slice.RangeByChunks(ids, 900, func(ids []string) error {
 		sql := Select("g.*", "ag.artist_id").From("genre g").Join("artist_genres ag on ag.genre_id = g.id").
-			Where(Eq{"ag.artist_id": ids}).OrderBy("ag.artist_id", "ag.rowid")
+			Where(Eq{"ag.artist_id": ids}).OrderBy("ag.artist_id")
 		var genres []struct {
 			model.Genre
 			ArtistId string

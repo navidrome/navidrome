@@ -16,13 +16,13 @@ func init() {
 }
 
 func upEncodeAllPasswords(ctx context.Context, tx *sql.Tx) error {
-	rows, err := tx.Query(`SELECT id, user_name, password from user;`)
+	rows, err := tx.Query(`SELECT id, user_name, password from "user";`)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
-	stmt, err := tx.Prepare("UPDATE user SET password = ? WHERE id = ?")
+	stmt, err := tx.Prepare(`UPDATE "user" SET password = $1 WHERE id = $2`)
 	if err != nil {
 		return err
 	}

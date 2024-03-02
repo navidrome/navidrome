@@ -16,7 +16,7 @@ func upAddSmartPlaylist(_ context.Context, tx *sql.Tx) error {
 alter table playlist
 	add column rules varchar null;
 alter table playlist
-	add column evaluated_at datetime null;
+	add column evaluated_at timestamp null;
 create index if not exists playlist_evaluated_at
 	on playlist(evaluated_at);
 

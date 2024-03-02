@@ -26,7 +26,7 @@ alter table artist
 alter table artist
 	add external_url varchar(255) default '' not null;
 alter table artist
-	add external_info_updated_at datetime;
+	add external_info_updated_at timestamp;
 `)
 	return err
 }

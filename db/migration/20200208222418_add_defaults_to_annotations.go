@@ -23,10 +23,10 @@ create table annotation_dg_tmp
 	item_id varchar(255) default '' not null,
 	item_type varchar(255) default '' not null,
 	play_count integer default 0,
-	play_date datetime,
+	play_date timestamp,
 	rating integer default 0,
 	starred bool default FALSE not null,
-	starred_at datetime,
+	starred_at timestamp,
 	unique (user_id, item_id, item_type)
 );
 

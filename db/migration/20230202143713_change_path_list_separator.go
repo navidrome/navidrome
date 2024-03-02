@@ -19,13 +19,13 @@ func init() {
 func upChangePathListSeparator(_ context.Context, tx *sql.Tx) error {
 	//nolint:gosec
 	rows, err := tx.Query(`
-	select album_id, group_concat(path, '` + consts.Zwsp + `') from media_file group by album_id
+	select album_id, string_agg(path, '` + consts.Zwsp + `') from media_file group by album_id
 	`)
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("update album set paths = ? where id = ?")
+	stmt, err := tx.Prepare("update album set paths = $1 where id = $2")
 	if err != nil {
 		return err
 	}
