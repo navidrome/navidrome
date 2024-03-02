@@ -38,6 +38,7 @@ func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlis
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
 	}
+	metadata.LogExtractors()
 
 	return s
 }

@@ -4,12 +4,11 @@ go 1.21
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/ReneKroon/ttlcache/v2 v2.11.0
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
 	github.com/dexterlb/mpvipc v0.0.0-20230829142118-145d6eabdc37
-	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25
+	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20220222230828-2909c950912d
@@ -17,23 +16,24 @@ require (
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/structs v1.1.0
-	github.com/go-chi/chi/v5 v5.0.11
+	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.8.0
 	github.com/go-chi/jwtauth/v5 v5.3.0
-	github.com/google/uuid v1.5.0
-	github.com/google/wire v0.5.0
+	github.com/google/uuid v1.6.0
+	github.com/google/wire v0.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jackc/pgx/v5 v5.4.3
+	github.com/jellydator/ttlcache/v2 v2.11.1
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.19
 	github.com/matoous/go-nanoid/v2 v2.0.0
-	github.com/mattn/go-sqlite3 v1.14.19
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mattn/go-zglob v0.0.4
 	github.com/microcosm-cc/bluemonday v1.0.26
 	github.com/mileusna/useragent v1.3.4
-	github.com/onsi/ginkgo/v2 v2.14.0
-	github.com/onsi/gomega v1.30.0
+	github.com/onsi/ginkgo/v2 v2.15.0
+	github.com/onsi/gomega v1.31.1
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/pocketbase/dbx v1.10.1
 	github.com/pressly/goose/v3 v3.15.1
@@ -44,8 +44,8 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.4
 	github.com/unrolled/secure v1.14.0
-	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
+	github.com/xrash/smetrics v0.0.0-20231213231151-1d8dd44e695e
+	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	golang.org/x/image v0.15.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/text v0.14.0
@@ -93,11 +93,10 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	go.uber.org/goleak v1.1.11 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/tools v0.16.1 // indirect
+	golang.org/x/crypto v0.19.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/tools v0.18.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect

@@ -25,6 +25,10 @@ import (
 
 const iTunesKeyPrefix = "----:com.apple.itunes:"
 
+func Version() string {
+	return C.GoString(C.taglib_version())
+}
+
 func Read(filename string) (tags map[string][]string, err error) {
 	// Do not crash on failures in the C code/library
 	debug.SetPanicOnFault(true)
