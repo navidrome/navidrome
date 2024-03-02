@@ -19,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/number"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -275,7 +274,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 			return ctx.Err()
 		}
 
-		topCount := number.Max(count, 20)
+		topCount := max(count, 20)
 		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Name: a.Name, Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)

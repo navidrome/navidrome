@@ -5,24 +5,16 @@ import (
 	"os"
 
 	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Extractor", func() {
 	var e *Extractor
-	// This file will have 0222 (no read) permission during these tests
-	var accessForbiddenFile = "tests/fixtures/test_no_read_permission.ogg"
 
 	BeforeEach(func() {
 		e = &Extractor{}
-
-		err := os.Chmod(accessForbiddenFile, 0222)
-		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() {
-			err = os.Chmod(accessForbiddenFile, 0644)
-			Expect(err).ToNot(HaveOccurred())
-		})
 	})
 
 	Describe("Parse", func() {
@@ -30,11 +22,9 @@ var _ = Describe("Extractor", func() {
 			mds, err := e.Parse(
 				"tests/fixtures/test.mp3",
 				"tests/fixtures/test.ogg",
-				accessForbiddenFile,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mds).To(HaveLen(2))
-			Expect(mds).ToNot(HaveKey(accessForbiddenFile))
 
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m).To(HaveKeyWithValue("title", []string{"Song", "Song"}))
@@ -171,20 +161,59 @@ var _ = Describe("Extractor", func() {
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
 			Entry("correctly parses wv (wavpak) tags", "test.wv", "1.00", "1", "3.43 dB", "0.125061", "3.43 dB", "0.125061", false),
 
-			// TODO - these breaks in the pipeline as it uses TabLib 1.11. Once Ubuntu 24.04 is released we can uncomment these tests
+			// TODO - these break in the pipeline as it uses TabLib 1.11. Once Ubuntu 24.04 is released we can uncomment these tests
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
 			// Entry("correctly parses wav tags", "test.wav", "1.00", "1", "3.06 dB", "0.125056", "3.06 dB", "0.125056", true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
 			// Entry("correctly parses aiff tags", "test.aiff", "1.00", "1", "2.00 dB", "0.124972", "2.00 dB", "0.124972", true),
 		)
+
+		// Skip these tests when running as root
+		Context("Access Forbidden", func() {
+			var accessForbiddenFile string
+			var RegularUserContext = XContext
+			var isRegularUser = os.Getuid() != 0
+			if isRegularUser {
+				RegularUserContext = Context
+			}
+
+			// Only run permission tests if we are not root
+			RegularUserContext("when run without root privileges", func() {
+				BeforeEach(func() {
+					accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
+
+					f, err := os.OpenFile(accessForbiddenFile, os.O_WRONLY|os.O_CREATE, 0222)
+					Expect(err).ToNot(HaveOccurred())
+
+					DeferCleanup(func() {
+						Expect(f.Close()).To(Succeed())
+						Expect(os.Remove(accessForbiddenFile)).To(Succeed())
+					})
+				})
+
+				It("correctly handle unreadable file due to insufficient read permission", func() {
+					_, err := e.extractMetadata(accessForbiddenFile)
+					Expect(err).To(MatchError(os.ErrPermission))
+				})
+
+				It("skips the file if it cannot be read", func() {
+					files := []string{
+						"tests/fixtures/test.mp3",
+						"tests/fixtures/test.ogg",
+						accessForbiddenFile,
+					}
+					mds, err := e.Parse(files...)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(mds).To(HaveLen(2))
+					Expect(mds).ToNot(HaveKey(accessForbiddenFile))
+				})
+			})
+		})
+
 	})
 
 	Describe("Error Checking", func() {
-		It("correctly handle unreadable file due to insufficient read permission", func() {
-			_, err := e.extractMetadata(accessForbiddenFile)
-			Expect(err).To(MatchError(os.ErrPermission))
-		})
 		It("returns a generic ErrPath if file does not exist", func() {
 			testFilePath := "tests/fixtures/NON_EXISTENT.ogg"
 			_, err := e.extractMetadata(testFilePath)
