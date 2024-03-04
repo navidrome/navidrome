@@ -148,9 +148,9 @@
                 "name": "Nom",
                 "duration": "Durée",
                 "ownerName": "Propriétaire",
-                "public": "Public",
+                "public": "Publique",
                 "updatedAt": "Mise à jour le",
-                "createdAt": "Créé le",
+                "createdAt": "Créée le",
                 "songCount": "Titres",
                 "comment": "Commentaire",
                 "sync": "Import automatique",
@@ -174,7 +174,7 @@
                 "name": "Nom",
                 "streamUrl": "Lien du stream",
                 "homePageUrl": "Lien de la page d'accueil",
-                "updatedAt": "Mis à jour le",
+                "updatedAt": "Mise à jour le",
                 "createdAt": "Créée le"
             },
             "actions": {
@@ -195,7 +195,7 @@
                 "maxBitRate": "Bitrate maximum",
                 "updatedAt": "Mis à jour le",
                 "createdAt": "Créé le",
-                "downloadable": "Autoriser les téléchargements?"
+                "downloadable": "Autoriser les téléchargements ?"
             }
         }
     },
@@ -274,7 +274,7 @@
             "not_found": "Page manquante",
             "show": "%{name} #%{id}",
             "empty": "Pas encore de %{name}.",
-            "invite": "Voulez-vous en créer un ?"
+            "invite": "Voulez-vous en créer ?"
         },
         "input": {
             "file": {
@@ -362,18 +362,18 @@
             "musicbrainz": "Ouvrir dans MusicBrainz"
         },
         "lastfmLink": "Lire plus...",
-        "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur: %{user}",
-        "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz: %{error}",
+        "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur : %{user}",
+        "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz : %{error}",
         "listenBrainzUnlinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant désactivés",
         "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz",
         "downloadOriginalFormat": "Télécharger au format original",
         "shareOriginalFormat": "Partager avec le format original",
         "shareDialogTitle": "Partager %{resource} '%{name}'",
         "shareBatchDialogTitle": "Partager 1 %{resource} |||| Partager %{smart_count} %{resource}",
-        "shareSuccess": "Lien copié vers le presse-papier: %{url}",
+        "shareSuccess": "Lien copié vers le presse-papier : %{url}",
         "shareFailure": "Erreur en copiant le lien %{url} vers le presse-papier",
         "downloadDialogTitle": "Télécharger %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "Copier vers le presse-papier: Ctrl+C, Enter"
+        "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -390,7 +390,7 @@
                 "lastfmScrobbling": "Scrobbler vers Last.fm",
                 "listenBrainzScrobbling": "Scrobbler vers ListenBrainz",
                 "replaygain": "Mode ReplayGain",
-                "preAmp": "Pre-amplification ReplayGain (dB)",
+                "preAmp": "Pré-amplification ReplayGain (dB)",
                 "gain": {
                     "none": "Désactivé",
                     "album": "Utiliser le gain de l'album",
