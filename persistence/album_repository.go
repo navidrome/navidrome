@@ -172,6 +172,9 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 func (r *albumRepository) toModels(dba []dbAlbum) model.Albums {
 	res := model.Albums{}
 	for i := range dba {
+		if conf.Server.AlbumPlaycountMode == "normalized" && dba[i].Album.SongCount != 0 {
+			dba[i].Album.PlayCount = (dba[i].Album.PlayCount + (int64(dba[i].Album.SongCount) - 1)) / int64(dba[i].Album.SongCount)
+		}
 		res = append(res, *dba[i].Album)
 	}
 	return res

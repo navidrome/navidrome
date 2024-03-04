@@ -44,6 +44,7 @@ type configOptions struct {
 	EnableMediaFileCoverArt      bool
 	TranscodingCacheSize         string
 	ImageCacheSize               string
+	AlbumPlaycountMode           string
 	EnableArtworkPrecache        bool
 	AutoImportPlaylists          bool
 	PlaylistsPath                string
@@ -288,6 +289,7 @@ func init() {
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
+	viper.SetDefault("albumplaycountmode", "absolute")
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
