@@ -113,6 +113,7 @@ var _ = Describe("Tags", func() {
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
 			Expect(m.BitRate()).To(BeElementOf(18, 39, 40, 43, 49))
+			Expect(m.SubTrack()).To(Equal(-1))
 
 			m = mds["tests/fixtures/test.wma"]
 			Expect(err).To(BeNil())

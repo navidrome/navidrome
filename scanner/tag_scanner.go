@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"bytes"
 	"context"
 	"io/fs"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
@@ -17,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/scanner/metadata/cuesheet"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -29,6 +32,7 @@ type TagScanner struct {
 	cnt         *counters
 	mapper      *MediaFileMapper
 	cacheWarmer artwork.CacheWarmer
+	cueCache    map[string]*cuesheet.Cuesheet
 }
 
 func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
@@ -37,6 +41,7 @@ func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlis
 		plsSync:     newPlaylistImporter(ds, playlists, cacheWarmer, rootFolder),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
+		cueCache:    map[string]*cuesheet.Cuesheet{},
 	}
 	metadata.LogExtractors()
 
@@ -240,21 +245,43 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher
 	return err
 }
 
+func (s *TagScanner) addMediaForUpdate(filesToUpdate []string, filePath string, visitedPaths map[string]struct{}) []string {
+	if _, visited := visitedPaths[filePath]; !visited {
+		s.cnt.added++
+		return append(filesToUpdate, filePath)
+	}
+	return filesToUpdate
+}
+
+func (s *TagScanner) removeFromOrphan(orphanTracks map[string]model.MediaFile, tracks []model.MediaFile) {
+	for _, track := range tracks {
+		delete(orphanTracks, track.ID)
+	}
+}
+
 func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher, fullScan bool, dir string) error {
 	start := time.Now()
 
+	// Tracks for delete after scan
+	orphanTracks := map[string]model.MediaFile{}
+
 	// Load folder's current tracks from DB into a map
-	currentTracks := map[string]model.MediaFile{}
+	currentTracks := map[string]model.MediaFiles{}
 	ct, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
 	if err != nil {
 		return err
 	}
 	for _, t := range ct {
-		currentTracks[t.Path] = t
+		currentTracks[t.Path] = append(currentTracks[t.Path], t)
+		// We don't need a full MediaFile here
+		orphanTracks[t.ID] = model.MediaFile{
+			AlbumID:       t.AlbumID,
+			AlbumArtistID: t.AlbumArtistID,
+		}
 	}
 
 	// Load track list from the folder
-	files, err := loadAllAudioFiles(dir)
+	files, err := loadAllAudioFiles(dir, conf.Server.Scanner.CUESheetSupport)
 	if err != nil {
 		return err
 	}
@@ -264,44 +291,86 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 		return nil
 	}
 
-	orphanTracks := map[string]model.MediaFile{}
-	for k, v := range currentTracks {
-		orphanTracks[k] = v
-	}
-
 	// If track from folder is newer than the one in DB, select for update/insert in DB
 	log.Trace(ctx, "Processing changed folder", "dir", dir, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
 	var filesToUpdate []string
-	for filePath, entry := range files {
-		c, inDB := currentTracks[filePath]
-		if !inDB || fullScan {
-			filesToUpdate = append(filesToUpdate, filePath)
-			s.cnt.added++
-		} else {
-			info, err := entry.Info()
-			if err != nil {
-				log.Error("Could not stat file", "filePath", filePath, err)
-				continue
-			}
-			if info.ModTime().After(c.UpdatedAt) {
-				filesToUpdate = append(filesToUpdate, filePath)
-				s.cnt.updated++
-			}
+	visitedPaths := map[string]struct{}{}
+
+	// Handle each media file from folder
+	handleMediaPath := func(mediaPath string, trackCallback func(fileModTime time.Time, trackFromDB *model.MediaFile) bool) bool {
+		tracks, inDB := currentTracks[mediaPath]
+		info, err := os.Stat(mediaPath)
+		if err != nil {
+			log.Error("Could not stat media file", "mediaPath", mediaPath, err)
+			return false
 		}
 
-		// Force a refresh of the album and artist, to cater for cover art files
-		refresher.accumulate(c)
+		if !inDB || fullScan {
+			filesToUpdate = s.addMediaForUpdate(filesToUpdate, mediaPath, visitedPaths)
+		} else {
+			trackFromDB := tracks[0]
+			// Need add only one from multi-track source, but mark as visited all tracks
+			if trackCallback(info.ModTime(), &trackFromDB) {
+				filesToUpdate = s.addMediaForUpdate(filesToUpdate, mediaPath, visitedPaths)
+			} else {
+				s.removeFromOrphan(orphanTracks, tracks)
+			}
 
-		// Only leaves in orphanTracks the ones not found in the folder. After this loop any remaining orphanTracks
-		// are considered gone from the music folder and will be deleted from DB
-		delete(orphanTracks, filePath)
+			// Force a refresh of the album and artist, to cater for cover art files
+			refresher.accumulate(trackFromDB)
+		}
+		return true
+	}
+
+	for filePath, entry := range files {
+		if model.IsCueSheetFile(filePath) {
+			cueInfo, err := entry.Info()
+			if err != nil {
+				log.Error("Could not stat CUE file", "filePath", filePath, err)
+				continue
+			}
+
+			cue, err := cuesheet.ReadFromFile(filePath)
+			if err != nil {
+				log.Error("Could not read CUE file", "filePath", filePath, err)
+				continue
+			}
+			for _, f := range cue.File {
+				mediaPath := filepath.Join(filepath.Dir(filePath), filepath.Base(f.FileName))
+				if handleMediaPath(mediaPath, func(fileModTime time.Time, trackFromDB *model.MediaFile) bool {
+					return cueInfo.ModTime().After(trackFromDB.UpdatedAt) ||
+						(conf.Server.Scanner.CUESheetSupport != consts.CUEExternal &&
+							fileModTime.After(trackFromDB.UpdatedAt))
+				}) {
+					// Store CUE data in cache for future use
+					s.cueCache[filePath] = cue
+				}
+			}
+		} else {
+			handleMediaPath(filePath, func(fileModTime time.Time, trackFromDB *model.MediaFile) bool {
+				return fileModTime.After(trackFromDB.UpdatedAt)
+			})
+		}
 	}
 
 	numUpdatedTracks := 0
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, dir, currentTracks, filesToUpdate)
+		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, dir, filesToUpdate, func(track *model.MediaFile) {
+			// Keep current annotations if the track is in the DB
+			if tracks, ok := currentTracks[track.Path]; ok {
+				for _, dbTrack := range tracks {
+					if dbTrack.ID == track.ID {
+						track.Annotations = dbTrack.Annotations
+						track.Bookmarkable = dbTrack.Bookmarkable
+						// Track will be updated in DB, no need to remove it
+						delete(orphanTracks, track.ID)
+						break
+					}
+				}
+			}
+		})
 		if err != nil {
 			return err
 		}
@@ -345,9 +414,8 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	ctx context.Context,
 	refresher *refresher,
 	dir string,
-	currentTracks map[string]model.MediaFile,
 	filesToUpdate []string,
-) (int, error) {
+	trackCallback func(track *model.MediaFile)) (int, error) {
 	numUpdatedTracks := 0
 
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
@@ -355,7 +423,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	chunks := slice.BreakUp(filesToUpdate, filesBatchSize)
 	for _, chunk := range chunks {
 		// Load tracks Metadata from the folder
-		newTracks, err := s.loadTracks(chunk)
+		newTracks, err := s.loadTracks(ctx, chunk)
 		if err != nil {
 			return 0, err
 		}
@@ -364,10 +432,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 		log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "files", chunk, "numFiles", len(chunk))
 		for i := range newTracks {
 			n := newTracks[i]
-			// Keep current annotations if the track is in the DB
-			if t, ok := currentTracks[n.Path]; ok {
-				n.Annotations = t.Annotations
-			}
+			trackCallback(&n)
 			err := s.ds.MediaFile(ctx).Put(&n)
 			if err != nil {
 				return 0, err
@@ -379,7 +444,48 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	return numUpdatedTracks, nil
 }
 
-func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
+func (s *TagScanner) loadCueSheet(ctx context.Context, md metadata.Tags) model.MediaFiles {
+	cueStr := md.CueSheet()
+	if cueStr == "" || conf.Server.Scanner.CUESheetSupport == consts.CUEDisable {
+		if cueStr != "" {
+			log.Trace(ctx, "CUE sheet support disabled skip track", "filePath", md.FilePath())
+		}
+		return nil
+	}
+	extractor, err := cuesheet.NewExtractor(&md)
+	if err != nil {
+		log.Error(ctx, "Can't create CUE tags extractor", "filePath", md.FilePath(), err)
+	}
+
+	modes := strings.Split(conf.Server.Scanner.CUESheetSupport, ",")
+	for i, mode := range modes {
+		isLast := i == len(modes)-1
+		switch strings.TrimSpace(strings.ToLower(mode)) {
+		case consts.CUEEmbedded:
+			cue, err := cuesheet.ReadCue(bytes.NewBuffer([]byte(cueStr)))
+			if err != nil {
+				log.Error(ctx, "Can't read embedded CUE", "filePath", md.FilePath(), err)
+			}
+			if err := extractor.Extract(cue, isLast, true); err != nil {
+				log.Error(ctx, "Can't extract tags from embedded CUE", "filePath", md.FilePath(), err)
+			}
+		case consts.CUEExternal:
+			if cue, ok := s.cueCache[md.FilePath()]; ok {
+				if err := extractor.Extract(cue, isLast, false); err != nil {
+					log.Error(ctx, "Can't extract tags from external CUE", "filePath", md.FilePath(), err)
+				}
+			}
+		}
+	}
+
+	var mfs model.MediaFiles
+	extractor.ForEachTrack(func(md metadata.Tags) {
+		mfs = append(mfs, s.mapper.ToMediaFile(md))
+	})
+	return mfs
+}
+
+func (s *TagScanner) loadTracks(ctx context.Context, filePaths []string) (model.MediaFiles, error) {
 	mds, err := metadata.Extract(filePaths...)
 	if err != nil {
 		return nil, err
@@ -387,13 +493,18 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
-		mf := s.mapper.ToMediaFile(md)
-		mfs = append(mfs, mf)
+		tracks := s.loadCueSheet(ctx, md)
+		if len(tracks) > 0 {
+			mfs = append(mfs, tracks...)
+		} else {
+			mf := s.mapper.ToMediaFile(md)
+			mfs = append(mfs, mf)
+		}
 	}
 	return mfs, nil
 }
 
-func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
+func loadAllAudioFiles(dirPath string, cueSupport string) (map[string]fs.DirEntry, error) {
 	files, err := fs.ReadDir(os.DirFS(dirPath), ".")
 	if err != nil {
 		return nil, err
@@ -407,6 +518,12 @@ func loadAllAudioFiles(dirPath string) (map[string]fs.DirEntry, error) {
 			continue
 		}
 		filePath := filepath.Join(dirPath, f.Name())
+		if model.IsCueSheetFile(filePath) {
+			if strings.Contains(strings.ToLower(cueSupport), consts.CUEExternal) {
+				fileInfos[filePath] = f
+			}
+			continue
+		}
 		if !model.IsAudioFile(filePath) {
 			continue
 		}

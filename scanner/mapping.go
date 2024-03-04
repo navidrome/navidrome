@@ -77,6 +77,8 @@ func (s MediaFileMapper) ToMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Bpm = md.Bpm()
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
+	mf.SubTrack = md.SubTrack()
+	mf.Offset = md.Offset()
 
 	return *mf
 }
@@ -124,7 +126,7 @@ func (s MediaFileMapper) mapAlbumName(md metadata.Tags) string {
 }
 
 func (s MediaFileMapper) trackID(md metadata.Tags) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
+	return fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s#%d", md.FilePath(), md.SubTrack()))))
 }
 
 func (s MediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {

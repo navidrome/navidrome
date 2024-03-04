@@ -24,6 +24,7 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jellydator/ttlcache/v2 v2.11.1
+	github.com/kdomanski/iso9660 v0.4.0
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.0.20
 	github.com/matoous/go-nanoid/v2 v2.0.0

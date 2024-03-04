@@ -18,6 +18,11 @@ func IsAudioFile(filePath string) bool {
 	return !slices.Contains(excludeAudioType, mimeType) && strings.HasPrefix(mimeType, "audio/")
 }
 
+func IsCueSheetFile(filePath string) bool {
+	extension := strings.ToLower(filepath.Ext(filePath))
+	return extension == ".cue"
+}
+
 func IsImageFile(filePath string) bool {
 	extension := filepath.Ext(filePath)
 	return strings.HasPrefix(mime.TypeByExtension(extension), "image/")

@@ -6,11 +6,12 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("MediaRepository", func() {
@@ -159,7 +160,7 @@ var _ = Describe("MediaRepository", func() {
 
 		It("preserves play date if and only if provided date is older", func() {
 			id := "incplay.playdate"
-			Expect(mr.Put(&model.MediaFile{ID: id})).To(BeNil())
+			Expect(mr.Put(&model.MediaFile{ID: id, Path: "path/incplay.playdate.mp3", SubTrack: -1})).To(BeNil())
 			playDate := time.Now()
 			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())
 			mf, err := mr.Get(id)
@@ -184,7 +185,7 @@ var _ = Describe("MediaRepository", func() {
 
 		It("increments play count on newly starred items", func() {
 			id := "star.incplay"
-			Expect(mr.Put(&model.MediaFile{ID: id})).To(BeNil())
+			Expect(mr.Put(&model.MediaFile{ID: id, Path: "path/1.mp3", SubTrack: -1})).To(BeNil())
 			Expect(mr.SetStar(true, id)).To(BeNil())
 			playDate := time.Now()
 			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())

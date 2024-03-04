@@ -69,6 +69,15 @@ const (
 	Zwsp = string('\u200b')
 )
 
+// CUE scan options
+const (
+	CUEDisable        = ""
+	CUEEmbedded       = "embedded"
+	CUEExternal       = "external"
+	CUEPreferEmbedded = "embedded,external"
+	CUEPreferExternal = "external,embedded"
+)
+
 // Cache options
 const (
 	TranscodingCacheDir             = "transcoding"

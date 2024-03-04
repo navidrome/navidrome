@@ -354,4 +354,70 @@ Input #0, mp3, from '/Users/deluan/Music/Music/Media/_/Wyclef Jean - From the Hu
 			"[00:00.00]This is\n[00:02.50]English",
 		}))
 	})
+
+	It("load cuesheet data correctly", func() {
+		const output = `
+		Input #0, flac, from 'Blackfield - Blackfield.flac':
+			Metadata:
+				cuesheet    : REM GENRE Art Rock, Progressive Rock 
+							: REM DATE 2004 
+							: PERFORMER "Blackfield" 
+							: TITLE "Blackfield" 
+							: REM REPLAYGAIN_ALBUM_GAIN -7.81 dB 
+							: REM REPLAYGAIN_ALBUM_PEAK 1.093047 
+							: FILE "Image.wav" WAVE 
+							:   TRACK 01 AUDIO 
+							:     TITLE "Open Mind" 
+							:     REM REPLAYGAIN_TRACK_GAIN -6.83 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.044819 
+							:     INDEX 01 00:00:00 
+							:   TRACK 02 AUDIO 
+							:     TITLE "Blackfield" 
+							:     REM REPLAYGAIN_TRACK_GAIN -9.64 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.093047 
+							:     INDEX 01 03:50:40 
+							:   TRACK 03 AUDIO 
+							:     TITLE "Glow" 
+							:     REM REPLAYGAIN_TRACK_GAIN -6.59 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.020314 
+							:     INDEX 01 07:57:37 
+							:   TRACK 04 AUDIO 
+							:     TITLE "Scars" 
+							:     REM REPLAYGAIN_TRACK_GAIN -8.05 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.029042 
+							:     INDEX 01 11:57:57 
+							:   TRACK 05 AUDIO 
+							:     TITLE "Lullaby" 
+							:     REM REPLAYGAIN_TRACK_GAIN -5.55 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 0.999136 
+							:     INDEX 01 15:55:50 
+							:   TRACK 06 AUDIO 
+							:     TITLE "Pain" 
+							:     REM REPLAYGAIN_TRACK_GAIN -7.21 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.030809 
+							:     INDEX 01 19:25:37 
+							:   TRACK 07 AUDIO 
+							:     TITLE "Summer" 
+							:     REM REPLAYGAIN_TRACK_GAIN -8.09 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.008253 
+							:     INDEX 01 23:13:20 
+							:   TRACK 08 AUDIO 
+							:     TITLE "Cloudy Now" 
+							:     REM REPLAYGAIN_TRACK_GAIN -6.74 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.037434 
+							:     INDEX 01 27:26:02 
+							:   TRACK 09 AUDIO 
+							:     TITLE "The Hole in Me" 
+							:     REM REPLAYGAIN_TRACK_GAIN -7.66 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.043541 
+							:     INDEX 01 31:00:47 
+							:   TRACK 10 AUDIO 
+							:     TITLE "Hello" 
+							:     REM REPLAYGAIN_TRACK_GAIN -9.20 dB 
+							:     REM REPLAYGAIN_TRACK_PEAK 1.028238 
+							:     INDEX 01 33:48:07
+		`
+		md, _ := e.extractMetadata("tests/fixtures/sample.flac", output)
+		Expect(md).To(HaveKey("cuesheet"))
+	})
 })

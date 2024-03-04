@@ -112,7 +112,9 @@ func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourc
 		if err != nil {
 			return nil, "", err
 		}
-		defer r.Close()
+		defer func() {
+			_ = r.Close()
+		}()
 		buf := new(bytes.Buffer)
 		_, err = io.Copy(buf, r)
 		if err != nil {

@@ -10,10 +10,11 @@ import (
 	"time"
 
 	"github.com/kr/pretty"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
+
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 )
 
 type configOptions struct {
@@ -109,6 +110,7 @@ type scannerOptions struct {
 	Extractor          string
 	GenreSeparators    string
 	GroupAlbumReleases bool
+	CUESheetSupport    string
 }
 
 type lastfmOptions struct {
@@ -334,6 +336,7 @@ func init() {
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
 	viper.SetDefault("scanner.groupalbumreleases", false)
+	viper.SetDefault("scanner.cuesheetsupport", consts.CUEPreferEmbedded)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)

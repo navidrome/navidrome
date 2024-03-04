@@ -13,6 +13,7 @@ import (
 
 	"github.com/djherbis/times"
 	"github.com/google/uuid"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -200,6 +201,15 @@ func (t Tags) MbzReleaseTrackID() string {
 func (t Tags) MbzRecordingID() string {
 	return t.getMbzID("musicbrainz_trackid", "musicbrainz track id")
 }
+
+func (t Tags) MbzReleaseTrackIDForTrack(trackNumber int) string {
+	return t.getMbzID(fmt.Sprintf("cue_track%02d_musicbrainz_releasetrackid", trackNumber))
+}
+
+func (t Tags) MbzTrackIDForTrack(trackNumber int) string {
+	return t.getMbzID(fmt.Sprintf("cue_track%02d_musicbrainz_trackid", trackNumber))
+}
+
 func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
 func (t Tags) MbzArtistID() string {
 	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
@@ -214,8 +224,25 @@ func (t Tags) MbzAlbumComment() string {
 	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
 }
 
+func (t Tags) CueSheet() string {
+	return t.getFirstTagValue("cuesheet")
+}
+
+func (t Tags) SubTrack() int {
+	tag := t.getFirstTagValue("sub_track")
+	if tag == "" {
+		return -1
+	}
+	i, err := strconv.Atoi(tag)
+	if err != nil {
+		return -1
+	}
+	return i
+}
+
 // File properties
 
+func (t Tags) Offset() float32             { return float32(t.getFloat("offset")) }
 func (t Tags) Duration() float32           { return float32(t.getFloat("duration")) }
 func (t Tags) BitRate() int                { return t.getInt("bitrate") }
 func (t Tags) Channels() int               { return t.getInt("channels") }
@@ -319,7 +346,7 @@ func (t Tags) getDate(tagNames ...string) (int, string) {
 		return year, match[1]
 	}
 
-	//then try YYYY-MM-DD
+	// then try YYYY-MM-DD
 	if len(tag) > 10 {
 		tag = tag[:10]
 	}

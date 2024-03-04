@@ -273,5 +273,4 @@ var _ = Describe("Extractor", func() {
 			})
 		})
 	})
-
 })

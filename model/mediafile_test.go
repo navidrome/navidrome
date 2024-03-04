@@ -78,9 +78,9 @@ var _ = Describe("MediaFiles", func() {
 		When("we have multiple songs with different dates", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{
-					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
-					{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
-					{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
+					{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30"), SubTrack: -1},
+					{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30"), SubTrack: -1},
+					{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30"), SubTrack: -1},
 				}
 			})
 			It("calculates the aggregates correctly", func() {

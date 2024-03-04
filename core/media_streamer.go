@@ -44,7 +44,15 @@ type streamJob struct {
 }
 
 func (j *streamJob) Key() string {
-	return fmt.Sprintf("%s.%s.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.bitRate, j.format, j.offset)
+	return fmt.Sprintf("%s.%s.%d.%d.%s.%d", j.mf.ID, j.mf.UpdatedAt.Format(time.RFC3339Nano), j.mf.SubTrack, j.bitRate, j.format, j.offset)
+}
+
+func (j *streamJob) selectTargetFormat() string {
+	if j.mf.Suffix == "wv" || j.mf.Suffix == "ape" || j.mf.Suffix == "flac" {
+		// TODO: Decide by players supported lossless formats
+		return "flac"
+	}
+	return conf.Server.DefaultDownsamplingFormat
 }
 
 func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
@@ -56,32 +64,44 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat str
 	return ms.DoStream(ctx, mf, reqFormat, reqBitRate, reqOffset)
 }
 
+func (ms *mediaStreamer) rawStream(stream *Stream, mf *model.MediaFile) (*Stream, error) {
+	f, err := os.Open(mf.Path)
+	if err != nil {
+		return nil, err
+	}
+	stream.ReadCloser = f
+	stream.Seeker = f
+	stream.format = mf.Suffix
+	return stream, nil
+}
+
+func (ms *mediaStreamer) allowStreaming(mf *model.MediaFile) bool {
+	if mf.SubTrack > -1 {
+		return false
+	}
+	// TODO: Decide on information from players supported format
+	return mf.Suffix != "ape" && mf.Suffix != "wv"
+}
+
 func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
 	var format string
 	var bitRate int
 	var cached bool
 	defer func() {
 		log.Info(ctx, "Streaming file", "title", mf.Title, "artist", mf.Artist, "format", format, "cached", cached,
-			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != "raw",
+			"bitRate", bitRate, "user", userName(ctx), "transcoding", format != mf.Suffix,
 			"originalFormat", mf.Suffix, "originalBitRate", mf.BitRate)
 	}()
 
 	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
 
-	if format == "raw" {
+	if format == "raw" && ms.allowStreaming(mf) {
 		log.Debug(ctx, "Streaming RAW file", "id", mf.ID, "path", mf.Path,
 			"requestBitrate", reqBitRate, "requestFormat", reqFormat, "requestOffset", reqOffset,
 			"originalBitrate", mf.BitRate, "originalFormat", mf.Suffix,
 			"selectedBitrate", bitRate, "selectedFormat", format)
-		f, err := os.Open(mf.Path)
-		if err != nil {
-			return nil, err
-		}
-		s.ReadCloser = f
-		s.Seeker = f
-		s.format = mf.Suffix
-		return s, nil
+		return ms.rawStream(s, mf)
 	}
 
 	job := &streamJob{
@@ -196,12 +216,24 @@ func NewTranscodingCache() TranscodingCache {
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
-			t, err := job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
-			if err != nil {
-				log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
-				return nil, os.ErrInvalid
+			var t *model.Transcoding
+			var err error
+
+			if job.mf.SubTrack > -1 || job.format == "raw" {
+				// Fake transcoder for transcode track media
+				t = &model.Transcoding{
+					Command:      ffmpeg.DefaultRawTranscodeCmd,
+					TargetFormat: job.selectTargetFormat(),
+				}
+				log.Trace("Raw transcoding", "sourceFormat", job.mf.Suffix, "targetFormat", t.TargetFormat)
+			} else {
+				t, err = job.ms.ds.Transcoding(ctx).FindByFormat(job.format)
+				if err != nil {
+					log.Error(ctx, "Error loading transcoding command", "format", job.format, err)
+					return nil, os.ErrInvalid
+				}
 			}
-			out, err := job.ms.transcoder.Transcode(ctx, t.Command, job.mf.Path, job.bitRate, job.offset)
+			out, err := job.ms.transcoder.Transcode(ctx, t.Command, t.TargetFormat, job.mf, job.bitRate, job.offset)
 			if err != nil {
 				log.Error(ctx, "Error starting transcoder", "id", job.mf.ID, err)
 				return nil, os.ErrInvalid

@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"mime"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -71,6 +72,8 @@ type MediaFile struct {
 	RgAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+	Offset               float32 `structs:"offset" json:"offset"`
+	SubTrack             int     `structs:"sub_track" json:"sub_track"`
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
@@ -129,7 +132,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var originalYears []int
 	var originalDates []string
 	var releaseDates []string
-	for _, m := range mfs {
+	for i, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
 		a.Name = m.Album
@@ -150,7 +153,10 @@ func (mfs MediaFiles) ToAlbum() Album {
 
 		// Calculated attributes based on aggregations
 		a.Duration += m.Duration
-		a.Size += m.Size
+		// Don't sum sub tracks sizes
+		if m.SubTrack < 0 || (m.SubTrack >= 0 && i == 0) {
+			a.Size += m.Size
+		}
 		years = append(years, m.Year)
 		dates = append(dates, m.Date)
 		originalYears = append(originalYears, m.OriginalYear)

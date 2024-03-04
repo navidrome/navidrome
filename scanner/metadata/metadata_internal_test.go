@@ -55,6 +55,15 @@ var _ = Describe("Tags", func() {
 			Expect(md.MbzArtistID()).To(Equal(""))
 			Expect(md.MbzAlbumArtistID()).To(Equal(""))
 		})
+		It("return a valid MBID for multitrack", func() {
+			md := &Tags{}
+			md.Tags = map[string][]string{
+				"cue_track01_musicbrainz_trackid":        {"8f84da07-09a0-477b-b216-cc982dabcde1"},
+				"cue_track01_musicbrainz_releasetrackid": {"6caf16d3-0b20-3fe6-8020-52e31831bc11"},
+			}
+			Expect(md.MbzTrackIDForTrack(1)).To(Equal("8f84da07-09a0-477b-b216-cc982dabcde1"))
+			Expect(md.MbzReleaseTrackIDForTrack(1)).To(Equal("6caf16d3-0b20-3fe6-8020-52e31831bc11"))
+		})
 	})
 
 	Describe("getAllTagValues", func() {
