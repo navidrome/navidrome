@@ -164,7 +164,7 @@ func (s *Server) initRoutes() {
 		secureMiddleware(),
 		corsHandler(),
 		middleware.RequestID,
-		realIPMiddleware,
+		RealIPMiddleware,
 		middleware.Recoverer,
 		middleware.Heartbeat("/ping"),
 		robotsTXT(ui.BuildAssets()),

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/navidrome/navidrome/server"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
@@ -71,12 +73,12 @@ func (api *Router) routes() http.Handler {
 
 	// Subsonic endpoints, grouped by controller
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		h(r, "ping", api.Ping)
 		h(r, "getLicense", api.GetLicense)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		h(r, "getMusicFolders", api.GetMusicFolders)
 		h(r, "getIndexes", api.GetIndexes)
 		h(r, "getArtists", api.GetArtists)
@@ -94,7 +96,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "getSimilarSongs2", api.GetSimilarSongs2)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		hr(r, "getAlbumList", api.GetAlbumList)
 		hr(r, "getAlbumList2", api.GetAlbumList2)
 		h(r, "getStarred", api.GetStarred)
@@ -104,14 +106,14 @@ func (api *Router) routes() http.Handler {
 		h(r, "getSongsByGenre", api.GetSongsByGenre)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		h(r, "setRating", api.SetRating)
 		h(r, "star", api.Star)
 		h(r, "unstar", api.Unstar)
 		h(r, "scrobble", api.Scrobble)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		h(r, "getPlaylists", api.GetPlaylists)
 		h(r, "getPlaylist", api.GetPlaylist)
 		h(r, "createPlaylist", api.CreatePlaylist)
@@ -119,7 +121,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "updatePlaylist", api.UpdatePlaylist)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		h(r, "getBookmarks", api.GetBookmarks)
 		h(r, "createBookmark", api.CreateBookmark)
 		h(r, "deleteBookmark", api.DeleteBookmark)
@@ -127,7 +129,7 @@ func (api *Router) routes() http.Handler {
 		h(r, "savePlayQueue", api.SavePlayQueue)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		h(r, "search2", api.Search2)
 		h(r, "search3", api.Search3)
 	})
@@ -156,7 +158,7 @@ func (api *Router) routes() http.Handler {
 		hr(r, "getCoverArt", api.GetCoverArt)
 	})
 	r.Group(func(r chi.Router) {
-		r.Use(getPlayer(api.players))
+		r.Use(server.RealIPMiddleware, getPlayer(api.players))
 		hr(r, "stream", api.Stream)
 		hr(r, "download", api.Download)
 	})
