@@ -322,6 +322,7 @@ type User struct {
 	JukeboxRole         bool    `xml:"jukeboxRole,attr"            json:"jukeboxRole"`
 	ShareRole           bool    `xml:"shareRole,attr"              json:"shareRole"`
 	VideoConversionRole bool    `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
+	SyncPlayqueue       bool    `xml:"syncPlayqueue,attr"          json:"syncPlayqueue"`
 	Folder              []int32 `xml:"folder,omitempty"            json:"folder,omitempty"`
 }
 

@@ -20,6 +20,7 @@
     "jukeboxRole": false,
     "shareRole": false,
     "videoConversionRole": false,
+    "syncPlayqueue": false,
     "folder": [
       1
     ]

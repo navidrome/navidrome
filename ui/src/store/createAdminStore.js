@@ -58,7 +58,12 @@ const createAdminStore = ({
       const state = store.getState()
       saveState({
         theme: state.theme,
-        player: pick(state.player, ['queue', 'volume', 'savedPlayIndex']),
+        player: pick(state.player, [
+          'queue',
+          'volume',
+          'savedPlayIndex',
+          'lastUpdatedAt',
+        ]),
         albumView: state.albumView,
         settings: state.settings,
       })

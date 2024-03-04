@@ -18,6 +18,7 @@ const initialState = {
   clear: false,
   volume: config.defaultUIVolume / 100,
   savedPlayIndex: 0,
+  lastUpdatedAt: 0,
 }
 
 const pad = (value) => {
@@ -175,6 +176,7 @@ const reduceCurrent = (state, { data }) => {
     playIndex: undefined,
     savedPlayIndex,
     volume: data.volume,
+    lastUpdatedAt: Date.now(),
   }
 }
 

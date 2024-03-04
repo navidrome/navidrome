@@ -23,6 +23,7 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+import { PLAYER_PLAY_TRACKS, filterSongs } from '../actions'
 
 function calculateReplayGain(preAmp, gain, peak) {
   if (gain === undefined || peak === undefined) {
@@ -264,8 +265,16 @@ const Player = () => {
           )
         }
       }
+      if (localStorage.getItem('sync') === 'true') {
+        let ids = ''
+        for (let i = 0; i < playerState.queue.length; i++) {
+          let song = playerState.queue[i]['trackId']
+          ids += `&id=${song}`
+        }
+        subsonic.syncPlayQueue(currentPlaying(info).data, ids)
+      }
     },
-    [context, dispatch, showNotifications, startTime],
+    [context, dispatch, showNotifications, startTime, playerState.queue],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
@@ -342,5 +351,15 @@ const Player = () => {
     </ThemeProvider>
   )
 }
-
+//TODO possible breakage
+//to be implemented on the Player Side
+export const playTracks = (data, ids, selectedId, timestamp) => {
+  const songs = filterSongs(data, ids)
+  return {
+    type: PLAYER_PLAY_TRACKS,
+    id: selectedId || Object.keys(songs)[0],
+    data: songs,
+    timestamp,
+  }
+}
 export { Player }

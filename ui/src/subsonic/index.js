@@ -78,6 +78,25 @@ const streamUrl = (id, options) => {
   )
 }
 
+const syncPlayQueue = (current, queue) => {
+  return current === undefined
+    ? httpClient(url('savePlayQueue') + queue)
+    : httpClient(
+        url('savePlayQueue') +
+          queue +
+          `&current=${current.song.id}` +
+          syncTimePlayed(current),
+      )
+}
+const syncTimePlayed = (current) => {
+  // TODO: add the time to a enviramental variable or to sync settings option
+  return current.duration > 480
+    ? `&position=${Math.trunc(current.currentTime) * 1000}`
+    : ''
+}
+
+const getStoredQueue = () => httpClient(url('getPlayQueue'))
+
 export default {
   url,
   scrobble,
@@ -90,6 +109,8 @@ export default {
   getScanStatus,
   getCoverArtUrl,
   streamUrl,
+  syncPlayQueue,
+  getStoredQueue,
   getAlbumInfo,
   getArtistInfo,
 }
