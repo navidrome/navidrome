@@ -444,7 +444,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 }
 
 func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
-	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
+	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name, artist.SortArtistName, artist.MbzArtistID)
 	if err != nil {
 		return
 	}
