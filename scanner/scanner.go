@@ -57,7 +57,12 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func New(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker) Scanner {
+func New(
+	ds model.DataStore,
+	playlists core.Playlists,
+	cacheWarmer artwork.CacheWarmer,
+	broker events.Broker,
+) Scanner {
 	s := &scanner{
 		ds:          ds,
 		pls:         playlists,

@@ -14,9 +14,13 @@ import {
   useRecordContext,
   BulkDeleteButton,
   usePermissions,
+  useListContext,
+  CreateButton,
+  useTranslate,
+  BooleanField,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
-import { useMediaQuery } from '@material-ui/core'
+import { styled, Typography, useMediaQuery } from '@material-ui/core'
 import {
   DurationField,
   List,
@@ -27,6 +31,77 @@ import {
 } from '../common'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
+import { Inbox } from '@material-ui/icons'
+import config from '../config'
+import { ImportButton } from './ImportButton'
+
+const PREFIX = 'RaEmpty'
+
+export const EmptyClasses = {
+  message: `${PREFIX}-message`,
+  icon: `${PREFIX}-icon`,
+  toolbar: `${PREFIX}-toolbar`,
+}
+
+const Root = styled('span', {
+  name: PREFIX,
+  overridesResolver: (props, styles) => styles.root,
+})(({ theme }) => ({
+  flex: 1,
+  [`& .${EmptyClasses.message}`]: {
+    textAlign: 'center',
+    opacity: theme.palette.mode === 'light' ? 0.5 : 0.8,
+    margin: '0 1em',
+    color:
+      theme.palette.mode === 'light' ? 'inherit' : theme.palette.text.primary,
+  },
+
+  [`& .${EmptyClasses.icon}`]: {
+    width: '9em',
+    height: '9em',
+  },
+
+  [`& .${EmptyClasses.toolbar}`]: {
+    textAlign: 'center',
+    marginTop: '1em',
+  },
+}))
+
+const Empty = () => {
+  const translate = useTranslate()
+  const { resource } = useListContext()
+
+  const resourceName = translate(`resources.${resource}.forcedCaseName`, {
+    smart_count: 0,
+    _: resource,
+  })
+
+  const emptyMessage = translate('ra.page.empty', { name: resourceName })
+  const inviteMessage = translate('ra.page.invite')
+
+  return (
+    <Root>
+      <div className={EmptyClasses.message}>
+        <Inbox className={EmptyClasses.icon} />
+        <Typography variant="h4" paragraph>
+          {translate(`resources.${resource}.empty`, {
+            _: emptyMessage,
+          })}
+        </Typography>
+        <Typography variant="body1">
+          {translate(`resources.${resource}.invite`, {
+            _: inviteMessage,
+          })}
+        </Typography>
+      </div>
+      <div className={EmptyClasses.toolbar}>
+        <CreateButton variant="contained" />{' '}
+        {config.listenBrainzEnabled && <ImportButton />}
+      </div>
+      <div className={EmptyClasses.toolbar}></div>
+    </Root>
+  )
+}
 
 const PlaylistFilter = (props) => {
   const { permissions } = usePermissions()
@@ -107,6 +182,8 @@ const PlaylistList = (props) => {
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
       comment: <TextField source="comment" />,
+      external: <BooleanField source="externalId" looseValue />,
+      externalSync: <BooleanField source="externalSync" />,
     }),
     [isDesktop, isXsmall],
   )
@@ -114,12 +191,13 @@ const PlaylistList = (props) => {
   const columns = useSelectedFields({
     resource: 'playlist',
     columns: toggleableFields,
-    defaultOff: ['comment'],
+    defaultOff: ['comment', 'external', 'externalSync'],
   })
 
   return (
     <List
       {...props}
+      empty={<Empty />}
       exporter={false}
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}

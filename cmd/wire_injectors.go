@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -66,6 +67,12 @@ func CreateLastFMRouter() *lastfm.Router {
 }
 
 func CreateListenBrainzRouter() *listenbrainz.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreatePlaylistRetriever() external_playlists.PlaylistRetriever {
 	panic(wire.Build(
 		allProviders,
 	))

@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,6 +27,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 		httpClient = &tests.FakeHttpClient{}
 		cl := newClient("http://localhost/", httpClient)
 		r = Router{
+			ds:          &tests.MockDataStore{},
 			sessionKeys: sk,
 			client:      cl,
 		}
@@ -96,6 +98,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 			r.link(resp, req)
 			Expect(resp.Code).To(Equal(http.StatusOK))
 			Expect(sk.KeyValue).To(Equal("tok-1"))
+			Expect(sk.UserName).To(Equal("ListenBrainzUser"))
 		})
 	})
 
@@ -113,6 +116,7 @@ var _ = Describe("ListenBrainz Auth Router", func() {
 type fakeSessionKeys struct {
 	KeyName  string
 	KeyValue string
+	UserName string
 }
 
 func (sk *fakeSessionKeys) Put(ctx context.Context, userId, sessionKey string) error {
@@ -120,11 +124,25 @@ func (sk *fakeSessionKeys) Put(ctx context.Context, userId, sessionKey string) e
 	return nil
 }
 
+func (sk *fakeSessionKeys) PutWithUser(ctx context.Context, userId, sessionKey, remoteUser string) error {
+	sk.KeyValue = sessionKey
+	sk.UserName = remoteUser
+	return nil
+}
+
 func (sk *fakeSessionKeys) Get(ctx context.Context, userId string) (string, error) {
 	return sk.KeyValue, nil
 }
 
+func (sk *fakeSessionKeys) GetWithUser(ctx context.Context, userId string) (agents.KeyWithUser, error) {
+	return agents.KeyWithUser{
+		Key:  sk.KeyValue,
+		User: sk.UserName,
+	}, nil
+}
+
 func (sk *fakeSessionKeys) Delete(ctx context.Context, userId string) error {
 	sk.KeyValue = ""
+	sk.UserName = ""
 	return nil
 }

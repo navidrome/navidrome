@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -37,7 +38,8 @@ type Song struct {
 }
 
 var (
-	ErrNotFound = errors.New("not found")
+	ErrNotFound  = errors.New("not found")
+	StripAllTags = bluemonday.StrictPolicy()
 )
 
 // TODO Break up this interface in more specific methods, like artists
