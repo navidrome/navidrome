@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 func newResponse() *responses.Subsonic {
@@ -320,7 +321,12 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.MusicBrainzId = album.MbzAlbumID
 	dir.IsCompilation = album.Compilation
 	dir.SortName = album.SortAlbumName
-	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
+	if album.OriginalDate != "" {
+		dir.OriginalReleaseDate = gg.P(toItemDate(album.OriginalDate))
+	}
+	if album.ReleaseDate != "" {
+		dir.ReleaseDate = gg.P(toItemDate(album.ReleaseDate))
+	}
 	return dir
 }
 
