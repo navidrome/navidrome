@@ -48,7 +48,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", "pt", false, httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -106,7 +106,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", "pt", false, httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -167,7 +167,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", "pt", false, httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
@@ -230,7 +230,7 @@ var _ = Describe("lastfmAgent", func() {
 		BeforeEach(func() {
 			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "en", httpClient)
+			client := newClient("API_KEY", "SECRET", "en", false, httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 			track = &model.MediaFile{
@@ -265,6 +265,28 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("mbid")).To(Equal(track.MbzRecordingID))
 			})
 
+			It("calls Last.fm with correct params when album artist is prioritized", func() {
+				// Set the preference to use album artist
+				agent.client.useAlbumArtist = true
+
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.NowPlaying(ctx, "user-1", track)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				sentParams := httpClient.SavedRequest.URL.Query()
+				Expect(sentParams.Get("method")).To(Equal("track.updateNowPlaying"))
+				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
+				Expect(sentParams.Get("track")).To(Equal(track.Title))
+				Expect(sentParams.Get("album")).To(Equal(track.Album))
+				Expect(sentParams.Get("artist")).To(Equal(track.AlbumArtist))
+				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
+				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
+				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
+				Expect(sentParams.Get("mbid")).To(Equal(track.MbzRecordingID))
+			})
+
 			It("returns ErrNotAuthorized if user is not linked", func() {
 				err := agent.NowPlaying(ctx, "user-2", track)
 				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
@@ -286,6 +308,30 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("track")).To(Equal(track.Title))
 				Expect(sentParams.Get("album")).To(Equal(track.Album))
 				Expect(sentParams.Get("artist")).To(Equal(track.Artist))
+				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
+				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
+				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
+				Expect(sentParams.Get("mbid")).To(Equal(track.MbzRecordingID))
+				Expect(sentParams.Get("timestamp")).To(Equal(strconv.FormatInt(ts.Unix(), 10)))
+			})
+
+			It("calls Last.fm with correct params when album artist is prioritized", func() {
+				// Set the preference to use album artist
+				agent.client.useAlbumArtist = true
+
+				ts := time.Now()
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				sentParams := httpClient.SavedRequest.URL.Query()
+				Expect(sentParams.Get("method")).To(Equal("track.scrobble"))
+				Expect(sentParams.Get("sk")).To(Equal("SK-1"))
+				Expect(sentParams.Get("track")).To(Equal(track.Title))
+				Expect(sentParams.Get("album")).To(Equal(track.Album))
+				Expect(sentParams.Get("artist")).To(Equal(track.AlbumArtist))
 				Expect(sentParams.Get("albumArtist")).To(Equal(track.AlbumArtist))
 				Expect(sentParams.Get("trackNumber")).To(Equal(strconv.Itoa(track.TrackNumber)))
 				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
@@ -355,7 +401,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		BeforeEach(func() {
 			httpClient = &tests.FakeHttpClient{}
-			client := newClient("API_KEY", "SECRET", "pt", httpClient)
+			client := newClient("API_KEY", "SECRET", "pt", false, httpClient)
 			agent = lastFMConstructor(ds)
 			agent.client = client
 		})
