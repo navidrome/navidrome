@@ -6,6 +6,7 @@ import StarBorderIcon from '@material-ui/icons/StarBorder'
 import clsx from 'clsx'
 import { useRating } from './useRating'
 import { useRecordContext } from 'react-admin'
+import config from '../config'
 
 const useStyles = makeStyles({
   rating: {
@@ -43,6 +44,9 @@ export const RatingField = ({
     [rate],
   )
 
+  if (!config.enableStarRating) {
+    return <></>
+  }
   return (
     <span onClick={(e) => stopPropagation(e)}>
       <Rating
