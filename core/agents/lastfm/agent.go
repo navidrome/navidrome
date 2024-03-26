@@ -28,27 +28,29 @@ var ignoredBiographies = []string{
 }
 
 type lastfmAgent struct {
-	ds          model.DataStore
-	sessionKeys *agents.SessionKeys
-	apiKey      string
-	secret      string
-	lang        string
-	client      *client
+	ds             model.DataStore
+	sessionKeys    *agents.SessionKeys
+	apiKey         string
+	secret         string
+	lang           string
+	useAlbumArtist bool
+	client         *client
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	l := &lastfmAgent{
-		ds:          ds,
-		lang:        conf.Server.LastFM.Language,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
-		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		ds:             ds,
+		lang:           conf.Server.LastFM.Language,
+		apiKey:         conf.Server.LastFM.ApiKey,
+		secret:         conf.Server.LastFM.Secret,
+		useAlbumArtist: conf.Server.LastFM.UseAlbumArtist,
+		sessionKeys:    &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
 	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
-	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
+	l.client = newClient(l.apiKey, l.secret, l.lang, l.useAlbumArtist, chc)
 	return l
 }
 

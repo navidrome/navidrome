@@ -112,10 +112,11 @@ type scannerOptions struct {
 }
 
 type lastfmOptions struct {
-	Enabled  bool
-	ApiKey   string
-	Secret   string
-	Language string
+	Enabled        bool
+	ApiKey         string
+	Secret         string
+	Language       string
+	UseAlbumArtist bool
 }
 
 type spotifyOptions struct {
@@ -340,6 +341,7 @@ func init() {
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.usealbumartist", false)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)

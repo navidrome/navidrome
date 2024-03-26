@@ -22,7 +22,7 @@ var _ = Describe("client", func() {
 
 	BeforeEach(func() {
 		httpClient = &tests.FakeHttpClient{}
-		client = newClient("API_KEY", "SECRET", "pt", httpClient)
+		client = newClient("API_KEY", "SECRET", "pt", false, httpClient)
 	})
 
 	Describe("albumGetInfo", func() {
