@@ -45,6 +45,24 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("ToMap", func() {
+		It("returns empty map for an empty input", func() {
+			transformFunc := func(v int) (int, string) { return v, strconv.Itoa(v) }
+			result := slice.ToMap([]int{}, transformFunc)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns a map with the result of the transform function", func() {
+			transformFunc := func(v int) (int, string) { return v * 2, strconv.Itoa(v * 2) }
+			result := slice.ToMap([]int{1, 2, 3, 4}, transformFunc)
+			Expect(result).To(HaveLen(4))
+			Expect(result).To(HaveKeyWithValue(2, "2"))
+			Expect(result).To(HaveKeyWithValue(4, "4"))
+			Expect(result).To(HaveKeyWithValue(6, "6"))
+			Expect(result).To(HaveKeyWithValue(8, "8"))
+		})
+	})
+
 	Describe("MostFrequent", func() {
 		It("returns zero value if no arguments are passed", func() {
 			Expect(slice.MostFrequent([]int{})).To(BeZero())

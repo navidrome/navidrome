@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"sync"
 
 	"github.com/google/wire"
@@ -13,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/scanner2"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
@@ -33,39 +35,39 @@ var allProviders = wire.NewSet(
 	db.Db,
 )
 
-func CreateServer(musicFolder string) *server.Server {
+func CreateServer(ctx context.Context) *server.Server {
 	panic(wire.Build(
 		server.New,
 		allProviders,
 	))
 }
 
-func CreateNativeAPIRouter() *nativeapi.Router {
+func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	panic(wire.Build(
 		allProviders,
 	))
 }
 
-func CreateSubsonicAPIRouter() *subsonic.Router {
+func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	panic(wire.Build(
 		allProviders,
 		GetScanner,
 	))
 }
 
-func CreatePublicRouter() *public.Router {
+func CreatePublicRouter(ctx context.Context) *public.Router {
 	panic(wire.Build(
 		allProviders,
 	))
 }
 
-func CreateLastFMRouter() *lastfm.Router {
+func CreateLastFMRouter(ctx context.Context) *lastfm.Router {
 	panic(wire.Build(
 		allProviders,
 	))
 }
 
-func CreateListenBrainzRouter() *listenbrainz.Router {
+func CreateListenBrainzRouter(ctx context.Context) *listenbrainz.Router {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -77,16 +79,16 @@ var (
 	scannerInstance scanner.Scanner
 )
 
-func GetScanner() scanner.Scanner {
+func GetScanner(ctx context.Context) scanner.Scanner {
 	onceScanner.Do(func() {
-		scannerInstance = createScanner()
+		scannerInstance = createScanner(ctx)
 	})
 	return scannerInstance
 }
 
-func createScanner() scanner.Scanner {
+func createScanner(ctx context.Context) scanner.Scanner {
 	panic(wire.Build(
 		allProviders,
-		scanner.New,
+		scanner2.New,
 	))
 }

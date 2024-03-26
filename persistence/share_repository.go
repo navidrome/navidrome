@@ -138,7 +138,7 @@ func (r *shareRepository) Update(id string, entity interface{}, cols ...string) 
 	s.ID = id
 	s.UpdatedAt = time.Now()
 	cols = append(cols, "updated_at")
-	_, err := r.put(id, s, cols...)
+	_, err := r.put("id", id, s, cols...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
@@ -154,7 +154,7 @@ func (r *shareRepository) Save(entity interface{}) (string, error) {
 	}
 	s.CreatedAt = time.Now()
 	s.UpdatedAt = time.Now()
-	id, err := r.put(s.ID, s)
+	id, err := r.put("id", s.ID, s)
 	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}

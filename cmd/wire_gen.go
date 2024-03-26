@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"context"
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
@@ -18,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/scanner2"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
@@ -28,7 +30,7 @@ import (
 
 // Injectors from wire_injectors.go:
 
-func CreateServer(musicFolder string) *server.Server {
+func CreateServer(ctx context.Context) *server.Server {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
@@ -36,7 +38,7 @@ func CreateServer(musicFolder string) *server.Server {
 	return serverServer
 }
 
-func CreateNativeAPIRouter() *nativeapi.Router {
+func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
@@ -45,7 +47,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	return router
 }
 
-func CreateSubsonicAPIRouter() *subsonic.Router {
+func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
@@ -58,7 +60,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	share := core.NewShare(dataStore)
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	players := core.NewPlayers(dataStore)
-	scanner := GetScanner()
+	scanner := GetScanner(ctx)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
@@ -66,7 +68,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	return router
 }
 
-func CreatePublicRouter() *public.Router {
+func CreatePublicRouter(ctx context.Context) *public.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
@@ -82,32 +84,24 @@ func CreatePublicRouter() *public.Router {
 	return router
 }
 
-func CreateLastFMRouter() *lastfm.Router {
+func CreateLastFMRouter(ctx context.Context) *lastfm.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	router := lastfm.NewRouter(dataStore)
 	return router
 }
 
-func CreateListenBrainzRouter() *listenbrainz.Router {
+func CreateListenBrainzRouter(ctx context.Context) *listenbrainz.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	router := listenbrainz.NewRouter(dataStore)
 	return router
 }
 
-func createScanner() scanner.Scanner {
+func createScanner(ctx context.Context) scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
-	playlists := core.NewPlaylists(dataStore)
-	fileCache := artwork.GetImageCache()
-	fFmpeg := ffmpeg.New()
-	agentsAgents := agents.New(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
-	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	broker := events.GetBroker()
-	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
+	scannerScanner := scanner2.New(ctx, dataStore)
 	return scannerScanner
 }
 
@@ -121,9 +115,9 @@ var (
 	scannerInstance scanner.Scanner
 )
 
-func GetScanner() scanner.Scanner {
+func GetScanner(ctx context.Context) scanner.Scanner {
 	onceScanner.Do(func() {
-		scannerInstance = createScanner()
+		scannerInstance = createScanner(ctx)
 	})
 	return scannerInstance
 }

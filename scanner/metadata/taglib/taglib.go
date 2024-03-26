@@ -50,6 +50,7 @@ func (e *Extractor) extractMetadata(filePath string) (metadata.ParsedTags, error
 		if duration := float64(millis) / 1000.0; duration > 0 {
 			tags["duration"] = []string{strconv.FormatFloat(duration, 'f', 2, 32)}
 		}
+		delete(tags, "lengthinmilliseconds")
 	}
 	// Adjust some ID3 tags
 	parseTIPL(tags)

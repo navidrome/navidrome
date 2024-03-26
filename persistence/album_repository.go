@@ -153,7 +153,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) Put(m *model.Album) error {
-	_, err := r.put(m.ID, &dbAlbum{Album: m})
+	_, err := r.put("pid", m.PID, &dbAlbum{Album: m})
 	if err != nil {
 		return err
 	}

@@ -80,3 +80,21 @@ func ClientUniqueIdFrom(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(ClientUniqueId).(string)
 	return v, ok
 }
+
+func AddValues(ctx, requestCtx context.Context) context.Context {
+	keys := []contextKey{
+		User,
+		Username,
+		Client,
+		Version,
+		Player,
+		Transcoding,
+		ClientUniqueId,
+	}
+	for _, key := range keys {
+		if v := requestCtx.Value(key); v != nil {
+			ctx = context.WithValue(ctx, key, v)
+		}
+	}
+	return ctx
+}

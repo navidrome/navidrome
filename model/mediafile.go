@@ -21,6 +21,9 @@ type MediaFile struct {
 	Bookmarkable `structs:"-"`
 
 	ID                   string  `structs:"id" json:"id"`
+	PID                  string  `structs:"pid" json:"pid"`
+	LibraryID            int     `structs:"library_id" json:"libraryId"`
+	FolderID             string  `structs:"folder_id" json:"folderId"`
 	Path                 string  `structs:"path" json:"path"`
 	Title                string  `structs:"title" json:"title"`
 	Album                string  `structs:"album" json:"album"`
@@ -29,6 +32,7 @@ type MediaFile struct {
 	AlbumArtistID        string  `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
+	AlbumPID             string  `structs:"album_pid" json:"albumPid"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
 	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
@@ -71,6 +75,8 @@ type MediaFile struct {
 	RgAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+
+	Tags Tags `structs:"tags" json:"tags,omitempty"` // All tags from the original file
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
@@ -271,4 +277,5 @@ type MediaFileRepository interface {
 
 	AnnotatedRepository
 	BookmarkableRepository
+	GetByFolder(folderID string) (MediaFiles, error)
 }

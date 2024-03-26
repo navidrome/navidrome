@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -18,10 +17,10 @@ import (
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
-	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetAll()
-	folders := make([]responses.MusicFolder, len(mediaFolderList))
-	for i, f := range mediaFolderList {
-		folders[i].Id = f.ID
+	libraries, _ := api.ds.Library(r.Context()).GetAll()
+	folders := make([]responses.MusicFolder, len(libraries))
+	for i, f := range libraries {
+		folders[i].Id = int32(f.ID)
 		folders[i].Name = f.Name
 	}
 	response := newResponse()
@@ -29,24 +28,16 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
-func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
 	ctx := r.Context()
-	folder, err := api.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
+	lib, err := api.ds.Library(ctx).Get(libId)
 	if err != nil {
-		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
-		return nil, err
-	}
-
-	l, err := api.ds.Property(ctx).DefaultGet(model.PropLastScan+"-"+folder.Path, "-1")
-	if err != nil {
-		log.Error(ctx, "Error retrieving LastScan property", err)
+		log.Error(ctx, "Error retrieving Library", "id", libId, err)
 		return nil, err
 	}
 
 	var indexes model.ArtistIndexes
-	ms, _ := strconv.ParseInt(l, 10, 64)
-	lastModified := utils.ToTime(ms)
-	if lastModified.After(ifModifiedSince) {
+	if lib.LastScanAt.After(ifModifiedSince) {
 		indexes, err = api.ds.Artist(ctx).GetIndex()
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
@@ -56,7 +47,7 @@ func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModified
 
 	res := &responses.Indexes{
 		IgnoredArticles: conf.Server.IgnoredArticles,
-		LastModified:    utils.ToMillis(lastModified),
+		LastModified:    utils.ToMillis(lib.LastScanAt),
 	}
 
 	res.Index = make([]responses.Index, len(indexes))

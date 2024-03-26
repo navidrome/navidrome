@@ -87,15 +87,15 @@ func runNavidrome() {
 
 func startServer(ctx context.Context) func() error {
 	return func() error {
-		a := CreateServer(conf.Server.MusicFolder)
-		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
-		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
-		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
+		a := CreateServer(ctx)
+		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter(ctx))
+		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
+		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter(ctx))
 		if conf.Server.LastFM.Enabled {
-			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
+			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter(ctx))
 		}
 		if conf.Server.ListenBrainz.Enabled {
-			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
+			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter(ctx))
 		}
 		if conf.Server.Prometheus.Enabled {
 			// blocking call because takes <1ms but useful if fails
@@ -120,7 +120,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 			return nil
 		}
 
-		scanner := GetScanner()
+		scanner := GetScanner(ctx)
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)

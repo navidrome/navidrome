@@ -274,6 +274,8 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 					} else {
 						logger = logger.WithField(name, v.String())
 					}
+				case []string:
+					logger = logger.WithField(name, strings.Join(v, ","))
 				default:
 					logger = logger.WithField(name, v)
 				}

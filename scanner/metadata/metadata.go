@@ -222,6 +222,7 @@ func (t Tags) Channels() int               { return t.getInt("channels") }
 func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
 func (t Tags) Size() int64                 { return t.fileInfo.Size() }
 func (t Tags) FilePath() string            { return t.filePath }
+func (t Tags) Folder() string              { return path.Dir(t.filePath) }
 func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 func (t Tags) BirthTime() time.Time {
 	if ts := times.Get(t.fileInfo); ts.HasBirthTime() {
@@ -230,7 +231,7 @@ func (t Tags) BirthTime() time.Time {
 	return time.Now()
 }
 
-// ReplayGain Properties
+// ReplayGain Properties TODO: check rg_* tags
 
 func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
 func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
@@ -383,4 +384,84 @@ func (t Tags) getFloat(tagNames ...string) float64 {
 		return 0
 	}
 	return value
+}
+
+// We exclude all tags that are already first-class citizens in the model
+var excludedTags = map[string]struct{}{
+	"duration":         {},
+	"length":           {},
+	"tlen":             {},
+	"bitrate":          {},
+	"channels":         {},
+	"has_picture":      {},
+	"apic":             {},
+	"bpm":              {},
+	"tbpm":             {},
+	"tipl":             {},
+	"tcom":             {},
+	"tit2":             {},
+	"talb":             {},
+	"tcon":             {},
+	"tpe1":             {},
+	"tpe2":             {},
+	"title":            {},
+	"album":            {},
+	"artist":           {},
+	"artists":          {},
+	"albumartist":      {},
+	"albumartists":     {},
+	"composer":         {},
+	"track":            {},
+	"tracknumber":      {},
+	"tracktotal":       {},
+	"totaltracks":      {},
+	"disc":             {},
+	"discnumber":       {},
+	"disctotal":        {},
+	"totaldiscs":       {},
+	"year":             {},
+	"date":             {},
+	"originaldate":     {},
+	"releasedate":      {},
+	"comm":             {},
+	"comment":          {},
+	"comment:itunnorm": {},
+	"uslt":             {},
+}
+
+// Also exclude any tag that starts with one of these prefixes
+var excludedPrefixes = []string{
+	"musicbrainz",
+	"replaygain",
+	"sort",
+	"lyrics",
+}
+
+func isExcludedTag(tagName string) bool {
+	if _, ok := excludedTags[tagName]; ok {
+		return true
+	}
+	for _, prefix := range excludedPrefixes {
+		if strings.HasPrefix(tagName, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func (t Tags) ModelTags() model.Tags {
+	models := model.Tags{}
+	for tagName, values := range t.Tags {
+		if isExcludedTag(tagName) {
+			continue
+		}
+
+		for _, value := range values {
+			if value == "" {
+				continue
+			}
+			models[tagName] = append(models[tagName], value)
+		}
+	}
+	return models
 }

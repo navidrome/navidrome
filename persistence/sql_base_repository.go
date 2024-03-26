@@ -239,10 +239,10 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, err
 }
 
-func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
+func (r sqlRepository) put(idCol string, idVal string, m interface{}, colsToUpdate ...string) (newId string, err error) {
 	values, _ := toSQLArgs(m)
 	// If there's an ID, try to update first
-	if id != "" {
+	if idVal != "" {
 		updateValues := map[string]interface{}{}
 
 		// This is a map of the columns that need to be updated, if specified
@@ -257,23 +257,23 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 		}
 
 		delete(updateValues, "created_at")
-		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
+		update := Update(r.tableName).Where(Eq{idCol: idVal}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
 		if err != nil {
 			return "", err
 		}
 		if count > 0 {
-			return id, nil
+			return idVal, nil
 		}
 	}
 	// If it does not have an ID OR the ID was not found (when it is a new record with predefined id)
-	if id == "" {
-		id = uuid.NewString()
-		values["id"] = id
+	if idVal == "" {
+		idVal = uuid.NewString()
+		values[idCol] = idVal
 	}
 	insert := Insert(r.tableName).SetMap(values)
 	_, err = r.executeSQL(insert)
-	return id, err
+	return idVal, err
 }
 
 func (r sqlRepository) delete(cond Sqlizer) error {

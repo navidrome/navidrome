@@ -126,7 +126,11 @@ func do_put_map(id C.ulong, key string, val *C.char) {
 }
 
 /*
-As I'm working on the new scanner, I see that the `properties` from TagLib is ill-suited to extract multi-valued ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there, instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving us more flexibility, including parsing the USLT / SYLT frames in Go
+TODO: Validate this assumption:
+"As I'm working on the new scanner, I see that the `properties` from TagLib is ill-suited to extract multi-valued
+ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there,
+instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving
+us more flexibility, including parsing the USLT / SYLT frames in Go (https://github.com/n10v/id3v2/pull/64)"
 */
 
 //export go_map_put_int

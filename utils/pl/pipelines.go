@@ -174,3 +174,32 @@ func FromSlice[T any](ctx context.Context, in []T) <-chan T {
 	close(output)
 	return output
 }
+
+func Filter[T any](ctx context.Context, maxWorkers int, inputChan chan T, f func(context.Context, T) (bool, error)) (chan T, chan error) {
+	outputChan := make(chan T)
+	errorChan := make(chan error)
+	go func() {
+		defer close(outputChan)
+		defer close(errorChan)
+
+		errChan := Sink(ctx, maxWorkers, inputChan, func(ctx context.Context, item T) error {
+			ok, err := f(ctx, item)
+			if err != nil {
+				return err
+			}
+			if ok {
+				outputChan <- item
+			}
+			return nil
+		})
+
+		// Wait for pipeline to end, and forward any errors
+		for err := range ReadOrDone(ctx, errChan) {
+			select {
+			case errorChan <- err:
+			default:
+			}
+		}
+	}()
+	return outputChan, errorChan
+}
