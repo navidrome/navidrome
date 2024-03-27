@@ -61,6 +61,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"defaultDownloadableShare":  conf.Server.DefaultDownloadableShare,
 			"devSidebarPlaylists":       conf.Server.DevSidebarPlaylists,
 			"lastFMEnabled":             conf.Server.LastFM.Enabled && conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != "",
+			"lastFMApiKey":              conf.Server.LastFM.ApiKey,
 			"devShowArtistPage":         conf.Server.DevShowArtistPage,
 			"listenBrainzEnabled":       conf.Server.ListenBrainz.Enabled,
 			"enableExternalServices":    conf.Server.EnableExternalServices,
