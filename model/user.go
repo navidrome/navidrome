@@ -27,6 +27,7 @@ type Users []User
 type UserRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Get(id string) (*User, error)
+	GetAll(options ...QueryOptions) (Users, error)
 	Put(*User) error
 	UpdateLastLoginAt(id string) error
 	UpdateLastAccessAt(id string) error
