@@ -36,6 +36,11 @@
       "month": 2,
       "day": 4
     },
+    "releaseDate": {
+      "year": 2000,
+      "month": 5,
+      "day": 10
+    },
     "song": [
       {
         "id": "1",

@@ -178,6 +178,7 @@ var _ = Describe("Responses", func() {
 					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
 					DiscTitles:          DiscTitles{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}},
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
+					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
