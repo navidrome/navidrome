@@ -29,12 +29,12 @@
                 "createdAt": "Engadido"
             },
             "actions": {
-                "addToQueue": "Reproducir reprodución",
+                "addToQueue": "Ao final da cola",
                 "playNow": "Reproducir agora",
                 "addToPlaylist": "Engadir á lista",
                 "shuffleAll": "Remexer todo",
                 "download": "Descargar",
-                "playNext": "Reproducir seguinte",
+                "playNext": "A continuación",
                 "info": "Obter info"
             }
         },
