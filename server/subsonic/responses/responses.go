@@ -231,8 +231,8 @@ type AlbumID3 struct {
 	IsCompilation       bool       `xml:"isCompilation,attr"    json:"isCompilation"`
 	SortName            string     `xml:"sortName,attr"         json:"sortName"`
 	DiscTitles          DiscTitles `xml:"discTitles"            json:"discTitles"`
-	OriginalReleaseDate ItemDate   `xml:"originalReleaseDate"   json:"originalReleaseDate,omitempty"`
-	ReleaseDate         ItemDate   `xml:"releaseDate" json:"releaseDate,omitempty"`
+	OriginalReleaseDate ItemDate   `xml:"originalReleaseDate"   json:"originalReleaseDate"`
+	ReleaseDate         ItemDate   `xml:"releaseDate"           json:"releaseDate"`
 }
 
 type ArtistWithAlbumsID3 struct {
