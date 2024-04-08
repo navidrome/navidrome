@@ -501,8 +501,8 @@ type ReplayGain struct {
 }
 
 type DiscTitle struct {
-	Disc  int    `xml:"disc,attr,omitempty" json:"disc,omitempty"`
-	Title string `xml:"title,attr,omitempty" json:"title,omitempty"`
+	Disc  int    `xml:"disc,attr" json:"disc"`
+	Title string `xml:"title,attr" json:"title"`
 }
 
 type DiscTitles []DiscTitle
