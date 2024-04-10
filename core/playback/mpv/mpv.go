@@ -14,11 +14,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-// mpv --no-audio-display --pause 'Jack Johnson/On And On/01 Times Like These.m4a' --input-ipc-server=/tmp/gonzo.socket
-const (
-	mpvComdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
-)
-
 func start(args []string) (Executor, error) {
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
@@ -78,15 +73,14 @@ func (j *Executor) wait() {
 }
 
 // Path will always be an absolute path
-func createMPVCommand(cmd, deviceName string, filename string, socketName string) []string {
-	split := strings.Split(fixCmd(cmd), " ")
+func createMPVCommand(deviceName string, filename string, socketName string) []string {
+	split := strings.Split(fixCmd(conf.Server.MPVCmdTemplate), " ")
 	for i, s := range split {
 		s = strings.ReplaceAll(s, "%d", deviceName)
 		s = strings.ReplaceAll(s, "%f", filename)
 		s = strings.ReplaceAll(s, "%s", socketName)
 		split[i] = s
 	}
-
 	return split
 }
 
