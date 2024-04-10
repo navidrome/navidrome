@@ -309,7 +309,7 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 	return r.refreshCounters(&model.Playlist{ID: playlistId})
 }
 
-// RefreshStatus updates total playlist duration, size and count
+// refreshCounters updates total playlist duration, size and count
 func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	statsSql := Select(
 		"coalesce(sum(duration), 0) as duration",
