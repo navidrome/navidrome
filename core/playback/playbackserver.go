@@ -68,7 +68,7 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 	defaultDeviceFound := false
 
 	if defaultDevice == "" {
-		// if there are no devices given and no default device, we create a sythetic device named "auto"
+		// if there are no devices given and no default device, we create a synthetic device named "auto"
 		if len(devices) == 0 {
 			pbDevices[0] = *NewPlaybackDevice(ps, "auto", "auto")
 		}
