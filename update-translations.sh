@@ -3,6 +3,7 @@
 set -e
 
 download_lang() {
+  filename=resources/i18n/"$1".json
   url=$(curl -s -X POST https://poeditor.com/api/ \
     -d api_token="${POEDITOR_APIKEY}" \
     -d action="export" \
@@ -13,7 +14,12 @@ download_lang() {
     echo "Failed to export $1"
     return 1
   fi
-  curl -sSL "$url" > resources/i18n/"$1".json
+  curl -sSL "$url" > poeditor.json
+  if [ "$(jq -c . < $filename)" != "$(jq -c . < poeditor.json)" ]; then
+    mv poeditor.json "$filename"
+  else
+    rm poeditor.json
+  fi
 }
 
 for file in resources/i18n/*.json; do
