@@ -131,7 +131,7 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 
 	r, _, err := a.artwork.Get(ctx, id, consts.UICoverArtSize)
 	if err != nil {
-		return fmt.Errorf("error cacheing id='%s': %w", id, err)
+		return fmt.Errorf("error caching id='%s': %w", id, err)
 	}
 	defer r.Close()
 	_, err = io.Copy(io.Discard, r)
