@@ -8,6 +8,7 @@ package mpv
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/dexterlb/mpvipc"
@@ -103,6 +104,11 @@ func (t *MpvTrack) Pause() {
 }
 
 func (t *MpvTrack) Close() {
+	// Windows automatically handles closing
+	// and cleaning up named pipe
+	if runtime.GOOS == "windows" {
+		return
+	}
 	log.Debug("Closing resources", "track", t)
 	t.CloseCalled = true
 	// trying to shutdown mpv process using socket
