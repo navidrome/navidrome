@@ -13,13 +13,13 @@ import (
 
 var _ = Describe("MergeFS", func() {
 	var baseName, overlayName string
-	var baseDir, overlayDir, mergedDir fs.FS
+	var mergedDir fs.FS
 
 	BeforeEach(func() {
 		baseName, _ = os.MkdirTemp("", "merge_fs_base_test")
 		overlayName, _ = os.MkdirTemp("", "merge_fs_overlay_test")
-		baseDir = os.DirFS(baseName)
-		overlayDir = os.DirFS(overlayName)
+		baseDir := os.DirFS(baseName)
+		overlayDir := os.DirFS(overlayName)
 		mergedDir = utils.MergeFS{Base: baseDir, Overlay: overlayDir}
 	})
 	AfterEach(func() {
@@ -79,21 +79,21 @@ var _ = Describe("MergeFS", func() {
 	})
 
 	It("allows to seek to the beginning of the directory", func() {
-		_f(baseName, "1111")
-		_f(baseName, "2222")
-		_f(baseName, "3333")
+		_f(baseName, "1111.txt")
+		_f(baseName, "2222.txt")
+		_f(baseName, "3333.txt")
 
 		dir, err := mergedDir.Open(".")
 		Expect(err).To(BeNil())
 
 		list, _ := dir.(fs.ReadDirFile).ReadDir(2)
 		Expect(list).To(HaveLen(2))
-		Expect(list[0].Name()).To(Equal("1111"))
-		Expect(list[1].Name()).To(Equal("2222"))
+		Expect(list[0].Name()).To(Equal("1111.txt"))
+		Expect(list[1].Name()).To(Equal("2222.txt"))
 
 		list, _ = dir.(fs.ReadDirFile).ReadDir(2)
 		Expect(list).To(HaveLen(1))
-		Expect(list[0].Name()).To(Equal("3333"))
+		Expect(list[0].Name()).To(Equal("3333.txt"))
 	})
 })
 

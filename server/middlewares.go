@@ -116,6 +116,7 @@ func compressMiddleware() func(http.Handler) http.Handler {
 		"text/plain",
 		"text/css",
 		"text/javascript",
+		"text/event-stream",
 	)
 }
 
@@ -155,6 +156,15 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 		// Call the next middleware or handler in the chain
 		next.ServeHTTP(w, r)
 	})
+}
+
+// realIPMiddleware wraps the middleware.RealIP middleware function, bypassing it if the
+// ReverseProxyWhitelist configuration option is set.
+func realIPMiddleware(h http.Handler) http.Handler {
+	if conf.Server.ReverseProxyWhitelist == "" {
+		return middleware.RealIP(h)
+	}
+	return h
 }
 
 // serverAddressMiddleware is a middleware function that modifies the request object

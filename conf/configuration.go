@@ -21,6 +21,7 @@ type configOptions struct {
 	ConfigFile                   string
 	Address                      string
 	Port                         int
+	UnixSocketPerm               string
 	MusicFolder                  string
 	DataFolder                   string
 	CacheFolder                  string
@@ -275,6 +276,7 @@ func init() {
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
+	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
