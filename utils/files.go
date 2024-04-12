@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func RandomSocketName(prefix, suffix string) string {
+func RandomSocketOrFileName(prefix, suffix string) string {
 	socketPath := os.TempDir()
 	// Windows needs to use a named pipe instead of a file for the socket
 	// see https://mpv.io/manual/master#using-mpv-from-other-programs-or-scripts
