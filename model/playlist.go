@@ -2,12 +2,12 @@ package model
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
-	"golang.org/x/exp/slices"
 )
 
 type Playlist struct {

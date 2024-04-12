@@ -2,15 +2,12 @@ package mpv
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -134,17 +131,3 @@ var (
 	mpvPath string
 	mpvErr  error
 )
-
-func randomSocketName(prefix, suffix string) string {
-	randBytes := make([]byte, 16)
-	// we can safely ignore the return value since we're loading into a precreated, fixedsized buffer
-	_, _ = rand.Read(randBytes)
-
-	socketPath := os.TempDir()
-	// Windows needs to use a named pipe instead of a file for the socket
-	// see https://mpv.io/manual/master#using-mpv-from-other-programs-or-scripts
-	if runtime.GOOS == "windows" {
-		socketPath = `\\.\pipe\mpvsocket`
-	}
-	return filepath.Join(socketPath, prefix+hex.EncodeToString(randBytes)+suffix)
-}

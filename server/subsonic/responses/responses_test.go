@@ -20,7 +20,7 @@ var _ = Describe("Responses", func() {
 	var response *Subsonic
 	BeforeEach(func() {
 		response = &Subsonic{
-			Status:        "ok",
+			Status:        StatusOK,
 			Version:       "1.8.0",
 			Type:          consts.AppName,
 			ServerVersion: "v0.0.0",
@@ -176,8 +176,9 @@ var _ = Describe("Responses", func() {
 					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
-					DiscTitles:          DiscTitles{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}},
+					DiscTitles:          DiscTitles{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
+					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{

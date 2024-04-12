@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -34,8 +35,8 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 		Description: share.Description,
 		Username:    share.Username,
 		Created:     share.CreatedAt,
-		Expires:     &share.ExpiresAt,
-		LastVisited: share.LastVisitedAt,
+		Expires:     share.ExpiresAt,
+		LastVisited: V(share.LastVisitedAt),
 		VisitCount:  int32(share.VisitCount),
 	}
 	if resp.Description == "" {
@@ -62,7 +63,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
 		Description: description,
-		ExpiresAt:   expires,
+		ExpiresAt:   &expires,
 		ResourceIDs: strings.Join(ids, ","),
 	}
 
@@ -95,7 +96,7 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 	share := &model.Share{
 		ID:          id,
 		Description: description,
-		ExpiresAt:   expires,
+		ExpiresAt:   &expires,
 	}
 
 	err = repo.(rest.Persistable).Update(id, share)

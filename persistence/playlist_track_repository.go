@@ -5,6 +5,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -26,8 +27,15 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.db = r.db
 	p.tableName = "playlist_tracks"
 	p.sortMappings = map[string]string{
-		"id": "playlist_tracks.id",
+		"id":     "playlist_tracks.id",
+		"artist": "order_artist_name asc",
+		"album":  "order_album_name asc, order_album_artist_name asc",
 	}
+	if conf.Server.PreferSortTags {
+		p.sortMappings["artist"] = "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc"
+		p.sortMappings["album"] = "COALESCE(NULLIF(sort_album_name,''),order_album_name)"
+	}
+
 	pls, err := r.Get(playlistId)
 	if err != nil {
 		log.Error(r.ctx, "Error getting playlist's tracks - THIS SHOULD NOT HAPPEN!", "playlistId", playlistId, err)
@@ -51,9 +59,9 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
 		Columns(
-			"coalesce(starred, 0)",
-			"coalesce(play_count, 0)",
-			"coalesce(rating, 0)",
+			"coalesce(starred, 0) as starred",
+			"coalesce(play_count, 0) as play_count",
+			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
 			"f.*",

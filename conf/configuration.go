@@ -12,7 +12,6 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/number"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -358,7 +357,7 @@ func init() {
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
-	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()/3))
+	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)

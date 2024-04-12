@@ -7,7 +7,6 @@ import {
   Switch,
 } from '@material-ui/core'
 import { useInterval } from '../common'
-import config from '../config'
 import { baseUrl, openInNewTab } from '../utils'
 import { httpClient } from '../dataProvider'
 
@@ -24,7 +23,7 @@ const Progress = (props) => {
     )
     const callbackUrl = `${window.location.origin}${callbackEndpoint}`
     openedTab.current = openInNewTab(
-      `https://www.last.fm/api/auth/?api_key=${config.lastFMApiKey}&cb=${callbackUrl}`,
+      `https://www.last.fm/api/auth/?api_key=${localStorage.getItem('lastfm-apikey')}&cb=${callbackUrl}`,
     )
   }, [])
 

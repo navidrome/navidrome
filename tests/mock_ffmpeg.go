@@ -64,6 +64,10 @@ func (ff *MockFFmpeg) CmdPath() (string, error) {
 	return "ffmpeg", nil
 }
 
+func (ff *MockFFmpeg) Version() string {
+	return "1.0"
+}
+
 func (ff *MockFFmpeg) Read(p []byte) (n int, err error) {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
