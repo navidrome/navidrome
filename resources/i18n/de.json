@@ -349,7 +349,7 @@
         "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
         "songsAddedToPlaylist": "Einen Titel zur Playlist hinzugefügt |||| %{smart_count} Titel zur Playlist hinzugefügt",
         "noPlaylistsAvailable": "Keine Playlist verfügbar",
-        "delete_user_title": "Benutzer \"% {name}\" löschen",
+        "delete_user_title": "Benutzer '%{name}' löschen",
         "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
         "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
         "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen",

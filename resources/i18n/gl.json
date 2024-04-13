@@ -29,12 +29,12 @@
                 "createdAt": "Engadido"
             },
             "actions": {
-                "addToQueue": "Reproducir reprodución",
+                "addToQueue": "Ao final da cola",
                 "playNow": "Reproducir agora",
                 "addToPlaylist": "Engadir á lista",
                 "shuffleAll": "Remexer todo",
                 "download": "Descargar",
-                "playNext": "Reproducir seguinte",
+                "playNext": "A continuación",
                 "info": "Obter info"
             }
         },
@@ -55,10 +55,10 @@
                 "rating": "Valoración",
                 "createdAt": "Engadido o",
                 "size": "Tamaño",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Orixinal",
+                "releaseDate": "Publicado",
+                "releases": "Publicación ||| Publicacións",
+                "released": "Publicado"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -182,7 +182,7 @@
             }
         },
         "share": {
-            "name": "´",
+            "name": "Compartido |||| Compartidos",
             "fields": {
                 "username": "Compartida por",
                 "url": "URL",

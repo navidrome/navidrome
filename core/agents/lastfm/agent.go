@@ -311,12 +311,14 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.LastFM.Enabled {
-			agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
-				return lastFMConstructor(ds)
-			})
-			scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				return lastFMConstructor(ds)
-			})
+			if conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != "" {
+				agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
+					return lastFMConstructor(ds)
+				})
+				scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
+					return lastFMConstructor(ds)
+				})
+			}
 		}
 	})
 }

@@ -6,27 +6,27 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/pocketbase/dbx"
 )
 
 type playQueueRepository struct {
 	sqlRepository
 }
 
-func NewPlayQueueRepository(ctx context.Context, o orm.QueryExecutor) model.PlayQueueRepository {
+func NewPlayQueueRepository(ctx context.Context, db dbx.Builder) model.PlayQueueRepository {
 	r := &playQueueRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "playqueue"
 	return r
 }
 
 type playQueue struct {
-	ID        string    `structs:"id"       orm:"column(id)"`
-	UserID    string    `structs:"user_id"  orm:"column(user_id)"`
+	ID        string    `structs:"id"`
+	UserID    string    `structs:"user_id"`
 	Current   string    `structs:"current"`
 	Position  int64     `structs:"position"`
 	ChangedBy string    `structs:"changed_by"`
@@ -113,10 +113,10 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	}
 
 	// Break the list in chunks, up to 50 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	chunks := utils.BreakUpStringSlice(ids, 50)
+	chunks := slice.BreakUp(ids, 50)
 
 	// Query each chunk of media_file ids and store results in a map
-	mfRepo := NewMediaFileRepository(r.ctx, r.ormer)
+	mfRepo := NewMediaFileRepository(r.ctx, r.db)
 	trackMap := map[string]model.MediaFile{}
 	for i := range chunks {
 		idsFilter := Eq{"media_file.id": chunks[i]}

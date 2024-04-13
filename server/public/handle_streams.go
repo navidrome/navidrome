@@ -10,12 +10,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
-func (p *Router) handleStream(w http.ResponseWriter, r *http.Request) {
+func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	tokenId := r.URL.Query().Get(":id")
+	p := req.Params(r)
+	tokenId, _ := p.String(":id")
 	info, err := decodeStreamInfo(tokenId)
 	if err != nil {
 		log.Error(ctx, "Error parsing shared stream info", err)
@@ -23,7 +24,7 @@ func (p *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := p.streamer.NewStream(ctx, info.id, info.format, info.bitrate)
+	stream, err := pub.streamer.NewStream(ctx, info.id, info.format, info.bitrate, 0)
 	if err != nil {
 		log.Error(ctx, "Error starting shared stream", err)
 		http.Error(w, "invalid request", http.StatusInternalServerError)
@@ -31,7 +32,7 @@ func (p *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	// Make sure the stream will be closed at the end, to avoid leakage
 	defer func() {
-		if err := stream.Close(); err != nil && log.CurrentLevel() >= log.LevelDebug {
+		if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
 			log.Error("Error closing shared stream", "id", info.id, "file", stream.Name(), err)
 		}
 	}()
@@ -46,7 +47,7 @@ func (p *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Accept-Ranges", "none")
 		w.Header().Set("Content-Type", stream.ContentType())
 
-		estimateContentLength := utils.ParamBool(r, "estimateContentLength", false)
+		estimateContentLength := p.BoolOr("estimateContentLength", false)
 
 		// if Client requests the estimated content-length, send it
 		if estimateContentLength {
@@ -59,7 +60,7 @@ func (p *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 			go func() { _, _ = io.Copy(io.Discard, stream) }()
 		} else {
 			c, err := io.Copy(w, stream)
-			if log.CurrentLevel() >= log.LevelDebug {
+			if log.IsGreaterOrEqualTo(log.LevelDebug) {
 				if err != nil {
 					log.Error(ctx, "Error sending shared transcoded file", "id", info.id, err)
 				} else {

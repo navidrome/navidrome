@@ -17,7 +17,7 @@ describe('<DynamicMenuIcon />', () => {
     render(
       <Router history={history}>
         <DynamicMenuIcon icon={StarIcon} path={'test'} />
-      </Router>
+      </Router>,
     )
     expect(screen.getByTestId('icon')).not.toBeNull()
   })
@@ -34,7 +34,7 @@ describe('<DynamicMenuIcon />', () => {
           activeIcon={StarBorderIcon}
           path={'otherpath'}
         />
-      </Router>
+      </Router>,
     )
     expect(screen.getByTestId('icon')).not.toBeNull()
   })
@@ -51,7 +51,7 @@ describe('<DynamicMenuIcon />', () => {
           activeIcon={StarBorderIcon}
           path={'path'}
         />
-      </Router>
+      </Router>,
     )
     expect(screen.getByTestId('activeIcon')).not.toBeNull()
   })

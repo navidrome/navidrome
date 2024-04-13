@@ -39,9 +39,9 @@ export const RatingField = ({
 
   const handleRating = useCallback(
     (e, val) => {
-      rate(val, e.target.name)
+      rate(val ?? 0, e.target.name)
     },
-    [rate]
+    [rate],
   )
 
   // If the rating is not yet loaded or unset, it will be `undefined`.
@@ -56,7 +56,7 @@ export const RatingField = ({
         className={clsx(
           className,
           classes.rating,
-          rating > 0 ? classes.show : classes.hide
+          rating > 0 ? classes.show : classes.hide,
         )}
         value={ratingValue}
         size={size}

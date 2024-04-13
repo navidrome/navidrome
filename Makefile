@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.21.0-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.22.2-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -47,7 +47,7 @@ lintall: lint ##@Development Lint Go and JS code
 
 format: ##@Development Format code
 	@(cd ./ui && npm run prettier)
-	@go run golang.org/x/tools/cmd/goimports -w `find . -name '*.go' | grep -v _gen.go$$`
+	@go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v _gen.go$$`
 	@go mod tidy
 .PHONY: format
 
@@ -85,13 +85,18 @@ build: warning-noui-build check_go_env  ##@Build Build only backend
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
+debug-build: warning-noui-build check_go_env  ##@Build Build only backend (with remote debug on)
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
+.PHONY: debug-build
+
 buildjs: check_node_env ##@Build Build only frontend
 	@(cd ./ui && npm run build)
 .PHONY: buildjs
 
 all: warning-noui-build ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
+	@echo "Building binaries for all platforms using builder ${CI_RELEASER_VERSION}"
 	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser release --rm-dist --skip-publish --snapshot
+ 		goreleaser release --clean --skip=publish --snapshot
 .PHONY: all
 
 single: warning-noui-build ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
@@ -101,9 +106,9 @@ single: warning-noui-build ##@Cross_Compilation Build binaries for a single supp
 		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
 		exit 1; \
 	fi
-	@echo "Building binaries for ${GOOS}/${GOARCH}"
+	@echo "Building binaries for ${GOOS}/${GOARCH} using builder ${CI_RELEASER_VERSION}"
 	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser build --rm-dist --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
+ 		goreleaser build --clean --snapshot -p 2 --single-target --id navidrome_${GOOS}_${GOARCH}
 .PHONY: single
 
 warning-noui-build:

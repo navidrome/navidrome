@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddGenreTables, downAddGenreTables)
+	goose.AddMigrationContext(upAddGenreTables, downAddGenreTables)
 }
 
-func upAddGenreTables(tx *sql.Tx) error {
+func upAddGenreTables(_ context.Context, tx *sql.Tx) error {
 	notice(tx, "A full rescan will be performed to import multiple genres!")
 	_, err := tx.Exec(`
 create table if not exists genre
@@ -63,6 +64,6 @@ create table if not exists  artist_genres
 	return forceFullRescan(tx)
 }
 
-func downAddGenreTables(tx *sql.Tx) error {
+func downAddGenreTables(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

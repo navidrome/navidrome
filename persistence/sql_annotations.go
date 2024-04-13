@@ -1,11 +1,11 @@
 package persistence
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -19,7 +19,13 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 			"annotation.item_id = "+idField+
 			" AND annotation.item_type = '"+r.tableName+"'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating")
+		Columns(
+			"coalesce(starred, 0) as starred",
+			"coalesce(rating, 0) as rating",
+			"coalesce(play_count, 0) as play_count",
+			"starred_at",
+			"play_date",
+		)
 }
 
 func (r sqlRepository) annId(itemID ...string) And {
@@ -36,7 +42,7 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 		upd = upd.Set(f, v)
 	}
 	c, err := r.executeSQL(upd)
-	if c == 0 || errors.Is(err, orm.ErrNoRows) {
+	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		for _, itemID := range itemIDs {
 			values["ann_id"] = uuid.NewString()
 			values["user_id"] = userId(r.ctx)
@@ -67,7 +73,7 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
 	c, err := r.executeSQL(upd)
 
-	if c == 0 || errors.Is(err, orm.ErrNoRows) {
+	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		values := map[string]interface{}{}
 		values["ann_id"] = uuid.NewString()
 		values["user_id"] = userId(r.ctx)

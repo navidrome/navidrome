@@ -1,0 +1,460 @@
+{
+    "languageName": "Bahasa Indonesia",
+    "resources": {
+        "song": {
+            "name": "Lagu |||| Lagu",
+            "fields": {
+                "albumArtist": "Artis Album",
+                "duration": "Durasi",
+                "trackNumber": "#",
+                "playCount": "Dimainkan",
+                "title": "Judul",
+                "artist": "Artis",
+                "album": "Album",
+                "path": "Jalur file",
+                "genre": "Genre",
+                "compilation": "Kompilasi",
+                "year": "Tahun",
+                "size": "Ukuran file",
+                "updatedAt": "Diperbarui pada",
+                "bitRate": "Laju bit",
+                "discSubtitle": "Subtitle Disk",
+                "starred": "Favorit",
+                "comment": "Komentar",
+                "rating": "Peringkat",
+                "quality": "Kualitas",
+                "bpm": "BPM",
+                "playDate": "Terakhir Dimainkan",
+                "channels": "Saluran",
+                "createdAt": "Tgl. Ditambahkan"
+            },
+            "actions": {
+                "addToQueue": "Tambah ke antrean",
+                "playNow": "Mainkan sekarang",
+                "addToPlaylist": "Tambahkan ke Playlist",
+                "shuffleAll": "Mainkan Acak",
+                "download": "Unduh",
+                "playNext": "Mainkan selanjutnya",
+                "info": "Lihat Info"
+            }
+        },
+        "album": {
+            "name": "Album |||| Album",
+            "fields": {
+                "albumArtist": "Artis Album",
+                "artist": "Artis",
+                "duration": "Durasi",
+                "songCount": "Lagu",
+                "playCount": "Dimainkan",
+                "name": "Nama",
+                "genre": "Genre",
+                "compilation": "Kompilasi",
+                "year": "Tahun",
+                "updatedAt": "Diperbarui pada",
+                "comment": "Komentar",
+                "rating": "Peringkat",
+                "createdAt": "Tgl. Ditambahkan",
+                "size": "Ukuran",
+                "originalDate": "Tanggal",
+                "releaseDate": "Rilis",
+                "releases": "Rilis |||| Rilis",
+                "released": "Dirilis"
+            },
+            "actions": {
+                "playAll": "Mainkan",
+                "playNext": "Mainkan selanjutnya",
+                "addToQueue": "Tambah ke antrean",
+                "shuffle": "Acak",
+                "addToPlaylist": "Tambahkan ke Playlist",
+                "download": "Unduh",
+                "info": "Lihat Info",
+                "share": "Bagikan"
+            },
+            "lists": {
+                "all": "Semua",
+                "random": "Acak",
+                "recentlyAdded": "Terakhir Ditambahkan",
+                "recentlyPlayed": "Terakhir Dimainkan",
+                "mostPlayed": "Sering Dimainkan",
+                "starred": "Favorit",
+                "topRated": "Peringkat Teratas"
+            }
+        },
+        "artist": {
+            "name": "Artis |||| Artis",
+            "fields": {
+                "name": "Nama",
+                "albumCount": "Jumlah Album",
+                "songCount": "Jumlah Lagu",
+                "playCount": "Dimainkan",
+                "rating": "Peringkat",
+                "genre": "Genre",
+                "size": "Ukuran"
+            }
+        },
+        "user": {
+            "name": "Pengguna |||| Pengguna",
+            "fields": {
+                "userName": "Nama Pengguna",
+                "isAdmin": "Admin",
+                "lastLoginAt": "Terakhir Login",
+                "updatedAt": "Diperbarui pada",
+                "name": "Nama",
+                "password": "Kata Sandi",
+                "createdAt": "Dibuat pada",
+                "changePassword": "Ganti Kata Sandi?",
+                "currentPassword": "Kata Sandi Sebelumnya",
+                "newPassword": "Kata Sandi Baru",
+                "token": "Token"
+            },
+            "helperTexts": {
+                "name": "Perubahan pada nama Kamu akan terlihat pada login berikutnya"
+            },
+            "notifications": {
+                "created": "Pengguna dibuat",
+                "updated": "Pengguna diperbarui",
+                "deleted": "Pengguna dihapus"
+            },
+            "message": {
+                "listenBrainzToken": "Masukkan token pengguna ListenBrainz Kamu.",
+                "clickHereForToken": "Klik di sini untuk mendapatkan token ListenBrainz"
+            }
+        },
+        "player": {
+            "name": "Pemutar |||| Pemutar",
+            "fields": {
+                "name": "Nama",
+                "transcodingId": "Transkode",
+                "maxBitRate": "Maks. Laju Bit",
+                "client": "Klien",
+                "userName": "Nama Pengguna",
+                "lastSeen": "Terakhir Terlihat Pada",
+                "reportRealPath": "Laporkan Jalur Sebenarnya",
+                "scrobbleEnabled": "Kirim Scrobbles ke layanan eksternal"
+            }
+        },
+        "transcoding": {
+            "name": "Transkode |||| Transkode",
+            "fields": {
+                "name": "Nama",
+                "targetFormat": "Target Format",
+                "defaultBitRate": "Laju Bit Bawaan",
+                "command": "Perintah"
+            }
+        },
+        "playlist": {
+            "name": "Playlist |||| Playlist",
+            "fields": {
+                "name": "Nama",
+                "duration": "Durasi",
+                "ownerName": "Pemilik",
+                "public": "Publik",
+                "updatedAt": "Diperbarui pada",
+                "createdAt": "Dibuat pada",
+                "songCount": "Lagu",
+                "comment": "Komentar",
+                "sync": "Impor Otomatis",
+                "path": "Impor Dari"
+            },
+            "actions": {
+                "selectPlaylist": "Pilih playlist:",
+                "addNewPlaylist": "Buat \"%{name}\"",
+                "export": "Ekspor",
+                "makePublic": "Jadikan Publik",
+                "makePrivate": "Jadikan Pribadi"
+            },
+            "message": {
+                "duplicate_song": "Tambahkan lagu duplikat",
+                "song_exist": "Ada lagu duplikat yang ditambahkan ke daftar putar. Apakah Kamu ingin menambahkan lagu duplikat atau melewatkannya?"
+            }
+        },
+        "radio": {
+            "name": "Radio |||| Radio",
+            "fields": {
+                "name": "Nama",
+                "streamUrl": "URL Sumber",
+                "homePageUrl": "Halaman Beranda URL",
+                "updatedAt": "Diperbarui pada",
+                "createdAt": "Dibuat pada"
+            },
+            "actions": {
+                "playNow": "Mainkan sekarang"
+            }
+        },
+        "share": {
+            "name": "Bagikan |||| Bagikan",
+            "fields": {
+                "username": "Dibagikan Oleh",
+                "url": "URL",
+                "description": "Deskripsi",
+                "contents": "Konten",
+                "expiresAt": "Berakhir",
+                "lastVisitedAt": "Terakhir Dikunjungi",
+                "visitCount": "Pengunjung",
+                "format": "Format",
+                "maxBitRate": "Maks. Laju Bit",
+                "updatedAt": "Diperbarui pada",
+                "createdAt": "Dibuat pada",
+                "downloadable": "Izinkan Pengunduhan?"
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Terima kasih telah menginstal Navidrome!",
+            "welcome2": "Untuk memulai, buat dulu akun admin",
+            "confirmPassword": "Konfirmasi Kata Sandi",
+            "buttonCreateAdmin": "Buat Akun Admin",
+            "auth_check_error": "Silahkan masuk untuk melanjutkan",
+            "user_menu": "Profil",
+            "username": "Nama Pengguna",
+            "password": "Kata Sandi",
+            "sign_in": "Masuk",
+            "sign_in_error": "Otentikasi gagal, silakan coba lagi",
+            "logout": "Keluar"
+        },
+        "validation": {
+            "invalidChars": "Harap menggunakan huruf dan angka saja",
+            "passwordDoesNotMatch": "Kata sandi tidak cocok",
+            "required": "Wajib",
+            "minLength": "Setidaknya harus %{min} karakter",
+            "maxLength": "Harus berisi %{max} karakter atau kurang",
+            "minValue": "Minimal harus %{min}",
+            "maxValue": "Harus %{max} atau kurang",
+            "number": "Harus berupa angka",
+            "email": "Harus berupa email yang valid",
+            "oneOf": "Harus salah satu dari: %{options}",
+            "regex": "Harus cocok dengan format spesifik (regexp): %{pattern}",
+            "unique": "Harus unik",
+            "url": "Harus berupa URL yang valid"
+        },
+        "action": {
+            "add_filter": "Tambah filter",
+            "add": "Tambah",
+            "back": "Kembali",
+            "bulk_actions": "1 item dipilih |||| %{smart_count} item dipilih",
+            "cancel": "Batalkan",
+            "clear_input_value": "Hapus",
+            "clone": "Klon",
+            "confirm": "Konfirmasi",
+            "create": "Buat",
+            "delete": "Hapus",
+            "edit": "Edit",
+            "export": "Ekspor",
+            "list": "Daftar",
+            "refresh": "Refresh",
+            "remove_filter": "Hapus filter ini",
+            "remove": "Hapus",
+            "save": "Simpan",
+            "search": "Cari",
+            "show": "Tunjukkan",
+            "sort": "Sortir",
+            "undo": "Batalkan",
+            "expand": "Luaskan",
+            "close": "Tutup",
+            "open_menu": "Buka menu",
+            "close_menu": "Tutup menu",
+            "unselect": "Batalkan pilihan",
+            "skip": "Lewati",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Bagikan",
+            "download": "Unduh"
+        },
+        "boolean": {
+            "true": "Ya",
+            "false": "Tidak"
+        },
+        "page": {
+            "create": "Buat %{name}",
+            "dashboard": "Dashboard",
+            "edit": "%{name} #%{id}",
+            "error": "Ada yang tidak beres",
+            "list": "%{name}",
+            "loading": "Memuat",
+            "not_found": "Tidak ditemukan",
+            "show": "%{name} #%{id}",
+            "empty": "Belum ada %{name}.",
+            "invite": "Apakah Kamu ingin menambahkan satu?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Letakkan beberapa file untuk diunggah, atau klik untuk memilih salah satu.",
+                "upload_single": "Letakkan file untuk diunggah, atau klik untuk memilihnya."
+            },
+            "image": {
+                "upload_several": "Letakkan beberapa gambar untuk diunggah, atau klik untuk memilih salah satu.",
+                "upload_single": "Letakkan gambar untuk diunggah, atau klik untuk memilihnya."
+            },
+            "references": {
+                "all_missing": "Tidak dapat menemukan data referensi.",
+                "many_missing": "Tampaknya beberapa referensi tidak tersedia.",
+                "single_missing": "Tampaknya referensi tidak tersedia."
+            },
+            "password": {
+                "toggle_visible": "Sembunyikan Kata Sandi",
+                "toggle_hidden": "Tampilkan Kata Sandi"
+            }
+        },
+        "message": {
+            "about": "Tentang",
+            "are_you_sure": "Kamu Yakin?",
+            "bulk_delete_content": "Kamu yakin ingin menghapus %{name} ini? |||| Kamu yakin ingin menghapus %{smart_count} item ini?",
+            "bulk_delete_title": "Hapus %{name} |||| Hapus %{smart_count} %{name}",
+            "delete_content": "Kamu ingin menghapus item ini?",
+            "delete_title": "Hapus %{name} #%{id}",
+            "details": "Detail",
+            "error": "Terjadi kesalahan klien dan permintaan Kamu tidak dapat diselesaikan.",
+            "invalid_form": "Formulirnya tidak valid. Silakan periksa kesalahannya",
+            "loading": "Halaman sedang dimuat, mohon tunggu sebentar",
+            "no": "Tidak",
+            "not_found": "Mungkin Kamu mengetik URL yang salah, atau Kamu mengikuti tautan yang buruk.",
+            "yes": "Ya",
+            "unsaved_changes": "Beberapa perubahan tidak disimpan. Apakah Kamu yakin ingin mengabaikannya?"
+        },
+        "navigation": {
+            "no_results": "Tidak ada hasil yang ditemukan",
+            "no_more_results": "Nomor halaman %{page} melampaui batas. Coba halaman sebelumnya.",
+            "page_out_of_boundaries": "Nomor halaman %{page} melampaui batas",
+            "page_out_from_end": "Tidak dapat menelusuri sebelum halaman terakhir",
+            "page_out_from_begin": "Tidak dapat menelusuri sebelum halaman 1",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} dari %{total}",
+            "page_rows_per_page": "Item per halaman:",
+            "next": "Selanjutnya",
+            "prev": "Sebelumnya",
+            "skip_nav": "Lewati ke konten"
+        },
+        "notification": {
+            "updated": "Elemen diperbarui |||| %{smart_count} elemen diperbarui",
+            "created": "Elemen dibuat",
+            "deleted": "Elemen dihapus |||| %{smart_count} elemen dihapus",
+            "bad_item": "Elemen salah",
+            "item_doesnt_exist": "Tidak ada elemen",
+            "http_error": "Kesalahan komunikasi server",
+            "data_provider_error": "dataProvider galat. Periksa konsol untuk detailnya.",
+            "i18n_error": "Tidak dapat memuat terjemahan untuk bahasa yang diatur",
+            "canceled": "Tindakan dibatalkan",
+            "logged_out": "Sesi Kamu telah berakhir, harap sambungkan kembali.",
+            "new_version": "Tersedia versi baru! Silakan menyegarkan jendela ini."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Kolom Untuk Ditampilkan",
+            "layout": "Layout",
+            "grid": "Grid",
+            "table": "Tabel"
+        }
+    },
+    "message": {
+        "note": "CATATAN",
+        "transcodingDisabled": "Mengubah konfigurasi transkode melalui antarmuka web dinonaktifkan karena alasan keamanan. Jika Kamu ingin mengubah (mengedit atau menambahkan) opsi transkode, restart server dengan opsi konfigurasi %{config}.",
+        "transcodingEnabled": "Navidrome saat ini berjalan dengan %{config}, sehingga memungkinkan untuk menjalankan perintah sistem dari pengaturan Transkode menggunakan antarmuka web. Kami sarankan untuk menonaktifkannya demi alasan keamanan dan hanya mengaktifkannya saat mengonfigurasi opsi Transcoding.",
+        "songsAddedToPlaylist": "Menambahkan 1 lagu ke playlist |||| Menambahkan %{smart_count} lagu ke playlist",
+        "noPlaylistsAvailable": "Tidak tersedia",
+        "delete_user_title": "Hapus pengguna '%{name}'",
+        "delete_user_content": "Apakah Kamu yakin ingin menghapus pengguna ini dan semua datanya (termasuk daftar putar dan preferensi)?",
+        "notifications_blocked": "Kamu telah memblokir Notifikasi untuk situs ini di pengaturan browser Anda",
+        "notifications_not_available": "Browser ini tidak mendukung notifikasi desktop atau Kamu tidak mengakses Navidrome melalui https",
+        "lastfmLinkSuccess": "Last.fm berhasil ditautkan dan scrobbling diaktifkan",
+        "lastfmLinkFailure": "Last.fm tidak dapat ditautkan",
+        "lastfmUnlinkSuccess": "Tautan Last.fm dibatalkan dan scrobbling dinonaktifkan",
+        "lastfmUnlinkFailure": "Tautan Last.fm tidak dapat dibatalkan",
+        "openIn": {
+            "lastfm": "Lihat di Last.fm",
+            "musicbrainz": "Lihat di MusicBrainz"
+        },
+        "lastfmLink": "Baca selengkapnya...",
+        "listenBrainzLinkSuccess": "ListenBrainz berhasil ditautkan dan scrobbling diaktifkan sebagai pengguna: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz tidak dapat ditautkan: %{error}",
+        "listenBrainzUnlinkSuccess": "Tautan ListenBrainz dibatalkan dan scrobbling dinonaktifkan",
+        "listenBrainzUnlinkFailure": "Tautan ListenBrainz tidak dapat dibatalkan",
+        "downloadOriginalFormat": "Unduh dalam format asli",
+        "shareOriginalFormat": "Bagikan dalam format asli",
+        "shareDialogTitle": "Bagikan %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Bagikan 1 %{resource} |||| Bagikan %{smart_count} %{resource}",
+        "shareSuccess": "URL disalin ke papan klip: %{url}",
+        "shareFailure": "Terjadi kesalahan saat menyalin URL %{url} ke papan klip",
+        "downloadDialogTitle": "Unduh %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Salin ke papan klip: Ctrl+C, Enter"
+    },
+    "menu": {
+        "library": "Perpustakaan",
+        "settings": "Pengaturan",
+        "version": "Versi",
+        "theme": "Tema",
+        "personal": {
+            "name": "Personal",
+            "options": {
+                "theme": "Tema",
+                "language": "Bahasa",
+                "defaultView": "Tampilan Bawaan",
+                "desktop_notifications": "Pemberitahuan Desktop",
+                "lastfmScrobbling": "Scrobble ke Last.fm",
+                "listenBrainzScrobbling": "Scrobble ke ListenBrainz",
+                "replaygain": "Mode ReplayGain",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Nonaktif",
+                    "album": "Gunakan Gain Album",
+                    "track": "Gunakan Gain Lagu"
+                }
+            }
+        },
+        "albumList": "Album",
+        "about": "Tentang",
+        "playlists": "Playlist",
+        "sharedPlaylists": "Playlist yang Dibagikan"
+    },
+    "player": {
+        "playListsText": "Mainkan Antrean",
+        "openText": "Buka text",
+        "closeText": "Tutup text",
+        "notContentText": "Tidak ada musik",
+        "clickToPlayText": "Klik untuk mainkan",
+        "clickToPauseText": "Klik untuk menjeda",
+        "nextTrackText": "Lagu Selanjutnya",
+        "previousTrackText": "Lagu Sebelumnya",
+        "reloadText": "Muat ulang",
+        "volumeText": "Volume",
+        "toggleLyricText": "Lirik",
+        "toggleMiniModeText": "Minimalkan",
+        "destroyText": "Tutup",
+        "downloadText": "Unduh",
+        "removeAudioListsText": "Hapus daftar audio",
+        "clickToDeleteText": "Klik untuk menghapus %{name}",
+        "emptyLyricText": "Tidak ada lirik",
+        "playModeText": {
+            "order": "Berurutan",
+            "orderLoop": "Ulang",
+            "singleLoop": "Ulangi Satu",
+            "shufflePlay": "Acak"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "Halaman beranda",
+            "source": "Kode sumber",
+            "featureRequests": "Permintaan fitur"
+        }
+    },
+    "activity": {
+        "title": "Aktivitas",
+        "totalScanned": "Total Folder yang Dipindai",
+        "quickScan": "Pemindaian Cepat",
+        "fullScan": "Pemindaian Penuh",
+        "serverUptime": "Waktu Aktif Server",
+        "serverDown": "OFFLINE"
+    },
+    "help": {
+        "title": "Tombol Pintasan Navidrome",
+        "hotkeys": {
+            "show_help": "Tampilkan Bantuan Ini",
+            "toggle_menu": "Menu Samping",
+            "toggle_play": "Mainkan / Jeda",
+            "prev_song": "Lagu Sebelumnya",
+            "next_song": "Lagu Selanjutnya",
+            "vol_up": "Volume Naik",
+            "vol_down": "Volume Turun",
+            "toggle_love": "Tambahkan lagu ini ke favorit",
+            "current_song": "Buka Lagu Saat Ini"
+        }
+    }
+}

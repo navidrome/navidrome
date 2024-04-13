@@ -77,6 +77,9 @@ func buildAuthPayload(user *model.User) map[string]interface{} {
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
+	if conf.Server.LastFM.Enabled {
+		payload["lastFMApiKey"] = conf.Server.LastFM.ApiKey
+	}
 
 	bytes := make([]byte, 3)
 	_, err := rand.Read(bytes)
@@ -143,7 +146,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
-		LastLoginAt: now,
+		LastLoginAt: &now,
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
@@ -193,7 +196,7 @@ func UsernameFromToken(r *http.Request) string {
 }
 
 func UsernameFromReverseProxyHeader(r *http.Request) string {
-	if conf.Server.ReverseProxyWhitelist == "" {
+	if conf.Server.ReverseProxyWhitelist == "" && !strings.HasPrefix(conf.Server.Address, "unix:") {
 		return ""
 	}
 	if !validateIPAgainstList(r.RemoteAddr, conf.Server.ReverseProxyWhitelist) {
@@ -316,6 +319,12 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 }
 
 func validateIPAgainstList(ip string, comaSeparatedList string) bool {
+	// Per https://github.com/golang/go/issues/49825, the remote address
+	// on a unix socket is '@'
+	if ip == "@" && strings.HasPrefix(conf.Server.Address, "unix:") {
+		return true
+	}
+
 	if comaSeparatedList == "" || ip == "" {
 		return false
 	}

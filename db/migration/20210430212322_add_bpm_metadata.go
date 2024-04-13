@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddBpmMetadata, downAddBpmMetadata)
+	goose.AddMigrationContext(upAddBpmMetadata, downAddBpmMetadata)
 }
 
-func upAddBpmMetadata(tx *sql.Tx) error {
+func upAddBpmMetadata(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table media_file
     add bpm integer;
@@ -25,6 +26,6 @@ create index if not exists media_file_bpm
 	return forceFullRescan(tx)
 }
 
-func downAddBpmMetadata(tx *sql.Tx) error {
+func downAddBpmMetadata(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

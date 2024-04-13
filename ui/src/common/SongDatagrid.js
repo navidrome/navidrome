@@ -97,7 +97,7 @@ const ReleaseRow = forwardRef(
         </TableCell>
       </TableRow>
     )
-  }
+  },
 )
 
 const DiscSubtitleRow = forwardRef(
@@ -141,7 +141,7 @@ const DiscSubtitleRow = forwardRef(
         </TableCell>
       </TableRow>
     )
-  }
+  },
 )
 
 export const SongDatagridRow = ({
@@ -156,7 +156,7 @@ export const SongDatagridRow = ({
 }) => {
   const classes = useStyles()
   const fields = React.Children.toArray(children).filter((c) =>
-    isValidElement(c)
+    isValidElement(c),
   )
 
   const [, dragDiscRef] = useDrag(
@@ -173,7 +173,7 @@ export const SongDatagridRow = ({
       },
       options: { dropEffect: 'copy' },
     }),
-    [record]
+    [record],
   )
 
   const [, dragSongRef] = useDrag(
@@ -182,7 +182,7 @@ export const SongDatagridRow = ({
       item: { ids: [record?.mediaFileId || record?.id] },
       options: { dropEffect: 'copy' },
     }),
-    [record]
+    [record],
   )
 
   if (!record || !record.title) {
@@ -251,14 +251,14 @@ const SongDatagridBody = ({
         idsToPlay = ids.filter(
           (id) =>
             data[id].releaseDate === releaseDate &&
-            data[id].discNumber === discNumber
+            data[id].discNumber === discNumber,
         )
       } else {
         idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
       }
       dispatch(playTracks(data, idsToPlay))
     },
-    [dispatch, data, ids]
+    [dispatch, data, ids],
   )
 
   const firstTracksOfDiscs = useMemo(() => {
@@ -280,7 +280,7 @@ const SongDatagridBody = ({
             acc.push(id)
           }
           return acc
-        }, [])
+        }, []),
     )
     if (!showDiscSubtitles || (set.size < 2 && !foundSubtitle)) {
       set.clear()
@@ -304,7 +304,7 @@ const SongDatagridBody = ({
             acc.push(id)
           }
           return acc
-        }, [])
+        }, []),
     )
     if (!showReleaseDivider || set.size < 2) {
       set.clear()

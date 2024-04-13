@@ -1,21 +1,22 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/pressly/goose/v3"
-	"golang.org/x/exp/slices"
 )
 
 func init() {
-	goose.AddMigration(upAddAlbumPaths, downAddAlbumPaths)
+	goose.AddMigrationContext(upAddAlbumPaths, downAddAlbumPaths)
 }
 
-func upAddAlbumPaths(tx *sql.Tx) error {
+func upAddAlbumPaths(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`alter table album add paths varchar;`)
 	if err != nil {
 		return err
@@ -62,6 +63,6 @@ func upAddAlbumPathsDirs(filePaths string) string {
 	return strings.Join(dirs, string(filepath.ListSeparator))
 }
 
-func downAddAlbumPaths(tx *sql.Tx) error {
+func downAddAlbumPaths(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

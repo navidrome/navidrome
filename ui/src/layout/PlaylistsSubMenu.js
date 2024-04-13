@@ -93,7 +93,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
 
   const onPlaylistConfig = useCallback(
     () => history.push('/playlist'),
-    [history]
+    [history],
   )
 
   return (

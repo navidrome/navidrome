@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -106,6 +107,7 @@ func levelFromString(l string) Level {
 	return level
 }
 
+// SetLogLevels sets the log levels for specific paths in the codebase.
 func SetLogLevels(levels map[string]string) {
 	for k, v := range levels {
 		logLevels = append(logLevels, levelPath{path: k, level: levelFromString(v)})
@@ -152,6 +154,11 @@ func SetDefaultLogger(l *logrus.Logger) {
 
 func CurrentLevel() Level {
 	return currentLevel
+}
+
+// IsGreaterOrEqualTo returns true if the caller's current log level is equal or greater than the provided level.
+func IsGreaterOrEqualTo(level Level) bool {
+	return shouldLog(level)
 }
 
 func Fatal(args ...interface{}) {
@@ -261,7 +268,12 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 				case time.Duration:
 					logger = logger.WithField(name, ShortDur(v))
 				case fmt.Stringer:
-					logger = logger.WithField(name, v.String())
+					vOf := reflect.ValueOf(v)
+					if vOf.Kind() == reflect.Pointer && vOf.IsNil() {
+						logger = logger.WithField(name, "nil")
+					} else {
+						logger = logger.WithField(name, v.String())
+					}
 				default:
 					logger = logger.WithField(name, v)
 				}

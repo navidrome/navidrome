@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -74,6 +75,10 @@ func runNavidrome() {
 	g.Go(startSignaler(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+
+	if conf.Server.Jukebox.Enabled {
+		g.Go(startPlaybackServer(ctx))
+	}
 
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -146,6 +151,16 @@ func startScheduler(ctx context.Context) func() error {
 	}
 }
 
+func startPlaybackServer(ctx context.Context) func() error {
+	log.Info(ctx, "Starting playback server")
+
+	playbackInstance := playback.GetInstance()
+
+	return func() error {
+		return playbackInstance.Run(ctx)
+	}
+}
+
 // TODO: Implement some struct tags to map flags to viper
 func init() {
 	cobra.OnInitialize(func() {
@@ -168,6 +183,7 @@ func init() {
 	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will listen to")
 	rootCmd.Flags().String("baseurl", viper.GetString("baseurl"), "base URL to configure Navidrome behind a proxy (ex: /music or http://my.server.com)")
 	rootCmd.Flags().String("tlscert", viper.GetString("tlscert"), "optional path to a TLS cert file (enables HTTPS listening)")
+	rootCmd.Flags().String("unixsocketperm", viper.GetString("unixsocketperm"), "optional file permission for the unix socket")
 	rootCmd.Flags().String("tlskey", viper.GetString("tlskey"), "optional path to a TLS key file (enables HTTPS listening)")
 
 	rootCmd.Flags().Duration("sessiontimeout", viper.GetDuration("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
@@ -184,6 +200,7 @@ func init() {
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("tlscert", rootCmd.Flags().Lookup("tlscert"))
+	_ = viper.BindPFlag("unixsocketperm", rootCmd.Flags().Lookup("unixsocketperm"))
 	_ = viper.BindPFlag("tlskey", rootCmd.Flags().Lookup("tlskey"))
 	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
 

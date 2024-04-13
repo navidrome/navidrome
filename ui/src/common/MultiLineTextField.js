@@ -39,11 +39,11 @@ export const MultiLineTextField = memo(
                   key={md5(line + idx)}
                   dangerouslySetInnerHTML={{ __html: line }}
                 />
-              )
+              ),
             )}
       </Typography>
     )
-  }
+  },
 )
 
 MultiLineTextField.defaultProps = {
