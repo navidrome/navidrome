@@ -7,7 +7,7 @@ import { useSelector } from 'react-redux'
 
 const Placeholder = () => {
   const playerRatingControl = useSelector(
-    (state) => state.settings.playerRatingControl
+    (state) => state.settings.playerRatingControl,
   )
 
   switch (playerRatingControl) {
@@ -29,7 +29,7 @@ const Placeholder = () => {
 
 const Toolbar = ({ id }) => {
   const playerRatingControl = useSelector(
-    (state) => state.settings.playerRatingControl
+    (state) => state.settings.playerRatingControl,
   )
   const { data, loading } = useGetOne('song', id)
   const [toggleLove, toggling] = useToggleLove('song', data)
