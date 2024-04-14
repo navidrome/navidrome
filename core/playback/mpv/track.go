@@ -13,7 +13,6 @@ import (
 	"github.com/dexterlb/mpvipc"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type MpvTrack struct {
@@ -32,7 +31,7 @@ func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFi
 		return nil, err
 	}
 
-	tmpSocketName := utils.TempFileName("mpv-ctrl-", ".socket")
+	tmpSocketName := socketName("mpv-ctrl-", ".socket")
 
 	args := createMPVCommand(mpvComdTemplate, deviceName, mf.Path, tmpSocketName)
 	exe, err := start(args)
