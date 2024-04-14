@@ -23,7 +23,9 @@ const Progress = (props) => {
     )
     const callbackUrl = `${window.location.origin}${callbackEndpoint}`
     openedTab.current = openInNewTab(
-      `https://www.last.fm/api/auth/?api_key=${localStorage.getItem('lastfm-apikey')}&cb=${callbackUrl}`,
+      `https://www.last.fm/api/auth/?api_key=${localStorage.getItem(
+        'lastfm-apikey',
+      )}&cb=${callbackUrl}`,
     )
   }, [])
 

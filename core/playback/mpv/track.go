@@ -13,7 +13,6 @@ import (
 	"github.com/dexterlb/mpvipc"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type MpvTrack struct {
@@ -32,7 +31,7 @@ func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFi
 		return nil, err
 	}
 
-	tmpSocketName := utils.TempFileName("mpv-ctrl-", ".socket")
+	tmpSocketName := socketName("mpv-ctrl-", ".socket")
 
 	args := createMPVCommand(mpvComdTemplate, deviceName, mf.Path, tmpSocketName)
 	exe, err := start(args)
@@ -100,35 +99,6 @@ func (t *MpvTrack) Pause() {
 	err := t.Conn.Set("pause", true)
 	if err != nil {
 		log.Error("Error pausing track", "track", t, err)
-	}
-}
-
-func (t *MpvTrack) Close() {
-	log.Debug("Closing resources", "track", t)
-	t.CloseCalled = true
-	// trying to shutdown mpv process using socket
-	if t.isSocketFilePresent() {
-		log.Debug("sending shutdown command")
-		_, err := t.Conn.Call("quit")
-		if err != nil {
-			log.Error("Error sending quit command to mpv-ipc socket", err)
-
-			if t.Exe != nil {
-				log.Debug("cancelling executor")
-				err = t.Exe.Cancel()
-				if err != nil {
-					log.Error("Error canceling executor", err)
-				}
-			}
-		}
-	}
-
-	if t.isSocketFilePresent() {
-		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
-		err := os.Remove(t.IPCSocketName)
-		if err != nil {
-			log.Error("Error cleaning up socketfile", "socketfile", t.IPCSocketName, err)
-		}
 	}
 }
 
