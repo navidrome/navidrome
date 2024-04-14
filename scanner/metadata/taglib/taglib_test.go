@@ -181,7 +181,7 @@ var _ = Describe("Extractor", func() {
 			// Only run permission tests if we are not root
 			RegularUserContext("when run without root privileges", func() {
 				BeforeEach(func() {
-					accessForbiddenFile = utils.RandomSocketOrFileName("access_forbidden-", ".mp3")
+					accessForbiddenFile = utils.TempFileName("access_forbidden-", ".mp3")
 
 					f, err := os.OpenFile(accessForbiddenFile, os.O_WRONLY|os.O_CREATE, 0222)
 					Expect(err).ToNot(HaveOccurred())

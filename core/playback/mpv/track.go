@@ -32,7 +32,7 @@ func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFi
 		return nil, err
 	}
 
-	tmpSocketName := utils.RandomSocketOrFileName("mpv-ctrl-", ".socket")
+	tmpSocketName := utils.TempFileName("mpv-ctrl-", ".socket")
 
 	args := createMPVCommand(mpvComdTemplate, deviceName, mf.Path, tmpSocketName)
 	exe, err := start(args)
