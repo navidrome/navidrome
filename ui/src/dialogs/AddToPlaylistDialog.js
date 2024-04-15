@@ -54,15 +54,19 @@ export const AddToPlaylistDialog = () => {
         })
         .then(() => {
           const len = trackIds.length
-          notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
+          notify('message.songsAddedToPlaylist', {
+            messageArgs: { smart_count: len },
+          })
           onSuccess && onSuccess(value, len)
           refresh()
         })
         .catch(() => {
-          notify('ra.page.error', 'warning')
+          notify('ra.page.error', { type: 'warning' })
         })
     } else {
-      notify('message.songsAddedToPlaylist', 'info', { smart_count: 0 })
+      notify('message.songsAddedToPlaylist', {
+        messageArgs: { smart_count: 0 },
+      })
     }
   }
 
