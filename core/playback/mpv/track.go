@@ -102,6 +102,31 @@ func (t *MpvTrack) Pause() {
 	}
 }
 
+func (t *MpvTrack) Close() {
+	log.Debug("Closing resources", "track", t)
+	t.CloseCalled = true
+	// trying to shutdown mpv process using socket
+	if t.isSocketFilePresent() {
+		log.Debug("sending shutdown command")
+		_, err := t.Conn.Call("quit")
+		if err != nil {
+			log.Error("Error sending quit command to mpv-ipc socket", err)
+
+			if t.Exe != nil {
+				log.Debug("cancelling executor")
+				err = t.Exe.Cancel()
+				if err != nil {
+					log.Error("Error canceling executor", err)
+				}
+			}
+		}
+	}
+
+	if t.isSocketFilePresent() {
+		removeSocket(t.IPCSocketName)
+	}
+}
+
 func (t *MpvTrack) isSocketFilePresent() bool {
 	if len(t.IPCSocketName) < 1 {
 		return false

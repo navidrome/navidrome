@@ -13,3 +13,7 @@ func socketName(prefix, suffix string) string {
 	// see https://mpv.io/manual/master#using-mpv-from-other-programs-or-scripts
 	return filepath.Join(`\\.\pipe\mpvsocket`, prefix+uuid.NewString()+suffix)
 }
+
+func removeSocket(string) {
+	// Windows automatically handles cleaning up named pipe
+}
