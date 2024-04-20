@@ -81,6 +81,11 @@ const (
 	DefaultCacheCleanUpInterval = 10 * time.Minute
 )
 
+const (
+	AlbumPlayCountModeAbsolute   = "absolute"
+	AlbumPlayCountModeNormalized = "normalized"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []map[string]interface{}{
