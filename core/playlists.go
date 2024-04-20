@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RaveNoX/go-jsoncommentstrip"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -112,7 +113,8 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 
 func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
 	nsp := &nspFile{}
-	dec := json.NewDecoder(file)
+	reader := jsoncommentstrip.NewReader(file)
+	dec := json.NewDecoder(reader)
 	err := dec.Decode(nsp)
 	if err != nil {
 		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
