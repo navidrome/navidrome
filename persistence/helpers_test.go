@@ -39,12 +39,14 @@ var _ = Describe("Helpers", func() {
 			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
 			args, err := toSQLArgs(m)
 			Expect(err).To(BeNil())
-			Expect(args).To(HaveKeyWithValue("id", "123"))
-			Expect(args).To(HaveKeyWithValue("album_id", "456"))
-			Expect(args).To(HaveKeyWithValue("play_count", 2))
-			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
-			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
-			Expect(args).ToNot(HaveKey("Embed"))
+			Expect(args).To(SatisfyAll(
+				HaveKeyWithValue("id", "123"),
+				HaveKeyWithValue("album_id", "456"),
+				HaveKeyWithValue("play_count", 2),
+				HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)),
+				HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)),
+				Not(HaveKey("Embed")),
+			))
 		})
 	})
 

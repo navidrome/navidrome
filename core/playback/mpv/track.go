@@ -31,9 +31,9 @@ func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFi
 		return nil, err
 	}
 
-	tmpSocketName := TempFileName("mpv-ctrl-", ".socket")
+	tmpSocketName := socketName("mpv-ctrl-", ".socket")
 
-	args := createMPVCommand(mpvComdTemplate, deviceName, mf.Path, tmpSocketName)
+	args := createMPVCommand(deviceName, mf.Path, tmpSocketName)
 	exe, err := start(args)
 	if err != nil {
 		log.Error("Error starting mpv process", err)
@@ -123,11 +123,7 @@ func (t *MpvTrack) Close() {
 	}
 
 	if t.isSocketFilePresent() {
-		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
-		err := os.Remove(t.IPCSocketName)
-		if err != nil {
-			log.Error("Error cleaning up socketfile", "socketfile", t.IPCSocketName, err)
-		}
+		removeSocket(t.IPCSocketName)
 	}
 }
 

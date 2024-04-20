@@ -1,9 +1,11 @@
 package model
 
 import (
+	"cmp"
 	"encoding/json"
 	"mime"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -11,9 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/slices"
 )
 
 type MediaFile struct {
@@ -182,9 +182,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
-	a.Comment, _ = allOrNothing(comments)
 	a.Genre = slice.MostFrequent(a.Genres).Name
-	slices.SortFunc(a.Genres, func(a, b Genre) bool { return a.ID < b.ID })
+	slices.SortFunc(a.Genres, func(a, b Genre) int { return cmp.Compare(a.ID, b.ID) })
 	a.Genres = slices.Compact(a.Genres)
 	a.FullText = " " + utils.SanitizeStrings(fullText...)
 	a = fixAlbumArtist(a, albumArtistIds)
@@ -209,17 +208,16 @@ func allOrNothing(items []string) (string, int) {
 }
 
 func minMax(items []int) (int, int) {
-	var max = items[0]
-	var min = items[0]
+	var mn, mx = items[0], items[0]
 	for _, value := range items {
-		max = number.Max(max, value)
-		if min == 0 {
-			min = value
+		mx = max(mx, value)
+		if mn == 0 {
+			mn = value
 		} else if value > 0 {
-			min = number.Min(min, value)
+			mn = min(mn, value)
 		}
 	}
-	return min, max
+	return mn, mx
 }
 
 func newer(t1, t2 time.Time) time.Time {

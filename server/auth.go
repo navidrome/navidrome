@@ -77,6 +77,9 @@ func buildAuthPayload(user *model.User) map[string]interface{} {
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
+	if conf.Server.LastFM.Enabled {
+		payload["lastFMApiKey"] = conf.Server.LastFM.ApiKey
+	}
 
 	bytes := make([]byte, 3)
 	_, err := rand.Read(bytes)

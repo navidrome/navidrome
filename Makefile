@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.21.5-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION=1.22.2-1 ## https://github.com/navidrome/ci-goreleaser
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -94,6 +94,7 @@ buildjs: check_node_env ##@Build Build only frontend
 .PHONY: buildjs
 
 all: warning-noui-build ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
+	@echo "Building binaries for all platforms using builder ${CI_RELEASER_VERSION}"
 	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
  		goreleaser release --clean --skip=publish --snapshot
 .PHONY: all
@@ -105,10 +106,16 @@ single: warning-noui-build ##@Cross_Compilation Build binaries for a single supp
 		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
 		exit 1; \
 	fi
-	@echo "Building binaries for ${GOOS}/${GOARCH}"
+	@echo "Building binaries for ${GOOS}/${GOARCH} using builder ${CI_RELEASER_VERSION}"
 	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser build --clean --snapshot --single-target --id navidrome_${GOOS}_${GOARCH}
+ 		goreleaser build --clean --snapshot -p 2 --single-target --id navidrome_${GOOS}_${GOARCH}
 .PHONY: single
+
+docker: buildjs ##@Build Build Docker linux/amd64 image (tagged as `deluan/navidrome:develop`)
+	GOOS=linux GOARCH=amd64 make single
+	@echo "Building Docker image"
+	docker build . --platform linux/amd64 -t deluan/navidrome:develop -f .github/workflows/pipeline.dockerfile
+.PHONY: docker
 
 warning-noui-build:
 	@echo "WARNING: This command does not build the frontend, it uses the latest built with 'make buildjs'"

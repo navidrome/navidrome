@@ -233,7 +233,7 @@ func h501(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("Cache-Control", "no-cache")
-			w.WriteHeader(501)
+			w.WriteHeader(http.StatusNotImplemented)
 			_, _ = w.Write([]byte("This endpoint is not implemented, but may be in future releases"))
 		}
 		addHandler(r, path, handle)
@@ -244,7 +244,7 @@ func h501(r chi.Router, paths ...string) {
 func h410(r chi.Router, paths ...string) {
 	for _, path := range paths {
 		handle := func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(410)
+			w.WriteHeader(http.StatusGone)
 			_, _ = w.Write([]byte("This endpoint will not be implemented"))
 		}
 		addHandler(r, path, handle)
@@ -276,7 +276,7 @@ func mapToSubsonicError(err error) subError {
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
 	subErr := mapToSubsonicError(err)
 	response := newResponse()
-	response.Status = "failed"
+	response.Status = responses.StatusFailed
 	response.Error = &responses.Error{Code: int32(subErr.code), Message: subErr.Error()}
 
 	sendResponse(w, r, response)
@@ -286,22 +286,29 @@ func sendResponse(w http.ResponseWriter, r *http.Request, payload *responses.Sub
 	p := req.Params(r)
 	f, _ := p.String("f")
 	var response []byte
+	var err error
 	switch f {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
-		response, _ = json.Marshal(wrapper)
+		response, err = json.Marshal(wrapper)
 	case "jsonp":
 		w.Header().Set("Content-Type", "application/javascript")
 		callback, _ := p.String("callback")
 		wrapper := &responses.JsonWrapper{Subsonic: *payload}
-		data, _ := json.Marshal(wrapper)
-		response = []byte(fmt.Sprintf("%s(%s)", callback, data))
+		response, err = json.Marshal(wrapper)
+		response = []byte(fmt.Sprintf("%s(%s)", callback, response))
 	default:
 		w.Header().Set("Content-Type", "application/xml")
-		response, _ = xml.Marshal(payload)
+		response, err = xml.Marshal(payload)
 	}
-	if payload.Status == "ok" {
+	// This should never happen, but if it does, we need to know
+	if err != nil {
+		log.Error(r.Context(), "Error marshalling response", "format", f, err)
+		sendError(w, r, err)
+		return
+	}
+	if payload.Status == responses.StatusOK {
 		if log.IsGreaterOrEqualTo(log.LevelTrace) {
 			log.Debug(r.Context(), "API: Successful response", "endpoint", r.URL.Path, "status", "OK", "body", string(response))
 		} else {

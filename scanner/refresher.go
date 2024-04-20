@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/maps"
 )
@@ -139,7 +140,7 @@ func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
 		a := model.Albums(group).ToAlbumArtist()
 
 		// Force a external metadata lookup on next access
-		a.ExternalInfoUpdatedAt = time.Time{}
+		a.ExternalInfoUpdatedAt = P(time.Time{})
 
 		// Do not remove old metadata
 		err := repo.Put(&a, "album_count", "genres", "external_info_updated_at", "mbz_artist_id", "name", "order_artist_name", "size", "sort_artist_name", "song_count")

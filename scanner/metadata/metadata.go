@@ -22,12 +22,19 @@ import (
 type Extractor interface {
 	Parse(files ...string) (map[string]ParsedTags, error)
 	CustomMappings() ParsedTags
+	Version() string
 }
 
 var extractors = map[string]Extractor{}
 
 func RegisterExtractor(id string, parser Extractor) {
 	extractors[id] = parser
+}
+
+func LogExtractors() {
+	for id, p := range extractors {
+		log.Debug("Registered metadata extractor", "id", id, "version", p.Version())
+	}
 }
 
 func Extract(files ...string) (map[string]Tags, error) {
@@ -123,9 +130,9 @@ func (t Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist
 func (t Tags) AlbumArtist() string {
 	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
 }
-func (t Tags) SortTitle() string           { return t.getSortTag("", "title", "name") }
-func (t Tags) SortAlbum() string           { return t.getSortTag("", "album") }
-func (t Tags) SortArtist() string          { return t.getSortTag("", "artist") }
+func (t Tags) SortTitle() string           { return t.getSortTag("tsot", "title", "name") }
+func (t Tags) SortAlbum() string           { return t.getSortTag("tsoa", "album") }
+func (t Tags) SortArtist() string          { return t.getSortTag("tsop", "artist") }
 func (t Tags) SortAlbumArtist() string     { return t.getSortTag("tso2", "albumartist", "album_artist") }
 func (t Tags) Genres() []string            { return t.getAllTagValues("genre") }
 func (t Tags) Date() (int, string)         { return t.getDate("date") }
@@ -223,7 +230,8 @@ func (t Tags) BirthTime() time.Time {
 	return time.Now()
 }
 
-// Replaygain Properties
+// ReplayGain Properties
+
 func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
 func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
 func (t Tags) RGTrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
@@ -232,15 +240,12 @@ func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_pe
 func (t Tags) getGainValue(tagName string) float64 {
 	// Gain is in the form [-]a.bb dB
 	var tag = t.getFirstTagValue(tagName)
-
 	if tag == "" {
 		return 0
 	}
-
 	tag = strings.TrimSpace(strings.Replace(tag, "dB", "", 1))
-
 	var value, err = strconv.ParseFloat(tag, 64)
-	if err != nil {
+	if err != nil || value == math.Inf(-1) || value == math.Inf(1) {
 		return 0
 	}
 	return value
@@ -249,8 +254,8 @@ func (t Tags) getGainValue(tagName string) float64 {
 func (t Tags) getPeakValue(tagName string) float64 {
 	var tag = t.getFirstTagValue(tagName)
 	var value, err = strconv.ParseFloat(tag, 64)
-	if err != nil {
-		// A default of 1 for peak value resulds in no changes
+	if err != nil || value == math.Inf(-1) || value == math.Inf(1) {
+		// A default of 1 for peak value results in no changes
 		return 1
 	}
 	return value

@@ -61,6 +61,11 @@ type Subsonic struct {
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty" json:"lyricsList,omitempty"`
 }
 
+const (
+	StatusOK     = "ok"
+	StatusFailed = "failed"
+)
+
 type JsonWrapper struct {
 	Subsonic Subsonic `json:"subsonic-response"`
 }
@@ -227,6 +232,7 @@ type AlbumID3 struct {
 	SortName            string     `xml:"sortName,attr"         json:"sortName"`
 	DiscTitles          DiscTitles `xml:"discTitles"            json:"discTitles"`
 	OriginalReleaseDate ItemDate   `xml:"originalReleaseDate"   json:"originalReleaseDate"`
+	ReleaseDate         ItemDate   `xml:"releaseDate"           json:"releaseDate"`
 }
 
 type ArtistWithAlbumsID3 struct {
@@ -495,8 +501,8 @@ type ReplayGain struct {
 }
 
 type DiscTitle struct {
-	Disc  int    `xml:"disc,attr,omitempty" json:"disc,omitempty"`
-	Title string `xml:"title,attr,omitempty" json:"title,omitempty"`
+	Disc  int    `xml:"disc,attr" json:"disc"`
+	Title string `xml:"title,attr" json:"title"`
 }
 
 type DiscTitles []DiscTitle

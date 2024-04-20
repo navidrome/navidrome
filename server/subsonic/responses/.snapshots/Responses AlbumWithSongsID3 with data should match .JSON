@@ -29,12 +29,21 @@
       {
         "disc": 2,
         "title": "disc 2"
+      },
+      {
+        "disc": 3,
+        "title": ""
       }
     ],
     "originalReleaseDate": {
       "year": 1994,
       "month": 2,
       "day": 4
+    },
+    "releaseDate": {
+      "year": 2000,
+      "month": 5,
+      "day": 10
     },
     "song": [
       {
