@@ -5,7 +5,7 @@
   "name": "Recently Played",
   "comment": "Recently played tracks",
   "all": [
-    // This is a inline comment
+    // This is an inline comment
     {"inTheLast": {"lastPlayed": 30}}
   ],
   "sort": "lastPlayed",
