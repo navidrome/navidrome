@@ -2,24 +2,16 @@ package mpv
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
-)
-
-// mpv --no-audio-display --pause 'Jack Johnson/On And On/01 Times Like These.m4a' --input-ipc-server=/tmp/gonzo.socket
-const (
-	mpvComdTemplate = "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s"
 )
 
 func start(args []string) (Executor, error) {
@@ -81,15 +73,14 @@ func (j *Executor) wait() {
 }
 
 // Path will always be an absolute path
-func createMPVCommand(cmd, deviceName string, filename string, socketName string) []string {
-	split := strings.Split(fixCmd(cmd), " ")
+func createMPVCommand(deviceName string, filename string, socketName string) []string {
+	split := strings.Split(fixCmd(conf.Server.MPVCmdTemplate), " ")
 	for i, s := range split {
 		s = strings.ReplaceAll(s, "%d", deviceName)
 		s = strings.ReplaceAll(s, "%f", filename)
 		s = strings.ReplaceAll(s, "%s", socketName)
 		split[i] = s
 	}
-
 	return split
 }
 
@@ -133,10 +124,3 @@ var (
 	mpvPath string
 	mpvErr  error
 )
-
-func TempFileName(prefix, suffix string) string {
-	randBytes := make([]byte, 16)
-	// we can savely ignore the return value since we're loading into a precreated, fixedsized buffer
-	_, _ = rand.Read(randBytes)
-	return filepath.Join(os.TempDir(), prefix+hex.EncodeToString(randBytes)+suffix)
-}

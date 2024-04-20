@@ -309,7 +309,7 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 	return r.refreshCounters(&model.Playlist{ID: playlistId})
 }
 
-// RefreshStatus updates total playlist duration, size and count
+// refreshCounters updates total playlist duration, size and count
 func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	statsSql := Select(
 		"coalesce(sum(duration), 0) as duration",
@@ -399,15 +399,22 @@ func (r *playlistRepository) Save(entity interface{}) (string, error) {
 }
 
 func (r *playlistRepository) Update(id string, entity interface{}, cols ...string) error {
+	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
 	current, err := r.Get(id)
 	if err != nil {
 		return err
 	}
 	usr := loggedUser(r.ctx)
-	if !usr.IsAdmin && current.OwnerID != usr.ID {
-		return rest.ErrPermissionDenied
+	if !usr.IsAdmin {
+		// Only the owner can update the playlist
+		if current.OwnerID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
+		// Regular users can't change the ownership of a playlist
+		if pls.OwnerID != "" && pls.OwnerID != usr.ID {
+			return rest.ErrPermissionDenied
+		}
 	}
-	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err = r.put(id, pls, append(cols, "updatedAt")...)

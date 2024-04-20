@@ -8,23 +8,17 @@ on:
   pull_request:
     branches:
       - master
+
 jobs:
   go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
+    container: deluan/ci-goreleaser:1.22.2-1
     steps:
-      - name: Update ubuntu repo
-        run: sudo apt-get update
-
-      - name: Install taglib
-        run: sudo apt-get install libtag1-dev
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.22.x
-
       - uses: actions/checkout@v4
+
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
@@ -47,26 +41,15 @@ jobs:
           fi
 
   go:
-    name: Test with Go ${{ matrix.go_version }}
+    name: Test Go code
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go_version: [1.22.x, 1.21.x]
+    container: deluan/ci-goreleaser:1.22.2-1
     steps:
-      - name: Update ubuntu repo
-        run: sudo apt-get update
-
-      - name: Install taglib
-        run: sudo apt-get install libtag1-dev ffmpeg
-
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Set up Go ${{ matrix.go_version }}
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go_version }}
-          cache: true
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
       - name: Download dependencies
         if: steps.cache-go.outputs.cache-hit != 'true'
@@ -120,39 +103,32 @@ jobs:
     name: Build binaries
     needs: [js, go, go-lint]
     runs-on: ubuntu-latest
+    container: deluan/ci-goreleaser:1.22.2-1
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
+
       - uses: actions/download-artifact@v4
         with:
           name: js-bundle
           path: ui/build
 
-      - name: Config /github/workspace folder as trusted
-        uses: docker://deluan/ci-goreleaser:1.22.0-1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: /bin/bash -c "git config --global --add safe.directory /github/workspace;  git describe --dirty --always --tags"
-
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.22.0-1
+        run: goreleaser release --clean --skip=publish --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: goreleaser release --clean --skip=publish --snapshot
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.22.0-1
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: goreleaser release --clean
 
       - uses: actions/upload-artifact@v4
         with:
