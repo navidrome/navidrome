@@ -205,7 +205,7 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 		return ""
 	}
 	if !validateIPAgainstList(reverseProxyIp, conf.Server.ReverseProxyWhitelist) {
-		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "ip", r.RemoteAddr)
+		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
 	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)
