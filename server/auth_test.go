@@ -66,10 +66,12 @@ var _ = Describe("Auth", func() {
 		})
 
 		Describe("Login from HTTP headers", func() {
-			const TRUSTED_IPV4 = "192.168.0.42"
-			const UNTRUSTED_IPV4 = "8.8.8.8"
-			const TRUSTED_IPV6 = "2001:4860:4860:1234:5678:0000:4242:8888"
-			const UNTRUSTED_IPV6 = "5005:0:3003"
+			const (
+				trustedIpv4   = "192.168.0.42"
+				untrustedIpv4 = "8.8.8.8"
+				trustedIpv6   = "2001:4860:4860:1234:5678:0000:4242:8888"
+				untrustedIpv6 = "5005:0:3003"
+			)
 
 			fs := os.DirFS("tests/fixtures")
 
@@ -84,7 +86,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
-				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -94,7 +96,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
-				req = req.WithContext(request.WithReverseProxyIp(req.Context(), UNTRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), untrustedIpv4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -102,7 +104,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv6 matches whitelist", func() {
-				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV6))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -112,7 +114,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
-				req = req.WithContext(request.WithReverseProxyIp(req.Context(), UNTRUSTED_IPV6))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), untrustedIpv6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -122,7 +124,7 @@ var _ = Describe("Auth", func() {
 			It("creates user and sets auth data if user does not exist", func() {
 				newUser := "NEW_USER_" + uuid.NewString()
 
-				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				req.Header.Set("Remote-User", newUser)
 				serveIndex(ds, fs, nil)(resp, req)
 
@@ -133,7 +135,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if user exists", func() {
-				req = req.WithContext(request.WithReverseProxyIp(req.Context(), TRUSTED_IPV4))
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
