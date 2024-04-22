@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -267,7 +268,12 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 				case time.Duration:
 					logger = logger.WithField(name, ShortDur(v))
 				case fmt.Stringer:
-					logger = logger.WithField(name, v.String())
+					vOf := reflect.ValueOf(v)
+					if vOf.Kind() == reflect.Pointer && vOf.IsNil() {
+						logger = logger.WithField(name, "nil")
+					} else {
+						logger = logger.WithField(name, v.String())
+					}
 				default:
 					logger = logger.WithField(name, v)
 				}

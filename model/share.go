@@ -13,8 +13,8 @@ type Share struct {
 	Username      string     `structs:"-" json:"username,omitempty"`
 	Description   string     `structs:"description" json:"description,omitempty"`
 	Downloadable  bool       `structs:"downloadable" json:"downloadable"`
-	ExpiresAt     time.Time  `structs:"expires_at" json:"expiresAt,omitempty"`
-	LastVisitedAt time.Time  `structs:"last_visited_at" json:"lastVisitedAt,omitempty"`
+	ExpiresAt     *time.Time `structs:"expires_at" json:"expiresAt,omitempty"`
+	LastVisitedAt *time.Time `structs:"last_visited_at" json:"lastVisitedAt,omitempty"`
 	ResourceIDs   string     `structs:"resource_ids" json:"resourceIds,omitempty"`
 	ResourceType  string     `structs:"resource_type" json:"resourceType,omitempty"`
 	Contents      string     `structs:"contents" json:"contents,omitempty"`
