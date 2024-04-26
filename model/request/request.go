@@ -16,6 +16,7 @@ const (
 	Player         = contextKey("player")
 	Transcoding    = contextKey("transcoding")
 	ClientUniqueId = contextKey("clientUniqueId")
+	ReverseProxyIp = contextKey("reverseProxyIp")
 )
 
 func WithUser(ctx context.Context, u model.User) context.Context {
@@ -44,6 +45,10 @@ func WithTranscoding(ctx context.Context, t model.Transcoding) context.Context {
 
 func WithClientUniqueId(ctx context.Context, clientUniqueId string) context.Context {
 	return context.WithValue(ctx, ClientUniqueId, clientUniqueId)
+}
+
+func WithReverseProxyIp(ctx context.Context, reverseProxyIp string) context.Context {
+	return context.WithValue(ctx, ReverseProxyIp, reverseProxyIp)
 }
 
 func UserFrom(ctx context.Context) (model.User, bool) {
@@ -78,5 +83,10 @@ func TranscodingFrom(ctx context.Context) (model.Transcoding, bool) {
 
 func ClientUniqueIdFrom(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(ClientUniqueId).(string)
+	return v, ok
+}
+
+func ReverseProxyIpFrom(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(ReverseProxyIp).(string)
 	return v, ok
 }
