@@ -11,7 +11,7 @@
 #
 # navidrome_enable (bool):              Set to YES to enable navidrome
 #                                       Default: NO
-# navidrome_config (str):               navidrome configration file
+# navidrome_config (str):               navidrome configuration file
 #                                       Default: /usr/local/etc/navidrome/config.toml
 # navidrome_datafolder (str):   navidrome Folder to store application data 
 #                                       Default: www
