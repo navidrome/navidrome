@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(upAddAlbumInfo, downAddAlbumInfo)
+	goose.AddMigrationContext(upAddAlbumInfo, downAddAlbumInfo)
 }
 
-func upAddAlbumInfo(tx *sql.Tx) error {
+func upAddAlbumInfo(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 alter table album
 	add description varchar(255) default '' not null;
@@ -28,6 +29,6 @@ alter table album
 	return err
 }
 
-func downAddAlbumInfo(tx *sql.Tx) error {
+func downAddAlbumInfo(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

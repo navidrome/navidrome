@@ -55,10 +55,10 @@
                 "rating": "Ocena",
                 "createdAt": "Datum dodano",
                 "size": "Velikost",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "Original",
+                "releaseDate": "Izdano",
+                "releases": "Izdaja |||| Izdaje",
+                "released": "Izdano"
             },
             "actions": {
                 "playAll": "Predvajaj vse",
@@ -195,7 +195,7 @@
                 "maxBitRate": "Maks. bitna hitrost",
                 "updatedAt": "Posodobljeno ob",
                 "createdAt": "Ustvarjeno ob",
-                "downloadable": ""
+                "downloadable": "Dovoli prenose?"
             }
         }
     },
@@ -373,7 +373,7 @@
         "shareSuccess": "URL kopiran v odložišče: %{url}",
         "shareFailure": "Napaka pri kopiranju URL-ja %{url} v odložišče",
         "downloadDialogTitle": "Prenesi %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": ""
+        "shareCopyToClipboard": "Kopiraj v odložišče: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Knjižnica",

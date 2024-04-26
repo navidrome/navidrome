@@ -19,7 +19,11 @@ type MockFFmpeg struct {
 	Error  error
 }
 
-func (ff *MockFFmpeg) Transcode(_ context.Context, _, _ string, _ int) (f io.ReadCloser, err error) {
+func (ff *MockFFmpeg) IsAvailable() bool {
+	return true
+}
+
+func (ff *MockFFmpeg) Transcode(context.Context, string, string, int, int) (io.ReadCloser, error) {
 	if ff.Error != nil {
 		return nil, ff.Error
 	}
@@ -58,6 +62,10 @@ func (ff *MockFFmpeg) CmdPath() (string, error) {
 		return "", ff.Error
 	}
 	return "ffmpeg", nil
+}
+
+func (ff *MockFFmpeg) Version() string {
+	return "1.0"
 }
 
 func (ff *MockFFmpeg) Read(p []byte) (n int, err error) {

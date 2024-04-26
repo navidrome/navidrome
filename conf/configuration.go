@@ -12,7 +12,6 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/number"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -21,6 +20,7 @@ type configOptions struct {
 	ConfigFile                   string
 	Address                      string
 	Port                         int
+	UnixSocketPerm               string
 	MusicFolder                  string
 	DataFolder                   string
 	CacheFolder                  string
@@ -51,11 +51,13 @@ type configOptions struct {
 	DefaultDownsamplingFormat    string
 	SearchFullString             bool
 	RecentlyAddedByModTime       bool
+	PreferSortTags               bool
 	IgnoredArticles              string
 	IndexGroups                  string
 	SubsonicArtistParticipations bool
 	FFmpegPath                   string
 	MPVPath                      string
+	MPVCmdTemplate               string
 	CoverArtPriority             string
 	CoverJpegQuality             int
 	ArtistArtPriority            string
@@ -96,6 +98,7 @@ type configOptions struct {
 	DevSidebarPlaylists              bool
 	DevEnableBufferedScrobble        bool
 	DevShowArtistPage                bool
+	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
 	DevArtworkThrottleBacklogTimeout time.Duration
@@ -203,7 +206,7 @@ func Load() {
 	}
 
 	// Print current configuration if log level is Debug
-	if log.CurrentLevel() >= log.LevelDebug {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
@@ -273,6 +276,7 @@ func init() {
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
+	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
@@ -295,10 +299,13 @@ func init() {
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("recentlyaddedbymodtime", false)
+	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("subsonicartistparticipations", false)
 	viper.SetDefault("ffmpegpath", "")
+	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
+
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
@@ -334,8 +341,8 @@ func init() {
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
-	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
-	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
+	viper.SetDefault("lastfm.apikey", "")
+	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
@@ -352,7 +359,8 @@ func init() {
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
-	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()/3))
+	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)

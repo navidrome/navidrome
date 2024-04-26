@@ -92,10 +92,13 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("passes when all required params are available (reverse-proxy case)", func() {
-			conf.Server.ReverseProxyWhitelist = "127.0.0.1/0"
+			conf.Server.ReverseProxyWhitelist = "127.0.0.234/32"
 			conf.Server.ReverseProxyUserHeader = "Remote-User"
+
 			r := newGetRequest("v=1.15", "c=test")
 			r.Header.Add("Remote-User", "user")
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "127.0.0.234"))
+
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 

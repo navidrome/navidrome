@@ -1,14 +1,14 @@
 const keyHandlers = (audioInstance, playerState) => {
   const nextSong = () => {
     const idx = playerState.queue.findIndex(
-      (item) => item.uuid === playerState.current.uuid
+      (item) => item.uuid === playerState.current.uuid,
     )
     return idx !== null ? playerState.queue[idx + 1] : null
   }
 
   const prevSong = () => {
     const idx = playerState.queue.findIndex(
-      (item) => item.uuid === playerState.current.uuid
+      (item) => item.uuid === playerState.current.uuid,
     )
     return idx !== null ? playerState.queue[idx - 1] : null
   }

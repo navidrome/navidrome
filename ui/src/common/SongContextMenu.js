@@ -61,7 +61,7 @@ export const SongContextMenu = ({
           openAddToPlaylist({
             selectedIds: [record.mediaFileId || record.id],
             onSuccess: (id) => onAddToPlaylist(id),
-          })
+          }),
         ),
     },
     share: {
@@ -69,7 +69,11 @@ export const SongContextMenu = ({
       label: translate('ra.action.share'),
       action: (record) =>
         dispatch(
-          openShareMenu([record.mediaFileId || record.id], 'song', record.title)
+          openShareMenu(
+            [record.mediaFileId || record.id],
+            'song',
+            record.title,
+          ),
         ),
     },
     download: {
@@ -127,7 +131,7 @@ export const SongContextMenu = ({
               <MenuItem value={key} key={key} onClick={handleItemClick}>
                 {options[key].label}
               </MenuItem>
-            )
+            ),
         )}
       </Menu>
     </span>

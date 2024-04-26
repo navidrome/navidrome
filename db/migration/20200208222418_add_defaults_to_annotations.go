@@ -1,16 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )
 
 func init() {
-	goose.AddMigration(Up20200208222418, Down20200208222418)
+	goose.AddMigrationContext(Up20200208222418, Down20200208222418)
 }
 
-func Up20200208222418(tx *sql.Tx) error {
+func Up20200208222418(_ context.Context, tx *sql.Tx) error {
 	_, err := tx.Exec(`
 update annotation set play_count = 0 where play_count is null;
 update annotation set rating = 0 where rating is null;
@@ -50,6 +51,6 @@ create index annotation_starred
 	return err
 }
 
-func Down20200208222418(tx *sql.Tx) error {
+func Down20200208222418(_ context.Context, tx *sql.Tx) error {
 	return nil
 }

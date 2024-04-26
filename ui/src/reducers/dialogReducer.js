@@ -24,7 +24,7 @@ export const shareDialogReducer = (
     resource: '',
     name: '',
   },
-  payload
+  payload,
 ) => {
   const { type, ids, resource, name, label } = payload
   switch (type) {
@@ -52,7 +52,7 @@ export const addToPlaylistDialogReducer = (
     open: false,
     duplicateSong: false,
   },
-  payload
+  payload,
 ) => {
   const { type } = payload
   switch (type) {
@@ -82,7 +82,7 @@ export const downloadMenuDialogReducer = (
   previousState = {
     open: false,
   },
-  payload
+  payload,
 ) => {
   const { type } = payload
   switch (type) {
@@ -125,7 +125,7 @@ export const expandInfoDialogReducer = (
   previousState = {
     open: false,
   },
-  payload
+  payload,
 ) => {
   const { type } = payload
   switch (type) {
@@ -149,7 +149,7 @@ export const listenBrainzTokenDialogReducer = (
   previousState = {
     open: false,
   },
-  payload
+  payload,
 ) => {
   const { type } = payload
   switch (type) {

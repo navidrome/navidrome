@@ -9,10 +9,11 @@ import (
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type mediaFileRepository struct {
@@ -20,27 +21,36 @@ type mediaFileRepository struct {
 	sqlRestful
 }
 
-func NewMediaFileRepository(ctx context.Context, o orm.QueryExecutor) *mediaFileRepository {
+func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepository {
 	r := &mediaFileRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "media_file"
-	r.sortMappings = map[string]string{
-		"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
-		"album":  "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
-		"random": "RANDOM()",
-	}
 	r.filterMappings = map[string]filterFunc{
 		"id":      idFilter(r.tableName),
 		"title":   fullTextFilter,
 		"starred": booleanFilter,
+	}
+	if conf.Server.PreferSortTags {
+		r.sortMappings = map[string]string{
+			"title":  "COALESCE(NULLIF(sort_title,''),title)",
+			"artist": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
+			"album":  "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
+			"random": "RANDOM()",
+		}
+	} else {
+		r.sortMappings = map[string]string{
+			"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
+			"album":  "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+			"random": "RANDOM()",
+		}
 	}
 	return r
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("media_file.id")
-	sql = r.withGenres(sql)
+	sql = r.withGenres(sql) // Required for filtering by genre
 	return r.count(sql, options...)
 }
 
@@ -91,7 +101,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...)
 	res := model.MediaFiles{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(sq, &res, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +156,7 @@ func (r *mediaFileRepository) FindPathsRecursively(basePath string) ([]string, e
 	sel := r.newSelect().Columns(fmt.Sprintf("distinct rtrim(path, replace(path, '%s', ''))", string(os.PathSeparator))).
 		Where(pathStartsWith(path))
 	var res []string
-	err := r.queryAll(sel, &res)
+	err := r.queryAllSlice(sel, &res)
 	return res, err
 }
 
@@ -187,6 +197,10 @@ func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
 	results := model.MediaFiles{}
 	err := r.doSearch(q, offset, size, &results, "title")
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadMediaFileGenres(&results)
 	return results, err
 }
 

@@ -14,7 +14,7 @@ import { useTranscodingOptions } from './useTranscodingOptions'
 
 const DownloadMenuDialog = () => {
   const { open, record, recordType } = useSelector(
-    (state) => state.downloadMenuDialog
+    (state) => state.downloadMenuDialog,
   )
   const dispatch = useDispatch()
   const translate = useTranslate()

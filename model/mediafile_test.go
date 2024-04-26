@@ -123,6 +123,36 @@ var _ = Describe("MediaFiles", func() {
 		})
 	})
 	Context("Calculated attributes", func() {
+		Context("Discs", func() {
+			When("we have no discs", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{{Album: "Album1"}, {Album: "Album1"}, {Album: "Album1"}}
+				})
+				It("sets the correct Discs", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Discs).To(BeEmpty())
+				})
+			})
+			When("we have only one disc", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{{DiscNumber: 1, DiscSubtitle: "DiscSubtitle"}}
+				})
+				It("sets the correct Discs", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Discs).To(Equal(Discs{1: "DiscSubtitle"}))
+				})
+			})
+			When("we have multiple discs", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{{DiscNumber: 1, DiscSubtitle: "DiscSubtitle"}, {DiscNumber: 2, DiscSubtitle: "DiscSubtitle2"}, {DiscNumber: 1, DiscSubtitle: "DiscSubtitle"}}
+				})
+				It("sets the correct Discs", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Discs).To(Equal(Discs{1: "DiscSubtitle", 2: "DiscSubtitle2"}))
+				})
+			})
+		})
+
 		Context("Genres", func() {
 			When("we have only one Genre", func() {
 				BeforeEach(func() {
