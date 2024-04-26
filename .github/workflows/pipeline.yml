@@ -28,7 +28,7 @@ jobs:
           args: --timeout 2m
 
       - name: Install goimports
-        run: go install golang.org/x/tools/cmd/goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
 
       - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
       - run: go mod tidy

@@ -9,7 +9,7 @@ require (
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
 	github.com/dexterlb/mpvipc v0.0.0-20230829142118-145d6eabdc37
-	github.com/dhowden/tag v0.0.0-20240122214204-713ab0e94639
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/disintegration/imaging v1.6.2
 	github.com/djherbis/atime v1.1.0
 	github.com/djherbis/fscache v0.10.2-0.20220222230828-2909c950912d
@@ -44,8 +44,8 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.9.0
 	github.com/unrolled/secure v1.14.0
-	github.com/xrash/smetrics v0.0.0-20231213231151-1d8dd44e695e
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
+	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 	golang.org/x/image v0.15.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/text v0.14.0
@@ -93,10 +93,10 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/tools v0.19.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
