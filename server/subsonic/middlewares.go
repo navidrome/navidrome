@@ -148,7 +148,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 			userName, _ := request.UsernameFrom(ctx)
 			client, _ := request.ClientFrom(ctx)
 			playerId := playerIDFromCookie(r, userName)
-			ip, _, _ := net.SplitHostPort(realIP(r))
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 			userAgent := canonicalUserAgent(r)
 			player, trc, err := players.Register(ctx, playerId, client, userAgent, ip)
 			if err != nil {
@@ -183,19 +183,6 @@ func canonicalUserAgent(r *http.Request) string {
 		userAgent = userAgent + "/" + u.OS
 	}
 	return userAgent
-}
-
-func realIP(r *http.Request) string {
-	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
-		return xrip
-	} else if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		i := strings.Index(xff, ", ")
-		if i == -1 {
-			i = len(xff)
-		}
-		return xff[:i]
-	}
-	return r.RemoteAddr
 }
 
 func playerIDFromCookie(r *http.Request, userName string) string {
