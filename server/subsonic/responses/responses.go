@@ -163,6 +163,7 @@ type Child struct {
 	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
 	Genres        ItemGenres `xml:"genres"                  json:"genres"`
 	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
+	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
 }
 
 type Songs struct {
