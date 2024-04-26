@@ -1,11 +1,7 @@
-import React, { useMemo, useCallback } from 'react'
-import { Card, CardContent, Typography, Collapse } from '@material-ui/core'
+import { Card, CardContent, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
-import { DurationField, SizeField } from '../common'
-
-import AnchorMe from '../common/Linkify'
-import clsx from 'clsx'
+import { CollapsibleComment, DurationField, SizeField } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -43,41 +39,6 @@ const useStyles = makeStyles(
   },
 )
 
-const PlaylistComment = ({ record }) => {
-  const classes = useStyles()
-  const [expanded, setExpanded] = React.useState(false)
-
-  const lines = record.comment.split('\n')
-  const formatted = useMemo(() => {
-    return lines.map((line, idx) => (
-      <span key={record.id + '-comment-' + idx}>
-        <AnchorMe text={line} />
-        <br />
-      </span>
-    ))
-  }, [lines, record.id])
-
-  const handleExpandClick = useCallback(() => {
-    setExpanded(!expanded)
-  }, [expanded, setExpanded])
-
-  return (
-    <Collapse
-      collapsedHeight={'2em'}
-      in={expanded}
-      timeout={'auto'}
-      className={clsx(
-        classes.commentBlock,
-        lines.length > 1 && classes.pointerCursor,
-      )}
-    >
-      <Typography variant={'h6'} onClick={handleExpandClick}>
-        {formatted}
-      </Typography>
-    </Collapse>
-  )
-}
-
 const PlaylistDetails = (props) => {
   const { record = {} } = props
   const translate = useTranslate()
@@ -89,7 +50,7 @@ const PlaylistDetails = (props) => {
         <Typography variant="h5" className={classes.title}>
           {record.name || translate('ra.page.loading')}
         </Typography>
-        <PlaylistComment record={record} />
+        <CollapsibleComment record={record} />
         <Typography component="p">
           {record.songCount ? (
             <span>
