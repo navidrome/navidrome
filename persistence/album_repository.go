@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
@@ -174,7 +175,7 @@ func (r *albumRepository) toModels(dba []dbAlbum) model.Albums {
 	res := model.Albums{}
 	for i := range dba {
 		if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && dba[i].Album.SongCount != 0 {
-			dba[i].Album.PlayCount = (dba[i].Album.PlayCount + (int64(dba[i].Album.SongCount) - 1)) / int64(dba[i].Album.SongCount)
+			dba[i].Album.PlayCount = int64(math.Round(float64(dba[i].Album.PlayCount) / float64(dba[i].Album.SongCount)))
 		}
 		res = append(res, *dba[i].Album)
 	}
