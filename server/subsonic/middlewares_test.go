@@ -248,7 +248,7 @@ var _ = Describe("Middlewares", func() {
 		})
 	})
 
-	Describe("validateSubsonicSecret", func() {
+	Describe("validateCredentials", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
@@ -259,7 +259,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			var err error
-			usr, err = ds.User(context.TODO()).FindByUsernameWithPassword("admin")
+			usr, err = ur.FindByUsernameWithPassword("admin")
 			if err != nil {
 				panic(err)
 			}
@@ -267,31 +267,31 @@ var _ = Describe("Middlewares", func() {
 
 		Context("Plaintext password", func() {
 			It("authenticates with plaintext password ", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "wordpass", "", "", "")
+				err := validateCredentials(usr, "wordpass", "", "", "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("fails authentication with wrong password", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "INVALID", "", "", "")
+				err := validateCredentials(usr, "INVALID", "", "", "")
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
 			})
 		})
 
 		Context("Encoded password", func() {
 			It("authenticates with simple encoded password ", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "enc:776f726470617373", "", "", "")
+				err := validateCredentials(usr, "enc:776f726470617373", "", "", "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 
 		Context("Token based authentication", func() {
 			It("authenticates with token based authentication", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "", "23b342970e25c7928831c3317edd0b67", "retnlmjetrymazgkt", "")
+				err := validateCredentials(usr, "", "23b342970e25c7928831c3317edd0b67", "retnlmjetrymazgkt", "")
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("fails if salt is missing", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "", "23b342970e25c7928831c3317edd0b67", "", "")
+				err := validateCredentials(usr, "", "23b342970e25c7928831c3317edd0b67", "", "")
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
 			})
 		})
@@ -313,20 +313,20 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("authenticates with JWT token based authentication", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "", "", "", validToken)
+				err := validateCredentials(usr, "", "", "", validToken)
 
 				Expect(err).NotTo(HaveOccurred())
 			})
 
 			It("fails if JWT token is invalid", func() {
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "", "", "", "invalid.token")
+				err := validateCredentials(usr, "", "", "", "invalid.token")
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
 			})
 
 			It("fails if JWT token sub is different than username", func() {
 				u := &model.User{UserName: "hacker"}
 				validToken, _ = auth.CreateToken(u)
-				err := validateSubsonicSecret(context.TODO(), ds, usr, "", "", "", validToken)
+				err := validateCredentials(usr, "", "", "", validToken)
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
 			})
 		})
