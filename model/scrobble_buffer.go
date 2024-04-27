@@ -3,11 +3,13 @@ package model
 import "time"
 
 type ScrobbleEntry struct {
-	MediaFile
+	ID          string
 	Service     string
-	UserID      string `structs:"user_id"`
+	UserID      string
 	PlayTime    time.Time
 	EnqueueTime time.Time
+	MediaFileID string
+	MediaFile
 }
 
 type ScrobbleEntries []ScrobbleEntry

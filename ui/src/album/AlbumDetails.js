@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -17,7 +17,6 @@ import {
   ChipField,
   Link,
 } from 'react-admin'
-import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
@@ -29,11 +28,11 @@ import {
   LoveButton,
   RatingField,
   useAlbumsPerPage,
+  CollapsibleComment,
 } from '../common'
 import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
-import AnchorMe from '../common/Linkify'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -85,20 +84,11 @@ const useStyles = makeStyles(
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
     },
-    commentBlock: {
-      display: 'inline-block',
-      marginTop: '1em',
-      float: 'left',
-      wordBreak: 'break-word',
-    },
     notes: {
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
       wordBreak: 'break-word',
-      cursor: 'pointer',
-    },
-    pointerCursor: {
       cursor: 'pointer',
     },
     recordName: {},
@@ -115,41 +105,6 @@ const useStyles = makeStyles(
     name: 'NDAlbumDetails',
   },
 )
-
-const AlbumComment = ({ record }) => {
-  const classes = useStyles()
-  const [expanded, setExpanded] = React.useState(false)
-
-  const lines = record.comment.split('\n')
-  const formatted = useMemo(() => {
-    return lines.map((line, idx) => (
-      <span key={record.id + '-comment-' + idx}>
-        <AnchorMe text={line} />
-        <br />
-      </span>
-    ))
-  }, [lines, record.id])
-
-  const handleExpandClick = useCallback(() => {
-    setExpanded(!expanded)
-  }, [expanded, setExpanded])
-
-  return (
-    <Collapse
-      collapsedHeight={'1.5em'}
-      in={expanded}
-      timeout={'auto'}
-      className={clsx(
-        classes.commentBlock,
-        lines.length > 1 && classes.pointerCursor,
-      )}
-    >
-      <Typography variant={'body1'} onClick={handleExpandClick}>
-        {formatted}
-      </Typography>
-    </Collapse>
-  )
-}
 
 export const useGetHandleGenreClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
@@ -268,7 +223,7 @@ const AlbumDetails = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
 
@@ -296,11 +251,8 @@ const AlbumDetails = (props) => {
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
-  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
-  const handleCloseLightbox = React.useCallback(
-    () => setLightboxOpen(false),
-    [],
-  )
+  const handleOpenLightbox = useCallback(() => setLightboxOpen(true), [])
+  const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
@@ -373,11 +325,15 @@ const AlbumDetails = (props) => {
                 </Typography>
               </Collapse>
             )}
-            {isDesktop && record['comment'] && <AlbumComment record={record} />}
+            {isDesktop && record['comment'] && (
+              <CollapsibleComment record={record} />
+            )}
           </CardContent>
         </div>
       </div>
-      {!isDesktop && record['comment'] && <AlbumComment record={record} />}
+      {!isDesktop && record['comment'] && (
+        <CollapsibleComment record={record} />
+      )}
       {!isDesktop && (
         <div className={classes.notes}>
           <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>

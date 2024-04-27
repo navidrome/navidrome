@@ -16,11 +16,13 @@ RUN chmod +x /navidrome
 
 #####################################################
 ### Build Final Image
-FROM alpine as release
+FROM alpine:3.18
 LABEL maintainer="deluan@navidrome.org"
 
-# Install ffmpeg and output build config
-RUN apk add --no-cache ffmpeg
+# Install ffmpeg and mpv
+RUN apk add -U --no-cache ffmpeg mpv
+
+# Show ffmpeg build info, for troubleshooting purposes
 RUN ffmpeg -buildconf
 
 COPY --from=copy-binary /navidrome /app/

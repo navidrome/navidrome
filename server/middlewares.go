@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -158,13 +159,35 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// realIPMiddleware wraps the middleware.RealIP middleware function, bypassing it if the
-// ReverseProxyWhitelist configuration option is set.
-func realIPMiddleware(h http.Handler) http.Handler {
-	if conf.Server.ReverseProxyWhitelist == "" {
-		return middleware.RealIP(h)
+// realIPMiddleware applies middleware.RealIP, and additionally saves the request's original RemoteAddr to the request's
+// context if navidrome is behind a trusted reverse proxy.
+func realIPMiddleware(next http.Handler) http.Handler {
+	if conf.Server.ReverseProxyWhitelist != "" {
+		return chi.Chain(
+			reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr }),
+			middleware.RealIP,
+		).Handler(next)
 	}
-	return h
+
+	// The middleware is applied without a trusted reverse proxy to support other use-cases such as multiple clients
+	// behind a caching proxy. In this case, navidrome only uses the request's RemoteAddr for logging, so the security
+	// impact of reading the headers from untrusted sources is limited.
+	return middleware.RealIP(next)
+}
+
+// reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
+// can only be set once.
+func reqToCtx(key any, fn func(req *http.Request) any) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Context().Value(key) == nil {
+				ctx := context.WithValue(r.Context(), key, fn(r))
+				r = r.WithContext(ctx)
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // serverAddressMiddleware is a middleware function that modifies the request object
