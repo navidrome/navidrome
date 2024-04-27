@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/fatih/structs"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -88,5 +90,55 @@ var _ = Describe("AlbumRepository", func() {
 
 			Expect(other.Album.Discs).To(Equal(a.Discs))
 		})
+	})
+
+	Describe("toModels", func() {
+		var repo *albumRepository
+
+		BeforeEach(func() {
+			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
+			repo = NewAlbumRepository(ctx, getDBXBuilder()).(*albumRepository)
+		})
+
+		It("converts dbAlbum to model.Album", func() {
+			dba := []dbAlbum{
+				{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
+				{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
+			}
+			albums := repo.toModels(dba)
+			Expect(len(albums)).To(Equal(2))
+			Expect(albums[0].ID).To(Equal("1"))
+			Expect(albums[1].ID).To(Equal("2"))
+		})
+
+		DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
+			func(songCount, playCount, expected int) {
+				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
+				dba := []dbAlbum{
+					{Album: &model.Album{ID: "1", Name: "name", SongCount: songCount, Annotations: model.Annotations{PlayCount: int64(playCount)}}},
+				}
+				albums := repo.toModels(dba)
+				Expect(albums[0].PlayCount).To(Equal(int64(expected)))
+			},
+			Entry("1 song, 4 plays", 1, 4, 4),
+			Entry("3 songs, 6 plays", 3, 6, 6),
+			Entry("70 songs, 70 plays", 70, 70, 70),
+			Entry("10 songs, 50 plays", 10, 50, 50),
+		)
+
+		DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
+			func(songCount, playCount, expected int) {
+				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
+				dba := []dbAlbum{
+					{Album: &model.Album{ID: "1", Name: "name", SongCount: songCount, Annotations: model.Annotations{PlayCount: int64(playCount)}}},
+				}
+				albums := repo.toModels(dba)
+				Expect(albums[0].PlayCount).To(Equal(int64(expected)))
+			},
+			Entry("1 song, 4 plays", 1, 4, 4),
+			Entry("3 songs, 6 plays", 3, 6, 2),
+			Entry("70 songs, 70 plays", 70, 70, 1),
+			Entry("10 songs, 50 plays", 10, 50, 5),
+		)
 	})
 })
