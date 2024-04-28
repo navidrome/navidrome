@@ -1,0 +1,51 @@
+# This file controls the MIME types that are used by the Navidrome.
+# You can add or modify entries to match your needs.
+# Any "audio/*" MIME type is considered a valid audio file for Navidrome, but will only work properly if
+# supported by `taglib` and/or `ffmpeg`.
+# Any "image/*" MIME type is considered a valid image file to be used as cover art.
+
+types:
+# Audio
+  .mp3: audio/mpeg 
+  .ogg: audio/ogg 
+  .oga: audio/ogg 
+  .opus: audio/ogg 
+  .aac: audio/mp4 
+  .alac: audio/mp4 
+  .m4a: audio/mp4 
+  .m4b: audio/mp4 
+  .flac: audio/flac 
+  .wav: audio/x-wav 
+  .wma: audio/x-ms-wma 
+  .ape: audio/x-monkeys-audio 
+  .mpc: audio/x-musepack 
+  .shn: audio/x-shn 
+  .aif: audio/x-aiff 
+  .aiff: audio/x-aiff 
+  .m3u: audio/x-mpegurl 
+  .pls: audio/x-scpls 
+  .dsf: audio/dsd 
+  .wv: audio/x-wavpack 
+  .wvp: audio/x-wavpack 
+  .tak: audio/tak 
+  .mka: audio/x-matroska 
+
+# Image
+  .gif: image/gif
+  .jpg: image/jpeg
+  .jpeg: image/jpeg
+  .webp: image/webp
+  .png: image/png
+  .bmp: image/bmp
+
+# List of audio formats that are considered lossless
+lossless:
+  - .flac
+  - .alac
+  - .ape
+  - .shn
+  - .dsf
+  - .wv
+  - .wvp
+  - .tak
+  - .wav
