@@ -65,7 +65,7 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, m.Genres)
+	return r.updateGenres(m.ID, m.Genres)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
@@ -94,7 +94,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	err := r.loadMediaFileGenres(&res)
+	err := loadAllGenres(r, res)
 	return &res[0], err
 }
 
@@ -105,7 +105,7 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadMediaFileGenres(&res)
+	err = loadAllGenres(r, res)
 	return res, err
 }
 
@@ -200,7 +200,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadMediaFileGenres(&results)
+	err = loadAllGenres(r, results)
 	return results, err
 }
 

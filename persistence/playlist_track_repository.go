@@ -80,7 +80,7 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 		return nil, err
 	}
 	mfs := tracks.MediaFiles()
-	err = r.loadMediaFileGenres(&mfs)
+	err = loadAllGenres(r, mfs)
 	if err != nil {
 		log.Error(r.ctx, "Error loading genres for playlist", "playlist", r.playlist.Name, "id", r.playlist.ID, err)
 		return nil, err
