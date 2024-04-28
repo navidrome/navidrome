@@ -162,7 +162,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 		return nil, model.ErrNotFound
 	}
 	res := dba.toModels()
-	err := r.loadAlbumGenres(&res)
+	err := loadAllGenres(r, res)
 	return &res[0], err
 }
 
@@ -171,7 +171,7 @@ func (r *albumRepository) Put(m *model.Album) error {
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, m.Genres)
+	return r.updateGenres(m.ID, m.Genres)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
@@ -179,7 +179,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadAlbumGenres(&res)
+	err = loadAllGenres(r, res)
 	return res, err
 }
 
@@ -211,7 +211,7 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 		return nil, err
 	}
 	res := dba.toModels()
-	err = r.loadAlbumGenres(&res)
+	err = loadAllGenres(r, res)
 	return res, err
 }
 

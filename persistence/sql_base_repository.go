@@ -42,6 +42,10 @@ func loggedUser(ctx context.Context) *model.User {
 	}
 }
 
+func (r sqlRepository) getTableName() string {
+	return r.tableName
+}
+
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	sq = r.applyOptions(sq, options...)
