@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -70,7 +72,15 @@ func runNavidrome() {
 		log.Info("Navidrome stopped, bye.")
 	}()
 
-	g, ctx := errgroup.WithContext(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGTERM,
+		syscall.SIGABRT,
+	)
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
 	g.Go(startSignaler(ctx))
 	g.Go(startScheduler(ctx))
@@ -109,6 +119,31 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("Background images", consts.DefaultUILoginBackgroundURL, backgrounds.NewHandler())
 		}
 		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
+	}
+}
+
+func startSignaler(ctx context.Context) func() error {
+	log.Info("Starting signaler")
+	scanner := GetScanner()
+
+	return func() error {
+		var sigChan = make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGUSR1)
+
+		for {
+			select {
+			case sig := <-sigChan:
+				log.Info("Received signal, triggering a new scan", "signal", sig)
+				start := time.Now()
+				err := scanner.RescanAll(ctx, false)
+				if err != nil {
+					log.Error("Error scanning", err)
+				}
+				log.Info("Triggered scan complete", "elapsed", time.Since(start).Round(100*time.Millisecond))
+			case <-ctx.Done():
+				return nil
+			}
+		}
 	}
 }
 
