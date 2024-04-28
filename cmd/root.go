@@ -215,5 +215,4 @@ func init() {
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
 	_ = viper.BindPFlag("imagecachesize", rootCmd.Flags().Lookup("imagecachesize"))
-	_ = viper.BindPFlag("albumplaycountmode", rootCmd.Flags().Lookup("albumplaycountmode"))
 }
