@@ -9,6 +9,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -104,6 +105,10 @@ func (r *playlistRepository) Delete(id string) error {
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
+	if p.ExternalSync && !p.ExternalSyncable {
+		return external_playlists.ErrSyncUnsupported
+	}
+
 	pls := dbPlaylist{Playlist: *p}
 	if pls.ID == "" {
 		pls.CreatedAt = time.Now()
@@ -137,6 +142,17 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 
 func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
+}
+
+func (r *playlistRepository) GetSyncedPlaylists() (model.Playlists, error) {
+	sel := r.newSelect().Columns("id", "owner_id")
+	var res model.Playlists
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
 }
 
 func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool) (*model.Playlist, error) {
@@ -474,6 +490,55 @@ func (r *playlistRepository) isWritable(playlistId string) bool {
 	}
 	pls, err := r.Get(playlistId)
 	return err == nil && pls.OwnerID == usr.ID
+}
+
+func (r *playlistRepository) GetByExternalInfo(agent, id string) (*model.Playlist, error) {
+	sql := Select("*").From(r.tableName).Where(Eq{"external_agent": agent, "external_id": id})
+	var pls model.Playlist
+
+	err := r.queryOne(sql, &pls)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pls, nil
+}
+
+func (r *playlistRepository) GetRecommended(userId, agent string) (*model.Playlist, error) {
+	sql := Select("*").From(r.tableName).Where(Eq{"external_agent": agent, "owner_id": userId, "external_recommended": true})
+	var pls model.Playlist
+
+	err := r.queryOne(sql, &pls)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pls, nil
+}
+
+func (r *playlistRepository) CheckExternalIds(agent string, ids []string) ([]string, error) {
+	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
+	chunks := slice.BreakUp(ids, 200)
+
+	var lists []string
+
+	for _, chunk := range chunks {
+		sql := Select("external_id").From(r.tableName).Where(Eq{"external_agent": agent, "external_id": chunk})
+		var partial []struct {
+			ExternalId string `json:"external_id"`
+		}
+
+		err := r.queryAll(sql, &partial)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range partial {
+			lists = append(lists, item.ExternalId)
+		}
+	}
+
+	return lists, nil
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)

@@ -22,6 +22,22 @@ func (m *MockPlaylistRepo) Get(_ string) (*model.Playlist, error) {
 	return m.Entity, nil
 }
 
+func (m *MockPlaylistRepo) Put(entity *model.Playlist) error {
+	if m.Error != nil {
+		return m.Error
+	}
+	m.Entity = entity
+	return nil
+}
+
+func (m *MockPlaylistRepo) Delete(_ string) error {
+	if m.Error != nil {
+		return m.Error
+	}
+	m.Entity = nil
+	return nil
+}
+
 func (m *MockPlaylistRepo) Count(_ ...rest.QueryOptions) (int64, error) {
 	if m.Error != nil {
 		return 0, m.Error

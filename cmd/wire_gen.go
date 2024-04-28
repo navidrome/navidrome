@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/external_playlists"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
@@ -40,8 +41,9 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
+	playlistRetriever := external_playlists.NewPlaylistRetriever(dataStore)
 	playlists := core.NewPlaylists(dataStore)
-	router := nativeapi.New(dataStore, share, playlists)
+	router := nativeapi.New(dataStore, share, playlistRetriever, playlists)
 	return router
 }
 
@@ -94,6 +96,13 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	dataStore := persistence.New(sqlDB)
 	router := listenbrainz.NewRouter(dataStore)
 	return router
+}
+
+func CreatePlaylistRetriever() external_playlists.PlaylistRetriever {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	playlistRetriever := external_playlists.NewPlaylistRetriever(dataStore)
+	return playlistRetriever
 }
 
 func createScanner() scanner.Scanner {

@@ -101,4 +101,38 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	return res, nil
 }
 
+func (m *MockMediaFileRepo) FindWithMbid(ids []string) (model.MediaFiles, error) {
+	if m.err {
+		return nil, errors.New("error")
+	}
+	res := make(model.MediaFiles, 0)
+	id_set := map[string]bool{}
+
+	for _, id := range ids {
+		id_set[id] = true
+	}
+
+	for _, file := range m.data {
+		if _, ok := m.data[file.ID]; ok {
+			res = append(res, *file)
+		}
+	}
+	return res, nil
+}
+
+func (m *MockMediaFileRepo) Delete(id string) error {
+	if m.err {
+		return errors.New("Error!")
+	}
+
+	_, found := m.data[id]
+
+	if !found {
+		return errors.New("not found")
+	}
+
+	delete(m.data, id)
+	return nil
+}
+
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)
