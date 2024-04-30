@@ -104,7 +104,7 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 		log.Error(r.ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
 		return nil, err
 	}
-	err = r.loadMediaFileGenres(&mfs)
+	err = loadAllGenres(r, mfs)
 	if err != nil {
 		log.Error(r.ctx, "Error loading genres for bookmarked songs", "user", user.UserName, err)
 		return nil, err
