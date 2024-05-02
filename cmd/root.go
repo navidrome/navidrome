@@ -82,7 +82,7 @@ func runNavidrome() {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
-	g.Go(startSignaler(ctx))
+	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 
