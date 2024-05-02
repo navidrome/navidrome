@@ -10,7 +10,6 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -23,13 +22,12 @@ type albumRepository struct {
 
 type dbAlbum struct {
 	*model.Album `structs:",flatten"`
-	Discs        string `structs:"-" json:"discs"`
+	Discs        string  `structs:"-" json:"discs"`
+	PlayCount    float64 `structs:"-" json:"play_count"`
 }
 
 func (a *dbAlbum) PostScan() error {
-	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && a.Album.SongCount != 0 {
-		a.Album.PlayCount = int64(math.Round(float64(a.Album.PlayCount) / float64(a.Album.SongCount)))
-	}
+	a.Album.PlayCount = int64(math.Round(a.PlayCount))
 	if a.Discs != "" {
 		return json.Unmarshal([]byte(a.Discs), &a.Album.Discs)
 	}

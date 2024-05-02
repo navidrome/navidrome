@@ -2,8 +2,10 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/fatih/structs"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -96,9 +98,16 @@ var _ = Describe("AlbumRepository", func() {
 			DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
 				func(songCount, playCount, expected int) {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
-					dba := dbAlbum{Album: &model.Album{ID: "1", Name: "name", SongCount: songCount, Annotations: model.Annotations{PlayCount: int64(playCount)}}}
-					Expect(dba.PostScan()).To(Succeed())
-					Expect(dba.Album.PlayCount).To(Equal(int64(expected)))
+
+					id := uuid.NewString()
+					Expect(repo.Put(&model.Album{ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					for i := 0; i < playCount; i++ {
+						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
+					}
+
+					album, err := repo.Get(id)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(album.PlayCount).To(Equal(int64(expected)))
 				},
 				Entry("1 song, 0 plays", 1, 0, 0),
 				Entry("1 song, 4 plays", 1, 4, 4),
@@ -112,9 +121,16 @@ var _ = Describe("AlbumRepository", func() {
 			DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
 				func(songCount, playCount, expected int) {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
-					dba := dbAlbum{Album: &model.Album{ID: "1", Name: "name", SongCount: songCount, Annotations: model.Annotations{PlayCount: int64(playCount)}}}
-					Expect(dba.PostScan()).To(Succeed())
-					Expect(dba.Album.PlayCount).To(Equal(int64(expected)))
+
+					id := uuid.NewString()
+					Expect(repo.Put(&model.Album{ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					for i := 0; i < playCount; i++ {
+						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
+					}
+
+					album, err := repo.Get(id)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(album.PlayCount).To(Equal(int64(expected)))
 				},
 				Entry("1 song, 0 plays", 1, 0, 0),
 				Entry("1 song, 4 plays", 1, 4, 4),
