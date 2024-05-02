@@ -50,7 +50,6 @@ const PlaylistDetails = (props) => {
         <Typography variant="h5" className={classes.title}>
           {record.name || translate('ra.page.loading')}
         </Typography>
-        <CollapsibleComment record={record} />
         <Typography component="p">
           {record.songCount ? (
             <span>
@@ -67,6 +66,7 @@ const PlaylistDetails = (props) => {
             <span>&nbsp;</span>
           )}
         </Typography>
+        <CollapsibleComment record={record} />
       </CardContent>
     </Card>
   )

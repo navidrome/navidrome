@@ -39,6 +39,10 @@ export const CollapsibleComment = ({ record }) => {
     setExpanded(!expanded)
   }, [expanded, setExpanded])
 
+  if (lines.length === 0) {
+    return null
+  }
+
   return (
     <Collapse
       collapsedHeight={'2em'}
