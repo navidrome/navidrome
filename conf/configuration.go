@@ -80,6 +80,7 @@ type configOptions struct {
 	PasswordEncryptionKey        string
 	ReverseProxyUserHeader       string
 	ReverseProxyWhitelist        string
+	HTTPSecurityHeaders          secureOptions
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
 	Jukebox                      jukeboxOptions
@@ -139,6 +140,10 @@ type ldapOptions struct {
 type listenBrainzOptions struct {
 	Enabled bool
 	BaseURL string
+}
+
+type secureOptions struct {
+	CustomFrameOptionsValue string
 }
 
 type prometheusOptions struct {
@@ -295,6 +300,7 @@ func init() {
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
 	viper.SetDefault("tlskey", "")
+	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
 	viper.SetDefault("uiwelcomemessage", "")
 	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
