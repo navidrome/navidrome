@@ -101,4 +101,18 @@ var _ = Describe("ToLyrics", func() {
 			{Start: &c, Value: "c"},
 		}))
 	})
+
+	It("Properly sorts repeated lyrics out of order", func() {
+		a, b, c, d, e := int64(0), int64(10000), int64(40000), int64(13*60*1000), int64(1000*60*60*51)
+		lyrics, err := ToLyrics("xxx", "[00:00.00]  [13:00]Repeated\n[00:10.00][51:00:00.00]Test\n[00:40.00]Not repeated")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Synced).To(BeTrue())
+		Expect(lyrics.Line).To(Equal([]Line{
+			{Start: &a, Value: "Repeated"},
+			{Start: &b, Value: "Test"},
+			{Start: &c, Value: "Not repeated"},
+			{Start: &d, Value: "Repeated"},
+			{Start: &e, Value: "Test"},
+		}))
+	})
 })
