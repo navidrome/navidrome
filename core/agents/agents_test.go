@@ -39,6 +39,30 @@ var _ = Describe("Agents", func() {
 		})
 	})
 
+	Describe("Settings", func() {
+		It("does not duplicate local agent", func() {
+			conf.Server.Agents = LocalAgentName
+			ag := New(ds)
+			Expect(ag.agents).To(HaveLen(1))
+			Expect(ag.agents[0].AgentName()).To(Equal(LocalAgentName))
+		})
+
+		It("uses orders local correctly", func() {
+			for _, agent := range []string{"lastfm", "spotify", "lrclib"} {
+				Register(agent, func(ds model.DataStore) Interface {
+					return struct {
+						Interface
+					}{}
+				})
+			}
+
+			conf.Server.Agents = "lastfm,spotify,local,lrclib"
+			ag := New(ds)
+			Expect(ag.agents).To(HaveLen(4))
+			Expect(ag.agents[2].AgentName()).To(Equal(LocalAgentName))
+		})
+	})
+
 	Describe("Agents", func() {
 		var ag *Agents
 		var mock *mockAgent

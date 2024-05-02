@@ -1,0 +1,3 @@
+Unsynchronized lyric line 1
+Unsynchronized lyric line 2
+Unsynchronized lyric line 3

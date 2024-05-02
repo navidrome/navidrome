@@ -69,6 +69,14 @@ type ArtistTopSongsRetriever interface {
 	GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error)
 }
 
+type LyricsRetriever interface {
+	// There are three possible results:
+	// 1. nil, err: Any error
+	// 2. lyrics, nil: track has one or more lyrics
+	// 3. nil, nil: track was found, but is instrumental
+	GetSongLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error)
+}
+
 var Map map[string]Constructor
 
 func Register(name string, init Constructor) {

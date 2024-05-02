@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"sort"
@@ -12,8 +13,10 @@ import (
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	_ "github.com/navidrome/navidrome/core/agents/filesystem"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
+	_ "github.com/navidrome/navidrome/core/agents/lrclib"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -37,6 +40,7 @@ type ExternalMetadata interface {
 	TopSongs(ctx context.Context, artist string, count int) (model.MediaFiles, error)
 	ArtistImage(ctx context.Context, id string) (*url.URL, error)
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
+	ExternalLyrics(ctx context.Context, id string) (model.LyricList, error)
 }
 
 type externalMetadata struct {
@@ -44,6 +48,7 @@ type externalMetadata struct {
 	ag          *agents.Agents
 	artistQueue chan<- *auxArtist
 	albumQueue  chan<- *auxAlbum
+	lyricsQueue chan<- *model.MediaFile
 }
 
 type auxAlbum struct {
@@ -60,6 +65,7 @@ func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMeta
 	e := &externalMetadata{ds: ds, ag: agents}
 	e.artistQueue = startRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = startRefreshQueue(context.TODO(), e.populateAlbumInfo)
+	e.lyricsQueue = startRefreshQueue(context.TODO(), e.populateSongLyrics)
 	return e
 }
 
@@ -558,6 +564,69 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 		loaded = append(loaded, la)
 	}
 	artist.SimilarArtists = loaded
+	return nil
+}
+
+func (e *externalMetadata) ExternalLyrics(ctx context.Context, id string) (model.LyricList, error) {
+	mf, err := e.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return nil, err
+	}
+	updatedAt := V(mf.ExternalLyricsUpdatedAt)
+
+	if updatedAt.IsZero() {
+		log.Debug(ctx, "Lyrics not cached. Retrieving it now", "updatedAt", updatedAt, "id", mf.ID, "title", mf.Title)
+		err := e.populateSongLyrics(ctx, mf)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if time.Since(updatedAt) > conf.Server.DevLyricsTimeToLive {
+		log.Debug("Found expired cached lyrics, refreshing in the background", "updatedAt", updatedAt, "title", mf.Title)
+		enqueueRefresh(e.lyricsQueue, mf)
+	}
+
+	return mf.StructuredExternalLyrics()
+}
+
+func (e *externalMetadata) populateSongLyrics(ctx context.Context, mf *model.MediaFile) error {
+	start := time.Now()
+	lyrics, err := e.ag.GetSongLyrics(ctx, mf)
+
+	if errors.Is(err, agents.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		log.Error(ctx, "Error trying to fetch external lyrics", "id", mf.ID,
+			"title", mf.Title, "elapsed", time.Since(start), err)
+		return err
+	}
+
+	mf.ExternalLyricsUpdatedAt = P(time.Now())
+	if lyrics != nil {
+		content, err := json.Marshal(lyrics)
+
+		if err != nil {
+			log.Error(ctx, "Error marshalling lyrics", "id", mf.ID,
+				"title", mf.Title, "elapsed", time.Since(start), err)
+			return err
+		}
+
+		mf.ExternalLyrics = string(content)
+	} else {
+		mf.ExternalLyrics = ""
+	}
+
+	err = e.ds.MediaFile(ctx).Put(mf)
+
+	if err != nil {
+		log.Error(ctx, "Error trying to update external lyrics", "id", mf.ID,
+			"title", mf.Title, "elapsed", time.Since(start), err)
+	} else {
+		log.Trace(ctx, "External lyrics collected", "title", mf.ID, "elapsed", time.Since(start))
+	}
+
 	return nil
 }
 

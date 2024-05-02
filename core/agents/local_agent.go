@@ -50,3 +50,5 @@ func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 func init() {
 	Register(LocalAgentName, localsConstructor)
 }
+
+var _ ArtistTopSongsRetriever = (*localAgent)(nil)

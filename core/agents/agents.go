@@ -22,7 +22,18 @@ func New(ds model.DataStore) *Agents {
 	if conf.Server.Agents != "" {
 		order = strings.Split(conf.Server.Agents, ",")
 	}
-	order = append(order, LocalAgentName)
+	hasLocal := false
+	for _, agent := range order {
+		if agent == LocalAgentName {
+			hasLocal = true
+			break
+		}
+	}
+
+	if !hasLocal {
+		order = append(order, LocalAgentName)
+	}
+
 	var res []Interface
 	for _, name := range order {
 		init, ok := Map[name]
@@ -218,6 +229,25 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 	return nil, ErrNotFound
 }
 
+func (a *Agents) GetSongLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+	start := time.Now()
+	for _, ag := range a.agents {
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		agent, ok := ag.(LyricsRetriever)
+		if !ok {
+			continue
+		}
+		lyrics, err := agent.GetSongLyrics(ctx, mf)
+		if err == nil && (lyrics == nil || len(lyrics) > 0) {
+			log.Debug(ctx, "Got lyrics", "agent", ag.AgentName(), "id", mf.ID, "elapsed", time.Since(start))
+			return lyrics, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 var _ Interface = (*Agents)(nil)
 var _ ArtistMBIDRetriever = (*Agents)(nil)
 var _ ArtistURLRetriever = (*Agents)(nil)
@@ -226,3 +256,4 @@ var _ ArtistSimilarRetriever = (*Agents)(nil)
 var _ ArtistImageRetriever = (*Agents)(nil)
 var _ ArtistTopSongsRetriever = (*Agents)(nil)
 var _ AlbumInfoRetriever = (*Agents)(nil)
+var _ LyricsRetriever = (*Agents)(nil)
