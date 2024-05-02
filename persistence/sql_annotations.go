@@ -7,6 +7,8 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -14,7 +16,7 @@ import (
 const annotationTable = "annotation"
 
 func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
+	query := r.newSelect(options...).
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
 			" AND annotation.item_type = '"+r.tableName+"'"+
@@ -22,10 +24,16 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 		Columns(
 			"coalesce(starred, 0) as starred",
 			"coalesce(rating, 0) as rating",
-			"coalesce(play_count, 0) as play_count",
 			"starred_at",
 			"play_date",
 		)
+	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
+		query = query.Columns("coalesce(round(cast(play_count as float) / coalesce(song_count, 1), 1), 0) as play_count")
+	} else {
+		query = query.Columns("coalesce(play_count, 0) as play_count")
+	}
+
+	return query
 }
 
 func (r sqlRepository) annId(itemID ...string) And {
