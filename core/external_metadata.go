@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
@@ -414,7 +413,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 				squirrel.Eq{"artist_id": artistID},
 				squirrel.Eq{"album_artist_id": artistID},
 			},
-			squirrel.Like{"order_title": strings.TrimSpace(sanitize.Accents(title))},
+			squirrel.Like{"order_title": utils.SanitizeFieldForSorting(title)},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc ",
 		Max:  1,

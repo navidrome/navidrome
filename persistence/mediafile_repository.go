@@ -41,6 +41,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 		}
 	} else {
 		r.sortMappings = map[string]string{
+			"title":     "order_title",
 			"artist":    "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
 			"album":     "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
 			"random":    "RANDOM()",
