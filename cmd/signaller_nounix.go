@@ -7,7 +7,7 @@ import (
 )
 
 // Windows and Plan9 don't support SIGUSR1, so we don't need to start a signaler
-func startSignaler(ctx context.Context) func() error {
+func startSignaller(ctx context.Context) func() error {
 	return func() error {
 		return nil
 	}

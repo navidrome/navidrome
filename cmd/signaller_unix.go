@@ -14,7 +14,7 @@ import (
 
 const triggerScanSignal = syscall.SIGUSR1
 
-func startSignaler(ctx context.Context) func() error {
+func startSignaller(ctx context.Context) func() error {
 	log.Info(ctx, "Starting signaler")
 	scanner := GetScanner()
 
