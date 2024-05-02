@@ -98,10 +98,11 @@ func corsHandler() func(http.Handler) http.Handler {
 
 func secureMiddleware() func(http.Handler) http.Handler {
 	sec := secure.New(secure.Options{
-		ContentTypeNosniff: true,
-		FrameDeny:          true,
-		ReferrerPolicy:     "same-origin",
-		PermissionsPolicy:  "autoplay=(), camera=(), microphone=(), usb=()",
+		ContentTypeNosniff:      true,
+		FrameDeny:               true,
+		ReferrerPolicy:          "same-origin",
+		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
+		CustomFrameOptionsValue: conf.Server.HTTPSecurityHeaders.CustomFrameOptionsValue,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
