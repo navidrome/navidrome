@@ -55,6 +55,12 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.ctx = &ctx
 
 	<-ctx.Done()
+
+	log.Info(ctx, "Shutting down audio devices")
+	for _, audioDevice := range ps.playbackDevices {
+		audioDevice.Clear(ctx)
+	}
+
 	return nil
 }
 
