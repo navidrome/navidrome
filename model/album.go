@@ -54,7 +54,7 @@ type Album struct {
 	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty"`
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
-	UPC                   string     `structs:"upc" json:"upc"`
+	UPC                   string     `structs:"upc" json:"upc,omitempty"`
 	CreatedAt             time.Time  `structs:"created_at" json:"createdAt"`
 	UpdatedAt             time.Time  `structs:"updated_at" json:"updatedAt"`
 }
