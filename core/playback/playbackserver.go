@@ -58,7 +58,10 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 
 	log.Info(ctx, "Shutting down audio devices")
 	for _, audioDevice := range ps.playbackDevices {
-		audioDevice.Clear(ctx)
+		_, err := audioDevice.Clear(ctx)
+		if err != nil {
+			log.Error(ctx, "error clearing audio device", audioDevice.Name)
+		}
 	}
 
 	return nil
