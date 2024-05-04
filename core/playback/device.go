@@ -269,7 +269,9 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 			if err != nil {
 				log.Error("Error switching track", err)
 			}
-			pd.ActiveTrack.Unpause()
+			if pd.ActiveTrack != nil {
+				pd.ActiveTrack.Unpause()
+			}
 		} else {
 			log.Debug("There is no song left in the playlist. Finish.")
 		}
