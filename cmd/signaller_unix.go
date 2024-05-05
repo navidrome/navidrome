@@ -14,28 +14,17 @@ import (
 
 const triggerScanSignal = syscall.SIGUSR1
 
-func startSignaler(ctx context.Context) func() error {
+func startSignaller(ctx context.Context) func() error {
 	log.Info(ctx, "Starting signaler")
 	scanner := GetScanner()
 
 	return func() error {
 		var sigChan = make(chan os.Signal, 1)
-		signal.Notify(
-			sigChan,
-			os.Interrupt,
-			triggerScanSignal,
-			syscall.SIGHUP,
-			syscall.SIGTERM,
-			syscall.SIGABRT,
-		)
+		signal.Notify(sigChan, triggerScanSignal)
 
 		for {
 			select {
 			case sig := <-sigChan:
-				if sig != triggerScanSignal {
-					log.Info(ctx, "Received termination signal", "signal", sig)
-					return interrupted
-				}
 				log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
 				start := time.Now()
 				err := scanner.RescanAll(ctx, false)

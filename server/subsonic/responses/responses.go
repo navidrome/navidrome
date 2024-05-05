@@ -163,6 +163,7 @@ type Child struct {
 	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
 	Genres        ItemGenres `xml:"genres"                  json:"genres"`
 	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
+	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
 }
 
 type Songs struct {
@@ -501,7 +502,7 @@ type ReplayGain struct {
 }
 
 type DiscTitle struct {
-	Disc  int    `xml:"disc,attr" json:"disc"`
+	Disc  int32  `xml:"disc,attr" json:"disc"`
 	Title string `xml:"title,attr" json:"title"`
 }
 
@@ -522,7 +523,7 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 }
 
 type ItemDate struct {
-	Year  int `xml:"year,attr,omitempty" json:"year,omitempty"`
-	Month int `xml:"month,attr,omitempty" json:"month,omitempty"`
-	Day   int `xml:"day,attr,omitempty" json:"day,omitempty"`
+	Year  int32 `xml:"year,attr,omitempty" json:"year,omitempty"`
+	Month int32 `xml:"month,attr,omitempty" json:"month,omitempty"`
+	Day   int32 `xml:"day,attr,omitempty" json:"day,omitempty"`
 }

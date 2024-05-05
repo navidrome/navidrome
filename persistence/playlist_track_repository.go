@@ -74,13 +74,19 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 	return &trk, err
 }
 
+// This is a "hack" to allow loadAllGenres to work with playlist tracks. Will be removed once we have a new
+// one-to-many relationship solution
+func (r *playlistTrackRepository) getTableName() string {
+	return "media_file"
+}
+
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
 	tracks, err := r.playlistRepo.loadTracks(r.newSelect(options...), r.playlistId)
 	if err != nil {
 		return nil, err
 	}
 	mfs := tracks.MediaFiles()
-	err = r.loadMediaFileGenres(&mfs)
+	err = loadAllGenres(r, mfs)
 	if err != nil {
 		log.Error(r.ctx, "Error loading genres for playlist", "playlist", r.playlist.Name, "id", r.playlist.ID, err)
 		return nil, err

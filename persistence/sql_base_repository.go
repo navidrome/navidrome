@@ -42,6 +42,10 @@ func loggedUser(ctx context.Context) *model.User {
 	}
 }
 
+func (r sqlRepository) getTableName() string {
+	return r.tableName
+}
+
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	sq = r.applyOptions(sq, options...)
@@ -157,8 +161,6 @@ func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 	return query, params, nil
 }
 
-// Note: Due to a bug in the QueryRow method, this function does not map any embedded structs (ex: annotations)
-// In this case, use the queryAll method and get the first item of the returned list
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	query, args, err := r.toSQL(sq)
 	if err != nil {

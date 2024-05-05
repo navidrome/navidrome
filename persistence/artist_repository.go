@@ -100,9 +100,9 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 		return err
 	}
 	if a.ID == consts.VariousArtistsID {
-		return r.updateGenres(a.ID, r.tableName, nil)
+		return r.updateGenres(a.ID, nil)
 	}
-	return r.updateGenres(a.ID, r.tableName, a.Genres)
+	return r.updateGenres(a.ID, a.Genres)
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
@@ -115,7 +115,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 		return nil, model.ErrNotFound
 	}
 	res := r.toModels(dba)
-	err := r.loadArtistGenres(&res)
+	err := loadAllGenres(r, res)
 	return &res[0], err
 }
 
@@ -127,7 +127,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 		return nil, err
 	}
 	res := r.toModels(dba)
-	err = r.loadArtistGenres(&res)
+	err = loadAllGenres(r, res)
 	return res, err
 }
 

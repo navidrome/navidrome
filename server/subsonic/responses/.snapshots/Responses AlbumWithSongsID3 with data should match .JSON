@@ -85,7 +85,8 @@
           "albumPeak": 4,
           "baseGain": 5,
           "fallbackGain": 6
-        }
+        },
+        "channelCount": 0
       }
     ]
   }
