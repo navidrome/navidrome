@@ -23,7 +23,8 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: latest
+          # TODO: revert to latest when this issue is resolved: https://github.com/golangci/golangci-lint/issues/4695
+          version: v1.57.2
           github-token: ${{ secrets.GITHUB_TOKEN }}
           args: --timeout 2m
 
