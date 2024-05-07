@@ -288,5 +288,6 @@ func (pd *playbackDevice) switchActiveTrackByIndex(index int) error {
 		return err
 	}
 	pd.ActiveTrack = track
+	pd.ActiveTrack.SetVolume(pd.Gain)
 	return nil
 }
