@@ -25,8 +25,9 @@ linters:
     - unused
     - whitespace
 
-issues:
-  exclude-rules:
-    - linters:
-        - gosec
-      text: "(G501|G401|G505):"
+linters-settings:
+  gosec:
+    excludes:
+      - G501
+      - G401
+      - G505
