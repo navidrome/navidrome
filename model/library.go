@@ -25,5 +25,8 @@ type Libraries []Library
 type LibraryRepository interface {
 	Get(id int) (*Library, error)
 	Put(*Library) error
+	StoreMusicFolder() error
+	AddArtist(id int, artistID string) error
+	UpdateLastScan(id int, t time.Time) error
 	GetAll(...QueryOptions) (Libraries, error)
 }
