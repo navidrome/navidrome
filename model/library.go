@@ -3,12 +3,17 @@ package model
 import (
 	"io/fs"
 	"os"
+	"time"
 )
 
 type Library struct {
-	ID   int32
-	Name string
-	Path string
+	ID         int
+	Name       string
+	Path       string
+	RemotePath string
+	LastScanAt time.Time
+	UpdatedAt  time.Time
+	CreatedAt  time.Time
 }
 
 func (f Library) FS() fs.FS {
@@ -18,6 +23,7 @@ func (f Library) FS() fs.FS {
 type Libraries []Library
 
 type LibraryRepository interface {
-	Get(id int32) (*Library, error)
-	GetAll() (Libraries, error)
+	Get(id int) (*Library, error)
+	Put(*Library) error
+	GetAll(...QueryOptions) (Libraries, error)
 }
