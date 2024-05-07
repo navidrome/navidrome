@@ -12,6 +12,7 @@ type Album struct {
 	Annotations `structs:"-"`
 
 	ID                    string     `structs:"id" json:"id"`
+	LibraryID             int        `structs:"library_id" json:"libraryId"`
 	Name                  string     `structs:"name" json:"name"`
 	EmbedArtPath          string     `structs:"embed_art_path" json:"embedArtPath"`
 	ArtistID              string     `structs:"artist_id" json:"artistId"`

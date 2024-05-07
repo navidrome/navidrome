@@ -100,7 +100,7 @@ var _ = Describe("AlbumRepository", func() {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
 
 					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
 						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
 					}
@@ -123,7 +123,7 @@ var _ = Describe("AlbumRepository", func() {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
 
 					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
 						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
 					}
