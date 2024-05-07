@@ -154,9 +154,10 @@ type prometheusOptions struct {
 type AudioDeviceDefinition []string
 
 type jukeboxOptions struct {
-	Enabled bool
-	Devices []AudioDeviceDefinition
-	Default string
+	Enabled   bool
+	Devices   []AudioDeviceDefinition
+	Default   string
+	AdminOnly bool
 }
 
 var (
@@ -353,6 +354,7 @@ func init() {
 	viper.SetDefault("jukebox.enabled", false)
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
+	viper.SetDefault("jukebox.adminonly", true)
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
