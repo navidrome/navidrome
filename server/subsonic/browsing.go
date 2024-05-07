@@ -20,7 +20,7 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	libraries, _ := api.ds.Library(r.Context()).GetAll()
 	folders := make([]responses.MusicFolder, len(libraries))
 	for i, f := range libraries {
-		folders[i].Id = f.ID
+		folders[i].Id = int32(f.ID)
 		folders[i].Name = f.Name
 	}
 	response := newResponse()
@@ -30,7 +30,7 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 
 func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
 	ctx := r.Context()
-	folder, err := api.ds.Library(ctx).Get(int32(libId))
+	folder, err := api.ds.Library(ctx).Get(libId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving Library", "id", libId, err)
 		return nil, err
@@ -68,7 +68,7 @@ func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince ti
 
 func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	musicFolderId := p.IntOr("musicFolderId", 0)
+	musicFolderId := p.IntOr("musicFolderId", 1)
 	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
 
 	res, err := api.getArtistIndex(r, musicFolderId, ifModifiedSince)
@@ -83,7 +83,7 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	musicFolderId := p.IntOr("musicFolderId", 0)
+	musicFolderId := p.IntOr("musicFolderId", 1)
 	res, err := api.getArtistIndex(r, musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
