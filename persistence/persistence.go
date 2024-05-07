@@ -31,8 +31,8 @@ func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
 	return NewMediaFileRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
-	return NewMediaFolderRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
+	return NewLibraryRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {

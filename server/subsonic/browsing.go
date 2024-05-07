@@ -17,9 +17,9 @@ import (
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
-	mediaFolderList, _ := api.ds.MediaFolder(r.Context()).GetAll()
-	folders := make([]responses.MusicFolder, len(mediaFolderList))
-	for i, f := range mediaFolderList {
+	libraries, _ := api.ds.Library(r.Context()).GetAll()
+	folders := make([]responses.MusicFolder, len(libraries))
+	for i, f := range libraries {
 		folders[i].Id = f.ID
 		folders[i].Name = f.Name
 	}
@@ -28,11 +28,11 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
-func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
 	ctx := r.Context()
-	folder, err := api.ds.MediaFolder(ctx).Get(int32(mediaFolderId))
+	folder, err := api.ds.Library(ctx).Get(int32(libId))
 	if err != nil {
-		log.Error(ctx, "Error retrieving MediaFolder", "id", mediaFolderId, err)
+		log.Error(ctx, "Error retrieving Library", "id", libId, err)
 		return nil, err
 	}
 
