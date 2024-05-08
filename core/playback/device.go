@@ -45,8 +45,6 @@ type DeviceStatus struct {
 
 const DefaultGain float32 = 1.0
 
-var EmptyStatus = DeviceStatus{CurrentIndex: -1, Playing: false, Gain: DefaultGain, Position: 0}
-
 func (pd *playbackDevice) getStatus() DeviceStatus {
 	pos := 0
 	if pd.ActiveTrack != nil {
