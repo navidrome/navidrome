@@ -55,6 +55,8 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.ctx = &ctx
 
 	<-ctx.Done()
+
+	// Should confirm all subprocess are closed before returning
 	return nil
 }
 

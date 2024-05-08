@@ -257,25 +257,30 @@ func (pd *playbackDevice) isPlaying() bool {
 func (pd *playbackDevice) trackSwitcherGoroutine() {
 	log.Debug("Started trackSwitcher goroutine", "device", pd)
 	for {
-		<-pd.PlaybackDone
-		log.Debug("Track switching detected")
-		if pd.ActiveTrack != nil {
-			pd.ActiveTrack.Close()
-			pd.ActiveTrack = nil
-		}
-
-		if !pd.PlaybackQueue.IsAtLastElement() {
-			pd.PlaybackQueue.IncreaseIndex()
-			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
-			err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
-			if err != nil {
-				log.Error("Error switching track", err)
-			}
+		select {
+		case <-pd.PlaybackDone:
+			log.Debug("Track switching detected")
 			if pd.ActiveTrack != nil {
-				pd.ActiveTrack.Unpause()
+				pd.ActiveTrack.Close()
+				pd.ActiveTrack = nil
 			}
-		} else {
-			log.Debug("There is no song left in the playlist. Finish.")
+
+			if !pd.PlaybackQueue.IsAtLastElement() {
+				pd.PlaybackQueue.IncreaseIndex()
+				log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
+				err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+				if err != nil {
+					log.Error("Error switching track", err)
+				}
+				if pd.ActiveTrack != nil {
+					pd.ActiveTrack.Unpause()
+				}
+			} else {
+				log.Debug("There is no song left in the playlist. Finish.")
+			}
+		case <-pd.serviceCtx.Done():
+			log.Debug("Stopping trackSwitcher goroutine", "device", pd.DeviceName)
+			return
 		}
 	}
 }
