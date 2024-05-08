@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/navidrome/navidrome/core/playback/mpv"
 	"github.com/navidrome/navidrome/log"
@@ -32,7 +33,7 @@ type playbackDevice struct {
 	Gain                 float32
 	PlaybackDone         chan bool
 	ActiveTrack          Track
-	TrackSwitcherStarted bool
+	startTrackSwitcher   sync.Once
 }
 
 type DeviceStatus struct {
@@ -72,7 +73,6 @@ func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name 
 		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
-		TrackSwitcherStarted: false,
 	}
 }
 
@@ -105,14 +105,13 @@ func (pd *playbackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, 
 func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Start action", "device", pd)
 
-	if !pd.TrackSwitcherStarted {
+	pd.startTrackSwitcher.Do(func() {
 		log.Info(ctx, "Starting trackSwitcher goroutine")
 		// Start one trackSwitcher goroutine with each device
 		go func() {
 			pd.trackSwitcherGoroutine()
 		}()
-		pd.TrackSwitcherStarted = true
-	}
+	})
 
 	if pd.ActiveTrack != nil {
 		if pd.isPlaying() {
