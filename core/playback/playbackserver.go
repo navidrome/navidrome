@@ -40,7 +40,7 @@ func GetInstance() PlaybackServer {
 // Run starts the playback server which serves request until canceled using the given context
 func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.datastore = persistence.New(db.Db())
-	devices, err := ps.initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	ps.playbackDevices = devices
 
 	if err != nil {
@@ -63,14 +63,14 @@ func (ps *playbackServer) GetCtx() *context.Context {
 	return ps.ctx
 }
 
-func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
+func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
 	pbDevices := make([]playbackDevice, max(1, len(devices)))
 	defaultDeviceFound := false
 
 	if defaultDevice == "" {
 		// if there are no devices given and no default device, we create a synthetic device named "auto"
 		if len(devices) == 0 {
-			pbDevices[0] = *NewPlaybackDevice(ps, "auto", "auto")
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, "auto", "auto")
 		}
 
 		// if there is but only one entry and no default given, just use that.
@@ -78,7 +78,7 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 			if len(devices[0]) != 2 {
 				return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
 			}
-			pbDevices[0] = *NewPlaybackDevice(ps, devices[0][0], devices[0][1])
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1])
 		}
 
 		if len(devices) > 1 {
@@ -94,7 +94,7 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 			return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
 		}
 
-		pbDevices[idx] = *NewPlaybackDevice(ps, audioDevice[0], audioDevice[1])
+		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1])
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true

@@ -22,6 +22,7 @@ type Track interface {
 }
 
 type playbackDevice struct {
+	serviceCtx           context.Context
 	ParentPlaybackServer PlaybackServer
 	Default              bool
 	User                 string
@@ -61,8 +62,9 @@ func (pd *playbackDevice) getStatus() DeviceStatus {
 // NewPlaybackDevice creates a new playback device which implements all the basic Jukebox mode commands defined here:
 // http://www.subsonic.org/pages/api.jsp#jukeboxControl
 // Starts the trackSwitcher goroutine for the device.
-func NewPlaybackDevice(playbackServer PlaybackServer, name string, deviceName string) *playbackDevice {
+func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name string, deviceName string) *playbackDevice {
 	return &playbackDevice{
+		serviceCtx:           ctx,
 		ParentPlaybackServer: playbackServer,
 		User:                 "",
 		Name:                 name,
@@ -285,7 +287,7 @@ func (pd *playbackDevice) switchActiveTrackByIndex(index int) error {
 		return errors.New("could not get current track")
 	}
 
-	track, err := mpv.NewTrack(pd.PlaybackDone, pd.DeviceName, *currentTrack)
+	track, err := mpv.NewTrack(pd.serviceCtx, pd.PlaybackDone, pd.DeviceName, *currentTrack)
 	if err != nil {
 		return err
 	}
