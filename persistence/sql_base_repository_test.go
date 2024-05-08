@@ -70,6 +70,44 @@ var _ = Describe("sqlRepository", func() {
 		})
 	})
 
+	Describe("sortMapping", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{
+				"sort1":      "mappedSort1",
+				"sortTwo":    "mappedSort2",
+				"sort_three": "mappedSort3",
+			}
+		})
+
+		It("returns the mapped value when sort key exists", func() {
+			Expect(r.sortMapping("sort1")).To(Equal("mappedSort1"))
+		})
+
+		Context("when sort key does not exist", func() {
+			It("returns the original sort key, snake cased", func() {
+				Expect(r.sortMapping("NotFoundSort")).To(Equal("not_found_sort"))
+			})
+		})
+
+		Context("when sort key is camel cased", func() {
+			It("returns the mapped value when camel case sort key exists", func() {
+				Expect(r.sortMapping("sortTwo")).To(Equal("mappedSort2"))
+			})
+			It("returns the mapped value when passing a snake case key", func() {
+				Expect(r.sortMapping("sort_two")).To(Equal("mappedSort2"))
+			})
+		})
+
+		Context("when sort key is snake cased", func() {
+			It("returns the mapped value when snake case sort key exists", func() {
+				Expect(r.sortMapping("sort_three")).To(Equal("mappedSort3"))
+			})
+			It("returns the mapped value when passing a camel case key", func() {
+				Expect(r.sortMapping("sortThree")).To(Equal("mappedSort3"))
+			})
+		})
+	})
+
 	Describe("buildSortOrder", func() {
 		Context("single field", func() {
 			It("sorts by specified field", func() {

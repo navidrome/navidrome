@@ -51,6 +51,14 @@ func toSnakeCase(str string) string {
 	return strings.ToLower(snake)
 }
 
+var matchUnderscore = regexp.MustCompile("_([A-Za-z])")
+
+func toCamelCase(str string) string {
+	return matchUnderscore.ReplaceAllStringFunc(str, func(s string) string {
+		return strings.ToUpper(strings.Replace(s, "_", "", -1))
+	})
+}
+
 func exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }
