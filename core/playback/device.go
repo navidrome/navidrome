@@ -276,7 +276,7 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 				log.Debug("There is no song left in the playlist. Finish.")
 			}
 		case <-pd.serviceCtx.Done():
-			log.Debug("Stopping trackSwitcher goroutine", "device", pd.DeviceName)
+			log.Debug("Stopping trackSwitcher goroutine", "device", pd.Name)
 			return
 		}
 	}
