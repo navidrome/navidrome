@@ -111,8 +111,8 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 }
 
 func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
-	for idx, audioDevice := range ps.playbackDevices {
-		if audioDevice.Default {
+	for idx := range ps.playbackDevices {
+		if ps.playbackDevices[idx].Default {
 			return &ps.playbackDevices[idx], nil
 		}
 	}
