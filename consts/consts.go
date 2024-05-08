@@ -88,24 +88,29 @@ const (
 
 var (
 	DefaultDownsamplingFormat = "opus"
-	DefaultTranscodings       = []map[string]interface{}{
+	DefaultTranscodings       = []struct {
+		Name           string
+		TargetFormat   string
+		DefaultBitRate int
+		Command        string
+	}{
 		{
-			"name":           "mp3 audio",
-			"targetFormat":   "mp3",
-			"defaultBitRate": 192,
-			"command":        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
+			Name:           "mp3 audio",
+			TargetFormat:   "mp3",
+			DefaultBitRate: 192,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
-			"name":           "opus audio",
-			"targetFormat":   "opus",
-			"defaultBitRate": 128,
-			"command":        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			Name:           "opus audio",
+			TargetFormat:   "opus",
+			DefaultBitRate: 128,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
 		},
 		{
-			"name":           "aac audio",
-			"targetFormat":   "aac",
-			"defaultBitRate": 256,
-			"command":        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
+			Name:           "aac audio",
+			TargetFormat:   "aac",
+			DefaultBitRate: 256,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 
