@@ -61,12 +61,12 @@ snapshots: ##@Development Update (GoLang) Snapshot tests
 
 migration-sql: ##@Development Create an empty SQL migration file
 	@if [ -z "${name}" ]; then echo "Usage: make migration-sql name=name_of_migration_file"; exit 1; fi
-	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migration create ${name} sql
+	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migrations create ${name} sql
 .PHONY: migration
 
 migration-go: ##@Development Create an empty Go migration file
 	@if [ -z "${name}" ]; then echo "Usage: make migration-go name=name_of_migration_file"; exit 1; fi
-	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migration create ${name}
+	go run github.com/pressly/goose/v3/cmd/goose@latest -dir db/migrations create ${name}
 .PHONY: migration
 
 setup-dev: setup

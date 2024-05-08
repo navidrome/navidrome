@@ -7,7 +7,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
-	_ "github.com/navidrome/navidrome/db/migration"
+	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
@@ -18,10 +18,10 @@ var (
 	Path   string
 )
 
-//go:embed migration/*.sql
+//go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-const migrationsFolder = "migration"
+const migrationsFolder = "migrations"
 
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
