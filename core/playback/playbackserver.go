@@ -21,7 +21,6 @@ type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDeviceForUser(user string) (*playbackDevice, error)
 	GetMediaFile(id string) (*model.MediaFile, error)
-	GetCtx() *context.Context
 }
 
 type playbackServer struct {
@@ -40,29 +39,23 @@ func GetInstance() PlaybackServer {
 // Run starts the playback server which serves request until canceled using the given context
 func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.datastore = persistence.New(db.Db())
-	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
-	ps.playbackDevices = devices
+	ps.ctx = &ctx
 
+	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	if err != nil {
 		return err
 	}
+	ps.playbackDevices = devices
 	log.Info(ctx, fmt.Sprintf("%d audio devices found", len(devices)))
 
 	defaultDevice, _ := ps.getDefaultDevice()
 
 	log.Info(ctx, "Using audio device: "+defaultDevice.DeviceName)
 
-	ps.ctx = &ctx
-
 	<-ctx.Done()
 
-	// Should confirm all subprocess are closed before returning
+	// Should confirm all subprocess are terminated before returning
 	return nil
-}
-
-// GetCtx produces the context this server was started with. Used for data-retrieval and cancellation
-func (ps *playbackServer) GetCtx() *context.Context {
-	return ps.ctx
 }
 
 func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
