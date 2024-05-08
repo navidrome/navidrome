@@ -30,7 +30,7 @@ func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	}
 
 	for _, t := range consts.DefaultTranscodings {
-		_, err := stmt.Exec(uuid.NewString(), t["name"], t["targetFormat"], t["defaultBitRate"], t["command"])
+		_, err := stmt.Exec(uuid.NewString(), t.Name, t.TargetFormat, t.DefaultBitRate, t.Command)
 		if err != nil {
 			return err
 		}
