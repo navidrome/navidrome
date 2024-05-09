@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
@@ -23,7 +24,6 @@ import (
 	"github.com/navidrome/navidrome/server/nativeapi"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic"
-	"sync"
 )
 
 // Injectors from wire_injectors.go:
@@ -58,11 +58,13 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	share := core.NewShare(dataStore)
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	players := core.NewPlayers(dataStore)
-	scanner := GetScanner()
-	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
+	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
+	broker := events.GetBroker()
+	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scanner, broker, playlists, playTracker, share)
+	playbackServer := playback.GetInstance(dataStore)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer)
 	return router
 }
 
@@ -96,7 +98,7 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	return router
 }
 
-func createScanner() scanner.Scanner {
+func GetScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	playlists := core.NewPlaylists(dataStore)
@@ -107,23 +109,17 @@ func createScanner() scanner.Scanner {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	scannerScanner := scanner.New(dataStore, playlists, cacheWarmer, broker)
+	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker)
 	return scannerScanner
+}
+
+func GetPlaybackServer() playback.PlaybackServer {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	playbackServer := playback.GetInstance(dataStore)
+	return playbackServer
 }
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, db.Db)
-
-// Scanner must be a Singleton
-var (
-	onceScanner     sync.Once
-	scannerInstance scanner.Scanner
-)
-
-func GetScanner() scanner.Scanner {
-	onceScanner.Do(func() {
-		scannerInstance = createScanner()
-	})
-	return scannerInstance
-}
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db)

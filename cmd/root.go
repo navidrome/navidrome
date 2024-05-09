@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -164,7 +163,7 @@ func startScheduler(ctx context.Context) func() error {
 func startPlaybackServer(ctx context.Context) func() error {
 	log.Info(ctx, "Starting playback server")
 
-	playbackInstance := playback.GetInstance()
+	playbackInstance := GetPlaybackServer()
 
 	return func() error {
 		return playbackInstance.Run(ctx)
