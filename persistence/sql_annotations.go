@@ -28,7 +28,7 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 			"play_date",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
-		query = query.Columns("coalesce(round(cast(play_count as float) / coalesce(song_count, 1), 1), 0) as play_count")
+		query = query.Columns("round(coalesce(round(cast(play_count as float) / coalesce(song_count, 1), 1), 0)) as play_count")
 	} else {
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
