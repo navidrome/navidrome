@@ -10,10 +10,8 @@ import (
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -31,15 +29,14 @@ type playbackServer struct {
 }
 
 // GetInstance returns the playback-server singleton
-func GetInstance() PlaybackServer {
+func GetInstance(ds model.DataStore) PlaybackServer {
 	return singleton.GetInstance(func() *playbackServer {
-		return &playbackServer{}
+		return &playbackServer{datastore: ds}
 	})
 }
 
 // Run starts the playback server which serves request until canceled using the given context
 func (ps *playbackServer) Run(ctx context.Context) error {
-	ps.datastore = persistence.New(db.Db())
 	devices, err := ps.initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	ps.playbackDevices = devices
 
