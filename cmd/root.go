@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -24,8 +23,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
 )
-
-var interrupted = errors.New("service was interrupted")
 
 var (
 	cfgFile  string
@@ -85,7 +82,7 @@ func runNavidrome() {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 
-	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
+	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
 	}
 }
