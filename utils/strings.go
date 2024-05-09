@@ -3,6 +3,7 @@ package utils
 import (
 	"strings"
 
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 )
 
@@ -31,4 +32,14 @@ func LongestCommonPrefix(list []string) string {
 		}
 	}
 	return list[0]
+}
+
+func SanitizeFieldForSorting(originalValue string) string {
+	v := strings.TrimSpace(sanitize.Accents(originalValue))
+	return strings.ToLower(v)
+}
+
+func SanitizeFieldForSortingNoArticle(originalValue string) string {
+	v := strings.TrimSpace(sanitize.Accents(originalValue))
+	return strings.ToLower(NoArticle(v))
 }
