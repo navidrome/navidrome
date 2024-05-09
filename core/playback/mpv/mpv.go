@@ -14,11 +14,11 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func start(args []string) (Executor, error) {
+func start(ctx context.Context, args []string) (Executor, error) {
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
 	j.PipeReader, j.out = io.Pipe()
-	err := j.start()
+	err := j.start(ctx)
 	if err != nil {
 		return Executor{}, err
 	}
@@ -38,12 +38,9 @@ type Executor struct {
 	out  *io.PipeWriter
 	args []string
 	cmd  *exec.Cmd
-	ctx  context.Context
 }
 
-func (j *Executor) start() error {
-	ctx := context.Background()
-	j.ctx = ctx
+func (j *Executor) start(ctx context.Context) error {
 	cmd := exec.CommandContext(ctx, j.args[0], j.args[1:]...) // #nosec
 	cmd.Stdout = j.out
 	if log.IsGreaterOrEqualTo(log.LevelTrace) {

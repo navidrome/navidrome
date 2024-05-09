@@ -19,7 +19,6 @@ type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDeviceForUser(user string) (*playbackDevice, error)
 	GetMediaFile(id string) (*model.MediaFile, error)
-	GetCtx() *context.Context
 }
 
 type playbackServer struct {
@@ -37,37 +36,33 @@ func GetInstance(ds model.DataStore) PlaybackServer {
 
 // Run starts the playback server which serves request until canceled using the given context
 func (ps *playbackServer) Run(ctx context.Context) error {
-	devices, err := ps.initDeviceStatus(conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
-	ps.playbackDevices = devices
+	ps.ctx = &ctx
 
+	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
 	if err != nil {
 		return err
 	}
+	ps.playbackDevices = devices
 	log.Info(ctx, fmt.Sprintf("%d audio devices found", len(devices)))
 
 	defaultDevice, _ := ps.getDefaultDevice()
 
 	log.Info(ctx, "Using audio device: "+defaultDevice.DeviceName)
 
-	ps.ctx = &ctx
-
 	<-ctx.Done()
+
+	// Should confirm all subprocess are terminated before returning
 	return nil
 }
 
-// GetCtx produces the context this server was started with. Used for data-retrieval and cancellation
-func (ps *playbackServer) GetCtx() *context.Context {
-	return ps.ctx
-}
-
-func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
+func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
 	pbDevices := make([]playbackDevice, max(1, len(devices)))
 	defaultDeviceFound := false
 
 	if defaultDevice == "" {
 		// if there are no devices given and no default device, we create a synthetic device named "auto"
 		if len(devices) == 0 {
-			pbDevices[0] = *NewPlaybackDevice(ps, "auto", "auto")
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, "auto", "auto")
 		}
 
 		// if there is but only one entry and no default given, just use that.
@@ -75,7 +70,7 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 			if len(devices[0]) != 2 {
 				return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
 			}
-			pbDevices[0] = *NewPlaybackDevice(ps, devices[0][0], devices[0][1])
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1])
 		}
 
 		if len(devices) > 1 {
@@ -91,7 +86,7 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 			return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
 		}
 
-		pbDevices[idx] = *NewPlaybackDevice(ps, audioDevice[0], audioDevice[1])
+		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1])
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true
@@ -106,12 +101,12 @@ func (ps *playbackServer) initDeviceStatus(devices []conf.AudioDeviceDefinition,
 }
 
 func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
-	for idx, audioDevice := range ps.playbackDevices {
-		if audioDevice.Default {
+	for idx := range ps.playbackDevices {
+		if ps.playbackDevices[idx].Default {
 			return &ps.playbackDevices[idx], nil
 		}
 	}
-	return &playbackDevice{}, fmt.Errorf("no default device found")
+	return nil, fmt.Errorf("no default device found")
 }
 
 // GetMediaFile retrieves the MediaFile given by the id parameter
@@ -125,7 +120,7 @@ func (ps *playbackServer) GetDeviceForUser(user string) (*playbackDevice, error)
 	// README: here we might plug-in the user-device mapping one fine day
 	device, err := ps.getDefaultDevice()
 	if err != nil {
-		return &playbackDevice{}, err
+		return nil, err
 	}
 	device.User = user
 	return device, nil

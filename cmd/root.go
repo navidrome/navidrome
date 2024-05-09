@@ -83,11 +83,8 @@ func runNavidrome() {
 	g.Go(startServer(ctx))
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
+	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
-
-	if conf.Server.Jukebox.Enabled {
-		g.Go(startPlaybackServer(ctx))
-	}
 
 	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -151,21 +148,21 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 }
 
 func startScheduler(ctx context.Context) func() error {
-	log.Info(ctx, "Starting scheduler")
-	schedulerInstance := scheduler.GetInstance()
-
 	return func() error {
+		log.Info(ctx, "Starting scheduler")
+		schedulerInstance := scheduler.GetInstance()
 		schedulerInstance.Run(ctx)
 		return nil
 	}
 }
 
 func startPlaybackServer(ctx context.Context) func() error {
-	log.Info(ctx, "Starting playback server")
-
-	playbackInstance := GetPlaybackServer()
-
 	return func() error {
+		if !conf.Server.Jukebox.Enabled {
+			return nil
+		}
+		log.Info(ctx, "Starting playback server")
+		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
 	}
 }
