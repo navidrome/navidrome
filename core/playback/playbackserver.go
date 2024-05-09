@@ -106,7 +106,7 @@ func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
 			return &ps.playbackDevices[idx], nil
 		}
 	}
-	return &playbackDevice{}, fmt.Errorf("no default device found")
+	return nil, fmt.Errorf("no default device found")
 }
 
 // GetMediaFile retrieves the MediaFile given by the id parameter
@@ -120,7 +120,7 @@ func (ps *playbackServer) GetDeviceForUser(user string) (*playbackDevice, error)
 	// README: here we might plug-in the user-device mapping one fine day
 	device, err := ps.getDefaultDevice()
 	if err != nil {
-		return &playbackDevice{}, err
+		return nil, err
 	}
 	device.User = user
 	return device, nil
