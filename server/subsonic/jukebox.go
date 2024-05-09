@@ -43,8 +43,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	pbServer := playback.GetInstance()
-	pb, err := pbServer.GetDeviceForUser(user.UserName)
+	pb, err := api.playback.GetDeviceForUser(user.UserName)
 	if err != nil {
 		return nil, err
 	}
