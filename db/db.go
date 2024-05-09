@@ -44,7 +44,7 @@ func Close() error {
 	return Db().Close()
 }
 
-func Init() {
+func Init() func() {
 	db := Db()
 
 	// Disable foreign_keys to allow re-creating tables in migrations
@@ -73,6 +73,12 @@ func Init() {
 	err = goose.Up(db, migrationsFolder)
 	if err != nil {
 		log.Fatal("Failed to apply new migrations", err)
+	}
+
+	return func() {
+		if err := Close(); err != nil {
+			log.Error("Error closing DB", err)
+		}
 	}
 }
 

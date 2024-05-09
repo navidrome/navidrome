@@ -14,7 +14,7 @@ import (
 func TestScanner(t *testing.T) {
 	tests.Init(t, true)
 	conf.Server.DbPath = "file::memory:?cache=shared"
-	db.Init()
+	defer db.Init()()
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")

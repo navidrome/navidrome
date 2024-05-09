@@ -20,10 +20,9 @@ import (
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
 )
 
 var interrupted = errors.New("service was interrupted")
@@ -43,10 +42,14 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 		Run: func(cmd *cobra.Command, args []string) {
 			runNavidrome()
 		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			postRun()
+		},
 		Version: consts.Version,
 	}
 )
 
+// Execute runs the root cobra command, which will start the Navidrome server by calling the runNavidrome function.
 func Execute() {
 	rootCmd.SetVersionTemplate(`{{println .Version}}`)
 	if err := rootCmd.Execute(); err != nil {
@@ -62,21 +65,17 @@ func preRun() {
 	conf.Load()
 }
 
-func runNavidrome() {
-	db.Init()
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Error("Error closing DB", err)
-		}
-		log.Info("Navidrome stopped, bye.")
-	}()
+func postRun() {
+	log.Info("Navidrome stopped, bye.")
+}
 
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		os.Interrupt,
-		syscall.SIGHUP,
-		syscall.SIGTERM,
-		syscall.SIGABRT,
-	)
+// runNavidrome is the main entry point for the Navidrome server. It starts all the services and blocks.
+// If any of the services returns an error, it will log it and exit. If the process receives a signal to exit,
+// it will cancel the context and exit gracefully.
+func runNavidrome() {
+	defer db.Init()()
+
+	ctx, cancel := mainContext()
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -91,6 +90,17 @@ func runNavidrome() {
 	}
 }
 
+// mainContext returns a context that is cancelled when the process receives a signal to exit.
+func mainContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(context.Background(),
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGTERM,
+		syscall.SIGABRT,
+	)
+}
+
+// startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateServer(conf.Server.MusicFolder)
@@ -118,6 +128,7 @@ func startServer(ctx context.Context) func() error {
 	}
 }
 
+// schedulePeriodicScan schedules a periodic scan of the music library, if configured.
 func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.ScanSchedule
@@ -147,6 +158,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
+// startScheduler starts the Navidrome scheduler, which is used to run periodic tasks.
 func startScheduler(ctx context.Context) func() error {
 	return func() error {
 		log.Info(ctx, "Starting scheduler")
@@ -156,12 +168,15 @@ func startScheduler(ctx context.Context) func() error {
 	}
 }
 
+// startPlaybackServer starts the Navidrome playback server, if configured.
+// It is responsible for the Jukebox functionality
 func startPlaybackServer(ctx context.Context) func() error {
 	return func() error {
 		if !conf.Server.Jukebox.Enabled {
+			log.Debug("Jukebox is DISABLED")
 			return nil
 		}
-		log.Info(ctx, "Starting playback server")
+		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
 	}
