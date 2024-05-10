@@ -16,12 +16,12 @@ export default {
   DarkTheme,
 
   // New themes should be added here, in alphabetic order
+  CatppuccinMacchiatoTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
   GreenTheme,
   GruvboxDarkTheme,
   LigeraTheme,
-	CatppuccinMacchiatoTheme,
   MonokaiTheme,
   NordTheme,
   SpotifyTheme,
