@@ -72,7 +72,7 @@ func robotsTXT(fs fs.FS) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/robots.txt") {
 				r.URL.Path = "/robots.txt"
-				http.FileServer(http.FS(fs)).ServeHTTP(w, r)
+				http.FileServerFS(fs).ServeHTTP(w, r)
 			} else {
 				next.ServeHTTP(w, r)
 			}
