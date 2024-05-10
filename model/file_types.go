@@ -8,6 +8,7 @@ import (
 )
 
 var excludeAudioType = []string{
+	"audio/mpegurl",
 	"audio/x-mpegurl",
 	"audio/x-scpls",
 }
