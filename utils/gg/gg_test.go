@@ -43,20 +43,6 @@ var _ = Describe("GG", func() {
 		)
 	})
 
-	Describe("FirstOr", func() {
-		Context("when given a list of strings", func() {
-			It("returns the first non-empty value", func() {
-				Expect(gg.FirstOr("default", "foo", "bar", "baz")).To(Equal("foo"))
-				Expect(gg.FirstOr("default", "", "", "qux")).To(Equal("qux"))
-			})
-
-			It("returns the default value if all values are empty", func() {
-				Expect(gg.FirstOr("default", "", "", "")).To(Equal("default"))
-				Expect(gg.FirstOr("", "", "", "")).To(Equal(""))
-			})
-		})
-	})
-
 	Describe("P", func() {
 		It("returns a pointer to the input value", func() {
 			v := 123
