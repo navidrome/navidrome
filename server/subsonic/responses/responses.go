@@ -164,6 +164,7 @@ type Child struct {
 	Genres        ItemGenres `xml:"genres"                  json:"genres"`
 	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
 	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
+	SamplingRate  int32      `xml:"samplingRate,attr"       json:"samplingRate"`
 }
 
 type Songs struct {
