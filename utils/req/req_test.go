@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -69,7 +68,7 @@ var _ = Describe("Request Helpers", func() {
 
 	Describe("ParamTime", func() {
 		d := time.Date(2002, 8, 9, 12, 11, 13, 1000000, time.Local)
-		t := utils.ToMillis(d)
+		t := d.UnixMilli()
 		now := time.Now()
 		BeforeEach(func() {
 			r = req.Params(httptest.NewRequest("GET", fmt.Sprintf("/ping?t=%d&inv=abc", t), nil))
@@ -91,8 +90,8 @@ var _ = Describe("Request Helpers", func() {
 	Describe("ParamTimes", func() {
 		d1 := time.Date(2002, 8, 9, 12, 11, 13, 1000000, time.Local)
 		d2 := time.Date(2002, 8, 9, 12, 13, 56, 0000000, time.Local)
-		t1 := utils.ToMillis(d1)
-		t2 := utils.ToMillis(d2)
+		t1 := d1.UnixMilli()
+		t2 := d2.UnixMilli()
 		BeforeEach(func() {
 			r = req.Params(httptest.NewRequest("GET", fmt.Sprintf("/ping?t=%d&t=%d", t1, t2), nil))
 		})
