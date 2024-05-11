@@ -139,6 +139,63 @@ func (t Tags) Date() (int, string)         { return t.getDate("date") }
 func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
+func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
+func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
+func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
+func (t Tags) DiscSubtitle() string {
+	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
+}
+func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
+func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
+func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
+
+// MusicBrainz Identifiers
+
+func (t Tags) MbzReleaseTrackID() string {
+	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
+}
+
+func (t Tags) MbzRecordingID() string {
+	return t.getMbzID("musicbrainz_trackid", "musicbrainz track id")
+}
+func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
+func (t Tags) MbzArtistID() string {
+	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
+}
+func (t Tags) MbzAlbumArtistID() string {
+	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
+}
+func (t Tags) MbzAlbumType() string {
+	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type")
+}
+func (t Tags) MbzAlbumComment() string {
+	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
+}
+
+// ReplayGain Properties
+
+func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
+func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
+func (t Tags) RGTrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
+func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
+
+// File properties
+
+func (t Tags) Duration() float32           { return float32(t.getFloat("duration")) }
+func (t Tags) SampleRate() int             { return t.getInt("samplerate") }
+func (t Tags) BitRate() int                { return t.getInt("bitrate") }
+func (t Tags) Channels() int               { return t.getInt("channels") }
+func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
+func (t Tags) Size() int64                 { return t.fileInfo.Size() }
+func (t Tags) FilePath() string            { return t.filePath }
+func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
+func (t Tags) BirthTime() time.Time {
+	if ts := times.Get(t.fileInfo); ts.HasBirthTime() {
+		return ts.BirthTime()
+	}
+	return time.Now()
+}
+
 func (t Tags) Lyrics() string {
 	lyricList := model.LyricList{}
 	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
@@ -180,62 +237,6 @@ func (t Tags) Lyrics() string {
 	}
 	return string(res)
 }
-
-func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
-func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
-func (t Tags) DiscSubtitle() string {
-	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
-}
-func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
-func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
-func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
-
-// MusicBrainz Identifiers
-
-func (t Tags) MbzReleaseTrackID() string {
-	return t.getMbzID("musicbrainz_releasetrackid", "musicbrainz release track id")
-}
-
-func (t Tags) MbzRecordingID() string {
-	return t.getMbzID("musicbrainz_trackid", "musicbrainz track id")
-}
-func (t Tags) MbzAlbumID() string { return t.getMbzID("musicbrainz_albumid", "musicbrainz album id") }
-func (t Tags) MbzArtistID() string {
-	return t.getMbzID("musicbrainz_artistid", "musicbrainz artist id")
-}
-func (t Tags) MbzAlbumArtistID() string {
-	return t.getMbzID("musicbrainz_albumartistid", "musicbrainz album artist id")
-}
-func (t Tags) MbzAlbumType() string {
-	return t.getFirstTagValue("musicbrainz_albumtype", "musicbrainz album type")
-}
-func (t Tags) MbzAlbumComment() string {
-	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
-}
-
-// File properties
-
-func (t Tags) Duration() float32           { return float32(t.getFloat("duration")) }
-func (t Tags) BitRate() int                { return t.getInt("bitrate") }
-func (t Tags) Channels() int               { return t.getInt("channels") }
-func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
-func (t Tags) Size() int64                 { return t.fileInfo.Size() }
-func (t Tags) FilePath() string            { return t.filePath }
-func (t Tags) Suffix() string              { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
-func (t Tags) BirthTime() time.Time {
-	if ts := times.Get(t.fileInfo); ts.HasBirthTime() {
-		return ts.BirthTime()
-	}
-	return time.Now()
-}
-
-// ReplayGain Properties
-
-func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
-func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
-func (t Tags) RGTrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
-func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
 
 func (t Tags) getGainValue(tagName string) float64 {
 	// Gain is in the form [-]a.bb dB
