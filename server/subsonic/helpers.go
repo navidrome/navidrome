@@ -184,6 +184,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		AlbumPeak: mf.RgAlbumPeak,
 	}
 	child.ChannelCount = int32(mf.Channels)
+	child.SamplingRate = int32(mf.SampleRate)
 	return child
 }
 

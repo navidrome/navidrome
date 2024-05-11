@@ -1,10 +1,10 @@
 <subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
   <shares>
     <share id="ABC123" url="http://localhost/p/ABC123" description="Check it out!" username="deluan" created="0001-01-01T00:00:00Z" expires="0001-01-01T00:00:00Z" lastVisited="0001-01-01T00:00:00Z" visitCount="2">
-      <entry id="1" isDir="false" title="title" album="album" artist="artist" duration="120" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0">
+      <entry id="1" isDir="false" title="title" album="album" artist="artist" duration="120" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0" samplingRate="0">
         <replayGain></replayGain>
       </entry>
-      <entry id="2" isDir="false" title="title 2" album="album" artist="artist" duration="300" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0">
+      <entry id="2" isDir="false" title="title 2" album="album" artist="artist" duration="300" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0" samplingRate="0">
         <replayGain></replayGain>
       </entry>
     </share>

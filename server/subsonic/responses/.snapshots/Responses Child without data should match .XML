@@ -1,6 +1,6 @@
 <subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
   <directory id="" name="">
-    <child id="1" isDir="false" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0">
+    <child id="1" isDir="false" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0" samplingRate="0">
       <replayGain></replayGain>
     </child>
   </directory>

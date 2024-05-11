@@ -7,7 +7,7 @@
     <discTitles disc="3" title=""></discTitles>
     <originalReleaseDate year="1994" month="2" day="4"></originalReleaseDate>
     <releaseDate year="2000" month="5" day="10"></releaseDate>
-    <song id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" starred="2016-03-02T20:30:00Z" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320" isVideo="false" bpm="127" comment="a comment" sortName="sorted song" mediaType="song" musicBrainzId="4321" channelCount="0">
+    <song id="1" isDir="true" title="title" album="album" artist="artist" track="1" year="1985" genre="Rock" coverArt="1" size="8421341" contentType="audio/flac" suffix="flac" starred="2016-03-02T20:30:00Z" transcodedContentType="audio/mpeg" transcodedSuffix="mp3" duration="146" bitRate="320" isVideo="false" bpm="127" comment="a comment" sortName="sorted song" mediaType="song" musicBrainzId="4321" channelCount="0" samplingRate="0">
       <genres name="rock"></genres>
       <genres name="progressive"></genres>
       <replayGain trackGain="1" albumGain="2" trackPeak="3" albumPeak="4" baseGain="5" fallbackGain="6"></replayGain>
