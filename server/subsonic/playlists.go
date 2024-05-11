@@ -43,7 +43,7 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 	pls, err := api.ds.Playlist(ctx).GetWithTracks(id, true)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err.Error(), "id", id)
-		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, newError(responses.ErrorDataNotFound, "playlist not found")
 	}
 	if err != nil {
 		log.Error(ctx, err)
@@ -150,7 +150,7 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	if err != nil {
-		log.Error(r, err)
+		log.Error(r, "Error updating playlist", "id", playlistId, err)
 		return nil, err
 	}
 	return newResponse(), nil
