@@ -44,20 +44,20 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.02"}))
 			Expect(m).To(HaveKeyWithValue("bitrate", []string{"192"}))
 			Expect(m).To(HaveKeyWithValue("channels", []string{"2"}))
-			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
+			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\r\nComment2"}))
 			Expect(m).ToNot(HaveKey("lyrics"))
 			Expect(m).To(Or(HaveKeyWithValue("lyrics-eng", []string{
 				"[00:00.00]This is\n[00:02.50]English SYLT\n",
-				"[00:00.00]This is\n[00:02.50]English",
+				"[00:00.00]This is\r\n[00:02.50]English",
 			}), HaveKeyWithValue("lyrics-eng", []string{
-				"[00:00.00]This is\n[00:02.50]English",
+				"[00:00.00]This is\r\n[00:02.50]English",
 				"[00:00.00]This is\n[00:02.50]English SYLT\n",
 			})))
 			Expect(m).To(Or(HaveKeyWithValue("lyrics-xxx", []string{
 				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
-				"[00:00.00]This is\n[00:02.50]unspecified",
+				"[00:00.00]This is\r\n[00:02.50]unspecified",
 			}), HaveKeyWithValue("lyrics-xxx", []string{
-				"[00:00.00]This is\n[00:02.50]unspecified",
+				"[00:00.00]This is\r\n[00:02.50]unspecified",
 				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
 			})))
 			Expect(m).To(HaveKeyWithValue("bpm", []string{"123"}))

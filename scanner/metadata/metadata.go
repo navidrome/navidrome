@@ -190,6 +190,8 @@ func (t Tags) DiscSubtitle() string {
 func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
 func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
+func (t Tags) ISRC() string       { return t.getFirstTagValue("isrc") }
+func (t Tags) UPC() string        { return t.getFirstTagValue("upc") }
 
 // MusicBrainz Identifiers
 

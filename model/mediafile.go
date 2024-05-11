@@ -71,6 +71,8 @@ type MediaFile struct {
 	RgAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+	ISRC                 string  `structs:"isrc" json:"isrc,omitempty"`
+	UPC                  string  `structs:"upc" json:"upc,omitempty"`
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
@@ -147,6 +149,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.MbzAlbumComment = m.MbzAlbumComment
 		a.CatalogNum = m.CatalogNum
 		a.Compilation = m.Compilation
+		a.UPC = m.UPC
 
 		// Calculated attributes based on aggregations
 		a.Duration += m.Duration

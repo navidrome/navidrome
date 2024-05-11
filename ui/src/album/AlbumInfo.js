@@ -40,9 +40,10 @@ const AlbumInfo = (props) => {
     compilation: <BooleanField source={'compilation'} />,
     updatedAt: <DateField source={'updatedAt'} showTime />,
     comment: <MultiLineTextField source={'comment'} />,
+    upc: <TextField source={'upc'} />,
   }
 
-  const optionalFields = ['comment', 'genre']
+  const optionalFields = ['comment', 'genre', 'upc']
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
   })

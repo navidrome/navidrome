@@ -101,6 +101,8 @@ var _ = Describe("Tags", func() {
 			Expect(m.RGAlbumPeak()).To(Equal(0.9125))
 			Expect(m.RGTrackGain()).To(Equal(-1.48))
 			Expect(m.RGTrackPeak()).To(Equal(0.4512))
+			Expect(m.ISRC()).To(Equal("NLF712305666"))
+			Expect(m.UPC()).To(Equal("8718522444746"))
 
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())

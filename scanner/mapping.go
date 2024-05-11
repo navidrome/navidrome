@@ -74,6 +74,8 @@ func (s MediaFileMapper) ToMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Comment = utils.SanitizeText(md.Comment())
 	mf.Lyrics = md.Lyrics()
 	mf.Bpm = md.Bpm()
+	mf.ISRC = md.ISRC()
+	mf.UPC = md.UPC()
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
 
