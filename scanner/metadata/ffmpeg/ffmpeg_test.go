@@ -174,6 +174,24 @@ Input #0, flac, from '/Users/deluan/Music/iTunes/iTunes Media/Music/Compilations
 			Expect(md).To(HaveKeyWithValue("channels", []string{"2"}))
 		})
 
+		It("parse sampleRate from the stream", func() {
+			const output = `
+Input #0, dsf, from '/Users/deluan/Downloads/06-04 Perpetual Change.dsf':
+  Duration: 00:14:19.46, start: 0.000000, bitrate: 5644 kb/s
+  Stream #0:0: Audio: dsd_lsbf_planar, 352800 Hz, stereo, fltp, 5644 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("samplerate", []string{"352800"}))
+		})
+
+		It("parse sampleRate from the stream", func() {
+			const output = `
+Input #0, wav, from '/Users/deluan/Music/Music/Media/_/multichannel/Nums_7dot1_24_48000.wav':
+  Duration: 00:00:09.05, bitrate: 9216 kb/s
+  Stream #0:0: Audio: pcm_s24le ([1][0][0][0] / 0x0001), 48000 Hz, 7.1, s32 (24 bit), 9216 kb/s`
+			md, _ := e.extractMetadata("tests/fixtures/test.mp3", output)
+			Expect(md).To(HaveKeyWithValue("samplerate", []string{"48000"}))
+		})
+
 		It("parses stream level tags", func() {
 			const output = `
 Input #0, ogg, from './01-02 Drive (Teku).opus':
