@@ -44,7 +44,7 @@ func NewRouter(ds model.DataStore) *Router {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	r.client = newClient(r.apiKey, r.secret, "en", hc)
+	r.client = newClient(r.apiKey, r.secret, "en", false, hc)
 	return r
 }
 

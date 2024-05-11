@@ -34,15 +34,16 @@ type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-func newClient(apiKey string, secret string, lang string, hc httpDoer) *client {
-	return &client{apiKey, secret, lang, hc}
+func newClient(apiKey string, secret string, lang string, useAlbumArtist bool, hc httpDoer) *client {
+	return &client{apiKey, secret, lang, useAlbumArtist, hc}
 }
 
 type client struct {
-	apiKey string
-	secret string
-	lang   string
-	hc     httpDoer
+	apiKey         string
+	secret         string
+	lang           string
+	useAlbumArtist bool
+	hc             httpDoer
 }
 
 func (c *client) albumGetInfo(ctx context.Context, name string, artist string, mbid string) (*Album, error) {
@@ -134,7 +135,7 @@ type ScrobbleInfo struct {
 func (c *client) updateNowPlaying(ctx context.Context, sessionKey string, info ScrobbleInfo) error {
 	params := url.Values{}
 	params.Add("method", "track.updateNowPlaying")
-	params.Add("artist", info.artist)
+	params.Add("artist", c.getArtistFromInfo(ctx, info))
 	params.Add("track", info.track)
 	params.Add("album", info.album)
 	params.Add("trackNumber", strconv.Itoa(info.trackNumber))
@@ -153,11 +154,24 @@ func (c *client) updateNowPlaying(ctx context.Context, sessionKey string, info S
 	return nil
 }
 
+func (c *client) getArtistFromInfo(ctx context.Context, info ScrobbleInfo) string {
+	if c.useAlbumArtist {
+		if info.albumArtist == "" || info.albumArtist == "Various Artists" {
+			log.Warn(ctx, "LastFM: albumArtist is empty or Various Artists, using artist instead", "albumArtist", info.albumArtist, "artist", info.artist)
+			return info.artist
+		}
+
+		return info.albumArtist
+	}
+
+	return info.artist
+}
+
 func (c *client) scrobble(ctx context.Context, sessionKey string, info ScrobbleInfo) error {
 	params := url.Values{}
 	params.Add("method", "track.scrobble")
 	params.Add("timestamp", strconv.FormatInt(info.timestamp.Unix(), 10))
-	params.Add("artist", info.artist)
+	params.Add("artist", c.getArtistFromInfo(ctx, info))
 	params.Add("track", info.track)
 	params.Add("album", info.album)
 	params.Add("trackNumber", strconv.Itoa(info.trackNumber))
