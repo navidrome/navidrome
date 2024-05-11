@@ -26,6 +26,7 @@ var _ = Describe("Extractor", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(mds).To(HaveLen(2))
 
+			// Test MP3
 			m := mds["tests/fixtures/test.mp3"]
 			Expect(m).To(HaveKeyWithValue("title", []string{"Song", "Song"}))
 			Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
@@ -44,6 +45,7 @@ var _ = Describe("Extractor", func() {
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.02"}))
 			Expect(m).To(HaveKeyWithValue("bitrate", []string{"192"}))
 			Expect(m).To(HaveKeyWithValue("channels", []string{"2"}))
+			Expect(m).To(HaveKeyWithValue("samplerate", []string{"44100"}))
 			Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			Expect(m).ToNot(HaveKey("lyrics"))
 			Expect(m).To(Or(HaveKeyWithValue("lyrics-eng", []string{
@@ -70,11 +72,13 @@ var _ = Describe("Extractor", func() {
 			m = m.Map(e.CustomMappings())
 			Expect(m).To(HaveKeyWithValue("tracknumber", []string{"2/10", "2/10", "2"}))
 
+			// Test OGG
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
 			Expect(m).ToNot(HaveKey("has_picture"))
 			Expect(m).To(HaveKeyWithValue("duration", []string{"1.04"}))
 			Expect(m).To(HaveKeyWithValue("fbpm", []string{"141.7"}))
+			Expect(m).To(HaveKeyWithValue("samplerate", []string{"8000"}))
 
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
@@ -83,7 +87,7 @@ var _ = Describe("Extractor", func() {
 		})
 
 		DescribeTable("Format-Specific tests",
-			func(file, duration, channels, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
+			func(file, duration, channels, samplerate, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -122,6 +126,7 @@ var _ = Describe("Extractor", func() {
 				Expect(m).To(HaveKeyWithValue("duration", []string{duration}))
 
 				Expect(m).To(HaveKeyWithValue("channels", []string{channels}))
+				Expect(m).To(HaveKeyWithValue("samplerate", []string{samplerate}))
 				Expect(m).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 
 				if id3Lyrics {
@@ -147,26 +152,24 @@ var _ = Describe("Extractor", func() {
 			},
 
 			// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
-			Entry("correctly parses flac tags", "test.flac", "1.00", "1", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false),
+			Entry("correctly parses flac tags", "test.flac", "1.00", "1", "44100", "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false),
 
-			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48", false),
-			Entry("Correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04", "2", "0.37", "0.48", "0.37", "0.48", false),
-
-			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04", "2", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false),
+			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04", "2", "44100", "0.37", "0.48", "0.37", "0.48", false),
+			Entry("Correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04", "2", "44100", "0.37", "0.48", "0.37", "0.48", false),
+			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04", "2", "8000", "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
 			// Weird note: for the tag parsing to work, the lyrics are actually stored in the reverse order
-			Entry("correctly parses wma/asf tags", "test.wma", "1.02", "1", "3.27 dB", "0.132914", "3.27 dB", "0.132914", false),
+			Entry("correctly parses wma/asf tags", "test.wma", "1.02", "1", "44100", "3.27 dB", "0.132914", "3.27 dB", "0.132914", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
-			Entry("correctly parses wv (wavpak) tags", "test.wv", "1.00", "1", "3.43 dB", "0.125061", "3.43 dB", "0.125061", false),
+			Entry("correctly parses wv (wavpak) tags", "test.wv", "1.00", "1", "44100", "3.43 dB", "0.125061", "3.43 dB", "0.125061", false),
 
-			// TODO - these break in the pipeline as it uses TabLib 1.11. Once Ubuntu 24.04 is released we can uncomment these tests
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
-			// Entry("correctly parses wav tags", "test.wav", "1.00", "1", "3.06 dB", "0.125056", "3.06 dB", "0.125056", true),
+			Entry("correctly parses wav tags", "test.wav", "1.00", "1", "44100", "3.06 dB", "0.125056", "3.06 dB", "0.125056", true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
-			// Entry("correctly parses aiff tags", "test.aiff", "1.00", "1", "2.00 dB", "0.124972", "2.00 dB", "0.124972", true),
+			Entry("correctly parses aiff tags", "test.aiff", "1.00", "1", "44100", "2.00 dB", "0.124972", "2.00 dB", "0.124972", true),
 		)
 
 		// Skip these tests when running as root
