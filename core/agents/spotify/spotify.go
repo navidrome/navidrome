@@ -13,7 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/xrash/smetrics"
 )
 
@@ -35,7 +35,7 @@ func spotifyConstructor(ds model.DataStore) agents.Interface {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.client = newClient(l.id, l.secret, chc)
 	return l
 }
