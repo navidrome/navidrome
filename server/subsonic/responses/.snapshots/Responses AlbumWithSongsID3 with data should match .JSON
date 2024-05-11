@@ -86,7 +86,8 @@
           "baseGain": 5,
           "fallbackGain": 6
         },
-        "channelCount": 0
+        "channelCount": 0,
+        "samplingRate": 0
       }
     ]
   }
