@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/merge"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 
 func FS() fs.FS {
 	fsOnce.Do(func() {
-		fsys = utils.MergeFS{
+		fsys = merge.FS{
 			Base:    embedFS,
 			Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
 		}

@@ -1,4 +1,4 @@
-package utils_test
+package merge_test
 
 import (
 	"io"
@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/merge"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("MergeFS", func() {
+var _ = Describe("FS", func() {
 	var baseName, overlayName string
 	var mergedDir fs.FS
 
@@ -20,7 +20,7 @@ var _ = Describe("MergeFS", func() {
 		overlayName, _ = os.MkdirTemp("", "merge_fs_overlay_test")
 		baseDir := os.DirFS(baseName)
 		overlayDir := os.DirFS(overlayName)
-		mergedDir = utils.MergeFS{Base: baseDir, Overlay: overlayDir}
+		mergedDir = merge.FS{Base: baseDir, Overlay: overlayDir}
 	})
 	AfterEach(func() {
 		_ = os.RemoveAll(baseName)
