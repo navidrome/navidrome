@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Values struct {
@@ -61,7 +60,7 @@ func (r *Values) TimeOr(param string, def time.Time) time.Time {
 	if err != nil {
 		return def
 	}
-	t := utils.ToTime(value)
+	t := time.UnixMilli(value)
 	if t.Before(time.Date(1970, time.January, 2, 0, 0, 0, 0, time.UTC)) {
 		return def
 	}
@@ -81,7 +80,7 @@ func (r *Values) Times(param string) ([]time.Time, error) {
 			times[i] = time.Now()
 			continue
 		}
-		times[i] = utils.ToTime(ti)
+		times[i] = time.UnixMilli(ti)
 	}
 	return times, nil
 }

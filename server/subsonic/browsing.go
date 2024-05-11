@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -45,7 +44,7 @@ func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModified
 
 	var indexes model.ArtistIndexes
 	ms, _ := strconv.ParseInt(l, 10, 64)
-	lastModified := utils.ToTime(ms)
+	lastModified := time.UnixMilli(ms)
 	if lastModified.After(ifModifiedSince) {
 		indexes, err = api.ds.Artist(ctx).GetIndex()
 		if err != nil {
@@ -56,7 +55,7 @@ func (api *Router) getArtistIndex(r *http.Request, mediaFolderId int, ifModified
 
 	res := &responses.Indexes{
 		IgnoredArticles: conf.Server.IgnoredArticles,
-		LastModified:    utils.ToMillis(lastModified),
+		LastModified:    lastModified.UnixMilli(),
 	}
 
 	res.Index = make([]responses.Index, len(indexes))
