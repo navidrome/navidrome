@@ -223,6 +223,18 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 
 	// Re-populate playlist based on Smart Playlist criteria
 	rules := *pls.Rules
+
+	// If the playlist depends on other playlists, recursively refresh them first
+	childPlaylistIds := rules.ChildPlaylistIds()
+	for _, id := range childPlaylistIds {
+		childPls, err := r.Get(id)
+		if err != nil {
+			log.Error(r.ctx, "Error loading child playlist", "id", pls.ID, "childId", id, err)
+			return false
+		}
+		r.refreshSmartPlaylist(childPls)
+	}
+
 	sq := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
