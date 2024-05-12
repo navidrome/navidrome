@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/utils/number"
-	"github.com/navidrome/navidrome/utils/random"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -15,14 +14,6 @@ func TestNumber(t *testing.T) {
 }
 
 var _ = Describe("number package", func() {
-	Describe("RandomInt64", func() {
-		It("should return a random int64", func() {
-			for i := 0; i < 10000; i++ {
-				Expect(random.Int64(100)).To(BeNumerically("<", 100))
-			}
-		})
-	})
-
 	Describe("ParseInt", func() {
 		It("should parse a string into an int", func() {
 			Expect(number.ParseInt[int64]("123")).To(Equal(int64(123)))
