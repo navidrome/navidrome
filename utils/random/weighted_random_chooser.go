@@ -39,7 +39,7 @@ func (w *WeightedChooser) weightedChoice() (int, error) {
 	if w.totalWeight == 0 {
 		return 0, errors.New("no choices available")
 	}
-	rnd := Int64(int64(w.totalWeight))
+	rnd := Int64(w.totalWeight)
 	for i, weight := range w.weights {
 		rnd -= int64(weight)
 		if rnd < 0 {
