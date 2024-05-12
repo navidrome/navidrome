@@ -1,4 +1,4 @@
-package utils
+package random
 
 import (
 	. "github.com/onsi/ginkgo/v2"

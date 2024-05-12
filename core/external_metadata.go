@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/random"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -266,8 +267,8 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, ctx.Err()
 	}
 
-	weightedSongs := utils.NewWeightedRandomChooser()
-	addArtist := func(a model.Artist, weightedSongs *utils.WeightedChooser, count, artistWeight int) error {
+	weightedSongs := random.NewWeightedRandomChooser()
+	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser, count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
 			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 			return ctx.Err()
