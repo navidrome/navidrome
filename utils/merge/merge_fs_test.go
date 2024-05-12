@@ -5,11 +5,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/navidrome/navidrome/utils/merge"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+func TestMergeFS(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "MergeFS Suite")
+}
 
 var _ = Describe("FS", func() {
 	var baseName, overlayName string
