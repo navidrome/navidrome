@@ -19,7 +19,9 @@ import (
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
+	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/sync/errgroup"
 )
 
 type TagScanner struct {
@@ -107,24 +109,34 @@ func (s *TagScanner) Scan(ctx context.Context, fullScan bool, progress chan uint
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.lib.Path)
 	foldersFound, walkerError := walkDirTree(ctx, s.lib.Path)
 
-	go func() {
-		for folderStats := range foldersFound {
+	// Process each folder found in the music folder
+	g, walkCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		for folderStats := range pl.ReadOrDone(walkCtx, foldersFound) {
 			progress <- folderStats.AudioFilesCount
 			allFSDirs[folderStats.Path] = folderStats
 
 			if s.folderHasChanged(folderStats, allDBDirs, s.lib.LastScanAt) || fullScan {
 				changedDirs = append(changedDirs, folderStats.Path)
 				log.Debug("Processing changed folder", "dir", folderStats.Path)
-				err := s.processChangedDir(ctx, refresher, fullScan, folderStats.Path)
+				err := s.processChangedDir(walkCtx, refresher, fullScan, folderStats.Path)
 				if err != nil {
 					log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 				}
 			}
 		}
-	}()
-
-	for err := range walkerError {
-		log.Error("Scan was interrupted by error. See errors above", err)
+		return nil
+	})
+	// Check for errors in the walker
+	g.Go(func() error {
+		for err := range walkerError {
+			log.Error("Scan was interrupted by error. See errors above", err)
+			return err
+		}
+		return nil
+	})
+	// Wait for all goroutines to finish, and check if an error occurred
+	if err := g.Wait(); err != nil {
 		return 0, err
 	}
 
