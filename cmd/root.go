@@ -100,7 +100,7 @@ func mainContext() (context.Context, context.CancelFunc) {
 // startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
 	return func() error {
-		a := CreateServer(conf.Server.MusicFolder)
+		a := CreateServer()
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
