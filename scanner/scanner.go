@@ -19,11 +19,10 @@ import (
 
 type Scanner interface {
 	RescanAll(ctx context.Context, fullRescan bool) error
-	Status(library string) (*StatusInfo, error)
+	Status(context.Context) (*StatusInfo, error)
 }
 
 type StatusInfo struct {
-	Library     string
 	Scanning    bool
 	LastScan    time.Time
 	Count       uint32
@@ -43,7 +42,6 @@ type FolderScanner interface {
 var isScanning sync.Mutex
 
 type scanner struct {
-	once        sync.Once
 	folders     map[string]FolderScanner
 	libs        map[string]model.Library
 	status      map[string]*scanStatus
@@ -194,7 +192,6 @@ func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
 
 func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	ctx = context.WithoutCancel(ctx)
-	s.once.Do(s.loadFolders)
 
 	if !isScanning.TryLock() {
 		log.Debug(ctx, "Scanner already running, ignoring request for rescan.")
@@ -216,14 +213,12 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	return nil
 }
 
-func (s *scanner) Status(library string) (*StatusInfo, error) {
-	s.once.Do(s.loadFolders)
-	status, ok := s.getStatus(library)
+func (s *scanner) Status(context.Context) (*StatusInfo, error) {
+	status, ok := s.getStatus(conf.Server.MusicFolder)
 	if !ok {
 		return nil, errors.New("library not found")
 	}
 	return &StatusInfo{
-		Library:     library,
 		Scanning:    status.active,
 		LastScan:    status.lastUpdate,
 		Count:       status.fileCount,
