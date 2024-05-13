@@ -150,7 +150,8 @@ func (t *MpvTrack) Position() int {
 			if retryCount > 5 {
 				return 0
 			}
-			break
+			time.Sleep(time.Duration(retryCount) * time.Millisecond)
+			continue
 		}
 
 		if err != nil {
