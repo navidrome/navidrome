@@ -167,7 +167,6 @@ func (t *MpvTrack) Position() int {
 			return int(pos)
 		}
 	}
-	return 0
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {
