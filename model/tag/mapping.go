@@ -34,8 +34,6 @@ func New(filePath string, fileInfo os.FileInfo, props Properties) Tags {
 	var bTime time.Time
 	if ts := times.Get(fileInfo); ts.HasBirthTime() {
 		bTime = ts.BirthTime()
-	} else {
-		bTime = time.Now() // Maybe not the best option
 	}
 
 	return Tags{
@@ -100,34 +98,38 @@ func (t Tags) tuple(key Name) (int, int) {
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
+// date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
 func (t Tags) date(key Name) Date {
 	tag := t.first(key)
 	if len(tag) < 4 {
 		return ""
 	}
+
 	// first get just the year
 	match := dateRegex.FindStringSubmatch(tag)
 	if len(match) == 0 {
 		log.Warn("Error parsing "+key+" field for year", "file", t.filePath, "date", tag)
 		return ""
 	}
+
+	// if the tag is just the year, return it
 	if len(tag) < 5 {
 		return Date(match[1])
 	}
 
-	// then try YYYY-MM-DD
-	if len(tag) > 10 {
-		tag = tag[:10]
-	}
-	_, err := time.Parse("2006-01-02", tag)
-	if err != nil {
-		_, err = time.Parse("2006-01", tag)
-		if err != nil {
-			log.Warn("Error parsing "+key+" field for month + day", "file", t.filePath, "date", tag)
-			return Date(match[1])
+	// if the tag is too long, truncate it
+	tag = tag[:min(10, len(tag))]
+
+	// then try to parse the full date
+	for _, mask := range []string{"2006-01-02", "2006-01"} {
+		_, err := time.Parse(mask, tag)
+		if err == nil {
+			return Date(tag)
 		}
 	}
-	return Date(tag)
+
+	log.Warn("Error parsing "+key+" field for month + day", "file", t.filePath, "date", tag)
+	return Date(match[1])
 }
 
 // clean filters out tags that are not in the mappings or are empty,
