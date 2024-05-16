@@ -39,25 +39,22 @@ func (e *extractor) extractMetadata(filePath string) (*tag.Properties, error) {
 
 	// Parse audio properties
 	ap := tag.AudioProperties{}
-	if length, ok := tags["lengthinmilliseconds"]; ok && len(length) > 0 {
+	if length, ok := tags["_lengthinmilliseconds"]; ok && len(length) > 0 {
 		millis, _ := strconv.Atoi(length[0])
 		if millis > 0 {
 			ap.Duration = (time.Millisecond * time.Duration(millis)).Round(time.Millisecond * 10)
 		}
-		delete(tags, "lengthinmilliseconds")
+		delete(tags, "_lengthinmilliseconds")
 	}
-	if bitrate, ok := tags["bitrate"]; ok && len(bitrate) > 0 {
-		ap.BitRate, _ = strconv.Atoi(bitrate[0])
-		delete(tags, "bitrate")
+	parseProp := func(prop string, target *int) {
+		if value, ok := tags[prop]; ok && len(value) > 0 {
+			*target, _ = strconv.Atoi(value[0])
+			delete(tags, prop)
+		}
 	}
-	if channels, ok := tags["channels"]; ok && len(channels) > 0 {
-		ap.Channels, _ = strconv.Atoi(channels[0])
-		delete(tags, "channels")
-	}
-	if samplerate, ok := tags["samplerate"]; ok && len(samplerate) > 0 {
-		ap.SampleRate, _ = strconv.Atoi(samplerate[0])
-		delete(tags, "samplerate")
-	}
+	parseProp("_bitrate", &ap.BitRate)
+	parseProp("_channels", &ap.Channels)
+	parseProp("_samplerate", &ap.SampleRate)
 
 	// Adjust some ID3 tags
 	parseTIPL(tags)
