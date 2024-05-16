@@ -216,12 +216,9 @@ var _ = Describe("Artwork", func() {
 			r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 15)
 			Expect(err).ToNot(HaveOccurred())
 
-			br, format, err := asImageReader(r)
-			Expect(format).To(Equal("image/png"))
+			img, format, err := image.Decode(r)
 			Expect(err).ToNot(HaveOccurred())
-
-			img, _, err := image.Decode(br)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(format).To(Equal("png"))
 			Expect(img.Bounds().Size().X).To(Equal(15))
 			Expect(img.Bounds().Size().Y).To(Equal(15))
 		})
@@ -230,11 +227,8 @@ var _ = Describe("Artwork", func() {
 			r, _, err := aw.Get(context.Background(), alMultipleCovers.CoverArtID(), 200)
 			Expect(err).ToNot(HaveOccurred())
 
-			br, format, err := asImageReader(r)
-			Expect(format).To(Equal("image/jpeg"))
-			Expect(err).ToNot(HaveOccurred())
-
-			img, _, err := image.Decode(br)
+			img, format, err := image.Decode(r)
+			Expect(format).To(Equal("jpeg"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(img.Bounds().Size().X).To(Equal(200))
 			Expect(img.Bounds().Size().Y).To(Equal(200))

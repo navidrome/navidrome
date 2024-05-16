@@ -1,7 +1,6 @@
 package artwork
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"net/http"
 	"time"
 
 	"github.com/disintegration/imaging"
@@ -83,24 +81,8 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
 }
 
-func asImageReader(r io.Reader) (io.Reader, string, error) {
-	br := bufio.NewReader(r)
-	buf, err := br.Peek(512)
-	if err != nil && err != io.EOF {
-		return nil, "", err
-	}
-
-	typ := http.DetectContentType(buf)
-	return br, typ, nil
-}
-
 func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
-	r, format, err := asImageReader(reader)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	original, _, err := image.Decode(r)
+	original, format, err := image.Decode(reader)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -116,7 +98,7 @@ func resizeImage(reader io.Reader, size int) (io.Reader, int, error) {
 	resized := imaging.Fit(original, size, size, imaging.Lanczos)
 
 	buf := new(bytes.Buffer)
-	if format == "image/png" {
+	if format == "png" {
 		err = png.Encode(buf, resized)
 	} else {
 		err = jpeg.Encode(buf, resized, &jpeg.Options{Quality: conf.Server.CoverJpegQuality})
