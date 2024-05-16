@@ -5,57 +5,69 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/tag"
 	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
-const ExtractorID = "taglib"
+type extractor struct{}
 
-type Extractor struct{}
-
-func (e *Extractor) Parse(paths ...string) (map[string]metadata.ParsedTags, error) {
-	fileTags := map[string]metadata.ParsedTags{}
-	for _, path := range paths {
-		tags, err := e.extractMetadata(path)
-		if !errors.Is(err, os.ErrPermission) {
-			fileTags[path] = tags
+func (e extractor) Parse(files ...string) (map[string]tag.Properties, error) {
+	results := make(map[string]tag.Properties)
+	for _, path := range files {
+		props, err := e.extractMetadata(path)
+		if errors.Is(err, os.ErrPermission) {
+			continue
 		}
+		results[path] = *props
 	}
-	return fileTags, nil
+	return results, nil
 }
 
-func (e *Extractor) CustomMappings() metadata.ParsedTags {
-	return metadata.ParsedTags{
-		"title":       {"titlesort"},
-		"album":       {"albumsort"},
-		"artist":      {"artistsort"},
-		"tracknumber": {"trck", "_track"},
-	}
-}
-
-func (e *Extractor) Version() string {
+func (e extractor) Version() string {
 	return Version()
 }
 
-func (e *Extractor) extractMetadata(filePath string) (metadata.ParsedTags, error) {
+func (e *extractor) extractMetadata(filePath string) (*tag.Properties, error) {
 	tags, err := Read(filePath)
 	if err != nil {
-		log.Warn("TagLib: Error reading metadata from file. Skipping", "filePath", filePath, err)
+		log.Warn("extractor: Error reading metadata from file. Skipping", "filePath", filePath, err)
 		return nil, err
 	}
 
+	// Parse audio properties
+	ap := tag.AudioProperties{}
 	if length, ok := tags["lengthinmilliseconds"]; ok && len(length) > 0 {
 		millis, _ := strconv.Atoi(length[0])
-		if duration := float64(millis) / 1000.0; duration > 0 {
-			tags["duration"] = []string{strconv.FormatFloat(duration, 'f', 2, 32)}
+		if millis > 0 {
+			ap.Duration = (time.Millisecond * time.Duration(millis)).Round(time.Millisecond * 10)
 		}
+		delete(tags, "lengthinmilliseconds")
 	}
+	if bitrate, ok := tags["bitrate"]; ok && len(bitrate) > 0 {
+		ap.BitRate, _ = strconv.Atoi(bitrate[0])
+		delete(tags, "bitrate")
+	}
+	if channels, ok := tags["channels"]; ok && len(channels) > 0 {
+		ap.Channels, _ = strconv.Atoi(channels[0])
+		delete(tags, "channels")
+	}
+	if samplerate, ok := tags["samplerate"]; ok && len(samplerate) > 0 {
+		ap.SampleRate, _ = strconv.Atoi(samplerate[0])
+		delete(tags, "samplerate")
+	}
+
 	// Adjust some ID3 tags
 	parseTIPL(tags)
-	delete(tags, "tmcl") // TMCL is already parsed by TagLib
+	delete(tags, "tmcl") // TMCL is already parsed by extractor
 
-	return tags, nil
+	return &tag.Properties{
+		Tags:            tags,
+		AudioProperties: ap,
+		HasPicture:      tags["has_picture"] != nil && len(tags["has_picture"]) > 0 && tags["has_picture"][0] == "true",
+	}, nil
 }
 
 // These are the only roles we support, based on Picard's tag map:
@@ -68,7 +80,7 @@ var tiplMapping = map[string]string{
 	"dj-mix":   "djmixer",
 }
 
-// parseTIPL parses the ID3v2.4 TIPL frame string, which is received from TagLib in the format
+// parseTIPL parses the ID3v2.4 TIPL frame string, which is received from extractor in the format
 //
 //	"arranger Andrew Powell engineer Chris Blair engineer Pat Stapley producer Eric Woolfson".
 //
@@ -103,6 +115,8 @@ func parseTIPL(tags metadata.ParsedTags) {
 	delete(tags, "tipl")
 }
 
+var _ tag.Extractor = (*extractor)(nil)
+
 func init() {
-	metadata.RegisterExtractor(ExtractorID, &Extractor{})
+	tag.RegisterExtractor("taglib", &extractor{})
 }

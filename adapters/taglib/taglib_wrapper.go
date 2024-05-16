@@ -35,8 +35,8 @@ func Read(filename string) (tags map[string][]string, err error) {
 	debug.SetPanicOnFault(true)
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error("TagLib: recovered from panic when reading tags", "file", filename, "error", r)
-			err = fmt.Errorf("TagLib: recovered from panic: %s", r)
+			log.Error("extractor: recovered from panic when reading tags", "file", filename, "error", r)
+			err = fmt.Errorf("extractor: recovered from panic: %s", r)
 		}
 	}()
 
@@ -45,7 +45,7 @@ func Read(filename string) (tags map[string][]string, err error) {
 	id, m := newMap()
 	defer deleteMap(id)
 
-	log.Trace("TagLib: reading tags", "filename", filename, "map_id", id)
+	log.Trace("extractor: reading tags", "filename", filename, "map_id", id)
 	res := C.taglib_read(fp, C.ulong(id))
 	switch res {
 	case C.TAGLIB_ERR_PARSE:
@@ -65,9 +65,9 @@ func Read(filename string) (tags map[string][]string, err error) {
 	}
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		j, _ := json.Marshal(m)
-		log.Trace("TagLib: read tags", "tags", string(j), "filename", filename, "id", id)
+		log.Trace("extractor: read tags", "tags", string(j), "filename", filename, "id", id)
 	} else {
-		log.Trace("TagLib: read tags", "tags", m, "filename", filename, "id", id)
+		log.Trace("extractor: read tags", "tags", m, "filename", filename, "id", id)
 	}
 
 	return m, nil
@@ -127,7 +127,7 @@ func do_put_map(id C.ulong, key string, val *C.char) {
 }
 
 /*
-As I'm working on the new scanner, I see that the `properties` from TagLib is ill-suited to extract multi-valued ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there, instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving us more flexibility, including parsing the USLT / SYLT frames in Go
+As I'm working on the new scanner, I see that the `properties` from extractor is ill-suited to extract multi-valued ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there, instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving us more flexibility, including parsing the USLT / SYLT frames in Go
 */
 
 //export go_map_put_int
