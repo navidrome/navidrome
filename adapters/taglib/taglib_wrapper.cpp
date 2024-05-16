@@ -41,43 +41,44 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   // Add audio properties to the tags
   const TagLib::AudioProperties *props(f.audioProperties());
-  go_map_put_int(id, (char *)"duration", props->lengthInSeconds());
-  go_map_put_int(id, (char *)"lengthinmilliseconds", props->lengthInMilliseconds());
-  go_map_put_int(id, (char *)"bitrate", props->bitrate());
-  go_map_put_int(id, (char *)"channels", props->channels());
-  go_map_put_int(id, (char *)"samplerate", props->sampleRate());
+  go_map_put_int(id, (char *)"_lengthinmilliseconds", props->lengthInMilliseconds());
+  go_map_put_int(id, (char *)"_bitrate", props->bitrate());
+  go_map_put_int(id, (char *)"_channels", props->channels());
+  go_map_put_int(id, (char *)"_samplerate", props->sampleRate());
 
-  // Create a map to collect all the tags
+  // Send all properties to the Go map
   TagLib::PropertyMap tags = f.file()->properties();
-
-  // M4A may have some iTunes specific tags
-  TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
-  if (m4afile != NULL) {
-    const auto itemListMap = m4afile->tag()->itemMap();
-    for (const auto item: itemListMap) {
-      for (const auto value: item.second.toStringList()) {
-        tags.insert(item.first, value);
-      }
-    }
-  }
-
-  // WMA/ASF files may have additional tags not captured by the general iterator
-  TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
-  if (asfFile != NULL) {
-    const TagLib::ASF::Tag *asfTags{asfFile->tag()};
-    const auto itemListMap = asfTags->attributeListMap();
-    for (const auto item : itemListMap) {
-      tags.insert(item.first, item.second.front().toString());
-    }
-  }
-
-  // Send all collected tags to the Go map
   for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
        ++i) {
     char *key = (char *)i->first.toCString(true);
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
       char *val = (char *)(*j).toCString(true);
+      go_map_put_str(id, key, val);
+    }
+  }
+
+  // M4A may have some iTunes specific tags not captured by the PropertyMap interface
+  TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
+  if (m4afile != NULL) {
+    const auto itemListMap = m4afile->tag()->itemMap();
+    for (const auto item: itemListMap) {
+      char *key = (char *)item.first.toCString(true);
+      for (const auto value: item.second.toStringList()) {
+        char *val = (char *)value.toCString(true);
+        go_map_put_str(id, key, val);
+      }
+    }
+  }
+
+  // WMA/ASF files may have additional tags not captured by the PropertyMap interface
+  TagLib::ASF::File *asfFile(dynamic_cast<TagLib::ASF::File *>(f.file()));
+  if (asfFile != NULL) {
+    const TagLib::ASF::Tag *asfTags{asfFile->tag()};
+    const auto itemListMap = asfTags->attributeListMap();
+    for (const auto item : itemListMap) {
+      char *key = (char *)item.first.toCString(true);
+      char *val = (char *)item.second.front().toString().toCString(true);
       go_map_put_str(id, key, val);
     }
   }
