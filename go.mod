@@ -21,7 +21,6 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.14.1
 	github.com/go-chi/jwtauth/v5 v5.3.1
-	github.com/google/go-pipeline v0.0.0-20230411140531-6cbedfc1d3fc
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/hashicorp/go-multierror v1.1.1
