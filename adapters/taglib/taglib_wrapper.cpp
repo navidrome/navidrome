@@ -50,119 +50,13 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   // Create a map to collect all the tags
   TagLib::PropertyMap tags = f.file()->properties();
 
-  // Make sure at least the basic properties are extracted
-  TagLib::Tag *basic = f.file()->tag();
-  if (!basic->isEmpty()) {
-    if (!basic->title().isEmpty()) {
-      tags.insert("title", basic->title());
-    }
-    if (!basic->artist().isEmpty()) {
-      tags.insert("artist", basic->artist());
-    }
-    if (!basic->album().isEmpty()) {
-      tags.insert("album", basic->album());
-    }
-    if (basic->year() > 0) {
-      tags.insert("date", TagLib::String::number(basic->year()));
-    }
-    if (basic->track() > 0) {
-      tags.insert("_track", TagLib::String::number(basic->track()));
-    }
-  }
-
-  TagLib::ID3v2::Tag *id3Tags = NULL;
-
-  // Get some extended/non-standard ID3-only tags (ex: iTunes extended frames)
-  TagLib::MPEG::File *mp3File(dynamic_cast<TagLib::MPEG::File *>(f.file()));
-  if (mp3File != NULL) {
-    id3Tags = mp3File->ID3v2Tag();
-  }
-
-  if (id3Tags == NULL) {
-    TagLib::RIFF::WAV::File *wavFile(dynamic_cast<TagLib::RIFF::WAV::File *>(f.file()));
-    if (wavFile != NULL && wavFile->hasID3v2Tag()) {
-      id3Tags = wavFile->ID3v2Tag();
-    }
-  }
-
-  if (id3Tags == NULL) {
-    TagLib::RIFF::AIFF::File *aiffFile(dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file()));
-    if (aiffFile && aiffFile->hasID3v2Tag()) {
-      id3Tags = aiffFile->tag();
-    }
-  }
-
-  // Yes, it is possible to have ID3v2 tags in FLAC. However, that can cause problems
-  // with many players, so they will not be parsed
-
-  if (id3Tags != NULL) {
-    const auto &frames = id3Tags->frameListMap();
-
-    for (const auto &kv: frames) {
-      if (kv.first == "USLT") {
-        for (const auto &tag: kv.second) {
-          TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
-          if (frame == NULL) continue;
-
-          tags.erase("LYRICS");
-
-          const auto bv = frame->language();
-          char language[4] = {'x', 'x', 'x', '\0'};
-          if (bv.size() == 3) {
-            strncpy(language, bv.data(), 3);
-          }
-
-          char *val = (char *)frame->text().toCString(true);
-
-          go_map_put_lyrics(id, language, val);
-        }
-      } else if (kv.first == "SYLT") {
-        for (const auto &tag: kv.second) {
-          TagLib::ID3v2::SynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame *>(tag);
-          if (frame == NULL) continue;
-
-          const auto bv = frame->language();
-          char language[4] = {'x', 'x', 'x', '\0'};
-          if (bv.size() == 3) {
-            strncpy(language, bv.data(), 3);
-          }
-
-          const auto format = frame->timestampFormat();
-          if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
-
-            for (const auto &line: frame->synchedText()) {
-              char *text = (char *)line.text.toCString(true);
-              go_map_put_lyric_line(id, language, text, line.time);
-            }
-          } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
-            const int sampleRate = props->sampleRate();
-
-            if (sampleRate != 0) {
-              for (const auto &line: frame->synchedText()) {
-                const int timeInMs = (line.time * 1000) / sampleRate;
-                char *text = (char *)line.text.toCString(true);
-                go_map_put_lyric_line(id, language, text, timeInMs);
-              }
-            }
-          }
-        }
-      } else {
-        if (!kv.second.isEmpty()) {
-          tags.insert(kv.first, kv.second.front()->toString());
-        }
-      }
-    }
-  }
-
   // M4A may have some iTunes specific tags
   TagLib::MP4::File *m4afile(dynamic_cast<TagLib::MP4::File *>(f.file()));
   if (m4afile != NULL) {
     const auto itemListMap = m4afile->tag()->itemMap();
     for (const auto item: itemListMap) {
-      char *key = (char *)item.first.toCString(true);
       for (const auto value: item.second.toStringList()) {
-        char *val = (char *)value.toCString(true);
-        go_map_put_m4a_str(id, key, val);
+        tags.insert(item.first, value);
       }
     }
   }
