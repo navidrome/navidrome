@@ -14,5 +14,5 @@ func TestTag(t *testing.T) {
 	tests.Init(t, true)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Values Suite")
+	RunSpecs(t, "Tag Suite")
 }
