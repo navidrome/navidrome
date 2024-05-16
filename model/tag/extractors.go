@@ -1,6 +1,7 @@
 package tag
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -23,6 +24,7 @@ var (
 func RegisterExtractor(id string, parser Extractor) {
 	lock.Lock()
 	defer lock.Unlock()
+	fmt.Println("!!!! Registering extractor", id, "version", parser.Version())
 	extractors[id] = parser
 }
 
