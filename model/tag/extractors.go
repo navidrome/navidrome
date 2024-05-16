@@ -28,6 +28,8 @@ func RegisterExtractor(id string, parser Extractor) {
 	extractors[id] = parser
 }
 
+// TODO Remove unused annotation
+// nolint: unused
 func getExtractor(id string) Extractor {
 	lock.RLock()
 	defer lock.RUnlock()
