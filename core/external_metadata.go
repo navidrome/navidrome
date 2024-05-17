@@ -267,8 +267,8 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, ctx.Err()
 	}
 
-	weightedSongs := random.NewWeightedRandomChooser()
-	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser, count, artistWeight int) error {
+	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
+	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
 		if utils.IsCtxDone(ctx) {
 			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 			return ctx.Err()
@@ -302,12 +302,12 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 
 	var similarSongs model.MediaFiles
 	for len(similarSongs) < count && weightedSongs.Size() > 0 {
-		s, err := weightedSongs.GetAndRemove()
+		s, err := weightedSongs.Pick()
 		if err != nil {
 			log.Warn(ctx, "Error getting weighted song", err)
 			continue
 		}
-		similarSongs = append(similarSongs, s.(model.MediaFile))
+		similarSongs = append(similarSongs, s)
 	}
 
 	return similarSongs, nil
