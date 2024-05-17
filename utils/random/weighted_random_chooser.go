@@ -2,42 +2,46 @@ package random
 
 import (
 	"errors"
+	"slices"
 )
 
-type WeightedChooser struct {
-	entries     []interface{}
+// WeightedChooser allows to randomly choose an entry based on their weights
+// (higher weight = higher chance of being chosen). Based on the subtraction method described in
+// https://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
+type WeightedChooser[T any] struct {
+	entries     []T
 	weights     []int
 	totalWeight int
 }
 
-func NewWeightedRandomChooser() *WeightedChooser {
-	return &WeightedChooser{}
+func NewWeightedChooser[T any]() *WeightedChooser[T] {
+	return &WeightedChooser[T]{}
 }
 
-func (w *WeightedChooser) Add(value interface{}, weight int) {
+func (w *WeightedChooser[T]) Add(value T, weight int) {
 	w.entries = append(w.entries, value)
 	w.weights = append(w.weights, weight)
 	w.totalWeight += weight
 }
 
-// GetAndRemove choose a random entry based on their weights, and removes it from the list
-func (w *WeightedChooser) GetAndRemove() (interface{}, error) {
+// Pick choose a random entry based on their weights, and removes it from the list
+func (w *WeightedChooser[T]) Pick() (T, error) {
+	var empty T
 	if w.totalWeight == 0 {
-		return nil, errors.New("cannot choose from zero weight")
+		return empty, errors.New("cannot choose from zero weight")
 	}
 	i, err := w.weightedChoice()
 	if err != nil {
-		return nil, err
+		return empty, err
 	}
 	entry := w.entries[i]
-	w.Remove(i)
+	_ = w.Remove(i)
 	return entry, nil
 }
 
-// Based on https://eli.thegreenplace.net/2010/01/22/weighted-random-generation-in-python/
-func (w *WeightedChooser) weightedChoice() (int, error) {
-	if w.totalWeight == 0 {
-		return 0, errors.New("no choices available")
+func (w *WeightedChooser[T]) weightedChoice() (int, error) {
+	if len(w.entries) == 0 {
+		return 0, errors.New("cannot choose from empty list")
 	}
 	rnd := Int64(w.totalWeight)
 	for i, weight := range w.weights {
@@ -49,17 +53,18 @@ func (w *WeightedChooser) weightedChoice() (int, error) {
 	return 0, errors.New("internal error - code should not reach this point")
 }
 
-func (w *WeightedChooser) Remove(i int) {
+func (w *WeightedChooser[T]) Remove(i int) error {
+	if i < 0 || i >= len(w.entries) {
+		return errors.New("index out of bounds")
+	}
+
 	w.totalWeight -= w.weights[i]
 
-	w.weights[i] = w.weights[len(w.weights)-1]
-	w.weights = w.weights[:len(w.weights)-1]
-
-	w.entries[i] = w.entries[len(w.entries)-1]
-	w.entries[len(w.entries)-1] = nil
-	w.entries = w.entries[:len(w.entries)-1]
+	w.weights = slices.Delete(w.weights, i, i+1)
+	w.entries = slices.Delete(w.entries, i, i+1)
+	return nil
 }
 
-func (w *WeightedChooser) Size() int {
+func (w *WeightedChooser[T]) Size() int {
 	return len(w.entries)
 }
