@@ -1,6 +1,7 @@
 # Adapted from https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
 ---
-# Basic tags.
+# These tags are handled directly by Navidrome. You can add/remove/reorder aliases, but changing the tag name
+# may require code changes
 title: [ TIT2, TITLE, ©nam, INAM ]
 titlesort: [ TSOT, TITLESORT, sonm, WM/TitleSortOrder ]
 artist: [ TPE1, ARTIST, ©ART, Author, IART ]
@@ -21,6 +22,7 @@ albumartist: [ TPE2, ALBUMARTIST, Album Artist, aART, WM/AlbumArtist ]
 albumartistsort: [ TSO2, TXXX:ALBUMARTISTSORT, ALBUMARTISTSORT, soaa, WM/AlbumArtistSortOrder ]
 album: [ TALB, ALBUM, ©alb, WM/AlbumTitle, IPRD ]
 albumsort: [ TSOA, ALBUMSORT, soal, WM/AlbumSortOrder ]
+albumcomment: [ALBUMVERSION, MUSICBRAINZ_ALBUMCOMMENT, MUSICBRAINZ ALBUM COMMENT, VERSION]
 genre: [ TCON, GENRE, ©gen, WM/Genre, IGNR ]
 compilation: [ TCMP, COMPILATION, cpil, WM/IsCompilation ]
 track: [ TRACK, TRCK, TRACKNUMBER, trkn, WM/TrackNumber, ITRK ]
@@ -32,8 +34,7 @@ discsubtitle: [ TSST, DISCSUBTITLE, ----:com.apple.iTunes:DISCSUBTITLE, WM/SetSu
 bpm: [ TBPM, BPM, tmpo, WM/BeatsPerMinute ]
 lyrics: [ USLT:description, LYRICS, ©lyr, WM/Lyrics ]
 comment: [ COMM:description, COMMENT, ©cmt, Description, ICMT ]
-originaldate: [ TDOR, TORY, ORIGINALDATE, ----:com.apple.iTunes:originaldate, WM/OriginalReleaseTime ]
-originalyear: [ ORIGINALYEAR, ----:com.apple.iTunes:originalyear, WM/OriginalReleaseYear ]
+originaldate: [ TDOR, TORY, ORIGINALDATE, ----:com.apple.iTunes:originaldate, WM/OriginalReleaseTime, ORIGINALYEAR, ----:com.apple.iTunes:originalyear, WM/OriginalReleaseYear ]
 releasedate: [ TDRC, TYER, TDAT, RELEASEDATE, DATE, Year, ©day, WM/Year, ICRD ]
 catalognumber: [ TXXX:CATALOGNUMBER, CATALOGNUMBER, ----:com.apple.iTunes:CATALOGNUMBER, WM/CatalogNo ]
 musicbrainz_artistid: [ TXXX:MusicBrainz Artist Id, MUSICBRAINZ_ARTISTID, MUSICBRAINZ ARTIST ID, ----:com.apple.iTunes:MusicBrainz Artist Id, MusicBrainz/Artist Id ]
@@ -46,7 +47,8 @@ replaygain_album_peak: [ TXXX:REPLAYGAIN_ALBUM_PEAK, REPLAYGAIN_ALBUM_PEAK, ----
 replaygain_track_gain: [ TXXX:REPLAYGAIN_TRACK_GAIN, REPLAYGAIN_TRACK_GAIN, ----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN ]
 replaygain_track_peak: [ TXXX:REPLAYGAIN_TRACK_PEAK, REPLAYGAIN_TRACK_PEAK, ----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK ]
 
-# Additional tags. You can add new tags without the need to modify the code
+# Additional tags. You can add new tags without the need to modify the code. They will be available as fields
+# for smart playlists
 asin: [ TXXX:ASIN, ASIN, ----:com.apple.iTunes:ASIN ]
 barcode: [ TXXX:BARCODE, BARCODE, ----:com.apple.iTunes:BARCODE, WM/Barcode ]
 copyright: [ TCOP, COPYRIGHT, cprt, ICOP ]
@@ -63,7 +65,7 @@ mood: [ TMOO, MOOD, ----:com.apple.iTunes:MOOD, WM/Mood ]
 movementname: [ MVNM, MOVEMENTNAME, ©mvn ]
 movementtotal: [ MOVEMENTTOTAL, mvc ]
 movement: [ MVIN(1), MOVEMENT, mvi ]
-label: [ TPUB, LABEL, ----:com.apple.iTunes:LABEL, WM/Publisher ]
+recordlabel: [ TPUB, LABEL, PUBLISHER, ----:com.apple.iTunes:LABEL, WM/Publisher ]
 musicbrainz_workid: [ TXXX:MusicBrainz Work Id, MUSICBRAINZ_WORKID, MUSICBRAINZ WORK ID, ----:com.apple.iTunes:MusicBrainz Work Id, MusicBrainz/Work Id ]
 releasecountry: [ TXXX:MusicBrainz Album Release Country, RELEASECOUNTRY, ----:com.apple.iTunes:MusicBrainz Album Release Country, MusicBrainz/Album Release Country, ICNT ]
 releasestatus: [ TXXX:MusicBrainz Album Status, RELEASESTATUS, MUSICBRAINZ_ALBUMSTATUS, ----:com.apple.iTunes:MusicBrainz Album Status, MusicBrainz/Album Status ]
