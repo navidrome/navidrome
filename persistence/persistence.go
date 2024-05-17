@@ -34,6 +34,10 @@ func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
 	return NewLibraryRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Folder(ctx context.Context) model.FolderRepository {
+	return newFolderRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getDBXBuilder())
 }
