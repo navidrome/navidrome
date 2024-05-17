@@ -22,6 +22,11 @@ type MockDataStore struct {
 	MockedRadioBuffer    model.RadioRepository
 }
 
+func (db *MockDataStore) Folder(context.Context) model.FolderRepository {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
 	if db.MockedAlbum == nil {
 		db.MockedAlbum = CreateMockAlbumRepo()
