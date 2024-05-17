@@ -11,19 +11,12 @@ import (
 	"github.com/navidrome/navidrome/utils/merge"
 )
 
-var (
-	//go:embed *
-	embedFS embed.FS
-	fsOnce  sync.Once
-	fsys    fs.FS
-)
+//go:embed *
+var embedFS embed.FS
 
-func FS() fs.FS {
-	fsOnce.Do(func() {
-		fsys = merge.FS{
-			Base:    embedFS,
-			Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
-		}
-	})
-	return fsys
-}
+var FS = sync.OnceValue(func() fs.FS {
+	return merge.FS{
+		Base:    embedFS,
+		Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
+	}
+})
