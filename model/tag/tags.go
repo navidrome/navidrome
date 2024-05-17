@@ -11,6 +11,7 @@ import (
 
 type Name string
 
+// Tag names, as defined in the mappings.yaml file
 const (
 	Album         Name = "album"
 	Title         Name = "title"
@@ -21,16 +22,17 @@ const (
 	Genre         Name = "genre"
 	Comment       Name = "comment"
 	AlbumSort     Name = "albumsort"
+	AlbumComment  Name = "albumcomment"
 	TitleSort     Name = "titlesort"
 	Compilation   Name = "compilation"
 	Grouping      Name = "grouping"
 	Lyrics        Name = "lyrics"
+	RecordLabel   Name = "recordlabel"
 	CatalogNumber Name = "catalognumber"
 	BPM           Name = "bpm"
 
 	// Dates and years
 
-	OriginalYear Name = "originalyear"
 	OriginalDate Name = "originaldate"
 	ReleaseDate  Name = "releasedate"
 
