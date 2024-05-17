@@ -2,7 +2,9 @@ package taglib
 
 import (
 	"errors"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -12,7 +14,9 @@ import (
 	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
-type extractor struct{}
+type extractor struct {
+	baseDir string
+}
 
 func (e extractor) Parse(files ...string) (map[string]tag.Properties, error) {
 	results := make(map[string]tag.Properties)
@@ -30,10 +34,11 @@ func (e extractor) Version() string {
 	return Version()
 }
 
-func (e *extractor) extractMetadata(filePath string) (*tag.Properties, error) {
-	tags, err := Read(filePath)
+func (e extractor) extractMetadata(filePath string) (*tag.Properties, error) {
+	fullPath := filepath.Join(e.baseDir, filePath)
+	tags, err := Read(fullPath)
 	if err != nil {
-		log.Warn("extractor: Error reading metadata from file. Skipping", "filePath", filePath, err)
+		log.Warn("extractor: Error reading metadata from file. Skipping", "filePath", fullPath, err)
 		return nil, err
 	}
 
@@ -115,5 +120,8 @@ func parseTIPL(tags metadata.ParsedTags) {
 var _ tag.Extractor = (*extractor)(nil)
 
 func init() {
-	tag.RegisterExtractor("taglib", &extractor{})
+	tag.RegisterExtractor("taglib", func(_ fs.FS, baseDir string) tag.Extractor {
+		// ignores fs, as taglib extractor only works with local files
+		return &extractor{baseDir}
+	})
 }

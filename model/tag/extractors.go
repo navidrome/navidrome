@@ -1,8 +1,10 @@
 package tag
 
 import (
-	"fmt"
+	"io/fs"
 	"sync"
+
+	"github.com/navidrome/navidrome/model"
 )
 
 type Extractor interface {
@@ -16,26 +18,19 @@ type Properties struct {
 	HasPicture      bool
 }
 
+type extractorConstructor func(fs.FS, string) Extractor
+
 var (
-	extractors = map[string]Extractor{}
+	extractors = map[string]extractorConstructor{}
 	lock       sync.RWMutex
 )
 
-func RegisterExtractor(id string, parser Extractor) {
+func RegisterExtractor(id string, f extractorConstructor) {
 	lock.Lock()
 	defer lock.Unlock()
-	fmt.Println("!!!! Registering extractor", id, "version", parser.Version())
-	extractors[id] = parser
+	extractors[id] = f
 }
 
-// TODO Remove unused annotation
-// nolint: unused
-func getExtractor(id string) Extractor {
-	lock.RLock()
-	defer lock.RUnlock()
-	return extractors[id]
-}
-
-func Extract(files ...string) (map[string]Tags, error) {
+func Extract(lib model.Library, files ...string) (map[string]Tags, error) {
 	panic("not implemented")
 }
