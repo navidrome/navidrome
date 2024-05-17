@@ -22,6 +22,7 @@ type ResourceRepository interface {
 
 type DataStore interface {
 	Library(ctx context.Context) LibraryRepository
+	Folder(ctx context.Context) FolderRepository
 	Album(ctx context.Context) AlbumRepository
 	Artist(ctx context.Context) ArtistRepository
 	MediaFile(ctx context.Context) MediaFileRepository

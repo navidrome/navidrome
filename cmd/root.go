@@ -102,7 +102,7 @@ func startServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateServer()
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
-		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
 		if conf.Server.LastFM.Enabled {
 			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
@@ -134,7 +134,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 			return nil
 		}
 
-		scanner := GetScanner()
+		scanner := GetScanner(ctx)
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)

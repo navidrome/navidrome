@@ -24,7 +24,7 @@ var scanCmd = &cobra.Command{
 }
 
 func runScanner() {
-	scanner := GetScanner()
+	scanner := GetScanner(context.Background())
 	_ = scanner.RescanAll(context.Background(), fullRescan)
 	if fullRescan {
 		log.Info("Finished full rescan")
