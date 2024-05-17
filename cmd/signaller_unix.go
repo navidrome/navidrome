@@ -16,7 +16,7 @@ const triggerScanSignal = syscall.SIGUSR1
 
 func startSignaller(ctx context.Context) func() error {
 	log.Info(ctx, "Starting signaler")
-	scanner := GetScanner()
+	scanner := GetScanner(ctx)
 
 	return func() error {
 		var sigChan = make(chan os.Signal, 1)
