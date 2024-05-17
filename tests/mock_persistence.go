@@ -7,6 +7,8 @@ import (
 )
 
 type MockDataStore struct {
+	MockedLibrary        model.LibraryRepository
+	MockedFolder         model.FolderRepository
 	MockedGenre          model.GenreRepository
 	MockedAlbum          model.AlbumRepository
 	MockedArtist         model.ArtistRepository
@@ -22,9 +24,18 @@ type MockDataStore struct {
 	MockedRadioBuffer    model.RadioRepository
 }
 
+func (db *MockDataStore) Library(context.Context) model.LibraryRepository {
+	if db.MockedLibrary == nil {
+		db.MockedLibrary = &MockLibraryRepo{}
+	}
+	return db.MockedLibrary
+}
+
 func (db *MockDataStore) Folder(context.Context) model.FolderRepository {
-	//TODO implement me
-	panic("implement me")
+	if db.MockedFolder != nil {
+		return db.MockedFolder
+	}
+	return struct{ model.FolderRepository }{}
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -46,10 +57,6 @@ func (db *MockDataStore) MediaFile(context.Context) model.MediaFileRepository {
 		db.MockedMediaFile = CreateMockMediaFileRepo()
 	}
 	return db.MockedMediaFile
-}
-
-func (db *MockDataStore) Library(context.Context) model.LibraryRepository {
-	return struct{ model.LibraryRepository }{}
 }
 
 func (db *MockDataStore) Genre(context.Context) model.GenreRepository {
