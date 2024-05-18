@@ -146,7 +146,7 @@ func (r sqlRepository) seededRandomSort() string {
 func (r albumRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) > 0 && options[0].Offset == 0 && options[0].Sort == "random" {
 		u, _ := request.UserFrom(r.ctx)
-		utils.Hasher.Reseed(u.ID)
+		utils.Hasher.Reseed(r.tableName + u.ID)
 	}
 }
 
