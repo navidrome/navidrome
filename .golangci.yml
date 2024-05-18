@@ -26,6 +26,9 @@ linters:
     - whitespace
 
 linters-settings:
+  govet:
+    enable:
+      - nilness
   gosec:
     excludes:
       - G501
