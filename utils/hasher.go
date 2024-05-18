@@ -5,23 +5,29 @@ import "hash/maphash"
 var Hasher = newHasher()
 
 type hasher struct {
-	seed maphash.Seed
+	seeds map[string]maphash.Seed
 }
 
 func newHasher() *hasher {
 	h := new(hasher)
-	h.Reseed()
+	h.seeds = make(map[string]maphash.Seed)
 	return h
 }
 
-func (h *hasher) Reseed() {
-	h.seed = maphash.MakeSeed()
+func (h *hasher) Reseed(id string) {
+	h.seeds[id] = maphash.MakeSeed()
 }
 
-func (h *hasher) HashFunc() func(str string) uint64 {
-	return func(str string) uint64 {
+func (h *hasher) HashFunc() func(id, str string) uint64 {
+	return func(id, str string) uint64 {
 		var hash maphash.Hash
-		hash.SetSeed(h.seed)
+		var seed maphash.Seed
+		var ok bool
+		if seed, ok = h.seeds[id]; !ok {
+			seed = maphash.MakeSeed()
+			h.seeds[id] = seed
+		}
+		hash.SetSeed(seed)
 		_, _ = hash.WriteString(str)
 		return hash.Sum64()
 	}

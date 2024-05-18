@@ -10,15 +10,26 @@ var _ = Describe("HashFunc", func() {
 
 	It("hashes the input and returns the sum", func() {
 		hashFunc := Hasher.HashFunc()
-		sum := hashFunc(input)
+		sum := hashFunc("1", input)
 		Expect(sum > 0).To(BeTrue())
 	})
 
 	It("hashes the input, reseeds and returns a different sum", func() {
 		hashFunc := Hasher.HashFunc()
-		sum := hashFunc(input)
-		Hasher.Reseed()
-		sum2 := hashFunc(input)
+		sum := hashFunc("1", input)
+		Hasher.Reseed("1")
+		sum2 := hashFunc("1", input)
 		Expect(sum).NotTo(Equal(sum2))
+	})
+
+	It("keeps different hashes for different ids", func() {
+		hashFunc := Hasher.HashFunc()
+		sum := hashFunc("1", input)
+		sum2 := hashFunc("2", input)
+
+		Expect(sum).NotTo(Equal(sum2))
+
+		Expect(sum).To(Equal(hashFunc("1", input)))
+		Expect(sum2).To(Equal(hashFunc("2", input)))
 	})
 })

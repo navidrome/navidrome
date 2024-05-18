@@ -29,7 +29,7 @@ func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		sql.Register(Driver+"_custom", &sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("RAND", utils.Hasher.HashFunc(), false)
+				return conn.RegisterFunc("SEEDEDRAND", utils.Hasher.HashFunc(), false)
 			},
 		})
 

@@ -11,6 +11,8 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/pocketbase/dbx"
 )
 
@@ -75,7 +77,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"artist":         "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"albumArtist":    "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"random":         "RAND(id)",
+			"random":         seededRandomSort(ctx),
 			"recently_added": recentlyAddedSort(),
 		}
 	} else {
@@ -84,7 +86,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
 			"albumArtist":    "compilation asc, order_album_artist_name asc, order_album_name asc",
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
-			"random":         "RANDOM()",
+			"random":         seededRandomSort(ctx),
 			"recently_added": recentlyAddedSort(),
 		}
 	}
@@ -97,6 +99,11 @@ func recentlyAddedSort() string {
 		return "updated_at"
 	}
 	return "created_at"
+}
+
+func seededRandomSort(ctx context.Context) string {
+	u, _ := request.UserFrom(ctx)
+	return fmt.Sprintf("SEEDEDRAND('%s', id)", u.ID)
 }
 
 func recentlyPlayedFilter(string, interface{}) Sqlizer {
@@ -181,7 +188,8 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 
 func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
 	if len(options) > 0 && options[0].Offset == 0 && options[0].Sort == "random" {
-		utils.Hasher.Reseed()
+		u, _ := request.UserFrom(r.ctx)
+		utils.Hasher.Reseed(u.ID)
 	}
 	sq := r.selectAlbum(options...)
 	var dba dbAlbums
