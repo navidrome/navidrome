@@ -78,12 +78,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
-
 		offset := p.IntOr("offset", 0)
-		if err != nil {
-			offset = 0
-		}
-
 		return createResponse(pb.Skip(ctx, index, offset))
 	case ActionAdd:
 		ids, _ := p.Strings("id")
