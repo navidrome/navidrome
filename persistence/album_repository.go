@@ -75,7 +75,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"artist":         "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"albumArtist":    "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"random":         "RANDOM()",
+			"random":         r.seededRandomSort(),
 			"recently_added": recentlyAddedSort(),
 		}
 	} else {
@@ -84,7 +84,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
 			"albumArtist":    "compilation asc, order_album_artist_name asc, order_album_name asc",
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
-			"random":         "RANDOM()",
+			"random":         r.seededRandomSort(),
 			"recently_added": recentlyAddedSort(),
 		}
 	}
@@ -180,6 +180,7 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 }
 
 func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
+	r.resetSeededRandom(options)
 	sq := r.selectAlbum(options...)
 	var dba dbAlbums
 	err := r.queryAll(sq, &dba)

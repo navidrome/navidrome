@@ -5,10 +5,11 @@ import (
 	"embed"
 	"fmt"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
@@ -25,13 +26,19 @@ const migrationsFolder = "migrations"
 
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
+		sql.Register(Driver+"_custom", &sqlite3.SQLiteDriver{
+			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
+			},
+		})
+
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
 			conf.Server.DbPath = Path
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
-		instance, err := sql.Open(Driver, Path)
+		instance, err := sql.Open(Driver+"_custom", Path)
 		if err != nil {
 			panic(err)
 		}
