@@ -25,7 +25,8 @@
                 "quality": "Qualità",
                 "bpm": "BPM",
                 "playDate": "Ultima riproduzione",
-                "channels": "Canali"
+                "channels": "Canali",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Aggiungi alla coda",
@@ -51,7 +52,13 @@
                 "year": "Anno",
                 "updatedAt": "Ultimo aggiornamento",
                 "comment": "Commento",
-                "rating": "Valutazione"
+                "rating": "Valutazione",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Riproduci",
@@ -60,7 +67,8 @@
                 "shuffle": "Riproduci casualmente",
                 "addToPlaylist": "Aggiungi alla Playlist",
                 "download": "Scarica",
-                "info": "Informazioni"
+                "info": "Informazioni",
+                "share": ""
             },
             "lists": {
                 "all": "Tutti",
@@ -80,7 +88,8 @@
                 "songCount": "Numero tracce",
                 "playCount": "Riproduzioni",
                 "rating": "Valutazione",
-                "genre": "Genere"
+                "genre": "Genere",
+                "size": ""
             }
         },
         "user": {
@@ -96,7 +105,7 @@
                 "changePassword": "Cambiare la password?",
                 "currentPassword": "Password Attuale",
                 "newPassword": "Nuova Password",
-                "token": ""
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Le modifiche effettuate al tuo nome verrano mostrate al prossimo accesso"
@@ -107,8 +116,8 @@
                 "deleted": "Utente eliminato"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Inserisci il tuo token utente ListenBrainz.",
+                "clickHereForToken": "Clicca qui per ottenere il tuo token"
             }
         },
         "player": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "Aggiungere i duplicati",
                 "song_exist": "Stanno essendo aggiunti dei duplicati nella playlist. Vuoi aggiungerli o saltarli?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Deve essere un indirizzo email valido",
             "oneOf": "Deve essere uno di: %{options}",
             "regex": "Deve rispettare il formato (espressione regolare): %{pattern}",
-            "unique": "Deve essere unico"
+            "unique": "Deve essere unico",
+            "url": ""
         },
         "action": {
             "add_filter": "Aggiungi un filtro",
@@ -215,7 +255,10 @@
             "open_menu": "Apri menù",
             "close_menu": "Chiudi menù",
             "unselect": "Deseleziona",
-            "skip": "Saltare i duplicati"
+            "skip": "Saltare i duplicati",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Si",
@@ -319,10 +362,18 @@
             "musicbrainz": "Apri in MusicBrainz"
         },
         "lastfmLink": "Per saperne di più...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
+        "listenBrainzLinkSuccess": "ListenBrainz collegato con successo, abilitato lo scrobbling per l'utente %{user}",
+        "listenBrainzLinkFailure": "Non è stato possibile collegare ListenBrainz: %{error}",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Libreria",
@@ -337,7 +388,14 @@
                 "defaultView": "Vista Predefinita",
                 "desktop_notifications": "Notifiche desktop",
                 "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Album",
@@ -395,7 +453,8 @@
             "next_song": "Traccia Successiva",
             "vol_up": "Alza il Volume",
             "vol_down": "Abbassa il Volume",
-            "toggle_love": "Aggiungi questa traccia ai preferiti"
+            "toggle_love": "Aggiungi questa traccia ai preferiti",
+            "current_song": ""
         }
     }
 }

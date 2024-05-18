@@ -25,7 +25,8 @@
                 "quality": "Qualidade",
                 "bpm": "BPM",
                 "playDate": "Últ. Execução",
-                "channels": "Canais"
+                "channels": "Canais",
+                "createdAt": "Adiconado em"
             },
             "actions": {
                 "addToQueue": "Adicionar à fila",
@@ -51,7 +52,13 @@
                 "year": "Ano",
                 "updatedAt": "Últ. Atualização",
                 "comment": "Comentário",
-                "rating": "Classificação"
+                "rating": "Classificação",
+                "createdAt": "Adicionado em",
+                "size": "Tamanho",
+                "originalDate": "Original",
+                "releaseDate": "Data de Lançamento",
+                "releases": "Versão||||Versões",
+                "released": "Lançado"
             },
             "actions": {
                 "playAll": "Tocar",
@@ -60,7 +67,8 @@
                 "shuffle": "Aleatório",
                 "addToPlaylist": "Adicionar à playlist",
                 "download": "Baixar",
-                "info": "Detalhes"
+                "info": "Detalhes",
+                "share": "Compartilhar"
             },
             "lists": {
                 "all": "Todos",
@@ -80,7 +88,8 @@
                 "songCount": "Total de Músicas",
                 "playCount": "Execuções",
                 "rating": "Classificação",
-                "genre": "Gênero"
+                "genre": "Gênero",
+                "size": "Tamanho"
             }
         },
         "user": {
@@ -141,7 +150,7 @@
                 "ownerName": "Dono",
                 "public": "Pública",
                 "updatedAt": "Últ. Atualização",
-                "createdAt": "Data de Criação ",
+                "createdAt": "Data de Criação",
                 "songCount": "Músicas",
                 "comment": "Comentário",
                 "sync": "Auto-importar",
@@ -157,6 +166,36 @@
             "message": {
                 "duplicate_song": "Adicionar músicas duplicadas",
                 "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?"
+            }
+        },
+        "radio": {
+            "name": "Rádio |||| Rádios",
+            "fields": {
+                "name": "Nome",
+                "streamUrl": "Endereço de stream",
+                "homePageUrl": "Home Page",
+                "updatedAt": "Últ. Atualização",
+                "createdAt": "Data de Criação"
+            },
+            "actions": {
+                "playNow": "Tocar agora"
+            }
+        },
+        "share": {
+            "name": "Compartilhamento |||| Compartilhamentos",
+            "fields": {
+                "username": "Compartilhado por",
+                "url": "Link",
+                "description": "Descrição",
+                "contents": "Conteúdo",
+                "expiresAt": "Dt. Expiração",
+                "lastVisitedAt": "Última visita",
+                "visitCount": "Visitas",
+                "format": "Formato",
+                "maxBitRate": "Bitrate máx",
+                "updatedAt": "Últ. Atualização",
+                "createdAt": "Data de Criação",
+                "downloadable": "Permitir Baixar?"
             }
         }
     },
@@ -186,7 +225,8 @@
             "email": "Deve ser um email válido",
             "oneOf": "Deve ser uma das seguintes opções: %{options}",
             "regex": "Deve ter o formato específico (regexp): %{pattern}",
-            "unique": "Deve ser único"
+            "unique": "Deve ser único",
+            "url": "URL inválida"
         },
         "action": {
             "add_filter": "Adicionar Filtro",
@@ -215,7 +255,10 @@
             "open_menu": "Abrir menu",
             "close_menu": "Fechar menu",
             "unselect": "Deselecionar",
-            "skip": "Ignorar"
+            "skip": "Ignorar",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Compartilhar",
+            "download": "Baixar"
         },
         "boolean": {
             "true": "Sim",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "Sua conta no ListenBrainz foi conectada com sucesso",
         "listenBrainzLinkFailure": "Sua conta no ListenBrainz não pode ser conectada",
         "listenBrainzUnlinkSuccess": "Sua conta no ListenBrainz foi desconectada",
-        "listenBrainzUnlinkFailure": "Sua conta no ListenBrainz não pode ser desconectada"
+        "listenBrainzUnlinkFailure": "Sua conta no ListenBrainz não pode ser desconectada",
+        "downloadOriginalFormat": "Baixar no formato original",
+        "shareOriginalFormat": "Compartilhar no formato original",
+        "shareDialogTitle": "Compartilhar %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Compartilhar 1 %{resource} |||| Compartilhar %{smart_count} %{resource}",
+        "shareSuccess": "Link copiado para o clipboard : %{url}",
+        "shareFailure": "Erro ao copiar o link %{url} para o clipboard",
+        "downloadDialogTitle": "Baixar %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Copie para o clipboard: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Biblioteca",
@@ -337,7 +388,14 @@
                 "defaultView": "Tela inicial",
                 "desktop_notifications": "Notificações",
                 "lastfmScrobbling": "Enviar scrobbles para Last.fm",
-                "listenBrainzScrobbling": "Enviar scrobbles para ListenBrainz"
+                "listenBrainzScrobbling": "Enviar scrobbles para ListenBrainz",
+                "replaygain": "Modo ReplayGain",
+                "preAmp": "PreAmp ReplayGain (dB)",
+                "gain": {
+                    "none": "Desligado",
+                    "album": "Usar ganho do álbum",
+                    "track": "Usar ganho do faixa"
+                }
             }
         },
         "albumList": "Álbuns",
@@ -395,7 +453,8 @@
             "next_song": "Próxima música",
             "vol_up": "Aumenta volume",
             "vol_down": "Diminui volume",
-            "toggle_love": "Marcar/desmarcar favorita"
+            "toggle_love": "Marcar/desmarcar favorita",
+            "current_song": "Vai para música atual"
         }
     }
 }

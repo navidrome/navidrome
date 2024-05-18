@@ -1,1 +1,0 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0"><genres><genre songCount="1000" albumCount="100">Rock</genre><genre songCount="500" albumCount="50">Reggae</genre><genre songCount="0" albumCount="0">Pop</genre></genres></subsonic-response>

@@ -1,7 +1,13 @@
 import * as React from 'react'
 import { TestContext } from 'ra-test'
 import { DataProviderContext } from 'react-admin'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  screen,
+} from '@testing-library/react'
 import { AddToPlaylistDialog } from './AddToPlaylistDialog'
 
 const mockData = [
@@ -39,7 +45,7 @@ const createTestUtils = (mockDataProvider) =>
                 data: mockIndexedData,
                 list: {
                   cachedRequests: {
-                    '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}':
+                    '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{"smart":false}}':
                       {
                         ids: ['sample-id1', 'sample-id2'],
                         total: 2,
@@ -53,14 +59,22 @@ const createTestUtils = (mockDataProvider) =>
       >
         <AddToPlaylistDialog />
       </TestContext>
-    </DataProviderContext.Provider>
+    </DataProviderContext.Provider>,
   )
+
+jest.mock('../dataProvider', () => ({
+  ...jest.requireActual('../dataProvider'),
+  httpClient: jest.fn(),
+}))
 
 describe('AddToPlaylistDialog', () => {
   beforeAll(() => localStorage.setItem('userId', 'admin'))
   afterEach(cleanup)
 
   it('adds distinct songs to already existing playlists', async () => {
+    const dataProvider = require('../dataProvider')
+    jest.spyOn(dataProvider, 'httpClient').mockResolvedValue({ data: mockData })
+
     const mockDataProvider = {
       getList: jest
         .fn()
@@ -71,17 +85,18 @@ describe('AddToPlaylistDialog', () => {
       }),
     }
 
-    const testUtils = createTestUtils(mockDataProvider)
+    createTestUtils(mockDataProvider)
 
-    fireEvent.change(document.activeElement, { target: { value: 'sample' } })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    let textBox = screen.getByRole('textbox')
+    fireEvent.change(textBox, { target: { value: 'sample' } })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
-      expect(testUtils.getByTestId('playlist-add')).not.toBeDisabled()
+      expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })
-    fireEvent.click(testUtils.getByTestId('playlist-add'))
+    fireEvent.click(screen.getByTestId('playlist-add'))
     await waitFor(() => {
       expect(mockDataProvider.create).toHaveBeenNthCalledWith(
         1,
@@ -89,7 +104,7 @@ describe('AddToPlaylistDialog', () => {
         {
           data: { ids: selectedIds },
           filter: { playlist_id: 'sample-id1' },
-        }
+        },
       )
     })
     await waitFor(() => {
@@ -99,7 +114,7 @@ describe('AddToPlaylistDialog', () => {
         {
           data: { ids: selectedIds },
           filter: { playlist_id: 'sample-id2' },
-        }
+        },
       )
     })
   })
@@ -115,30 +130,31 @@ describe('AddToPlaylistDialog', () => {
       }),
     }
 
-    const testUtils = createTestUtils(mockDataProvider)
+    createTestUtils(mockDataProvider)
 
-    fireEvent.change(document.activeElement, { target: { value: 'sample' } })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    let textBox = screen.getByRole('textbox')
+    fireEvent.change(textBox, { target: { value: 'sample' } })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
-      expect(testUtils.getByTestId('playlist-add')).not.toBeDisabled()
+      expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })
-    fireEvent.click(testUtils.getByTestId('playlist-add'))
+    fireEvent.click(screen.getByTestId('playlist-add'))
     await waitFor(() => {
       expect(mockDataProvider.create).toHaveBeenNthCalledWith(1, 'playlist', {
         data: { name: 'sample' },
       })
-      expect(mockDataProvider.create).toHaveBeenNthCalledWith(
-        2,
-        'playlistTrack',
-        {
-          data: { ids: selectedIds },
-          filter: { playlist_id: 'created-id1' },
-        }
-      )
     })
+    expect(mockDataProvider.create).toHaveBeenNthCalledWith(
+      2,
+      'playlistTrack',
+      {
+        data: { ids: selectedIds },
+        filter: { playlist_id: 'created-id1' },
+      },
+    )
   })
 
   it('adds distinct songs to multiple new playlists', async () => {
@@ -152,21 +168,20 @@ describe('AddToPlaylistDialog', () => {
       }),
     }
 
-    const testUtils = createTestUtils(mockDataProvider)
+    createTestUtils(mockDataProvider)
 
-    fireEvent.change(document.activeElement, { target: { value: 'sample' } })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
-    fireEvent.change(document.activeElement, {
-      target: { value: 'new playlist' },
-    })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    let textBox = screen.getByRole('textbox')
+    fireEvent.change(textBox, { target: { value: 'sample' } })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
+    fireEvent.change(textBox, { target: { value: 'new playlist' } })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
-      expect(testUtils.getByTestId('playlist-add')).not.toBeDisabled()
+      expect(screen.getByTestId('playlist-add')).not.toBeDisabled()
     })
-    fireEvent.click(testUtils.getByTestId('playlist-add'))
+    fireEvent.click(screen.getByTestId('playlist-add'))
     await waitFor(() => {
       expect(mockDataProvider.create).toHaveBeenCalledTimes(4)
     })

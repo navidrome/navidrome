@@ -20,7 +20,6 @@ const ArtistDetails = (props) => {
   const biography =
     artistInfo?.biography?.replace(new RegExp('<.*>', 'g'), '') ||
     record.biography
-  const img = artistInfo?.largeImageUrl || record.largeImageUrl
 
   useEffect(() => {
     subsonic
@@ -34,13 +33,12 @@ const ArtistDetails = (props) => {
       .catch((e) => {
         console.error('error on artist page', e)
       })
-  }, [record])
+  }, [record.id])
 
   const component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
   return (
     <>
       {createElement(component, {
-        img,
         artistInfo,
         record,
         biography,
@@ -62,7 +60,7 @@ const AlbumShowLayout = (props) => {
           addLabel={false}
           reference="album"
           target="artist_id"
-          sort={{ field: 'max_year', order: 'ASC' }}
+          sort={{ field: 'max_year asc,date asc', order: 'ASC' }}
           filter={{ artist_id: record?.id }}
           perPage={0}
           pagination={null}

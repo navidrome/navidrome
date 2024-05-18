@@ -25,7 +25,8 @@
                 "quality": "Calidad",
                 "bpm": "BPM",
                 "playDate": "Últimas reproducciones",
-                "channels": "Canales"
+                "channels": "Canales",
+                "createdAt": "Creado el"
             },
             "actions": {
                 "addToQueue": "Reproducir después",
@@ -51,7 +52,13 @@
                 "year": "Año",
                 "updatedAt": "Actualizado el",
                 "comment": "Comentario",
-                "rating": "Calificación"
+                "rating": "Calificación",
+                "createdAt": "Creado el",
+                "size": "Tamaño del archivo",
+                "originalDate": "Original",
+                "releaseDate": "Publicado",
+                "releases": "Lanzamiento |||| Lanzamientos",
+                "released": "Publicado"
             },
             "actions": {
                 "playAll": "Reproducir",
@@ -60,7 +67,8 @@
                 "shuffle": "Aletorio",
                 "addToPlaylist": "Agregar a la lista",
                 "download": "Descargar",
-                "info": "Obtener información"
+                "info": "Obtener información",
+                "share": "Compartir"
             },
             "lists": {
                 "all": "Todos",
@@ -80,7 +88,8 @@
                 "songCount": "Número de canciones",
                 "playCount": "Reproducciones",
                 "rating": "Calificación",
-                "genre": "Género"
+                "genre": "Género",
+                "size": "Tamaño"
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
                 "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
             }
+        },
+        "radio": {
+            "name": "Radio |||| Radios",
+            "fields": {
+                "name": "Nombre",
+                "streamUrl": "URL del stream",
+                "homePageUrl": "URL de la página web",
+                "updatedAt": "Actualizado el",
+                "createdAt": "Creado el"
+            },
+            "actions": {
+                "playNow": "Reproducir ahora"
+            }
+        },
+        "share": {
+            "name": "Compartir",
+            "fields": {
+                "username": "Nombre de usuario",
+                "url": "URL",
+                "description": "Descripción",
+                "contents": "Contenido",
+                "expiresAt": "Caduca el",
+                "lastVisitedAt": "Visitado por última vez el",
+                "visitCount": "Número de visitas",
+                "format": "Formato",
+                "maxBitRate": "Tasa de bits Máx.",
+                "updatedAt": "Actualizado el",
+                "createdAt": "Creado el",
+                "downloadable": "¿Permitir descargas?"
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Debe ser un correo electrónico válido",
             "oneOf": "Debe ser uno de: %{options}",
             "regex": "Debe coincidir con un formato específico (regexp): %{pattern}",
-            "unique": "Tiene que ser único"
+            "unique": "Tiene que ser único",
+            "url": "Debe ser una URL válida"
         },
         "action": {
             "add_filter": "Añadir filtro",
@@ -215,7 +255,10 @@
             "open_menu": "Abrir menú",
             "close_menu": "Cerrar menú",
             "unselect": "Deseleccionado",
-            "skip": "Omitir"
+            "skip": "Omitir",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Compartir",
+            "download": "Descargar"
         },
         "boolean": {
             "true": "Sí",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "Se ha conectado correctamente a ListenBrainz y se activo el scrobbling como el usuario: %{user}",
         "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
         "listenBrainzUnlinkSuccess": "Se desconecto ListenBrainz y se desactivo el scrobbling",
-        "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz"
+        "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
+        "downloadOriginalFormat": "Descargar formato original",
+        "shareOriginalFormat": "Compartir formato original",
+        "shareDialogTitle": "Compartir %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Share %{smart_count} %{resource}",
+        "shareSuccess": "URL copiada al portapapeles: %{url}",
+        "shareFailure": "Error al copiar la URL %{url} al portapapeles",
+        "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro"
     },
     "menu": {
         "library": "Biblioteca",
@@ -337,7 +388,14 @@
                 "defaultView": "Vista por defecto",
                 "desktop_notifications": "Notificaciones de escritorio",
                 "lastfmScrobbling": "Scrobble a Last.fm",
-                "listenBrainzScrobbling": "Scrobble a ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble a ListenBrainz",
+                "replaygain": "Modo de ReplayGain",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Ninguno",
+                    "album": "Álbum",
+                    "track": "Pista"
+                }
             }
         },
         "albumList": "Álbumes",
@@ -395,7 +453,8 @@
             "next_song": "Siguiente canción",
             "vol_up": "Subir volumen",
             "vol_down": "Bajar volumen",
-            "toggle_love": "Marca esta canción como favorita"
+            "toggle_love": "Marca esta canción como favorita",
+            "current_song": "Canción actual"
         }
     }
 }

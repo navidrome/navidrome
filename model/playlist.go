@@ -1,22 +1,24 @@
 package model
 
 import (
+	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils"
 )
 
 type Playlist struct {
-	ID        string         `structs:"id" json:"id"          orm:"column(id)"`
+	ID        string         `structs:"id" json:"id"`
 	Name      string         `structs:"name" json:"name"`
 	Comment   string         `structs:"comment" json:"comment"`
 	Duration  float32        `structs:"duration" json:"duration"`
 	Size      int64          `structs:"size" json:"size"`
 	SongCount int            `structs:"song_count" json:"songCount"`
 	OwnerName string         `structs:"-" json:"ownerName"`
-	OwnerID   string         `structs:"owner_id" json:"ownerId"  orm:"column(owner_id)"`
+	OwnerID   string         `structs:"owner_id" json:"ownerId"`
 	Public    bool           `structs:"public" json:"public"`
 	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
 	Path      string         `structs:"path" json:"path"`
@@ -25,8 +27,8 @@ type Playlist struct {
 	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
-	Rules       *criteria.Criteria `structs:"-" json:"rules"`
-	EvaluatedAt time.Time          `structs:"evaluated_at" json:"evaluatedAt"`
+	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
+	EvaluatedAt *time.Time         `structs:"evaluated_at" json:"evaluatedAt"`
 }
 
 func (pls Playlist) IsSmartPlaylist() bool {
@@ -43,12 +45,25 @@ func (pls Playlist) MediaFiles() MediaFiles {
 func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	var newTracks PlaylistTracks
 	for i, t := range pls.Tracks {
-		if utils.IntInSlice(i, idxToRemove) {
+		if slices.Contains(idxToRemove, i) {
 			continue
 		}
 		newTracks = append(newTracks, t)
 	}
 	pls.Tracks = newTracks
+}
+
+// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
+// https://docs.fileformat.com/audio/m3u/#extended-m3u
+func (pls *Playlist) ToM3U8() string {
+	buf := strings.Builder{}
+	buf.WriteString("#EXTM3U\n")
+	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", pls.Name))
+	for _, t := range pls.Tracks {
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		buf.WriteString(t.Path + "\n")
+	}
+	return buf.String()
 }
 
 func (pls *Playlist) AddTracks(mediaFileIds []string) {
@@ -79,6 +94,10 @@ func (pls *Playlist) AddMediaFiles(mfs MediaFiles) {
 	}
 }
 
+func (pls Playlist) CoverArtID() ArtworkID {
+	return artworkIDFromPlaylist(pls)
+}
+
 type Playlists []Playlist
 
 type PlaylistRepository interface {
@@ -87,17 +106,17 @@ type PlaylistRepository interface {
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
-	GetWithTracks(id string) (*Playlist, error)
+	GetWithTracks(id string, refreshSmartPlaylist bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
-	Tracks(playlistId string) PlaylistTrackRepository
+	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 }
 
 type PlaylistTrack struct {
-	ID          string `json:"id"          orm:"column(id)"`
-	MediaFileID string `json:"mediaFileId" orm:"column(media_file_id)"`
-	PlaylistID  string `json:"playlistId" orm:"column(playlist_id)"`
+	ID          string `json:"id"`
+	MediaFileID string `json:"mediaFileId"`
+	PlaylistID  string `json:"playlistId"`
 	MediaFile
 }
 
@@ -114,6 +133,7 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 type PlaylistTrackRepository interface {
 	ResourceRepository
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
+	GetAlbumIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)

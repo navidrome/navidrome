@@ -58,7 +58,7 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
           event.stopPropagation()
         })
     },
-    [dispatch, notify, setLinked, token]
+    [dispatch, notify, setLinked, token],
   )
 
   const handleClickClose = (event) => {
@@ -74,7 +74,7 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
         handleSave(event)
       }
     },
-    [token, handleSave]
+    [token, handleSave],
   )
 
   return (
@@ -82,7 +82,6 @@ export const ListenBrainzTokenDialog = ({ setLinked }) => {
       <Dialog
         open={open}
         onClose={handleClickClose}
-        onBackdropClick={handleClickClose}
         aria-labelledby="form-dialog-listenbrainz-token"
         fullWidth={true}
         maxWidth="md"

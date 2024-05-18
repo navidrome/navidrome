@@ -2,19 +2,26 @@
 // allows you to do things like:
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
-import '@testing-library/jest-dom/extend-expect'
+import '@testing-library/jest-dom'
 
-class LocalStorageMock {
-  constructor() {
-    this.store = {}
-  }
-  getItem(key) {
-    return this.store[key] || null
-  }
-  setItem(key, value) {
-    this.store[key] = String(value)
-  }
-}
+const localStorageMock = (function () {
+  let store = {}
 
-global.localStorage = new LocalStorageMock()
+  return {
+    getItem: function (key) {
+      return store[key] || null
+    },
+    setItem: function (key, value) {
+      store[key] = value.toString()
+    },
+    clear: function () {
+      store = {}
+    },
+  }
+})()
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+})
+
 localStorage.setItem('username', 'admin')

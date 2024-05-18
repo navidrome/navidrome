@@ -25,7 +25,8 @@
                 "quality": "Kwaliteit",
                 "bpm": "BPM",
                 "playDate": "Laatst afgespeeld",
-                "channels": "Kanalen"
+                "channels": "Kanalen",
+                "createdAt": "Datum toegevoegd"
             },
             "actions": {
                 "addToQueue": "Voeg toe aan wachtrij",
@@ -51,7 +52,13 @@
                 "year": "Jaar",
                 "updatedAt": "Bijgewerkt op",
                 "comment": "Commentaar",
-                "rating": "Beoordeling"
+                "rating": "Beoordeling",
+                "createdAt": "Datum toegevoegd",
+                "size": "Grootte",
+                "originalDate": "Origineel",
+                "releaseDate": "Uitgegeven",
+                "releases": "Uitgave |||| Uitgaven",
+                "released": "Uitgegeven"
             },
             "actions": {
                 "playAll": "Afspelen",
@@ -60,7 +67,8 @@
                 "shuffle": "Shuffle",
                 "addToPlaylist": "Toevoegen aan afspeellijst",
                 "download": "Downloaden",
-                "info": "Meer info"
+                "info": "Meer info",
+                "share": "Delen"
             },
             "lists": {
                 "all": "Alle",
@@ -80,7 +88,8 @@
                 "songCount": "Aantal nummers",
                 "playCount": "Afgespeeld",
                 "rating": "Beoordeling",
-                "genre": "Genre"
+                "genre": "Genre",
+                "size": "Grootte"
             }
         },
         "user": {
@@ -107,7 +116,7 @@
                 "deleted": "Gewist door gebruiker"
             },
             "message": {
-                "listenBrainzToken": "Vul je ListenBrainz gebruikerstoken in.",
+                "listenBrainzToken": "Vul je ListenBrainz gebruikers-token in.",
                 "clickHereForToken": "Klik hier voor je token"
             }
         },
@@ -125,7 +134,7 @@
             }
         },
         "transcoding": {
-            "name": "Transcoden |||| Transcoderingen",
+            "name": "Transcoding |||| Transcoderingen",
             "fields": {
                 "name": "Naam",
                 "targetFormat": "Doelformaat",
@@ -158,6 +167,36 @@
                 "duplicate_song": "Dubbele nummers toevoegen",
                 "song_exist": "Er komen nummers dubbel in de afspeellijst. Wil je de dubbele nummers toevoegen of overslaan?"
             }
+        },
+        "radio": {
+            "name": "Radio |||| Radio's",
+            "fields": {
+                "name": "Naam",
+                "streamUrl": "Stream URL",
+                "homePageUrl": "Hoofdpagina URL",
+                "updatedAt": "Geüpdate op",
+                "createdAt": "Gecreëerd op"
+            },
+            "actions": {
+                "playNow": "Speel nu"
+            }
+        },
+        "share": {
+            "name": "Gedeeld",
+            "fields": {
+                "username": "Gedeeld door",
+                "url": "URL",
+                "description": "Beschrijving",
+                "contents": "Inhoud",
+                "expiresAt": "Verloopt",
+                "lastVisitedAt": "Laatst bezocht",
+                "visitCount": "Bezocht",
+                "format": "Formaat",
+                "maxBitRate": "Max. bitrate",
+                "updatedAt": "Geüpdatet op",
+                "createdAt": "Gecreëerd op",
+                "downloadable": "Downloads toestaan?"
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Moet een geldig e-mailadres zijn",
             "oneOf": "Moet een zijn van: %{options}",
             "regex": "Moet overeenkomen met een specifiek format (regexp): %{pattern}",
-            "unique": "Moet uniek zijn"
+            "unique": "Moet uniek zijn",
+            "url": "Moet een geldige URL"
         },
         "action": {
             "add_filter": "Voeg filter toe",
@@ -215,7 +255,10 @@
             "open_menu": "Open menu",
             "close_menu": "Sluit menu",
             "unselect": "Deselecteer",
-            "skip": "Overslaan"
+            "skip": "Overslaan",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Delen",
+            "download": "Downloaden"
         },
         "boolean": {
             "true": "Ja",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "ListenBrainz is succesvol gelinkt en scrobbling staat aan, als gebruiker: %{user}",
         "listenBrainzLinkFailure": "ListenBrainz kon niet worden gelinkt: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz ontkoppeld",
-        "listenBrainzUnlinkFailure": "ListenBrainz kon niet ontkoppeld worden"
+        "listenBrainzUnlinkFailure": "ListenBrainz kon niet ontkoppeld worden",
+        "downloadOriginalFormat": "Download in origineel formaat",
+        "shareOriginalFormat": "Deel in origineel formaat",
+        "shareDialogTitle": "Deel %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Deel 1 %{resource} |||| Deel %{smart_count} %{resource}",
+        "shareSuccess": "URL gekopieeerd naar klembord: %{url}",
+        "shareFailure": "Fout bij kopieren URL %{url} naar klembord",
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Kopieeer naar klembord: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Bibliotheek",
@@ -337,7 +388,14 @@
                 "defaultView": "Standaard weergave",
                 "desktop_notifications": "Bureaubladmeldingen",
                 "lastfmScrobbling": "Scrobble naar Last.fm",
-                "listenBrainzScrobbling": "Scrobble naar ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble naar ListenBrainz",
+                "replaygain": "ReplayGain modus",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Uitgeschakeld",
+                    "album": "Gebruik Album Gain",
+                    "track": "Gebruik Track Gain"
+                }
             }
         },
         "albumList": "Albums",
@@ -395,7 +453,8 @@
             "next_song": "Volgend nummer",
             "vol_up": "Volume harder",
             "vol_down": "Volume zachter",
-            "toggle_love": "Voeg toe aan favorieten"
+            "toggle_love": "Voeg toe aan favorieten",
+            "current_song": "Ga naar huidig nummer"
         }
     }
 }

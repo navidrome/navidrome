@@ -35,50 +35,32 @@ var _ = Describe("Strings", func() {
 		})
 	})
 
-	Describe("StringInSlice", func() {
-		It("returns false if slice is empty", func() {
-			Expect(StringInSlice("test", nil)).To(BeFalse())
+	Describe("sanitizeFieldForSorting", func() {
+		BeforeEach(func() {
+			conf.Server.IgnoredArticles = "The O"
 		})
-
-		It("returns false if string is not found in slice", func() {
-			Expect(StringInSlice("aaa", []string{"bbb", "ccc"})).To(BeFalse())
+		It("sanitize accents", func() {
+			Expect(SanitizeFieldForSorting("Céu")).To(Equal("ceu"))
 		})
-
-		It("returns true if string is found in slice", func() {
-			Expect(StringInSlice("bbb", []string{"bbb", "aaa", "ccc"})).To(BeTrue())
+		It("removes articles", func() {
+			Expect(SanitizeFieldForSorting("The Beatles")).To(Equal("the beatles"))
 		})
-	})
-
-	Describe("MoveString", func() {
-		It("moves item to end of slice", func() {
-			Expect(MoveString([]string{"1", "2", "3"}, 0, 2)).To(ConsistOf("2", "3", "1"))
-		})
-		It("moves item to beginning of slice", func() {
-			Expect(MoveString([]string{"1", "2", "3"}, 2, 0)).To(ConsistOf("3", "1", "2"))
-		})
-		It("keeps item in same position if srcIndex == dstIndex", func() {
-			Expect(MoveString([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
+		It("removes accented articles", func() {
+			Expect(SanitizeFieldForSorting("Õ Blésq Blom")).To(Equal("o blesq blom"))
 		})
 	})
-
-	Describe("BreakUpStringSlice", func() {
-		It("returns no chunks if slice is empty", func() {
-			var slice []string
-			chunks := BreakUpStringSlice(slice, 10)
-			Expect(chunks).To(HaveLen(0))
+	Describe("SanitizeFieldForSortingNoArticle", func() {
+		BeforeEach(func() {
+			conf.Server.IgnoredArticles = "The O"
 		})
-		It("returns the slice in one chunk if len < chunkSize", func() {
-			slice := []string{"a", "b", "c"}
-			chunks := BreakUpStringSlice(slice, 10)
-			Expect(chunks).To(HaveLen(1))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
+		It("sanitize accents", func() {
+			Expect(SanitizeFieldForSortingNoArticle("Céu")).To(Equal("ceu"))
 		})
-		It("breaks up the slice if len > chunkSize", func() {
-			slice := []string{"a", "b", "c", "d", "e"}
-			chunks := BreakUpStringSlice(slice, 3)
-			Expect(chunks).To(HaveLen(2))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
-			Expect(chunks[1]).To(ConsistOf("d", "e"))
+		It("removes articles", func() {
+			Expect(SanitizeFieldForSortingNoArticle("The Beatles")).To(Equal("beatles"))
+		})
+		It("removes accented articles", func() {
+			Expect(SanitizeFieldForSortingNoArticle("Õ Blésq Blom")).To(Equal("blesq blom"))
 		})
 	})
 

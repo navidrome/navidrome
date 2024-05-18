@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "lyrics": {
+    "artist": "Rick Astley",
+    "title": "Never Gonna Give You Up",
+    "value": "Never gonna give you up\n\t\t\t\tNever gonna let you down\n\t\t\t\tNever gonna run around and desert you\n\t\t\t\tNever gonna say goodbye"
+  }
+}

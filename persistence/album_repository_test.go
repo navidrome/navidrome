@@ -2,10 +2,10 @@ package persistence
 
 import (
 	"context"
-	"os"
-	"path/filepath"
+	"time"
 
-	"github.com/beego/beego/v2/client/orm"
+	"github.com/fatih/structs"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -20,7 +20,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	BeforeEach(func() {
 		ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
-		repo = NewAlbumRepository(ctx, orm.NewOrm())
+		repo = NewAlbumRepository(ctx, getDBXBuilder())
 	})
 
 	Describe("Get", func() {
@@ -61,130 +61,100 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	Describe("getMinYear", func() {
-		It("returns 0 when there's no valid year", func() {
-			Expect(getMinYear("a b c")).To(Equal(0))
-			Expect(getMinYear("")).To(Equal(0))
-		})
-		It("returns 0 when all values are 0", func() {
-			Expect(getMinYear("0 0 0 ")).To(Equal(0))
-		})
-		It("returns the smallest value from the list", func() {
-			Expect(getMinYear("2000 0 1800")).To(Equal(1800))
-		})
-	})
-
-	Describe("getComment", func() {
-		const zwsp = string('\u200b')
-		It("returns empty string if there are no comments", func() {
-			Expect(getComment("", "")).To(Equal(""))
-		})
-		It("returns empty string if comments are different", func() {
-			Expect(getComment("first"+zwsp+"second", zwsp)).To(Equal(""))
-		})
-		It("returns comment if all comments are the same", func() {
-			Expect(getComment("first"+zwsp+"first", zwsp)).To(Equal("first"))
-		})
-	})
-
-	Describe("getCoverFromPath", func() {
-		var testFolder, testPath, embeddedPath string
-		BeforeEach(func() {
-			testFolder, _ = os.MkdirTemp("", "album_persistence_tests")
-			if err := os.MkdirAll(testFolder, 0777); err != nil {
-				panic(err)
-			}
-			if _, err := os.Create(filepath.Join(testFolder, "Cover.jpeg")); err != nil {
-				panic(err)
-			}
-			if _, err := os.Create(filepath.Join(testFolder, "FRONT.PNG")); err != nil {
-				panic(err)
-			}
-			testPath = filepath.Join(testFolder, "somefile.test")
-			embeddedPath = filepath.Join(testFolder, "somefile.mp3")
-		})
-		AfterEach(func() {
-			_ = os.RemoveAll(testFolder)
-		})
-
-		It("returns audio file for embedded cover", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
-			Expect(getCoverFromPath(testPath, embeddedPath)).To(Equal(""))
-		})
-
-		It("returns external file when no embedded cover exists", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
-			Expect(getCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "Cover.jpeg")))
-		})
-
-		It("returns embedded cover even if not first choice", func() {
-			conf.Server.CoverArtPriority = "something.png, embedded, cover.*, front.*"
-			Expect(getCoverFromPath(testPath, embeddedPath)).To(Equal(""))
-		})
-
-		It("returns first correct match case-insensitively", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.svg, front.png"
-			Expect(getCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "FRONT.PNG")))
-		})
-
-		It("returns match for embedded pattern", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.jp?g, front.png"
-			Expect(getCoverFromPath(testPath, "")).To(Equal(filepath.Join(testFolder, "Cover.jpeg")))
-		})
-
-		It("returns empty string if no match was found", func() {
-			conf.Server.CoverArtPriority = "embedded, cover.jpg, front.apng"
-			Expect(getCoverFromPath(testPath, "")).To(Equal(""))
-		})
-
-		// Reset configuration to default.
-		conf.Server.CoverArtPriority = "embedded, cover.*, front.*"
-	})
-
-	Describe("getAlbumArtist", func() {
-		var al refreshAlbum
-		BeforeEach(func() {
-			al = refreshAlbum{}
-		})
-		Context("Non-Compilations", func() {
+	Describe("dbAlbum mapping", func() {
+		Describe("Album.Discs", func() {
+			var a *model.Album
 			BeforeEach(func() {
-				al.Compilation = false
-				al.Artist = "Sparks"
-				al.ArtistID = "ar-123"
+				a = &model.Album{ID: "1", Name: "name", ArtistID: "2"}
 			})
-			It("returns the track artist if no album artist is specified", func() {
-				id, name := getAlbumArtist(al)
-				Expect(id).To(Equal("ar-123"))
-				Expect(name).To(Equal("Sparks"))
+			It("maps empty discs field", func() {
+				a.Discs = model.Discs{}
+				dba := dbAlbum{Album: a}
+
+				m := structs.Map(dba)
+				Expect(dba.PostMapArgs(m)).To(Succeed())
+				Expect(m).To(HaveKeyWithValue("discs", `{}`))
+
+				other := dbAlbum{Album: &model.Album{ID: "1", Name: "name"}, Discs: "{}"}
+				Expect(other.PostScan()).To(Succeed())
+
+				Expect(other.Album.Discs).To(Equal(a.Discs))
 			})
-			It("returns the album artist if it is specified", func() {
-				al.AlbumArtist = "Sparks Brothers"
-				al.AlbumArtistID = "ar-345"
-				id, name := getAlbumArtist(al)
-				Expect(id).To(Equal("ar-345"))
-				Expect(name).To(Equal("Sparks Brothers"))
+			It("maps the discs field", func() {
+				a.Discs = model.Discs{1: "disc1", 2: "disc2"}
+				dba := dbAlbum{Album: a}
+
+				m := structs.Map(dba)
+				Expect(dba.PostMapArgs(m)).To(Succeed())
+				Expect(m).To(HaveKeyWithValue("discs", `{"1":"disc1","2":"disc2"}`))
+
+				other := dbAlbum{Album: &model.Album{ID: "1", Name: "name"}, Discs: m["discs"].(string)}
+				Expect(other.PostScan()).To(Succeed())
+
+				Expect(other.Album.Discs).To(Equal(a.Discs))
 			})
 		})
-		Context("Compilations", func() {
-			BeforeEach(func() {
-				al.Compilation = true
-				al.Name = "Sgt. Pepper Knew My Father"
-				al.AlbumArtistID = "ar-000"
-				al.AlbumArtist = "The Beatles"
-			})
+		Describe("Album.PlayCount", func() {
+			DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
+				func(songCount, playCount, expected int) {
+					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
 
-			It("returns VariousArtists if there's more than one album artist", func() {
-				al.AlbumArtistIds = `ar-123 ar-345`
-				id, name := getAlbumArtist(al)
-				Expect(id).To(Equal(consts.VariousArtistsID))
-				Expect(name).To(Equal(consts.VariousArtists))
-			})
+					id := uuid.NewString()
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					for i := 0; i < playCount; i++ {
+						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
+					}
 
-			It("returns the sole album artist if they are the same", func() {
-				al.AlbumArtistIds = `ar-000 ar-000`
-				id, name := getAlbumArtist(al)
-				Expect(id).To(Equal("ar-000"))
-				Expect(name).To(Equal("The Beatles"))
+					album, err := repo.Get(id)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(album.PlayCount).To(Equal(int64(expected)))
+				},
+				Entry("1 song, 0 plays", 1, 0, 0),
+				Entry("1 song, 4 plays", 1, 4, 4),
+				Entry("3 songs, 6 plays", 3, 6, 6),
+				Entry("10 songs, 6 plays", 10, 6, 6),
+				Entry("70 songs, 70 plays", 70, 70, 70),
+				Entry("10 songs, 50 plays", 10, 50, 50),
+				Entry("120 songs, 121 plays", 120, 121, 121),
+			)
+
+			DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
+				func(songCount, playCount, expected int) {
+					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
+
+					id := uuid.NewString()
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					for i := 0; i < playCount; i++ {
+						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
+					}
+
+					album, err := repo.Get(id)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(album.PlayCount).To(Equal(int64(expected)))
+				},
+				Entry("1 song, 0 plays", 1, 0, 0),
+				Entry("1 song, 4 plays", 1, 4, 4),
+				Entry("3 songs, 6 plays", 3, 6, 2),
+				Entry("10 songs, 6 plays", 10, 6, 1),
+				Entry("70 songs, 70 plays", 70, 70, 1),
+				Entry("10 songs, 50 plays", 10, 50, 5),
+				Entry("120 songs, 121 plays", 120, 121, 1),
+			)
+		})
+
+		Describe("dbAlbums.toModels", func() {
+			It("converts dbAlbums to model.Albums", func() {
+				dba := dbAlbums{
+					{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
+					{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
+				}
+				albums := dba.toModels()
+				for i := range dba {
+					Expect(albums[i].ID).To(Equal(dba[i].Album.ID))
+					Expect(albums[i].Name).To(Equal(dba[i].Album.Name))
+					Expect(albums[i].SongCount).To(Equal(dba[i].Album.SongCount))
+					Expect(albums[i].PlayCount).To(Equal(dba[i].Album.PlayCount))
+				}
 			})
 		})
 	})

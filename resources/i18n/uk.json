@@ -25,7 +25,8 @@
                 "quality": "Якість",
                 "bpm": "Темп",
                 "playDate": "Востаннє відтворено",
-                "channels": "Канали"
+                "channels": "Канали",
+                "createdAt": "Додано"
             },
             "actions": {
                 "addToQueue": "Прослухати пізніше",
@@ -51,7 +52,13 @@
                 "year": "Рік",
                 "updatedAt": "Оновлено",
                 "comment": "Коментар",
-                "rating": "Рейтинг"
+                "rating": "Рейтинг",
+                "createdAt": "Додано",
+                "size": "Розмір",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Прослухати",
@@ -60,7 +67,8 @@
                 "shuffle": "Перемішати",
                 "addToPlaylist": "Додати у список відтворення",
                 "download": "Завантажити",
-                "info": "Отримати інформацію"
+                "info": "Отримати інформацію",
+                "share": "Поширити"
             },
             "lists": {
                 "all": "Усі",
@@ -80,7 +88,8 @@
                 "songCount": "Кількість пісень",
                 "playCount": "Відтворено",
                 "rating": "Рейтинг",
-                "genre": "Жанр"
+                "genre": "Жанр",
+                "size": "Розмір"
             }
         },
         "user": {
@@ -96,7 +105,7 @@
                 "changePassword": "Змінити пароль?",
                 "currentPassword": "Поточний пароль",
                 "newPassword": "Новий пароль",
-                "token": ""
+                "token": "Токен"
             },
             "helperTexts": {
                 "name": "Змінене ім'я буде відображатися при наступній авторизації"
@@ -107,8 +116,8 @@
                 "deleted": "Користувач видалений"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Введіть свій токен користувача ListenBrainz.",
+                "clickHereForToken": "Натисніть тут для отримання токену"
             }
         },
         "player": {
@@ -121,7 +130,7 @@
                 "userName": "Iм’я користувача",
                 "lastSeen": "Останній візит о",
                 "reportRealPath": "Повідомте про реальний шлях",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "Надсилайте Scrobbles до зовнішніх сервісів"
             }
         },
         "transcoding": {
@@ -151,12 +160,42 @@
                 "selectPlaylist": "Вибрати список відтворення:",
                 "addNewPlaylist": "Створити \"%{name}\"",
                 "export": "Експортувати",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Зробити публічним",
+                "makePrivate": "Зробити приватним"
             },
             "message": {
                 "duplicate_song": "Додати повторювані пісні",
                 "song_exist": "У список відтворення додаються дублікати. Хочете додати дублікати або пропустити їх?"
+            }
+        },
+        "radio": {
+            "name": "Радіо |||| Радіо",
+            "fields": {
+                "name": "Назва",
+                "streamUrl": "Посилання на стрім",
+                "homePageUrl": "Посилання на домашню сторінку",
+                "updatedAt": "Оновлено",
+                "createdAt": "Створено"
+            },
+            "actions": {
+                "playNow": "Зараз грає"
+            }
+        },
+        "share": {
+            "name": "Поширити |||| Поширення",
+            "fields": {
+                "username": "Поширено",
+                "url": "Посилання",
+                "description": "Опис",
+                "contents": "Вміст",
+                "expiresAt": "Дійсний",
+                "lastVisitedAt": "Останній візит",
+                "visitCount": "Відвідин",
+                "format": "Формат",
+                "maxBitRate": "Макс. Біт рейт",
+                "updatedAt": "Оновлено",
+                "createdAt": "Створено",
+                "downloadable": "Дозволити завантаження?"
             }
         }
     },
@@ -186,7 +225,8 @@
             "email": "Хибний email",
             "oneOf": "Повинен бути одним з: %{options}",
             "regex": "Повинен відповідати формату (регулярний вираз): %{pattern}",
-            "unique": "Має бути унікальним"
+            "unique": "Має бути унікальним",
+            "url": "Повинно бути дійсне посилання"
         },
         "action": {
             "add_filter": "Додати фільтр",
@@ -215,7 +255,10 @@
             "open_menu": "Відкрити меню",
             "close_menu": "Закрити меню",
             "unselect": "Забрати виділення",
-            "skip": "Пропустити"
+            "skip": "Пропустити",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Поширити",
+            "download": "Завантаження"
         },
         "boolean": {
             "true": "Так",
@@ -310,19 +353,27 @@
         "delete_user_content": "Ви справді хочете видалити цього користувача і усі його данні (включаючи списки відтворення і налаштування)?",
         "notifications_blocked": "У вас заблоковані Сповіщення для цього сайту у вашому браузері",
         "notifications_not_available": "Ваш браузер не підтримує сповіщень або доступ до Navidrome не використовує https",
-        "lastfmLinkSuccess": "",
-        "lastfmLinkFailure": "",
-        "lastfmUnlinkSuccess": "",
-        "lastfmUnlinkFailure": "",
+        "lastfmLinkSuccess": "Last.fm успішно підключено, scrobbling увімкнено",
+        "lastfmLinkFailure": "Last.fm не вдалося підключити",
+        "lastfmUnlinkSuccess": "Last.fm від'єднано та вимкнено scrobbling",
+        "lastfmUnlinkFailure": "Last.fm не вдалося від'єднати",
         "openIn": {
             "lastfm": "Відкрити у Last.fm",
             "musicbrainz": "Відкрити у MusicBrainz"
         },
         "lastfmLink": "Читати більше...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzLinkSuccess": "ListenBrainz успішно підключено і scrobbling увімкнено для користувача: %{user}.",
+        "listenBrainzLinkFailure": "ListenBrainz не вдалося зв'язати: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz від'єднано та вимкнено scrobbling",
+        "listenBrainzUnlinkFailure": "ListenBrainz не вдалося від'єднати",
+        "downloadOriginalFormat": "Завантажити в вихідному форматі",
+        "shareOriginalFormat": "Поширити у вихідному форматі",
+        "shareDialogTitle": "Поширити %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Поширити 1 %{resource} |||| Поширити %{smart_count} %{resource}",
+        "shareSuccess": "URL скопійований в буфер обміну: %{url}",
+        "shareFailure": "Помилка копіюваня URL %{url} в буфер обміну",
+        "downloadDialogTitle": "Завантаження %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Скопіювати в буфер: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Бібліотека",
@@ -336,8 +387,15 @@
                 "language": "Мова",
                 "defaultView": "Вигляд по замовчуванню",
                 "desktop_notifications": "Сповіщення",
-                "lastfmScrobbling": "",
-                "listenBrainzScrobbling": ""
+                "lastfmScrobbling": "Scrobble на Last.fm",
+                "listenBrainzScrobbling": "Scrobble на ListenBrainz",
+                "replaygain": "Режим ReplayGain",
+                "preAmp": "ReplayGain підсилення (дБ)",
+                "gain": {
+                    "none": "Вимкнено",
+                    "album": "Використовуйте підсилення для Альбому",
+                    "track": "Використовуйте посилення доріжки"
+                }
             }
         },
         "albumList": "Альбом",
@@ -395,7 +453,8 @@
             "next_song": "Наступна пісня",
             "vol_up": "Гучність вгору",
             "vol_down": "Гучність вниз",
-            "toggle_love": "Відмітити поточні пісні"
+            "toggle_love": "Відмітити поточні пісні",
+            "current_song": "Перейти до поточної пісні"
         }
     }
 }

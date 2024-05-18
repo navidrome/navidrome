@@ -6,6 +6,7 @@ import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
 import { useToggleLove } from './useToggleLove'
 import { useRecordContext } from 'react-admin'
+import config from '../config'
 
 const useStyles = makeStyles({
   love: {
@@ -35,9 +36,12 @@ export const LoveButton = ({
       toggleLove()
       e.stopPropagation()
     },
-    [toggleLove]
+    [toggleLove],
   )
 
+  if (!config.enableFavourites) {
+    return <></>
+  }
   return (
     <Button
       onClick={handleToggleLove}

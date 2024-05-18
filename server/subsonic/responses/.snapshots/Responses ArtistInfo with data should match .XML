@@ -1,0 +1,13 @@
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+  <artistInfo>
+    <biography>Black Sabbath is an English &lt;a target=&#39;_blank&#39; href=&#34;http://www.last.fm/tag/heavy%20metal&#34; class=&#34;bbcode_tag&#34; rel=&#34;tag&#34;&gt;heavy metal&lt;/a&gt; band</biography>
+    <musicBrainzId>5182c1d9-c7d2-4dad-afa0-ccfeada921a8</musicBrainzId>
+    <lastFmUrl>https://www.last.fm/music/Black+Sabbath</lastFmUrl>
+    <smallImageUrl>https://userserve-ak.last.fm/serve/64/27904353.jpg</smallImageUrl>
+    <mediumImageUrl>https://userserve-ak.last.fm/serve/126/27904353.jpg</mediumImageUrl>
+    <largeImageUrl>https://userserve-ak.last.fm/serve/_/27904353/Black+Sabbath+sabbath+1970.jpg</largeImageUrl>
+    <similarArtist id="22" name="Accept"></similarArtist>
+    <similarArtist id="101" name="Bruce Dickinson"></similarArtist>
+    <similarArtist id="26" name="Aerosmith"></similarArtist>
+  </artistInfo>
+</subsonic-response>

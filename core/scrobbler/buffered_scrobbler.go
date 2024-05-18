@@ -2,6 +2,7 @@ package scrobbler
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -11,7 +12,7 @@ import (
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
 	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
 	b.wakeSignal = make(chan struct{}, 1)
-	go b.run()
+	go b.run(context.TODO())
 	return b
 }
 
@@ -48,15 +49,19 @@ func (b *bufferedScrobbler) sendWakeSignal() {
 	}
 }
 
-func (b *bufferedScrobbler) run() {
-	ctx := context.Background()
+func (b *bufferedScrobbler) run(ctx context.Context) {
 	for {
 		if !b.processQueue(ctx) {
 			time.AfterFunc(5*time.Second, func() {
 				b.sendWakeSignal()
 			})
 		}
-		<-b.wakeSignal
+		select {
+		case <-b.wakeSignal:
+			continue
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
@@ -92,16 +97,14 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 			MediaFile: entry.MediaFile,
 			TimeStamp: entry.PlayTime,
 		})
+		if errors.Is(err, ErrRetryLater) {
+			log.Warn(ctx, "Could not send scrobble. Will be retried", "userId", entry.UserID,
+				"track", entry.Title, "artist", entry.Artist, "scrobbler", b.service, err)
+			return false
+		}
 		if err != nil {
-			switch err {
-			case ErrRetryLater:
-				log.Warn(ctx, "Could not send scrobble. Will be retried", "userId", entry.UserID,
-					"track", entry.Title, "artist", entry.Artist, "scrobbler", b.service, err)
-				return false
-			default:
-				log.Error(ctx, "Error sending scrobble to service. Discarding", "scrobbler", b.service,
-					"userId", entry.UserID, "artist", entry.Artist, "track", entry.Title, err)
-			}
+			log.Error(ctx, "Error sending scrobble to service. Discarding", "scrobbler", b.service,
+				"userId", entry.UserID, "artist", entry.Artist, "track", entry.Title, err)
 		}
 		err = buffer.Dequeue(entry)
 		if err != nil {

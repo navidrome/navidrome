@@ -12,8 +12,10 @@ import {
   setTrack,
   openAddToPlaylist,
   openExtendedInfoDialog,
+  openDownloadMenu,
+  DOWNLOAD_MENU_SONG,
+  openShareMenu,
 } from '../actions'
-import subsonic from '../subsonic'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
@@ -59,15 +61,26 @@ export const SongContextMenu = ({
           openAddToPlaylist({
             selectedIds: [record.mediaFileId || record.id],
             onSuccess: (id) => onAddToPlaylist(id),
-          })
+          }),
+        ),
+    },
+    share: {
+      enabled: config.enableSharing,
+      label: translate('ra.action.share'),
+      action: (record) =>
+        dispatch(
+          openShareMenu(
+            [record.mediaFileId || record.id],
+            'song',
+            record.title,
+          ),
         ),
     },
     download: {
       enabled: config.enableDownloads,
-      label: `${translate('resources.song.actions.download')} (${formatBytes(
-        record.size
-      )})`,
-      action: (record) => subsonic.download(record.mediaFileId || record.id),
+      label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
+      action: (record) =>
+        dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
     },
     info: {
       enabled: true,
@@ -118,7 +131,7 @@ export const SongContextMenu = ({
               <MenuItem value={key} key={key} onClick={handleItemClick}>
                 {options[key].label}
               </MenuItem>
-            )
+            ),
         )}
       </Menu>
     </span>

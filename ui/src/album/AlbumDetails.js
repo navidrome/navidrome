@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -17,7 +17,6 @@ import {
   ChipField,
   Link,
 } from 'react-admin'
-import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
@@ -29,9 +28,10 @@ import {
   LoveButton,
   RatingField,
   useAlbumsPerPage,
+  CollapsibleComment,
 } from '../common'
 import config from '../config'
-import { intersperse } from '../utils'
+import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 
 const useStyles = makeStyles(
@@ -84,13 +84,11 @@ const useStyles = makeStyles(
       top: theme.spacing(-0.2),
       left: theme.spacing(0.5),
     },
-    commentBlock: {
+    notes: {
       display: 'inline-block',
       marginTop: '1em',
       float: 'left',
       wordBreak: 'break-word',
-    },
-    pointerCursor: {
       cursor: 'pointer',
     },
     recordName: {},
@@ -105,43 +103,8 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDAlbumDetails',
-  }
+  },
 )
-
-const AlbumComment = ({ record }) => {
-  const classes = useStyles()
-  const [expanded, setExpanded] = React.useState(false)
-
-  const lines = record.comment.split('\n')
-  const formatted = useMemo(() => {
-    return lines.map((line, idx) => (
-      <span key={record.id + '-comment-' + idx}>
-        <span dangerouslySetInnerHTML={{ __html: line }} />
-        <br />
-      </span>
-    ))
-  }, [lines, record.id])
-
-  const handleExpandClick = useCallback(() => {
-    setExpanded(!expanded)
-  }, [expanded, setExpanded])
-
-  return (
-    <Collapse
-      collapsedHeight={'1.5em'}
-      in={expanded}
-      timeout={'auto'}
-      className={clsx(
-        classes.commentBlock,
-        lines.length > 1 && classes.pointerCursor
-      )}
-    >
-      <Typography variant={'body1'} onClick={handleExpandClick}>
-        {formatted}
-      </Typography>
-    </Collapse>
-  )
-}
 
 export const useGetHandleGenreClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
@@ -187,8 +150,59 @@ const Details = (props) => {
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
   }
 
-  const year = formatRange(record, 'year')
-  year && addDetail(<>{year}</>)
+  const originalYearRange = formatRange(record, 'originalYear')
+  const originalDate = record.originalDate
+    ? formatFullDate(record.originalDate)
+    : originalYearRange
+  const yearRange = formatRange(record, 'year')
+  const date = record.date ? formatFullDate(record.date) : yearRange
+  const releaseDate = record.releaseDate
+    ? formatFullDate(record.releaseDate)
+    : date
+
+  const showReleaseDate = date !== releaseDate && releaseDate.length > 3
+  const showOriginalDate =
+    date !== originalDate &&
+    originalDate !== releaseDate &&
+    originalDate.length > 3
+
+  showOriginalDate &&
+    !isXsmall &&
+    addDetail(
+      <>
+        {[translate('resources.album.fields.originalDate'), originalDate].join(
+          '  ',
+        )}
+      </>,
+    )
+
+  yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
+
+  showReleaseDate &&
+    addDetail(
+      <>
+        {(!isXsmall
+          ? [translate('resources.album.fields.releaseDate'), releaseDate]
+          : ['○', record.releaseDate.substring(0, 4)]
+        ).join('  ')}
+      </>,
+    )
+
+  const showReleases = record.releases > 1
+  showReleases &&
+    addDetail(
+      <>
+        {!isXsmall
+          ? [
+              record.releases,
+              translate('resources.album.fields.releases', {
+                smart_count: record.releases,
+              }),
+            ].join(' ')
+          : ['(', record.releases, ')))'].join(' ')}
+      </>,
+    )
+
   addDetail(
     <>
       {record.songCount +
@@ -196,7 +210,7 @@ const Details = (props) => {
         translate('resources.song.name', {
           smart_count: record.songCount,
         })}
-    </>
+    </>,
   )
   !isXsmall && addDetail(<DurationField source={'duration'} />)
   !isXsmall && addDetail(<SizeField source="size" />)
@@ -209,16 +223,36 @@ const AlbumDetails = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
   const classes = useStyles()
-  const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [albumInfo, setAlbumInfo] = useState()
+
+  let notes =
+    albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
+
+  if (notes !== undefined) {
+    notes += '..'
+  }
+
+  useEffect(() => {
+    subsonic
+      .getAlbumInfo(record.id)
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          setAlbumInfo(data.albumInfo)
+        }
+      })
+      .catch((e) => {
+        console.error('error on album page', e)
+      })
+  }, [record])
 
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
-  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
-  const handleCloseLightbox = React.useCallback(
-    () => setLightboxOpen(false),
-    []
-  )
+  const handleOpenLightbox = useCallback(() => setLightboxOpen(true), [])
+  const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
@@ -240,16 +274,14 @@ const AlbumDetails = (props) => {
               className={classes.recordName}
             >
               {record.name}
-              {config.enableFavourites && (
-                <LoveButton
-                  className={classes.loveButton}
-                  record={record}
-                  resource={'album'}
-                  size={isDesktop ? 'default' : 'small'}
-                  aria-label="love"
-                  color="primary"
-                />
-              )}
+              <LoveButton
+                className={classes.loveButton}
+                record={record}
+                resource={'album'}
+                size={isDesktop ? 'default' : 'small'}
+                aria-label="love"
+                color="primary"
+              />
             </Typography>
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
@@ -273,14 +305,47 @@ const AlbumDetails = (props) => {
             )}
             {!isXsmall && (
               <Typography component={'div'} className={classes.recordMeta}>
-                <AlbumExternalLinks className={classes.externalLinks} />
+                {config.enableExternalServices && (
+                  <AlbumExternalLinks className={classes.externalLinks} />
+                )}
               </Typography>
             )}
-            {isDesktop && record['comment'] && <AlbumComment record={record} />}
+            {isDesktop && (
+              <Collapse
+                collapsedHeight={'2.75em'}
+                in={expanded}
+                timeout={'auto'}
+                className={classes.notes}
+              >
+                <Typography
+                  variant={'body1'}
+                  onClick={() => setExpanded(!expanded)}
+                >
+                  <span dangerouslySetInnerHTML={{ __html: notes }} />
+                </Typography>
+              </Collapse>
+            )}
+            {isDesktop && record['comment'] && (
+              <CollapsibleComment record={record} />
+            )}
           </CardContent>
         </div>
       </div>
-      {!isDesktop && record['comment'] && <AlbumComment record={record} />}
+      {!isDesktop && record['comment'] && (
+        <CollapsibleComment record={record} />
+      )}
+      {!isDesktop && (
+        <div className={classes.notes}>
+          <Collapse collapsedHeight={'1.5em'} in={expanded} timeout={'auto'}>
+            <Typography
+              variant={'body1'}
+              onClick={() => setExpanded(!expanded)}
+            >
+              <span dangerouslySetInnerHTML={{ __html: notes }} />
+            </Typography>
+          </Collapse>
+        </div>
+      )}
       {isLightboxOpen && (
         <Lightbox
           imagePadding={50}

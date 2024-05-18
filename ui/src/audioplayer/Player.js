@@ -10,8 +10,8 @@ import {
 } from 'react-admin'
 import ReactGA from 'react-ga'
 import { GlobalHotKeys } from 'react-hotkeys'
-import ReactJkMusicPlayer from 'react-jinke-music-player'
-import 'react-jinke-music-player/assets/index.css'
+import ReactJkMusicPlayer from 'navidrome-music-player'
+import 'navidrome-music-player/assets/index.css'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import useStyle from './styles'
@@ -23,6 +23,16 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+
+function calculateReplayGain(preAmp, gain, peak) {
+  if (gain === undefined || peak === undefined) {
+    return 1
+  }
+
+  // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_1.0_specification&section=19
+  // Normalized to max gain
+  return Math.min(10 ** ((gain + preAmp) / 20), 1 / peak)
+}
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -36,18 +46,87 @@ const Player = () => {
   const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
-  const isMobilePlayer = useMediaQuery(
-    '(max-width: 768px) and (orientation : portrait)'
-  )
+  const isMobilePlayer =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent,
+    )
+
   const { authenticated } = useAuthState()
   const visible = authenticated && playerState.queue.length > 0
+  const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
+    isRadio,
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
   })
   const showNotifications = useSelector(
-    (state) => state.settings.notifications || false
+    (state) => state.settings.notifications || false,
   )
+  const gainInfo = useSelector((state) => state.replayGain)
+  const [context, setContext] = useState(null)
+  const [gainNode, setGainNode] = useState(null)
+
+  useEffect(() => {
+    if (
+      context === null &&
+      audioInstance &&
+      config.enableReplayGain &&
+      'AudioContext' in window &&
+      (gainInfo.gainMode === 'album' || gainInfo.gainMode === 'track')
+    ) {
+      const ctx = new AudioContext()
+      // we need this to support radios in firefox
+      audioInstance.crossOrigin = 'anonymous'
+      const source = ctx.createMediaElementSource(audioInstance)
+      const gain = ctx.createGain()
+
+      source.connect(gain)
+      gain.connect(ctx.destination)
+
+      setContext(ctx)
+      setGainNode(gain)
+    }
+  }, [audioInstance, context, gainInfo.gainMode])
+
+  useEffect(() => {
+    if (gainNode) {
+      const current = playerState.current || {}
+      const song = current.song || {}
+
+      let numericGain
+
+      switch (gainInfo.gainMode) {
+        case 'album': {
+          numericGain = calculateReplayGain(
+            gainInfo.preAmp,
+            song.rgAlbumGain,
+            song.rgAlbumPeak,
+          )
+          break
+        }
+        case 'track': {
+          numericGain = calculateReplayGain(
+            gainInfo.preAmp,
+            song.rgTrackGain,
+            song.rgTrackPeak,
+          )
+          break
+        }
+        default: {
+          numericGain = 1
+        }
+      }
+
+      gainNode.gain.setValueAtTime(numericGain, context.currentTime)
+    }
+  }, [
+    audioInstance,
+    context,
+    gainNode,
+    gainInfo.gainMode,
+    gainInfo.preAmp,
+    playerState,
+  ])
 
   const defaultOptions = useMemo(
     () => ({
@@ -73,11 +152,15 @@ const Player = () => {
       },
       volumeFade: { fadeIn: 200, fadeOut: 200 },
       renderAudioTitle: (audioInfo, isMobile) => (
-        <AudioTitle audioInfo={audioInfo} isMobile={isMobile} />
+        <AudioTitle
+          audioInfo={audioInfo}
+          gainInfo={gainInfo}
+          isMobile={isMobile}
+        />
       ),
       locale: locale(translate),
     }),
-    [isDesktop, playerTheme, translate]
+    [gainInfo, isDesktop, playerTheme, translate],
   )
 
   const options = useMemo(() => {
@@ -88,19 +171,22 @@ const Player = () => {
       playIndex: playerState.playIndex,
       autoPlay: playerState.clear || playerState.playIndex === 0,
       clearPriorAudioLists: playerState.clear,
-      extendsContent: <PlayerToolbar id={current.trackId} />,
+      extendsContent: (
+        <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
+      ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
+      showMediaSession: !current.isRadio,
     }
   }, [playerState, defaultOptions, isMobilePlayer])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
-    [dispatch]
+    [dispatch],
   )
 
   const nextSong = useCallback(() => {
     const idx = playerState.queue.findIndex(
-      (item) => item.uuid === playerState.current.uuid
+      (item) => item.uuid === playerState.current.uuid,
     )
     return idx !== null ? playerState.queue[idx + 1] : null
   }, [playerState])
@@ -113,6 +199,10 @@ const Player = () => {
 
       const progress = (info.currentTime / info.duration) * 100
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
+        return
+      }
+
+      if (info.isRadio) {
         return
       }
 
@@ -131,17 +221,23 @@ const Player = () => {
         setScrobbled(true)
       }
     },
-    [startTime, scrobbled, nextSong, preloaded]
+    [startTime, scrobbled, nextSong, preloaded],
   )
 
   const onAudioVolumeChange = useCallback(
     // sqrt to compensate for the logarithmic volume
     (volume) => dispatch(setVolume(Math.sqrt(volume))),
-    [dispatch]
+    [dispatch],
   )
 
   const onAudioPlay = useCallback(
     (info) => {
+      // Do this to start the context; on chrome-based browsers, the context
+      // will start paused since it is created prior to user interaction
+      if (context && context.state !== 'running') {
+        context.resume()
+      }
+
       dispatch(currentPlaying(info))
       if (startTime === null) {
         setStartTime(Date.now())
@@ -149,7 +245,9 @@ const Player = () => {
       if (info.duration) {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
-        subsonic.nowPlaying(info.trackId)
+        if (!info.isRadio) {
+          subsonic.nowPlaying(info.trackId)
+        }
         setPreload(false)
         if (config.gaTrackingId) {
           ReactGA.event({
@@ -162,12 +260,12 @@ const Player = () => {
           sendNotification(
             song.title,
             `${song.artist} - ${song.album}`,
-            info.cover
+            info.cover,
           )
         }
       }
     },
-    [dispatch, showNotifications, startTime]
+    [context, dispatch, showNotifications, startTime],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
@@ -181,7 +279,7 @@ const Player = () => {
 
   const onAudioPause = useCallback(
     (info) => dispatch(currentPlaying(info)),
-    [dispatch]
+    [dispatch],
   )
 
   const onAudioEnded = useCallback(
@@ -193,7 +291,7 @@ const Player = () => {
         .getOne('keepalive', { id: info.trackId })
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider]
+    [dispatch, dataProvider],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
@@ -215,7 +313,7 @@ const Player = () => {
 
   const handlers = useMemo(
     () => keyHandlers(audioInstance, playerState),
-    [audioInstance, playerState]
+    [audioInstance, playerState],
   )
 
   useEffect(() => {

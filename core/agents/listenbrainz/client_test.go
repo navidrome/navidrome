@@ -13,12 +13,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Client", func() {
+var _ = Describe("client", func() {
 	var httpClient *tests.FakeHttpClient
-	var client *Client
+	var client *client
 	BeforeEach(func() {
 		httpClient = &tests.FakeHttpClient{}
-		client = NewClient("BASE_URL/", httpClient)
+		client = newClient("BASE_URL/", httpClient)
 	})
 
 	Describe("listenBrainzResponse", func() {
@@ -36,7 +36,7 @@ var _ = Describe("Client", func() {
 		})
 	})
 
-	Describe("ValidateToken", func() {
+	Describe("validateToken", func() {
 		BeforeEach(func() {
 			httpClient.Res = http.Response{
 				Body:       io.NopCloser(bytes.NewBufferString(`{"code": 200, "message": "Token valid.", "user_name": "ListenBrainzUser", "valid": true}`)),
@@ -45,15 +45,16 @@ var _ = Describe("Client", func() {
 		})
 
 		It("formats the request properly", func() {
-			_, err := client.ValidateToken(context.Background(), "LB-TOKEN")
+			_, err := client.validateToken(context.Background(), "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodGet))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/validate-token"))
 			Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+			Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 		})
 
 		It("parses and returns the response", func() {
-			res, err := client.ValidateToken(context.Background(), "LB-TOKEN")
+			res, err := client.validateToken(context.Background(), "LB-TOKEN")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.Valid).To(Equal(true))
 			Expect(res.UserName).To(Equal("ListenBrainzUser"))
@@ -73,21 +74,23 @@ var _ = Describe("Client", func() {
 					TrackName:   "Track Title",
 					ReleaseName: "Track Album",
 					AdditionalInfo: additionalInfo{
-						TrackNumber:  1,
-						TrackMbzID:   "mbz-123",
-						ArtistMbzIDs: []string{"mbz-789"},
-						ReleaseMbID:  "mbz-456",
+						TrackNumber:    1,
+						RecordingMbzID: "mbz-123",
+						ArtistMbzIDs:   []string{"mbz-789"},
+						ReleaseMbID:    "mbz-456",
+						DurationMs:     142200,
 					},
 				},
 			}
 		})
 
-		Describe("UpdateNowPlaying", func() {
+		Describe("updateNowPlaying", func() {
 			It("formats the request properly", func() {
-				Expect(client.UpdateNowPlaying(context.Background(), "LB-TOKEN", li)).To(Succeed())
+				Expect(client.updateNowPlaying(context.Background(), "LB-TOKEN", li)).To(Succeed())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
 				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+				Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 
 				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
 				f, _ := os.ReadFile("tests/fixtures/listenbrainz.nowplaying.request.json")
@@ -95,16 +98,17 @@ var _ = Describe("Client", func() {
 			})
 		})
 
-		Describe("Scrobble", func() {
+		Describe("scrobble", func() {
 			BeforeEach(func() {
 				li.ListenedAt = 1635000000
 			})
 
 			It("formats the request properly", func() {
-				Expect(client.Scrobble(context.Background(), "LB-TOKEN", li)).To(Succeed())
+				Expect(client.scrobble(context.Background(), "LB-TOKEN", li)).To(Succeed())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
 				Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/submit-listens"))
 				Expect(httpClient.SavedRequest.Header.Get("Authorization")).To(Equal("Token LB-TOKEN"))
+				Expect(httpClient.SavedRequest.Header.Get("Content-Type")).To(Equal("application/json; charset=UTF-8"))
 
 				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
 				f, _ := os.ReadFile("tests/fixtures/listenbrainz.scrobble.request.json")

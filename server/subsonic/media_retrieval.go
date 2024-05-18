@@ -1,53 +1,46 @@
 package subsonic
 
 import (
+	"context"
+	"errors"
 	"io"
 	"net/http"
-	"regexp"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gravatar"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
-type MediaRetrievalController struct {
-	artwork core.Artwork
-	ds      model.DataStore
-}
-
-func NewMediaRetrievalController(artwork core.Artwork, ds model.DataStore) *MediaRetrievalController {
-	return &MediaRetrievalController{artwork: artwork, ds: ds}
-}
-
-func (c *MediaRetrievalController) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	if !conf.Server.EnableGravatar {
-		return c.getPlaceHolderAvatar(w, r)
+		return api.getPlaceHolderAvatar(w, r)
 	}
-	username, err := requiredParamString(r, "username")
+	p := req.Params(r)
+	username, err := p.String("username")
 	if err != nil {
 		return nil, err
 	}
 	ctx := r.Context()
-	u, err := c.ds.User(ctx).FindByUsername(username)
+	u, err := api.ds.User(ctx).FindByUsername(username)
 	if err != nil {
 		return nil, err
 	}
 	if u.Email == "" {
 		log.Warn(ctx, "User needs an email for gravatar to work", "username", username)
-		return c.getPlaceHolderAvatar(w, r)
+		return api.getPlaceHolderAvatar(w, r)
 	}
 	http.Redirect(w, r, gravatar.Url(u.Email, 0), http.StatusFound)
 	return nil, nil
 }
 
-func (c *MediaRetrievalController) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) getPlaceHolderAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
 	f, err := resources.FS().Open(consts.PlaceholderAvatar)
 	if err != nil {
 		log.Error(r, "Image not found", err)
@@ -59,16 +52,28 @@ func (c *MediaRetrievalController) getPlaceHolderAvatar(w http.ResponseWriter, r
 	return nil, nil
 }
 
-func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	id := utils.ParamStringDefault(r, "id", "non-existent")
-	size := utils.ParamInt(r, "size", 0)
+func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+	// If context is already canceled, discard request without further processing
+	if r.Context().Err() != nil {
+		return nil, nil //nolint:nilerr
+	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	p := req.Params(r)
+	id, _ := p.String("id")
+	size := p.IntOr("size", 0)
+
+	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size)
 	w.Header().Set("cache-control", "public, max-age=315360000")
+	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
 
-	imgReader, err := c.artwork.Get(r.Context(), id, size)
 	switch {
-	case err == model.ErrNotFound:
-		log.Error(r, "Couldn't find coverArt", "id", id, err)
+	case errors.Is(err, context.Canceled):
+		return nil, nil
+	case errors.Is(err, model.ErrNotFound):
+		log.Warn(r, "Couldn't find coverArt", "id", id, err)
 		return nil, newError(responses.ErrorDataNotFound, "Artwork not found")
 	case err != nil:
 		log.Error(r, "Error retrieving coverArt", "id", id, err)
@@ -76,46 +81,71 @@ func (c *MediaRetrievalController) GetCoverArt(w http.ResponseWriter, r *http.Re
 	}
 
 	defer imgReader.Close()
-	_, err = io.Copy(w, imgReader)
+	cnt, err := io.Copy(w, imgReader)
+	if err != nil {
+		log.Warn(ctx, "Error sending image", "count", cnt, err)
+	}
 
 	return nil, err
 }
 
-const TIMESTAMP_REGEX string = `(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])`
-
-func isSynced(rawLyrics string) bool {
-	r := regexp.MustCompile(TIMESTAMP_REGEX)
-	// Eg: [04:02:50.85]
-	// [02:50.85]
-	// [02:50]
-	return r.MatchString(rawLyrics)
-}
-
-func (c *MediaRetrievalController) GetLyrics(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	artist := utils.ParamString(r, "artist")
-	title := utils.ParamString(r, "title")
+func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
+	p := req.Params(r)
+	artist, _ := p.String("artist")
+	title, _ := p.String("title")
 	response := newResponse()
 	lyrics := responses.Lyrics{}
 	response.Lyrics = &lyrics
-	media_files, err := c.ds.MediaFile(r.Context()).GetAll(filter.SongsWithLyrics(artist, title))
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsWithLyrics(artist, title))
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(media_files) == 0 {
+	if len(mediaFiles) == 0 {
+		return response, nil
+	}
+
+	structuredLyrics, err := mediaFiles[0].StructuredLyrics()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(structuredLyrics) == 0 {
 		return response, nil
 	}
 
 	lyrics.Artist = artist
 	lyrics.Title = title
 
-	if isSynced(media_files[0].Lyrics) {
-		r := regexp.MustCompile(TIMESTAMP_REGEX)
-		lyrics.Value = r.ReplaceAllString(media_files[0].Lyrics, "")
-	} else {
-		lyrics.Value = media_files[0].Lyrics
+	lyricsText := ""
+	for _, line := range structuredLyrics[0].Line {
+		lyricsText += line.Value + "\n"
 	}
+
+	lyrics.Value = lyricsText
+
+	return response, nil
+}
+
+func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, error) {
+	id, err := req.Params(r).String("id")
+	if err != nil {
+		return nil, err
+	}
+
+	mediaFile, err := api.ds.MediaFile(r.Context()).Get(id)
+	if err != nil {
+		return nil, err
+	}
+
+	lyrics, err := mediaFile.StructuredLyrics()
+	if err != nil {
+		return nil, err
+	}
+
+	response := newResponse()
+	response.LyricsList = buildLyricsList(mediaFile, lyrics)
 
 	return response, nil
 }

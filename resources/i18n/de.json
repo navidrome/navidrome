@@ -25,7 +25,8 @@
                 "quality": "Qualität",
                 "bpm": "BPM",
                 "playDate": "Letzte Wiedergabe",
-                "channels": "Spuren"
+                "channels": "Spuren",
+                "createdAt": "Hinzugefügt"
             },
             "actions": {
                 "addToQueue": "Später abspielen",
@@ -43,7 +44,7 @@
                 "albumArtist": "Albuminterpret",
                 "artist": "Interpret",
                 "duration": "Dauer",
-                "songCount": "Songanzahl",
+                "songCount": "Titelanzahl",
                 "playCount": "Wiedergaben",
                 "name": "Name",
                 "genre": "Genre",
@@ -51,7 +52,13 @@
                 "year": "Jahr",
                 "updatedAt": "Aktualisiert um",
                 "comment": "Kommentar",
-                "rating": "Bewertung"
+                "rating": "Bewertung",
+                "createdAt": "Hinzugefügt",
+                "size": "Größe",
+                "originalDate": "Ursprünglich",
+                "releaseDate": "Erschienen",
+                "releases": "Veröffentlichung |||| Veröffentlichungen",
+                "released": "Erschienen"
             },
             "actions": {
                 "playAll": "Abspielen",
@@ -60,7 +67,8 @@
                 "shuffle": "Zufallswiedergabe",
                 "addToPlaylist": "Zur Playlist hinzufügen",
                 "download": "Herunterladen",
-                "info": "Mehr Informationen"
+                "info": "Mehr Informationen",
+                "share": "Freigabe erstellen"
             },
             "lists": {
                 "all": "Alle",
@@ -77,10 +85,11 @@
             "fields": {
                 "name": "Name",
                 "albumCount": "Albumanzahl",
-                "songCount": "Songanzahl",
+                "songCount": "Titel Anzahl",
                 "playCount": "Wiedergaben",
                 "rating": "Bewertung",
-                "genre": "Genre"
+                "genre": "Genre",
+                "size": "Größe"
             }
         },
         "user": {
@@ -142,13 +151,13 @@
                 "public": "Öffentlich",
                 "updatedAt": "Aktualisiert um",
                 "createdAt": "Erstellt um",
-                "songCount": "Songanzahl",
+                "songCount": "Titel Anzahl",
                 "comment": "Kommentar",
                 "sync": "Auto-Import",
                 "path": "Importieren aus"
             },
             "actions": {
-                "selectPlaylist": "Songs zur Playlist hinzufügen",
+                "selectPlaylist": "Titel zur Playlist hinzufügen",
                 "addNewPlaylist": "\"%{name}\" erstellen",
                 "export": "Exportieren",
                 "makePublic": "Öffentlich machen",
@@ -156,7 +165,37 @@
             },
             "message": {
                 "duplicate_song": "Duplikate hinzufügen",
-                "song_exist": "Manche Songs sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?"
+                "song_exist": "Manche Titel sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?"
+            }
+        },
+        "radio": {
+            "name": "Radio |||| Radios",
+            "fields": {
+                "name": "Name",
+                "streamUrl": "Stream URL",
+                "homePageUrl": "Homepage URL",
+                "updatedAt": "Geändert",
+                "createdAt": "Hinzugefügt"
+            },
+            "actions": {
+                "playNow": "Jetzt abspielen"
+            }
+        },
+        "share": {
+            "name": "Freigabe |||| Freigaben",
+            "fields": {
+                "username": "Freigegeben von",
+                "url": "URL",
+                "description": "Beschreibung",
+                "contents": "Inhalt",
+                "expiresAt": "Gültig bis",
+                "lastVisitedAt": "Zuletzt besucht",
+                "visitCount": "Aufrufe",
+                "format": "Format",
+                "maxBitRate": "Max. Bit Rate",
+                "updatedAt": "Geändert am",
+                "createdAt": "Erstellt am",
+                "downloadable": "Downloads erlauben?"
             }
         }
     },
@@ -186,7 +225,8 @@
             "email": "Muss eine gültige E-Mail sein",
             "oneOf": "Es muss einer sein von: %{options}",
             "regex": "Es muss folgendem regulären Ausdruck entsprechen: %{pattern}",
-            "unique": "Muss eindeutig sein"
+            "unique": "Muss eindeutig sein",
+            "url": "Muss eine gültige URL sein"
         },
         "action": {
             "add_filter": "Filter hinzufügen",
@@ -215,7 +255,10 @@
             "open_menu": "Menü öffnen",
             "close_menu": "Menü schließen",
             "unselect": "Abwählen",
-            "skip": "Überspringen"
+            "skip": "Überspringen",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Freigabe erstellen",
+            "download": "Herunterladen"
         },
         "boolean": {
             "true": "Ja",
@@ -304,9 +347,9 @@
         "note": "HINWEIS",
         "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
         "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
-        "songsAddedToPlaylist": "Einen Song zur Playlist hinzugefügt |||| %{smart_count} Songs zur Playlist hinzugefügt",
+        "songsAddedToPlaylist": "Einen Titel zur Playlist hinzugefügt |||| %{smart_count} Titel zur Playlist hinzugefügt",
         "noPlaylistsAvailable": "Keine Playlist verfügbar",
-        "delete_user_title": "Benutzer \"% {name}\" löschen",
+        "delete_user_title": "Benutzer '%{name}' löschen",
         "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
         "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
         "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "Last.fm Verbindung hergestellt und und scrobbling aktiviert als user: %{user}",
         "listenBrainzLinkFailure": "ListenBrainz konnte nicht verbunden werden: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz Verbindung entfernt und scrobbling deaktiviert",
-        "listenBrainzUnlinkFailure": "ListenBrainz Verbindung konnte nicht entfernt werden"
+        "listenBrainzUnlinkFailure": "ListenBrainz Verbindung konnte nicht entfernt werden",
+        "downloadOriginalFormat": "Download im Original Format",
+        "shareOriginalFormat": "Freigeben im Original Format",
+        "shareDialogTitle": "%{resource} '%{name}' freigeben",
+        "shareBatchDialogTitle": "1 %{resource} freigeben |||| %{smart_count} %{resource} freigeben",
+        "shareSuccess": "URL in Zwischenablage kopiert: %{url}",
+        "shareFailure": "Fehler URL %{url} konnte nicht in Zwischenablage kopiert werden",
+        "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Bibliothek",
@@ -337,7 +388,14 @@
                 "defaultView": "Standard-Ansicht",
                 "desktop_notifications": "Desktop-Benachrichtigungen",
                 "lastfmScrobbling": "Last.fm Scrobbling",
-                "listenBrainzScrobbling": "ListenBrainz Scrobbling"
+                "listenBrainzScrobbling": "ListenBrainz Scrobbling",
+                "replaygain": "ReplayGain Modus",
+                "preAmp": "ReplayGain Vorverstärkung (dB)",
+                "gain": {
+                    "none": "Deaktiviert",
+                    "album": "Album Gain verwenden",
+                    "track": "Titel Gain verwenden"
+                }
             }
         },
         "albumList": "Alben",
@@ -391,11 +449,12 @@
             "show_help": "Diese Hilfe anzeigen",
             "toggle_menu": "Seitenleiste umschalten",
             "toggle_play": "Play / Pause",
-            "prev_song": "vorheriger Song",
-            "next_song": "Nächster Song",
+            "prev_song": "vorheriger Titel",
+            "next_song": "Nächster Titel",
             "vol_up": "Lauter",
             "vol_down": "Leiser",
-            "toggle_love": "Song zu Favoriten hinzufügen"
+            "toggle_love": "Titel zu Favoriten hinzufügen",
+            "current_song": "Aktuellen Titel Anzeigen"
         }
     }
 }

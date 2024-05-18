@@ -20,10 +20,13 @@
                 "bitRate": "Bitrate",
                 "discSubtitle": "Underrubrik",
                 "starred": "Favorit",
-                "rating": "Betyg",
                 "comment": "Kommentar",
+                "rating": "Betyg",
                 "quality": "Kvalite",
-                "bpm": "BPM"
+                "bpm": "BPM",
+                "playDate": "",
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Lägg till kön",
@@ -31,7 +34,8 @@
                 "addToPlaylist": "Lägg till i spellista",
                 "shuffleAll": "Blanda",
                 "download": "Hämta",
-                "playNext": "Spela nästa"
+                "playNext": "Spela nästa",
+                "info": ""
             }
         },
         "album": {
@@ -48,7 +52,13 @@
                 "year": "År",
                 "updatedAt": "Uppdaterad",
                 "comment": "Kommentar",
-                "rating": "Betyg"
+                "rating": "Betyg",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Spela",
@@ -56,7 +66,9 @@
                 "addToQueue": "Lägg till i kön",
                 "shuffle": "Blanda",
                 "addToPlaylist": "Lägg till i spellista",
-                "download": "Hämta"
+                "download": "Hämta",
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Alla låtar",
@@ -75,7 +87,9 @@
                 "albumCount": "Antal album",
                 "songCount": "Antal låtar",
                 "playCount": "Spelade",
-                "rating": "Betygsatt"
+                "rating": "Betygsatt",
+                "genre": "Genre",
+                "size": ""
             }
         },
         "user": {
@@ -88,18 +102,23 @@
                 "name": "Namn",
                 "password": "Lösenord",
                 "createdAt": "Skapad",
+                "changePassword": "Byta lösenord?",
                 "currentPassword": "Nuvarande lösenord",
                 "newPassword": "Nytt lösenord",
-                "changePassword": "Byta lösenord?"
-              },
-              "helperTexts": {
+                "token": ""
+            },
+            "helperTexts": {
                 "name": "Namnändringar återspeglas vid nästkommande inloggning"
-              },
-              "notifications": {
+            },
+            "notifications": {
                 "created": "Användare har skapats",
                 "updated": "Användare har uppdaterats",
                 "deleted": "Användare har tagits bort"
-              }
+            },
+            "message": {
+                "listenBrainzToken": "",
+                "clickHereForToken": ""
+            }
         },
         "player": {
             "name": "Avkodare |||| Avkodare",
@@ -110,7 +129,8 @@
                 "client": "Klient",
                 "userName": "Användarnamn",
                 "lastSeen": "Senast sedd",
-                "reportRealPath": "Visa hela sökvägen"
+                "reportRealPath": "Visa hela sökvägen",
+                "scrobbleEnabled": ""
             }
         },
         "transcoding": {
@@ -139,11 +159,43 @@
             "actions": {
                 "selectPlaylist": "Välj en spellista:",
                 "addNewPlaylist": "Lägg till \"%{name}\"",
-                "export": "Exportera"
-              },
-              "message": {
+                "export": "Exportera",
+                "makePublic": "",
+                "makePrivate": ""
+            },
+            "message": {
                 "duplicate_song": "Lägg till dubletter",
                 "song_exist": "Det finns dubletter som är på väg att läggas till i spellistan. Vill du lägga till dem ändå?"
+            }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },
@@ -173,7 +225,8 @@
             "email": "Ange giltig e-post adress",
             "oneOf": "Måste vara en av: %{options}",
             "regex": "Måste matcha ett förvalt format (regexp): %{pattern}",
-            "unique": "Måste vara unik"
+            "unique": "Måste vara unik",
+            "url": ""
         },
         "action": {
             "add_filter": "Lägg till filter",
@@ -202,7 +255,10 @@
             "open_menu": "Öppna meny",
             "close_menu": "Stäng meny",
             "unselect": "Avmarkera",
-            "skip": "Skippa"
+            "skip": "Skippa",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Ja",
@@ -277,7 +333,14 @@
             "data_provider_error": "dataProvider fel. Kontrollera din konsol för ytterligare detaljer.",
             "i18n_error": "Det gick inte att läsa in översättningen av det begärda språket",
             "canceled": "Åtgärden avbröts",
-            "logged_out": "Sessionen har löpt ut, anslut igen"
+            "logged_out": "Sessionen har löpt ut, anslut igen",
+            "new_version": ""
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "",
+            "layout": "",
+            "grid": "",
+            "table": ""
         }
     },
     "message": {
@@ -289,7 +352,28 @@
         "delete_user_title": "Ta bort användare '%{name}'",
         "delete_user_content": "Vill du ta bort den här användaren och tillhörande data (inklusive spellistor och inställningar)?",
         "notifications_blocked": "",
-        "notifications_not_available": ""
+        "notifications_not_available": "",
+        "lastfmLinkSuccess": "",
+        "lastfmLinkFailure": "",
+        "lastfmUnlinkSuccess": "",
+        "lastfmUnlinkFailure": "",
+        "openIn": {
+            "lastfm": "",
+            "musicbrainz": ""
+        },
+        "lastfmLink": "",
+        "listenBrainzLinkSuccess": "",
+        "listenBrainzLinkFailure": "",
+        "listenBrainzUnlinkSuccess": "",
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Bibliotek",
@@ -302,11 +386,22 @@
                 "theme": "Tema",
                 "language": "Språk",
                 "defaultView": "Standardvy",
-                "desktop_notifications": "Skrivbords notiser"
+                "desktop_notifications": "Skrivbords notiser",
+                "lastfmScrobbling": "",
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Album",
-        "about": "Om"
+        "about": "Om",
+        "playlists": "",
+        "sharedPlaylists": ""
     },
     "player": {
         "playListsText": "Spellista",
@@ -347,18 +442,19 @@
         "fullScan": "Fullständig genomsökning\n",
         "serverUptime": "Server uptime",
         "serverDown": "OFFLINE"
-      },
-      "help": {
+    },
+    "help": {
         "title": "Navidrome Hotkeys",
         "hotkeys": {
-        "show_help": "Visa denna hjälp",
-        "toggle_menu": "Växla meny",
-        "toggle_play": "Spela / Pausa",
-        "prev_song": "Föregående låt",
-        "next_song": "Nästa låt",
-        "vol_up": "Volym Upp",
-        "vol_down": "Volym Ner",
-        "toggle_love": "Lägg till låt i Favoriter"
-      }
+            "show_help": "Visa denna hjälp",
+            "toggle_menu": "Växla meny",
+            "toggle_play": "Spela / Pausa",
+            "prev_song": "Föregående låt",
+            "next_song": "Nästa låt",
+            "vol_up": "Volym Upp",
+            "vol_down": "Volym Ner",
+            "toggle_love": "Lägg till låt i Favoriter",
+            "current_song": ""
+        }
     }
 }

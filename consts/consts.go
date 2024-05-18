@@ -25,18 +25,25 @@ const (
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"
 	PasswordsEncryptedKey = "PasswordsEncryptedKey"
+	PasswordAutogenPrefix = "__NAVIDROME_AUTOGEN__" //nolint:gosec
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
 
-	URLPathUI          = "/app"
-	URLPathNativeAPI   = "/api"
-	URLPathSubsonicAPI = "/rest"
+	URLPathUI           = "/app"
+	URLPathNativeAPI    = "/api"
+	URLPathSubsonicAPI  = "/rest"
+	URLPathPublic       = "/share"
+	URLPathPublicImages = URLPathPublic + "/img"
 
-	// Login backgrounds from https://unsplash.com/collections/20072696/navidrome
-	DefaultUILoginBackgroundURL = "https://source.unsplash.com/collection/20072696/1600x900"
-	// In case external integrations are disabled
-	DefaultUILoginBackgroundURLOffline = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
+	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
+	// available at https://unsplash.com/collections/20072696/navidrome
+	DefaultUILoginBackgroundURL = "/backgrounds"
+
+	// DefaultUILoginBackgroundOffline Background image used in case external integrations are disabled
+	DefaultUILoginBackgroundOffline    = "iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAIAAAAiOjnJAAAABGdBTUEAALGPC/xhBQAAAiJJREFUeF7t0IEAAAAAw6D5Ux/khVBhwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDBgwIABAwYMGDDwMDDVlwABBWcSrQAAAABJRU5ErkJggg=="
+	DefaultUILoginBackgroundURLOffline = "data:image/png;base64," + DefaultUILoginBackgroundOffline
+	DefaultMaxSidebarPlaylists         = 100
 
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
@@ -44,49 +51,66 @@ const (
 	ServerReadHeaderTimeout = 3 * time.Second
 
 	ArtistInfoTimeToLive = 24 * time.Hour
+	AlbumInfoTimeToLive  = 7 * 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
 
-	PlaceholderAlbumArt = "placeholder.png"
-	PlaceholderAvatar   = "logo-192x192.png"
+	PlaceholderArtistArt = "artist-placeholder.webp"
+	PlaceholderAlbumArt  = "placeholder.png"
+	PlaceholderAvatar    = "logo-192x192.png"
+	UICoverArtSize       = 300
+	DefaultUIVolume      = 100
 
 	DefaultHttpClientTimeOut = 10 * time.Second
 
 	DefaultScannerExtractor = "taglib"
+
+	Zwsp = string('\u200b')
 )
 
 // Cache options
 const (
-	TranscodingCacheDir             = "cache/transcoding"
+	TranscodingCacheDir             = "transcoding"
 	DefaultTranscodingCacheMaxItems = 0 // Unlimited
 
-	ImageCacheDir             = "cache/images"
+	ImageCacheDir             = "images"
 	DefaultImageCacheMaxItems = 0 // Unlimited
 
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
 	DefaultCacheCleanUpInterval = 10 * time.Minute
 )
 
-// Shared secrets (only add here "secrets" that can be public)
 const (
-	LastFMAPIKey    = "9b94a5515ea66b2da3ec03c12300327e" // nolint:gosec
-	LastFMAPISecret = "74cb6557cec7171d921af5d7d887c587" // nolint:gosec
+	AlbumPlayCountModeAbsolute   = "absolute"
+	AlbumPlayCountModeNormalized = "normalized"
 )
 
 var (
-	DefaultTranscodings = []map[string]interface{}{
+	DefaultDownsamplingFormat = "opus"
+	DefaultTranscodings       = []struct {
+		Name           string
+		TargetFormat   string
+		DefaultBitRate int
+		Command        string
+	}{
 		{
-			"name":           "mp3 audio",
-			"targetFormat":   "mp3",
-			"defaultBitRate": 192,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -f mp3 -",
+			Name:           "mp3 audio",
+			TargetFormat:   "mp3",
+			DefaultBitRate: 192,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -f mp3 -",
 		},
 		{
-			"name":           "opus audio",
-			"targetFormat":   "opus",
-			"defaultBitRate": 128,
-			"command":        "ffmpeg -i %s -map 0:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+			Name:           "opus audio",
+			TargetFormat:   "opus",
+			DefaultBitRate: 128,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a libopus -f opus -",
+		},
+		{
+			Name:           "aac audio",
+			TargetFormat:   "aac",
+			DefaultBitRate: 256,
+			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
 
@@ -96,7 +120,9 @@ var (
 var (
 	VariousArtists      = "Various Artists"
 	VariousArtistsID    = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
+	UnknownAlbum        = "[Unknown Album]"
 	UnknownArtist       = "[Unknown Artist]"
+	UnknownArtistID     = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(UnknownArtist))))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ServerStart = time.Now()

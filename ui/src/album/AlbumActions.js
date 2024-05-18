@@ -7,21 +7,24 @@ import {
   TopToolbar,
   useTranslate,
 } from 'react-admin'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
+import ShareIcon from '@material-ui/icons/Share'
 import {
   playNext,
   addTracks,
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openDownloadMenu,
+  DOWNLOAD_MENU_ALBUM,
+  openShareMenu,
 } from '../actions'
-import subsonic from '../subsonic'
 import { formatBytes } from '../utils'
-import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
 
@@ -63,9 +66,13 @@ const AlbumActions = ({
     dispatch(openAddToPlaylist({ selectedIds: ids }))
   }, [dispatch, ids])
 
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], 'album', record.name))
+  }, [dispatch, record])
+
   const handleDownload = React.useCallback(() => {
-    subsonic.download(record.id)
-  }, [record])
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_ALBUM))
+  }, [dispatch, record])
 
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
@@ -101,11 +108,16 @@ const AlbumActions = ({
           >
             <PlaylistAddIcon />
           </Button>
+          {config.enableSharing && (
+            <Button onClick={handleShare} label={translate('ra.action.share')}>
+              <ShareIcon />
+            </Button>
+          )}
           {config.enableDownloads && (
             <Button
               onClick={handleDownload}
               label={
-                translate('resources.album.actions.download') +
+                translate('ra.action.download') +
                 (isDesktop ? ` (${formatBytes(record.size)})` : '')
               }
             >
@@ -127,7 +139,6 @@ AlbumActions.propTypes = {
 AlbumActions.defaultProps = {
   record: {},
   selectedIds: [],
-  onUnselectItems: () => null,
 }
 
 export default AlbumActions

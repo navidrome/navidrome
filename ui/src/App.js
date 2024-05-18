@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react'
 import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
@@ -14,6 +13,8 @@ import song from './song'
 import album from './album'
 import artist from './artist'
 import playlist from './playlist'
+import radio from './radio'
+import share from './share'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -25,13 +26,16 @@ import {
   albumViewReducer,
   activityReducer,
   settingsReducer,
+  replayGainReducer,
+  downloadMenuDialogReducer,
+  shareDialogReducer,
 } from './reducers'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider } from './i18n'
-import config from './config'
-import { setDispatch, startEventStream, stopEventStream } from './eventStream'
+import config, { shareInfo } from './config'
 import { keyMap } from './hotkeys'
 import useChangeThemeColor from './useChangeThemeColor'
+import SharePlayer from './share/SharePlayer'
 
 const history = createHashHistory()
 
@@ -52,10 +56,13 @@ const adminStore = createAdminStore({
     albumView: albumViewReducer,
     theme: themeReducer,
     addToPlaylistDialog: addToPlaylistDialogReducer,
+    downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    shareDialog: shareDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
+    replayGain: replayGainReducer,
   },
 })
 
@@ -67,18 +74,6 @@ const App = () => (
 
 const Admin = (props) => {
   useChangeThemeColor()
-  useEffect(() => {
-    if (config.devActivityPanel) {
-      setDispatch(adminStore.dispatch)
-      authProvider
-        .checkAuth()
-        .then(() => startEventStream(adminStore.dispatch))
-        .catch(() => {})
-    }
-    return () => {
-      stopEventStream()
-    }
-  }, [])
 
   return (
     <RAAdmin
@@ -97,6 +92,11 @@ const Admin = (props) => {
         <Resource name="album" {...album} options={{ subMenu: 'albumList' }} />,
         <Resource name="artist" {...artist} />,
         <Resource name="song" {...song} />,
+        <Resource
+          name="radio"
+          {...(permissions === 'admin' ? radio.admin : radio.all)}
+        />,
+        config.enableSharing && <Resource name="share" {...share} />,
         <Resource
           name="playlist"
           {...playlist}
@@ -127,10 +127,17 @@ const Admin = (props) => {
   )
 }
 
-const AppWithHotkeys = () => (
-  <HotKeys keyMap={keyMap}>
-    <App />
-  </HotKeys>
-)
+const AppWithHotkeys = () => {
+  let language = localStorage.getItem('locale') || 'en'
+  document.documentElement.lang = language
+  if (config.enableSharing && shareInfo) {
+    return <SharePlayer />
+  }
+  return (
+    <HotKeys keyMap={keyMap}>
+      <App />
+    </HotKeys>
+  )
+}
 
 export default AppWithHotkeys

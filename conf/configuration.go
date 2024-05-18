@@ -2,8 +2,10 @@ package conf
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -15,50 +17,73 @@ import (
 )
 
 type configOptions struct {
-	ConfigFile              string
-	Address                 string
-	Port                    int
-	MusicFolder             string
-	DataFolder              string
-	DbPath                  string
-	LogLevel                string
-	ScanInterval            time.Duration
-	ScanSchedule            string
-	SessionTimeout          time.Duration
-	BaseURL                 string
-	UILoginBackgroundURL    string
-	EnableTranscodingConfig bool
-	EnableDownloads         bool
-	EnableExternalServices  bool
-	TranscodingCacheSize    string
-	ImageCacheSize          string
-	AutoImportPlaylists     bool
-	PlaylistsPath           string
-
-	SearchFullString       bool
-	RecentlyAddedByModTime bool
-	IgnoredArticles        string
-	IndexGroups            string
-	ProbeCommand           string
-	CoverArtPriority       string
-	CoverJpegQuality       int
-	UIWelcomeMessage       string
-	EnableGravatar         bool
-	EnableFavourites       bool
-	EnableStarRating       bool
-	EnableUserEditing      bool
-	DefaultTheme           string
-	DefaultLanguage        string
-	EnableCoverAnimation   bool
-	GATrackingID           string
-	EnableLogRedacting     bool
-	AuthRequestLimit       int
-	AuthWindowLength       time.Duration
-	PasswordEncryptionKey  string
-	ReverseProxyUserHeader string
-	ReverseProxyWhitelist  string
-
-	Scanner scannerOptions
+	ConfigFile                   string
+	Address                      string
+	Port                         int
+	UnixSocketPerm               string
+	MusicFolder                  string
+	DataFolder                   string
+	CacheFolder                  string
+	DbPath                       string
+	LogLevel                     string
+	ScanInterval                 time.Duration
+	ScanSchedule                 string
+	SessionTimeout               time.Duration
+	BaseURL                      string
+	BasePath                     string
+	BaseHost                     string
+	BaseScheme                   string
+	TLSCert                      string
+	TLSKey                       string
+	UILoginBackgroundURL         string
+	UIWelcomeMessage             string
+	MaxSidebarPlaylists          int
+	EnableTranscodingConfig      bool
+	EnableDownloads              bool
+	EnableExternalServices       bool
+	EnableMediaFileCoverArt      bool
+	TranscodingCacheSize         string
+	ImageCacheSize               string
+	AlbumPlayCountMode           string
+	EnableArtworkPrecache        bool
+	AutoImportPlaylists          bool
+	PlaylistsPath                string
+	AutoTranscodeDownload        bool
+	DefaultDownsamplingFormat    string
+	SearchFullString             bool
+	RecentlyAddedByModTime       bool
+	PreferSortTags               bool
+	IgnoredArticles              string
+	IndexGroups                  string
+	SubsonicArtistParticipations bool
+	FFmpegPath                   string
+	MPVPath                      string
+	MPVCmdTemplate               string
+	CoverArtPriority             string
+	CoverJpegQuality             int
+	ArtistArtPriority            string
+	EnableGravatar               bool
+	EnableFavourites             bool
+	EnableStarRating             bool
+	EnableUserEditing            bool
+	EnableSharing                bool
+	DefaultDownloadableShare     bool
+	DefaultTheme                 string
+	DefaultLanguage              string
+	DefaultUIVolume              int
+	EnableReplayGain             bool
+	EnableCoverAnimation         bool
+	GATrackingID                 string
+	EnableLogRedacting           bool
+	AuthRequestLimit             int
+	AuthWindowLength             time.Duration
+	PasswordEncryptionKey        string
+	ReverseProxyUserHeader       string
+	ReverseProxyWhitelist        string
+	HTTPSecurityHeaders          secureOptions
+	Prometheus                   prometheusOptions
+	Scanner                      scannerOptions
+	Jukebox                      jukeboxOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -66,22 +91,27 @@ type configOptions struct {
 	ListenBrainz listenBrainzOptions
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
-	DevLogSourceLine           bool
-	DevLogLevels               map[string]string
-	DevAutoCreateAdminPassword string
-	DevAutoLoginUsername       string
-	DevPreCacheAlbumArtwork    bool
-	DevFastAccessCoverArt      bool
-	DevActivityPanel           bool
-	DevEnableShare             bool
-	DevSidebarPlaylists        bool
-	DevEnableBufferedScrobble  bool
-	DevShowArtistPage          bool
+	DevLogSourceLine                 bool
+	DevLogLevels                     map[string]string
+	DevEnableProfiler                bool
+	DevAutoCreateAdminPassword       string
+	DevAutoLoginUsername             string
+	DevActivityPanel                 bool
+	DevSidebarPlaylists              bool
+	DevEnableBufferedScrobble        bool
+	DevShowArtistPage                bool
+	DevOffsetOptimize                int
+	DevArtworkMaxRequests            int
+	DevArtworkThrottleBacklogLimit   int
+	DevArtworkThrottleBacklogTimeout time.Duration
+	DevArtistInfoTimeToLive          time.Duration
+	DevAlbumInfoTimeToLive           time.Duration
 }
 
 type scannerOptions struct {
-	Extractor       string
-	GenreSeparators string
+	Extractor          string
+	GenreSeparators    string
+	GroupAlbumReleases bool
 }
 
 type lastfmOptions struct {
@@ -101,6 +131,24 @@ type listenBrainzOptions struct {
 	BaseURL string
 }
 
+type secureOptions struct {
+	CustomFrameOptionsValue string
+}
+
+type prometheusOptions struct {
+	Enabled     bool
+	MetricsPath string
+}
+
+type AudioDeviceDefinition []string
+
+type jukeboxOptions struct {
+	Enabled   bool
+	Devices   []AudioDeviceDefinition
+	Default   string
+	AdminOnly bool
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -108,20 +156,35 @@ var (
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
+	err := viper.ReadInConfig()
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
+		os.Exit(1)
+	}
 	Load()
 }
 
 func Load() {
 	err := viper.Unmarshal(&Server)
 	if err != nil {
-		fmt.Println("FATAL: Error parsing config:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		fmt.Println("FATAL: Error creating data path:", "path", Server.DataFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
 		os.Exit(1)
 	}
+
+	if Server.CacheFolder == "" {
+		Server.CacheFolder = filepath.Join(Server.DataFolder, "cache")
+	}
+	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", "path", Server.CacheFolder, err)
+		os.Exit(1)
+	}
+
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
@@ -136,13 +199,26 @@ func Load() {
 		os.Exit(1)
 	}
 
+	if Server.BaseURL != "" {
+		u, err := url.Parse(Server.BaseURL)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Invalid BaseURL %s: %s\n", Server.BaseURL, err.Error())
+			os.Exit(1)
+		}
+		Server.BasePath = u.Path
+		u.Path = ""
+		u.RawQuery = ""
+		Server.BaseHost = u.Host
+		Server.BaseScheme = u.Scheme
+	}
+
 	// Print current configuration if log level is Debug
-	if log.CurrentLevel() >= log.LevelDebug {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
-		fmt.Println(prettyConf)
+		_, _ = fmt.Fprintln(os.Stderr, prettyConf)
 	}
 
 	if !Server.EnableExternalServices {
@@ -202,38 +278,53 @@ func AddHook(hook func()) {
 
 func init() {
 	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
+	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
+	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
+	viper.SetDefault("tlscert", "")
+	viper.SetDefault("tlskey", "")
 	viper.SetDefault("uiloginbackgroundurl", consts.DefaultUILoginBackgroundURL)
+	viper.SetDefault("uiwelcomemessage", "")
+	viper.SetDefault("maxsidebarplaylists", consts.DefaultMaxSidebarPlaylists)
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
+	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
+	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
-
-	// Config options only valid for file/env configuration
+	viper.SetDefault("enablemediafilecoverart", true)
+	viper.SetDefault("autotranscodedownload", false)
+	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("recentlyaddedbymodtime", false)
+	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
-	viper.SetDefault("probecommand", "ffmpeg %s -f ffmetadata")
-	viper.SetDefault("coverartpriority", "embedded, cover.*, folder.*, front.*")
+	viper.SetDefault("subsonicartistparticipations", false)
+	viper.SetDefault("ffmpegpath", "")
+	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
+
+	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
-	viper.SetDefault("uiwelcomemessage", "")
+	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
 	viper.SetDefault("defaultlanguage", "")
+	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
+	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enablelogredacting", true)
@@ -244,30 +335,47 @@ func init() {
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
 
+	viper.SetDefault("prometheus.enabled", false)
+	viper.SetDefault("prometheus.metricspath", "/metrics")
+
+	viper.SetDefault("jukebox.enabled", false)
+	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
+	viper.SetDefault("jukebox.default", "")
+	viper.SetDefault("jukebox.adminonly", true)
+
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
+	viper.SetDefault("scanner.groupalbumreleases", false)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
-	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
-	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
+	viper.SetDefault("lastfm.apikey", "")
+	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
+	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
+	viper.SetDefault("devenableprofiler", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
-	viper.SetDefault("devprecachealbumartwork", false)
-	viper.SetDefault("devfastaccesscoverart", false)
 	viper.SetDefault("devactivitypanel", true)
-	viper.SetDefault("devenableshare", false)
+	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
+	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
+	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
+	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 }
 
 func InitConfig(cfgFile string) {
@@ -289,7 +397,7 @@ func InitConfig(cfgFile string) {
 
 	err := viper.ReadInConfig()
 	if viper.ConfigFileUsed() != "" && err != nil {
-		fmt.Println("FATAL: Navidrome could not open config file: ", err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Navidrome could not open config file: ", err)
 		os.Exit(1)
 	}
 }

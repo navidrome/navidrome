@@ -1,7 +1,13 @@
 import * as React from 'react'
 import { TestContext } from 'ra-test'
 import { DataProviderContext } from 'react-admin'
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
 
 describe('SelectPlaylistInput', () => {
@@ -45,7 +51,7 @@ describe('SelectPlaylistInput', () => {
                   data: mockIndexedData,
                   list: {
                     cachedRequests: {
-                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{}}':
+                      '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{"smart":false}}':
                         {
                           ids: ['sample-id1', 'sample-id2'],
                           total: 2,
@@ -59,28 +65,29 @@ describe('SelectPlaylistInput', () => {
         >
           <SelectPlaylistInput onChange={onChangeHandler} />
         </TestContext>
-      </DataProviderContext.Provider>
+      </DataProviderContext.Provider>,
     )
 
     await waitFor(() => {
       expect(mockDataProvider.getList).toHaveBeenCalledWith('playlist', {
-        filter: {},
+        filter: { smart: false },
         pagination: { page: 1, perPage: -1 },
         sort: { field: 'name', order: 'ASC' },
       })
     })
 
-    fireEvent.change(document.activeElement, { target: { value: 'sample' } })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    let textBox = screen.getByRole('textbox')
+    fireEvent.change(textBox, { target: { value: 'sample' } })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
         { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
       ])
     })
 
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
         { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
@@ -88,11 +95,11 @@ describe('SelectPlaylistInput', () => {
       ])
     })
 
-    fireEvent.change(document.activeElement, {
+    fireEvent.change(textBox, {
       target: { value: 'new playlist' },
     })
-    fireEvent.keyDown(document.activeElement, { key: 'ArrowDown' })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    fireEvent.keyDown(textBox, { key: 'ArrowDown' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
         { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
@@ -101,10 +108,10 @@ describe('SelectPlaylistInput', () => {
       ])
     })
 
-    fireEvent.change(document.activeElement, {
+    fireEvent.change(textBox, {
       target: { value: 'another new playlist' },
     })
-    fireEvent.keyDown(document.activeElement, { key: 'Enter' })
+    fireEvent.keyDown(textBox, { key: 'Enter' })
     await waitFor(() => {
       expect(onChangeHandler).toHaveBeenCalledWith([
         { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },

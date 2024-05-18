@@ -5,11 +5,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/pocketbase/dbx"
 )
 
 type userRepository struct {
@@ -29,10 +30,10 @@ var (
 	encKey []byte
 )
 
-func NewUserRepository(ctx context.Context, o orm.QueryExecutor) model.UserRepository {
+func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository {
 	r := &userRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "user"
 	once.Do(func() {
 		_ = r.initPasswordEncryptionKey()
@@ -66,7 +67,7 @@ func (r *userRepository) Put(u *model.User) error {
 	if u.NewPassword != "" {
 		_ = r.encryptPassword(u)
 	}
-	values, _ := toSqlArgs(*u)
+	values, _ := toSQLArgs(*u)
 	delete(values, "current_password")
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
 	count, err := r.executeSQL(update)
@@ -131,7 +132,7 @@ func (r *userRepository) Read(id string) (interface{}, error) {
 		return nil, rest.ErrPermissionDenied
 	}
 	usr, err := r.Get(id)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, rest.ErrNotFound
 	}
 	return usr, err
@@ -195,7 +196,7 @@ func (r *userRepository) Update(id string, entity interface{}, cols ...string) e
 		return err
 	}
 	err := r.Put(u)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -206,12 +207,16 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 	if logged.IsAdmin && newUser.ID != logged.ID {
 		return nil
 	}
-	if newUser.NewPassword != "" && newUser.CurrentPassword == "" {
-		err.Errors["currentPassword"] = "ra.validation.required"
+	if newUser.NewPassword == "" {
+		if newUser.CurrentPassword == "" {
+			return nil
+		}
+		err.Errors["password"] = "ra.validation.required"
 	}
-	if newUser.CurrentPassword != "" {
-		if newUser.NewPassword == "" {
-			err.Errors["password"] = "ra.validation.required"
+
+	if !strings.HasPrefix(logged.Password, consts.PasswordAutogenPrefix) {
+		if newUser.CurrentPassword == "" {
+			err.Errors["currentPassword"] = "ra.validation.required"
 		}
 		if newUser.CurrentPassword != logged.Password {
 			err.Errors["currentPassword"] = "ra.validation.passwordDoesNotMatch"
@@ -225,7 +230,7 @@ func validatePasswordChange(newUser *model.User, logged *model.User) error {
 
 func validateUsernameUnique(r model.UserRepository, u *model.User) error {
 	usr, err := r.FindByUsername(u.UserName)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil
 	}
 	if err != nil {
@@ -243,7 +248,7 @@ func (r *userRepository) Delete(id string) error {
 		return rest.ErrPermissionDenied
 	}
 	err := r.delete(Eq{"id": id})
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -263,7 +268,7 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 	key := keyTo32Bytes(conf.Server.PasswordEncryptionKey)
 	keySum := fmt.Sprintf("%x", sha256.Sum256(key))
 
-	props := NewPropertyRepository(r.ctx, r.ormer)
+	props := NewPropertyRepository(r.ctx, r.db)
 	savedKeySum, err := props.Get(consts.PasswordsEncryptedKey)
 
 	// If passwords are already encrypted

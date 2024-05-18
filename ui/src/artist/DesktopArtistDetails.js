@@ -8,6 +8,9 @@ import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
 import { LoveButton, RatingField } from '../common'
 import Lightbox from 'react-image-lightbox'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import AlbumInfo from '../album/AlbumInfo'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -31,12 +34,13 @@ const useStyles = makeStyles(
       flex: '1 0 auto',
     },
     cover: {
-      width: 151,
+      width: '12rem',
+      height: '12rem',
       borderRadius: '6em',
       cursor: 'pointer',
     },
     artistImage: {
-      maxHeight: '9.5rem',
+      maxHeight: '12rem',
       backgroundColor: 'inherit',
       display: 'flex',
       boxShadow: 'none',
@@ -61,19 +65,19 @@ const useStyles = makeStyles(
       wordBreak: 'break-word',
     },
   }),
-  { name: 'NDDesktopArtistDetails' }
+  { name: 'NDDesktopArtistDetails' },
 )
 
-const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
+const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
   const [expanded, setExpanded] = useState(false)
-  const classes = useStyles({ img, expanded })
+  const classes = useStyles()
   const title = record.name
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
 
   const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
   const handleCloseLightbox = React.useCallback(
     () => setLightboxOpen(false),
-    []
+    [],
   )
 
   return (
@@ -83,7 +87,7 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
           {artistInfo && (
             <CardMedia
               className={classes.cover}
-              image={artistInfo.mediumImageUrl}
+              image={subsonic.getCoverArtUrl(record, 300)}
               onClick={handleOpenLightbox}
               title={title}
             />
@@ -97,16 +101,14 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
               className={classes.artistName}
             >
               {title}
-              {config.enableFavourites && (
-                <LoveButton
-                  className={classes.loveButton}
-                  record={record}
-                  resource={'artist'}
-                  size={'default'}
-                  aria-label="love"
-                  color="primary"
-                />
-              )}
+              <LoveButton
+                className={classes.loveButton}
+                record={record}
+                resource={'artist'}
+                size={'default'}
+                aria-label="artist context menu"
+                color="primary"
+              />
             </Typography>
             {config.enableStarRating && (
               <div>
@@ -133,7 +135,9 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
             </Collapse>
           </CardContent>
           <Typography component={'div'} className={classes.button}>
-            <ArtistExternalLinks artistInfo={artistInfo} record={record} />
+            {config.enableExternalServices && (
+              <ArtistExternalLinks artistInfo={artistInfo} record={record} />
+            )}
           </Typography>
         </div>
         {isLightboxOpen && (
@@ -141,11 +145,12 @@ const DesktopArtistDetails = ({ img, artistInfo, record, biography }) => {
             imagePadding={50}
             animationDuration={200}
             imageTitle={record.name}
-            mainSrc={artistInfo.largeImageUrl}
+            mainSrc={subsonic.getCoverArtUrl(record)}
             onCloseRequest={handleCloseLightbox}
           />
         )}
       </Card>
+      <ExpandInfoDialog content={<AlbumInfo />} />
     </div>
   )
 }

@@ -5,28 +5,30 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ReneKroon/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/singleton"
 )
 
 func newCachedGenreRepository(ctx context.Context, repo model.GenreRepository) model.GenreRepository {
-	r := &cachedGenreRepo{
-		GenreRepository: repo,
-		ctx:             ctx,
-	}
-	genres, err := repo.GetAll()
-	if err != nil {
-		log.Error(ctx, "Could not load genres from DB", err)
-		return repo
-	}
+	return singleton.GetInstance(func() *cachedGenreRepo {
+		r := &cachedGenreRepo{
+			GenreRepository: repo,
+			ctx:             ctx,
+		}
+		genres, err := repo.GetAll()
 
-	r.cache = ttlcache.NewCache()
-	for _, g := range genres {
-		_ = r.cache.Set(strings.ToLower(g.Name), g.ID)
-	}
-
-	return r
+		if err != nil {
+			log.Error(ctx, "Could not load genres from DB", err)
+			panic(err)
+		}
+		r.cache = ttlcache.NewCache()
+		for _, g := range genres {
+			_ = r.cache.Set(strings.ToLower(g.Name), g.ID)
+		}
+		return r
+	})
 }
 
 type cachedGenreRepo struct {

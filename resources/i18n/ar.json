@@ -1,0 +1,460 @@
+{
+    "languageName": "العربية",
+    "resources": {
+        "song": {
+            "name": "الصوتية |||| الصوتيات",
+            "fields": {
+                "albumArtist": "فنان الألبوم",
+                "duration": "المدة",
+                "trackNumber": "#",
+                "playCount": "التشغيلات",
+                "title": "العنوان",
+                "artist": "الفنان",
+                "album": "الألبوم",
+                "path": "مسار الملف",
+                "genre": "النوع",
+                "compilation": "تجميع",
+                "year": "السنة",
+                "size": "حجم الملف",
+                "updatedAt": "وقت التحديث",
+                "bitRate": "معدل البت",
+                "discSubtitle": "العنوان الفرعي للقرص",
+                "starred": "المفضلة",
+                "comment": "التعليق",
+                "rating": "التقييم",
+                "quality": "الجودة",
+                "bpm": "سرعة الإيقاع",
+                "playDate": "أخر تشغيلة",
+                "channels": "القنوات",
+                "createdAt": "تاريخ الإضافة"
+            },
+            "actions": {
+                "addToQueue": "شغّله لاحقا",
+                "playNow": "شغّلة الآن",
+                "addToPlaylist": "أضف إلى قائمة التشغيل",
+                "shuffleAll": "اخلط الجميع",
+                "download": "نزّل",
+                "playNext": "شغّل التالي",
+                "info": "معلومات"
+            }
+        },
+        "album": {
+            "name": "ألبوم |||| ألبومات",
+            "fields": {
+                "albumArtist": "فنان الألبوم",
+                "artist": "الألبوم",
+                "duration": "المدة",
+                "songCount": "صوتية",
+                "playCount": "تشغيلات",
+                "name": "الاسم",
+                "genre": "النوع",
+                "compilation": "التجميعة",
+                "year": "السنة",
+                "updatedAt": "وقت التحديث",
+                "comment": "التعليق",
+                "rating": "التقييم",
+                "createdAt": "تاريخ الإضافة",
+                "size": "الحجم",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
+            },
+            "actions": {
+                "playAll": "شغّل",
+                "playNext": "شغّل التالي",
+                "addToQueue": "شغّل لاحقا",
+                "shuffle": "اخلط",
+                "addToPlaylist": "أضف لقائمة التشغيل",
+                "download": "نزّل",
+                "info": "معلومات",
+                "share": "شارك"
+            },
+            "lists": {
+                "all": "الكل",
+                "random": "عشوائي",
+                "recentlyAdded": "المضافة حديثا",
+                "recentlyPlayed": "المشغلة حديثا",
+                "mostPlayed": "الأكثر تشغيلاً",
+                "starred": "المفضلات",
+                "topRated": "الأكثر تقييما"
+            }
+        },
+        "artist": {
+            "name": "الفنان |||| الفنانون",
+            "fields": {
+                "name": "الاسم",
+                "albumCount": "عدد الألبومات",
+                "songCount": "عدد الصوتيات",
+                "playCount": "التشغيلات",
+                "rating": "التقييم",
+                "genre": "النوع",
+                "size": "الحجم"
+            }
+        },
+        "user": {
+            "name": "مستخدم |||| مستخدمون",
+            "fields": {
+                "userName": "اسم المستخدم",
+                "isAdmin": "مدير",
+                "lastLoginAt": "تاريخ أخر ولوج",
+                "updatedAt": "آخر تحديث",
+                "name": "الاسم",
+                "password": "كلمة السر",
+                "createdAt": "أنشئ في",
+                "changePassword": "هل تغير كلمة السر؟",
+                "currentPassword": "كلمة السر الحالية",
+                "newPassword": "كلمة سر جديدة",
+                "token": "الرمز"
+            },
+            "helperTexts": {
+                "name": "ستنعكس تغييرات اسمك عند الولوج التالي"
+            },
+            "notifications": {
+                "created": "أنشئ اسم المستخدم",
+                "updated": "حدث اسم المستخدم",
+                "deleted": "حذف اسم المستخدم"
+            },
+            "message": {
+                "listenBrainzToken": "أدخل رمز ListenBrainz للمستخدم",
+                "clickHereForToken": "انقر هنا لتحصل على رمزك"
+            }
+        },
+        "player": {
+            "name": "المشغل |||| المشغلات",
+            "fields": {
+                "name": "الاسم",
+                "transcodingId": "تحويل الترميز",
+                "maxBitRate": "أقصى معدل بت",
+                "client": "العميل",
+                "userName": "اسم المستخدم",
+                "lastSeen": "أخر رؤية",
+                "reportRealPath": "أظهر المسار الحقيقي",
+                "scrobbleEnabled": "أرسل معلومات الاستخدام إلى خِدْمَات خارجية"
+            }
+        },
+        "transcoding": {
+            "name": "تحويل |||| تحويلات",
+            "fields": {
+                "name": "الاسم",
+                "targetFormat": "الترميز المستهدف",
+                "defaultBitRate": "معدل البت المبدئي",
+                "command": "الأمر"
+            }
+        },
+        "playlist": {
+            "name": "قائمة التشغيل |||| قوائم التشغيل",
+            "fields": {
+                "name": "الاسم",
+                "duration": "المدة",
+                "ownerName": "المالك",
+                "public": "عام",
+                "updatedAt": "أخر تحديث",
+                "createdAt": "تاريخ الإنشاء",
+                "songCount": "الصوتيات",
+                "comment": "التعليق",
+                "sync": "استيراد آلي",
+                "path": "استورد من"
+            },
+            "actions": {
+                "selectPlaylist": "اختر قائمة التشغيل:",
+                "addNewPlaylist": "أنشئ \"%{name}\"",
+                "export": "صدّر",
+                "makePublic": "اجعله عاماً",
+                "makePrivate": "اجعله خاصاً"
+            },
+            "message": {
+                "duplicate_song": "أضف الصوتيات المكررة",
+                "song_exist": "هناك نسخ مكررة تضاف إلى قائمة التشغيل. هل ترغب في إضافة التكرارات أو تخطيها؟"
+            }
+        },
+        "radio": {
+            "name": "إذاعة |||| إذاعات",
+            "fields": {
+                "name": "الاسم",
+                "streamUrl": "عنوان البث",
+                "homePageUrl": "عنوان الصفحة الرئيسة",
+                "updatedAt": "آخر تحديث",
+                "createdAt": "تاريخ الإنشاء"
+            },
+            "actions": {
+                "playNow": "مشغّلة الآن"
+            }
+        },
+        "share": {
+            "name": "مشاركة |||| مشاركات",
+            "fields": {
+                "username": "مشاركة بواسطة",
+                "url": "العنوان",
+                "description": "الوصف",
+                "contents": "المحتويات",
+                "expiresAt": "تاريخ الانتهاء",
+                "lastVisitedAt": "آخر زيارة",
+                "visitCount": "عدد الزيارات",
+                "format": "التنسيق",
+                "maxBitRate": "أقصى معدل بت",
+                "updatedAt": "آخر تحديث",
+                "createdAt": "تاريخ الإنشاء",
+                "downloadable": "هل يسمح بالتنزيل؟"
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "شكرا لتثبيت نافيدروم!",
+            "welcome2": "لتبدأ، أنشئ اسم مستخدم للمدير.",
+            "confirmPassword": "أكّد كلمة السر",
+            "buttonCreateAdmin": "أنشئ مدير",
+            "auth_check_error": "الرجاء الولوج لتتابع",
+            "user_menu": "الملف الشخصي",
+            "username": "اسم المستخدم",
+            "password": "كلمة السر",
+            "sign_in": "لج",
+            "sign_in_error": "فشل الاستيثاق، حاول مرة أخرى.",
+            "logout": "اخرج"
+        },
+        "validation": {
+            "invalidChars": "الرجاء استخدم الحروف الأرقام فقط",
+            "passwordDoesNotMatch": "كلمتا السر غير متطابقتين",
+            "required": "مطلوب",
+            "minLength": "يجب أن تكون  %{min} محرفاً في الأقل",
+            "maxLength": "يجب أن تكون  %{max} محرفاً أو أقل",
+            "minValue": "يجب أن يكون في الأقل %{min}",
+            "maxValue": "يجب أن يكون  %{max} أو أقل",
+            "number": "يجب أن يكون رقماً",
+            "email": "يجب أن يكون بريد إلكتروني صحيحاً",
+            "oneOf": "يجب أن يكون واحدا من: %{options}",
+            "regex": "يجب أن يطابق التنسيق المحدد (regexp): %{pattern}",
+            "unique": "يجب أن يكون فريداً",
+            "url": "يجب أن يكون عنوانا صحيحا"
+        },
+        "action": {
+            "add_filter": "أضف مرشحاً",
+            "add": "أضف",
+            "back": "أرجع للخلف",
+            "bulk_actions": "عنصر واحد محدد |||| %{smart_count} عنصرا محددا",
+            "cancel": "ألغ",
+            "clear_input_value": "امسح القيمة",
+            "clone": "انسخ",
+            "confirm": "أكد",
+            "create": "أنشئ",
+            "delete": "احذف",
+            "edit": "حرر",
+            "export": "صدّر",
+            "list": "اسرد",
+            "refresh": "أنعش",
+            "remove_filter": "أزل هذا المرشح",
+            "remove": "أزل",
+            "save": "احفظ",
+            "search": "ابحث",
+            "show": "اعرض",
+            "sort": "افرز",
+            "undo": "تراجع",
+            "expand": "وسّع",
+            "close": "أغلق",
+            "open_menu": "افتح القائمة",
+            "close_menu": "أغلق القائمة",
+            "unselect": "ألغ التحديد",
+            "skip": "تخطئ",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "شارك",
+            "download": "نزل"
+        },
+        "boolean": {
+            "true": "نعم",
+            "false": "أنشئ"
+        },
+        "page": {
+            "create": "أنشئ %{name}",
+            "dashboard": "لوحة المراقبة",
+            "edit": "%{name} #%{id}",
+            "error": "شئء ما خاطئ",
+            "list": "%{name}",
+            "loading": "يحمّل",
+            "not_found": "غير موجود",
+            "show": "%{name} #%{id}",
+            "empty": "ليس هناك %{name} حتى الآن.",
+            "invite": "هل تريد إضافة واحد؟"
+        },
+        "input": {
+            "file": {
+                "upload_several": "أسقط بعض الملفات لرفعها، أو انقر لتحديد واحدة.",
+                "upload_single": "أسقط ملف لرفعه، أو انقر لتحديده."
+            },
+            "image": {
+                "upload_several": "أسقط بعض الصور لرفعها، أو انقر لتحديد واحدة.",
+                "upload_single": "أسقط صورة لرفعه، أو انقر لتحديده."
+            },
+            "references": {
+                "all_missing": "غير قادر على العثور على البيانات المشار إليها.",
+                "many_missing": "يبدو أن مرجعًا واحدًا في الأقل من المراجع المرتبطة لم يعد متاحًا.",
+                "single_missing": "يبدو أن المرجع المرتبط لم يعد متاحًا."
+            },
+            "password": {
+                "toggle_visible": "أخف كلمة السر",
+                "toggle_hidden": "أظهر كلمة السر"
+            }
+        },
+        "message": {
+            "about": "عن",
+            "are_you_sure": "هل أنت متأكد؟",
+            "bulk_delete_content": "هل ترغب في حذف العنصر %{name} هذا؟ |||| هل ترغب في حذف    %{smart_count} العناصر هذه؟",
+            "bulk_delete_title": "احذف %{name} |||| احذف %{smart_count} %{name}",
+            "delete_content": "هل أنت متيقن أن تريد حذف هذا العنصر؟",
+            "delete_title": "احذف %{name} #%{id}",
+            "details": "التفاصيل",
+            "error": "حدث خطأ في العميل وتعذر إكمال طلبك.",
+            "invalid_form": "النموذج غير صالح. يرجى التحقق من وجود أخطاء.",
+            "loading": "تحمل الصفحة، لحظة من فضلك",
+            "no": "لا",
+            "not_found": "إما أنك كتبت عنوان بشكل خاطئًا، أو اتبعت رابطًا سيئًا.",
+            "yes": "نعم",
+            "unsaved_changes": "لم تحفظ بعض تغييراتك. هل أنت متيقِّن أنك تريد تجاهلهم؟"
+        },
+        "navigation": {
+            "no_results": "لا توجد نتائج",
+            "no_more_results": "رَقَم الصفحة %{page} خارج النطاق. حاول الصفحة الأخيرة.",
+            "page_out_of_boundaries": "رقم الصفحة %{page} خارج النطاق",
+            "page_out_from_end": "لا يمكن الذَّهاب بعد الصفحة الأخيرة",
+            "page_out_from_begin": "لا يمكن الذَّهاب لما قبل الصفحة ١",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} من %{total}",
+            "page_rows_per_page": "عنصر في كل صفحة:",
+            "next": "التالي",
+            "prev": "السابق",
+            "skip_nav": "تخطى للمحتوى"
+        },
+        "notification": {
+            "updated": "حُدث العنصر |||| حُدث %{smart_count} عنصرا.",
+            "created": "أُنشئ العنصر",
+            "deleted": "حُذف العنصر|||| حُذف %{smart_count}  عنصراً",
+            "bad_item": "العنصر خاطئ",
+            "item_doesnt_exist": "العنصر غير موجود",
+            "http_error": "خطاء تواصل مع الخادم",
+            "data_provider_error": "خطأ في مزود البيانات. تحقق وحدة التحكم للحصول على التفاصيل.",
+            "i18n_error": "لا يمكن تحميل الترجمات للغة المحددة",
+            "canceled": "ألغي الإجراء",
+            "logged_out": "لقد انتهت جلستك، يرجى إعادة الاتصال.",
+            "new_version": "نسخة جديدة متاحة! يرجى تحديث هذه النافذة."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "عدد الأعمدة",
+            "layout": "التخطيط",
+            "grid": "شبكة",
+            "table": "جدول"
+        }
+    },
+    "message": {
+        "note": "ملاحظة",
+        "transcodingDisabled": "عُطل تغيير ضبط تحويل الترميز بواسطة واجهة الويب لأسباب أمنية. إذا كنت ترغب في تغيير (تحرير أو إضافة) خيارات تحويل الترميز، فأعد تشغيل الخادم باستخدام خِيار التكوين %{config}.",
+        "transcodingEnabled": "يعمل نافيدروم حاليًا مع %{config}، مما يجعل من الممكن تشغيل أوامر النظام من إعدادات تحويل الترميز باستخدام واجهة الويب. نوصي بتعطيله لأسباب أمنية وتمكينه فقط عند ضبط خيارات تحويل الترميز.",
+        "songsAddedToPlaylist": "أضيفت صوتية لقائمة التشغيل |||| أضيف %{smart_count} صوتية لقائمة التشغيل",
+        "noPlaylistsAvailable": "غير موجودة",
+        "delete_user_title": "احذف اسم المستخدم '%{name}'",
+        "delete_user_content": "هل أنت متيقِّن من أنك تريد حذف هذا المستخدم وجميع بياناته (بما في ذلك قوائم التشغيل والتفضيلات)؟",
+        "notifications_blocked": "قد حظرت الإشعارات لهذا الموقع في إعدادات مستعرضك.",
+        "notifications_not_available": "لا يدعم هذا المستعرض إشعارات سطح المكتب أو أنك لا تصل إلى نافيدروم عبر https",
+        "lastfmLinkSuccess": "ربط حساب Last.fm بنجاح وفعل إرسال البيانات.",
+        "lastfmLinkFailure": "حساب Last.fm غير مربوط",
+        "lastfmUnlinkSuccess": "ألغي ربط Last.fm وعطل إرسال البيانات",
+        "lastfmUnlinkFailure": "تعذر فك ارتباط حساب Last.fm",
+        "openIn": {
+            "lastfm": "افتح في Last.fm",
+            "musicbrainz": "افتح في MusicBrainz"
+        },
+        "lastfmLink": "اقرأ المزيد…",
+        "listenBrainzLinkSuccess": "ربط حساب ListenBrainz بنجاح ومكّن إرسال البينات باسم المستخدم: %{user}",
+        "listenBrainzLinkFailure": "تعذر ربط ListenBrainz : %{error}",
+        "listenBrainzUnlinkSuccess": "ألغي ربط ListenBrainz وعطل إرسال البيانات",
+        "listenBrainzUnlinkFailure": "حساب ListenBrainz غير مربوط",
+        "downloadOriginalFormat": "حمّل بالترميز الأصلي",
+        "shareOriginalFormat": "شارك بالترميز الأصلي",
+        "shareDialogTitle": "شارك %{resource} '%{name}'",
+        "shareBatchDialogTitle": "شارك %{resource} |||| شارك %{smart_count} %{resource}",
+        "shareSuccess": "نسخ الرابط للحافظة: %{url}",
+        "shareFailure": "حدث خطأ أثناء نسخ الرابط  %{url} إلى الحافظة",
+        "downloadDialogTitle": "حمّل %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "انسخ إلى الحافظة: Ctrl+C، إدخال"
+    },
+    "menu": {
+        "library": "المكتبة",
+        "settings": "إعدادات",
+        "version": "الإصدارة",
+        "theme": "السمة",
+        "personal": {
+            "name": "إعدادات شخصية",
+            "options": {
+                "theme": "السمة",
+                "language": "اللغة",
+                "defaultView": "العرض المبدئي",
+                "desktop_notifications": "إخطارات سطح المكتب",
+                "lastfmScrobbling": "أرسل البيانات إلى Last.fm",
+                "listenBrainzScrobbling": "أرسل البيانات إلى ListenBrainz",
+                "replaygain": "نمط رافع الصوت",
+                "preAmp": "تكبير ما قبل رافع الصوت (ديسبل)",
+                "gain": {
+                    "none": "معطل",
+                    "album": "استخدام قيمة رفع الألبوم",
+                    "track": "استخدام قيمة رفع المسار"
+                }
+            }
+        },
+        "albumList": "الألبومات",
+        "about": "عن",
+        "playlists": "قوائم التشغيل",
+        "sharedPlaylists": "قوائم التشغيل المشتركة"
+    },
+    "player": {
+        "playListsText": "صف التشغيل",
+        "openText": "افتح",
+        "closeText": "أغلق",
+        "notContentText": "لا يوجد صوتيات",
+        "clickToPlayText": "انقر للتشغيل",
+        "clickToPauseText": "انقر للبث",
+        "nextTrackText": "المسار التالي",
+        "previousTrackText": "المسار السابق",
+        "reloadText": "أعد التحميل",
+        "volumeText": "الصوت",
+        "toggleLyricText": "أظهر/أخف الكلمات",
+        "toggleMiniModeText": "صغر",
+        "destroyText": "دمر",
+        "downloadText": "نزل",
+        "removeAudioListsText": "احذف قوائم الصوتيات",
+        "clickToDeleteText": "انقر لحذف %{name}",
+        "emptyLyricText": "لا توجد كلمات",
+        "playModeText": {
+            "order": "بالترتيب",
+            "orderLoop": "كرر",
+            "singleLoop": "كرر مرة واحدة",
+            "shufflePlay": "اخلط"
+        }
+    },
+    "about": {
+        "links": {
+            "homepage": "موقع الويب",
+            "source": "الشفرة المصدرية",
+            "featureRequests": "طلبات المزايا"
+        }
+    },
+    "activity": {
+        "title": "النشاط",
+        "totalScanned": "عدد المجلدات الممسوحة",
+        "quickScan": "مسح سريع",
+        "fullScan": "مسح كامل",
+        "serverUptime": "وقت التشيغل",
+        "serverDown": "غير متصل"
+    },
+    "help": {
+        "title": "مفاتيح نافيدروم للتشغيل السريع",
+        "hotkeys": {
+            "show_help": "أظهر المساعدة",
+            "toggle_menu": "أظهر/أخفي القائمة الجانبي",
+            "toggle_play": "شغّل / ألبث",
+            "prev_song": "الصوتية السابقة",
+            "next_song": "الصوتية التالية",
+            "vol_up": "ارفع الصوت",
+            "vol_down": "أخفض الصوت",
+            "toggle_love": "أضف هذا المسار للمفضلة",
+            "current_song": "اذهب للصوتية الحالية"
+        }
+    }
+}

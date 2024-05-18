@@ -77,6 +77,9 @@ func buildAuthPayload(user *model.User) map[string]interface{} {
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
+	if conf.Server.LastFM.Enabled {
+		payload["lastFMApiKey"] = conf.Server.LastFM.ApiKey
+	}
 
 	bytes := make([]byte, 3)
 	_, err := rand.Read(bytes)
@@ -107,8 +110,6 @@ func getCredentialsFromBody(r *http.Request) (username string, password string, 
 }
 
 func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
-	auth.Init(ds)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, err := getCredentialsFromBody(r)
 		if err != nil {
@@ -135,7 +136,7 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 }
 
 func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
-	log.Warn("Creating initial user", "user", username)
+	log.Warn(ctx, "Creating initial user", "user", username)
 	now := time.Now()
 	caser := cases.Title(language.Und)
 	initialUser := model.User{
@@ -145,18 +146,18 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
-		LastLoginAt: now,
+		LastLoginAt: &now,
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
-		log.Error("Could not create initial user", "user", initialUser, err)
+		log.Error(ctx, "Could not create initial user", "user", initialUser, err)
 	}
 	return nil
 }
 
 func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
 	u, err := userRepo.FindByUsernameWithPassword(userName)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
@@ -195,11 +196,16 @@ func UsernameFromToken(r *http.Request) string {
 }
 
 func UsernameFromReverseProxyHeader(r *http.Request) string {
-	if conf.Server.ReverseProxyWhitelist == "" {
+	if conf.Server.ReverseProxyWhitelist == "" && !strings.HasPrefix(conf.Server.Address, "unix:") {
 		return ""
 	}
-	if !validateIPAgainstList(r.RemoteAddr, conf.Server.ReverseProxyWhitelist) {
-		log.Warn("IP is not whitelisted for reverse proxy login", "ip", r.RemoteAddr)
+	reverseProxyIp, ok := request.ReverseProxyIpFrom(r.Context())
+	if !ok {
+		log.Error("ReverseProxyWhitelist enabled but no proxy IP found in request context. Please report this error.")
+		return ""
+	}
+	if !validateIPAgainstList(reverseProxyIp, conf.Server.ReverseProxyWhitelist) {
+		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
 	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)
@@ -217,6 +223,7 @@ func UsernameFromConfig(r *http.Request) string {
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
 	user, err := ds.User(ctx).FindByUsername(username)
 	if err == nil {
+		ctx = log.NewContext(ctx, "username", username)
 		ctx = request.WithUsername(ctx, user.UserName)
 		return request.WithUser(ctx, *user), nil
 	}
@@ -253,7 +260,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
-// JWTRefresher updates the expire date of the received JWT token, and add the new one to the Authorization Header
+// JWTRefresher updates the expiry date of the received JWT token, and add the new one to the Authorization Header
 func JWTRefresher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -286,8 +293,25 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	userRepo := ds.User(r.Context())
 	user, err := userRepo.FindByUsernameWithPassword(username)
 	if user == nil || err != nil {
-		log.Warn(r, "User passed in header not found", "user", username)
-		return nil
+		log.Info(r, "User passed in header not found", "user", username)
+		newUser := model.User{
+			ID:          uuid.NewString(),
+			UserName:    username,
+			Name:        username,
+			Email:       "",
+			NewPassword: consts.PasswordAutogenPrefix + uuid.NewString(),
+			IsAdmin:     false,
+		}
+		err := userRepo.Put(&newUser)
+		if err != nil {
+			log.Error(r, "Could not create new user", "user", username, err)
+			return nil
+		}
+		user, err = userRepo.FindByUsernameWithPassword(username)
+		if user == nil || err != nil {
+			log.Error(r, "Created user but failed to fetch it", "user", username)
+			return nil
+		}
 	}
 
 	err = userRepo.UpdateLastLoginAt(user.ID)
@@ -300,6 +324,12 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 }
 
 func validateIPAgainstList(ip string, comaSeparatedList string) bool {
+	// Per https://github.com/golang/go/issues/49825, the remote address
+	// on a unix socket is '@'
+	if ip == "@" && strings.HasPrefix(conf.Server.Address, "unix:") {
+		return true
+	}
+
 	if comaSeparatedList == "" || ip == "" {
 		return false
 	}

@@ -10,7 +10,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static -lz'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -22,9 +22,9 @@ builds:
     goos:
       - linux
     goarch:
-      - 386
+      - "386"
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -32,19 +32,19 @@ builds:
   - id: navidrome_linux_arm
     env:
       - CGO_ENABLED=1
-      - CC=arm-linux-gnueabihf-gcc
-      - CXX=arm-linux-gnueabihf-g++
+      - CC=arm-linux-gnueabi-gcc
+      - CXX=arm-linux-gnueabi-g++
       - PKG_CONFIG_PATH=/arm/lib/pkgconfig
     goos:
       - linux
     goarch:
       - arm
     goarm:
-      - 5
-      - 6
-      - 7
+      - "5"
+      - "6"
+      - "7"
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -60,7 +60,7 @@ builds:
     goarch:
       - arm64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -74,9 +74,9 @@ builds:
     goos:
       - windows
     goarch:
-      - 386
+      - "386"
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -92,7 +92,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - "-extldflags '-static'"
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
@@ -108,7 +108,7 @@ builds:
     goarch:
       - amd64
     flags:
-      - -tags=embed,netgo
+      - -tags=netgo
     ldflags:
       - -s -w -X github.com/navidrome/navidrome/consts.gitSha={{.ShortCommit}} -X github.com/navidrome/navidrome/consts.gitTag={{.Version}}
 
@@ -116,12 +116,6 @@ archives:
   - format_overrides:
       - goos: windows
         format: zip
-    replacements:
-      darwin: macOS
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"

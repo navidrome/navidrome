@@ -14,9 +14,12 @@ import {
   playTracks,
   shuffleTracks,
   openAddToPlaylist,
+  openDownloadMenu,
   openExtendedInfoDialog,
+  DOWNLOAD_MENU_ALBUM,
+  DOWNLOAD_MENU_ARTIST,
+  openShareMenu,
 } from '../actions'
-import subsonic from '../subsonic'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
@@ -77,13 +80,27 @@ const ContextMenu = ({
       label: translate('resources.album.actions.addToPlaylist'),
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
+    share: {
+      enabled: config.enableSharing,
+      needData: false,
+      label: translate('ra.action.share'),
+      action: (record) =>
+        dispatch(openShareMenu([record.id], resource, record.name)),
+    },
     download: {
       enabled: config.enableDownloads && record.size,
       needData: false,
-      label: `${translate('resources.album.actions.download')} (${formatBytes(
-        record.size
-      )})`,
-      action: () => subsonic.download(record.id),
+      label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
+      action: () => {
+        dispatch(
+          openDownloadMenu(
+            record,
+            record.duration !== undefined
+              ? DOWNLOAD_MENU_ALBUM
+              : DOWNLOAD_MENU_ARTIST,
+          ),
+        )
+      },
     },
     ...(!hideInfo && {
       info: {
@@ -110,7 +127,7 @@ const ContextMenu = ({
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
-      {}
+      {},
     )
     const ids = response.data.map((r) => r.id)
     return { data, ids }
@@ -130,7 +147,7 @@ const ContextMenu = ({
           notify('ra.page.error', 'warning')
         })
     } else {
-      options[key].action()
+      options[key].action(record)
     }
 
     e.stopPropagation()
@@ -169,7 +186,7 @@ const ContextMenu = ({
               <MenuItem value={key} key={key} onClick={handleItemClick}>
                 {options[key].label}
               </MenuItem>
-            )
+            ),
         )}
       </Menu>
     </span>
@@ -183,8 +200,12 @@ export const AlbumContextMenu = (props) =>
       resource={'album'}
       songQueryParams={{
         pagination: { page: 1, perPage: -1 },
-        sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-        filter: { album_id: props.record.id, disc_number: props.discNumber },
+        sort: { field: 'releaseDate, discNumber, trackNumber', order: 'ASC' },
+        filter: {
+          album_id: props.record.id,
+          release_date: props.releaseDate,
+          disc_number: props.discNumber,
+        },
       }}
     />
   ) : null
@@ -209,7 +230,10 @@ export const ArtistContextMenu = (props) =>
       resource={'artist'}
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },
-        sort: { field: 'album, discNumber, trackNumber', order: 'ASC' },
+        sort: {
+          field: 'album, releaseDate, discNumber, trackNumber',
+          order: 'ASC',
+        },
         filter: { album_artist_id: props.record.id },
       }}
     />

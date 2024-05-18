@@ -7,24 +7,15 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
-type LibraryScanningController struct {
-	scanner scanner.Scanner
-}
-
-func NewLibraryScanningController(scanner scanner.Scanner) *LibraryScanningController {
-	return &LibraryScanningController{scanner: scanner}
-}
-
-func (c *LibraryScanningController) GetScanStatus(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	// TODO handle multiple mediafolders
+func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
+	// TODO handle multiple libraries
 	ctx := r.Context()
 	mediaFolder := conf.Server.MusicFolder
-	status, err := c.scanner.Status(mediaFolder)
+	status, err := api.scanner.Status(mediaFolder)
 	if err != nil {
 		log.Error(ctx, "Error retrieving Scanner status", err)
 		return nil, newError(responses.ErrorGeneric, "Internal Error")
@@ -39,7 +30,7 @@ func (c *LibraryScanningController) GetScanStatus(w http.ResponseWriter, r *http
 	return response, nil
 }
 
-func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	loggedUser, ok := request.UserFrom(ctx)
 	if !ok {
@@ -50,12 +41,13 @@ func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Req
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 
-	fullScan := utils.ParamBool(r, "fullScan", false)
+	p := req.Params(r)
+	fullScan := p.BoolOr("fullScan", false)
 
 	go func() {
 		start := time.Now()
 		log.Info(ctx, "Triggering manual scan", "fullScan", fullScan, "user", loggedUser.UserName)
-		err := c.scanner.RescanAll(ctx, fullScan)
+		err := api.scanner.RescanAll(ctx, fullScan)
 		if err != nil {
 			log.Error(ctx, "Error scanning", err)
 			return
@@ -63,5 +55,5 @@ func (c *LibraryScanningController) StartScan(w http.ResponseWriter, r *http.Req
 		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start).Round(100*time.Millisecond))
 	}()
 
-	return c.GetScanStatus(w, r)
+	return api.GetScanStatus(r)
 }

@@ -31,7 +31,6 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { setTrack } from '../actions'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
-import { AddToPlaylistDialog } from '../dialogs'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
@@ -103,7 +102,7 @@ const SongList = (props) => {
         <AlbumLinkField
           source="album"
           sortBy={
-            'album, order_album_artist_name, disc_number, track_number, title'
+            'album, order_album_artist_name, release_date, disc_number, track_number, title'
           }
           sortByOrder={'ASC'}
         />
@@ -138,6 +137,8 @@ const SongList = (props) => {
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
+      path: <TextField source="path" />,
+      createdAt: <DateField source="createdAt" showTime />,
     }
   }, [isDesktop, classes.ratingField])
 
@@ -151,6 +152,8 @@ const SongList = (props) => {
       'albumArtist',
       'genre',
       'comment',
+      'path',
+      'createdAt',
     ],
   })
 
@@ -193,7 +196,6 @@ const SongList = (props) => {
           </SongDatagrid>
         )}
       </List>
-      <AddToPlaylistDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )

@@ -1,4 +1,9 @@
-import { applyMiddleware, combineReducers, compose, createStore } from 'redux'
+import {
+  applyMiddleware,
+  combineReducers,
+  compose,
+  legacy_createStore as createStore,
+} from 'redux'
 import { routerMiddleware, connectRouter } from 'connected-react-router'
 import createSagaMiddleware from 'redux-saga'
 import { all, fork } from 'redux-saga/effects'
@@ -43,7 +48,9 @@ const createAdminStore = ({
   const store = createStore(
     resettableAppReducer,
     persistedState,
-    composeEnhancers(applyMiddleware(sagaMiddleware, routerMiddleware(history)))
+    composeEnhancers(
+      applyMiddleware(sagaMiddleware, routerMiddleware(history)),
+    ),
   )
 
   store.subscribe(
@@ -56,7 +63,7 @@ const createAdminStore = ({
         settings: state.settings,
       })
     }),
-    1000
+    1000,
   )
 
   sagaMiddleware.run(saga)

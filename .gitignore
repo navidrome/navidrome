@@ -14,12 +14,15 @@ navidrome.toml
 master.zip
 testDB
 navidrome.db
+cache/*
 *.swp
 embedded_gen.go
 dist
 music
-docker-compose.yml
 navidrome.db-shm
 navidrome.db-wal
 tags
 .gitinfo
+docker-compose.yml
+!contrib/docker-compose.yml
+test-123.db

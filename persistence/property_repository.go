@@ -2,20 +2,21 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository(ctx context.Context, o orm.QueryExecutor) model.PropertyRepository {
+func NewPropertyRepository(ctx context.Context, db dbx.Builder) model.PropertyRepository {
 	r := &propertyRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "property"
 	return r
 }
@@ -24,7 +25,7 @@ func (r propertyRepository) Put(id string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
 	count, err := r.executeSQL(update)
 	if err != nil {
-		return nil
+		return err
 	}
 	if count > 0 {
 		return nil
@@ -48,7 +49,7 @@ func (r propertyRepository) Get(id string) (string, error) {
 
 func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
 	value, err := r.Get(id)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return defaultValue, nil
 	}
 	if err != nil {

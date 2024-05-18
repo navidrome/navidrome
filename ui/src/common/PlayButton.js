@@ -10,7 +10,7 @@ export const PlayButton = ({ record, size, className }) => {
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
-      {}
+      {},
     )
     const ids = response.data.map((r) => r.id)
     return { data, ids }
@@ -21,8 +21,12 @@ export const PlayButton = ({ record, size, className }) => {
     dataProvider
       .getList('song', {
         pagination: { page: 1, perPage: -1 },
-        sort: { field: 'discNumber, trackNumber', order: 'ASC' },
-        filter: { album_id: record.id, disc_number: record.discNumber },
+        sort: { field: 'releaseDate, discNumber, trackNumber', order: 'ASC' },
+        filter: {
+          album_id: record.id,
+          release_date: record.releaseDate,
+          disc_number: record.discNumber,
+        },
       })
       .then((response) => {
         let { data, ids } = extractSongsData(response)

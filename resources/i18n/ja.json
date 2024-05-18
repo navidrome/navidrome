@@ -25,7 +25,8 @@
                 "quality": "品質",
                 "bpm": "BPM",
                 "playDate": "最後の再生",
-                "channels": "チャンネル"
+                "channels": "チャンネル",
+                "createdAt": "追加日"
             },
             "actions": {
                 "addToQueue": "最後に再生",
@@ -51,7 +52,13 @@
                 "year": "年",
                 "updatedAt": "更新日",
                 "comment": "コメント",
-                "rating": "レート"
+                "rating": "レート",
+                "createdAt": "追加日",
+                "size": "サイズ",
+                "originalDate": "オリジナルの日付",
+                "releaseDate": "リリース日",
+                "releases": "リリース",
+                "released": "リリース"
             },
             "actions": {
                 "playAll": "再生",
@@ -60,14 +67,15 @@
                 "shuffle": "シャッフル",
                 "addToPlaylist": "プレイリストへ追加",
                 "download": "ダウンロード",
-                "info": "詳細"
+                "info": "詳細",
+                "share": "共有"
             },
             "lists": {
                 "all": "全て",
                 "random": "ランダム",
-                "recentlyAdded": "最近追加された",
-                "recentlyPlayed": "最近再生された",
-                "mostPlayed": "最も再生された",
+                "recentlyAdded": "最近の追加",
+                "recentlyPlayed": "最近の再生",
+                "mostPlayed": "最も再生",
                 "starred": "お気に入り",
                 "topRated": "高評価"
             }
@@ -80,7 +88,8 @@
                 "songCount": "曲数",
                 "playCount": "再生数",
                 "rating": "レート",
-                "genre": "ジャンル"
+                "genre": "ジャンル",
+                "size": "サイズ"
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "重複する曲を追加",
                 "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
             }
+        },
+        "radio": {
+            "name": "ラジオ",
+            "fields": {
+                "name": "名前",
+                "streamUrl": "配信URL",
+                "homePageUrl": "ホームページURL",
+                "updatedAt": "更新日",
+                "createdAt": "作成日"
+            },
+            "actions": {
+                "playNow": "すぐに再生"
+            }
+        },
+        "share": {
+            "name": "共有",
+            "fields": {
+                "username": "共有者",
+                "url": "URL",
+                "description": "説明",
+                "contents": "コンテンツ",
+                "expiresAt": "期限切れ",
+                "lastVisitedAt": "最後の訪問",
+                "visitCount": "訪問回数",
+                "format": "フォーマット",
+                "maxBitRate": "最大ビットレート",
+                "updatedAt": "更新日",
+                "createdAt": "作成日",
+                "downloadable": "ダウンロードを許可しますか？"
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "メールアドレスである必要があります",
             "oneOf": "次のいずれかである必要があります: %{options}",
             "regex": "次の正規表現形式にする必要があります: %{pattern}",
-            "unique": "一意である必要があります"
+            "unique": "一意である必要があります",
+            "url": "有効なURLを入力してください"
         },
         "action": {
             "add_filter": "検索条件",
@@ -215,7 +255,10 @@
             "open_menu": "開く",
             "close_menu": "閉じる",
             "unselect": "選択解除",
-            "skip": "スキップ"
+            "skip": "スキップ",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "共有",
+            "download": "ダウンロード"
         },
         "boolean": {
             "true": "はい",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "%{user} へのscrobbling設定に成功しました",
         "listenBrainzLinkFailure": "ListenBrainzとのリンクに失敗しました: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainzとのリンクとscrobblingを無効化しました。",
-        "listenBrainzUnlinkFailure": "ListenBrainzとのリンクを解除できませんでした"
+        "listenBrainzUnlinkFailure": "ListenBrainzとのリンクを解除できませんでした",
+        "downloadOriginalFormat": "元のフォーマットでダウンロード",
+        "shareOriginalFormat": "元のフォーマットで共有",
+        "shareDialogTitle": "%{resource} '%{name}' を共有",
+        "shareBatchDialogTitle": "1 %{resource} を共有 |||| %{smart_count} %{resource} を共有",
+        "shareSuccess": "コピーしました: %{url}",
+        "shareFailure": "コピーに失敗しました %{url}",
+        "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter"
     },
     "menu": {
         "library": "ライブラリ",
@@ -337,7 +388,14 @@
                 "defaultView": "デフォルト画面",
                 "desktop_notifications": "デスクトップ通知",
                 "lastfmScrobbling": "Last.fmへscrobbleする",
-                "listenBrainzScrobbling": "ListenBrainzへscrobble"
+                "listenBrainzScrobbling": "ListenBrainzへscrobble",
+                "replaygain": "ReplayGainモード",
+                "preAmp": "プリアンプ",
+                "gain": {
+                    "none": "無効",
+                    "album": "アルバムゲインを使う",
+                    "track": "トラックゲインを使う"
+                }
             }
         },
         "albumList": "アルバム",
@@ -395,7 +453,8 @@
             "next_song": "次の曲",
             "vol_up": "音量を上げる",
             "vol_down": "音量を下げる",
-            "toggle_love": "星の付け外し"
+            "toggle_love": "星の付け外し",
+            "current_song": "現在の曲へ移動"
         }
     }
 }

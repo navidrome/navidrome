@@ -9,6 +9,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/navidrome/navidrome/model/request"
+
+	"github.com/google/uuid"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -31,9 +36,11 @@ var _ = Describe("Auth", func() {
 		})
 
 		Describe("createAdmin", func() {
+			var createdAt time.Time
 			BeforeEach(func() {
 				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
+				createdAt = time.Now()
 				createAdmin(ds)(resp, req)
 			})
 
@@ -43,6 +50,7 @@ var _ = Describe("Auth", func() {
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
+				Expect(*u.LastLoginAt).To(BeTemporally(">=", createdAt, time.Second))
 			})
 
 			It("returns the expected payload", func() {
@@ -56,7 +64,15 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["token"]).ToNot(BeEmpty())
 			})
 		})
+
 		Describe("Login from HTTP headers", func() {
+			const (
+				trustedIpv4   = "192.168.0.42"
+				untrustedIpv4 = "8.8.8.8"
+				trustedIpv6   = "2001:4860:4860:1234:5678:0000:4242:8888"
+				untrustedIpv6 = "5005:0:3003"
+			)
+
 			fs := os.DirFS("tests/fixtures")
 
 			BeforeEach(func() {
@@ -70,8 +86,8 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
-				req.RemoteAddr = "192.168.0.42:25293"
-				serveIndex(ds, fs)(resp, req)
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				parsed := config["auth"].(map[string]interface{})
@@ -80,16 +96,16 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
-				req.RemoteAddr = "8.8.8.8:25293"
-				serveIndex(ds, fs)(resp, req)
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), untrustedIpv4))
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				Expect(config["auth"]).To(BeNil())
 			})
 
 			It("sets auth data if IPv6 matches whitelist", func() {
-				req.RemoteAddr = "[2001:4860:4860:1234:5678:0000:4242:8888]:25293"
-				serveIndex(ds, fs)(resp, req)
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv6))
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				parsed := config["auth"].(map[string]interface{})
@@ -98,24 +114,29 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
-				req.RemoteAddr = "[5005:0:3003]:25293"
-				serveIndex(ds, fs)(resp, req)
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), untrustedIpv6))
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				Expect(config["auth"]).To(BeNil())
 			})
 
-			It("sets no auth data if user does not exist", func() {
-				req.Header.Set("Remote-User", "INVALID_USER")
-				serveIndex(ds, fs)(resp, req)
+			It("creates user and sets auth data if user does not exist", func() {
+				newUser := "NEW_USER_" + uuid.NewString()
+
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
+				req.Header.Set("Remote-User", newUser)
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				Expect(config["auth"]).To(BeNil())
+				parsed := config["auth"].(map[string]interface{})
+
+				Expect(parsed["username"]).To(Equal(newUser))
 			})
 
 			It("sets auth data if user exists", func() {
-				req.RemoteAddr = "192.168.0.42:25293"
-				serveIndex(ds, fs)(resp, req)
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
+				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				parsed := config["auth"].(map[string]interface{})
@@ -133,8 +154,8 @@ var _ = Describe("Auth", func() {
 				// Request Header authentication should not generate a JWT token
 				Expect(parsed).ToNot(HaveKey("token"))
 			})
-
 		})
+
 		Describe("login", func() {
 			BeforeEach(func() {
 				req = httptest.NewRequest("POST", "/login", strings.NewReader(`{"username":"janedoe", "password":"abc123"}`))
@@ -176,6 +197,49 @@ var _ = Describe("Auth", func() {
 			})).ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(200))
+		})
+	})
+
+	Describe("validateIPAgainstList", func() {
+		Context("when provided with empty inputs", func() {
+			It("should return false", func() {
+				Expect(validateIPAgainstList("", "")).To(BeFalse())
+				Expect(validateIPAgainstList("192.168.1.1", "")).To(BeFalse())
+				Expect(validateIPAgainstList("", "192.168.0.0/16")).To(BeFalse())
+			})
+		})
+
+		Context("when provided with invalid IP inputs", func() {
+			It("should return false", func() {
+				Expect(validateIPAgainstList("invalidIP", "192.168.0.0/16")).To(BeFalse())
+			})
+		})
+
+		Context("when provided with valid inputs", func() {
+			It("should return true when IP is in the list", func() {
+				Expect(validateIPAgainstList("192.168.1.1", "192.168.0.0/16,10.0.0.0/8")).To(BeTrue())
+				Expect(validateIPAgainstList("10.0.0.1", "192.168.0.0/16,10.0.0.0/8")).To(BeTrue())
+			})
+
+			It("should return false when IP is not in the list", func() {
+				Expect(validateIPAgainstList("172.16.0.1", "192.168.0.0/16,10.0.0.0/8")).To(BeFalse())
+			})
+		})
+
+		Context("when provided with invalid CIDR notation in the list", func() {
+			It("should ignore invalid CIDR and return the correct result", func() {
+				Expect(validateIPAgainstList("192.168.1.1", "192.168.0.0/16,invalidCIDR")).To(BeTrue())
+				Expect(validateIPAgainstList("10.0.0.1", "invalidCIDR,10.0.0.0/8")).To(BeTrue())
+				Expect(validateIPAgainstList("172.16.0.1", "192.168.0.0/16,invalidCIDR")).To(BeFalse())
+			})
+		})
+
+		Context("when provided with IP:port format", func() {
+			It("should handle IP:port format correctly", func() {
+				Expect(validateIPAgainstList("192.168.1.1:8080", "192.168.0.0/16,10.0.0.0/8")).To(BeTrue())
+				Expect(validateIPAgainstList("10.0.0.1:1234", "192.168.0.0/16,10.0.0.0/8")).To(BeTrue())
+				Expect(validateIPAgainstList("172.16.0.1:9999", "192.168.0.0/16,10.0.0.0/8")).To(BeFalse())
+			})
 		})
 	})
 })

@@ -3,6 +3,7 @@ package utils
 import (
 	"strings"
 
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 )
 
@@ -15,53 +16,6 @@ func NoArticle(name string) string {
 		}
 	}
 	return name
-}
-
-func StringInSlice(a string, slice []string) bool {
-	for _, b := range slice {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
-func InsertString(slice []string, value string, index int) []string {
-	return append(slice[:index], append([]string{value}, slice[index:]...)...)
-}
-
-func RemoveString(slice []string, index int) []string {
-	return append(slice[:index], slice[index+1:]...)
-}
-
-func MoveString(slice []string, srcIndex int, dstIndex int) []string {
-	value := slice[srcIndex]
-	return InsertString(RemoveString(slice, srcIndex), value, dstIndex)
-}
-
-func BreakUpStringSlice(items []string, chunkSize int) [][]string {
-	numTracks := len(items)
-	var chunks [][]string
-	for i := 0; i < numTracks; i += chunkSize {
-		end := i + chunkSize
-		if end > numTracks {
-			end = numTracks
-		}
-
-		chunks = append(chunks, items[i:end])
-	}
-	return chunks
-}
-
-func RangeByChunks(items []string, chunkSize int, cb func([]string) error) error {
-	chunks := BreakUpStringSlice(items, chunkSize)
-	for _, chunk := range chunks {
-		err := cb(chunk)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func LongestCommonPrefix(list []string) string {
@@ -78,4 +32,14 @@ func LongestCommonPrefix(list []string) string {
 		}
 	}
 	return list[0]
+}
+
+func SanitizeFieldForSorting(originalValue string) string {
+	v := strings.TrimSpace(sanitize.Accents(originalValue))
+	return strings.ToLower(v)
+}
+
+func SanitizeFieldForSortingNoArticle(originalValue string) string {
+	v := strings.TrimSpace(sanitize.Accents(originalValue))
+	return strings.ToLower(NoArticle(v))
 }

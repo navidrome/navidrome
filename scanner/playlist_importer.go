@@ -9,18 +9,20 @@ import (
 	"github.com/mattn/go-zglob"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
 type playlistImporter struct {
-	ds         model.DataStore
-	pls        core.Playlists
-	rootFolder string
+	ds          model.DataStore
+	pls         core.Playlists
+	cacheWarmer artwork.CacheWarmer
+	rootFolder  string
 }
 
-func newPlaylistImporter(ds model.DataStore, playlists core.Playlists, rootFolder string) *playlistImporter {
-	return &playlistImporter{ds: ds, pls: playlists, rootFolder: rootFolder}
+func newPlaylistImporter(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, rootFolder string) *playlistImporter {
+	return &playlistImporter{ds: ds, pls: playlists, cacheWarmer: cacheWarmer, rootFolder: rootFolder}
 }
 
 func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int64 {
@@ -34,7 +36,10 @@ func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int
 		return count
 	}
 	for _, f := range files {
-		if !core.IsPlaylist(f.Name()) {
+		if strings.HasPrefix(f.Name(), ".") {
+			continue
+		}
+		if !model.IsValidPlaylist(f.Name()) {
 			continue
 		}
 		pls, err := s.pls.ImportFile(ctx, dir, f.Name())
@@ -46,6 +51,7 @@ func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int
 		} else {
 			log.Debug("Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", pls.SongCount)
 		}
+		s.cacheWarmer.PreCache(pls.CoverArtID())
 		count++
 	}
 	return count

@@ -2,7 +2,7 @@
     "languageName": "简体中文",
     "resources": {
         "song": {
-            "name": "歌曲 |||| 歌曲",
+            "name": "歌曲",
             "fields": {
                 "albumArtist": "专辑歌手",
                 "duration": "时长",
@@ -25,7 +25,8 @@
                 "quality": "品质",
                 "bpm": "BPM",
                 "playDate": "最后一次播放",
-                "channels": ""
+                "channels": "声道",
+                "createdAt": "创建于"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -34,11 +35,11 @@
                 "shuffleAll": "全部随机播放",
                 "download": "下载",
                 "playNext": "下一首播放",
-                "info": ""
+                "info": "查看信息"
             }
         },
         "album": {
-            "name": "专辑 |||| 专辑",
+            "name": "专辑",
             "fields": {
                 "albumArtist": "专辑歌手",
                 "artist": "歌手",
@@ -51,7 +52,13 @@
                 "year": "发行年份",
                 "updatedAt": "更新于",
                 "comment": "注释",
-                "rating": "评分"
+                "rating": "评分",
+                "createdAt": "创建于",
+                "size": "文件大小",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "立即播放",
@@ -60,7 +67,8 @@
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入歌单",
                 "download": "下载",
-                "info": ""
+                "info": "查看信息",
+                "share": "分享"
             },
             "lists": {
                 "all": "所有",
@@ -69,22 +77,23 @@
                 "recentlyPlayed": "最近播放",
                 "mostPlayed": "最多播放",
                 "starred": "收藏",
-                "topRated": "排行榜"
+                "topRated": "评分排行"
             }
         },
         "artist": {
-            "name": "歌手 |||| 歌手",
+            "name": "艺术家",
             "fields": {
                 "name": "名称",
                 "albumCount": "专辑数",
                 "songCount": "歌曲数",
                 "playCount": "播放次数",
                 "rating": "评分",
-                "genre": "类型"
+                "genre": "类型",
+                "size": "文件大小"
             }
         },
         "user": {
-            "name": "用户 |||| 用户",
+            "name": "用户",
             "fields": {
                 "userName": "用户名",
                 "isAdmin": "是否管理员",
@@ -93,10 +102,10 @@
                 "name": "名称",
                 "password": "密码",
                 "createdAt": "创建于",
-                "changePassword": "修改密码?",
+                "changePassword": "修改密码？",
                 "currentPassword": "当前密码",
                 "newPassword": "新密码",
-                "token": ""
+                "token": "令牌"
             },
             "helperTexts": {
                 "name": "你名字的更改将在下次登录生效"
@@ -107,12 +116,12 @@
                 "deleted": "用户已删除"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
+                "clickHereForToken": "点击这里来获得你的 ListenBrainz 令牌"
             }
         },
         "player": {
-            "name": "客户端 |||| 客户端",
+            "name": "客户端",
             "fields": {
                 "name": "名称",
                 "transcodingId": "转码编号",
@@ -121,11 +130,11 @@
                 "userName": "用户名",
                 "lastSeen": "上次浏览",
                 "reportRealPath": "回报实际路径",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "发送喜好记录到外部服务"
             }
         },
         "transcoding": {
-            "name": "转码 |||| 转码",
+            "name": "转码",
             "fields": {
                 "name": "名称",
                 "targetFormat": "目标格式",
@@ -134,7 +143,7 @@
             }
         },
         "playlist": {
-            "name": "歌单 |||| 歌单",
+            "name": "歌单",
             "fields": {
                 "name": "名称",
                 "duration": "时长",
@@ -143,7 +152,7 @@
                 "updatedAt": "更新于",
                 "createdAt": "创建于",
                 "songCount": "歌曲数",
-                "comment": "评论",
+                "comment": "注释",
                 "sync": "自动导入",
                 "path": "导入"
             },
@@ -151,19 +160,49 @@
                 "selectPlaylist": "选择歌单",
                 "addNewPlaylist": "新建 %{name}",
                 "export": "导出",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "设为公开",
+                "makePrivate": "设为私有"
             },
             "message": {
                 "duplicate_song": "添加重复的歌曲",
-                "song_exist": "部分选定的歌曲已在播放列表。继续添加或是略过它们？"
+                "song_exist": "部分选定的歌曲已存在歌单中，继续添加或是跳过它们？"
+            }
+        },
+        "radio": {
+            "name": "电台",
+            "fields": {
+                "name": "名称",
+                "streamUrl": "推流地址",
+                "homePageUrl": "首页链接",
+                "updatedAt": "更新于",
+                "createdAt": "创建于"
+            },
+            "actions": {
+                "playNow": "开始播放"
+            }
+        },
+        "share": {
+            "name": "分享",
+            "fields": {
+                "username": "分享者",
+                "url": "链接",
+                "description": "描述",
+                "contents": "目录",
+                "expiresAt": "过期于",
+                "lastVisitedAt": "上次访问于",
+                "visitCount": "访问数",
+                "format": "格式",
+                "maxBitRate": "最大比特率",
+                "updatedAt": "更新于",
+                "createdAt": "创建于",
+                "downloadable": "是否允许下载"
             }
         }
     },
     "ra": {
         "auth": {
-            "welcome1": "感谢您安装Navidrome!",
-            "welcome2": "开始使用前,请创建一个管理员账户",
+            "welcome1": "感谢您安装 Navidrome！",
+            "welcome2": "开始使用前，请创建一个管理员账户",
             "confirmPassword": "确认密码",
             "buttonCreateAdmin": "创建管理员",
             "auth_check_error": "请登录访问更多内容",
@@ -171,7 +210,7 @@
             "username": "用户名",
             "password": "密码",
             "sign_in": "登录",
-            "sign_in_error": "验证失败, 请重试",
+            "sign_in_error": "验证失败，请重试",
             "logout": "注销"
         },
         "validation": {
@@ -184,15 +223,16 @@
             "maxValue": "必须不大于 %{max}",
             "number": "必须为数字",
             "email": "必须是有效的电子邮箱",
-            "oneOf": "必须为: %{options}其中一项",
-            "regex": "必须符合指定的格式 (正则表达式): %{pattern}",
-            "unique": "必须唯一"
+            "oneOf": "必须为: %{options} 其中一项",
+            "regex": "必须符合指定的格式（正则表达式）：%{pattern}",
+            "unique": "必须唯一",
+            "url": "必须是有效的链接"
         },
         "action": {
             "add_filter": "添加筛选",
             "add": "添加",
             "back": "返回",
-            "bulk_actions": "选中%{smart_count}项",
+            "bulk_actions": "选中 %{smart_count} 项",
             "cancel": "取消",
             "clear_input_value": "清除",
             "clone": "复制",
@@ -215,7 +255,10 @@
             "open_menu": "打开菜单",
             "close_menu": "关闭菜单",
             "unselect": "未选择",
-            "skip": "取消"
+            "skip": "跳过",
+            "bulk_actions_mobile": "%{smart_count}",
+            "share": "分享",
+            "download": "下载"
         },
         "boolean": {
             "true": "是",
@@ -230,7 +273,7 @@
             "loading": "加载中",
             "not_found": "未找到",
             "show": "%{name} #%{id}",
-            "empty": "还没有 %{name}.",
+            "empty": "还没有 %{name}。",
             "invite": "您要创建一个吗？"
         },
         "input": {
@@ -243,9 +286,9 @@
                 "upload_single": "拖拽单个图片上传或点击选择一个"
             },
             "references": {
-                "all_missing": "未找到参考数据.",
-                "many_missing": "至少有一条参考数据不再可用.",
-                "single_missing": "关联的参考数据不再可用."
+                "all_missing": "未找到参考数据",
+                "many_missing": "至少有一条参考数据不再可用",
+                "single_missing": "关联的参考数据不再可用"
             },
             "password": {
                 "toggle_visible": "隐藏密码",
@@ -254,44 +297,44 @@
         },
         "message": {
             "about": "关于",
-            "are_you_sure": "您确定要进行此操作?",
-            "bulk_delete_content": "您确定要删除 %{name}? |||| 您确定要删除 %{smart_count} 项?",
-            "bulk_delete_title": "删除 %{name} |||| 删除 %{smart_count}项 %{name}",
-            "delete_content": "您确定要删除该条目?",
+            "are_you_sure": "您确定要进行此操作？",
+            "bulk_delete_content": "您确定要删除 %{smart_count} 项 %{name}？",
+            "bulk_delete_title": "删除 %{smart_count} 项 %{name}",
+            "delete_content": "您确定要删除该条目？",
             "delete_title": "删除 %{name} #%{id}",
             "details": "详情",
-            "error": "发生一个客户端错误，您的请求无法完成。",
-            "invalid_form": "提交内容无效. 请检查错误",
-            "loading": "正在加载页面, 请稍候",
+            "error": "发生一个客户端错误，您的请求无法完成",
+            "invalid_form": "提交内容无效，请检查错误",
+            "loading": "正在加载页面，请稍候",
             "no": "否",
             "not_found": "您输入的链接格式不对或链接丢失",
             "yes": "是",
-            "unsaved_changes": "某些更改尚未保存。您确定要离开此页面吗？"
+            "unsaved_changes": "某些更改尚未保存，您确定要离开此页面吗？"
         },
         "navigation": {
             "no_results": "无内容",
-            "no_more_results": "页码 %{page} 超出边界. 试试上一页.",
-            "page_out_of_boundaries": "页码 %{page} 超出边界",
+            "no_more_results": "页码 %{page} 超出范围，尝试返回上一页",
+            "page_out_of_boundaries": "页码 %{page} 超出范围",
             "page_out_from_end": "已经最后一页",
             "page_out_from_begin": "已经是第一页",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "每页行数:",
+            "page_rows_per_page": "每页行数：",
             "next": "下一页",
             "prev": "上一页",
             "skip_nav": "跳过"
         },
         "notification": {
-            "updated": "项已更新 |||| %{smart_count} 项已更新",
-            "created": "项已新建",
-            "deleted": "项已删除 |||| %{smart_count} 项已删除",
+            "updated": "已更新 %{smart_count} 项",
+            "created": "已新建 1 项",
+            "deleted": "已删除 %{smart_count} 项",
             "bad_item": "不正确的项",
-            "item_doesnt_exist": "项不存在",
+            "item_doesnt_exist": "该项不存在",
             "http_error": "与服务通信出错",
-            "data_provider_error": "数据来源错误. 请检查控制台的详细信息",
+            "data_provider_error": "数据来源错误，请检查控制台的详细信息",
             "i18n_error": "加载所选语言时出错",
             "canceled": "操作已取消",
             "logged_out": "您的会话已结束，请重新登录",
-            "new_version": "发现新版本!请刷新窗口"
+            "new_version": "发现新版本！请刷新此页面"
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "显示的项",
@@ -302,27 +345,35 @@
     },
     "message": {
         "note": "说明",
-        "transcodingDisabled": "出于安全原因，禁用了从Web界面更改参数。要更改（编辑或删除）转码选项，请在启用％{config}选项的情况下重新启动服务器。",
-        "transcodingEnabled": "Navidrome当前与％{config}一起使用，可以从Web界面执行任意命令。建议仅在配置Transcoding时启用此功能。",
-        "songsAddedToPlaylist": "已添加一首歌到歌单||||已添加％{smart_count}首歌到歌单",
+        "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
+        "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过配置转码选项来执行任意命令，建议仅在配置转码选项时启用此功能。",
+        "songsAddedToPlaylist": "已添加 %{smart_count} 首歌到歌单",
         "noPlaylistsAvailable": "没有有效的歌单",
-        "delete_user_title": "删除用户 ％{name}",
+        "delete_user_title": "删除用户 %{name}",
         "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
         "notifications_blocked": "您已在浏览器的设置中屏蔽了此网站的通知",
         "notifications_not_available": "此浏览器不支持桌面通知",
-        "lastfmLinkSuccess": "Last.fm已关联并启用喜好记录",
-        "lastfmLinkFailure": "Last.fm无法关联",
-        "lastfmUnlinkSuccess": "Last.fm未关联并禁止喜好记录",
-        "lastfmUnlinkFailure": "Last.fm无法取消关联",
+        "lastfmLinkSuccess": "Last.fm 已关联并启用喜好记录",
+        "lastfmLinkFailure": "Last.fm 无法关联",
+        "lastfmUnlinkSuccess": "已成功解除与 Last.fm 的链接，且喜好记录已禁用",
+        "lastfmUnlinkFailure": "Last.fm 无法取消关联",
         "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
+            "lastfm": "在 Last.fm 中打开",
+            "musicbrainz": "在 MusicBrainz 中打开"
         },
-        "lastfmLink": "",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "lastfmLink": "查看更多…",
+        "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
+        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
+        "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
+        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
+        "downloadOriginalFormat": "下载原始格式",
+        "shareOriginalFormat": "分享原始格式",
+        "shareDialogTitle": "分享 %{resource} '%{name}'",
+        "shareBatchDialogTitle": "分享 %{smart_count} 个 %{resource}",
+        "shareSuccess": "分享链接已复制: %{url}",
+        "shareFailure": "分享链接复制失败: %{url}",
+        "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter"
     },
     "menu": {
         "library": "曲库",
@@ -336,14 +387,21 @@
                 "language": "语言",
                 "defaultView": "默认界面",
                 "desktop_notifications": "桌面通知",
-                "lastfmScrobbling": "启用Last.fm的喜好记录",
-                "listenBrainzScrobbling": ""
+                "lastfmScrobbling": "启用 Last.fm 的喜好记录",
+                "listenBrainzScrobbling": "启用 ListenBrainz 的喜好记录",
+                "replaygain": "回放增益",
+                "preAmp": "前置放大器 (dB)",
+                "gain": {
+                    "none": "禁用增益",
+                    "album": "使用专辑增益信息",
+                    "track": "使用歌曲增益信息"
+                }
             }
         },
         "albumList": "专辑",
         "about": "关于",
-        "playlists": "",
-        "sharedPlaylists": ""
+        "playlists": "歌单",
+        "sharedPlaylists": "共享的歌单"
     },
     "player": {
         "playListsText": "播放列表",
@@ -358,7 +416,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切换歌词",
         "toggleMiniModeText": "最小化",
-        "destroyText": "损坏",
+        "destroyText": "关闭",
         "downloadText": "下载",
         "removeAudioListsText": "清空播放列表",
         "clickToDeleteText": "点击删除 %{name}",
@@ -386,16 +444,17 @@
         "serverDown": "服务器已离线"
     },
     "help": {
-        "title": "Navidrome快捷键",
+        "title": "Navidrome 快捷键",
         "hotkeys": {
             "show_help": "显示此帮助",
             "toggle_menu": "显示/隐藏菜单侧栏",
-            "toggle_play": "播放 / 暂停",
+            "toggle_play": "播放/暂停",
             "prev_song": "上一首歌",
             "next_song": "下一首歌",
             "vol_up": "增大音量",
             "vol_down": "减小音量",
-            "toggle_love": "添加/移除星标"
+            "toggle_love": "添加/移除星标",
+            "current_song": "转到当前播放"
         }
     }
 }

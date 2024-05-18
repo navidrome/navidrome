@@ -25,7 +25,8 @@
                 "quality": "Qualitat",
                 "bpm": "tempo",
                 "playDate": "Darrer resproduït",
-                "channels": "Canals"
+                "channels": "Canals",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Reprodueix després",
@@ -51,7 +52,13 @@
                 "year": "Any",
                 "updatedAt": "Actualitzat ",
                 "comment": "Comentari",
-                "rating": "Valoració"
+                "rating": "Valoració",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Reprodueix",
@@ -60,7 +67,8 @@
                 "shuffle": "Aleatori",
                 "addToPlaylist": "Afegeix a la llista",
                 "download": "Descarrega",
-                "info": "Obtén informació"
+                "info": "Obtén informació",
+                "share": ""
             },
             "lists": {
                 "all": "Tot",
@@ -80,7 +88,8 @@
                 "songCount": "Compte de cançons",
                 "playCount": "Reproduccions",
                 "rating": "Valoració",
-                "genre": "Gènere"
+                "genre": "Gènere",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "Afegeix cançons duplicades",
                 "song_exist": "Heu afegit duplicats a la llista. Voleu afegir-los o ignorar-los?"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Ha de ser un correu vàlid",
             "oneOf": "Ha de ser un de: %{options}",
             "regex": "Ha de tenir el format (regexp): %{pattern}",
-            "unique": "Ha de ser únic"
+            "unique": "Ha de ser únic",
+            "url": ""
         },
         "action": {
             "add_filter": "Afegeix un filtre",
@@ -215,7 +255,10 @@
             "open_menu": "Obre el menú",
             "close_menu": "Tanca el menú",
             "unselect": "Anul·la la selecció",
-            "skip": "Omet"
+            "skip": "Omet",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Sí",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "Ha reexit la vinculació amb ListenBrainz i se n'ha activat el seguiment com a usuari: %{user}",
         "listenBrainzLinkFailure": "No ha estat possible vincular-se a ListenBrainz: %{error}",
         "listenBrainzUnlinkSuccess": "Desvinculat de ListenBrainz i desactivat el seguiment",
-        "listenBrainzUnlinkFailure": "No s'ha pogut desvincular de ListenBrainz"
+        "listenBrainzUnlinkFailure": "No s'ha pogut desvincular de ListenBrainz",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Discoteca",
@@ -337,7 +388,14 @@
                 "defaultView": "Vista per defecte",
                 "desktop_notifications": "Notificacions d'escriptori",
                 "lastfmScrobbling": "Activa el seguiment de Last.fm",
-                "listenBrainzScrobbling": "Activa el seguiment de ListenBrainz"
+                "listenBrainzScrobbling": "Activa el seguiment de ListenBrainz",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Àlbums",
@@ -395,7 +453,8 @@
             "next_song": "Cançó següent",
             "vol_up": "Apuja el volum",
             "vol_down": "Abaixa el volum",
-            "toggle_love": "Afegeix la pista a favorits"
+            "toggle_love": "Afegeix la pista a favorits",
+            "current_song": ""
         }
     }
 }

@@ -26,8 +26,9 @@ import {
   useSelectedFields,
   useResourceRefresh,
   DateField,
+  SizeField,
+  ArtistLinkField,
 } from '../common'
-import { AddToPlaylistDialog } from '../dialogs'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
@@ -82,7 +83,7 @@ const useStyles = makeStyles(
       visibility: 'hidden',
     },
   }),
-  { name: 'RaList' }
+  { name: 'RaList' },
 )
 
 const AlbumSongs = (props) => {
@@ -98,7 +99,7 @@ const AlbumSongs = (props) => {
       trackNumber: isDesktop && (
         <TextField
           source="trackNumber"
-          sortBy="discNumber asc, trackNumber asc"
+          sortBy="releaseDate asc, discNumber asc, trackNumber asc"
           label="#"
           sortable={false}
         />
@@ -110,7 +111,7 @@ const AlbumSongs = (props) => {
           showTrackNumbers={!isDesktop}
         />
       ),
-      artist: isDesktop && <TextField source="artist" sortable={false} />,
+      artist: isDesktop && <ArtistLinkField source="artist" />,
       duration: <DurationField source="duration" sortable={false} />,
       year: isDesktop && (
         <FunctionField
@@ -124,6 +125,7 @@ const AlbumSongs = (props) => {
       ),
       playDate: <DateField source="playDate" sortable={false} showTime />,
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
+      size: isDesktop && <SizeField source="size" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
       rating: isDesktop && config.enableStarRating && (
@@ -141,8 +143,12 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate'],
+    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate', 'size'],
   })
+
+  const bulkActionsLabel = isDesktop
+    ? 'ra.action.bulk_actions'
+    : 'ra.action.bulk_actions_mobile'
 
   return (
     <>
@@ -158,7 +164,7 @@ const AlbumSongs = (props) => {
           })}
           key={version}
         >
-          <BulkActionsToolbar {...props}>
+          <BulkActionsToolbar {...props} label={bulkActionsLabel}>
             <SongBulkActions />
           </BulkActionsToolbar>
           <SongDatagrid
@@ -166,6 +172,7 @@ const AlbumSongs = (props) => {
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
+            showReleaseDivider={true}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >
@@ -186,7 +193,6 @@ const AlbumSongs = (props) => {
           </SongDatagrid>
         </Card>
       </div>
-      <AddToPlaylistDialog />
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
@@ -202,7 +208,6 @@ export const removeAlbumCommentsFromSongs = ({ album, data }) => {
 
 const SanitizedAlbumSongs = (props) => {
   removeAlbumCommentsFromSongs(props)
-
   const { loaded, loading, total, ...rest } = useListContext(props)
   return <>{loaded && <AlbumSongs {...rest} actions={props.actions} />}</>
 }

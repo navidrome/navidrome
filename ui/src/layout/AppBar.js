@@ -12,6 +12,7 @@ import ViewListIcon from '@material-ui/icons/ViewList'
 import InfoIcon from '@material-ui/icons/Info'
 import PersonIcon from '@material-ui/icons/Person'
 import SupervisorAccountIcon from '@material-ui/icons/SupervisorAccount'
+import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
@@ -30,7 +31,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDAppBar',
-  }
+  },
 )
 
 const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
@@ -89,7 +90,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
     }
     return renderSettingsMenuItemLink(
       userResource,
-      permissions !== 'admin' ? localStorage.getItem('userId') : null
+      permissions !== 'admin' ? localStorage.getItem('userId') : null,
     )
   }
 
@@ -127,6 +128,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
         <Divider />
         <AboutMenuItem />
       </UserMenu>
+      <Dialogs />
     </>
   )
 }

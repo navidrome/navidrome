@@ -82,7 +82,7 @@ const useStyles = makeStyles(
       textDecoration: 'none',
     },
   }),
-  { name: 'NDLogin' }
+  { name: 'NDLogin' },
 )
 
 const renderInput = ({
@@ -138,6 +138,7 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                     component={renderInput}
                     label={translate('ra.auth.username')}
                     disabled={loading}
+                    spellCheck={false}
                   />
                 </div>
                 <div className={classes.input}>
@@ -201,6 +202,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                     component={renderInput}
                     label={translate('ra.auth.username')}
                     disabled={loading}
+                    spellCheck={false}
                   />
                 </div>
                 <div className={classes.input}>
@@ -261,14 +263,14 @@ const Login = ({ location }) => {
             typeof error === 'string'
               ? error
               : typeof error === 'undefined' || !error.message
-              ? 'ra.auth.sign_in_error'
-              : error.message,
-            'warning'
+                ? 'ra.auth.sign_in_error'
+                : error.message,
+            'warning',
           )
-        }
+        },
       )
     },
-    [dispatch, login, notify, setLoading, location]
+    [dispatch, login, notify, setLoading, location],
   )
 
   const validateLogin = useCallback(
@@ -282,7 +284,7 @@ const Login = ({ location }) => {
       }
       return errors
     },
-    [translate]
+    [translate],
   )
 
   const validateSignup = useCallback(
@@ -300,7 +302,7 @@ const Login = ({ location }) => {
       }
       return errors
     },
-    [translate, validateLogin]
+    [translate, validateLogin],
   )
 
   if (config.firstTime) {
@@ -336,7 +338,7 @@ const LoginWithTheme = (props) => {
   const version = useVersion()
 
   useEffect(() => {
-    if (config.defaultLanguage !== '') {
+    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
       retrieveTranslation(config.defaultLanguage)
         .then(() => {
           setLocale(config.defaultLanguage).then(() => {
@@ -346,7 +348,7 @@ const LoginWithTheme = (props) => {
         })
         .catch((e) => {
           throw new Error(
-            'Cannot load language "' + config.defaultLanguage + '": ' + e
+            'Cannot load language "' + config.defaultLanguage + '": ' + e,
           )
         })
     }

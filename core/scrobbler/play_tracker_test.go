@@ -37,19 +37,19 @@ var _ = Describe("PlayTracker", func() {
 		Register("fake", func(ds model.DataStore) Scrobbler {
 			return &fake
 		})
-		tracker = GetPlayTracker(ds, events.GetBroker())
+		tracker = newPlayTracker(ds, events.GetBroker())
 
 		track = model.MediaFile{
-			ID:          "123",
-			Title:       "Track Title",
-			Album:       "Track Album",
-			AlbumID:     "al-1",
-			Artist:      "Track Artist",
-			ArtistID:    "ar-1",
-			AlbumArtist: "Track AlbumArtist",
-			TrackNumber: 1,
-			Duration:    180,
-			MbzTrackID:  "mbz-123",
+			ID:             "123",
+			Title:          "Track Title",
+			Album:          "Track Album",
+			AlbumID:        "al-1",
+			Artist:         "Track Artist",
+			ArtistID:       "ar-1",
+			AlbumArtist:    "Track AlbumArtist",
+			TrackNumber:    1,
+			Duration:       180,
+			MbzRecordingID: "mbz-123",
 		}
 		_ = ds.MediaFile(ctx).Put(&track)
 		artist = model.Artist{ID: "ar-1"}
@@ -93,16 +93,13 @@ var _ = Describe("PlayTracker", func() {
 	})
 
 	Describe("GetNowPlaying", func() {
-		BeforeEach(func() {
-			ctx = context.Background()
-		})
 		It("returns current playing music", func() {
 			track2 := track
 			track2.ID = "456"
-			_ = ds.MediaFile(ctx).Put(&track)
-			ctx = request.WithUser(ctx, model.User{UserName: "user-1"})
+			_ = ds.MediaFile(ctx).Put(&track2)
+			ctx = request.WithUser(context.Background(), model.User{UserName: "user-1"})
 			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
-			ctx = request.WithUser(ctx, model.User{UserName: "user-2"})
+			ctx = request.WithUser(context.Background(), model.User{UserName: "user-2"})
 			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456")
 
 			playing, err := tracker.GetNowPlaying(ctx)
@@ -112,12 +109,12 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing[0].PlayerId).To(Equal("player-2"))
 			Expect(playing[0].PlayerName).To(Equal("player-two"))
 			Expect(playing[0].Username).To(Equal("user-2"))
-			Expect(playing[0].TrackID).To(Equal("456"))
+			Expect(playing[0].MediaFile.ID).To(Equal("456"))
 
 			Expect(playing[1].PlayerId).To(Equal("player-1"))
 			Expect(playing[1].PlayerName).To(Equal("player-one"))
 			Expect(playing[1].Username).To(Equal("user-1"))
-			Expect(playing[1].TrackID).To(Equal("123"))
+			Expect(playing[1].MediaFile.ID).To(Equal("123"))
 		})
 	})
 

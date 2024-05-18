@@ -3,6 +3,7 @@ import {
   Datagrid,
   DatagridBody,
   DatagridRow,
+  DateField,
   NumberField,
   TextField,
 } from 'react-admin'
@@ -18,6 +19,7 @@ import {
   AlbumContextMenu,
   RatingField,
   useSelectedFields,
+  SizeField,
 } from '../common'
 import config from '../config'
 import { DraggableTypes } from '../consts'
@@ -57,7 +59,7 @@ const AlbumDatagridRow = (props) => {
       item: { albumIds: [record?.id] },
       options: { dropEffect: 'copy' },
     }),
-    [record]
+    [record],
   )
   return <DatagridRow ref={dragAlbumRef} {...props} />
 }
@@ -83,7 +85,7 @@ const AlbumTableView = ({
 
   const toggleableFields = useMemo(() => {
     return {
-      artist: <ArtistLinkField source="artist" />,
+      artist: <ArtistLinkField source="albumArtist" />,
       songCount: isDesktop && (
         <NumberField source="songCount" sortByOrder={'DESC'} />
       ),
@@ -94,6 +96,7 @@ const AlbumTableView = ({
         <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
       duration: isDesktop && <DurationField source="duration" />,
+      size: isDesktop && <SizeField source="size" />,
       rating: config.enableStarRating && (
         <RatingField
           source={'rating'}
@@ -102,12 +105,14 @@ const AlbumTableView = ({
           className={classes.ratingField}
         />
       ),
+      createdAt: isDesktop && <DateField source="createdAt" showTime />,
     }
   }, [classes.ratingField, isDesktop])
 
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
+    defaultOff: ['createdAt'],
   })
 
   return isXsmall ? (

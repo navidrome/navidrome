@@ -13,7 +13,7 @@ import { SimpleList, List } from '../common'
 
 const PlayerFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
-    <SearchInput source="name" alwaysOn />
+    <SearchInput id="search" source="name" alwaysOn />
   </Filter>
 )
 
@@ -28,7 +28,7 @@ const PlayerList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
-          primaryText={(r) => r.client}
+          primaryText={(r) => r.name}
           secondaryText={(r) => r.userName}
           tertiaryText={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
         />

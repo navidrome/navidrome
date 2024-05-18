@@ -1,11 +1,14 @@
 package persistence
 
 import (
+	"database/sql"
+	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -13,12 +16,24 @@ import (
 const annotationTable = "annotation"
 
 func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
+	query := r.newSelect(options...).
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
 			" AND annotation.item_type = '"+r.tableName+"'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating")
+		Columns(
+			"coalesce(starred, 0) as starred",
+			"coalesce(rating, 0) as rating",
+			"starred_at",
+			"play_date",
+		)
+	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
+		query = query.Columns("round(coalesce(round(cast(play_count as float) / coalesce(song_count, 1), 1), 0)) as play_count")
+	} else {
+		query = query.Columns("coalesce(play_count, 0) as play_count")
+	}
+
+	return query
 }
 
 func (r sqlRepository) annId(itemID ...string) And {
@@ -35,7 +50,7 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 		upd = upd.Set(f, v)
 	}
 	c, err := r.executeSQL(upd)
-	if c == 0 || err == orm.ErrNoRows {
+	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		for _, itemID := range itemIDs {
 			values["ann_id"] = uuid.NewString()
 			values["user_id"] = userId(r.ctx)
@@ -63,10 +78,10 @@ func (r sqlRepository) SetRating(rating int, itemID string) error {
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	upd := Update(annotationTable).Where(r.annId(itemID)).
 		Set("play_count", Expr("play_count+1")).
-		Set("play_date", ts)
+		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
 	c, err := r.executeSQL(upd)
 
-	if c == 0 || err == orm.ErrNoRows {
+	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		values := map[string]interface{}{}
 		values["ann_id"] = uuid.NewString()
 		values["user_id"] = userId(r.ctx)

@@ -5,37 +5,44 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/model"
 )
 
 type (
 	dirStats struct {
 		Path            string
 		ModTime         time.Time
-		HasImages       bool
+		Images          []string
+		ImagesUpdatedAt time.Time
 		HasPlaylist     bool
 		AudioFilesCount uint32
 	}
-	walkResults = chan dirStats
 )
 
-func walkDirTree(ctx context.Context, rootFolder string, results walkResults) error {
-	err := walkFolder(ctx, rootFolder, rootFolder, results)
-	if err != nil {
-		log.Error(ctx, "Error loading directory tree", err)
-	}
-	close(results)
-	return err
+func walkDirTree(ctx context.Context, rootFolder string) (<-chan dirStats, <-chan error) {
+	results := make(chan dirStats)
+	errC := make(chan error)
+	go func() {
+		defer close(results)
+		defer close(errC)
+		err := walkFolder(ctx, rootFolder, rootFolder, results)
+		if err != nil {
+			log.Error(ctx, "There were errors reading directories from filesystem", "path", rootFolder, err)
+			errC <- err
+		}
+		log.Debug(ctx, "Finished reading directories from filesystem", "path", rootFolder)
+	}()
+	return results, errC
 }
 
-func walkFolder(ctx context.Context, rootPath string, currentFolder string, results walkResults) error {
+func walkFolder(ctx context.Context, rootPath string, currentFolder string, results chan<- dirStats) error {
 	children, stats, err := loadDir(ctx, currentFolder)
 	if err != nil {
 		return err
@@ -49,7 +56,7 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Found directory", "dir", dir, "audioCount", stats.AudioFilesCount,
-		"hasImages", stats.HasImages, "hasPlaylist", stats.HasPlaylist)
+		"images", stats.Images, "hasPlaylist", stats.HasPlaylist)
 	stats.Path = dir
 	results <- *stats
 
@@ -74,15 +81,14 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 	}
 	defer dir.Close()
 
-	dirEntries := fullReadDir(ctx, dir)
-	for _, entry := range dirEntries {
+	for _, entry := range fullReadDir(ctx, dir) {
 		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
 		if err != nil {
 			log.Error(ctx, "Invalid symlink", "dir", filepath.Join(dirPath, entry.Name()), err)
 			continue
 		}
-		if isDir && !isDirIgnored(dirPath, entry) && isDirReadable(dirPath, entry) {
+		if isDir && !isDirIgnored(dirPath, entry) && isDirReadable(ctx, dirPath, entry) {
 			children = append(children, filepath.Join(dirPath, entry.Name()))
 		} else {
 			fileInfo, err := entry.Info()
@@ -93,11 +99,16 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 			if fileInfo.ModTime().After(stats.ModTime) {
 				stats.ModTime = fileInfo.ModTime()
 			}
-			if utils.IsAudioFile(entry.Name()) {
+			switch {
+			case model.IsAudioFile(entry.Name()):
 				stats.AudioFilesCount++
-			} else {
-				stats.HasPlaylist = stats.HasPlaylist || core.IsPlaylist(entry.Name())
-				stats.HasImages = stats.HasImages || utils.IsImageFile(entry.Name())
+			case model.IsValidPlaylist(entry.Name()):
+				stats.HasPlaylist = true
+			case model.IsImageFile(entry.Name()):
+				stats.Images = append(stats.Images, entry.Name())
+				if fileInfo.ModTime().After(stats.ImagesUpdatedAt) {
+					stats.ImagesUpdatedAt = fileInfo.ModTime()
+				}
 			}
 		}
 	}
@@ -106,14 +117,14 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 
 // fullReadDir reads all files in the folder, skipping the ones with errors.
 // It also detects when it is "stuck" with an error in the same directory over and over.
-// In this case, it and returns whatever it was able to read until it got stuck.
+// In this case, it stops and returns whatever it was able to read until it got stuck.
 // See discussion here: https://github.com/navidrome/navidrome/issues/1164#issuecomment-881922850
 func fullReadDir(ctx context.Context, dir fs.ReadDirFile) []os.DirEntry {
-	var allDirs []os.DirEntry
+	var allEntries []os.DirEntry
 	var prevErrStr = ""
 	for {
-		dirs, err := dir.ReadDir(-1)
-		allDirs = append(allDirs, dirs...)
+		entries, err := dir.ReadDir(-1)
+		allEntries = append(allEntries, entries...)
 		if err == nil {
 			break
 		}
@@ -124,8 +135,8 @@ func fullReadDir(ctx context.Context, dir fs.ReadDirFile) []os.DirEntry {
 		}
 		prevErrStr = err.Error()
 	}
-	sort.Slice(allDirs, func(i, j int) bool { return allDirs[i].Name() < allDirs[j].Name() })
-	return allDirs
+	sort.Slice(allEntries, func(i, j int) bool { return allEntries[i].Name() < allEntries[j].Name() })
+	return allEntries
 }
 
 // isDirOrSymlinkToDir returns true if and only if the dirEnt represents a file
@@ -150,22 +161,35 @@ func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 }
 
 // isDirIgnored returns true if the directory represented by dirEnt contains an
-// `ignore` file (named after consts.SkipScanFile)
+// `ignore` file (named after skipScanFile)
 func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
 	// allows Album folders for albums which eg start with ellipses
-	if strings.HasPrefix(dirEnt.Name(), ".") && !strings.HasPrefix(dirEnt.Name(), "..") {
+	name := dirEnt.Name()
+	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
 		return true
 	}
-	_, err := os.Stat(filepath.Join(baseDir, dirEnt.Name(), consts.SkipScanFile))
+
+	if runtime.GOOS == "windows" && strings.EqualFold(name, "$RECYCLE.BIN") {
+		return true
+	}
+	_, err := os.Stat(filepath.Join(baseDir, name, consts.SkipScanFile))
 	return err == nil
 }
 
 // isDirReadable returns true if the directory represented by dirEnt is readable
-func isDirReadable(baseDir string, dirEnt fs.DirEntry) bool {
+func isDirReadable(ctx context.Context, baseDir string, dirEnt os.DirEntry) bool {
 	path := filepath.Join(baseDir, dirEnt.Name())
-	res, err := utils.IsDirReadable(path)
-	if !res {
+
+	dir, err := os.Open(path)
+	if err != nil {
 		log.Warn("Skipping unreadable directory", "path", path, err)
+		return false
 	}
-	return res
+
+	err = dir.Close()
+	if err != nil {
+		log.Warn(ctx, "Error closing directory", "path", path, err)
+	}
+
+	return true
 }

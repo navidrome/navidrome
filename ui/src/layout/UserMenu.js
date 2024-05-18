@@ -1,5 +1,11 @@
 import * as React from 'react'
-import { Children, cloneElement, isValidElement, useState } from 'react'
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useState,
+} from 'react'
 import PropTypes from 'prop-types'
 import { useTranslate, useGetIdentity } from 'react-admin'
 import {
@@ -16,6 +22,9 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import AccountCircle from '@material-ui/icons/AccountCircle'
 import config from '../config'
+import authProvider from '../authProvider'
+import { startEventStream } from '../eventStream'
+import { useDispatch } from 'react-redux'
 
 const useStyles = makeStyles((theme) => ({
   user: {},
@@ -40,8 +49,19 @@ const UserMenu = (props) => {
   const translate = useTranslate()
   const { loaded, identity } = useGetIdentity()
   const classes = useStyles(props)
+  const dispatch = useDispatch()
 
   const { children, label, icon, logout } = props
+
+  useEffect(() => {
+    if (config.devActivityPanel) {
+      authProvider
+        .checkAuth()
+        .then(() => startEventStream(dispatch))
+        .catch(() => {})
+    }
+  }, [dispatch])
+
   if (!logout && !children) return null
   const open = Boolean(anchorEl)
 
@@ -98,7 +118,7 @@ const UserMenu = (props) => {
               ? cloneElement(menuItem, {
                   onClick: handleClose,
                 })
-              : null
+              : null,
           )}
           {!config.auth && logout}
         </MenuList>

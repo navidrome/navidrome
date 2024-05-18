@@ -2,11 +2,12 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type transcodingRepository struct {
@@ -14,10 +15,10 @@ type transcodingRepository struct {
 	sqlRestful
 }
 
-func NewTranscodingRepository(ctx context.Context, o orm.QueryExecutor) model.TranscodingRepository {
+func NewTranscodingRepository(ctx context.Context, db dbx.Builder) model.TranscodingRepository {
 	r := &transcodingRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "transcoding"
 	return r
 }
@@ -71,7 +72,7 @@ func (r *transcodingRepository) NewInstance() interface{} {
 func (r *transcodingRepository) Save(entity interface{}) (string, error) {
 	t := entity.(*model.Transcoding)
 	id, err := r.put(t.ID, t)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return "", rest.ErrNotFound
 	}
 	return id, err
@@ -81,7 +82,7 @@ func (r *transcodingRepository) Update(id string, entity interface{}, cols ...st
 	t := entity.(*model.Transcoding)
 	t.ID = id
 	_, err := r.put(id, t)
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err
@@ -89,7 +90,7 @@ func (r *transcodingRepository) Update(id string, entity interface{}, cols ...st
 
 func (r *transcodingRepository) Delete(id string) error {
 	err := r.delete(Eq{"id": id})
-	if err == model.ErrNotFound {
+	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}
 	return err

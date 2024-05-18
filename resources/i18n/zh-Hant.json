@@ -25,7 +25,8 @@
                 "quality": "品質",
                 "bpm": "BPM",
                 "playDate": "上次播放",
-                "channels": "聲道"
+                "channels": "聲道",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -51,7 +52,13 @@
                 "year": "發行年份",
                 "updatedAt": "更新於",
                 "comment": "註釋",
-                "rating": "評分"
+                "rating": "評分",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "立即播放",
@@ -60,7 +67,8 @@
                 "shuffle": "隨機播放",
                 "addToPlaylist": "加入播放清單",
                 "download": "下載",
-                "info": "獲取信息"
+                "info": "獲取信息",
+                "share": ""
             },
             "lists": {
                 "all": "所有",
@@ -80,7 +88,8 @@
                 "songCount": "歌曲數",
                 "playCount": "播放次數",
                 "rating": "評分",
-                "genre": "類型"
+                "genre": "類型",
+                "size": ""
             }
         },
         "user": {
@@ -93,10 +102,10 @@
                 "name": "名稱",
                 "password": "密碼",
                 "createdAt": "創建於",
-                "changePassword": "變更密碼?",
+                "changePassword": "變更密碼？",
                 "currentPassword": "現在的密碼",
                 "newPassword": "新密碼",
-                "token": ""
+                "token": "權杖"
             },
             "helperTexts": {
                 "name": "你的名稱會在下次登入時生效"
@@ -107,8 +116,8 @@
                 "deleted": "使用者已刪除"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "輸入您的 ListenBrainz 使用者權杖",
+                "clickHereForToken": "點擊此處來獲得你的 ListenBrainz 權杖"
             }
         },
         "player": {
@@ -121,7 +130,7 @@
                 "userName": "使用者名稱",
                 "lastSeen": "上次瀏覽",
                 "reportRealPath": "回報實際路徑",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "傳送音樂記錄至外部服務"
             }
         },
         "transcoding": {
@@ -151,19 +160,49 @@
                 "selectPlaylist": "選擇播放清單",
                 "addNewPlaylist": "創建 %{name}",
                 "export": "導出",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "設爲公開",
+                "makePrivate": "設爲私有"
             },
             "message": {
                 "duplicate_song": "加入重複的歌曲",
-                "song_exist": "有重複歌曲正在播放清單裡。 您要加入或略過重複歌曲?"
+                "song_exist": "有重複歌曲正在播放清單裡，您要加入或略過重複歌曲？"
+            }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
             }
         }
     },
     "ra": {
         "auth": {
-            "welcome1": "感謝您安裝Navidrome!",
-            "welcome2": "開始前,請創建一個管理員帳戶",
+            "welcome1": "感謝您安裝 Navidrome！",
+            "welcome2": "開始前，請創建一個管理員帳戶",
             "confirmPassword": "確定密碼",
             "buttonCreateAdmin": "創建管理員",
             "auth_check_error": "請登入訪問更多內容",
@@ -171,7 +210,7 @@
             "username": "使用者名稱",
             "password": "密碼",
             "sign_in": "登入",
-            "sign_in_error": "驗證失敗, 請重試",
+            "sign_in_error": "驗證失敗，請重試",
             "logout": "登出"
         },
         "validation": {
@@ -185,14 +224,15 @@
             "number": "必須為數字",
             "email": "必須是有效的電子信箱",
             "oneOf": "必須為: %{options}其中一項",
-            "regex": "必須符合指定的格式 (正則表達式): %{pattern}",
-            "unique": "必須是唯一的"
+            "regex": "必須符合指定的格式（正则表达式）：%{pattern}",
+            "unique": "必須是唯一的",
+            "url": ""
         },
         "action": {
             "add_filter": "加入篩選",
             "add": "加入",
             "back": "返回",
-            "bulk_actions": "選中%{smart_count}項",
+            "bulk_actions": "選中 %{smart_count} 項",
             "cancel": "取消",
             "clear_input_value": "清除",
             "clone": "複製",
@@ -215,7 +255,10 @@
             "open_menu": "打開選單",
             "close_menu": "關閉選單",
             "unselect": "未選擇",
-            "skip": "略過"
+            "skip": "略過",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "是",
@@ -230,8 +273,8 @@
             "loading": "載入中",
             "not_found": "未發現",
             "show": "%{name} #%{id}",
-            "empty": "還沒有 %{name}.",
-            "invite": "你要創建一個嗎?"
+            "empty": "還沒有 %{name}。",
+            "invite": "你要創建一個嗎？"
         },
         "input": {
             "file": {
@@ -244,8 +287,8 @@
             },
             "references": {
                 "all_missing": "未找到參考數據",
-                "many_missing": "至少有一條參考數據不再可用.",
-                "single_missing": "關聯的參考數據不再可用."
+                "many_missing": "至少有一條參考數據不再可用",
+                "single_missing": "關聯的參考數據不再可用"
             },
             "password": {
                 "toggle_visible": "隱藏密碼",
@@ -254,28 +297,28 @@
         },
         "message": {
             "about": "關於",
-            "are_you_sure": "你確定此操作?",
-            "bulk_delete_content": "您確定要刪除 %{name}? |||| 您確定要刪除 %{smart_count} 項?",
-            "bulk_delete_title": "刪除 %{name} |||| 刪除 %{smart_count}項 %{name}",
-            "delete_content": "您確定要刪除該項目?",
+            "are_you_sure": "你確定此操作？",
+            "bulk_delete_content": "您確定要刪除 %{name}？ |||| 您確定要刪除 %{smart_count} 項？",
+            "bulk_delete_title": "刪除 %{name} |||| 刪除 %{smart_count} 項 %{name}",
+            "delete_content": "您確定要刪除該項目？",
             "delete_title": "刪除 %{name} #%{id}",
             "details": "詳情",
-            "error": "發生一個用戶端錯誤，您的請求無法完成。",
-            "invalid_form": "提交內容無效. 請檢查錯誤",
-            "loading": "正在載入頁面, 請稍候",
+            "error": "發生一個用戶端錯誤，您的請求無法完成",
+            "invalid_form": "提交內容無效，請檢查錯誤",
+            "loading": "正在載入頁面，請稍候",
             "no": "否",
             "not_found": "您輸入的連結格式不對或連結遺失",
             "yes": "是",
-            "unsaved_changes": "某些更改尚未保存。您確定要離開此頁面嗎？"
+            "unsaved_changes": "某些更改尚未保存，您確定要離開此頁面嗎？"
         },
         "navigation": {
             "no_results": "無內容",
-            "no_more_results": "頁碼 %{page} 超出邊界. 試試上一頁.",
+            "no_more_results": "頁碼 %{page} 超出邊界，嘗試返回上一頁",
             "page_out_of_boundaries": "頁碼 %{page} 超出邊界",
             "page_out_from_end": "已經最後一頁",
             "page_out_from_begin": "已經是第一頁",
             "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "每頁行數:",
+            "page_rows_per_page": "每頁行數：",
             "next": "下一頁",
             "prev": "上一頁",
             "skip_nav": "跳過"
@@ -287,11 +330,11 @@
             "bad_item": "不確定的項",
             "item_doesnt_exist": "項不存在",
             "http_error": "伺服器通訊錯誤",
-            "data_provider_error": "dataProvider錯誤. 請檢查console的詳細訊息.",
+            "data_provider_error": "數據來源錯誤，請檢查主控台的詳細訊息",
             "i18n_error": "無法載入所選語言",
             "canceled": "操作已取消",
-            "logged_out": "您的Session已結束，請重新登入。",
-            "new_version": "發現新版本! 請重新整理視窗"
+            "logged_out": "您的會話已結束，請重新登入",
+            "new_version": "發現新版本！請重新整理視窗"
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "顯示欄目",
@@ -302,11 +345,11 @@
     },
     "message": {
         "note": "註解",
-        "transcodingDisabled": "出於安全原因，禁用了從Web界面更改參數。要更改（編輯或刪除）轉檔選項，請在啟用％{config}選項的情況下重新啟動伺服器。",
-        "transcodingEnabled": "Navidrome當前與％{config}一起使用，可以從Web介面執行任意命令。建議僅在配置Transcoding時啟用此功能。",
-        "songsAddedToPlaylist": "已加入一首歌到播放清單||||已添加％{smart_count}首歌到播放清單",
+        "transcodingDisabled": "出於安全原因，禁用了從 Web 介面更改參數。要更改（編輯或新增）轉檔選項，請在啟用 %{config} 選項的情況下重新啟動伺服器。",
+        "transcodingEnabled": "Navidrome 當前與 %{config} 一起使用，可以通過配置轉檔參數執行任意命令，建議僅在配置轉檔選項時啟用此功能。",
+        "songsAddedToPlaylist": "已加入一首歌到播放清單 |||| 已添加 %{smart_count} 首歌到播放清單",
         "noPlaylistsAvailable": "沒有可用的播放清單",
-        "delete_user_title": "刪除使用者 ％{name}",
+        "delete_user_title": "刪除使用者 %{name}",
         "delete_user_content": "您確定要刪除該使用者及其相關數據（包括播放清單和使用者配置）嗎？",
         "notifications_blocked": "您已在瀏覽器的設置中封鎖了此網站的通知",
         "notifications_not_available": "此瀏覽器不支援桌面通知",
@@ -315,14 +358,22 @@
         "lastfmUnlinkSuccess": "Last.fm 已無連接並停用音樂記錄",
         "lastfmUnlinkFailure": "Last.fm 無法取消連接",
         "openIn": {
-            "lastfm": "在Last.fm打開",
-            "musicbrainz": "在MusicBrainz打開"
+            "lastfm": "在 Last.fm 打開",
+            "musicbrainz": "在 MusicBrainz 打開"
         },
-        "lastfmLink": "繼續閱讀...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "lastfmLink": "繼續閱讀…",
+        "listenBrainzLinkSuccess": "ListenBrainz 成功連接並開啟音樂記錄",
+        "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
+        "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "音樂庫",
@@ -336,8 +387,15 @@
                 "language": "語言",
                 "defaultView": "預設畫面",
                 "desktop_notifications": "桌面通知",
-                "lastfmScrobbling": "啟用Last.fm音樂記錄",
-                "listenBrainzScrobbling": ""
+                "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
+                "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "專輯",
@@ -358,7 +416,7 @@
         "volumeText": "音量",
         "toggleLyricText": "切換歌詞",
         "toggleMiniModeText": "最小化",
-        "destroyText": "銷毀",
+        "destroyText": "關閉",
         "downloadText": "下載",
         "removeAudioListsText": "清空播放佇列",
         "clickToDeleteText": "點擊删除 %{name}",
@@ -386,16 +444,17 @@
         "serverDown": "伺服器離線"
     },
     "help": {
-        "title": "Navidrome快捷鍵",
+        "title": "Navidrome 快捷鍵",
         "hotkeys": {
             "show_help": "顯示此幫助",
             "toggle_menu": "顯示/隱藏選單側欄",
-            "toggle_play": "播放 / 暫停",
+            "toggle_play": "播放/暫停",
             "prev_song": "上一首歌",
             "next_song": "下一首歌",
             "vol_up": "提高音量",
             "vol_down": "降低音量",
-            "toggle_love": "添加或移除星標"
+            "toggle_love": "添加或移除星標",
+            "current_song": ""
         }
     }
 }

@@ -2,32 +2,35 @@ package ffmpeg
 
 import (
 	"bufio"
+	"context"
 	"errors"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/scanner/metadata"
 )
 
-type Parser struct{}
+const ExtractorID = "ffmpeg"
 
-type parsedTags = map[string][]string
+type Extractor struct {
+	ffmpeg ffmpeg.FFmpeg
+}
 
-func (e *Parser) Parse(files ...string) (map[string]parsedTags, error) {
-	args := e.createProbeCommand(files)
-
-	log.Trace("Executing command", "args", args)
-	cmd := exec.Command(args[0], args[1:]...) // #nosec
-	output, _ := cmd.CombinedOutput()
-	fileTags := map[string]parsedTags{}
+func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, error) {
+	output, err := e.ffmpeg.Probe(context.TODO(), files)
+	if err != nil {
+		log.Error("Cannot use ffmpeg to extract tags. Aborting", err)
+		return nil, err
+	}
+	fileTags := map[string]metadata.ParsedTags{}
 	if len(output) == 0 {
 		return fileTags, errors.New("error extracting metadata files")
 	}
-	infos := e.parseOutput(string(output))
+	infos := e.parseOutput(output)
 	for file, info := range infos {
 		tags, err := e.extractMetadata(file, info)
 		// Skip files with errors
@@ -38,24 +41,25 @@ func (e *Parser) Parse(files ...string) (map[string]parsedTags, error) {
 	return fileTags, nil
 }
 
-func (e *Parser) extractMetadata(filePath, info string) (parsedTags, error) {
+func (e *Extractor) CustomMappings() metadata.ParsedTags {
+	return metadata.ParsedTags{
+		"disc":         {"tpa"},
+		"has_picture":  {"metadata_block_picture"},
+		"originaldate": {"tdor"},
+	}
+}
+
+func (e *Extractor) Version() string {
+	return e.ffmpeg.Version()
+}
+
+func (e *Extractor) extractMetadata(filePath, info string) (metadata.ParsedTags, error) {
 	tags := e.parseInfo(info)
 	if len(tags) == 0 {
 		log.Trace("Not a media file. Skipping", "filePath", filePath)
 		return nil, errors.New("not a media file")
 	}
 
-	alternativeTags := map[string][]string{
-		"disc":        {"tpa"},
-		"has_picture": {"metadata_block_picture"},
-	}
-	for tagName, alternatives := range alternativeTags {
-		for _, altName := range alternatives {
-			if altValue, ok := tags[altName]; ok {
-				tags[tagName] = append(tags[tagName], altValue...)
-			}
-		}
-	}
 	return tags, nil
 }
 
@@ -77,13 +81,14 @@ var (
 
 	//    Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 192 kb/s
 	//    Stream #0:0: Audio: flac, 44100 Hz, stereo, s16
-	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: Audio: (.*), (.* Hz), ([\w\.]+),*(.*.,)*`)
+	//    Stream #0:0: Audio: dsd_lsbf_planar, 352800 Hz, stereo, fltp, 5644 kb/s
+	audioStreamRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+.*: Audio: (.*), (.*) Hz, ([\w.]+),*(.*.,)*`)
 
 	//    Stream #0:1: Video: mjpeg, yuvj444p(pc, bt470bg/unknown/unknown), 600x600 [SAR 1:1 DAR 1:1], 90k tbr, 90k tbn, 90k tbc`
-	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:\d+: (Video):.*`)
+	coverRx = regexp.MustCompile(`^\s{2,4}Stream #\d+:.+: (Video):.*`)
 )
 
-func (e *Parser) parseOutput(output string) map[string]string {
+func (e *Extractor) parseOutput(output string) map[string]string {
 	outputs := map[string]string{}
 	all := inputRegex.FindAllStringSubmatchIndex(output, -1)
 	for i, loc := range all {
@@ -105,7 +110,7 @@ func (e *Parser) parseOutput(output string) map[string]string {
 	return outputs
 }
 
-func (e *Parser) parseInfo(info string) map[string][]string {
+func (e *Extractor) parseInfo(info string) map[string][]string {
 	tags := map[string][]string{}
 
 	reader := strings.NewReader(info)
@@ -162,6 +167,7 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 
 		match = audioStreamRx.FindStringSubmatch(line)
 		if len(match) > 0 {
+			tags["samplerate"] = []string{match[2]}
 			tags["channels"] = []string{e.parseChannels(match[3])}
 		}
 	}
@@ -176,7 +182,7 @@ func (e *Parser) parseInfo(info string) map[string][]string {
 
 var zeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-func (e *Parser) parseDuration(tag string) string {
+func (e *Extractor) parseDuration(tag string) string {
 	d, err := time.Parse("15:04:05", tag)
 	if err != nil {
 		return "0"
@@ -184,33 +190,22 @@ func (e *Parser) parseDuration(tag string) string {
 	return strconv.FormatFloat(d.Sub(zeroTime).Seconds(), 'f', 2, 32)
 }
 
-func (e *Parser) parseChannels(tag string) string {
-	if tag == "mono" {
+func (e *Extractor) parseChannels(tag string) string {
+	switch tag {
+	case "mono":
 		return "1"
-	} else if tag == "stereo" {
+	case "stereo":
 		return "2"
-	} else if tag == "5.1" {
+	case "5.1":
 		return "6"
-	} else if tag == "7.1" {
+	case "7.1":
 		return "8"
+	default:
+		return "0"
 	}
-
-	return "0"
 }
 
 // Inputs will always be absolute paths
-func (e *Parser) createProbeCommand(inputs []string) []string {
-	split := strings.Split(conf.Server.ProbeCommand, " ")
-	args := make([]string, 0)
-
-	for _, s := range split {
-		if s == "%s" {
-			for _, inp := range inputs {
-				args = append(args, "-i", inp)
-			}
-		} else {
-			args = append(args, s)
-		}
-	}
-	return args
+func init() {
+	metadata.RegisterExtractor(ExtractorID, &Extractor{ffmpeg: ffmpeg.New()})
 }

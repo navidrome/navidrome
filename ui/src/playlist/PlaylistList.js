@@ -65,7 +65,7 @@ const TogglePublicInput = ({ resource, source }) => {
         console.log(error)
         notify('ra.page.error', 'warning')
       },
-    }
+    },
   )
 
   const handleClick = (e) => {
@@ -106,13 +106,15 @@ const PlaylistList = (props) => {
       public: !isXsmall && (
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
+      comment: <TextField source="comment" />,
     }),
-    [isDesktop, isXsmall]
+    [isDesktop, isXsmall],
   )
 
   const columns = useSelectedFields({
     resource: 'playlist',
     columns: toggleableFields,
+    defaultOff: ['comment'],
   })
 
   return (

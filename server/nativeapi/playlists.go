@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,9 +11,10 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
@@ -24,7 +26,7 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 			constructor := func(ctx context.Context) rest.Repository {
 				plsRepo := ds.Playlist(ctx)
 				plsId := chi.URLParam(req, "playlistId")
-				return plsRepo.Tracks(plsId)
+				return plsRepo.Tracks(plsId, true)
 			}
 
 			handler(constructor).ServeHTTP(res, req)
@@ -41,19 +43,39 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
+func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		pls, err := playlists.ImportM3U(ctx, r.Body)
+		if err != nil {
+			log.Error(r.Context(), "Error parsing playlist", err)
+			// TODO: consider returning StatusBadRequest for playlists that are malformed
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, err = w.Write([]byte(pls.ToM3U8()))
+		if err != nil {
+			log.Error(ctx, "Error sending m3u contents", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		plsRepo := ds.Playlist(ctx)
 		plsId := chi.URLParam(r, "playlistId")
-		pls, err := plsRepo.GetWithTracks(plsId)
-		if err == model.ErrNotFound {
-			log.Warn("Playlist not found", "playlistId", plsId)
+		pls, err := plsRepo.GetWithTracks(plsId, true)
+		if errors.Is(err, model.ErrNotFound) {
+			log.Warn(r.Context(), "Playlist not found", "playlistId", plsId)
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		if err != nil {
-			log.Error("Error retrieving the playlist", "playlistId", plsId, err)
+			log.Error(r.Context(), "Error retrieving the playlist", "playlistId", plsId, err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -63,33 +85,24 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", pls.Name)
 		w.Header().Set("Content-Disposition", disposition)
 
-		// TODO: Move this and the import playlist logic to `core`
-		_, err = w.Write([]byte("#EXTM3U\n"))
+		_, err = w.Write([]byte(pls.ToM3U8()))
 		if err != nil {
 			log.Error(ctx, "Error sending playlist", "name", pls.Name)
 			return
-		}
-		for _, t := range pls.Tracks {
-			header := fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title)
-			line := t.Path + "\n"
-			_, err = w.Write([]byte(header + line))
-			if err != nil {
-				log.Error(ctx, "Error sending playlist", "name", pls.Name)
-				return
-			}
 		}
 	}
 }
 
 func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		playlistId := utils.ParamString(r, ":playlistId")
-		ids := r.URL.Query()["id"]
+		p := req.Params(r)
+		playlistId, _ := p.String(":playlistId")
+		ids, _ := p.Strings("id")
 		err := ds.WithTx(func(tx model.DataStore) error {
-			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId)
+			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId, true)
 			return tracksRepo.Delete(ids...)
 		})
-		if len(ids) == 1 && err == model.ErrNotFound {
+		if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
 			log.Warn(r.Context(), "Track not found in playlist", "playlistId", playlistId, "id", ids[0])
 			http.Error(w, "not found", http.StatusNotFound)
 			return
@@ -127,14 +140,15 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		playlistId := utils.ParamString(r, ":playlistId")
+		p := req.Params(r)
+		playlistId, _ := p.String(":playlistId")
 		var payload addTracksPayload
 		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
+		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId, true)
 		count, c := 0, 0
 		if c, err = tracksRepo.Add(payload.Ids); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -171,8 +185,9 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		playlistId := utils.ParamString(r, ":playlistId")
-		id := utils.ParamInt(r, ":id", 0)
+		p := req.Params(r)
+		playlistId, _ := p.String(":playlistId")
+		id := p.IntOr(":id", 0)
 		if id == 0 {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return
@@ -188,9 +203,9 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId)
+		tracksRepo := ds.Playlist(r.Context()).Tracks(playlistId, true)
 		err = tracksRepo.Reorder(id, newPos)
-		if err == rest.ErrPermissionDenied {
+		if errors.Is(err, rest.ErrPermissionDenied) {
 			http.Error(w, err.Error(), http.StatusForbidden)
 			return
 		}

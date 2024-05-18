@@ -25,7 +25,8 @@
                 "quality": "คุณภาพ",
                 "bpm": "BPM",
                 "playDate": "เล่นล่าสุด",
-                "channels": "ช่อง"
+                "channels": "ช่อง",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "เล่นหลังสุด",
@@ -51,7 +52,13 @@
                 "year": "ปี",
                 "updatedAt": "อัพเดตเมื่อ",
                 "comment": "ความคิดเห็น",
-                "rating": "Rating"
+                "rating": "Rating",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "เล่นทั้งหมด",
@@ -60,7 +67,8 @@
                 "shuffle": "เล่นแบบสุ่ม",
                 "addToPlaylist": "เพิ่งลงในเพลย์ลิสต์",
                 "download": "ดาวน์โหลด",
-                "info": "ดูรายละเอียด"
+                "info": "ดูรายละเอียด",
+                "share": ""
             },
             "lists": {
                 "all": "ทั้งหมด",
@@ -80,7 +88,8 @@
                 "songCount": "จำนวนเพลง",
                 "playCount": "เล่น",
                 "rating": "Rating",
-                "genre": "ประเภท"
+                "genre": "ประเภท",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "เพิ่มเพลงที่ซ้ำ",
                 "song_exist": "มีเพลงที่ซ้ำกันเพิ่มในเพลยลิสต์ เพิ่มเพลงนั้นหรือข้าม"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "เป็นอีเมลที่ถูกต้องเท่านั้น",
             "oneOf": "ต้องเป็นหนึ่งใน %{options}",
             "regex": "ต้องเป็นฟอร์แมตเฉพาะ (regexp): %{pattern}",
-            "unique": "ต้องมีความพิเศษ"
+            "unique": "ต้องมีความพิเศษ",
+            "url": ""
         },
         "action": {
             "add_filter": "เพิ่มตัวกรอง",
@@ -215,7 +255,10 @@
             "open_menu": "เปิดเมนู",
             "close_menu": "ปิดเมนู",
             "unselect": "ยกเลิก",
-            "skip": "ข้าม"
+            "skip": "ข้าม",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "ใช่",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "ไลบรารี่",
@@ -337,7 +388,14 @@
                 "defaultView": "หน้าเริ่มต้น",
                 "desktop_notifications": "การแจ่งเตือน Desktop",
                 "lastfmScrobbling": "Scrobble ไป Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "อัลบั้ม",
@@ -395,7 +453,8 @@
             "next_song": "เพลงถัดไป",
             "vol_up": "เพิ่มเสียง",
             "vol_down": "ลดเสียง",
-            "toggle_love": "เพิ่มเพลงนี้ไปยังรายการโปรด"
+            "toggle_love": "เพิ่มเพลงนี้ไปยังรายการโปรด",
+            "current_song": ""
         }
     }
 }

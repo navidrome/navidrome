@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -29,16 +30,17 @@ var _ = Describe("listenBrainzAgent", func() {
 		_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
-		agent.client = NewClient("http://localhost:8080", httpClient)
+		agent.client = newClient("http://localhost:8080", httpClient)
 		track = &model.MediaFile{
-			ID:          "123",
-			Title:       "Track Title",
-			Album:       "Track Album",
-			Artist:      "Track Artist",
-			TrackNumber: 1,
-			MbzTrackID:  "mbz-123",
-			MbzAlbumID:  "mbz-456",
-			MbzArtistID: "mbz-789",
+			ID:             "123",
+			Title:          "Track Title",
+			Album:          "Track Album",
+			Artist:         "Track Artist",
+			TrackNumber:    1,
+			MbzRecordingID: "mbz-123",
+			MbzAlbumID:     "mbz-456",
+			MbzArtistID:    "mbz-789",
+			Duration:       142.2,
 		}
 	})
 
@@ -56,12 +58,15 @@ var _ = Describe("listenBrainzAgent", func() {
 					"TrackName":   Equal(track.Title),
 					"ReleaseName": Equal(track.Album),
 					"AdditionalInfo": MatchAllFields(Fields{
-						"TrackNumber": Equal(track.TrackNumber),
-						"TrackMbzID":  Equal(track.MbzTrackID),
-						"ReleaseMbID": Equal(track.MbzAlbumID),
+						"SubmissionClient":        Equal(consts.AppName),
+						"SubmissionClientVersion": Equal(consts.Version),
+						"TrackNumber":             Equal(track.TrackNumber),
+						"RecordingMbzID":          Equal(track.MbzRecordingID),
+						"ReleaseMbID":             Equal(track.MbzAlbumID),
 						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
 							"mbz-789": Equal(track.MbzArtistID),
 						}),
+						"DurationMs": Equal(142200),
 					}),
 				}),
 			}))

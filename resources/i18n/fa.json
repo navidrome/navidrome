@@ -1,5 +1,5 @@
 {
-    "languageName": "انگلیسی",
+    "languageName": "فارسی",
     "resources": {
         "song": {
             "name": "ترانه |||| ترانه ها",
@@ -25,7 +25,8 @@
                 "quality": "کیفیّت",
                 "bpm": "ضربان در دقیقه",
                 "playDate": "آخرین پخش شده",
-                "channels": "کانال ها"
+                "channels": "کانال ها",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "بعدا پخش کن",
@@ -51,7 +52,13 @@
                 "year": "سال",
                 "updatedAt": "به روز شده در",
                 "comment": "اظهارنظر",
-                "rating": "رتبه بندی"
+                "rating": "رتبه بندی",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "پخش",
@@ -60,7 +67,8 @@
                 "shuffle": "درهم",
                 "addToPlaylist": "افزودن به لیست پخش",
                 "download": "دانلود",
-                "info": "گرفتن اطلاعات"
+                "info": "گرفتن اطلاعات",
+                "share": ""
             },
             "lists": {
                 "all": "همه",
@@ -80,7 +88,8 @@
                 "songCount": "تعداد آهنگ",
                 "playCount": "پخش ها",
                 "rating": "رتبه بندی",
-                "genre": "ژانر"
+                "genre": "ژانر",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "افزودن آهنگ های تکراری",
                 "song_exist": "موارد تکراری به لیست پخش اضافه می شوند. آیا می خواهید موارد تکراری را اضافه کنید یا از آنها صرف نظر می کنید؟"
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "باید یک ایمیل آدرس معتبر باشد",
             "oneOf": "باید یکی از موارد زیر باشد: %{options}",
             "regex": "باید با یک قالب خاص (regex) مطابقت داشته باشد: %{pattern}",
-            "unique": "باید یکتا باشد"
+            "unique": "باید یکتا باشد",
+            "url": ""
         },
         "action": {
             "add_filter": "افزودن فیلتر",
@@ -215,7 +255,10 @@
             "open_menu": "بازکردن منو",
             "close_menu": "بستن منو",
             "unselect": "لغو انتخاب",
-            "skip": "ردشدن"
+            "skip": "ردشدن",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "بله",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "کتابخانه",
@@ -337,7 +388,14 @@
                 "defaultView": "نمای پیش فرض",
                 "desktop_notifications": "اعلان های دسکتاپ",
                 "lastfmScrobbling": "اسکروبل به Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "آلبوم ها",
@@ -395,7 +453,8 @@
             "next_song": "آهنگ بعدی",
             "vol_up": "حجم صدا بالا",
             "vol_down": "حجم صدا پائین",
-            "toggle_love": "افزودن این آهنگ به موارد دلخواه"
+            "toggle_love": "افزودن این آهنگ به موارد دلخواه",
+            "current_song": ""
         }
     }
 }

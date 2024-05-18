@@ -30,12 +30,13 @@ const useStyles = makeStyles({
 export const ToggleFieldsMenu = ({
   resource,
   topbarComponent: TopBarComponent,
+  hideColumns,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const dispatch = useDispatch()
   const translate = useTranslate()
   const toggleableColumns = useSelector(
-    (state) => state.settings.toggleableFields[resource]
+    (state) => state.settings.toggleableFields[resource],
   )
   const omittedColumns =
     useSelector((state) => state.settings.omittedFields[resource]) || []
@@ -57,7 +58,7 @@ export const ToggleFieldsMenu = ({
           ...toggleableColumns,
           [selectedColumn]: !toggleableColumns[selectedColumn],
         },
-      })
+      }),
     )
   }
 
@@ -82,7 +83,7 @@ export const ToggleFieldsMenu = ({
         }}
       >
         {TopBarComponent && <TopBarComponent />}
-        {toggleableColumns ? (
+        {!hideColumns && toggleableColumns ? (
           <div>
             <Typography className={classes.title}>
               {translate('ra.toggleFieldsMenu.columnsToDisplay')}
@@ -94,7 +95,7 @@ export const ToggleFieldsMenu = ({
                     <Checkbox checked={val} />
                     {translate(`resources.${resource}.fields.${key}`)}
                   </MenuItem>
-                ) : null
+                ) : null,
               )}
             </div>
           </div>
@@ -107,4 +108,5 @@ export const ToggleFieldsMenu = ({
 ToggleFieldsMenu.propTypes = {
   resource: PropTypes.string.isRequired,
   topbarComponent: PropTypes.elementType,
+  hideColumns: PropTypes.bool,
 }

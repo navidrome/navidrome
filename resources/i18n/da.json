@@ -25,7 +25,8 @@
                 "quality": "",
                 "bpm": "",
                 "playDate": "",
-                "channels": ""
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Afspil senere",
@@ -51,7 +52,13 @@
                 "year": "År",
                 "updatedAt": "Opdateret den",
                 "comment": "Kommentar",
-                "rating": ""
+                "rating": "",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Afspil",
@@ -60,7 +67,8 @@
                 "shuffle": "Bland",
                 "addToPlaylist": "Tilføj til afspilningsliste",
                 "download": "Hent",
-                "info": ""
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Alle",
@@ -80,7 +88,8 @@
                 "songCount": "Antal sange",
                 "playCount": "Afspilninger",
                 "rating": "",
-                "genre": ""
+                "genre": "",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "",
                 "song_exist": ""
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Skal være en gyldig e-mail-adresse",
             "oneOf": "Skal være en af: %{options}",
             "regex": "Skal matche et bestemt format (regexp): %{pattern}",
-            "unique": ""
+            "unique": "",
+            "url": ""
         },
         "action": {
             "add_filter": "Tilføj filter",
@@ -215,7 +255,10 @@
             "open_menu": "Åben menu",
             "close_menu": "Luk menu",
             "unselect": "Fravælg",
-            "skip": ""
+            "skip": "",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Ja",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Bibliotek",
@@ -337,7 +388,14 @@
                 "defaultView": "Standardopsætning",
                 "desktop_notifications": "",
                 "lastfmScrobbling": "",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albums",
@@ -395,7 +453,8 @@
             "next_song": "",
             "vol_up": "",
             "vol_down": "",
-            "toggle_love": ""
+            "toggle_love": "",
+            "current_song": ""
         }
     }
 }

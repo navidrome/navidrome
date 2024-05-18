@@ -64,7 +64,7 @@ const AlbumViewToggler = React.forwardRef(
         </ButtonGroup>
       </div>
     )
-  }
+  },
 )
 
 const AlbumListActions = ({
@@ -86,6 +86,7 @@ const AlbumListActions = ({
   ...rest
 }) => {
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
+  const albumView = useSelector((state) => state.albumView)
   return (
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       {filters &&
@@ -97,7 +98,11 @@ const AlbumListActions = ({
           context: 'button',
         })}
       {isNotSmall ? (
-        <ToggleFieldsMenu resource="album" topbarComponent={AlbumViewToggler} />
+        <ToggleFieldsMenu
+          resource="album"
+          topbarComponent={AlbumViewToggler}
+          hideColumns={albumView.grid}
+        />
       ) : (
         <AlbumViewToggler showTitle={false} />
       )}

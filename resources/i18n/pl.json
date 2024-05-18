@@ -25,12 +25,13 @@
                 "quality": "Jakość",
                 "bpm": "BPM",
                 "playDate": "Ostatnio Odtwarzane",
-                "channels": "Kanały"
+                "channels": "Kanały",
+                "createdAt": "Data dodania"
             },
             "actions": {
                 "addToQueue": "Odtwarzaj Później",
                 "playNow": "Odtwarzaj Teraz",
-                "addToPlaylist": "Dodaj do Listy odtwarzania",
+                "addToPlaylist": "Dodaj do Playlisty",
                 "shuffleAll": "Losuj Wszystkie",
                 "download": "Pobierz",
                 "playNext": "Odtwarzaj Następny",
@@ -51,16 +52,23 @@
                 "year": "Rok",
                 "updatedAt": "Zaktualizowany",
                 "comment": "Komentarz",
-                "rating": "Ocena"
+                "rating": "Ocena",
+                "createdAt": "Data dodania",
+                "size": "Rozmiar",
+                "originalDate": "Pierwotna Data",
+                "releaseDate": "Data Wydania",
+                "releases": "Wydanie |||| Wydania",
+                "released": "Wydany"
             },
             "actions": {
                 "playAll": "Odtwarzaj",
                 "playNext": "Odtwarzaj Następny",
                 "addToQueue": "Odtwarzaj Później",
                 "shuffle": "Losowo",
-                "addToPlaylist": "Dodaj do Listy Odtwarzania",
+                "addToPlaylist": "Dodaj do Playlisty",
                 "download": "Pobierz",
-                "info": "Zdobądź Informacje"
+                "info": "Zdobądź Informacje",
+                "share": "Udostępnij"
             },
             "lists": {
                 "all": "Wszystkie",
@@ -80,7 +88,8 @@
                 "songCount": "Liczba Utworów",
                 "playCount": "Liczba Odtworzeń",
                 "rating": "Ocena",
-                "genre": "Gatunek"
+                "genre": "Gatunek",
+                "size": "Rozmiar"
             }
         },
         "user": {
@@ -96,7 +105,7 @@
                 "changePassword": "Zmienić hasło?",
                 "currentPassword": "Obecne hasło",
                 "newPassword": "Nowe hasło",
-                "token": ""
+                "token": "Token"
             },
             "helperTexts": {
                 "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu"
@@ -107,8 +116,8 @@
                 "deleted": "Usunięto użytkownika"
             },
             "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
+                "listenBrainzToken": "Wprowadź swój token ListenBrainz.",
+                "clickHereForToken": "Kliknij tutaj, aby uzyskać token"
             }
         },
         "player": {
@@ -121,7 +130,7 @@
                 "userName": "Nazwa użytkownika",
                 "lastSeen": "Ostatnio Widziany",
                 "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę",
-                "scrobbleEnabled": ""
+                "scrobbleEnabled": "Scrobbluj do zewnętrznych serwisów"
             }
         },
         "transcoding": {
@@ -134,7 +143,7 @@
             }
         },
         "playlist": {
-            "name": "Lista odtwarzania |||| Listy odtwarzania",
+            "name": "Playlista |||| Playlisty",
             "fields": {
                 "name": "Nazwa",
                 "duration": "Czas trwania",
@@ -148,15 +157,45 @@
                 "path": "Zaimportuj z"
             },
             "actions": {
-                "selectPlaylist": "Wybierz listę odtwarzania:",
+                "selectPlaylist": "Wybierz playlistę:",
                 "addNewPlaylist": "Stwórz \"%{name}\"",
                 "export": "Wyeksportuj",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Zmień na Publiczną",
+                "makePrivate": "Zmień na Prywatną"
             },
             "message": {
                 "duplicate_song": "Dodaj zduplikowane utwory",
-                "song_exist": "Do listy odtwarzania dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
+                "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
+            }
+        },
+        "radio": {
+            "name": "Radio |||| Radia",
+            "fields": {
+                "name": "Nazwa",
+                "streamUrl": "URL Strumienia",
+                "homePageUrl": "URL Strony Głównej",
+                "updatedAt": "Zaktualizowano",
+                "createdAt": "Stworzono"
+            },
+            "actions": {
+                "playNow": "Odtwarzaj"
+            }
+        },
+        "share": {
+            "name": "Udostępnienie |||| Udostępnienia",
+            "fields": {
+                "username": "Udostępnione Przez",
+                "url": "URL",
+                "description": "Opis",
+                "contents": "Zawartość",
+                "expiresAt": "Wygasa",
+                "lastVisitedAt": "Ostatnio Wyświetlone",
+                "visitCount": "Wyświetlenia",
+                "format": "Format",
+                "maxBitRate": "Maks. Bit Rate",
+                "updatedAt": "Zaktualizowano",
+                "createdAt": "Stworzono",
+                "downloadable": "Zezwolić Na Pobieranie?"
             }
         }
     },
@@ -186,7 +225,8 @@
             "email": "Adres e-mail musi być poprawny",
             "oneOf": "Musi być jedną z: %{options}",
             "regex": "Musi pasować do określonego formatu (regexp): %{pattern}",
-            "unique": "Musi być unikalne"
+            "unique": "Musi być unikalne",
+            "url": "Adres URL musi być poprawny"
         },
         "action": {
             "add_filter": "Dodaj filtr",
@@ -215,7 +255,10 @@
             "open_menu": "Otwórz menu",
             "close_menu": "Zamknij menu",
             "unselect": "Odznacz",
-            "skip": "Pomiń"
+            "skip": "Pomiń",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Udostępnij",
+            "download": "Pobierz"
         },
         "boolean": {
             "true": "Tak",
@@ -230,8 +273,8 @@
             "loading": "Ładowanie",
             "not_found": "Nie Znaleziono",
             "show": "%{name} #%{id}\n",
-            "empty": "Nie ma jeszcze %{name}.",
-            "invite": "Czy chcesz dodać nową?"
+            "empty": "Brakuje elementu typu %{name}.",
+            "invite": "Czy chcesz dodać nowy?"
         },
         "input": {
             "file": {
@@ -304,25 +347,33 @@
         "note": "UWAGA",
         "transcodingDisabled": "Zmiana ustawień transkodowania przez interfejs sieciowy jest zablokowana z powodów bezpieczeństwa. Jeśli chcesz zmienić (edytować lub dodawać) opcje transkodowania, uruchom ponownie serwer z %{config} opcją konfiguracji.",
         "transcodingEnabled": "Navidrome aktualnie działa z %{config}, co umożliwia korzystanie z komend systemowych ustawień transkodowania poprzez interfejs sieciowy. Rekomendujemy wyłączenie tego ustawienia w celu zwiększenia bezpieczeństwa i aktywowanie go wyłącznie podczas konfiguracji transkodowania.",
-        "songsAddedToPlaylist": "Dodano 1 utwór do listy odtwarzania |||| Dodano %{smart_count} utworów do listy odtwarzania",
+        "songsAddedToPlaylist": "Dodano 1 utwór do playlisty |||| Dodano %{smart_count} utworów do playlisty",
         "noPlaylistsAvailable": "Niedostępne",
         "delete_user_title": "Usuń użytkownika '%{name}'",
-        "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to listy odtwarzania oraz ustawienia)?",
+        "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to playlisty oraz ustawienia)?",
         "notifications_blocked": "Zablokowałeś Powiadomienia w ustawieniach swojej przeglądarki",
         "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień",
-        "lastfmLinkSuccess": "Połączono Last.fm i włączono scrobbling",
+        "lastfmLinkSuccess": "Połączono Last.fm i włączono scrobblowanie",
         "lastfmLinkFailure": "Nie można połączyć Last.fm",
-        "lastfmUnlinkSuccess": "Odłączono Last.fm i wyłączono scrobbling",
+        "lastfmUnlinkSuccess": "Odłączono Last.fm i wyłączono scrobblowanie",
         "lastfmUnlinkFailure": "Nie można odłączyć Last.fm",
         "openIn": {
             "lastfm": "Otwórz w Last.fm",
             "musicbrainz": "Otwórz w MusicBrainz"
         },
         "lastfmLink": "Czytaj więcej...",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzLinkSuccess": "Połączono ListenBrainz i włączono scrobblowanie dla użytkownika: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz nie mógł zostać połączony: %{error}",
+        "listenBrainzUnlinkSuccess": "Odłączono ListenBrainz i wyłączono scrobblowanie",
+        "listenBrainzUnlinkFailure": "ListenBrainz nie może być odłączony",
+        "downloadOriginalFormat": "Pobierz w oryginalnym formacie",
+        "shareOriginalFormat": "Udostępnij w oryginalnym formacie",
+        "shareDialogTitle": "Udostępnij %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Udostępnij 1 %{resource} |||| Udostępnij %{smart_count} %{resource}",
+        "shareSuccess": "Adres URL skopiowany do schowka: %{url}",
+        "shareFailure": "Błąd podczas kopiowania URL %{url} do schowka",
+        "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Biblioteka",
@@ -337,13 +388,20 @@
                 "defaultView": "Widok Podstawowy",
                 "desktop_notifications": "Powiadomienia",
                 "lastfmScrobbling": "Scrobbluj do Last.fm",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "Scrobbluj do ListenBrainz",
+                "replaygain": "Tryb ReplayGain",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Wyłączony",
+                    "album": "Użyj Wzmocnienia Albumu",
+                    "track": "Użyj Wzmocnienia Utworu"
+                }
             }
         },
         "albumList": "Albumy",
         "about": "O aplikacji",
-        "playlists": "Listy odtwarzania",
-        "sharedPlaylists": "Udostępnione listy odtwarzania"
+        "playlists": "Playlisty",
+        "sharedPlaylists": "Udostępnione Playlisty"
     },
     "player": {
         "playListsText": "Kolejka Odtwarzania",
@@ -395,7 +453,8 @@
             "next_song": "Następny Utwór",
             "vol_up": "Głośniej",
             "vol_down": "Ciszej",
-            "toggle_love": "Dodaj ten utwór do ulubionych"
+            "toggle_love": "Dodaj ten utwór do ulubionych",
+            "current_song": "Przejdź do Bieżącego Utworu"
         }
     }
 }

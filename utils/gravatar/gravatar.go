@@ -4,8 +4,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"strings"
-
-	"github.com/navidrome/navidrome/utils"
 )
 
 const baseUrl = "https://www.gravatar.com/avatar"
@@ -19,7 +17,7 @@ func Url(email string, size int) string {
 	if size < 1 {
 		size = defaultSize
 	}
-	size = utils.MinInt(maxSize, size)
+	size = min(maxSize, size)
 
 	return fmt.Sprintf("%s/%x?s=%d", baseUrl, hash, size)
 }

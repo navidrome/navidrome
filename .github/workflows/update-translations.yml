@@ -1,0 +1,28 @@
+name: POEditor import
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 10 * * *'
+jobs:
+  update-translations:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'navidrome' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get updated translations
+        env:
+          POEDITOR_PROJECTID: ${{ secrets.POEDITOR_PROJECTID }}
+          POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
+        run: |
+          ./update-translations.sh
+      - name: Show changes, if any
+        run: |
+          git status --porcelain
+          git diff
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.PAT }}
+          commit-message: Update translations
+          title: Update translations from POEditor
+          branch: update-translations

@@ -25,7 +25,8 @@
                 "quality": "Kakovost",
                 "bpm": "BPM",
                 "playDate": "Zadnja predvajana",
-                "channels": "Kanali"
+                "channels": "Kanali",
+                "createdAt": "Datum dodano"
             },
             "actions": {
                 "addToQueue": "Predvajaj kasneje",
@@ -51,7 +52,13 @@
                 "year": "Leto",
                 "updatedAt": "Posodobljeno",
                 "comment": "Opomba",
-                "rating": "Ocena"
+                "rating": "Ocena",
+                "createdAt": "Datum dodano",
+                "size": "Velikost",
+                "originalDate": "Original",
+                "releaseDate": "Izdano",
+                "releases": "Izdaja |||| Izdaje",
+                "released": "Izdano"
             },
             "actions": {
                 "playAll": "Predvajaj vse",
@@ -60,7 +67,8 @@
                 "shuffle": "Premešaj",
                 "addToPlaylist": "Dodaj v seznam predvajanja",
                 "download": "Naloži",
-                "info": "Več informacij"
+                "info": "Več informacij",
+                "share": "Deli"
             },
             "lists": {
                 "all": "Vse",
@@ -80,7 +88,8 @@
                 "songCount": "# pesmi",
                 "playCount": "# predvajanj",
                 "rating": "Ocena",
-                "genre": "Žanr"
+                "genre": "Žanr",
+                "size": "Velikost"
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "Dodaj podvojene pesmi",
                 "song_exist": "Seznamu predvajanja boste dodali duplikate. Jih želite dodati ali izpustiti?"
             }
+        },
+        "radio": {
+            "name": "Radio |||| Radiji",
+            "fields": {
+                "name": "Ime",
+                "streamUrl": "URL toka",
+                "homePageUrl": "URL domače strani",
+                "updatedAt": "Posodobljeno ob",
+                "createdAt": "Ustvarjeno ob"
+            },
+            "actions": {
+                "playNow": "Predvajaj"
+            }
+        },
+        "share": {
+            "name": "Deli |||| Delitev",
+            "fields": {
+                "username": "Delil z",
+                "url": "URL",
+                "description": "Opis",
+                "contents": "Vsebine",
+                "expiresAt": "Poteče",
+                "lastVisitedAt": "Nazadnje obiskano",
+                "visitCount": "Obiski",
+                "format": "Oblika",
+                "maxBitRate": "Maks. bitna hitrost",
+                "updatedAt": "Posodobljeno ob",
+                "createdAt": "Ustvarjeno ob",
+                "downloadable": "Dovoli prenose?"
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Veljaven e-poštni naslov",
             "oneOf": "Mora biti ena izmed %{options}",
             "regex": "Mora se ujemati z določeno obliko (regexp): %{pattern}",
-            "unique": "Mora biti edinstven"
+            "unique": "Mora biti edinstven",
+            "url": "Biti mora veljaven URL"
         },
         "action": {
             "add_filter": "Dodaj filter",
@@ -215,7 +255,10 @@
             "open_menu": "Odpri meni",
             "close_menu": "Zapri meni",
             "unselect": "Prekliči izbiro",
-            "skip": "Izpusti"
+            "skip": "Izpusti",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Deli",
+            "download": "Prenesi"
         },
         "boolean": {
             "true": "Da",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "ListenBrainz uspešno povezan in scrobbling vključen za uporabnika: %{user}",
         "listenBrainzLinkFailure": "ListBrainz neuspešno povezan: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz povezava prekinjena in scrobbling izključen",
-        "listenBrainzUnlinkFailure": "ListenBrainz prekinitev povezave neuspešna"
+        "listenBrainzUnlinkFailure": "ListenBrainz prekinitev povezave neuspešna",
+        "downloadOriginalFormat": "Prenesi v izvirni obliki",
+        "shareOriginalFormat": "Deli v izvirni obliki",
+        "shareDialogTitle": "Deli %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Deli 1 %{resource} |||| Deli %{smart_count} %{resource}",
+        "shareSuccess": "URL kopiran v odložišče: %{url}",
+        "shareFailure": "Napaka pri kopiranju URL-ja %{url} v odložišče",
+        "downloadDialogTitle": "Prenesi %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Kopiraj v odložišče: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Knjižnica",
@@ -337,7 +388,14 @@
                 "defaultView": "Privzet pogled",
                 "desktop_notifications": "Namizna obvestila",
                 "lastfmScrobbling": "'Scrobble' do Last.fm",
-                "listenBrainzScrobbling": "Scrobble k ListenBrainz"
+                "listenBrainzScrobbling": "Scrobble k ListenBrainz",
+                "replaygain": "ReplayGain način",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Onemogočeno",
+                    "album": "Uporabi Album Gain",
+                    "track": "Uporabi Track Gain"
+                }
             }
         },
         "albumList": "Albumi",
@@ -395,7 +453,8 @@
             "next_song": "Naslednja",
             "vol_up": "Zvišaj glasnost",
             "vol_down": "Znižaj glasnost",
-            "toggle_love": "Dodaj med priljubljene"
+            "toggle_love": "Dodaj med priljubljene",
+            "current_song": "Skoči na predvajano"
         }
     }
 }

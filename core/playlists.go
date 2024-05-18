@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/RaveNoX/go-jsoncommentstrip"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -21,7 +23,8 @@ import (
 
 type Playlists interface {
 	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
-	Update(ctx context.Context, playlistId string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
+	Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
+	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 }
 
 type playlists struct {
@@ -30,11 +33,6 @@ type playlists struct {
 
 func NewPlaylists(ds model.DataStore) Playlists {
 	return &playlists{ds: ds}
-}
-
-func IsPlaylist(filePath string) bool {
-	extension := strings.ToLower(filepath.Ext(filePath))
-	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
 }
 
 func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error) {
@@ -49,6 +47,26 @@ func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*
 		log.Error(ctx, "Error updating playlist", "path", filepath.Join(dir, fname), err)
 	}
 	return pls, err
+}
+
+func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
+	owner, _ := request.UserFrom(ctx)
+	pls := &model.Playlist{
+		OwnerID: owner.ID,
+		Public:  false,
+		Sync:    true,
+	}
+	pls, err := s.parseM3U(ctx, pls, "", reader)
+	if err != nil {
+		log.Error(ctx, "Error parsing playlist", err)
+		return nil, err
+	}
+	err = s.ds.Playlist(ctx).Put(pls)
+	if err != nil {
+		log.Error(ctx, "Error saving playlist", err)
+		return nil, err
+	}
+	return pls, nil
 }
 
 func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
@@ -95,7 +113,8 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 
 func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
 	nsp := &nspFile{}
-	dec := json.NewDecoder(file)
+	reader := jsoncommentstrip.NewReader(file)
+	dec := json.NewDecoder(reader)
 	err := dec.Decode(nsp)
 	if err != nil {
 		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
@@ -111,30 +130,39 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 	return pls, nil
 }
 
-func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, file io.Reader) (*model.Playlist, error) {
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) (*model.Playlist, error) {
 	mediaFileRepository := s.ds.MediaFile(ctx)
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
 	scanner.Split(scanLines)
 	var mfs model.MediaFiles
 	for scanner.Scan() {
-		path := strings.TrimSpace(scanner.Text())
-		// Skip empty lines and extended info
-		if path == "" || strings.HasPrefix(path, "#") {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "#PLAYLIST:") {
+			if split := strings.Split(line, ":"); len(split) >= 2 {
+				pls.Name = split[1]
+			}
 			continue
 		}
-		if strings.HasPrefix(path, "file://") {
-			path = strings.TrimPrefix(path, "file://")
-			path, _ = url.QueryUnescape(path)
+		// Skip empty lines and extended info
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(baseDir, path)
+		if strings.HasPrefix(line, "file://") {
+			line = strings.TrimPrefix(line, "file://")
+			line, _ = url.QueryUnescape(line)
 		}
-		mf, err := mediaFileRepository.FindByPath(path)
+		if baseDir != "" && !filepath.IsAbs(line) {
+			line = filepath.Join(baseDir, line)
+		}
+		mf, err := mediaFileRepository.FindByPath(line)
 		if err != nil {
-			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path, err)
+			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", line, err)
 			continue
 		}
 		mfs = append(mfs, *mf)
+	}
+	if pls.Name == "" {
+		pls.Name = time.Now().Format(time.RFC3339)
 	}
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)
@@ -146,7 +174,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 	owner, _ := request.UserFrom(ctx)
 
 	pls, err := s.ds.Playlist(ctx).FindByPath(newPls.Path)
-	if err != nil && err != model.ErrNotFound {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return err
 	}
 	if err == nil && !pls.Sync {
@@ -161,7 +189,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 		newPls.Comment = pls.Comment
 		newPls.OwnerID = pls.OwnerID
 		newPls.Public = pls.Public
-		newPls.EvaluatedAt = time.Time{}
+		newPls.EvaluatedAt = &time.Time{}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
@@ -193,7 +221,7 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func (s *playlists) Update(ctx context.Context, playlistId string,
+func (s *playlists) Update(ctx context.Context, playlistID string,
 	name *string, comment *string, public *bool,
 	idsToAdd []string, idxToRemove []int) error {
 	needsInfoUpdate := name != nil || comment != nil || public != nil
@@ -203,19 +231,23 @@ func (s *playlists) Update(ctx context.Context, playlistId string,
 		var pls *model.Playlist
 		var err error
 		repo := tx.Playlist(ctx)
+		tracks := repo.Tracks(playlistID, true)
+		if tracks == nil {
+			return fmt.Errorf("%w: playlist '%s'", model.ErrNotFound, playlistID)
+		}
 		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistId)
+			pls, err = repo.GetWithTracks(playlistID, true)
 			pls.RemoveTracks(idxToRemove)
 			pls.AddTracks(idsToAdd)
 		} else {
 			if len(idsToAdd) > 0 {
-				_, err = repo.Tracks(playlistId).Add(idsToAdd)
+				_, err = tracks.Add(idsToAdd)
 				if err != nil {
 					return err
 				}
 			}
 			if needsInfoUpdate {
-				pls, err = repo.Get(playlistId)
+				pls, err = repo.Get(playlistID)
 			}
 		}
 		if err != nil {
@@ -236,7 +268,7 @@ func (s *playlists) Update(ctx context.Context, playlistId string,
 		}
 		// Special case: The playlist is now empty
 		if len(idxToRemove) > 0 && len(pls.Tracks) == 0 {
-			if err = repo.Tracks(playlistId).DeleteAll(); err != nil {
+			if err = tracks.DeleteAll(); err != nil {
 				return err
 			}
 		}

@@ -3,8 +3,6 @@ package nativeapi
 import (
 	"context"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
@@ -12,18 +10,17 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/server/events"
 )
 
 type Router struct {
 	http.Handler
-	ds     model.DataStore
-	broker events.Broker
-	share  core.Share
+	ds        model.DataStore
+	share     core.Share
+	playlists core.Playlists
 }
 
-func New(ds model.DataStore, broker events.Broker, share core.Share) *Router {
-	r := &Router{ds: ds, broker: broker, share: share}
+func New(ds model.DataStore, share core.Share, playlists core.Playlists) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists}
 	r.Handler = r.routes()
 	return r
 }
@@ -44,20 +41,19 @@ func (n *Router) routes() http.Handler {
 		n.R(r, "/artist", model.Artist{}, false)
 		n.R(r, "/genre", model.Genre{}, false)
 		n.R(r, "/player", model.Player{}, true)
-		n.R(r, "/playlist", model.Playlist{}, true)
 		n.R(r, "/transcoding", model.Transcoding{}, conf.Server.EnableTranscodingConfig)
-		n.RX(r, "/share", n.share.NewRepository, true)
+		n.R(r, "/radio", model.Radio{}, true)
+		if conf.Server.EnableSharing {
+			n.RX(r, "/share", n.share.NewRepository, true)
+		}
 
+		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
 		})
-
-		if conf.Server.DevActivityPanel {
-			r.Handle("/events", n.broker)
-		}
 	})
 
 	return r
@@ -77,7 +73,7 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 			r.Post("/", rest.Post(constructor))
 		}
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(urlParams)
+			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(constructor))
 			if persistable {
 				r.Put("/", rest.Put(constructor))
@@ -87,12 +83,36 @@ func (n *Router) RX(r chi.Router, pathPrefix string, constructor rest.Repository
 	})
 }
 
+func (n *Router) addPlaylistRoute(r chi.Router) {
+	constructor := func(ctx context.Context) rest.Repository {
+		return n.ds.Resource(ctx, model.Playlist{})
+	}
+
+	r.Route("/playlist", func(r chi.Router) {
+		r.Get("/", rest.GetAll(constructor))
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Content-type") == "application/json" {
+				rest.Post(constructor)(w, r)
+				return
+			}
+			createPlaylistFromM3U(n.playlists)(w, r)
+		})
+
+		r.Route("/{id}", func(r chi.Router) {
+			r.Use(server.URLParamsMiddleware)
+			r.Get("/", rest.Get(constructor))
+			r.Put("/", rest.Put(constructor))
+			r.Delete("/", rest.Delete(constructor))
+		})
+	})
+}
+
 func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 	r.Route("/playlist/{playlistId}/tracks", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			getPlaylist(n.ds)(w, r)
 		})
-		r.With(urlParams).Route("/", func(r chi.Router) {
+		r.With(server.URLParamsMiddleware).Route("/", func(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
@@ -101,7 +121,7 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			})
 		})
 		r.Route("/{id}", func(r chi.Router) {
-			r.Use(urlParams)
+			r.Use(server.URLParamsMiddleware)
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
 				reorderItem(n.ds)(w, r)
 			})
@@ -109,28 +129,5 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
 		})
-	})
-}
-
-// Middleware to convert Chi URL params (from Context) to query params, as expected by our REST package
-func urlParams(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := chi.RouteContext(r.Context())
-		parts := make([]string, 0)
-		for i, key := range ctx.URLParams.Keys {
-			value := ctx.URLParams.Values[i]
-			if key == "*" {
-				continue
-			}
-			parts = append(parts, url.QueryEscape(":"+key)+"="+url.QueryEscape(value))
-		}
-		q := strings.Join(parts, "&")
-		if r.URL.RawQuery == "" {
-			r.URL.RawQuery = q
-		} else {
-			r.URL.RawQuery += "&" + q
-		}
-
-		next.ServeHTTP(w, r)
 	})
 }

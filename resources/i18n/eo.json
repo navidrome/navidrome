@@ -25,7 +25,8 @@
                 "quality": "",
                 "bpm": "",
                 "playDate": "",
-                "channels": ""
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Ludi Poste",
@@ -51,7 +52,13 @@
                 "year": "Jaro",
                 "updatedAt": "Ĝisdatigita je :",
                 "comment": "Komento",
-                "rating": ""
+                "rating": "",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Ludi",
@@ -60,7 +67,8 @@
                 "shuffle": "Miksi",
                 "addToPlaylist": "Aldoni al la Ludlisto",
                 "download": "Elŝuti",
-                "info": ""
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Ĉiuj",
@@ -80,7 +88,8 @@
                 "songCount": "Kanto kalkula",
                 "playCount": "Teatraĵoj",
                 "rating": "",
-                "genre": ""
+                "genre": "",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "",
                 "song_exist": ""
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "Devas esti valida retpoŝto",
             "oneOf": "Devas esti unu el: %{options}",
             "regex": "Devas kongrui kun specifa formato (regexp): %{pattern}",
-            "unique": ""
+            "unique": "",
+            "url": ""
         },
         "action": {
             "add_filter": "Aldoni filtrilon",
@@ -215,7 +255,10 @@
             "open_menu": "Malfermu menuon",
             "close_menu": "Fermu menuon",
             "unselect": "Malelekti",
-            "skip": ""
+            "skip": "",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Jes",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Biblioteko",
@@ -337,7 +388,14 @@
                 "defaultView": "Defaŭlta Vido",
                 "desktop_notifications": "Labortablaj sciigoj",
                 "lastfmScrobbling": "",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albumoj",
@@ -395,7 +453,8 @@
             "next_song": "Sekva kanto",
             "vol_up": "Pli volumo",
             "vol_down": "Malpli volumo",
-            "toggle_love": "Baskuli la stelon de nuna kanto"
+            "toggle_love": "Baskuli la stelon de nuna kanto",
+            "current_song": ""
         }
     }
 }

@@ -25,7 +25,8 @@
                 "quality": "",
                 "bpm": "",
                 "playDate": "",
-                "channels": ""
+                "channels": "",
+                "createdAt": ""
             },
             "actions": {
                 "addToQueue": "Sonra çal",
@@ -51,7 +52,13 @@
                 "year": "Yıl",
                 "updatedAt": "Güncellendi ",
                 "comment": "",
-                "rating": ""
+                "rating": "",
+                "createdAt": "",
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "Çaldır",
@@ -60,7 +67,8 @@
                 "shuffle": "Karıştır",
                 "addToPlaylist": "Playlist'e ekle",
                 "download": "İndir",
-                "info": ""
+                "info": "",
+                "share": ""
             },
             "lists": {
                 "all": "Hepsi",
@@ -80,7 +88,8 @@
                 "songCount": "Şarkı sayısı",
                 "playCount": "Oynatma",
                 "rating": "",
-                "genre": ""
+                "genre": "",
+                "size": ""
             }
         },
         "user": {
@@ -158,6 +167,36 @@
                 "duplicate_song": "",
                 "song_exist": ""
             }
+        },
+        "radio": {
+            "name": "",
+            "fields": {
+                "name": "",
+                "streamUrl": "",
+                "homePageUrl": "",
+                "updatedAt": "",
+                "createdAt": ""
+            },
+            "actions": {
+                "playNow": ""
+            }
+        },
+        "share": {
+            "name": "",
+            "fields": {
+                "username": "",
+                "url": "",
+                "description": "",
+                "contents": "",
+                "expiresAt": "",
+                "lastVisitedAt": "",
+                "visitCount": "",
+                "format": "",
+                "maxBitRate": "",
+                "updatedAt": "",
+                "createdAt": "",
+                "downloadable": ""
+            }
         }
     },
     "ra": {
@@ -186,7 +225,8 @@
             "email": "E-posta geçerli değil",
             "oneOf": "Bunlardan biri olmalı: %{options}",
             "regex": "Belirli bir formatla eşleşmelidir (regexp): %{pattern}",
-            "unique": ""
+            "unique": "",
+            "url": ""
         },
         "action": {
             "add_filter": "Filtre ekle",
@@ -215,7 +255,10 @@
             "open_menu": "Menüyü aç",
             "close_menu": "Menüyü kapat",
             "unselect": "Seçimi kaldır",
-            "skip": ""
+            "skip": "",
+            "bulk_actions_mobile": "",
+            "share": "",
+            "download": ""
         },
         "boolean": {
             "true": "Evet",
@@ -322,7 +365,15 @@
         "listenBrainzLinkSuccess": "",
         "listenBrainzLinkFailure": "",
         "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": ""
+        "listenBrainzUnlinkFailure": "",
+        "downloadOriginalFormat": "",
+        "shareOriginalFormat": "",
+        "shareDialogTitle": "",
+        "shareBatchDialogTitle": "",
+        "shareSuccess": "",
+        "shareFailure": "",
+        "downloadDialogTitle": "",
+        "shareCopyToClipboard": ""
     },
     "menu": {
         "library": "Müzik kütüphanesi",
@@ -337,7 +388,14 @@
                 "defaultView": "Varsayılan görünüm",
                 "desktop_notifications": "",
                 "lastfmScrobbling": "",
-                "listenBrainzScrobbling": ""
+                "listenBrainzScrobbling": "",
+                "replaygain": "",
+                "preAmp": "",
+                "gain": {
+                    "none": "",
+                    "album": "",
+                    "track": ""
+                }
             }
         },
         "albumList": "Albümler",
@@ -395,7 +453,8 @@
             "next_song": "",
             "vol_up": "",
             "vol_down": "",
-            "toggle_love": ""
+            "toggle_love": "",
+            "current_song": ""
         }
     }
 }

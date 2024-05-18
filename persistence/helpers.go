@@ -1,7 +1,7 @@
 package persistence
 
 import (
-	"context"
+	"database/sql/driver"
 	"fmt"
 	"regexp"
 	"strings"
@@ -9,19 +9,34 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 )
 
-func toSqlArgs(rec interface{}) (map[string]interface{}, error) {
+type PostMapper interface {
+	PostMapArgs(map[string]any) error
+}
+
+func toSQLArgs(rec interface{}) (map[string]interface{}, error) {
 	m := structs.Map(rec)
 	for k, v := range m {
-		if t, ok := v.(time.Time); ok {
+		switch t := v.(type) {
+		case time.Time:
 			m[k] = t.Format(time.RFC3339Nano)
+		case *time.Time:
+			if t != nil {
+				m[k] = t.Format(time.RFC3339Nano)
+			}
+		case driver.Valuer:
+			var err error
+			m[k], err = t.Value()
+			if err != nil {
+				return nil, err
+			}
 		}
-		if t, ok := v.(*time.Time); ok && t != nil {
-			m[k] = t.Format(time.RFC3339Nano)
+	}
+	if r, ok := rec.(PostMapper); ok {
+		err := r.PostMapArgs(m)
+		if err != nil {
+			return nil, err
 		}
 	}
 	return m, nil
@@ -34,6 +49,14 @@ func toSnakeCase(str string) string {
 	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
 	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
 	return strings.ToLower(snake)
+}
+
+var matchUnderscore = regexp.MustCompile("_([A-Za-z])")
+
+func toCamelCase(str string) string {
+	return matchUnderscore.ReplaceAllStringFunc(str, func(s string) string {
+		return strings.ToUpper(strings.Replace(s, "_", "", -1))
+	})
 }
 
 func exists(subTable string, cond squirrel.Sqlizer) existsCond {
@@ -57,50 +80,4 @@ func (e existsCond) ToSql() (string, []interface{}, error) {
 		sql = "not " + sql
 	}
 	return sql, args, err
-}
-
-func getMostFrequentMbzID(ctx context.Context, mbzIDs, entityName, name string) string {
-	ids := strings.Fields(mbzIDs)
-	if len(ids) == 0 {
-		return ""
-	}
-	var topId string
-	var topCount int
-	idCounts := map[string]int{}
-
-	if len(ids) == 1 {
-		topId = ids[0]
-	} else {
-		for _, id := range ids {
-			c := idCounts[id] + 1
-			idCounts[id] = c
-			if c > topCount {
-				topId = id
-				topCount = c
-			}
-		}
-	}
-
-	if len(idCounts) > 1 && name != consts.VariousArtists {
-		log.Warn(ctx, "Multiple MBIDs found for "+entityName, "name", name, "mbids", idCounts, "selectedId", topId)
-	}
-	if topId == consts.VariousArtistsMbzId && name != consts.VariousArtists {
-		log.Warn(ctx, "Artist with mbid of 'Various Artists'", "name", name, "mbid", topId)
-	}
-
-	return topId
-}
-
-func getGenres(genreIds string) model.Genres {
-	ids := strings.Fields(genreIds)
-	var genres model.Genres
-	unique := map[string]struct{}{}
-	for _, id := range ids {
-		if _, ok := unique[id]; ok {
-			continue
-		}
-		genres = append(genres, model.Genre{ID: id})
-		unique[id] = struct{}{}
-	}
-	return genres
 }

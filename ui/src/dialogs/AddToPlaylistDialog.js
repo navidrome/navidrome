@@ -20,6 +20,8 @@ import {
 } from '../actions'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
 import DuplicateSongDialog from './DuplicateSongDialog'
+import { httpClient } from '../dataProvider'
+import { REST_URL } from '../consts'
 
 export const AddToPlaylistDialog = () => {
   const { open, selectedIds, onSuccess, duplicateSong, duplicateIds } =
@@ -44,34 +46,41 @@ export const AddToPlaylistDialog = () => {
 
   const addToPlaylist = (playlistId, distinctIds) => {
     const trackIds = Array.isArray(distinctIds) ? distinctIds : selectedIds
-    dataProvider
-      .create('playlistTrack', {
-        data: { ids: trackIds },
-        filter: { playlist_id: playlistId },
+    if (trackIds.length) {
+      dataProvider
+        .create('playlistTrack', {
+          data: { ids: trackIds },
+          filter: { playlist_id: playlistId },
+        })
+        .then(() => {
+          const len = trackIds.length
+          notify('message.songsAddedToPlaylist', {
+            messageArgs: { smart_count: len },
+          })
+          onSuccess && onSuccess(value, len)
+          refresh()
+        })
+        .catch(() => {
+          notify('ra.page.error', { type: 'warning' })
+        })
+    } else {
+      notify('message.songsAddedToPlaylist', {
+        messageArgs: { smart_count: 0 },
       })
-      .then(() => {
-        const len = trackIds.length
-        notify('message.songsAddedToPlaylist', 'info', { smart_count: len })
-        onSuccess && onSuccess(value, len)
-        refresh()
-      })
-      .catch(() => {
-        notify('ra.page.error', 'warning')
-      })
+    }
   }
 
   const checkDuplicateSong = (playlistObject) => {
-    dataProvider
-      .getOne('playlist', { id: playlistObject.id })
+    httpClient(`${REST_URL}/playlist/${playlistObject.id}/tracks`)
       .then((res) => {
-        const tracks = res.data.tracks
+        const tracks = res.json
         if (tracks) {
           const dupSng = tracks.filter((song) =>
-            selectedIds.some((id) => id === song.id)
+            selectedIds.some((id) => id === song.mediaFileId),
           )
 
           if (dupSng.length) {
-            const dupIds = dupSng.map((song) => song.id)
+            const dupIds = dupSng.map((song) => song.mediaFileId)
             dispatch(openDuplicateSongWarning(dupIds))
           }
         }
@@ -123,7 +132,7 @@ export const AddToPlaylistDialog = () => {
   }
   const handleSkip = () => {
     const distinctSongs = selectedIds.filter(
-      (id) => duplicateIds.indexOf(id) < 0
+      (id) => duplicateIds.indexOf(id) < 0,
     )
     value.slice(-1).pop().distinctIds = distinctSongs
     dispatch(closeDuplicateSongDialog())
@@ -134,7 +143,6 @@ export const AddToPlaylistDialog = () => {
       <Dialog
         open={open}
         onClose={handleClickClose}
-        onBackdropClick={handleClickClose}
         aria-labelledby="form-dialog-new-playlist"
         fullWidth={true}
         maxWidth={'sm'}

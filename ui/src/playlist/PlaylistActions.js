@@ -8,18 +8,26 @@ import {
   useDataProvider,
   useNotify,
 } from 'react-admin'
+import { useMediaQuery, makeStyles } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
+import ShareIcon from '@material-ui/icons/Share'
 import { httpClient } from '../dataProvider'
-import { playNext, addTracks, playTracks, shuffleTracks } from '../actions'
+import {
+  playNext,
+  addTracks,
+  playTracks,
+  shuffleTracks,
+  openDownloadMenu,
+  DOWNLOAD_MENU_PLAY,
+  openShareMenu,
+} from '../actions'
 import { M3U_MIME_TYPE, REST_URL } from '../consts'
-import subsonic from '../subsonic'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
-import { useMediaQuery, makeStyles } from '@material-ui/core'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
 
@@ -51,7 +59,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
         .then((res) => {
           const data = res.data.reduce(
             (acc, curr) => ({ ...acc, [curr.id]: curr }),
-            {}
+            {},
           )
           dispatch(action(data))
         })
@@ -59,7 +67,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
           notify('ra.page.error', 'warning')
         })
     },
-    [dataProvider, dispatch, record, data, ids, notify]
+    [dataProvider, dispatch, record, data, ids, notify],
   )
 
   const handlePlay = React.useCallback(() => {
@@ -78,9 +86,13 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
     getAllSongsAndDispatch(shuffleTracks)
   }, [getAllSongsAndDispatch])
 
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], 'playlist', record.name))
+  }, [dispatch, record])
+
   const handleDownload = React.useCallback(() => {
-    subsonic.download(record.id)
-  }, [record])
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_PLAY))
+  }, [dispatch, record])
 
   const handleExport = React.useCallback(
     () =>
@@ -96,7 +108,7 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
         link.click()
         link.parentNode.removeChild(link)
       }),
-    [record]
+    [record],
   )
 
   return (
@@ -127,11 +139,16 @@ const PlaylistActions = ({ className, ids, data, record, ...rest }) => {
           >
             <RiPlayListAddFill />
           </Button>
+          {config.enableSharing && (
+            <Button onClick={handleShare} label={translate('ra.action.share')}>
+              <ShareIcon />
+            </Button>
+          )}
           {config.enableDownloads && (
             <Button
               onClick={handleDownload}
               label={
-                translate('resources.album.actions.download') +
+                translate('ra.action.download') +
                 (isDesktop ? ` (${formatBytes(record.size)})` : '')
               }
             >
