@@ -183,8 +183,8 @@ jobs:
           labels: |
             maintainer=deluan
           images: |
-            name=${{secrets.DOCKER_IMAGE}},enable=${{ env.DOCKER_IMAGE != '' }}
-            name=ghcr.io/${{ github.repository }}
+            ${{secrets.DOCKER_IMAGE}}
+            ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=pr
             type=semver,pattern={{version}}
