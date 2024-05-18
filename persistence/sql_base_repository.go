@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/pocketbase/dbx"
 )
 
@@ -146,7 +146,7 @@ func (r sqlRepository) seededRandomSort() string {
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) > 0 && options[0].Offset == 0 && options[0].Sort == "random" {
 		u, _ := request.UserFrom(r.ctx)
-		utils.Hasher.Reseed(r.tableName + u.ID)
+		hasher.Reseed(r.tableName + u.ID)
 	}
 }
 

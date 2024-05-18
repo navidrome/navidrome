@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
@@ -29,7 +29,7 @@ func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		sql.Register(Driver+"_custom", &sqlite3.SQLiteDriver{
 			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", utils.Hasher.HashFunc(), false)
+				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
 			},
 		})
 

@@ -1,14 +1,22 @@
-package utils
+package hasher
 
 import "hash/maphash"
 
-var Hasher = newHasher()
+var instance = NewHasher()
+
+func Reseed(id string) {
+	instance.Reseed(id)
+}
+
+func HashFunc() func(id, str string) uint64 {
+	return instance.HashFunc()
+}
 
 type hasher struct {
 	seeds map[string]maphash.Seed
 }
 
-func newHasher() *hasher {
+func NewHasher() *hasher {
 	h := new(hasher)
 	h.seeds = make(map[string]maphash.Seed)
 	return h
