@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
