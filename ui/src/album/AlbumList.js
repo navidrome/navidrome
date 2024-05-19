@@ -1,4 +1,3 @@
-import React from 'react'
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
@@ -9,7 +8,9 @@ import {
   Pagination,
   ReferenceInput,
   SearchInput,
+  useRefresh,
   useTranslate,
+  useVersion,
 } from 'react-admin'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import { withWidth } from '@material-ui/core'
@@ -83,6 +84,8 @@ const AlbumList = (props) => {
   const albumView = useSelector((state) => state.albumView)
   const [perPage, perPageOptions] = useAlbumsPerPage(width)
   const location = useLocation()
+  const version = useVersion()
+  const refresh = useRefresh()
   useResourceRefresh('album')
 
   const albumListType = location.pathname
@@ -113,6 +116,9 @@ const AlbumList = (props) => {
     const type =
       albumListType || localStorage.getItem('defaultView') || defaultAlbumList
     const listParams = albumLists[type]
+    if (type === 'random') {
+      refresh()
+    }
     if (listParams) {
       return <Redirect to={`/album/${type}?${listParams.params}`} />
     }
@@ -124,6 +130,7 @@ const AlbumList = (props) => {
         {...props}
         exporter={false}
         bulkActionButtons={false}
+        filter={{ seed: version }}
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}

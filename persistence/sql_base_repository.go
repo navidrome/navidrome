@@ -144,9 +144,17 @@ func (r sqlRepository) seededRandomSort() string {
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
-	if len(options) > 0 && options[0].Offset == 0 && options[0].Sort == "random" {
-		u, _ := request.UserFrom(r.ctx)
-		hasher.Reseed(r.tableName + u.ID)
+	if len(options) == 0 || options[0].Sort != "random" {
+		return
+	}
+
+	if options[0].Seed != "" {
+		hasher.SetSeed(r.tableName+userId(r.ctx), options[0].Seed)
+		return
+	}
+
+	if options[0].Offset == 0 {
+		hasher.Reseed(r.tableName + userId(r.ctx))
 	}
 }
 

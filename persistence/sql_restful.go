@@ -42,6 +42,10 @@ func (r sqlRestful) parseRestOptions(options ...rest.QueryOptions) model.QueryOp
 		qo.Order = strings.ToLower(options[0].Order)
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset
+		if seed, ok := options[0].Filters["seed"].(string); ok {
+			qo.Seed = seed
+			delete(options[0].Filters, "seed")
+		}
 		qo.Filters = r.parseRestFilters(options[0])
 	}
 	return qo

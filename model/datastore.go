@@ -13,6 +13,7 @@ type QueryOptions struct {
 	Max     int
 	Offset  int
 	Filters squirrel.Sqlizer
+	Seed    string // for random sorting
 }
 
 type ResourceRepository interface {
