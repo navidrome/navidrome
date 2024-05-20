@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
@@ -52,4 +53,16 @@ func (r *sqlRepository) updateTags(itemID string, tags model.Tags) error {
 	}
 	_, err = r.executeSQL(sqi)
 	return err
+}
+
+// TODO Consolidate withTags and newSelectWithAnnotation(s)?
+func (r *sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
+	return sql.LeftJoin("item_tags it on it.item_id = " + r.tableName + ".id and it.item_type = '" + r.tableName + "'").
+		LeftJoin("tag on tag.id = it.tag_id").Columns("json_group_array(json_object(tag.name, tag.value)) as tags").
+		GroupBy(r.tableName + ".id")
+}
+
+func tagIDFilter(name string, value interface{}) Sqlizer {
+	tagName := strings.TrimSuffix(name, "_id")
+	return Eq{"tag.id": value, "tag.name": tagName}
 }
