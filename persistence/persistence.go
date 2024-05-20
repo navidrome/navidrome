@@ -42,6 +42,10 @@ func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Tag(ctx context.Context) model.TagRepository {
+	return NewTagRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
 	return NewPlayQueueRepository(ctx, s.getDBXBuilder())
 }

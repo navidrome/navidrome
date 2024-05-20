@@ -3,11 +3,12 @@ package model
 import (
 	"crypto/md5"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 )
 
+// Folder represents a folder in the library. Its path is relative to the library root.
 type Folder struct {
 	ID        string    `structs:"id"`
 	LibraryID int       `structs:"library_id"`
@@ -23,12 +24,12 @@ func FolderID(lib Library, path string) string {
 	key := fmt.Sprintf("%d:%s", lib.ID, path)
 	return fmt.Sprintf("%x", md5.Sum([]byte(key)))
 }
-func NewFolder(lib Library, path string) *Folder {
-	id := FolderID(lib, path)
-	dir, name := filepath.Split(path)
-	dir = filepath.Clean(dir)
+func NewFolder(lib Library, folderPath string) *Folder {
+	id := FolderID(lib, folderPath)
+	dir, name := path.Split(folderPath)
+	dir = path.Clean(dir)
 	var parentID string
-	if dir == "." {
+	if dir == "." && name == "." {
 		dir = ""
 		parentID = ""
 	} else {

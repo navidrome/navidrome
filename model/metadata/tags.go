@@ -59,11 +59,11 @@ const (
 
 	// MusicBrainz
 
-	MusicBrainzArtistID      Name = "musicbrainz_artistid"
-	MusicBrainzDiscID        Name = "musicbrainz_discid"
-	MusicBrainzRecordingID   Name = "musicbrainz_recordingid"
-	MusicBrainzAlbumArtistID Name = "musicbrainz_albumartistid"
-	MusicBrainzAlbumID       Name = "musicbrainz_albumid"
+	MusicBrainzArtistID       Name = "musicbrainz_artistid"
+	MusicBrainzRecordingID    Name = "musicbrainz_recordingid"
+	MusicBrainzReleaseTrackID Name = "musicbrainz_releasetrackid"
+	MusicBrainzAlbumArtistID  Name = "musicbrainz_albumartistid"
+	MusicBrainzAlbumID        Name = "musicbrainz_albumid"
 )
 
 var mappings = sync.OnceValue(func() map[string][]string {
