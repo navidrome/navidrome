@@ -1,4 +1,4 @@
-package tag
+package metadata
 
 import (
 	"io/fs"
@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-type Properties struct {
+type Info struct {
 	FileInfo        FileInfo
 	Tags            map[string][]string
 	AudioProperties AudioProperties
@@ -41,17 +41,17 @@ func (d Date) Year() int {
 	return y
 }
 
-func New(filePath string, props Properties) Tags {
-	return Tags{
+func New(filePath string, info Info) Metadata {
+	return Metadata{
 		filePath:   filePath,
-		fileInfo:   props.FileInfo,
-		tags:       clean(props.Tags),
-		audioProps: props.AudioProperties,
-		hasPicture: props.HasPicture,
+		fileInfo:   info.FileInfo,
+		tags:       clean(info.Tags),
+		audioProps: info.AudioProperties,
+		hasPicture: info.HasPicture,
 	}
 }
 
-type Tags struct {
+type Metadata struct {
 	filePath   string
 	fileInfo   FileInfo
 	tags       map[string][]string
@@ -59,23 +59,25 @@ type Tags struct {
 	hasPicture bool
 }
 
-func (t Tags) FilePath() string                 { return t.filePath }
-func (t Tags) ModTime() time.Time               { return t.fileInfo.ModTime() }
-func (t Tags) BirthTime() time.Time             { return t.fileInfo.BirthTime() }
-func (t Tags) Size() int64                      { return t.fileInfo.Size() }
-func (t Tags) Suffix() string                   { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
-func (t Tags) AudioProperties() AudioProperties { return t.audioProps }
-func (t Tags) HasPicture() bool                 { return t.hasPicture }
-func (t Tags) All() map[string][]string         { return t.tags }
-func (t Tags) Strings(key Name) []string        { return t.tags[string(key)] }
-func (t Tags) String(key Name) string           { return t.first(key) }
-func (t Tags) Int(key Name) int64               { v, _ := strconv.Atoi(t.first(key)); return int64(v) }
-func (t Tags) Float(key Name) float64           { v, _ := strconv.ParseFloat(t.first(key), 64); return v }
-func (t Tags) Bool(key Name) bool               { v, _ := strconv.ParseBool(t.first(key)); return v }
-func (t Tags) Date(key Name) Date               { return t.date(key) }
-func (t Tags) NumAndTotal(key Name) (int, int)  { return t.tuple(key) }
+func (t Metadata) FilePath() string     { return t.filePath }
+func (t Metadata) ModTime() time.Time   { return t.fileInfo.ModTime() }
+func (t Metadata) BirthTime() time.Time { return t.fileInfo.BirthTime() }
+func (t Metadata) Size() int64          { return t.fileInfo.Size() }
+func (t Metadata) Suffix() string {
+	return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), "."))
+}
+func (t Metadata) AudioProperties() AudioProperties { return t.audioProps }
+func (t Metadata) HasPicture() bool                 { return t.hasPicture }
+func (t Metadata) All() map[string][]string         { return t.tags }
+func (t Metadata) Strings(key Name) []string        { return t.tags[string(key)] }
+func (t Metadata) String(key Name) string           { return t.first(key) }
+func (t Metadata) Int(key Name) int64               { v, _ := strconv.Atoi(t.first(key)); return int64(v) }
+func (t Metadata) Float(key Name) float64           { v, _ := strconv.ParseFloat(t.first(key), 64); return v }
+func (t Metadata) Bool(key Name) bool               { v, _ := strconv.ParseBool(t.first(key)); return v }
+func (t Metadata) Date(key Name) Date               { return t.date(key) }
+func (t Metadata) NumAndTotal(key Name) (int, int)  { return t.tuple(key) }
 
-func (t Tags) first(key Name) string {
+func (t Metadata) first(key Name) string {
 	if v, ok := t.tags[string(key)]; ok && len(v) > 0 {
 		return v[0]
 	}
@@ -83,7 +85,7 @@ func (t Tags) first(key Name) string {
 }
 
 // Used for tracks and discs
-func (t Tags) tuple(key Name) (int, int) {
+func (t Metadata) tuple(key Name) (int, int) {
 	tag := t.first(key)
 	if tag == "" {
 		return 0, 0
@@ -103,7 +105,7 @@ func (t Tags) tuple(key Name) (int, int) {
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
 // date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
-func (t Tags) date(key Name) Date {
+func (t Metadata) date(key Name) Date {
 	tag := t.first(key)
 	if len(tag) < 4 {
 		return ""

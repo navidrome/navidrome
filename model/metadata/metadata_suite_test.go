@@ -1,4 +1,4 @@
-package tag_test
+package metadata_test
 
 import (
 	"testing"
@@ -10,9 +10,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTag(t *testing.T) {
+func TestMetadata(t *testing.T) {
 	tests.Init(t, true)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Tag Suite")
+	RunSpecs(t, "Metadata Suite")
 }
