@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/pocketbase/dbx"
 
 	. "github.com/Masterminds/squirrel"
@@ -21,22 +22,31 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 	r := &genreRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "genre"
+	r.tableName = "tag"
 	r.filterMappings = map[string]filterFunc{
 		"name": containsFilter("name"),
 	}
 	return r
 }
 
+func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
+	sq := Select().From("tag").
+		Columns(
+			"tag.id",
+			"tag.value as name",
+			//"coalesce(a.album_count, 0) as album_count",
+			"coalesce(m.song_count, 0) as song_count",
+		).
+		//LeftJoin("(select ag.genre_id, count(ag.album_id) as album_count from album_genres ag group by ag.genre_id) a on a.genre_id = genre.id").
+		LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it group by it.tag_id) m on m.tag_id = tag.id").
+		Where(Eq{"tag.name": metadata.Genre})
+	sq = r.applyOptions(sq, opt...)
+	sq = r.applyFilters(sq, opt...)
+	return sq
+}
+
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
-	sq := r.newSelect(opt...).Columns(
-		"genre.id",
-		"genre.name",
-		"coalesce(a.album_count, 0) as album_count",
-		"coalesce(m.song_count, 0) as song_count",
-	).
-		LeftJoin("(select ag.genre_id, count(ag.album_id) as album_count from album_genres ag group by ag.genre_id) a on a.genre_id = genre.id").
-		LeftJoin("(select mg.genre_id, count(mg.media_file_id) as song_count from media_file_genres mg group by mg.genre_id) m on m.genre_id = genre.id")
+	sq := r.selectGenre(opt...)
 	res := model.Genres{}
 	err := r.queryAll(sq, &res)
 	return res, err
@@ -60,21 +70,18 @@ func (r *genreRepository) Put(m *model.Genre) error {
 }
 
 func (r *genreRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select(), r.parseRestOptions(options...))
+	return r.count(r.selectGenre(), r.parseRestOptions(options...))
 }
 
 func (r *genreRepository) Read(id string) (interface{}, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
+	sel := r.selectGenre().Columns("*").Where(Eq{"id": id})
 	var res model.Genre
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
 func (r *genreRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newSelect(r.parseRestOptions(options...)).Columns("*")
-	res := model.Genres{}
-	err := r.queryAll(sel, &res)
-	return res, err
+	return r.GetAll(r.parseRestOptions(options...))
 }
 
 func (r *genreRepository) EntityName() string {
