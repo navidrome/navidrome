@@ -11,16 +11,15 @@ import (
 
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/tag"
-	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/model/metadata"
 )
 
 type extractor struct {
 	baseDir string
 }
 
-func (e extractor) Parse(files ...string) (map[string]tag.Properties, error) {
-	results := make(map[string]tag.Properties)
+func (e extractor) Parse(files ...string) (map[string]metadata.Info, error) {
+	results := make(map[string]metadata.Info)
 	for _, path := range files {
 		props, err := e.extractMetadata(path)
 		if errors.Is(err, os.ErrPermission) {
@@ -35,7 +34,7 @@ func (e extractor) Version() string {
 	return Version()
 }
 
-func (e extractor) extractMetadata(filePath string) (*tag.Properties, error) {
+func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	fullPath := filepath.Join(e.baseDir, filePath)
 	tags, err := Read(fullPath)
 	if err != nil {
@@ -44,7 +43,7 @@ func (e extractor) extractMetadata(filePath string) (*tag.Properties, error) {
 	}
 
 	// Parse audio properties
-	ap := tag.AudioProperties{}
+	ap := metadata.AudioProperties{}
 	if length, ok := tags["_lengthinmilliseconds"]; ok && len(length) > 0 {
 		millis, _ := strconv.Atoi(length[0])
 		if millis > 0 {
@@ -66,7 +65,7 @@ func (e extractor) extractMetadata(filePath string) (*tag.Properties, error) {
 	parseTIPL(tags)
 	delete(tags, "tmcl") // TMCL is already parsed by TagLib
 
-	return &tag.Properties{
+	return &metadata.Info{
 		Tags:            tags,
 		AudioProperties: ap,
 		HasPicture:      tags["has_picture"] != nil && len(tags["has_picture"]) > 0 && tags["has_picture"][0] == "true",
@@ -90,13 +89,13 @@ var tiplMapping = map[string]string{
 // and breaks it down into a map of roles and names, e.g.:
 //
 //	{"arranger": ["Andrew Powell"], "engineer": ["Chris Blair", "Pat Stapley"], "producer": ["Eric Woolfson"]}.
-func parseTIPL(tags metadata.ParsedTags) {
+func parseTIPL(tags map[string][]string) {
 	tipl := tags["tipl"]
 	if len(tipl) == 0 {
 		return
 	}
 
-	addRole := func(tags metadata.ParsedTags, currentRole string, currentValue []string) {
+	addRole := func(currentRole string, currentValue []string) {
 		if currentRole != "" && len(currentValue) > 0 {
 			role := tiplMapping[currentRole]
 			tags[role] = append(tags[currentRole], strings.Join(currentValue, " "))
@@ -107,14 +106,14 @@ func parseTIPL(tags metadata.ParsedTags) {
 	var currentValue []string
 	for _, part := range strings.Split(tipl[0], " ") {
 		if _, ok := tiplMapping[part]; ok {
-			addRole(tags, currentRole, currentValue)
+			addRole(currentRole, currentValue)
 			currentRole = part
 			currentValue = nil
 			continue
 		}
 		currentValue = append(currentValue, part)
 	}
-	addRole(tags, currentRole, currentValue)
+	addRole(currentRole, currentValue)
 	delete(tags, "tipl")
 }
 
