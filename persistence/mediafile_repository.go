@@ -29,10 +29,10 @@ type dbMediaFile struct {
 }
 
 func (m *dbMediaFile) PostScan() error {
-	m.MediaFile.Tags = make(map[string][]string)
 	if m.Tags == "" {
 		return nil
 	}
+	tags := make(map[string][]string)
 	var dbTags []map[string]string
 	err := json.Unmarshal([]byte(m.Tags), &dbTags)
 	if err != nil {
@@ -40,11 +40,17 @@ func (m *dbMediaFile) PostScan() error {
 	}
 	for _, t := range dbTags {
 		for tagName, tagValue := range t {
-			m.MediaFile.Tags[tagName] = append(m.MediaFile.Tags[tagName], tagValue)
+			if tagName == "" {
+				continue
+			}
+			tags[tagName] = append(tags[tagName], tagValue)
 			if tagName == string(metadata.Genre) {
 				m.MediaFile.Genres = append(m.MediaFile.Genres, model.Genre{Name: tagValue})
 			}
 		}
+	}
+	if len(tags) != 0 {
+		m.MediaFile.Tags = tags
 	}
 	return nil
 }
@@ -120,7 +126,7 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
 	sql = r.withBookmark(sql, "media_file.id")
-	sql = r.withTags(sql)
+	sql = r.withTags(sql).GroupBy(r.tableName + ".id")
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
