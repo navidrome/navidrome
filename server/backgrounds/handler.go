@@ -51,7 +51,7 @@ func (h *Handler) getRandomImage(ctx context.Context) (string, error) {
 	if len(list) == 0 {
 		return "", errors.New("no images available")
 	}
-	rnd := random.Int64(len(list))
+	rnd := random.Int64N(len(list))
 	return list[rnd], nil
 }
 

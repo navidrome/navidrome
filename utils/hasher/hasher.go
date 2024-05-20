@@ -2,8 +2,9 @@ package hasher
 
 import (
 	"hash/maphash"
-	"math/rand/v2"
 	"strconv"
+
+	"github.com/navidrome/navidrome/utils/random"
 )
 
 var instance = NewHasher()
@@ -43,7 +44,7 @@ func (h *Hasher) Reseed(id string) {
 }
 
 func (h *Hasher) reseed(id string) string {
-	seed := strconv.FormatUint(rand.Uint64(), 36)
+	seed := strconv.FormatUint(random.Uint64(), 36)
 	h.seeds[id] = seed
 	return seed
 }

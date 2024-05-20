@@ -42,7 +42,7 @@ func (s Share) CoverArtID() ArtworkID {
 	case "artist":
 		return Artist{ID: ids[0]}.CoverArtID()
 	}
-	rnd := random.Int64(len(s.Tracks))
+	rnd := random.Int64N(len(s.Tracks))
 	return s.Tracks[rnd].CoverArtID()
 }
 
