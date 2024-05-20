@@ -1,16 +1,27 @@
 package tag
 
 import (
-	"os"
+	"io/fs"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/log"
 )
+
+type Properties struct {
+	FileInfo        FileInfo
+	Tags            map[string][]string
+	AudioProperties AudioProperties
+	HasPicture      bool
+}
+
+type FileInfo interface {
+	fs.FileInfo
+	BirthTime() time.Time
+}
 
 type AudioProperties struct {
 	Duration   time.Duration
@@ -30,16 +41,10 @@ func (d Date) Year() int {
 	return y
 }
 
-func New(filePath string, fileInfo os.FileInfo, props Properties) Tags {
-	var bTime time.Time
-	if ts := times.Get(fileInfo); ts.HasBirthTime() {
-		bTime = ts.BirthTime()
-	}
-
+func New(filePath string, props Properties) Tags {
 	return Tags{
 		filePath:   filePath,
-		fileInfo:   fileInfo,
-		birthTime:  bTime,
+		fileInfo:   props.FileInfo,
 		tags:       clean(props.Tags),
 		audioProps: props.AudioProperties,
 		hasPicture: props.HasPicture,
@@ -48,8 +53,7 @@ func New(filePath string, fileInfo os.FileInfo, props Properties) Tags {
 
 type Tags struct {
 	filePath   string
-	fileInfo   os.FileInfo
-	birthTime  time.Time
+	fileInfo   FileInfo
 	tags       map[string][]string
 	audioProps AudioProperties
 	hasPicture bool
@@ -57,7 +61,7 @@ type Tags struct {
 
 func (t Tags) FilePath() string                 { return t.filePath }
 func (t Tags) ModTime() time.Time               { return t.fileInfo.ModTime() }
-func (t Tags) BirthTime() time.Time             { return t.birthTime }
+func (t Tags) BirthTime() time.Time             { return t.fileInfo.BirthTime() }
 func (t Tags) Size() int64                      { return t.fileInfo.Size() }
 func (t Tags) Suffix() string                   { return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), ".")) }
 func (t Tags) AudioProperties() AudioProperties { return t.audioProps }
