@@ -1,4 +1,4 @@
-package tag_test
+package metadata_test
 
 import (
 	"io/fs"
@@ -6,18 +6,18 @@ import (
 	"time"
 
 	"github.com/djherbis/times"
-	"github.com/navidrome/navidrome/model/tag"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Tags", func() {
+var _ = Describe("Metadata", func() {
 	var (
 		filePath string
 		fileInfo os.FileInfo
-		props    tag.Properties
-		tags     tag.Tags
+		props    metadata.Info
+		md       metadata.Metadata
 	)
 
 	BeforeEach(func() {
@@ -30,8 +30,8 @@ var _ = Describe("Tags", func() {
 		})
 
 		fileInfo, _ = os.Stat(filePath)
-		props = tag.Properties{
-			AudioProperties: tag.AudioProperties{
+		props = metadata.Info{
+			AudioProperties: metadata.AudioProperties{
 				Duration: time.Minute * 3,
 				BitRate:  320,
 			},
@@ -40,35 +40,35 @@ var _ = Describe("Tags", func() {
 		}
 	})
 
-	Describe("Tags", func() {
+	Describe("Metadata", func() {
 		Describe("New", func() {
-			It("should create a new Tags object with the correct properties", func() {
+			It("should create a new Metadata object with the correct properties", func() {
 				props.Tags = map[string][]string{
 					"©ART":                                {"First Artist", "Second Artist"},
 					"----:com.apple.iTunes:CATALOGNUMBER": {"1234"},
 					"tbpm":                                {"120.6"},
 					"WM/IsCompilation":                    {"1"},
 				}
-				tags = tag.New(filePath, props)
+				md = metadata.New(filePath, props)
 
-				Expect(tags.FilePath()).To(Equal(filePath))
-				Expect(tags.ModTime()).To(Equal(fileInfo.ModTime()))
-				Expect(tags.BirthTime()).To(BeTemporally("~", tags.ModTime(), time.Second))
-				Expect(tags.Size()).To(Equal(fileInfo.Size()))
-				Expect(tags.Suffix()).To(Equal("mp3"))
-				Expect(tags.AudioProperties()).To(Equal(props.AudioProperties))
-				Expect(tags.HasPicture()).To(Equal(props.HasPicture))
-				Expect(tags.Strings(tag.TrackArtist)).To(Equal([]string{"First Artist", "Second Artist"}))
-				Expect(tags.String(tag.TrackArtist)).To(Equal("First Artist"))
-				Expect(tags.Int(tag.CatalogNumber)).To(Equal(int64(1234)))
-				Expect(tags.Float(tag.BPM)).To(Equal(120.6))
-				Expect(tags.Bool(tag.Compilation)).To(BeTrue())
-				Expect(tags.All()).To(SatisfyAll(
+				Expect(md.FilePath()).To(Equal(filePath))
+				Expect(md.ModTime()).To(Equal(fileInfo.ModTime()))
+				Expect(md.BirthTime()).To(BeTemporally("~", md.ModTime(), time.Second))
+				Expect(md.Size()).To(Equal(fileInfo.Size()))
+				Expect(md.Suffix()).To(Equal("mp3"))
+				Expect(md.AudioProperties()).To(Equal(props.AudioProperties))
+				Expect(md.HasPicture()).To(Equal(props.HasPicture))
+				Expect(md.Strings(metadata.TrackArtist)).To(Equal([]string{"First Artist", "Second Artist"}))
+				Expect(md.String(metadata.TrackArtist)).To(Equal("First Artist"))
+				Expect(md.Int(metadata.CatalogNumber)).To(Equal(int64(1234)))
+				Expect(md.Float(metadata.BPM)).To(Equal(120.6))
+				Expect(md.Bool(metadata.Compilation)).To(BeTrue())
+				Expect(md.All()).To(SatisfyAll(
 					HaveLen(4),
-					HaveKeyWithValue(string(tag.TrackArtist), []string{"First Artist", "Second Artist"}),
-					HaveKeyWithValue(string(tag.BPM), []string{"120.6"}),
-					HaveKeyWithValue(string(tag.Compilation), []string{"1"}),
-					HaveKeyWithValue(string(tag.CatalogNumber), []string{"1234"}),
+					HaveKeyWithValue(string(metadata.TrackArtist), []string{"First Artist", "Second Artist"}),
+					HaveKeyWithValue(string(metadata.BPM), []string{"120.6"}),
+					HaveKeyWithValue(string(metadata.Compilation), []string{"1"}),
+					HaveKeyWithValue(string(metadata.CatalogNumber), []string{"1234"}),
 				))
 
 			})
@@ -85,16 +85,16 @@ var _ = Describe("Tags", func() {
 					"Track":         {"1/10", "1/10", ""},
 					unknownTag:      {"value"},
 				}
-				tags = tag.New(filePath, props)
+				md = metadata.New(filePath, props)
 
-				Expect(tags.All()).To(SatisfyAll(
+				Expect(md.All()).To(SatisfyAll(
 					HaveLen(5),
 					Not(HaveKey(unknownTag)),
-					HaveKeyWithValue(string(tag.TrackArtist), []string{"Artist Name", "Second Artist"}),
-					HaveKeyWithValue(string(tag.Album), []string{"Album Name"}),
-					HaveKeyWithValue(string(tag.ReleaseDate), []string{"2022"}),
-					HaveKeyWithValue(string(tag.Genre), []string{"Pop", "Rock"}),
-					HaveKeyWithValue(string(tag.TrackNumber), []string{"1/10"}),
+					HaveKeyWithValue(string(metadata.TrackArtist), []string{"Artist Name", "Second Artist"}),
+					HaveKeyWithValue(string(metadata.Album), []string{"Album Name"}),
+					HaveKeyWithValue(string(metadata.ReleaseDate), []string{"2022"}),
+					HaveKeyWithValue(string(metadata.Genre), []string{"Pop", "Rock"}),
+					HaveKeyWithValue(string(metadata.TrackNumber), []string{"1/10"}),
 				))
 			})
 		})
@@ -104,9 +104,9 @@ var _ = Describe("Tags", func() {
 				props.Tags = map[string][]string{
 					"date": {value},
 				}
-				tags = tag.New(filePath, props)
+				md = metadata.New(filePath, props)
 
-				testDate := tags.Date(tag.ReleaseDate)
+				testDate := md.Date(metadata.ReleaseDate)
 				Expect(string(testDate)).To(Equal(expectedDate))
 				Expect(testDate.Year()).To(Equal(expectedYear))
 			},
@@ -129,9 +129,9 @@ var _ = Describe("Tags", func() {
 					"Track":      {num},
 					"TrackTotal": {total},
 				}
-				tags = tag.New(filePath, props)
+				md = metadata.New(filePath, props)
 
-				testNum, testTotal := tags.NumAndTotal(tag.TrackNumber)
+				testNum, testTotal := md.NumAndTotal(metadata.TrackNumber)
 				Expect(testNum).To(Equal(expectedNum))
 				Expect(testTotal).To(Equal(expectedTotal))
 			},
