@@ -1,9 +1,11 @@
 package tag_test
 
 import (
+	"io/fs"
 	"os"
 	"time"
 
+	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/model/tag"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
@@ -34,6 +36,7 @@ var _ = Describe("Tags", func() {
 				BitRate:  320,
 			},
 			HasPicture: true,
+			FileInfo:   testFileInfo{fileInfo},
 		}
 	})
 
@@ -46,7 +49,7 @@ var _ = Describe("Tags", func() {
 					"tbpm":                                {"120.6"},
 					"WM/IsCompilation":                    {"1"},
 				}
-				tags = tag.New(filePath, fileInfo, props)
+				tags = tag.New(filePath, props)
 
 				Expect(tags.FilePath()).To(Equal(filePath))
 				Expect(tags.ModTime()).To(Equal(fileInfo.ModTime()))
@@ -82,7 +85,7 @@ var _ = Describe("Tags", func() {
 					"Track":         {"1/10", "1/10", ""},
 					unknownTag:      {"value"},
 				}
-				tags = tag.New(filePath, fileInfo, props)
+				tags = tag.New(filePath, props)
 
 				Expect(tags.All()).To(SatisfyAll(
 					HaveLen(5),
@@ -101,7 +104,7 @@ var _ = Describe("Tags", func() {
 				props.Tags = map[string][]string{
 					"date": {value},
 				}
-				tags = tag.New(filePath, fileInfo, props)
+				tags = tag.New(filePath, props)
 
 				testDate := tags.Date(tag.ReleaseDate)
 				Expect(string(testDate)).To(Equal(expectedDate))
@@ -126,7 +129,7 @@ var _ = Describe("Tags", func() {
 					"Track":      {num},
 					"TrackTotal": {total},
 				}
-				tags = tag.New(filePath, fileInfo, props)
+				tags = tag.New(filePath, props)
 
 				testNum, testTotal := tags.NumAndTotal(tag.TrackNumber)
 				Expect(testNum).To(Equal(expectedNum))
@@ -140,3 +143,14 @@ var _ = Describe("Tags", func() {
 		)
 	})
 })
+
+type testFileInfo struct {
+	fs.FileInfo
+}
+
+func (t testFileInfo) BirthTime() time.Time {
+	if ts := times.Get(t.FileInfo); ts.HasBirthTime() {
+		return ts.BirthTime()
+	}
+	return t.FileInfo.ModTime()
+}
