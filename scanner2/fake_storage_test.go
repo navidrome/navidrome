@@ -1,5 +1,4 @@
 //nolint:unused
-
 package scanner2_test
 
 import (
