@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/tag"
+	"github.com/navidrome/navidrome/model/metadata"
 )
 
 // localStorage implements a Storage that reads the files from the local filesystem and uses registered extractors
@@ -42,7 +42,7 @@ type localFS struct {
 	extractor Extractor
 }
 
-func (lfs localFS) ReadTags(path ...string) (map[string]tag.Properties, error) {
+func (lfs localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 	res, err := lfs.extractor.Parse(path...)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (lfs localFS) ReadTags(path ...string) (map[string]tag.Properties, error) {
 }
 
 // localFileInfo is a wrapper around fs.FileInfo that adds a BirthTime method, to make it compatible
-// with tag.FileInfo
+// with metadata.FileInfo
 type localFileInfo struct {
 	fs.FileInfo
 }
