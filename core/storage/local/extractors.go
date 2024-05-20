@@ -4,12 +4,12 @@ import (
 	"io/fs"
 	"sync"
 
-	"github.com/navidrome/navidrome/model/tag"
+	"github.com/navidrome/navidrome/model/metadata"
 )
 
-// Extractor is an interface that defines the methods that an tag/metadata extractor must implement
+// Extractor is an interface that defines the methods that a tag/metadata extractor must implement
 type Extractor interface {
-	Parse(files ...string) (map[string]tag.Properties, error)
+	Parse(files ...string) (map[string]metadata.Info, error)
 	Version() string
 }
 
