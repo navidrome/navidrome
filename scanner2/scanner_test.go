@@ -30,7 +30,7 @@ var _ = Describe("Scanner", func() {
 		//os.Remove("./test-123.db")
 		//conf.Server.DbPath = "./test-123.db"
 		conf.Server.DbPath = "file::memory:?cache=shared"
-		DeferCleanup(db.Init())
+		db.Init()
 
 		ctx = context.Background()
 		ds = persistence.New(db.Db())
@@ -63,21 +63,36 @@ var _ = Describe("Scanner", func() {
 		BeforeEach(func() {
 			sgtPeppers := template(_t{"albumartist": "The Beatles", "album": "Sgt. Pepper's Lonely Hearts Club Band", "year": 1967})
 			files = fstest.MapFS{
-				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/01 - Sgt. Pepper's Lonely Hearts Club Band.mp3": sgtPeppers(track(1, "Sgt. Pepper's Lonely Hearts Club Band")),
-				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/02 - With a Little Help from My Friends.mp3":    sgtPeppers(track(2, "With a Little Help from My Friends")),
-				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/03 - Lucy in the Sky with Diamonds.mp3":         sgtPeppers(track(3, "Lucy in the Sky with Diamonds")),
-				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/04 - Getting Better.mp3":                        sgtPeppers(track(4, "Getting Better")),
+				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/01 - Sgt. Pepper's Lonely Hearts Club Band.mp3": sgtPeppers(track(1, "Sgt. Pepper's Lonely Hearts Club Band")),
+				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/02 - With a Little Help from My Friends.mp3":    sgtPeppers(track(2, "With a Little Help from My Friends")),
+				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/03 - Lucy in the Sky with Diamonds.mp3":         sgtPeppers(track(3, "Lucy in the Sky with Diamonds")),
+				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/04 - Getting Better.mp3":                        sgtPeppers(track(4, "Getting Better")),
 			}
 		})
 
-		It("should import all files", func() {
-			Expect(s.RescanAll(context.Background(), true)).To(Succeed())
+		It("should import all folders", func() {
+			Expect(s.RescanAll(ctx, true)).To(Succeed())
 
 			folders, _ := ds.Folder(ctx).GetAll(lib)
 			paths := slice.Map(folders, func(f model.Folder) string { return f.Name })
 			Expect(paths).To(SatisfyAll(
 				HaveLen(3),
-				ContainElements(".", "The Beatles", "1967 - Sgt. Pepper's Lonely Hearts Club Band"),
+				ContainElements(".", "The Beatles", "Sgt. Pepper's Lonely Hearts Club Band"),
+			))
+		})
+		It("should import all mediafiles", func() {
+			Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+			mfs, _ := ds.MediaFile(ctx).GetAll()
+			paths := slice.Map(mfs, func(f model.MediaFile) string { return f.Title })
+			Expect(paths).To(SatisfyAll(
+				HaveLen(4),
+				ContainElements(
+					"Sgt. Pepper's Lonely Hearts Club Band",
+					"With a Little Help from My Friends",
+					"Lucy in the Sky with Diamonds",
+					"Getting Better",
+				),
 			))
 		})
 	})
