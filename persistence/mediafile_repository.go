@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/pocketbase/dbx"
 )
 
@@ -26,17 +27,22 @@ type dbMediaFile struct {
 }
 
 func (m *dbMediaFile) PostScan() error {
+	m.MediaFile.Tags = make(map[string][]string)
 	if m.Tags == "" {
-		m.MediaFile.Tags = make(map[string][]string)
 		return nil
 	}
-	err := json.Unmarshal([]byte(m.Tags), &m.MediaFile.Tags)
+	var dbTags []map[string]string
+	err := json.Unmarshal([]byte(m.Tags), &dbTags)
 	if err != nil {
 		return err
 	}
-	// Map genres from tags
-	for _, g := range m.MediaFile.Tags.Flatten("genre") {
-		m.MediaFile.Genres = append(m.MediaFile.Genres, model.Genre{Name: g.Value, ID: g.ID})
+	for _, t := range dbTags {
+		for tagName, tagValue := range t {
+			m.MediaFile.Tags[tagName] = append(m.MediaFile.Tags[tagName], tagValue)
+			if tagName == string(metadata.Genre) {
+				m.MediaFile.Genres = append(m.MediaFile.Genres, model.Genre{Name: tagValue})
+			}
+		}
 	}
 	return nil
 }
@@ -65,7 +71,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"id":       idFilter(r.tableName),
 		"title":    fullTextFilter,
 		"starred":  booleanFilter,
-		"genre_id": eqFilter,
+		"genre_id": tagIDFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"title":      "order_title",
@@ -80,8 +86,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("media_file.id")
-	// FIXME Genres
-	//sql = r.withGenres(sql) // Required for filtering by genre
+	sql = r.withTags(sql)
 	return r.count(sql, options...)
 }
 
@@ -98,23 +103,18 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	}
 
 	return r.updateTags(m.ID, m.Tags)
-
-	// FIXME Genres
-	//if err != nil {
-	//	return err
-	//}
-	//return r.updateGenres(m.ID, r.tableName, m.Genres)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
 	sql = r.withBookmark(sql, "media_file.id")
-	// FIXME Genres
+	sql = r.withTags(sql)
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
 	//	if strings.Contains(s, "genre") {
 	//		sql = r.withGenres(sql)
+	// FIXME Genres
 	//		// If there's no filter on genre_id, group the results by media_file.id
 	//		if !strings.Contains(s, "genre_id") {
 	//			sql = sql.GroupBy("media_file.id")
@@ -133,8 +133,6 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	// FIXME Genres
-	//err := r.loadMediaFileGenres(&res)
 	return res[0].MediaFile, nil
 }
 
@@ -146,8 +144,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	if err != nil {
 		return nil, err
 	}
-	// FIXME Genres
-	//err = r.loadMediaFileGenres(&rows)
 	return res.toModels(), nil
 }
 
@@ -261,8 +257,6 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 	if err != nil {
 		return nil, err
 	}
-	// FIXME Genres
-	//err = r.loadMediaFileGenres(&results)
 	return results.toModels(), err
 }
 
