@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/consts"
@@ -80,7 +81,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 		return nil
 	}
 	dir := filepath.Clean(currentFolder)
-	log.Trace(ctx, "Scanner: Found directory", "_path", dir, "audioFiles", maps.Keys(folder.audioFiles),
+	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.playlists, "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
@@ -90,7 +91,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 }
 
 func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderEntry, children []string, err error) {
-	folder = &folderEntry{job: job, path: dirPath}
+	folder = &folderEntry{job: job, path: dirPath, startTime: time.Now()}
 	folder.id = model.FolderID(job.lib, dirPath)
 	folder.updTime = job.getLastUpdatedInDB(folder.id)
 	folder.audioFiles = make(map[string]fs.DirEntry)

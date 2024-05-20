@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/go-pipeline/pkg/pipeline"
+	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -35,8 +35,8 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
 
 	err = s.runPipeline(
-		pipeline.NewProducer(produceFolders(ctx, s.ds, libs, fullRescan), pipeline.Name("read folders from disk")),
-		pipeline.NewStage(logFolder(ctx), pipeline.Name("log results")),
+		ppl.NewProducer(produceFolders(ctx, s.ds, libs, fullRescan), ppl.Name("read folders from disk")),
+		ppl.NewStage(logFolder(ctx), ppl.Name("log results")),
 	)
 
 	if err != nil {
@@ -47,19 +47,20 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	return err
 }
 
-func (s *scanner2) runPipeline(producer pipeline.Producer[*folderEntry], stages ...pipeline.Stage[*folderEntry]) error {
+func (s *scanner2) runPipeline(producer ppl.Producer[*folderEntry], stages ...ppl.Stage[*folderEntry]) error {
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
-		metrics, err := pipeline.Measure(producer, stages...)
+		metrics, err := ppl.Measure(producer, stages...)
 		log.Info(metrics.String(), err)
 		return err
 	}
-	return pipeline.Do(producer, stages...)
+	return ppl.Do(producer, stages...)
 }
 
 func logFolder(ctx context.Context) func(folder *folderEntry) (out *folderEntry, err error) {
 	return func(folder *folderEntry) (out *folderEntry, err error) {
-		log.Debug(ctx, "Scanner: Completed processing folder", "_path", folder.path,
-			"audioCount", len(folder.audioFiles), "imageCount", len(folder.imageFiles), "plsCount", len(folder.playlists))
+		log.Debug(ctx, "Scanner: Completed processing folder", " path", folder.path,
+			"audioCount", len(folder.audioFiles), "imageCount", len(folder.imageFiles), "plsCount", len(folder.playlists),
+			"elapsed", time.Since(folder.startTime))
 		return folder, nil
 	}
 }
