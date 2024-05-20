@@ -58,8 +58,8 @@ func (r *sqlRepository) updateTags(itemID string, tags model.Tags) error {
 // TODO Consolidate withTags and newSelectWithAnnotation(s)?
 func (r *sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
 	return sql.LeftJoin("item_tags it on it.item_id = " + r.tableName + ".id and it.item_type = '" + r.tableName + "'").
-		LeftJoin("tag on tag.id = it.tag_id").Columns("json_group_array(json_object(tag.name, tag.value)) as tags").
-		GroupBy(r.tableName + ".id")
+		LeftJoin("tag on tag.id = it.tag_id").
+		Columns("json_group_array(json_object(ifnull(tag.name, ''), tag.value)) as tags")
 }
 
 func tagIDFilter(name string, value interface{}) Sqlizer {
