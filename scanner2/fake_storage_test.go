@@ -1,3 +1,5 @@
+//nolint:unused
+
 package scanner2_test
 
 import (
@@ -71,22 +73,12 @@ func TestFakeFS(t *testing.T) {
 	assert.NoError(t, fstest.TestFS(ffs, "The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/04 - Getting Better.mp3"))
 }
 
-//	func timestamp(key, ts string) _t {
-//		for _, mask := range []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02"} {
-//			t, err := time.Parse(mask, ts)
-//			if err == nil {
-//				return _t{key: t}
-//			}
-//		}
-//		return nil
-//	}
-//
-// func modTime(ts string) _t   { return timestamp(fakeFileInfoModTime, ts) }
-// func birthTime(ts string) _t { return timestamp(fakeFileInfoBirthTime, ts) }
+func modTime(ts string) _t   { return _t{fakeFileInfoModTime: ts} }
+func birthTime(ts string) _t { return _t{fakeFileInfoBirthTime: ts} }
 
 func template(t _t) func(..._t) *fstest.MapFile {
 	return func(tags ..._t) *fstest.MapFile {
-		return audioFile(append([]_t{t}, tags...)...)
+		return mp3(append([]_t{t}, tags...)...)
 	}
 }
 
@@ -97,7 +89,7 @@ func track(num int, title string) _t {
 	return t
 }
 
-func audioFile(tags ..._t) *fstest.MapFile {
+func mp3(tags ..._t) *fstest.MapFile {
 	ts := audioProperties("mp3", 320)
 	if _, ok := ts[fakeFileInfoSize]; !ok {
 		duration := ts["duration"].(int64)
@@ -115,10 +107,10 @@ func file(tags ..._t) *fstest.MapFile {
 		}
 	}
 	if _, ok := ts[fakeFileInfoBirthTime]; !ok {
-		ts[fakeFileInfoBirthTime] = time.Now()
+		ts[fakeFileInfoBirthTime] = time.Now().Format(time.RFC3339)
 	}
 	if _, ok := ts[fakeFileInfoModTime]; !ok {
-		ts[fakeFileInfoModTime] = time.Now()
+		ts[fakeFileInfoModTime] = time.Now().Format(time.RFC3339)
 	}
 	if _, ok := ts[fakeFileInfoMode]; !ok {
 		ts[fakeFileInfoMode] = fs.ModePerm
@@ -169,13 +161,14 @@ func (ffs *FakeFS) parseFile(filePath string) (*metadata.Info, error) {
 		AudioProperties: metadata.AudioProperties{},
 		HasPicture:      data["has_picture"] == "true",
 	}
-	if d, ok := data["duration"].(int64); ok {
+	if d, ok := data["duration"].(float64); ok {
 		p.AudioProperties.Duration = time.Duration(d) * time.Second
 	}
-	p.AudioProperties.BitRate, _ = data["bitrate"].(int)
-	p.AudioProperties.BitDepth, _ = data["bitdepth"].(int)
-	p.AudioProperties.SampleRate, _ = data["samplerate"].(int)
-	p.AudioProperties.Channels, _ = data["channels"].(int)
+	getInt := func(key string) int { v, _ := data[key].(float64); return int(v) }
+	p.AudioProperties.BitRate = getInt("bitrate")
+	p.AudioProperties.BitDepth = getInt("bitdepth")
+	p.AudioProperties.SampleRate = getInt("samplerate")
+	p.AudioProperties.Channels = getInt("channels")
 	for k, v := range data {
 		p.Tags[k] = []string{fmt.Sprintf("%v", v)}
 	}
@@ -204,10 +197,13 @@ func (ffi *fakeFileInfo) Name() string {
 	name = strings.TrimSuffix(name, path.Ext(name))
 	return path.Base(name)
 }
-func (ffi *fakeFileInfo) Mode() fs.FileMode    { return ffi.info(fakeFileInfoMode).(fs.FileMode) }
-func (ffi *fakeFileInfo) Size() int64          { return ffi.info(fakeFileInfoSize).(int64) }
+func (ffi *fakeFileInfo) Size() int64          { v, _ := ffi.tags[fakeFileInfoSize].(float64); return int64(v) }
+func (ffi *fakeFileInfo) Mode() fs.FileMode    { return ffi.tags[fakeFileInfoMode].(fs.FileMode) }
 func (ffi *fakeFileInfo) IsDir() bool          { return false }
 func (ffi *fakeFileInfo) Sys() any             { return nil }
-func (ffi *fakeFileInfo) ModTime() time.Time   { return ffi.info(fakeFileInfoModTime).(time.Time) }
-func (ffi *fakeFileInfo) BirthTime() time.Time { return ffi.info(fakeFileInfoBirthTime).(time.Time) }
-func (ffi *fakeFileInfo) info(s string) any    { return ffi.tags[s] }
+func (ffi *fakeFileInfo) ModTime() time.Time   { return ffi.parseTime(fakeFileInfoModTime) }
+func (ffi *fakeFileInfo) BirthTime() time.Time { return ffi.parseTime(fakeFileInfoBirthTime) }
+func (ffi *fakeFileInfo) parseTime(key string) time.Time {
+	t, _ := time.Parse(time.RFC3339, ffi.tags[key].(string))
+	return t
+}
