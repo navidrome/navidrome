@@ -17,6 +17,15 @@ func Group[T any, K comparable](s []T, keyFunc func(T) K) map[K][]T {
 	return m
 }
 
+func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[K]V {
+	m := map[K]V{}
+	for _, item := range s {
+		k, v := transformFunc(item)
+		m[k] = v
+	}
+	return m
+}
+
 func MostFrequent[T comparable](list []T) T {
 	if len(list) == 0 {
 		var zero T

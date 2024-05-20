@@ -59,34 +59,35 @@ type Metadata struct {
 	hasPicture bool
 }
 
-func (t Metadata) FilePath() string     { return t.filePath }
-func (t Metadata) ModTime() time.Time   { return t.fileInfo.ModTime() }
-func (t Metadata) BirthTime() time.Time { return t.fileInfo.BirthTime() }
-func (t Metadata) Size() int64          { return t.fileInfo.Size() }
-func (t Metadata) Suffix() string {
-	return strings.ToLower(strings.TrimPrefix(path.Ext(t.filePath), "."))
+func (md Metadata) FilePath() string     { return md.filePath }
+func (md Metadata) ModTime() time.Time   { return md.fileInfo.ModTime() }
+func (md Metadata) BirthTime() time.Time { return md.fileInfo.BirthTime() }
+func (md Metadata) Size() int64          { return md.fileInfo.Size() }
+func (md Metadata) Suffix() string {
+	return strings.ToLower(strings.TrimPrefix(path.Ext(md.filePath), "."))
 }
-func (t Metadata) AudioProperties() AudioProperties { return t.audioProps }
-func (t Metadata) HasPicture() bool                 { return t.hasPicture }
-func (t Metadata) All() map[string][]string         { return t.tags }
-func (t Metadata) Strings(key Name) []string        { return t.tags[string(key)] }
-func (t Metadata) String(key Name) string           { return t.first(key) }
-func (t Metadata) Int(key Name) int64               { v, _ := strconv.Atoi(t.first(key)); return int64(v) }
-func (t Metadata) Float(key Name) float64           { v, _ := strconv.ParseFloat(t.first(key), 64); return v }
-func (t Metadata) Bool(key Name) bool               { v, _ := strconv.ParseBool(t.first(key)); return v }
-func (t Metadata) Date(key Name) Date               { return t.date(key) }
-func (t Metadata) NumAndTotal(key Name) (int, int)  { return t.tuple(key) }
+func (md Metadata) AudioProperties() AudioProperties { return md.audioProps }
+func (md Metadata) Length() float32                  { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
+func (md Metadata) HasPicture() bool                 { return md.hasPicture }
+func (md Metadata) All() map[string][]string         { return md.tags }
+func (md Metadata) Strings(key Name) []string        { return md.tags[string(key)] }
+func (md Metadata) String(key Name) string           { return md.first(key) }
+func (md Metadata) Int(key Name) int64               { v, _ := strconv.Atoi(md.first(key)); return int64(v) }
+func (md Metadata) Float(key Name) float64           { v, _ := strconv.ParseFloat(md.first(key), 64); return v }
+func (md Metadata) Bool(key Name) bool               { v, _ := strconv.ParseBool(md.first(key)); return v }
+func (md Metadata) Date(key Name) Date               { return md.date(key) }
+func (md Metadata) NumAndTotal(key Name) (int, int)  { return md.tuple(key) }
 
-func (t Metadata) first(key Name) string {
-	if v, ok := t.tags[string(key)]; ok && len(v) > 0 {
+func (md Metadata) first(key Name) string {
+	if v, ok := md.tags[string(key)]; ok && len(v) > 0 {
 		return v[0]
 	}
 	return ""
 }
 
 // Used for tracks and discs
-func (t Metadata) tuple(key Name) (int, int) {
-	tag := t.first(key)
+func (md Metadata) tuple(key Name) (int, int) {
+	tag := md.first(key)
 	if tag == "" {
 		return 0, 0
 	}
@@ -96,7 +97,7 @@ func (t Metadata) tuple(key Name) (int, int) {
 	if len(tuple) > 1 {
 		t2, _ = strconv.Atoi(tuple[1])
 	} else {
-		t2tag := t.first(key + "total")
+		t2tag := md.first(key + "total")
 		t2, _ = strconv.Atoi(t2tag)
 	}
 	return t1, t2
@@ -105,8 +106,8 @@ func (t Metadata) tuple(key Name) (int, int) {
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
 // date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
-func (t Metadata) date(key Name) Date {
-	tag := t.first(key)
+func (md Metadata) date(key Name) Date {
+	tag := md.first(key)
 	if len(tag) < 4 {
 		return ""
 	}
@@ -114,7 +115,7 @@ func (t Metadata) date(key Name) Date {
 	// first get just the year
 	match := dateRegex.FindStringSubmatch(tag)
 	if len(match) == 0 {
-		log.Warn("Error parsing "+key+" field for year", "file", t.filePath, "date", tag)
+		log.Warn("Error parsing "+key+" field for year", "file", md.filePath, "date", tag)
 		return ""
 	}
 
@@ -134,7 +135,7 @@ func (t Metadata) date(key Name) Date {
 		}
 	}
 
-	log.Warn("Error parsing "+key+" field for month + day", "file", t.filePath, "date", tag)
+	log.Warn("Error parsing "+key+" field for month + day", "file", md.filePath, "date", tag)
 	return Date(match[1])
 }
 
