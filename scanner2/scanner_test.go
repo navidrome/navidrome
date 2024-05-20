@@ -4,11 +4,14 @@ import (
 	"context"
 	"testing/fstest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scanner2"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -17,32 +20,49 @@ var _ = Describe("Scanner", func() {
 	var fs *FakeFS
 	var files fstest.MapFS
 	var ctx context.Context
-	var libRepo tests.MockLibraryRepo
-	var ds tests.MockDataStore
+	var libRepo model.LibraryRepository
+	var ds model.DataStore
 	var s scanner.Scanner
 	var lib model.Library
 
 	BeforeEach(func() {
 		log.SetLevel(log.LevelTrace)
+		//os.Remove("./test-123.db")
+		//conf.Server.DbPath = "./test-123.db"
+		conf.Server.DbPath = "file::memory:?cache=shared"
+		DeferCleanup(db.Init())
+
 		ctx = context.Background()
+		ds = persistence.New(db.Db())
 		files = fstest.MapFS{}
-		libRepo = tests.MockLibraryRepo{}
-		ds.MockedLibrary = &libRepo
-		s = scanner2.GetInstance(ctx, &ds)
+		s = scanner2.GetInstance(ctx, ds)
+	})
+
+	AfterEach(func() {
+		_, err := db.Db().ExecContext(ctx, `
+			PRAGMA writable_schema = 1;
+			DELETE FROM sqlite_master;
+			PRAGMA writable_schema = 0;
+			VACUUM;
+			PRAGMA integrity_check;
+		`)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
-		libRepo.SetData(model.Libraries{lib})
+		// Override the default library
+		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
+		libRepo = ds.Library(ctx)
+		Expect(libRepo.Put(&lib)).To(Succeed())
+
 		fs = &FakeFS{MapFS: files}
 		RegisterFakeStorage(fs)
 	})
 
-	Describe("Scan", func() {
+	Describe("Scanner", func() {
 		BeforeEach(func() {
-			lib = model.Library{Name: "Fake Library", Path: "fake:///music"}
 			sgtPeppers := template(_t{"albumartist": "The Beatles", "album": "Sgt. Pepper's Lonely Hearts Club Band", "year": 1967})
 			files = fstest.MapFS{
-				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/cover.jpg":                                      file(),
 				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/01 - Sgt. Pepper's Lonely Hearts Club Band.mp3": sgtPeppers(track(1, "Sgt. Pepper's Lonely Hearts Club Band")),
 				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/02 - With a Little Help from My Friends.mp3":    sgtPeppers(track(2, "With a Little Help from My Friends")),
 				"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/03 - Lucy in the Sky with Diamonds.mp3":         sgtPeppers(track(3, "Lucy in the Sky with Diamonds")),
@@ -50,9 +70,15 @@ var _ = Describe("Scanner", func() {
 			}
 		})
 
-		It("should scan all files", func() {
-			err := s.RescanAll(context.Background(), true)
-			Expect(err).ToNot(HaveOccurred())
+		It("should import all files", func() {
+			Expect(s.RescanAll(context.Background(), true)).To(Succeed())
+
+			folders, _ := ds.Folder(ctx).GetAll(lib)
+			paths := slice.Map(folders, func(f model.Folder) string { return f.Name })
+			Expect(paths).To(SatisfyAll(
+				HaveLen(3),
+				ContainElements(".", "The Beatles", "1967 - Sgt. Pepper's Lonely Hearts Club Band"),
+			))
 		})
 	})
 })

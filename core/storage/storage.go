@@ -23,6 +23,10 @@ func Register(schema string, c constructor) {
 	registry[schema] = c
 }
 
+// For returns a Storage implementation for the given URI.
+// It uses the schema part of the URI to find the correct registered
+// Storage constructor.
+// If the URI does not contain a schema, it is treated as a file:// URI.
 func For(uri string) (Storage, error) {
 	lock.RLock()
 	defer lock.RUnlock()

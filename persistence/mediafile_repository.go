@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,43 @@ type mediaFileRepository struct {
 	sqlRestful
 }
 
-func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepository {
+type dbMediaFile struct {
+	*model.MediaFile `structs:",flatten"`
+	Tags             string `structs:"-" json:"-"`
+}
+
+func (m *dbMediaFile) PostScan() error {
+	if m.Tags == "" {
+		m.MediaFile.Tags = make(map[string][]string)
+		return nil
+	}
+	err := json.Unmarshal([]byte(m.Tags), &m.MediaFile.Tags)
+	if err != nil {
+		return err
+	}
+	// Map genres from tags
+	for _, g := range m.MediaFile.Tags.Flatten("genre") {
+		m.MediaFile.Genres = append(m.MediaFile.Genres, model.Genre{Name: g.Value, ID: g.ID})
+	}
+	return nil
+}
+
+func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
+	delete(args, "tags")
+	return nil
+}
+
+type dbMediaFiles []dbMediaFile
+
+func (m *dbMediaFiles) toModels() model.MediaFiles {
+	res := make(model.MediaFiles, len(*m))
+	for i, mf := range *m {
+		res[i] = *mf.MediaFile
+	}
+	return res
+}
+
+func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFileRepository {
 	r := &mediaFileRepository{}
 	r.ctx = ctx
 	r.db = db
@@ -53,7 +90,8 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("media_file.id")
-	sql = r.withGenres(sql) // Required for filtering by genre
+	// FIXME Genres
+	//sql = r.withGenres(sql) // Required for filtering by genre
 	return r.count(sql, options...)
 }
 
@@ -64,65 +102,85 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
-	_, err := r.put(m.ID, m)
+	_, err := r.put(m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, m.Genres)
+
+	return r.updateTags(m.ID, m.Tags)
+
+	// FIXME Genres
+	//if err != nil {
+	//	return err
+	//}
+	//return r.updateGenres(m.ID, r.tableName, m.Genres)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
 	sql = r.withBookmark(sql, "media_file.id")
-	if len(options) > 0 && options[0].Filters != nil {
-		s, _, _ := options[0].Filters.ToSql()
-		// If there's any reference of genre in the filter, joins with genre
-		if strings.Contains(s, "genre") {
-			sql = r.withGenres(sql)
-			// If there's no filter on genre_id, group the results by media_file.id
-			if !strings.Contains(s, "genre_id") {
-				sql = sql.GroupBy("media_file.id")
-			}
-		}
-	}
+	// FIXME Genres
+	//if len(options) > 0 && options[0].Filters != nil {
+	//	s, _, _ := options[0].Filters.ToSql()
+	//	// If there's any reference of genre in the filter, joins with genre
+	//	if strings.Contains(s, "genre") {
+	//		sql = r.withGenres(sql)
+	//		// If there's no filter on genre_id, group the results by media_file.id
+	//		if !strings.Contains(s, "genre_id") {
+	//			sql = sql.GroupBy("media_file.id")
+	//		}
+	//	}
+	//}
 	return sql
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	sel := r.selectMediaFile().Where(Eq{"media_file.id": id})
-	var res model.MediaFiles
+	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
 	}
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	err := loadAllGenres(r, res)
-	return &res[0], err
+	// FIXME Genres
+	//err := r.loadMediaFileGenres(&res)
+	return res[0].MediaFile, nil
 }
 
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	r.resetSeededRandom(options)
 	sq := r.selectMediaFile(options...)
-	res := model.MediaFiles{}
+	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
 	if err != nil {
 		return nil, err
 	}
-	err = loadAllGenres(r, res)
-	return res, err
+	// FIXME Genres
+	//err = r.loadMediaFileGenres(&rows)
+	return res.toModels(), nil
+}
+
+func (r *mediaFileRepository) GetByFolder(folderID string) (model.MediaFiles, error) {
+	sq := r.newSelect().Columns("*").Where(Eq{"folder_id": folderID})
+	var res dbMediaFiles
+	err := r.queryAll(sq, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
 }
 
 func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
 	sel := r.newSelect().Columns("*").Where(Like{"path": path})
-	var res model.MediaFiles
+	var res dbMediaFiles
 	if err := r.queryAll(sel, &res); err != nil {
 		return nil, err
 	}
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	return &res[0], nil
+	return res[0].MediaFile, nil
 }
 
 func cleanPath(path string) string {
@@ -148,9 +206,9 @@ func (r *mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, erro
 	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
 		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
 
-	res := model.MediaFiles{}
+	res := dbMediaFiles{}
 	err := r.queryAll(sel, &res)
-	return res, err
+	return res.toModels(), err
 }
 
 // FindPathsRecursively returns a list of all subfolders of basePath, recursively
@@ -199,13 +257,14 @@ func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
-	results := model.MediaFiles{}
+	results := dbMediaFiles{}
 	err := r.doSearch(q, offset, size, &results, "title")
 	if err != nil {
 		return nil, err
 	}
-	err = loadAllGenres(r, results)
-	return results, err
+	// FIXME Genres
+	//err = r.loadMediaFileGenres(&results)
+	return results.toModels(), err
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {
