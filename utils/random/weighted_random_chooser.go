@@ -43,7 +43,7 @@ func (w *WeightedChooser[T]) weightedChoice() (int, error) {
 	if len(w.entries) == 0 {
 		return 0, errors.New("cannot choose from empty list")
 	}
-	rnd := Int64(w.totalWeight)
+	rnd := Int64N(w.totalWeight)
 	for i, weight := range w.weights {
 		rnd -= int64(weight)
 		if rnd < 0 {
