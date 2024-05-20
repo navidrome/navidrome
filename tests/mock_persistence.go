@@ -13,6 +13,7 @@ type MockDataStore struct {
 	MockedAlbum          model.AlbumRepository
 	MockedArtist         model.ArtistRepository
 	MockedMediaFile      model.MediaFileRepository
+	MockedTag            model.TagRepository
 	MockedUser           model.UserRepository
 	MockedProperty       model.PropertyRepository
 	MockedPlayer         model.PlayerRepository
@@ -36,6 +37,13 @@ func (db *MockDataStore) Folder(context.Context) model.FolderRepository {
 		return db.MockedFolder
 	}
 	return struct{ model.FolderRepository }{}
+}
+
+func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
+	if db.MockedTag != nil {
+		return db.MockedTag
+	}
+	return struct{ model.TagRepository }{}
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {

@@ -57,6 +57,7 @@ var _ = Describe("Metadata", func() {
 				Expect(md.Size()).To(Equal(fileInfo.Size()))
 				Expect(md.Suffix()).To(Equal("mp3"))
 				Expect(md.AudioProperties()).To(Equal(props.AudioProperties))
+				Expect(md.Length()).To(Equal(float32(3 * 60)))
 				Expect(md.HasPicture()).To(Equal(props.HasPicture))
 				Expect(md.Strings(metadata.TrackArtist)).To(Equal([]string{"First Artist", "Second Artist"}))
 				Expect(md.String(metadata.TrackArtist)).To(Equal("First Artist"))
