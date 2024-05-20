@@ -36,6 +36,8 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 
 	err = s.runPipeline(
 		ppl.NewProducer(produceFolders(ctx, s.ds, libs, fullRescan), ppl.Name("read folders from disk")),
+		ppl.NewStage(processFolder(ctx), ppl.Name("process folder")),
+		ppl.NewStage(persistChanges(ctx), ppl.Name("persist changes")),
 		ppl.NewStage(logFolder(ctx), ppl.Name("log results")),
 	)
 
@@ -56,12 +58,12 @@ func (s *scanner2) runPipeline(producer ppl.Producer[*folderEntry], stages ...pp
 	return ppl.Do(producer, stages...)
 }
 
-func logFolder(ctx context.Context) func(folder *folderEntry) (out *folderEntry, err error) {
-	return func(folder *folderEntry) (out *folderEntry, err error) {
-		log.Debug(ctx, "Scanner: Completed processing folder", " path", folder.path,
-			"audioCount", len(folder.audioFiles), "imageCount", len(folder.imageFiles), "plsCount", len(folder.playlists),
-			"elapsed", time.Since(folder.startTime))
-		return folder, nil
+func logFolder(ctx context.Context) func(entry *folderEntry) (out *folderEntry, err error) {
+	return func(entry *folderEntry) (out *folderEntry, err error) {
+		log.Debug(ctx, "Scanner: Completed processing folder", " path", entry.path,
+			"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
+			"elapsed", time.Since(entry.startTime))
+		return entry, nil
 	}
 }
 

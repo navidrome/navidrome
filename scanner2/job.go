@@ -3,7 +3,6 @@ package scanner2
 import (
 	"context"
 	"fmt"
-	"io/fs"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,7 +14,7 @@ import (
 
 type scanJob struct {
 	lib         model.Library
-	fs          fs.FS
+	fs          storage.MusicFS
 	ds          model.DataStore
 	startTime   time.Time
 	lastUpdates map[string]time.Time
@@ -25,11 +24,10 @@ type scanJob struct {
 }
 
 func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullRescan bool) (*scanJob, error) {
-	//lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib) FIXME
-	//if err != nil {
-	//	return nil, fmt.Errorf("error getting last updates: %w", err)
-	//}
-	lastUpdates := map[string]time.Time{}
+	lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib)
+	if err != nil {
+		return nil, fmt.Errorf("error getting last updates: %w", err)
+	}
 	fileStore, err := storage.For(lib.Path)
 	if err != nil {
 		log.Error(ctx, "Error getting storage for library", "library", lib.Name, "path", lib.Path, err)
