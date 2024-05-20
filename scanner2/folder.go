@@ -3,12 +3,11 @@ package scanner2
 import (
 	"io/fs"
 	"time"
-
-	"github.com/navidrome/navidrome/model"
 )
 
 type folderEntry struct {
 	job             *scanJob
+	startTime       time.Time
 	path            string    // Full path
 	id              string    // DB ID
 	updTime         time.Time // From DB
@@ -17,11 +16,11 @@ type folderEntry struct {
 	imageFiles      map[string]fs.DirEntry
 	playlists       []fs.DirEntry
 	imagesUpdatedAt time.Time
-	tracks          model.MediaFiles
-	albums          model.Albums
-	artists         model.Artists
+	//tracks          model.MediaFiles
+	//albums          model.Albums
+	//artists         model.Artists
 	//tags            model.FlattenedTags
-	missingTracks model.MediaFiles
+	//missingTracks   model.MediaFiles
 }
 
 func (f *folderEntry) isOutdated() bool {

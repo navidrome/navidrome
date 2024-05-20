@@ -2,11 +2,14 @@ package scanner2
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -27,9 +30,19 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 	//	return nil, fmt.Errorf("error getting last updates: %w", err)
 	//}
 	lastUpdates := map[string]time.Time{}
+	fileStore, err := storage.For(lib.Path)
+	if err != nil {
+		log.Error(ctx, "Error getting storage for library", "library", lib.Name, "path", lib.Path, err)
+		return nil, fmt.Errorf("error getting storage for library: %w", err)
+	}
+	fsys, err := fileStore.FS()
+	if err != nil {
+		log.Error(ctx, "Error getting fs for library", "library", lib.Name, "path", lib.Path, err)
+		return nil, fmt.Errorf("error getting fs for library: %w", err)
+	}
 	return &scanJob{
 		lib:         lib,
-		fs:          lib.FS(),
+		fs:          fsys,
 		ds:          ds,
 		startTime:   time.Now(),
 		lastUpdates: lastUpdates,
