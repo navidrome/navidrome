@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
-	"github.com/navidrome/navidrome/model/tag"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils/random"
 	"github.com/stretchr/testify/assert"
 )
@@ -142,8 +142,8 @@ func audioProperties(suffix string, bitrate int) _t {
 	}
 }
 
-func (ffs *FakeFS) ReadTags(paths ...string) (map[string]tag.Properties, error) {
-	result := make(map[string]tag.Properties)
+func (ffs *FakeFS) ReadTags(paths ...string) (map[string]metadata.Info, error) {
+	result := make(map[string]metadata.Info)
 	for _, file := range paths {
 		p, err := ffs.parseFile(file)
 		if err != nil {
@@ -154,7 +154,7 @@ func (ffs *FakeFS) ReadTags(paths ...string) (map[string]tag.Properties, error) 
 	return result, nil
 }
 
-func (ffs *FakeFS) parseFile(filePath string) (*tag.Properties, error) {
+func (ffs *FakeFS) parseFile(filePath string) (*metadata.Info, error) {
 	contents, err := fs.ReadFile(ffs, filePath)
 	if err != nil {
 		return nil, err
@@ -164,9 +164,9 @@ func (ffs *FakeFS) parseFile(filePath string) (*tag.Properties, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := tag.Properties{
+	p := metadata.Info{
 		Tags:            map[string][]string{},
-		AudioProperties: tag.AudioProperties{},
+		AudioProperties: metadata.AudioProperties{},
 		HasPicture:      data["has_picture"] == "true",
 	}
 	if d, ok := data["duration"].(int64); ok {
@@ -183,7 +183,7 @@ func (ffs *FakeFS) parseFile(filePath string) (*tag.Properties, error) {
 	return &p, nil
 }
 
-func (ffs *FakeFS) parseFileInfo(path string, tags map[string]any) tag.FileInfo {
+func (ffs *FakeFS) parseFileInfo(path string, tags map[string]any) metadata.FileInfo {
 	return &fakeFileInfo{path: path, tags: tags}
 }
 
