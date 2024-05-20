@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/tag"
 	"github.com/navidrome/navidrome/scanner/metadata"
@@ -63,7 +64,7 @@ func (e extractor) extractMetadata(filePath string) (*tag.Properties, error) {
 
 	// Adjust some ID3 tags
 	parseTIPL(tags)
-	delete(tags, "tmcl") // TMCL is already parsed by extractor
+	delete(tags, "tmcl") // TMCL is already parsed by TagLib
 
 	return &tag.Properties{
 		Tags:            tags,
@@ -82,7 +83,7 @@ var tiplMapping = map[string]string{
 	"dj-mix":   "djmixer",
 }
 
-// parseTIPL parses the ID3v2.4 TIPL frame string, which is received from extractor in the format
+// parseTIPL parses the ID3v2.4 TIPL frame string, which is received from TagLib in the format:
 //
 //	"arranger Andrew Powell engineer Chris Blair engineer Pat Stapley producer Eric Woolfson".
 //
@@ -117,10 +118,10 @@ func parseTIPL(tags metadata.ParsedTags) {
 	delete(tags, "tipl")
 }
 
-var _ tag.Extractor = (*extractor)(nil)
+var _ local.Extractor = (*extractor)(nil)
 
 func init() {
-	tag.RegisterExtractor("taglib", func(_ fs.FS, baseDir string) tag.Extractor {
+	local.RegisterExtractor("taglib", func(_ fs.FS, baseDir string) local.Extractor {
 		// ignores fs, as taglib extractor only works with local files
 		return &extractor{baseDir}
 	})
