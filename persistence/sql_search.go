@@ -22,7 +22,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	}
 
 	sq := r.newSelectWithAnnotation(r.tableName + ".id").Columns(r.tableName + ".*")
-	sq = r.withTags(sq)
+	sq = r.withTags(sq).GroupBy(r.tableName + ".id")
 	filter := fullTextExpr(q)
 	if filter != nil {
 		sq = sq.Where(filter)
