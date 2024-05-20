@@ -3,7 +3,7 @@ package storage
 import (
 	"io/fs"
 
-	"github.com/navidrome/navidrome/model/tag"
+	"github.com/navidrome/navidrome/model/metadata"
 )
 
 type Storage interface {
@@ -13,7 +13,7 @@ type Storage interface {
 // MusicFS is an interface that extends the fs.FS interface with the ability to read tags from files
 type MusicFS interface {
 	fs.FS
-	ReadTags(path ...string) (map[string]tag.Properties, error)
+	ReadTags(path ...string) (map[string]metadata.Info, error)
 }
 
 // WatcherFS is an interface that extends the fs.FS interface with the ability to start and stop a fs watcher.
