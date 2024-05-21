@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,7 +21,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	BeforeEach(func() {
 		ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
-		repo = NewAlbumRepository(ctx, getDBXBuilder())
+		repo = NewAlbumRepository(ctx, NewDBXBuilder(db.Db()))
 	})
 
 	Describe("Get", func() {
