@@ -39,7 +39,7 @@ var _ = Describe("Scanner", func() {
 	})
 
 	AfterEach(func() {
-		_, err := db.Db().ExecContext(ctx, `
+		_, err := db.Db().WriteDB().ExecContext(ctx, `
 			PRAGMA writable_schema = 1;
 			DELETE FROM sqlite_master;
 			PRAGMA writable_schema = 0;
@@ -61,12 +61,15 @@ var _ = Describe("Scanner", func() {
 
 	Describe("Scanner", func() {
 		BeforeEach(func() {
-			sgtPeppers := template(_t{"albumartist": "The Beatles", "album": "Sgt. Pepper's Lonely Hearts Club Band", "year": 1967})
+			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+			help := template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
 			files = fstest.MapFS{
-				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/01 - Sgt. Pepper's Lonely Hearts Club Band.mp3": sgtPeppers(track(1, "Sgt. Pepper's Lonely Hearts Club Band")),
-				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/02 - With a Little Help from My Friends.mp3":    sgtPeppers(track(2, "With a Little Help from My Friends")),
-				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/03 - Lucy in the Sky with Diamonds.mp3":         sgtPeppers(track(3, "Lucy in the Sky with Diamonds")),
-				"The Beatles/Sgt. Pepper's Lonely Hearts Club Band/04 - Getting Better.mp3":                        sgtPeppers(track(4, "Getting Better")),
+				"The Beatles/Revolver/01 - Taxman.mp3":                         revolver(track(1, "Taxman")),
+				"The Beatles/Revolver/02 - Eleanor Rigby.mp3":                  revolver(track(2, "Eleanor Rigby")),
+				"The Beatles/Revolver/03 - I'm Only Sleeping.mp3":              revolver(track(3, "I'm Only Sleeping")),
+				"The Beatles/Help!/01 - Help!.mp3":                             help(track(1, "Help!")),
+				"The Beatles/Help!/02 - The Night Before.mp3":                  help(track(2, "The Night Before")),
+				"The Beatles/Help!/03 - You've Got to Hide Your Love Away.mp3": help(track(3, "You've Got to Hide Your Love Away")),
 			}
 		})
 
@@ -76,8 +79,8 @@ var _ = Describe("Scanner", func() {
 			folders, _ := ds.Folder(ctx).GetAll(lib)
 			paths := slice.Map(folders, func(f model.Folder) string { return f.Name })
 			Expect(paths).To(SatisfyAll(
-				HaveLen(3),
-				ContainElements(".", "The Beatles", "Sgt. Pepper's Lonely Hearts Club Band"),
+				HaveLen(4),
+				ContainElements(".", "The Beatles", "Revolver", "Help!"),
 			))
 		})
 		It("should import all mediafiles", func() {
@@ -86,12 +89,10 @@ var _ = Describe("Scanner", func() {
 			mfs, _ := ds.MediaFile(ctx).GetAll()
 			paths := slice.Map(mfs, func(f model.MediaFile) string { return f.Title })
 			Expect(paths).To(SatisfyAll(
-				HaveLen(4),
+				HaveLen(6),
 				ContainElements(
-					"Sgt. Pepper's Lonely Hearts Club Band",
-					"With a Little Help from My Friends",
-					"Lucy in the Sky with Diamonds",
-					"Getting Better",
+					"Taxman", "Eleanor Rigby", "I'm Only Sleeping",
+					"Help!", "The Night Before", "You've Got to Hide Your Love Away",
 				),
 			))
 		})
