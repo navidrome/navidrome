@@ -68,17 +68,20 @@ func Db() DB {
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 
+		// Create a read database connection
 		rdb, err := sql.Open(Driver+"_custom", Path)
 		if err != nil {
-			panic(err)
+			log.Fatal("Error opening read database", err)
 		}
 		rdb.SetMaxOpenConns(max(4, runtime.NumCPU()))
 
+		// Create a write database connection
 		wdb, err := sql.Open(Driver+"_custom", Path)
 		if err != nil {
-			panic(err)
+			log.Fatal("Error opening write database", err)
 		}
 		wdb.SetMaxOpenConns(1)
+
 		return &db{
 			readDB:  rdb,
 			writeDB: wdb,

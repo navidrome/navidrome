@@ -29,18 +29,12 @@ update media_file set updated_at = '0001-01-01';
 	return err
 }
 
-var (
-	once        sync.Once
-	initialized bool
-)
-
 func isDBInitialized(tx *sql.Tx) bool {
-	once.Do(func() {
+	return sync.OnceValue(func() bool {
 		rows, err := tx.Query("select count(*) from property where id=?", consts.InitialSetupFlagKey)
 		checkErr(err)
-		initialized = checkCount(rows) > 0
-	})
-	return initialized
+		return checkCount(rows) > 0
+	})()
 }
 
 func checkCount(rows *sql.Rows) (count int) {
