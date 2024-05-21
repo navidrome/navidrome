@@ -29,16 +29,16 @@ import (
 // Injectors from wire_injectors.go:
 
 func CreateServer(musicFolder string) *server.Server {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	broker := events.GetBroker()
 	serverServer := server.New(dataStore, broker)
 	return serverServer
 }
 
 func CreateNativeAPIRouter() *nativeapi.Router {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	share := core.NewShare(dataStore)
 	playlists := core.NewPlaylists(dataStore)
 	router := nativeapi.New(dataStore, share, playlists)
@@ -46,8 +46,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 }
 
 func CreateSubsonicAPIRouter() *subsonic.Router {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.New(dataStore)
@@ -69,8 +69,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 }
 
 func CreatePublicRouter() *public.Router {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.New(dataStore)
@@ -85,22 +85,22 @@ func CreatePublicRouter() *public.Router {
 }
 
 func CreateLastFMRouter() *lastfm.Router {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	router := lastfm.NewRouter(dataStore)
 	return router
 }
 
 func CreateListenBrainzRouter() *listenbrainz.Router {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	router := listenbrainz.NewRouter(dataStore)
 	return router
 }
 
 func GetScanner() scanner.Scanner {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	playlists := core.NewPlaylists(dataStore)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
@@ -114,8 +114,8 @@ func GetScanner() scanner.Scanner {
 }
 
 func GetPlaybackServer() playback.PlaybackServer {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
 	playbackServer := playback.GetInstance(dataStore)
 	return playbackServer
 }
