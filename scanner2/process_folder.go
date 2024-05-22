@@ -79,6 +79,7 @@ func loadTagsFromFiles(ctx context.Context, entry *folderEntry, toImport []strin
 			track := md.ToMediaFile()
 			track.LibraryID = entry.job.lib.ID
 			track.FolderID = entry.id
+			track.AlbumID = entry.job.getAlbumID(track.AlbumPID)
 			tracks = append(tracks, track)
 			for _, t := range track.Tags.FlattenAll() {
 				uniqueTags[t.ID] = t
@@ -98,7 +99,7 @@ func loadAlbumsFromMediaFiles(ctx context.Context, entry *folderEntry) model.Alb
 	var albums model.Albums
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)
-		album := songs.ToAlbum()
+		album := songs.ToAlbum() // TODO Remove ID from ToAlbum
 		album.FolderID = entry.id
 		albums = append(albums, album)
 	}
