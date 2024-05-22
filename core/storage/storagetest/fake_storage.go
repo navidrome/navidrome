@@ -1,5 +1,5 @@
 //nolint:unused
-package scanner2_test
+package storagetest
 
 import (
 	"encoding/json"
@@ -7,20 +7,21 @@ import (
 	"io/fs"
 	"net/url"
 	"path"
-	"strings"
-	"testing"
 	"testing/fstest"
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils/random"
-	"github.com/stretchr/testify/assert"
 )
 
+// FakeStorage is a fake storage that provides a FakeFS.
+// It is used for testing purposes.
 type FakeStorage struct{ fs *FakeFS }
 
-func RegisterFakeStorage(fs *FakeFS) {
+// Register registers the FakeStorage for the "fake" scheme. To use it, set the model.Library's Path to "fake:///music".
+// The storage registered will always return the same FakeFS instance.
+func Register(fs *FakeFS) {
 	storage.Register("fake", func(url url.URL) storage.Storage { return &FakeStorage{fs: fs} })
 }
 
@@ -28,6 +29,8 @@ func (s FakeStorage) FS() (storage.MusicFS, error) {
 	return s.fs, nil
 }
 
+// FakeFS is a fake filesystem that can be used for testing purposes.
+// It implements the storage.MusicFS interface and keeps all files in memory, by using a fstest.MapFS internally.
 type FakeFS struct {
 	fstest.MapFS
 }
@@ -56,50 +59,34 @@ func (ffs *FakeFS) Touch(path string, t ...time.Time) {
 	f.ModTime = t[0]
 }
 
-type _t = map[string]any
+func ModTime(ts string) map[string]any   { return map[string]any{fakeFileInfoModTime: ts} }
+func BirthTime(ts string) map[string]any { return map[string]any{fakeFileInfoBirthTime: ts} }
 
-// This is to make sure our FakeFS implements the fs.FS interface.
-func TestFakeFS(t *testing.T) {
-	sgtPeppers := template(_t{"albumartist": "The Beatles", "album": "Sgt. Pepper's Lonely Hearts Club Band", "year": 1967})
-	files := fstest.MapFS{
-		"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/01 - Sgt. Pepper's Lonely Hearts Club Band.mp3": sgtPeppers(track(1, "Sgt. Pepper's Lonely Hearts Club Band")),
-		"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/02 - With a Little Help from My Friends.mp3":    sgtPeppers(track(2, "With a Little Help from My Friends")),
-		"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/03 - Lucy in the Sky with Diamonds.mp3":         sgtPeppers(track(3, "Lucy in the Sky with Diamonds")),
-		"The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/04 - Getting Better.mp3":                        sgtPeppers(track(4, "Getting Better")),
-	}
-	ffs := FakeFS{MapFS: files}
-
-	assert.NoError(t, fstest.TestFS(ffs, "The Beatles/1967 - Sgt. Pepper's Lonely Hearts Club Band/04 - Getting Better.mp3"))
-}
-
-func modTime(ts string) _t   { return _t{fakeFileInfoModTime: ts} }
-func birthTime(ts string) _t { return _t{fakeFileInfoBirthTime: ts} }
-
-func template(t _t) func(..._t) *fstest.MapFile {
-	return func(tags ..._t) *fstest.MapFile {
-		return mp3(append([]_t{t}, tags...)...)
+func Template(t map[string]any) func(...map[string]any) *fstest.MapFile {
+	return func(tags ...map[string]any) *fstest.MapFile {
+		return MP3(append([]map[string]any{t}, tags...)...)
 	}
 }
 
-func track(num int, title string) _t {
+func Track(num int, title string) map[string]any {
 	t := audioProperties("mp3", 320)
 	t["title"] = title
 	t["track"] = num
 	return t
 }
 
-func mp3(tags ..._t) *fstest.MapFile {
+func MP3(tags ...map[string]any) *fstest.MapFile {
 	ts := audioProperties("mp3", 320)
 	if _, ok := ts[fakeFileInfoSize]; !ok {
 		duration := ts["duration"].(int64)
 		bitrate := ts["bitrate"].(int)
 		ts[fakeFileInfoSize] = duration * int64(bitrate) / 8 * 1000
 	}
-	return file(append([]_t{ts}, tags...)...)
+	return File(append([]map[string]any{ts}, tags...)...)
 }
 
-func file(tags ..._t) *fstest.MapFile {
-	ts := _t{}
+func File(tags ...map[string]any) *fstest.MapFile {
+	ts := map[string]any{}
 	for _, t := range tags {
 		for k, v := range t {
 			ts[k] = v
@@ -121,9 +108,9 @@ func file(tags ..._t) *fstest.MapFile {
 	return &fstest.MapFile{Data: data}
 }
 
-func audioProperties(suffix string, bitrate int) _t {
+func audioProperties(suffix string, bitrate int) map[string]any {
 	duration := random.Int64N(300) + 120
-	return _t{
+	return map[string]any{
 		"suffix":     suffix,
 		"bitrate":    bitrate,
 		"duration":   duration,
@@ -191,11 +178,7 @@ type fakeFileInfo struct {
 	tags map[string]any
 }
 
-func (ffi *fakeFileInfo) Name() string {
-	name := path.Base(ffi.path)
-	name = strings.TrimSuffix(name, path.Ext(name))
-	return path.Base(name)
-}
+func (ffi *fakeFileInfo) Name() string         { return path.Base(ffi.path) }
 func (ffi *fakeFileInfo) Size() int64          { v, _ := ffi.tags[fakeFileInfoSize].(float64); return int64(v) }
 func (ffi *fakeFileInfo) Mode() fs.FileMode    { return ffi.tags[fakeFileInfoMode].(fs.FileMode) }
 func (ffi *fakeFileInfo) IsDir() bool          { return false }
