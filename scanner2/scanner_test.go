@@ -37,7 +37,9 @@ var _ = Describe("Scanner", func() {
 		//log.SetLevel(log.LevelTrace)
 		//os.Remove("./test-123.db")
 		//conf.Server.DbPath = "./test-123.db"
-		conf.Server.DbPath = "file::memory:?cache=shared"
+		conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
+		//dbpath := utils.TempFileName("scanner-test", ".db")
+		//conf.Server.DbPath = dbpath + "?cache=shared&_foreign_keys=on"
 		db.Init()
 		ds = persistence.New(db.Db())
 
@@ -120,6 +122,59 @@ var _ = Describe("Scanner", func() {
 						HaveField("SongCount", Equal(4)),
 					))
 				})
+			})
+		})
+
+		Context("Same album in two different folders", func() {
+			BeforeEach(func() {
+				revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+				files = fstest.MapFS{
+					"The Beatles/Revolver/01 - Taxman.mp3":         revolver(track(1, "Taxman")),
+					"The Beatles/Revolver2/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
+				}
+			})
+
+			It("should import as one album", func() {
+				Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+				albums, err := ds.Album(ctx).GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albums).To(HaveLen(1))
+
+				mfs, err := ds.MediaFile(ctx).GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(2))
+				for _, mf := range mfs {
+					Expect(mf.AlbumID).To(Equal(albums[0].ID))
+				}
+			})
+		})
+
+		Context("Same album, different release dates", func() {
+			BeforeEach(func() {
+				conf.Server.Scanner.GroupAlbumReleases = false
+				help := template(_t{"albumartist": "The Beatles", "album": "Help!", "date": 1965})
+				help2 := template(_t{"albumartist": "The Beatles", "album": "Help!", "date": 2000})
+				files = fstest.MapFS{
+					"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
+					"The Beatles/Help! (remaster)/01 - Help!.mp3": help2(track(1, "Help!")),
+				}
+			})
+
+			It("should import as two distinct albums", func() {
+				Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "date"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albums).To(HaveLen(2))
+				Expect(albums[0]).To(SatisfyAll(
+					HaveField("Name", Equal("Help!")),
+					HaveField("Date", Equal("1965")),
+				))
+				Expect(albums[1]).To(SatisfyAll(
+					HaveField("Name", Equal("Help!")),
+					HaveField("Date", Equal("2000")),
+				))
 			})
 		})
 	})
