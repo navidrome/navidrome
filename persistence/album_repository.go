@@ -190,6 +190,23 @@ func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (mo
 	return dba.toModels(), err
 }
 
+func (r *albumRepository) GetPIDs(libID int) (map[string]string, error) {
+	sq := r.selectAlbum(model.QueryOptions{Filters: Eq{"library_id": libID}}).Columns("album.id", "album.pid")
+	var rows []struct {
+		ID  string
+		PID string
+	}
+	err := r.queryAll(sq, &rows)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]string, len(rows))
+	for _, row := range rows {
+		res[row.PID] = row.ID
+	}
+	return res, nil
+}
+
 func (r *albumRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
 	c, err := r.executeSQL(del)
