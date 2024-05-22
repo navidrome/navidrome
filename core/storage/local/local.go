@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
+	"sync/atomic"
 	"time"
 
 	"github.com/djherbis/times"
@@ -17,8 +19,10 @@ import (
 // localStorage implements a Storage that reads the files from the local filesystem and uses registered extractors
 // to extract the metadata and tags from the files.
 type localStorage struct {
-	u         url.URL
-	extractor Extractor
+	u            url.URL
+	extractor    Extractor
+	resolvedPath string
+	watching     atomic.Bool
 }
 
 func newLocalStorage(u url.URL) storage.Storage {
@@ -26,15 +30,20 @@ func newLocalStorage(u url.URL) storage.Storage {
 	if !ok || newExtractor == nil {
 		log.Fatal("Extractor not found: %s", conf.Server.Scanner.Extractor)
 	}
-	return localStorage{u: u, extractor: newExtractor(os.DirFS(u.Path), u.Path)}
+	resolvedPath, err := filepath.EvalSymlinks(u.Path)
+	if err != nil {
+		log.Warn("Error resolving path", "path", u.Path, "err", err)
+		resolvedPath = u.Path
+	}
+	return &localStorage{u: u, extractor: newExtractor(os.DirFS(u.Path), u.Path), resolvedPath: resolvedPath}
 }
 
-func (s localStorage) FS() (storage.MusicFS, error) {
+func (s *localStorage) FS() (storage.MusicFS, error) {
 	path := s.u.Path
 	if _, err := os.Stat(path); err != nil {
 		return nil, fmt.Errorf("%w: %s", err, path)
 	}
-	return localFS{FS: os.DirFS(path), extractor: s.extractor}, nil
+	return &localFS{FS: os.DirFS(path), extractor: s.extractor}, nil
 }
 
 type localFS struct {
@@ -42,7 +51,7 @@ type localFS struct {
 	extractor Extractor
 }
 
-func (lfs localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
+func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 	res, err := lfs.extractor.Parse(path...)
 	if err != nil {
 		return nil, err
