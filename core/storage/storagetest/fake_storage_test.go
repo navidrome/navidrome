@@ -1,0 +1,52 @@
+//nolint:unused
+package storagetest_test
+
+import (
+	"testing"
+	"testing/fstest"
+
+	. "github.com/navidrome/navidrome/core/storage/storagetest"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+type _t = map[string]any
+
+func TestFakeStorage(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Fake Storage Test Suite")
+}
+
+var _ = Describe("FakeFS", func() {
+	var ffs FakeFS
+
+	BeforeEach(func() {
+		boy := Template(_t{"albumartist": "U2", "album": "Boy", "year": 1980, "genre": "Rock"})
+		files := fstest.MapFS{
+			"U2/Boy/I Will Follow.mp3": boy(Track(1, "I Will Follow")),
+			"U2/Boy/Twilight.mp3":      boy(Track(2, "Twilight")),
+			"U2/Boy/An Cat Dubh.mp3":   boy(Track(3, "An Cat Dubh")),
+		}
+		ffs = FakeFS{MapFS: files}
+	})
+
+	It("should implement a fs.FS", func() {
+		Expect(fstest.TestFS(ffs, "U2/Boy/I Will Follow.mp3")).To(Succeed())
+	})
+
+	It("should read file info", func() {
+		props, err := ffs.ReadTags("U2/Boy/I Will Follow.mp3", "U2/Boy/Twilight.mp3")
+		Expect(err).ToNot(HaveOccurred())
+
+		prop := props["U2/Boy/Twilight.mp3"]
+		Expect(prop).ToNot(BeNil())
+		Expect(prop.AudioProperties.Channels).To(Equal(2))
+		Expect(prop.AudioProperties.BitRate).To(Equal(320))
+		Expect(prop.FileInfo.Name()).To(Equal("Twilight.mp3"))
+		Expect(prop.Tags["albumartist"]).To(ConsistOf("U2"))
+
+		prop = props["U2/Boy/I Will Follow.mp3"]
+		Expect(prop).ToNot(BeNil())
+		Expect(prop.FileInfo.Name()).To(Equal("I Will Follow.mp3"))
+	})
+})

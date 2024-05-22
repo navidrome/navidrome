@@ -57,7 +57,7 @@ func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 				return entry, nil
 			}
 
-			entry.albums = loadAlbumsFromTags(ctx, entry)
+			entry.albums = loadAlbumsFromMediaFiles(ctx, entry)
 			entry.artists = loadArtistsFromTags(ctx, entry)
 		}
 
@@ -89,8 +89,20 @@ func loadTagsFromFiles(ctx context.Context, entry *folderEntry, toImport []strin
 	return tracks, maps.Values(uniqueTags), err
 }
 
-func loadAlbumsFromTags(ctx context.Context, entry *folderEntry) model.Albums {
-	return nil // TODO
+func loadAlbumsFromMediaFiles(ctx context.Context, entry *folderEntry) model.Albums {
+	// TODO Create Albums from MediaFiles, merge them with what's already in the DB.
+	//		Save albums to the DB first, then using a map of the albums by PID,
+	//	    map the IDs to MediaFile.AlbumID when persisting.
+
+	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumPID })
+	var albums model.Albums
+	for _, group := range grouped {
+		songs := model.MediaFiles(group)
+		album := songs.ToAlbum()
+		album.FolderID = entry.id
+		albums = append(albums, album)
+	}
+	return albums
 }
 
 func loadArtistsFromTags(ctx context.Context, entry *folderEntry) model.Artists {
