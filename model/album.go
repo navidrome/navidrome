@@ -113,6 +113,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllWithoutGenres(...QueryOptions) (Albums, error)
+	GetPIDs(int) (map[string]string, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }
