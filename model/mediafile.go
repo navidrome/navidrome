@@ -79,6 +79,7 @@ type MediaFile struct {
 
 	Tags Tags `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
 
+	Available bool      `structs:"available" json:"available"`  // If the file is available to be played
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
@@ -139,6 +140,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
+		a.PID = m.AlbumPID
+		a.LibraryID = m.LibraryID
 		a.Name = m.Album
 		a.Artist = m.Artist
 		a.ArtistID = m.ArtistID
