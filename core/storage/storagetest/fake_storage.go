@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils/random"
 )
@@ -35,32 +36,86 @@ type FakeFS struct {
 	fstest.MapFS
 }
 
-// RmGlob removes all files that match the glob pattern.
-func (ffs *FakeFS) RmGlob(glob string) {
-	matches, err := fs.Glob(ffs, glob)
-	if err != nil {
-		panic(err)
-	}
-	for _, f := range matches {
-		delete(ffs.MapFS, f)
-	}
+func (ffs *FakeFS) SetFiles(files fstest.MapFS) {
+	ffs.MapFS = files
+	ffs.createDirTimestamps()
 }
 
+// createDirTimestamps loops through all entries and creat directories entries in the map with the
+// latest ModTime from any children of that directory.
+func (ffs *FakeFS) createDirTimestamps() bool {
+	var changed bool
+	for filePath, file := range ffs.MapFS {
+		dir := path.Dir(filePath)
+		dirFile, ok := ffs.MapFS[dir]
+		if !ok {
+			dirFile = &fstest.MapFile{Mode: fs.ModeDir}
+			ffs.MapFS[dir] = dirFile
+		}
+		if dirFile.ModTime.IsZero() {
+			dirFile.ModTime = file.ModTime
+			changed = true
+		}
+	}
+	if changed {
+		// If we updated any directory, we need to re-run the loop to update the parent directories
+		ffs.createDirTimestamps()
+	}
+	return changed
+}
+
+// RmGlob removes all files that match the glob pattern.
+//func (ffs *FakeFS) RmGlob(glob string) {
+//	matches, err := fs.Glob(ffs, glob)
+//	if err != nil {
+//		panic(err)
+//	}
+//	for _, f := range matches {
+//		delete(ffs.MapFS, f)
+//	}
+//}
+
 // Touch sets the modification time of a file.
-func (ffs *FakeFS) Touch(path string, t ...time.Time) {
+func (ffs *FakeFS) Touch(filePath string, t ...time.Time) {
 	if len(t) == 0 {
 		t = append(t, time.Now())
 	}
-	f, ok := ffs.MapFS[path]
-	if !ok {
-		ffs.MapFS[path] = &fstest.MapFile{ModTime: t[0]}
-		return
+	file, ok := ffs.MapFS[filePath]
+	if ok {
+		file.ModTime = t[0]
+	} else {
+		ffs.MapFS[filePath] = &fstest.MapFile{ModTime: t[0]}
 	}
-	f.ModTime = t[0]
+	dir := path.Dir(filePath)
+	dirFile, ok := ffs.MapFS[dir]
+	if !ok {
+		log.Fatal("Directory not found. Forgot to call SetFiles?", "file", filePath)
+	}
+	if dirFile.ModTime.Before(file.ModTime) {
+		dirFile.ModTime = file.ModTime
+	}
 }
 
 func ModTime(ts string) map[string]any   { return map[string]any{fakeFileInfoModTime: ts} }
 func BirthTime(ts string) map[string]any { return map[string]any{fakeFileInfoBirthTime: ts} }
+
+func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any) {
+	f, ok := ffs.MapFS[filePath]
+	if !ok {
+		panic(fmt.Errorf("file %s not found", filePath))
+	}
+	var tags map[string]any
+	err := json.Unmarshal(f.Data, &tags)
+	if err != nil {
+		panic(err)
+	}
+	for k, v := range newTags {
+		tags[k] = v
+	}
+	data, _ := json.Marshal(tags)
+	f.Data = data
+	ffs.Touch(filePath)
+}
 
 func Template(t map[string]any) func(...map[string]any) *fstest.MapFile {
 	return func(tags ...map[string]any) *fstest.MapFile {
@@ -92,11 +147,14 @@ func File(tags ...map[string]any) *fstest.MapFile {
 			ts[k] = v
 		}
 	}
+	modTime := time.Now()
+	if mt, ok := ts[fakeFileInfoModTime]; !ok {
+		ts[fakeFileInfoModTime] = time.Now().Format(time.RFC3339)
+	} else {
+		modTime, _ = time.Parse(time.RFC3339, mt.(string))
+	}
 	if _, ok := ts[fakeFileInfoBirthTime]; !ok {
 		ts[fakeFileInfoBirthTime] = time.Now().Format(time.RFC3339)
-	}
-	if _, ok := ts[fakeFileInfoModTime]; !ok {
-		ts[fakeFileInfoModTime] = time.Now().Format(time.RFC3339)
 	}
 	if _, ok := ts[fakeFileInfoMode]; !ok {
 		ts[fakeFileInfoMode] = fs.ModePerm
@@ -105,7 +163,7 @@ func File(tags ...map[string]any) *fstest.MapFile {
 	if _, ok := ts[fakeFileInfoSize]; !ok {
 		ts[fakeFileInfoSize] = int64(len(data))
 	}
-	return &fstest.MapFile{Data: data}
+	return &fstest.MapFile{Data: data, ModTime: modTime, Mode: ts[fakeFileInfoMode].(fs.FileMode)}
 }
 
 func audioProperties(suffix string, bitrate int) map[string]any {
@@ -158,12 +216,9 @@ func (ffs *FakeFS) parseFile(filePath string) (*metadata.Info, error) {
 	for k, v := range data {
 		p.Tags[k] = []string{fmt.Sprintf("%v", v)}
 	}
-	p.FileInfo = ffs.parseFileInfo(filePath, data)
+	file := ffs.MapFS[filePath]
+	p.FileInfo = &fakeFileInfo{path: filePath, tags: data, file: file}
 	return &p, nil
-}
-
-func (ffs *FakeFS) parseFileInfo(path string, tags map[string]any) metadata.FileInfo {
-	return &fakeFileInfo{path: path, tags: tags}
 }
 
 const (
@@ -175,15 +230,16 @@ const (
 
 type fakeFileInfo struct {
 	path string
+	file *fstest.MapFile
 	tags map[string]any
 }
 
 func (ffi *fakeFileInfo) Name() string         { return path.Base(ffi.path) }
 func (ffi *fakeFileInfo) Size() int64          { v, _ := ffi.tags[fakeFileInfoSize].(float64); return int64(v) }
-func (ffi *fakeFileInfo) Mode() fs.FileMode    { return ffi.tags[fakeFileInfoMode].(fs.FileMode) }
+func (ffi *fakeFileInfo) Mode() fs.FileMode    { return ffi.file.Mode }
 func (ffi *fakeFileInfo) IsDir() bool          { return false }
 func (ffi *fakeFileInfo) Sys() any             { return nil }
-func (ffi *fakeFileInfo) ModTime() time.Time   { return ffi.parseTime(fakeFileInfoModTime) }
+func (ffi *fakeFileInfo) ModTime() time.Time   { return ffi.file.ModTime }
 func (ffi *fakeFileInfo) BirthTime() time.Time { return ffi.parseTime(fakeFileInfoBirthTime) }
 func (ffi *fakeFileInfo) parseTime(key string) time.Time {
 	t, _ := time.Parse(time.RFC3339, ffi.tags[key].(string))

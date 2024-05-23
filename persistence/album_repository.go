@@ -162,12 +162,13 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 	return &res[0], err
 }
 
-func (r *albumRepository) Put(m *model.Album) error {
-	_, err := r.put(m.ID, &dbAlbum{Album: m})
+func (r *albumRepository) Put(al *model.Album) error {
+	id, err := r.putByPID(al.PID, al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, m.Genres)
+	al.ID = id
+	return r.updateGenres(al.ID, al.Genres)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
