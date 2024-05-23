@@ -274,6 +274,23 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, err
 }
 
+func (r sqlRepository) putByPID(pid, id string, m interface{}, colsToUpdate ...string) (string, error) {
+	if pid == "" {
+		return "", errors.New("PID is required")
+	}
+	if id != "" {
+		return r.put(id, m, colsToUpdate...)
+	}
+	existsQuery := r.newSelect().Columns("id").From(r.tableName).Where(Eq{"pid": pid})
+
+	var res struct{ ID string }
+	err := r.queryOne(existsQuery, &res)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return "", err
+	}
+	return r.put(res.ID, m, colsToUpdate...)
+}
+
 func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
 	values, err := toSQLArgs(m)
 	if err != nil {
@@ -294,6 +311,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 			}
 		}
 
+		updateValues["id"] = id
 		delete(updateValues, "created_at")
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)

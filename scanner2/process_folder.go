@@ -31,7 +31,7 @@ func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 		var filesToImport []string
 		for afPath, af := range entry.audioFiles {
 			fullPath := filepath.Join(entry.path, afPath)
-			dbTrack, foundInDB := dbTracks[afPath]
+			dbTrack, foundInDB := dbTracks[fullPath]
 			if !foundInDB || entry.job.fullRescan {
 				filesToImport = append(filesToImport, fullPath)
 			} else {
@@ -79,7 +79,6 @@ func loadTagsFromFiles(ctx context.Context, entry *folderEntry, toImport []strin
 			track := md.ToMediaFile()
 			track.LibraryID = entry.job.lib.ID
 			track.FolderID = entry.id
-			track.AlbumID = entry.job.getAlbumID(track.AlbumPID)
 			tracks = append(tracks, track)
 			for _, t := range track.Tags.FlattenAll() {
 				uniqueTags[t.ID] = t
@@ -91,10 +90,6 @@ func loadTagsFromFiles(ctx context.Context, entry *folderEntry, toImport []strin
 }
 
 func loadAlbumsFromMediaFiles(ctx context.Context, entry *folderEntry) model.Albums {
-	// TODO Create Albums from MediaFiles, merge them with what's already in the DB.
-	//		Save albums to the DB first, then using a map of the albums by PID,
-	//	    map the IDs to MediaFile.AlbumID when persisting.
-
 	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumPID })
 	var albums model.Albums
 	for _, group := range grouped {
