@@ -20,12 +20,18 @@ func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
 			}
 
 			// Save all albums to DB
+			// TODO Collect all album PIDs that were affected by the changes in the folder:
+			//  - Albums from modified media_files, previous (from DB) and new PIDs (from FS)
+			//  - Albums from deleted media_files
+			//  Then get get albums from DB, merge modified/missed tracks, refresh and save them back
+			albumIds := map[string]string{}
 			for i := range entry.albums {
 				err = tx.Album(ctx).Put(&entry.albums[i])
 				if err != nil {
 					log.Error(ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 					return err
 				}
+				albumIds[entry.albums[i].PID] = entry.albums[i].ID
 			}
 
 			// Save all tags to DB
@@ -43,6 +49,7 @@ func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
 
 			// Save all tracks to DB
 			for i := range entry.tracks {
+				entry.tracks[i].AlbumID = albumIds[entry.tracks[i].AlbumPID]
 				err = tx.MediaFile(ctx).Put(&entry.tracks[i])
 				if err != nil {
 					log.Error(ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
