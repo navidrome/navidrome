@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing/fstest"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -23,13 +24,17 @@ var template = storagetest.Template
 var track = storagetest.Track
 
 var _ = Describe("Scanner", func() {
-	var fs storagetest.FakeFS
-	var files fstest.MapFS
 	var ctx context.Context
-	var libRepo model.LibraryRepository
+	var lib model.Library
 	var ds model.DataStore
 	var s scanner.Scanner
-	var lib model.Library
+
+	createFS := func(files fstest.MapFS) storagetest.FakeFS {
+		fs := storagetest.FakeFS{}
+		fs.SetFiles(files)
+		storagetest.Register(&fs)
+		return fs
+	}
 
 	BeforeEach(func() {
 		ctx = context.Background()
@@ -37,15 +42,15 @@ var _ = Describe("Scanner", func() {
 		//log.SetLevel(log.LevelTrace)
 		//os.Remove("./test-123.db")
 		//conf.Server.DbPath = "./test-123.db"
-		conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 		//dbpath := utils.TempFileName("scanner-test", ".db")
 		//conf.Server.DbPath = dbpath + "?cache=shared&_foreign_keys=on"
+		conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 		db.Init()
 		ds = persistence.New(db.Db())
-
-		files = fstest.MapFS{}
 		s = scanner2.GetInstance(ctx, ds)
-		storagetest.Register(&fs)
+
+		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
+		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
 	})
 
 	AfterEach(func() {
@@ -59,21 +64,14 @@ var _ = Describe("Scanner", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	JustBeforeEach(func() {
-		// Override the default library
-		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-		libRepo = ds.Library(ctx)
-		Expect(libRepo.Put(&lib)).To(Succeed())
-
-		fs.MapFS = files
-	})
-
 	Describe("Scanner", func() {
 		Context("Simple library, 'artis/album/track - title.mp3'", func() {
+			var help, revolver func(...map[string]any) *fstest.MapFile
+			var fsys storagetest.FakeFS
 			BeforeEach(func() {
-				revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
-				help := template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
-				files = fstest.MapFS{
+				revolver = template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+				help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
+				fsys = createFS(fstest.MapFS{
 					"The Beatles/Revolver/01 - Taxman.mp3":                         revolver(track(1, "Taxman")),
 					"The Beatles/Revolver/02 - Eleanor Rigby.mp3":                  revolver(track(2, "Eleanor Rigby")),
 					"The Beatles/Revolver/03 - I'm Only Sleeping.mp3":              revolver(track(3, "I'm Only Sleeping")),
@@ -81,9 +79,9 @@ var _ = Describe("Scanner", func() {
 					"The Beatles/Help!/01 - Help!.mp3":                             help(track(1, "Help!")),
 					"The Beatles/Help!/02 - The Night Before.mp3":                  help(track(2, "The Night Before")),
 					"The Beatles/Help!/03 - You've Got to Hide Your Love Away.mp3": help(track(3, "You've Got to Hide Your Love Away")),
-				}
+				})
 			})
-			When("First Scan", func() {
+			When("it is the first scan", func() {
 				It("should import all folders", func() {
 					Expect(s.RescanAll(ctx, true)).To(Succeed())
 
@@ -107,7 +105,6 @@ var _ = Describe("Scanner", func() {
 						),
 					))
 				})
-
 				It("should import all albums", func() {
 					Expect(s.RescanAll(ctx, true)).To(Succeed())
 
@@ -123,15 +120,48 @@ var _ = Describe("Scanner", func() {
 					))
 				})
 			})
+			XWhen("a file was changed", func() {
+				It("should update the media_file", func() {
+					Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+					mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf[0].Tags).ToNot(HaveKey("catalognumber"))
+
+					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"catalognumber": "123"})
+					Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+					mf, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf[0].Tags).To(HaveKeyWithValue("catalognumber", []string{"123"}))
+				})
+
+				It("should update the album", func() {
+					Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+					albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(albums[0].CatalogNum).To(BeEmpty())
+					Expect(albums[0].SongCount).To(Equal(3))
+
+					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"catalognumber": "123"})
+					Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+					albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(albums[0].CatalogNum).To(Equal("123"))
+					Expect(albums[0].SongCount).To(Equal(3))
+				})
+			})
 		})
 
 		Context("Same album in two different folders", func() {
 			BeforeEach(func() {
 				revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
-				files = fstest.MapFS{
+				createFS(fstest.MapFS{
 					"The Beatles/Revolver/01 - Taxman.mp3":         revolver(track(1, "Taxman")),
 					"The Beatles/Revolver2/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
-				}
+				})
 			})
 
 			It("should import as one album", func() {
@@ -155,10 +185,10 @@ var _ = Describe("Scanner", func() {
 				conf.Server.Scanner.GroupAlbumReleases = false
 				help := template(_t{"albumartist": "The Beatles", "album": "Help!", "date": 1965})
 				help2 := template(_t{"albumartist": "The Beatles", "album": "Help!", "date": 2000})
-				files = fstest.MapFS{
+				createFS(fstest.MapFS{
 					"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
 					"The Beatles/Help! (remaster)/01 - Help!.mp3": help2(track(1, "Help!")),
-				}
+				})
 			})
 
 			It("should import as two distinct albums", func() {

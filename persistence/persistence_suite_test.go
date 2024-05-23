@@ -44,9 +44,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = model.Album{LibraryID: 1, ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", Genre: "Rock", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the", Discs: model.Discs{}}
-	albumAbbeyRoad     = model.Album{LibraryID: 1, ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", Genre: "Rock", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the", Discs: model.Discs{}}
-	albumRadioactivity = model.Album{LibraryID: 1, ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", Genre: "Electronic", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity", Discs: model.Discs{}}
+	albumSgtPeppers    = model.Album{LibraryID: 1, ID: "101", PID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", Genre: "Rock", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, FullText: " beatles peppers sgt the", Discs: model.Discs{}}
+	albumAbbeyRoad     = model.Album{LibraryID: 1, ID: "102", PID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", Genre: "Rock", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, FullText: " abbey beatles road the", Discs: model.Discs{}}
+	albumRadioactivity = model.Album{LibraryID: 1, ID: "103", PID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", Genre: "Electronic", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, FullText: " kraftwerk radioactivity", Discs: model.Discs{}}
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
@@ -186,7 +186,10 @@ var _ = BeforeSuite(func() {
 	if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
 		panic(err)
 	}
-	al, _ := alr.Get(albumRadioactivity.ID)
+	al, err := alr.Get(albumRadioactivity.ID)
+	if err != nil {
+		panic(err)
+	}
 	albumRadioactivity.Starred = true
 	albumRadioactivity.StarredAt = al.StarredAt
 	testAlbums[2] = albumRadioactivity
