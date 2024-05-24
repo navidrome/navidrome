@@ -284,17 +284,14 @@ func createImage(format string, landscape bool, size int) string {
 	}
 
 	tmpDir := GinkgoT().TempDir()
+	f, _ := os.Create(filepath.Join(tmpDir, "cover."+format))
+	defer f.Close()
 	switch format {
 	case "png":
-		f, _ := os.Create(filepath.Join(tmpDir, "cover.png"))
-		defer f.Close()
 		_ = png.Encode(f, img)
 	case "jpg":
-		f, _ := os.Create(filepath.Join(tmpDir, "cover.jpg"))
-		defer f.Close()
 		_ = jpeg.Encode(f, img, &jpeg.Options{Quality: 75})
 	}
-	// save variable img to variable f
 
 	return tmpDir
 }
