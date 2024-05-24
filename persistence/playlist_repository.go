@@ -334,7 +334,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 		Set("duration", res.Duration).
 		Set("size", res.Size).
 		Set("song_count", res.Count).
-		Set("updated_at", time.Now()).
+		Set("updated_at", timeToSQL(time.Now())).
 		Where(Eq{"id": pls.ID})
 	_, err = r.executeSQL(upd)
 	if err != nil {
