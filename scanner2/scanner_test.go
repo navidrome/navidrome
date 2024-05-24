@@ -207,5 +207,56 @@ var _ = Describe("Scanner", func() {
 				))
 			})
 		})
+
+		Describe("Library changes'", func() {
+			var help, revolver func(...map[string]any) *fstest.MapFile
+			var fsys storagetest.FakeFS
+			BeforeEach(func() {
+				By("Having two MP3 albums")
+				help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
+				revolver = template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+				fsys = createFS(fstest.MapFS{
+					"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
+					"The Beatles/Help!/02 - The Night Before.mp3": help(track(2, "The Night Before")),
+					"The Beatles/Revolver/01 - Taxman.mp3":        revolver(track(1, "Taxman")),
+					"The Beatles/Revolver/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
+				})
+
+				By("Doing a full scan")
+				Expect(s.RescanAll(ctx, true)).To(Succeed())
+				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+			})
+
+			It("add new files to the library", func() {
+				fsys.Add("The Beatles/Revolver/03 - I'm Only Sleeping.mp3", revolver(track(3, "I'm Only Sleeping")))
+
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(5)))
+				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+				Expect(mf.Title).To(Equal("I'm Only Sleeping"))
+			})
+
+			It("replaces a file in the library", func() {
+				fsys.UpdateTags("The Beatles/Revolver/02 - Eleanor Rigby.mp3", _t{"title": "Eleanor Rigby (remix)"})
+
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				Expect(mf.Title).To(Equal("Eleanor Rigby (remix)"))
+			})
+
+			It("detects a file was removed from the library", func() {
+				fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					Filters: squirrel.Eq{"available": true},
+				})).To(Equal(int64(3)))
+				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.Available).To(BeFalse())
+			})
+		})
 	})
 })
