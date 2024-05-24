@@ -269,6 +269,7 @@ type MediaFileRepository interface {
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
+	SetAvailability(MediaFiles, bool) error
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 	FindAllByPath(path string) (MediaFiles, error)
@@ -278,5 +279,4 @@ type MediaFileRepository interface {
 
 	AnnotatedRepository
 	BookmarkableRepository
-	GetByFolder(folderID string) (MediaFiles, error)
 }

@@ -41,6 +41,16 @@ func (ffs *FakeFS) SetFiles(files fstest.MapFS) {
 	ffs.createDirTimestamps()
 }
 
+func (ffs *FakeFS) Add(filePath string, file *fstest.MapFile) {
+	ffs.MapFS[filePath] = file
+	ffs.createDirTimestamps()
+}
+
+func (ffs *FakeFS) Remove(filePath string, when ...time.Time) {
+	ffs.Touch(filePath, when...)
+	delete(ffs.MapFS, filePath)
+}
+
 // createDirTimestamps loops through all entries and creat directories entries in the map with the
 // latest ModTime from any children of that directory.
 func (ffs *FakeFS) createDirTimestamps() bool {
@@ -63,17 +73,6 @@ func (ffs *FakeFS) createDirTimestamps() bool {
 	}
 	return changed
 }
-
-// RmGlob removes all files that match the glob pattern.
-//func (ffs *FakeFS) RmGlob(glob string) {
-//	matches, err := fs.Glob(ffs, glob)
-//	if err != nil {
-//		panic(err)
-//	}
-//	for _, f := range matches {
-//		delete(ffs.MapFS, f)
-//	}
-//}
 
 // Touch sets the modification time of a file.
 func (ffs *FakeFS) Touch(filePath string, t ...time.Time) {
@@ -99,7 +98,7 @@ func (ffs *FakeFS) Touch(filePath string, t ...time.Time) {
 func ModTime(ts string) map[string]any   { return map[string]any{fakeFileInfoModTime: ts} }
 func BirthTime(ts string) map[string]any { return map[string]any{fakeFileInfoBirthTime: ts} }
 
-func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any) {
+func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...time.Time) {
 	f, ok := ffs.MapFS[filePath]
 	if !ok {
 		panic(fmt.Errorf("file %s not found", filePath))
@@ -114,7 +113,7 @@ func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any) {
 	}
 	data, _ := json.Marshal(tags)
 	f.Data = data
-	ffs.Touch(filePath)
+	ffs.Touch(filePath, when...)
 }
 
 func Template(t map[string]any) func(...map[string]any) *fstest.MapFile {

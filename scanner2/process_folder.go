@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -20,7 +21,12 @@ const (
 func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 	return func(entry *folderEntry) (*folderEntry, error) {
 		// Load children mediafiles from DB
-		mfs, err := entry.job.ds.MediaFile(ctx).GetByFolder(entry.id)
+		mfs, err := entry.job.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Eq{"folder_id": entry.id},
+				squirrel.Eq{"available": true},
+			},
+		})
 		if err != nil {
 			log.Error(ctx, "Scanner: Error loading mediafiles from DB", "folder", entry.path, err)
 			return entry, err
@@ -44,7 +50,7 @@ func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 					filesToImport = append(filesToImport, fullPath)
 				}
 			}
-			delete(dbTracks, afPath)
+			delete(dbTracks, fullPath)
 		}
 
 		// Remaining dbTracks are tracks that were not found in the folder, so they should be marked as missing

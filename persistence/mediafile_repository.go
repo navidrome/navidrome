@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
@@ -112,6 +113,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
+	m.Available = true
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
 	id, err := r.putByPID(m.PID, m.ID, &dbMediaFile{MediaFile: m})
@@ -159,16 +161,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
-	if err != nil {
-		return nil, err
-	}
-	return res.toModels(), nil
-}
-
-func (r *mediaFileRepository) GetByFolder(folderID string) (model.MediaFiles, error) {
-	sq := r.newSelect().Columns("*").Where(Eq{"folder_id": folderID})
-	var res dbMediaFiles
-	err := r.queryAll(sq, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +243,24 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", pathLen+2, string(os.PathSeparator)): 0}})
 	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
 	return r.executeSQL(del)
+}
+
+func (r *mediaFileRepository) SetAvailability(mfs model.MediaFiles, available bool) error {
+	for _, mf := range mfs {
+		upd := Update(r.tableName).
+			Set("available", available).
+			Set("updated_at", timeToSQL(time.Now())).
+			Where(And{
+				Eq{"id": mf.ID},
+				Eq{"updated_at": timeToSQL(mf.UpdatedAt)},
+			})
+		c, err := r.executeSQL(upd)
+		if err != nil || c == 0 {
+			log.Error(r.ctx, "Error setting mediafile availability", "id", mf.ID, err)
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *mediaFileRepository) removeNonAlbumArtistIds() error {

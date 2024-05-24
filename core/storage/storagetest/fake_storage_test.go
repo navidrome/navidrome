@@ -76,5 +76,15 @@ var _ = Describe("FakeFS", func() {
 		Expect(root.ModTime()).To(Equal(previousTime))
 		Expect(dirInfo1.ModTime()).To(Equal(previousTime))
 		Expect(dirInfo2.ModTime()).To(Equal(aTimeStamp))
+
+		ffs.Add("U2/Boy/Another.mp3", &fstest.MapFile{ModTime: aTimeStamp})
+		Expect(dirInfo1.ModTime()).To(Equal(previousTime))
+		Expect(dirInfo2.ModTime()).To(Equal(aTimeStamp))
+
+		aTimeStamp = aTimeStamp.Add(time.Hour)
+		ffs.Remove("U2/Boy/Another.mp3", aTimeStamp)
+
+		Expect(dirInfo1.ModTime()).To(Equal(previousTime))
+		Expect(dirInfo2.ModTime()).To(Equal(aTimeStamp))
 	})
 })
