@@ -51,7 +51,7 @@ const hardCodedMusicFolderID = 1
 
 // TODO Remove this method when we have a proper UI to add libraries
 func (r *libraryRepository) StoreMusicFolder() error {
-	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).Set("updated_at", time.Now()).
+	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).Set("updated_at", timeToSQL(time.Now())).
 		Where(Eq{"id": hardCodedMusicFolderID})
 	_, err := r.executeSQL(sq)
 	return err
