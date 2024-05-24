@@ -56,6 +56,13 @@ func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
 					return err
 				}
 			}
+
+			// Mark all missing tracks as not available
+			err = tx.MediaFile(ctx).SetAvailability(entry.missingTracks, false)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
+				return err
+			}
 			return nil
 		})
 		if err != nil {

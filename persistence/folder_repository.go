@@ -61,7 +61,7 @@ func (r folderRepository) Put(lib model.Library, path string) error {
 
 func (r folderRepository) Touch(lib model.Library, path string, t time.Time) error {
 	id := model.FolderID(lib, path)
-	sq := Update(r.tableName).Set("updated_at", t).Where(Eq{"id": id})
+	sq := Update(r.tableName).Set("updated_at", timeToSQL(t)).Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
 	return err
 }
