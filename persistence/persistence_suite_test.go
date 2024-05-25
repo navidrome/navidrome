@@ -55,10 +55,10 @@ var (
 )
 
 var (
-	songDayInALife    = model.MediaFile{LibraryID: 1, ID: "1001", PID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3"), FullText: " a beatles day in life peppers sgt the"}
-	songComeTogether  = model.MediaFile{LibraryID: 1, ID: "1002", PID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Genre: "Rock", Path: P("/beatles/1/come together.mp3"), FullText: " abbey beatles come road the together"}
-	songRadioactivity = model.MediaFile{LibraryID: 1, ID: "1003", PID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Genre: "Electronic", Path: P("/kraft/radio/radio.mp3"), FullText: " kraftwerk radioactivity"}
-	songAntenna       = model.MediaFile{LibraryID: 1, ID: "1004", PID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
+	songDayInALife    = model.MediaFile{LibraryID: 1, ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Genre: "Rock", Path: P("/beatles/1/sgt/a day.mp3"), FullText: " a beatles day in life peppers sgt the"}
+	songComeTogether  = model.MediaFile{LibraryID: 1, ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Genre: "Rock", Path: P("/beatles/1/come together.mp3"), FullText: " abbey beatles come road the together"}
+	songRadioactivity = model.MediaFile{LibraryID: 1, ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Genre: "Electronic", Path: P("/kraft/radio/radio.mp3"), FullText: " kraftwerk radioactivity"}
+	songAntenna       = model.MediaFile{LibraryID: 1, ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID: "103", Genre: "Electronic",
 		Path: P("/kraft/radio/antenna.mp3"), FullText: " antenna kraftwerk",
 		RgAlbumGain: 1.0, RgAlbumPeak: 2.0, RgTrackGain: 3.0, RgTrackPeak: 4.0,

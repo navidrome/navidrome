@@ -21,7 +21,6 @@ type MediaFile struct {
 	Bookmarkable `structs:"-"`
 
 	ID                   string  `structs:"id" json:"id"`
-	PID                  string  `structs:"pid" json:"pid"`
 	LibraryID            int     `structs:"library_id" json:"libraryId"`
 	FolderID             string  `structs:"folder_id" json:"folderId"`
 	Path                 string  `structs:"path" json:"path"`
@@ -77,7 +76,8 @@ type MediaFile struct {
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
-	Tags Tags `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
+	Tags Tags   `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
+	TID  string `structs:"tid"  json:"tid"`            // Unique ID based on all tags
 
 	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
