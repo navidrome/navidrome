@@ -10,10 +10,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 )
 
-func (md Metadata) trackPID() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
-}
-
 func (md Metadata) albumPID() string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", md.mapAlbumArtistName(), md.mapAlbumName()))
 	if !conf.Server.Scanner.GroupAlbumReleases {
