@@ -29,7 +29,7 @@ create table if not exists folder(
 alter table media_file 
     add column folder_id varchar default "" not null;
 alter table media_file 
-    add column pid varchar default id not null;
+    add column tid varchar default id not null;
 alter table media_file 
     add column album_pid varchar default album_id not null;
 alter table media_file
@@ -37,8 +37,8 @@ alter table media_file
 
 create index if not exists media_file_folder_id_ix
  	on media_file (folder_id);
-create unique index if not exists media_file_pid_ix
-	on media_file (pid);
+create index if not exists media_file_tid_ix
+	on media_file (tid);
 create index if not exists media_file_album_pid_ix
 	on media_file (album_pid);
 

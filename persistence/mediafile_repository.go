@@ -113,9 +113,10 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
+	m.TID = m.Tags.TID()
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
-	id, err := r.putByPID(m.PID, m.ID, &dbMediaFile{MediaFile: m})
+	id, err := r.put(m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err
 	}
