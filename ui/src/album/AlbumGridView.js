@@ -118,7 +118,7 @@ const Cover = withContentRect('bounds')(({
     <div ref={measureRef}>
       <div ref={dragAlbumRef}>
         <img
-          src={subsonic.getCoverArtUrl(record, 300)}
+          src={subsonic.getCoverArtUrl(record, 300, true)}
           alt={record.name}
           className={classes.cover}
         />

@@ -20,8 +20,8 @@ import (
 var ErrUnavailable = errors.New("artwork unavailable")
 
 type Artwork interface {
-	Get(ctx context.Context, artID model.ArtworkID, size int) (io.ReadCloser, time.Time, error)
-	GetOrPlaceholder(ctx context.Context, id string, size int) (io.ReadCloser, time.Time, error)
+	Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, time.Time, error)
+	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
 }
 
 func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em core.ExternalMetadata) Artwork {
@@ -41,10 +41,10 @@ type artworkReader interface {
 	Reader(ctx context.Context) (io.ReadCloser, string, error)
 }
 
-func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int) (reader io.ReadCloser, lastUpdate time.Time, err error) {
+func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (reader io.ReadCloser, lastUpdate time.Time, err error) {
 	artID, err := a.getArtworkId(ctx, id)
 	if err == nil {
-		reader, lastUpdate, err = a.Get(ctx, artID, size)
+		reader, lastUpdate, err = a.Get(ctx, artID, size, square)
 	}
 	if errors.Is(err, ErrUnavailable) {
 		if artID.Kind == model.KindArtistArtwork {
@@ -57,8 +57,8 @@ func (a *artwork) GetOrPlaceholder(ctx context.Context, id string, size int) (re
 	return reader, lastUpdate, err
 }
 
-func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int) (reader io.ReadCloser, lastUpdate time.Time, err error) {
-	artReader, err := a.getArtworkReader(ctx, artID, size)
+func (a *artwork) Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (reader io.ReadCloser, lastUpdate time.Time, err error) {
+	artReader, err := a.getArtworkReader(ctx, artID, size, square)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -107,11 +107,11 @@ func (a *artwork) getArtworkId(ctx context.Context, id string) (model.ArtworkID,
 	return artID, nil
 }
 
-func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, size int) (artworkReader, error) {
+func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, size int, square bool) (artworkReader, error) {
 	var artReader artworkReader
 	var err error
-	if size > 0 {
-		artReader, err = resizedFromOriginal(ctx, a, artID, size)
+	if size > 0 || square {
+		artReader, err = resizedFromOriginal(ctx, a, artID, size, square)
 	} else {
 		switch artID.Kind {
 		case model.KindArtistArtwork:

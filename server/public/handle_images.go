@@ -36,7 +36,7 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	}
 	size := p.IntOr("size", 0)
 
-	imgReader, lastUpdate, err := pub.artwork.Get(ctx, artId, size)
+	imgReader, lastUpdate, err := pub.artwork.Get(ctx, artId, size, false)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
