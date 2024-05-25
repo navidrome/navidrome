@@ -146,11 +146,16 @@ func Template(t map[string]any) func(...map[string]any) *fstest.MapFile {
 	}
 }
 
-func Track(num int, title string) map[string]any {
-	t := audioProperties("mp3", 320)
-	t["title"] = title
-	t["track"] = num
-	return t
+func Track(num int, title string, tags ...map[string]any) map[string]any {
+	ts := audioProperties("mp3", 320)
+	ts["title"] = title
+	ts["track"] = num
+	for _, t := range tags {
+		for k, v := range t {
+			ts[k] = v
+		}
+	}
+	return ts
 }
 
 func MP3(tags ...map[string]any) *fstest.MapFile {
