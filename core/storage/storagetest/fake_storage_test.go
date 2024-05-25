@@ -2,6 +2,7 @@
 package storagetest_test
 
 import (
+	"io/fs"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -57,6 +58,7 @@ var _ = Describe("FakeFS", func() {
 	It("should return ModTime for directories", func() {
 		root := ffs.MapFS["."]
 		dirInfo1, err := ffs.Stat("U2")
+		Expect(err).ToNot(HaveOccurred())
 		dirInfo2, err := ffs.Stat("U2/Boy")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(dirInfo1.ModTime()).To(Equal(root.ModTime))
@@ -64,27 +66,74 @@ var _ = Describe("FakeFS", func() {
 		Expect(dirInfo1.ModTime()).To(Equal(dirInfo2.ModTime()))
 	})
 
-	It("should only update the file's directory ModTime when the file is touched", func() {
-		root, _ := ffs.Stat(".")
-		dirInfo1, _ := ffs.Stat("U2")
-		dirInfo2, _ := ffs.Stat("U2/Boy")
-		previousTime := root.ModTime()
+	When("the file is touched", func() {
+		It("should only update the file and the file's directory ModTime", func() {
+			root, _ := ffs.Stat(".")
+			u2Dir, _ := ffs.Stat("U2")
+			boyDir, _ := ffs.Stat("U2/Boy")
+			previousTime := root.ModTime()
 
-		aTimeStamp := previousTime.Add(time.Hour)
-		ffs.Touch("U2/Boy/Twilight.mp3", aTimeStamp)
+			aTimeStamp := previousTime.Add(time.Hour)
+			ffs.Touch("U2/./Boy/Twilight.mp3", aTimeStamp)
 
-		Expect(root.ModTime()).To(Equal(previousTime))
-		Expect(dirInfo1.ModTime()).To(Equal(previousTime))
-		Expect(dirInfo2.ModTime()).To(Equal(aTimeStamp))
+			twilightFile, err := ffs.Stat("U2/Boy/Twilight.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(twilightFile.ModTime()).To(Equal(aTimeStamp))
 
-		ffs.Add("U2/Boy/Another.mp3", &fstest.MapFile{ModTime: aTimeStamp})
-		Expect(dirInfo1.ModTime()).To(Equal(previousTime))
-		Expect(dirInfo2.ModTime()).To(Equal(aTimeStamp))
+			Expect(root.ModTime()).To(Equal(previousTime))
+			Expect(u2Dir.ModTime()).To(Equal(previousTime))
+			Expect(boyDir.ModTime()).To(Equal(aTimeStamp))
+		})
+	})
 
-		aTimeStamp = aTimeStamp.Add(time.Hour)
-		ffs.Remove("U2/Boy/Another.mp3", aTimeStamp)
+	When("adding/removing files", func() {
+		It("should keep the timestamps correct", func() {
+			root, _ := ffs.Stat(".")
+			u2Dir, _ := ffs.Stat("U2")
+			boyDir, _ := ffs.Stat("U2/Boy")
+			previousTime := root.ModTime()
+			aTimeStamp := previousTime.Add(time.Hour)
 
-		Expect(dirInfo1.ModTime()).To(Equal(previousTime))
-		Expect(dirInfo2.ModTime()).To(Equal(aTimeStamp))
+			ffs.Add("U2/Boy/../Boy/Another.mp3", &fstest.MapFile{ModTime: aTimeStamp})
+			Expect(u2Dir.ModTime()).To(Equal(previousTime))
+			Expect(boyDir.ModTime()).To(Equal(aTimeStamp))
+
+			aTimeStamp = aTimeStamp.Add(time.Hour)
+			ffs.Remove("U2/./Boy/Twilight.mp3", aTimeStamp)
+
+			_, err := ffs.Stat("U2/Boy/Twilight.mp3")
+			Expect(err).To(MatchError(fs.ErrNotExist))
+			Expect(u2Dir.ModTime()).To(Equal(previousTime))
+			Expect(boyDir.ModTime()).To(Equal(aTimeStamp))
+		})
+	})
+
+	When("moving files", func() {
+		It("should allow relative paths", func() {
+			ffs.Move("U2/../U2/Boy/Twilight.mp3", "./Twilight.mp3")
+			Expect(ffs.MapFS).To(HaveKey("Twilight.mp3"))
+			file, err := ffs.Stat("Twilight.mp3")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(file.Name()).To(Equal("Twilight.mp3"))
+		})
+		It("should keep the timestamps correct", func() {
+			root, _ := ffs.Stat(".")
+			u2Dir, _ := ffs.Stat("U2")
+			boyDir, _ := ffs.Stat("U2/Boy")
+			previousTime := root.ModTime()
+			twilightFile, _ := ffs.Stat("U2/Boy/Twilight.mp3")
+			filePreviousTime := twilightFile.ModTime()
+			aTimeStamp := previousTime.Add(time.Hour)
+
+			ffs.Move("U2/Boy/Twilight.mp3", "Twilight.mp3", aTimeStamp)
+
+			Expect(root.ModTime()).To(Equal(aTimeStamp))
+			Expect(u2Dir.ModTime()).To(Equal(previousTime))
+			Expect(boyDir.ModTime()).To(Equal(aTimeStamp))
+
+			Expect(ffs.MapFS).ToNot(HaveKey("U2/Boy/Twilight.mp3"))
+			twilight := ffs.MapFS["Twilight.mp3"]
+			Expect(twilight.ModTime).To(Equal(filePreviousTime))
+		})
 	})
 })
