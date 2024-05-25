@@ -24,7 +24,7 @@ func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 		mfs, err := entry.job.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.And{
 				squirrel.Eq{"folder_id": entry.id},
-				squirrel.Eq{"available": true},
+				squirrel.Eq{"missing": false},
 			},
 		})
 		if err != nil {
