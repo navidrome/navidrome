@@ -11,7 +11,6 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf := model.MediaFile{
 		Tags: md.tags,
 	}
-	mf.PID = md.trackPID()
 	mf.Title = md.mapTrackTitle()
 	mf.Album = md.mapAlbumName()
 	mf.AlbumPID = md.albumPID()
