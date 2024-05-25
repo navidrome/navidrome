@@ -32,6 +32,9 @@ func (s FakeStorage) FS() (storage.MusicFS, error) {
 
 // FakeFS is a fake filesystem that can be used for testing purposes.
 // It implements the storage.MusicFS interface and keeps all files in memory, by using a fstest.MapFS internally.
+// You must NOT add files directly in the MapFS property, but use SetFiles and its other methods instead.
+// This is because the FakeFS keeps track of the latest modification time of directories, simulating the
+// behavior of a real filesystem, and you should not bypass this logic.
 type FakeFS struct {
 	fstest.MapFS
 }
@@ -43,60 +46,55 @@ func (ffs *FakeFS) SetFiles(files fstest.MapFS) {
 
 func (ffs *FakeFS) Add(filePath string, file *fstest.MapFile) {
 	ffs.MapFS[filePath] = file
+	ffs.touchContainingFolder(filePath, file.ModTime)
 	ffs.createDirTimestamps()
 }
 
 func (ffs *FakeFS) Remove(filePath string, when ...time.Time) {
-	ffs.Touch(filePath, when...)
+	filePath = path.Clean(filePath)
+	if len(when) == 0 {
+		when = append(when, time.Now())
+	}
+	ffs.touchContainingFolder(filePath, when[0])
 	delete(ffs.MapFS, filePath)
 }
 
-// createDirTimestamps loops through all entries and creat directories entries in the map with the
-// latest ModTime from any children of that directory.
-func (ffs *FakeFS) createDirTimestamps() bool {
-	var changed bool
-	for filePath, file := range ffs.MapFS {
-		dir := path.Dir(filePath)
-		dirFile, ok := ffs.MapFS[dir]
-		if !ok {
-			dirFile = &fstest.MapFile{Mode: fs.ModeDir}
-			ffs.MapFS[dir] = dirFile
-		}
-		if dirFile.ModTime.IsZero() {
-			dirFile.ModTime = file.ModTime
-			changed = true
-		}
+func (ffs *FakeFS) Move(srcPath string, destPath string, when ...time.Time) {
+	if len(when) == 0 {
+		when = append(when, time.Now())
 	}
-	if changed {
-		// If we updated any directory, we need to re-run the loop to update the parent directories
-		ffs.createDirTimestamps()
-	}
-	return changed
+	srcPath = path.Clean(srcPath)
+	destPath = path.Clean(destPath)
+	ffs.MapFS[destPath] = ffs.MapFS[srcPath]
+	ffs.touchContainingFolder(destPath, when[0])
+	ffs.Remove(srcPath, when...)
 }
 
 // Touch sets the modification time of a file.
-func (ffs *FakeFS) Touch(filePath string, t ...time.Time) {
-	if len(t) == 0 {
-		t = append(t, time.Now())
+func (ffs *FakeFS) Touch(filePath string, when ...time.Time) {
+	if len(when) == 0 {
+		when = append(when, time.Now())
 	}
+	filePath = path.Clean(filePath)
 	file, ok := ffs.MapFS[filePath]
 	if ok {
-		file.ModTime = t[0]
+		file.ModTime = when[0]
 	} else {
-		ffs.MapFS[filePath] = &fstest.MapFile{ModTime: t[0]}
+		ffs.MapFS[filePath] = &fstest.MapFile{ModTime: when[0]}
 	}
+	ffs.touchContainingFolder(filePath, file.ModTime)
+}
+
+func (ffs *FakeFS) touchContainingFolder(filePath string, ts time.Time) {
 	dir := path.Dir(filePath)
 	dirFile, ok := ffs.MapFS[dir]
 	if !ok {
 		log.Fatal("Directory not found. Forgot to call SetFiles?", "file", filePath)
 	}
-	if dirFile.ModTime.Before(file.ModTime) {
-		dirFile.ModTime = file.ModTime
+	if dirFile.ModTime.Before(ts) {
+		dirFile.ModTime = ts
 	}
 }
-
-func ModTime(ts string) map[string]any   { return map[string]any{fakeFileInfoModTime: ts} }
-func BirthTime(ts string) map[string]any { return map[string]any{fakeFileInfoBirthTime: ts} }
 
 func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...time.Time) {
 	f, ok := ffs.MapFS[filePath]
@@ -115,6 +113,32 @@ func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...t
 	f.Data = data
 	ffs.Touch(filePath, when...)
 }
+
+// createDirTimestamps loops through all entries and create/updates directories entries in the map with the
+// latest ModTime from any children of that directory.
+func (ffs *FakeFS) createDirTimestamps() bool {
+	var changed bool
+	for filePath, file := range ffs.MapFS {
+		dir := path.Dir(filePath)
+		dirFile, ok := ffs.MapFS[dir]
+		if !ok {
+			dirFile = &fstest.MapFile{Mode: fs.ModeDir}
+			ffs.MapFS[dir] = dirFile
+		}
+		if dirFile.ModTime.IsZero() {
+			dirFile.ModTime = file.ModTime
+			changed = true
+		}
+	}
+	if changed {
+		// If we updated any directory, we need to re-run the loop to create any parent directories
+		ffs.createDirTimestamps()
+	}
+	return changed
+}
+
+func ModTime(ts string) map[string]any   { return map[string]any{fakeFileInfoModTime: ts} }
+func BirthTime(ts string) map[string]any { return map[string]any{fakeFileInfoBirthTime: ts} }
 
 func Template(t map[string]any) func(...map[string]any) *fstest.MapFile {
 	return func(tags ...map[string]any) *fstest.MapFile {
