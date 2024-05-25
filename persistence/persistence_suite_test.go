@@ -119,8 +119,7 @@ var _ = BeforeSuite(func() {
 
 	mr := NewMediaFileRepository(ctx, conn)
 	for i := range testSongs {
-		s := testSongs[i]
-		err := mr.Put(&s)
+		err := mr.Put(&testSongs[i])
 		if err != nil {
 			panic(err)
 		}

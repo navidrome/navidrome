@@ -251,11 +251,11 @@ var _ = Describe("Scanner", func() {
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
-					Filters: squirrel.Eq{"available": true},
+					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(3)))
 				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mf.Available).To(BeFalse())
+				Expect(mf.Missing).To(BeTrue())
 			})
 
 			It("detects a file was moved to a different folder", func() {
@@ -264,7 +264,7 @@ var _ = Describe("Scanner", func() {
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
-					Filters: squirrel.Eq{"available": true},
+					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(4)))
 
 				// TODO Moves should remove the old media_file entry. How to detect it is a move and not adding a new duplicate?
@@ -274,7 +274,7 @@ var _ = Describe("Scanner", func() {
 				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Title).To(Equal("Eleanor Rigby"))
-				Expect(mf.Available).To(BeTrue())
+				Expect(mf.Missing).To(BeFalse())
 			})
 		})
 	})
