@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("Tag", func() {
+var _ = Describe("Tag", func() {
 	Describe("NewTag", func() {
 		It("should create a new tag", func() {
 			tag := NewTag("genre", "Rock")
