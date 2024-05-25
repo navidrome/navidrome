@@ -274,14 +274,11 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, err
 }
 
-func (r sqlRepository) putByPID(pid, id string, m interface{}, colsToUpdate ...string) (string, error) {
-	if pid == "" {
-		return "", errors.New("PID is required")
-	}
+func (r sqlRepository) putByMatch(filter Sqlizer, id string, m interface{}, colsToUpdate ...string) (string, error) {
 	if id != "" {
 		return r.put(id, m, colsToUpdate...)
 	}
-	existsQuery := r.newSelect().Columns("id").From(r.tableName).Where(Eq{"pid": pid})
+	existsQuery := r.newSelect().Columns("id").From(r.tableName).Where(filter)
 
 	var res struct{ ID string }
 	err := r.queryOne(existsQuery, &res)
