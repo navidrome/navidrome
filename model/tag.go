@@ -1,8 +1,10 @@
 package model
 
 import (
+	"cmp"
 	"crypto/md5"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
@@ -52,6 +54,21 @@ func (t Tags) FlattenAll() TagList {
 		}
 	}
 	return tags
+}
+
+func (t *Tags) TID() string {
+	if len(*t) == 0 {
+		return ""
+	}
+	all := t.FlattenAll()
+	slices.SortFunc(all, func(a, b Tag) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+	sum := md5.New()
+	for _, tag := range all {
+		sum.Write([]byte(tag.ID))
+	}
+	return fmt.Sprintf("%x", sum.Sum(nil))
 }
 
 type TagRepository interface {
