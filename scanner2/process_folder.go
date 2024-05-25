@@ -22,10 +22,7 @@ func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 	return func(entry *folderEntry) (*folderEntry, error) {
 		// Load children mediafiles from DB
 		mfs, err := entry.job.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Eq{"folder_id": entry.id},
-				squirrel.Eq{"missing": false},
-			},
+			Filters: squirrel.And{squirrel.Eq{"folder_id": entry.id}},
 		})
 		if err != nil {
 			log.Error(ctx, "Scanner: Error loading mediafiles from DB", "folder", entry.path, err)
