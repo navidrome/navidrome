@@ -33,7 +33,7 @@ alter table media_file
 alter table media_file 
     add column album_pid varchar default album_id not null;
 alter table media_file
-	add column available boolean default true not null;
+	add column missing boolean default false not null;
 
 create index if not exists media_file_folder_id_ix
  	on media_file (folder_id);
