@@ -113,7 +113,6 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	m.Available = true
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
 	id, err := r.putByPID(m.PID, m.ID, &dbMediaFile{MediaFile: m})
@@ -245,18 +244,19 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 	return r.executeSQL(del)
 }
 
-func (r *mediaFileRepository) SetAvailability(mfs model.MediaFiles, available bool) error {
+func (r *mediaFileRepository) MarkMissing(mfs model.MediaFiles, missing bool) error {
 	for _, mf := range mfs {
 		upd := Update(r.tableName).
-			Set("available", available).
+			Set("missing", missing).
 			Set("updated_at", timeToSQL(time.Now())).
 			Where(And{
 				Eq{"id": mf.ID},
+				Eq{"missing": !missing},
 				Eq{"updated_at": timeToSQL(mf.UpdatedAt)},
 			})
 		c, err := r.executeSQL(upd)
 		if err != nil || c == 0 {
-			log.Error(r.ctx, "Error setting mediafile availability", "id", mf.ID, err)
+			log.Error(r.ctx, "Error setting mediafile missing flag", "id", mf.ID, err)
 			return err
 		}
 	}
