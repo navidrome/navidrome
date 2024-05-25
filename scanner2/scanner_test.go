@@ -236,13 +236,22 @@ var _ = Describe("Scanner", func() {
 				Expect(mf.Title).To(Equal("I'm Only Sleeping"))
 			})
 
-			It("replaces a file in the library", func() {
+			It("update tags of a file in the library", func() {
 				fsys.UpdateTags("The Beatles/Revolver/02 - Eleanor Rigby.mp3", _t{"title": "Eleanor Rigby (remix)"})
 
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
 				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(mf.Title).To(Equal("Eleanor Rigby (remix)"))
+			})
+
+			It("upgrade file with same format in the library", func() {
+				fsys.Add("The Beatles/Revolver/01 - Taxman.mp3", revolver(track(1, "Taxman", _t{"bitrate": 640})))
+
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/01 - Taxman.mp3")
+				Expect(mf.BitRate).To(Equal(640))
 			})
 
 			It("detects a file was removed from the library", func() {
