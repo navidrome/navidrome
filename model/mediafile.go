@@ -79,7 +79,7 @@ type MediaFile struct {
 
 	Tags Tags `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
 
-	Available bool      `structs:"available" json:"available"`  // If the file is available to be played
+	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
@@ -269,7 +269,7 @@ type MediaFileRepository interface {
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
-	SetAvailability(MediaFiles, bool) error
+	MarkMissing(MediaFiles, bool) error
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 	FindAllByPath(path string) (MediaFiles, error)
