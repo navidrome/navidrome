@@ -198,15 +198,12 @@ func (mfs MediaFiles) ToAlbum() Album {
 }
 
 func allOrNothing(items []string) (string, int) {
+	sort.Strings(items)
 	items = slices.Compact(items)
-	if len(items) == 1 {
-		return items[0], 1
-	}
-	if len(items) > 1 {
-		sort.Strings(items)
+	if len(items) != 1 {
 		return "", len(slices.Compact(items))
 	}
-	return "", 0
+	return items[0], 1
 }
 
 func minMax(items []int) (int, int) {
