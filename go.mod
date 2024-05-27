@@ -34,7 +34,7 @@ require (
 	github.com/mattn/go-zglob v0.0.4
 	github.com/microcosm-cc/bluemonday v1.0.26
 	github.com/mileusna/useragent v1.3.4
-	github.com/onsi/ginkgo/v2 v2.17.3
+	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pocketbase/dbx v1.10.1
