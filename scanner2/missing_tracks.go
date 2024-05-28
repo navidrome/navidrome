@@ -2,6 +2,7 @@ package scanner2
 
 import (
 	"context"
+	"path"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
@@ -58,19 +59,22 @@ func processMissingTracks(ctx context.Context, ds model.DataStore) ppl.StageFn[*
 		err := ds.WithTx(func(tx model.DataStore) error {
 			for _, ms := range in.missing {
 				for _, mt := range in.matched {
+					// Check if the missing track is the exact same as one of the matched tracks
 					if ms.Hash() == mt.Hash() {
-						log.Debug(ctx, "Scanner: Found missing track", "missing", ms.Path, "matched", mt.Path)
-						discardedID := ms.ID
-						ms.ID = mt.ID
-						ms.Missing = false
-						ms.Path = mt.Path
-						ms.FolderID = mt.FolderID
-						err := tx.MediaFile(ctx).Put(&ms)
+						log.Debug(ctx, "Scanner: Found missing track", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name)
+						err := moveMatched(ctx, tx, mt, ms)
 						if err != nil {
+							log.Error(ctx, "Scanner: Error moving matched track", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name, err)
 							return err
 						}
-						err = tx.MediaFile(ctx).Delete(discardedID)
+						continue
+					}
+					// Check if the missing track has the same tags and filename as one of the matched tracks
+					if ms.Tags.Hash() == mt.Tags.Hash() && baseName(ms.Path) == baseName(mt.Path) {
+						log.Debug(ctx, "Scanner: Found upgraded track with same tags", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name)
+						err := moveMatched(ctx, tx, mt, ms)
 						if err != nil {
+							log.Error(ctx, "Scanner: Error moving upgraded track", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name, err)
 							return err
 						}
 					}
@@ -80,4 +84,20 @@ func processMissingTracks(ctx context.Context, ds model.DataStore) ppl.StageFn[*
 		})
 		return nil, err
 	}
+}
+
+func moveMatched(ctx context.Context, tx model.DataStore, mt model.MediaFile, ms model.MediaFile) error {
+	discardedID := mt.ID
+	mt.ID = ms.ID
+	err := tx.MediaFile(ctx).Put(&mt)
+	if err != nil {
+		return err
+	}
+	return tx.MediaFile(ctx).Delete(discardedID)
+}
+
+func baseName(filePath string) string {
+	p := path.Base(filePath)
+	ext := path.Ext(p)
+	return p[:len(p)-len(ext)]
 }
