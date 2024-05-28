@@ -8,7 +8,21 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model"
 )
+
+func (md Metadata) trackPID(mf model.MediaFile) string {
+	value := ""
+	if mf.MbzReleaseTrackID != "" {
+		value = mf.MbzReleaseTrackID
+	} else if value == "" && mf.TrackNumber > 0 {
+		value = fmt.Sprintf("%s\\%02d\\%02d", md.albumPID(), mf.DiscNumber, mf.TrackNumber)
+	} else {
+		value = fmt.Sprintf("%s\\%s", md.albumPID(), md.mapTrackTitle())
+	}
+
+	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(value))))
+}
 
 func (md Metadata) albumPID() string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", md.mapAlbumArtistName(), md.mapAlbumName()))
@@ -36,6 +50,7 @@ func (md Metadata) mapTrackTitle() string {
 		return title
 	}
 	s := md.FilePath()
+	s = path.Base(s)
 	e := path.Ext(s)
 	return strings.TrimSuffix(s, e)
 }

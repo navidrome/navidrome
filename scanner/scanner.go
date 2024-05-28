@@ -225,7 +225,7 @@ func (s *scanner) Status(context.Context) (*StatusInfo, error) {
 func (s *scanner) updateLastModifiedSince(ctx context.Context, folder string, t time.Time) {
 	lib := s.libs[folder]
 	id := lib.ID
-	if err := s.ds.Library(ctx).UpdateLastScan(id, t); err != nil {
+	if err := s.ds.Library(ctx).UpdateLastScanCompletedAt(id, t); err != nil {
 		log.Error("Error updating DB after scan", err)
 	}
 	lib.LastScanAt = t

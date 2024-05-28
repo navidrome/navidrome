@@ -113,7 +113,6 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	m.TID = m.Tags.TID()
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
@@ -253,7 +252,6 @@ func (r *mediaFileRepository) MarkMissing(mfs model.MediaFiles, missing bool) er
 			Where(And{
 				Eq{"id": mf.ID},
 				Eq{"missing": !missing},
-				Eq{"updated_at": timeToSQL(mf.UpdatedAt)},
 			})
 		c, err := r.executeSQL(upd)
 		if err != nil || c == 0 {
@@ -262,6 +260,29 @@ func (r *mediaFileRepository) MarkMissing(mfs model.MediaFiles, missing bool) er
 		}
 	}
 	return nil
+}
+
+func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...model.QueryOptions) (model.MediaFiles, error) {
+	subQ := r.newSelect().Columns("pid").
+		Join("library on media_file.library_id = library.id").
+		Where(And{
+			ConcatExpr("media_file.updated_at > library.last_scan_started_at"),
+			Eq{"media_file.missing": true},
+			Eq{"library.id": libId},
+		})
+	subQText, subQArgs, err := subQ.PlaceholderFormat(Question).ToSql()
+	if err != nil {
+		return nil, err
+	}
+	sel := r.selectMediaFile(pagination...).
+		Where("pid in ("+subQText+")", subQArgs...).
+		OrderBy("pid")
+	var res dbMediaFiles
+	err = r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
 }
 
 func (r *mediaFileRepository) removeNonAlbumArtistIds() error {

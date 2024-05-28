@@ -13,7 +13,6 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	}
 	mf.Title = md.mapTrackTitle()
 	mf.Album = md.mapAlbumName()
-	mf.AlbumPID = md.albumPID()
 	mf.Artist = md.mapTrackArtistName()
 	mf.AlbumArtist = md.mapAlbumArtistName()
 	mf.SortTitle = md.String(TitleSort)
@@ -35,7 +34,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.Year, mf.Date = relDate.Year(), string(relDate) // TODO Remove?
 	mf.CatalogNum = md.String(CatalogNumber)
 	mf.MbzRecordingID = md.String(MusicBrainzRecordingID)
-	mf.MbzReleaseTrackID = md.String(MusicBrainzReleaseTrackID)
+	mf.MbzReleaseTrackID = md.String(MusicBrainzTrackID)
 	mf.MbzAlbumID = md.String(MusicBrainzAlbumID)
 	mf.MbzArtistID = md.String(MusicBrainzArtistID)
 	mf.MbzAlbumArtistID = md.String(MusicBrainzAlbumArtistID)
@@ -56,6 +55,9 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.Size = md.Size()
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
+
+	mf.PID = md.trackPID(mf)
+	mf.AlbumPID = md.albumPID()
 
 	return mf
 }
