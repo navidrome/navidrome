@@ -43,7 +43,7 @@ func processFolder(ctx context.Context) pipeline.StageFn[*folderEntry] {
 					log.Warn(ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
 					return nil, err
 				}
-				if info.ModTime().After(dbTrack.UpdatedAt) {
+				if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
 					filesToImport = append(filesToImport, fullPath)
 				}
 			}

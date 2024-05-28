@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -40,7 +39,6 @@ var _ = Describe("Scanner", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 
-		log.SetLevel(log.LevelError)
 		//os.Remove("./test-123.db")
 		//conf.Server.DbPath = "./test-123.db"
 		conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
@@ -333,6 +331,61 @@ var _ = Describe("Scanner", func() {
 
 				By("Checking the new file has the same ID as the original")
 				Expect(mf.ID).To(Equal(originalId))
+			})
+
+			It("detects old missing tracks being added back", func() {
+				By("Removing a file")
+				origFile := fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+				By("Rescanning the library")
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+				By("Checking the file is marked as missing")
+				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					Filters: squirrel.Eq{"missing": false},
+				})).To(Equal(int64(3)))
+				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.Missing).To(BeTrue())
+
+				By("Adding the file back")
+				fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3", origFile)
+
+				By("Rescanning the library again")
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+				By("Checking the file is not marked as missing")
+				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					Filters: squirrel.Eq{"missing": false},
+				})).To(Equal(int64(4)))
+				mf, err = ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.Missing).To(BeFalse())
+
+				By("Removing it again")
+				fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+				By("Rescanning the library again")
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+				By("Checking the file is marked as missing")
+				mf, err = ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.Missing).To(BeTrue())
+
+				By("Adding the file back in a different folder")
+				fsys.Add("The Beatles/Help!/02 - Eleanor Rigby.mp3", origFile)
+
+				By("Rescanning the library once more")
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+				By("Checking the file was found in the new folder")
+				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					Filters: squirrel.Eq{"missing": false},
+				})).To(Equal(int64(4)))
+				mf, err = ds.MediaFile(ctx).FindByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.Missing).To(BeFalse())
 			})
 		})
 	})
