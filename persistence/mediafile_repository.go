@@ -262,11 +262,12 @@ func (r *mediaFileRepository) MarkMissing(mfs model.MediaFiles, missing bool) er
 	return nil
 }
 
+// GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
+// that were added/updated after the last scan started
 func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...model.QueryOptions) (model.MediaFiles, error) {
 	subQ := r.newSelect().Columns("pid").
 		Join("library on media_file.library_id = library.id").
 		Where(And{
-			ConcatExpr("media_file.updated_at > library.last_scan_started_at"),
 			Eq{"media_file.missing": true},
 			Eq{"library.id": libId},
 		})
@@ -276,6 +277,11 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 	}
 	sel := r.selectMediaFile(pagination...).
 		Where("pid in ("+subQText+")", subQArgs...).
+		Where(Or{
+			Eq{"missing": true},
+			ConcatExpr("media_file.updated_at > library.last_scan_started_at"),
+		}).
+		Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
 	var res dbMediaFiles
 	err = r.queryAll(sel, &res)

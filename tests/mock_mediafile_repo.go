@@ -73,6 +73,17 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	return nil
 }
 
+func (m *MockMediaFileRepo) Delete(id string) error {
+	if m.err {
+		return errors.New("error")
+	}
+	if _, ok := m.data[id]; !ok {
+		return model.ErrNotFound
+	}
+	delete(m.data, id)
+	return nil
+}
+
 func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.err {
 		return errors.New("error")
