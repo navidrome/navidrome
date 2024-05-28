@@ -44,19 +44,26 @@ func (ffs *FakeFS) SetFiles(files fstest.MapFS) {
 	ffs.createDirTimestamps()
 }
 
-func (ffs *FakeFS) Add(filePath string, file *fstest.MapFile) {
+func (ffs *FakeFS) Add(filePath string, file *fstest.MapFile, when ...time.Time) {
+	if len(when) == 0 {
+		when = append(when, time.Now())
+	}
 	ffs.MapFS[filePath] = file
-	ffs.touchContainingFolder(filePath, file.ModTime)
+	ffs.touchContainingFolder(filePath, when[0])
 	ffs.createDirTimestamps()
 }
 
-func (ffs *FakeFS) Remove(filePath string, when ...time.Time) {
+func (ffs *FakeFS) Remove(filePath string, when ...time.Time) *fstest.MapFile {
 	filePath = path.Clean(filePath)
 	if len(when) == 0 {
 		when = append(when, time.Now())
 	}
-	ffs.touchContainingFolder(filePath, when[0])
-	delete(ffs.MapFS, filePath)
+	if f, ok := ffs.MapFS[filePath]; ok {
+		ffs.touchContainingFolder(filePath, when[0])
+		delete(ffs.MapFS, filePath)
+		return f
+	}
+	return nil
 }
 
 func (ffs *FakeFS) Move(srcPath string, destPath string, when ...time.Time) {
