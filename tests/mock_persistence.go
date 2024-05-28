@@ -141,7 +141,7 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 	return db.MockedRadioBuffer
 }
 
-func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
+func (db *MockDataStore) WithTx(block func(model.DataStore) error) error {
 	return block(db)
 }
 
