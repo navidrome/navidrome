@@ -2,6 +2,7 @@ package scanner2
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
@@ -34,32 +35,60 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
 
-	err = s.runPipeline(
+	// Phase 1: Scan all libraries and import new/updated files
+	err = runPipeline(ctx, 1,
 		ppl.NewProducer(produceFolders(ctx, s.ds, libs, fullRescan), ppl.Name("read folders from disk")),
 		ppl.NewStage(processFolder(ctx), ppl.Name("process folder")),
 		ppl.NewStage(persistChanges(ctx), ppl.Name("persist changes")),
 		ppl.NewStage(logFolder(ctx), ppl.Name("log results")),
 	)
 
+	// Phase 2: Process missing files, checking for moves
+	if err == nil {
+		err = runPipeline(ctx, 2,
+			ppl.NewProducer(produceMissingTracks(ctx, s.ds), ppl.Name("load missing tracks from db")),
+			ppl.NewStage(processMissingTracks(ctx, s.ds), ppl.Name("detect moved songs")),
+		)
+	}
+
 	if err != nil {
-		log.Error(ctx, "Scanner: Error scanning libraries", "duration", time.Since(startTime), err)
+		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
+		return err
+	}
+
+	_ = s.ds.WithTx(func(tx model.DataStore) error {
+		for _, lib := range libs {
+			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
+			if err != nil {
+				log.Error(ctx, "Scanner: Error updating last scan completed at", "lib", lib.Name, err)
+			}
+		}
+		return nil
+	})
+
+	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
+	return nil
+}
+
+func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T], stages ...ppl.Stage[T]) error {
+	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phase))
+	var err error
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
+		metrics, err := ppl.Measure(producer, stages...)
+		log.Info(metrics.String(), err)
 	} else {
-		log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
+		err = ppl.Do(producer, stages...)
+	}
+	if err != nil {
+		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phase), err)
+	} else {
+		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phase))
 	}
 	return err
 }
 
-func (s *scanner2) runPipeline(producer ppl.Producer[*folderEntry], stages ...ppl.Stage[*folderEntry]) error {
-	if log.IsGreaterOrEqualTo(log.LevelDebug) {
-		metrics, err := ppl.Measure(producer, stages...)
-		log.Info(metrics.String(), err)
-		return err
-	}
-	return ppl.Do(producer, stages...)
-}
-
 func logFolder(ctx context.Context) func(entry *folderEntry) (out *folderEntry, err error) {
-	return func(entry *folderEntry) (out *folderEntry, err error) {
+	return func(entry *folderEntry) (*folderEntry, error) {
 		log.Debug(ctx, "Scanner: Completed processing folder", " path", entry.path,
 			"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
 			"elapsed", time.Since(entry.startTime))
@@ -67,7 +96,7 @@ func logFolder(ctx context.Context) func(entry *folderEntry) (out *folderEntry, 
 	}
 }
 
-func (s *scanner2) Status(requestCtx context.Context) (*scanner.StatusInfo, error) {
+func (s *scanner2) Status(context.Context) (*scanner.StatusInfo, error) {
 	return &scanner.StatusInfo{}, nil
 }
 

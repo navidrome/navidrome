@@ -21,15 +21,18 @@ create table if not exists folder(
 	    		 	on delete cascade,
 	path varchar default '' not null,
 	name varchar default '' not null,
-	updated_at timestamp default current_timestamp not null,
-	created_at timestamp default current_timestamp not null,
+	updated_at datetime default current_timestamp not null,
+	created_at datetime default current_timestamp not null,
 	parent_id varchar default '' not null
 );
+
+alter table library
+	add column last_scan_started_at datetime default '0000-00-00 00:00:00' not null;
 
 alter table media_file 
     add column folder_id varchar default "" not null;
 alter table media_file 
-    add column tid varchar default id not null;
+    add column pid varchar default id not null;
 alter table media_file 
     add column album_pid varchar default album_id not null;
 alter table media_file
@@ -37,10 +40,12 @@ alter table media_file
 
 create index if not exists media_file_folder_id_ix
  	on media_file (folder_id);
-create index if not exists media_file_tid_ix
-	on media_file (tid);
+create index if not exists media_file_pid_ix
+	on media_file (pid);
 create index if not exists media_file_album_pid_ix
 	on media_file (album_pid);
+create index if not exists media_file_missing_ix
+	on media_file (missing,updated_at);
 
 alter table album
 	add column folder_id varchar default "" not null;
