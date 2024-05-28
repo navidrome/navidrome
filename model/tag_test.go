@@ -44,7 +44,7 @@ var _ = Describe("Tag", func() {
 			Expect(tags.Values("artist")).To(ConsistOf("The Beatles"))
 		})
 
-		Describe("TID", func() {
+		Describe("Hash", func() {
 			It("should always return the same value for the same tags ", func() {
 				tags1 := Tags{
 					"genre": {"Rock", "Pop"},
@@ -52,7 +52,7 @@ var _ = Describe("Tag", func() {
 				tags2 := Tags{
 					"Genre": {"rock", "pop"},
 				}
-				Expect(tags1.TID()).To(Equal(tags2.TID()))
+				Expect(tags1.Hash()).To(Equal(tags2.Hash()))
 			})
 		})
 	})

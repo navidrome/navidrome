@@ -22,6 +22,10 @@ func produceFolders(ctx context.Context, ds model.DataStore, libs []model.Librar
 	go func() {
 		defer close(jobChan)
 		for _, lib := range libs {
+			err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
+			if err != nil {
+				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
+			}
 			job, err := newScanJob(ctx, ds, lib, fullRescan)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)

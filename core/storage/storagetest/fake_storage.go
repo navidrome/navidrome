@@ -20,10 +20,10 @@ import (
 // It is used for testing purposes.
 type FakeStorage struct{ fs *FakeFS }
 
-// Register registers the FakeStorage for the "fake" scheme. To use it, set the model.Library's Path to "fake:///music".
-// The storage registered will always return the same FakeFS instance.
-func Register(fs *FakeFS) {
-	storage.Register("fake", func(url url.URL) storage.Storage { return &FakeStorage{fs: fs} })
+// Register registers the FakeStorage for the given scheme. To use it, set the model.Library's Path to "fake:///music",
+// and register a FakeFS with schema = "fake". The storage registered will always return the same FakeFS instance.
+func Register(schema string, fs *FakeFS) {
+	storage.Register(schema, func(url url.URL) storage.Storage { return &FakeStorage{fs: fs} })
 }
 
 func (s FakeStorage) FS() (storage.MusicFS, error) {

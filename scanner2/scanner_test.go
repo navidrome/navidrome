@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -32,18 +33,16 @@ var _ = Describe("Scanner", func() {
 	createFS := func(files fstest.MapFS) storagetest.FakeFS {
 		fs := storagetest.FakeFS{}
 		fs.SetFiles(files)
-		storagetest.Register(&fs)
+		storagetest.Register("fake", &fs)
 		return fs
 	}
 
 	BeforeEach(func() {
 		ctx = context.Background()
 
-		//log.SetLevel(log.LevelTrace)
+		log.SetLevel(log.LevelError)
 		//os.Remove("./test-123.db")
 		//conf.Server.DbPath = "./test-123.db"
-		//dbpath := utils.TempFileName("scanner-test", ".db")
-		//conf.Server.DbPath = dbpath + "?cache=shared&_foreign_keys=on"
 		conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 		db.Init()
 		ds = persistence.New(db.Db())
@@ -276,9 +275,12 @@ var _ = Describe("Scanner", func() {
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(4)))
 
-				// TODO Moves should remove the old media_file entry. How to detect it is a move and not adding a new duplicate?
-				//mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
-				//Expect(err).To(MatchError(model.ErrNotFound))
+				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					Filters: squirrel.Eq{"missing": true},
+				})).To(BeZero())
+
+				_, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				Expect(err).To(MatchError(model.ErrNotFound))
 
 				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
