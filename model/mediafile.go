@@ -2,7 +2,9 @@ package model
 
 import (
 	"cmp"
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"mime"
 	"path/filepath"
 	"slices"
@@ -21,6 +23,7 @@ type MediaFile struct {
 	Bookmarkable `structs:"-"`
 
 	ID                   string  `structs:"id" json:"id"`
+	PID                  string  `structs:"pid"  json:"pid"`
 	LibraryID            int     `structs:"library_id" json:"libraryId"`
 	FolderID             string  `structs:"folder_id" json:"folderId"`
 	Path                 string  `structs:"path" json:"path"`
@@ -76,8 +79,7 @@ type MediaFile struct {
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
-	Tags Tags   `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
-	TID  string `structs:"tid"  json:"tid"`            // Unique ID based on all tags
+	Tags Tags `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
 
 	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
@@ -108,6 +110,12 @@ func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 		return nil, err
 	}
 	return lyrics, nil
+}
+
+func (mf MediaFile) Hash() string {
+	sum := md5.New()
+	_, _ = fmt.Fprint(sum, mf.Size, mf.Duration, mf.BitRate, mf.SampleRate, mf.Channels)
+	return fmt.Sprintf("%x", sum.Sum([]byte(mf.Tags.Hash())))
 }
 
 type MediaFiles []MediaFile
@@ -270,8 +278,10 @@ type MediaFileRepository interface {
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	MarkMissing(MediaFiles, bool) error
+	GetMissingAndMatching(libId int, pagination ...QueryOptions) (MediaFiles, error)
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
+
 	FindAllByPath(path string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
 	FindPathsRecursively(basePath string) ([]string, error)
