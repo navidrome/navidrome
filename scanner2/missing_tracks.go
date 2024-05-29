@@ -18,6 +18,12 @@ type missingTracks struct {
 
 func produceMissingTracks(ctx context.Context, ds model.DataStore) ppl.ProducerFn[*missingTracks] {
 	return func(put func(tracks *missingTracks)) error {
+		var putIfMatched = func(mt missingTracks) {
+			if mt.pid != "" && len(mt.matched) > 0 {
+				put(&mt)
+			}
+		}
+
 		libs, err := ds.Library(ctx).GetAll()
 		if err != nil {
 			return err
@@ -33,10 +39,7 @@ func produceMissingTracks(ctx context.Context, ds model.DataStore) ppl.ProducerF
 			mt := missingTracks{lib: lib}
 			for _, mf := range mfs {
 				if mt.pid != mf.PID {
-					// TODO Do not put if there are no matched tracks
-					if mt.pid != "" {
-						put(&mt)
-					}
+					putIfMatched(mt)
 					mt = missingTracks{lib: lib}
 				}
 				mt.pid = mf.PID
@@ -46,9 +49,7 @@ func produceMissingTracks(ctx context.Context, ds model.DataStore) ppl.ProducerF
 					mt.matched = append(mt.matched, mf)
 				}
 			}
-			if mt.pid != "" {
-				put(&mt)
-			}
+			putIfMatched(mt)
 		}
 
 		return nil
