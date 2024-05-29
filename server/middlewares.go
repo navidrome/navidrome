@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -71,7 +72,7 @@ func robotsTXT(fs fs.FS) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/robots.txt") {
 				r.URL.Path = "/robots.txt"
-				http.FileServer(http.FS(fs)).ServeHTTP(w, r)
+				http.FileServerFS(fs).ServeHTTP(w, r)
 			} else {
 				next.ServeHTTP(w, r)
 			}
@@ -209,7 +210,7 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	}
 
-	// Return the new handler function as an http.Handler object.
+	// Return the new handler function as a http.Handler object.
 	return http.HandlerFunc(fn)
 }
 
@@ -244,15 +245,15 @@ func serverAddress(r *http.Request) (scheme, host string) {
 		}
 		xfh = xfh[:i]
 	}
-	host = FirstOr(r.Host, xfh)
+	host = cmp.Or(xfh, r.Host)
 
 	// Determine the protocol and scheme of the request based on the presence of
 	// X-Forwarded-* headers or the scheme of the request URL.
-	scheme = FirstOr(
-		protocol,
+	scheme = cmp.Or(
 		r.Header.Get(xForwardedProto),
 		r.Header.Get(xForwardedScheme),
 		r.URL.Scheme,
+		protocol,
 	)
 
 	// If the request host has changed due to the X-Forwarded-Host header, log a trace

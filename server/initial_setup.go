@@ -15,19 +15,24 @@ import (
 )
 
 func initialSetup(ds model.DataStore) {
+	ctx := context.TODO()
 	_ = ds.WithTx(func(tx model.DataStore) error {
-		properties := ds.Property(context.TODO())
+		if err := tx.Library(ctx).StoreMusicFolder(); err != nil {
+			return err
+		}
+
+		properties := tx.Property(ctx)
 		_, err := properties.Get(consts.InitialSetupFlagKey)
 		if err == nil {
 			return nil
 		}
 		log.Info("Running initial setup")
-		if err = createJWTSecret(ds); err != nil {
+		if err = createJWTSecret(tx); err != nil {
 			return err
 		}
 
 		if conf.Server.DevAutoCreateAdminPassword != "" {
-			if err = createInitialAdminUser(ds, conf.Server.DevAutoCreateAdminPassword); err != nil {
+			if err = createInitialAdminUser(tx, conf.Server.DevAutoCreateAdminPassword); err != nil {
 				return err
 			}
 		}

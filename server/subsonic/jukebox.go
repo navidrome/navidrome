@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -29,13 +30,20 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	user := getUser(ctx)
 	p := req.Params(r)
 
+	if !conf.Server.Jukebox.Enabled {
+		return nil, newError(responses.ErrorGeneric, "Jukebox is disabled")
+	}
+
+	if conf.Server.Jukebox.AdminOnly && !user.IsAdmin {
+		return nil, newError(responses.ErrorAuthorizationFail, "Jukebox is admin only")
+	}
+
 	actionString, err := p.String("action")
 	if err != nil {
 		return nil, err
 	}
 
-	pbServer := playback.GetInstance()
-	pb, err := pbServer.GetDeviceForUser(user.UserName)
+	pb, err := api.playback.GetDeviceForUser(user.UserName)
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +78,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
-
 		offset := p.IntOr("offset", 0)
-		if err != nil {
-			offset = 0
-		}
-
 		return createResponse(pb.Skip(ctx, index, offset))
 	case ActionAdd:
 		ids, _ := p.Strings("id")

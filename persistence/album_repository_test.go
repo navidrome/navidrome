@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,7 +21,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	BeforeEach(func() {
 		ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe"})
-		repo = NewAlbumRepository(ctx, getDBXBuilder())
+		repo = NewAlbumRepository(ctx, NewDBXBuilder(db.Db()))
 	})
 
 	Describe("Get", func() {
@@ -100,7 +101,7 @@ var _ = Describe("AlbumRepository", func() {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
 
 					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
 						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
 					}
@@ -123,7 +124,7 @@ var _ = Describe("AlbumRepository", func() {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
 
 					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
 						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
 					}

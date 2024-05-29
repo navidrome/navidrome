@@ -26,7 +26,7 @@ type (
 	}
 )
 
-func walkDirTree(ctx context.Context, rootFolder string) (<-chan dirStats, chan error) {
+func walkDirTree(ctx context.Context, rootFolder string) (<-chan dirStats, <-chan error) {
 	results := make(chan dirStats)
 	errC := make(chan error)
 	go func() {

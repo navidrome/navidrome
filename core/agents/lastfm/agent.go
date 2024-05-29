@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/cache"
 )
 
 const (
@@ -47,7 +47,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
 	return l
 }

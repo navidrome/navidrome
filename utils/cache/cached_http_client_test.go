@@ -1,4 +1,4 @@
-package utils
+package cache
 
 import (
 	"fmt"
@@ -12,9 +12,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("CachedHttpClient", func() {
+var _ = Describe("HTTPClient", func() {
 	Context("GET", func() {
-		var chc *CachedHTTPClient
+		var chc *HTTPClient
 		var ts *httptest.Server
 		var requestsReceived int
 		var header string
@@ -25,7 +25,7 @@ var _ = Describe("CachedHttpClient", func() {
 				header = r.Header.Get("head")
 				_, _ = fmt.Fprintf(w, "Hello, %s", r.URL.Query()["name"])
 			}))
-			chc = NewCachedHTTPClient(http.DefaultClient, consts.DefaultHttpClientTimeOut)
+			chc = NewHTTPClient(http.DefaultClient, consts.DefaultHttpClientTimeOut)
 		})
 
 		AfterEach(func() {
@@ -73,7 +73,7 @@ var _ = Describe("CachedHttpClient", func() {
 
 		It("expires responses after TTL", func() {
 			requestsReceived = 0
-			chc = NewCachedHTTPClient(http.DefaultClient, 10*time.Millisecond)
+			chc = NewHTTPClient(http.DefaultClient, 10*time.Millisecond)
 
 			r, _ := http.NewRequest("GET", ts.URL+"?name=doe", nil)
 			_, err := chc.Do(r)

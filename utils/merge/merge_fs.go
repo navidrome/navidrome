@@ -1,4 +1,4 @@
-package utils
+package merge
 
 import (
 	"errors"
@@ -7,15 +7,15 @@ import (
 	"sort"
 )
 
-// MergeFS implements a simple merged fs.FS, that can combine a Base FS with an Overlay FS. The semantics are:
+// FS implements a simple merged fs.FS, that can combine a Base FS with an Overlay FS. The semantics are:
 // - Files from the Overlay FS will override files with the same name in the Base FS
 // - Directories are combined, with priority for the Overlay FS over the Base FS for files with matching names
-type MergeFS struct {
+type FS struct {
 	Base    fs.FS
 	Overlay fs.FS
 }
 
-func (m MergeFS) Open(name string) (fs.File, error) {
+func (m FS) Open(name string) (fs.File, error) {
 	file, err := m.Overlay.Open(name)
 	if err != nil {
 		return m.Base.Open(name)
@@ -43,7 +43,7 @@ func (m MergeFS) Open(name string) (fs.File, error) {
 	return m.mergeDirs(name, info, baseDirFile, overlayDirFile)
 }
 
-func (m MergeFS) mergeDirs(name string, info fs.FileInfo, baseDir fs.ReadDirFile, overlayDir fs.ReadDirFile) (fs.File, error) {
+func (m FS) mergeDirs(name string, info fs.FileInfo, baseDir fs.ReadDirFile, overlayDir fs.ReadDirFile) (fs.File, error) {
 	merged := map[string]fs.DirEntry{}
 
 	baseFiles, err := baseDir.ReadDir(-1)

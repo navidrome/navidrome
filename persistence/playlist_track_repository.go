@@ -30,15 +30,17 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 		"id":     "playlist_tracks.id",
 		"artist": "order_artist_name asc",
 		"album":  "order_album_name asc, order_album_artist_name asc",
+		"title":  "order_title",
 	}
 	if conf.Server.PreferSortTags {
 		p.sortMappings["artist"] = "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc"
 		p.sortMappings["album"] = "COALESCE(NULLIF(sort_album_name,''),order_album_name)"
+		p.sortMappings["title"] = "COALESCE(NULLIF(sort_title,''),title)"
 	}
 
 	pls, err := r.Get(playlistId)
 	if err != nil {
-		log.Error(r.ctx, "Error getting playlist's tracks - THIS SHOULD NOT HAPPEN!", "playlistId", playlistId, err)
+		log.Warn(r.ctx, "Error getting playlist's tracks", "playlistId", playlistId, err)
 		return nil
 	}
 	if refreshSmartPlaylist {

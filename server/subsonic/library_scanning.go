@@ -12,7 +12,7 @@ import (
 )
 
 func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
-	// TODO handle multiple mediafolders
+	// TODO handle multiple libraries
 	ctx := r.Context()
 	mediaFolder := conf.Server.MusicFolder
 	status, err := api.scanner.Status(mediaFolder)

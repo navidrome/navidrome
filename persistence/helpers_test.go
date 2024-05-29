@@ -23,6 +23,20 @@ var _ = Describe("Helpers", func() {
 			Expect(toSnakeCase("snake_case")).To(Equal("snake_case"))
 		})
 	})
+	Describe("toCamelCase", func() {
+		It("converts snake_case", func() {
+			Expect(toCamelCase("snake_case")).To(Equal("snakeCase"))
+		})
+		It("converts PascalCase", func() {
+			Expect(toCamelCase("PascalCase")).To(Equal("PascalCase"))
+		})
+		It("converts camelCase", func() {
+			Expect(toCamelCase("camelCase")).To(Equal("camelCase"))
+		})
+		It("converts ALLCAPS", func() {
+			Expect(toCamelCase("ALLCAPS")).To(Equal("ALLCAPS"))
+		})
+	})
 	Describe("toSQLArgs", func() {
 		type Embed struct{}
 		type Model struct {

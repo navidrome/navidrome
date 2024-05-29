@@ -1,4 +1,4 @@
-package utils
+package cache
 
 import (
 	"bufio"
@@ -16,7 +16,7 @@ import (
 
 const cacheSizeLimit = 100
 
-type CachedHTTPClient struct {
+type HTTPClient struct {
 	cache *ttlcache.Cache
 	hc    httpDoer
 }
@@ -32,8 +32,8 @@ type requestData struct {
 	Body   *string
 }
 
-func NewCachedHTTPClient(wrapped httpDoer, ttl time.Duration) *CachedHTTPClient {
-	c := &CachedHTTPClient{hc: wrapped}
+func NewHTTPClient(wrapped httpDoer, ttl time.Duration) *HTTPClient {
+	c := &HTTPClient{hc: wrapped}
 	c.cache = ttlcache.NewCache()
 	c.cache.SetCacheSizeLimit(cacheSizeLimit)
 	c.cache.SkipTTLExtensionOnHit(true)
@@ -55,7 +55,7 @@ func NewCachedHTTPClient(wrapped httpDoer, ttl time.Duration) *CachedHTTPClient 
 	return c
 }
 
-func (c *CachedHTTPClient) Do(req *http.Request) (*http.Response, error) {
+func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 	key := c.serializeReq(req)
 	respStr, err := c.cache.Get(key)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *CachedHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	return c.deserializeResponse(req, respStr.(string))
 }
 
-func (c *CachedHTTPClient) serializeReq(req *http.Request) string {
+func (c *HTTPClient) serializeReq(req *http.Request) string {
 	data := requestData{
 		Method: req.Method,
 		Header: req.Header,
@@ -79,7 +79,7 @@ func (c *CachedHTTPClient) serializeReq(req *http.Request) string {
 	return string(j)
 }
 
-func (c *CachedHTTPClient) deserializeReq(reqStr string) (*http.Request, error) {
+func (c *HTTPClient) deserializeReq(reqStr string) (*http.Request, error) {
 	var data requestData
 	_ = json.Unmarshal([]byte(reqStr), &data)
 	var body io.Reader
@@ -95,13 +95,13 @@ func (c *CachedHTTPClient) deserializeReq(reqStr string) (*http.Request, error) 
 	return req, nil
 }
 
-func (c *CachedHTTPClient) serializeResponse(resp *http.Response) string {
+func (c *HTTPClient) serializeResponse(resp *http.Response) string {
 	var b = &bytes.Buffer{}
 	_ = resp.Write(b)
 	return b.String()
 }
 
-func (c *CachedHTTPClient) deserializeResponse(req *http.Request, respStr string) (*http.Response, error) {
+func (c *HTTPClient) deserializeResponse(req *http.Request, respStr string) (*http.Response, error) {
 	r := bufio.NewReader(strings.NewReader(respStr))
 	return http.ReadResponse(r, req)
 }

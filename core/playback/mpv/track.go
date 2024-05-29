@@ -6,6 +6,7 @@ package mpv
 // https://mpv.io/manual/master/#properties
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -24,7 +25,7 @@ type MpvTrack struct {
 	CloseCalled   bool
 }
 
-func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
+func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
 	log.Debug("Loading track", "trackPath", mf.Path, "mediaType", mf.ContentType())
 
 	if _, err := mpvCommand(); err != nil {
@@ -34,7 +35,7 @@ func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFi
 	tmpSocketName := socketName("mpv-ctrl-", ".socket")
 
 	args := createMPVCommand(deviceName, mf.Path, tmpSocketName)
-	exe, err := start(args)
+	exe, err := start(ctx, args)
 	if err != nil {
 		log.Error("Error starting mpv process", err)
 		return nil, err
@@ -110,13 +111,13 @@ func (t *MpvTrack) Close() {
 		log.Debug("sending shutdown command")
 		_, err := t.Conn.Call("quit")
 		if err != nil {
-			log.Error("Error sending quit command to mpv-ipc socket", err)
+			log.Warn("Error sending quit command to mpv-ipc socket", err)
 
 			if t.Exe != nil {
 				log.Debug("cancelling executor")
 				err = t.Exe.Cancel()
 				if err != nil {
-					log.Error("Error canceling executor", err)
+					log.Warn("Error canceling executor", err)
 				}
 			}
 		}
@@ -149,7 +150,8 @@ func (t *MpvTrack) Position() int {
 			if retryCount > 5 {
 				return 0
 			}
-			break
+			time.Sleep(time.Duration(retryCount) * time.Millisecond)
+			continue
 		}
 
 		if err != nil {
@@ -165,7 +167,6 @@ func (t *MpvTrack) Position() int {
 			return int(pos)
 		}
 	}
-	return 0
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {

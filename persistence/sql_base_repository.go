@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/pocketbase/dbx"
 )
 
@@ -68,12 +70,23 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
-func (r sqlRepository) buildSortOrder(sort, order string) string {
+// TODO Change all sortMappings to have a consistent case
+func (r sqlRepository) sortMapping(sort string) string {
 	if mapping, ok := r.sortMappings[sort]; ok {
-		sort = mapping
+		return mapping
 	}
-
+	if mapping, ok := r.sortMappings[toCamelCase(sort)]; ok {
+		return mapping
+	}
 	sort = toSnakeCase(sort)
+	if mapping, ok := r.sortMappings[sort]; ok {
+		return mapping
+	}
+	return sort
+}
+
+func (r sqlRepository) buildSortOrder(sort, order string) string {
+	sort = r.sortMapping(sort)
 	order = strings.ToLower(strings.TrimSpace(order))
 	var reverseOrder string
 	if order == "desc" {
@@ -124,6 +137,26 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 		sq = sq.Where(options[0].Filters)
 	}
 	return sq
+}
+
+func (r sqlRepository) seededRandomSort() string {
+	u, _ := request.UserFrom(r.ctx)
+	return fmt.Sprintf("SEEDEDRAND('%s', id)", r.tableName+u.ID)
+}
+
+func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
+	if len(options) == 0 || options[0].Sort != "random" {
+		return
+	}
+
+	if options[0].Seed != "" {
+		hasher.SetSeed(r.tableName+userId(r.ctx), options[0].Seed)
+		return
+	}
+
+	if options[0].Offset == 0 {
+		hasher.Reseed(r.tableName + userId(r.ctx))
+	}
 }
 
 func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
@@ -190,7 +223,7 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options 
 		r.logSQL(query, args, nil, -1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, -1, start)
+	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
 	return err
 }
 
@@ -206,7 +239,7 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) err
 		r.logSQL(query, args, nil, -1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, -1, start)
+	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
 	return err
 }
 

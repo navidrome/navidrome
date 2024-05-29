@@ -33,16 +33,19 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 	}
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"title":  "COALESCE(NULLIF(sort_title,''),title)",
-			"artist": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
-			"album":  "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
-			"random": "RANDOM()",
+			"title":     "COALESCE(NULLIF(sort_title,''),title)",
+			"artist":    "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
+			"album":     "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
+			"random":    r.seededRandomSort(),
+			"createdAt": "media_file.created_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
-			"artist": "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
-			"album":  "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
-			"random": "RANDOM()",
+			"title":     "order_title",
+			"artist":    "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
+			"album":     "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+			"random":    r.seededRandomSort(),
+			"createdAt": "media_file.created_at",
 		}
 	}
 	return r
@@ -99,6 +102,7 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 }
 
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	r.resetSeededRandom(options)
 	sq := r.selectMediaFile(options...)
 	res := model.MediaFiles{}
 	err := r.queryAll(sq, &res, options...)

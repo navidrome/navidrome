@@ -164,6 +164,7 @@ type Child struct {
 	Genres        ItemGenres `xml:"genres"                  json:"genres"`
 	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
 	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
+	SamplingRate  int32      `xml:"samplingRate,attr"       json:"samplingRate"`
 }
 
 type Songs struct {
@@ -457,7 +458,7 @@ type JukeboxPlaylist struct {
 
 type Line struct {
 	Start *int64 `xml:"start,attr,omitempty" json:"start,omitempty"`
-	Value string `xml:"value"                json:"value"`
+	Value string `xml:",chardata"            json:"value"`
 }
 
 type StructuredLyric struct {

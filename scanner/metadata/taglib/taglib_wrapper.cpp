@@ -45,6 +45,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   go_map_put_int(id, (char *)"lengthinmilliseconds", props->lengthInMilliseconds());
   go_map_put_int(id, (char *)"bitrate", props->bitrate());
   go_map_put_int(id, (char *)"channels", props->channels());
+  go_map_put_int(id, (char *)"samplerate", props->sampleRate());
 
   // Create a map to collect all the tags
   TagLib::PropertyMap tags = f.file()->properties();

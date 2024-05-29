@@ -27,7 +27,7 @@
         "isVideo": false,
         "bpm": 127,
         "comment": "a comment",
-        "sortName": "",
+        "sortName": "sorted title",
         "mediaType": "song",
         "musicBrainzId": "4321",
         "genres": [
@@ -46,7 +46,8 @@
           "baseGain": 5,
           "fallbackGain": 6
         },
-        "channelCount": 2
+        "channelCount": 2,
+        "samplingRate": 44100
       }
     ],
     "id": "1",

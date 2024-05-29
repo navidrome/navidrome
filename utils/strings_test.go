@@ -35,6 +35,35 @@ var _ = Describe("Strings", func() {
 		})
 	})
 
+	Describe("sanitizeFieldForSorting", func() {
+		BeforeEach(func() {
+			conf.Server.IgnoredArticles = "The O"
+		})
+		It("sanitize accents", func() {
+			Expect(SanitizeFieldForSorting("Céu")).To(Equal("ceu"))
+		})
+		It("removes articles", func() {
+			Expect(SanitizeFieldForSorting("The Beatles")).To(Equal("the beatles"))
+		})
+		It("removes accented articles", func() {
+			Expect(SanitizeFieldForSorting("Õ Blésq Blom")).To(Equal("o blesq blom"))
+		})
+	})
+	Describe("SanitizeFieldForSortingNoArticle", func() {
+		BeforeEach(func() {
+			conf.Server.IgnoredArticles = "The O"
+		})
+		It("sanitize accents", func() {
+			Expect(SanitizeFieldForSortingNoArticle("Céu")).To(Equal("ceu"))
+		})
+		It("removes articles", func() {
+			Expect(SanitizeFieldForSortingNoArticle("The Beatles")).To(Equal("beatles"))
+		})
+		It("removes accented articles", func() {
+			Expect(SanitizeFieldForSortingNoArticle("Õ Blésq Blom")).To(Equal("blesq blom"))
+		})
+	})
+
 	Describe("LongestCommonPrefix", func() {
 		It("finds the longest common prefix", func() {
 			Expect(LongestCommonPrefix(testPaths)).To(Equal("/Music/iTunes 1/iTunes Media/Music/"))

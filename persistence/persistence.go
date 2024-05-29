@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"reflect"
 
 	"github.com/navidrome/navidrome/db"
@@ -15,8 +14,8 @@ type SQLStore struct {
 	db dbx.Builder
 }
 
-func New(conn *sql.DB) model.DataStore {
-	return &SQLStore{db: dbx.NewFromDB(conn, db.Driver)}
+func New(d db.DB) model.DataStore {
+	return &SQLStore{db: NewDBXBuilder(d)}
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
@@ -31,8 +30,8 @@ func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
 	return NewMediaFileRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
-	return NewMediaFolderRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
+	return NewLibraryRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
@@ -106,14 +105,18 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 	return nil
 }
 
+type transactional interface {
+	Transactional(f func(*dbx.Tx) error) (err error)
+}
+
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	conn, ok := s.db.(*dbx.DB)
-	if !ok {
-		conn = dbx.NewFromDB(db.Db(), db.Driver)
+	// If we are already in a transaction, just pass it down
+	if conn, ok := s.db.(*dbx.Tx); ok {
+		return block(&SQLStore{db: conn})
 	}
-	return conn.Transactional(func(tx *dbx.Tx) error {
-		newDb := &SQLStore{db: tx}
-		return block(newDb)
+
+	return s.db.(transactional).Transactional(func(tx *dbx.Tx) error {
+		return block(&SQLStore{db: tx})
 	})
 }
 
@@ -172,7 +175,7 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 
 func (s *SQLStore) getDBXBuilder() dbx.Builder {
 	if s.db == nil {
-		return dbx.NewFromDB(db.Db(), db.Driver)
+		return NewDBXBuilder(db.Db())
 	}
 	return s.db
 }

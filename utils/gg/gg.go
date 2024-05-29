@@ -13,24 +13,6 @@ func If[T comparable](v T, orElse T) T {
 	return orElse
 }
 
-// FirstOr is a generic helper function that returns the first non-zero value from
-// a list of comparable values, or a default value if all the values are zero.
-func FirstOr[T comparable](or T, values ...T) T {
-	// Initialize a zero value of the same type as the input values.
-	var zero T
-
-	// Loop through each input value and check if it is non-zero. If a non-zero value
-	// is found, return it immediately.
-	for _, v := range values {
-		if v != zero {
-			return v
-		}
-	}
-
-	// If all the input values are zero, return the default value.
-	return or
-}
-
 // P returns a pointer to the input value
 func P[T any](v T) *T {
 	return &v

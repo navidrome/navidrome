@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/navidrome/navidrome/core/playback/mpv"
 	"github.com/navidrome/navidrome/log"
@@ -22,6 +23,7 @@ type Track interface {
 }
 
 type playbackDevice struct {
+	serviceCtx           context.Context
 	ParentPlaybackServer PlaybackServer
 	Default              bool
 	User                 string
@@ -31,7 +33,7 @@ type playbackDevice struct {
 	Gain                 float32
 	PlaybackDone         chan bool
 	ActiveTrack          Track
-	TrackSwitcherStarted bool
+	startTrackSwitcher   sync.Once
 }
 
 type DeviceStatus struct {
@@ -42,8 +44,6 @@ type DeviceStatus struct {
 }
 
 const DefaultGain float32 = 1.0
-
-var EmptyStatus = DeviceStatus{CurrentIndex: -1, Playing: false, Gain: DefaultGain, Position: 0}
 
 func (pd *playbackDevice) getStatus() DeviceStatus {
 	pos := 0
@@ -61,8 +61,9 @@ func (pd *playbackDevice) getStatus() DeviceStatus {
 // NewPlaybackDevice creates a new playback device which implements all the basic Jukebox mode commands defined here:
 // http://www.subsonic.org/pages/api.jsp#jukeboxControl
 // Starts the trackSwitcher goroutine for the device.
-func NewPlaybackDevice(playbackServer PlaybackServer, name string, deviceName string) *playbackDevice {
+func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name string, deviceName string) *playbackDevice {
 	return &playbackDevice{
+		serviceCtx:           ctx,
 		ParentPlaybackServer: playbackServer,
 		User:                 "",
 		Name:                 name,
@@ -70,7 +71,6 @@ func NewPlaybackDevice(playbackServer PlaybackServer, name string, deviceName st
 		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
-		TrackSwitcherStarted: false,
 	}
 }
 
@@ -103,14 +103,13 @@ func (pd *playbackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, 
 func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Start action", "device", pd)
 
-	if !pd.TrackSwitcherStarted {
+	pd.startTrackSwitcher.Do(func() {
 		log.Info(ctx, "Starting trackSwitcher goroutine")
 		// Start one trackSwitcher goroutine with each device
 		go func() {
 			pd.trackSwitcherGoroutine()
 		}()
-		pd.TrackSwitcherStarted = true
-	}
+	})
 
 	if pd.ActiveTrack != nil {
 		if pd.isPlaying() {
@@ -255,23 +254,30 @@ func (pd *playbackDevice) isPlaying() bool {
 func (pd *playbackDevice) trackSwitcherGoroutine() {
 	log.Debug("Started trackSwitcher goroutine", "device", pd)
 	for {
-		<-pd.PlaybackDone
-		log.Debug("Track switching detected")
-		if pd.ActiveTrack != nil {
-			pd.ActiveTrack.Close()
-			pd.ActiveTrack = nil
-		}
-
-		if !pd.PlaybackQueue.IsAtLastElement() {
-			pd.PlaybackQueue.IncreaseIndex()
-			log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
-			err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
-			if err != nil {
-				log.Error("Error switching track", err)
+		select {
+		case <-pd.PlaybackDone:
+			log.Debug("Track switching detected")
+			if pd.ActiveTrack != nil {
+				pd.ActiveTrack.Close()
+				pd.ActiveTrack = nil
 			}
-			pd.ActiveTrack.Unpause()
-		} else {
-			log.Debug("There is no song left in the playlist. Finish.")
+
+			if !pd.PlaybackQueue.IsAtLastElement() {
+				pd.PlaybackQueue.IncreaseIndex()
+				log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
+				err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+				if err != nil {
+					log.Error("Error switching track", err)
+				}
+				if pd.ActiveTrack != nil {
+					pd.ActiveTrack.Unpause()
+				}
+			} else {
+				log.Debug("There is no song left in the playlist. Finish.")
+			}
+		case <-pd.serviceCtx.Done():
+			log.Debug("Stopping trackSwitcher goroutine", "device", pd.Name)
+			return
 		}
 	}
 }
@@ -283,10 +289,11 @@ func (pd *playbackDevice) switchActiveTrackByIndex(index int) error {
 		return errors.New("could not get current track")
 	}
 
-	track, err := mpv.NewTrack(pd.PlaybackDone, pd.DeviceName, *currentTrack)
+	track, err := mpv.NewTrack(pd.serviceCtx, pd.PlaybackDone, pd.DeviceName, *currentTrack)
 	if err != nil {
 		return err
 	}
 	pd.ActiveTrack = track
+	pd.ActiveTrack.SetVolume(pd.Gain)
 	return nil
 }

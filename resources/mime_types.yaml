@@ -24,7 +24,7 @@ types:
   .aiff: audio/x-aiff 
   .m3u: audio/x-mpegurl 
   .pls: audio/x-scpls 
-  .dsf: audio/dsd 
+  .dsf: audio/x-dsf
   .wv: audio/x-wavpack 
   .wvp: audio/x-wavpack 
   .tak: audio/tak 
