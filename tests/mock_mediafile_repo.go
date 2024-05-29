@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"cmp"
 	"errors"
 	"maps"
 	"slices"
@@ -108,6 +109,31 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 			i++
 		}
 	}
+
+	return res, nil
+}
+
+func (m *MockMediaFileRepo) GetMissingAndMatching(libId int, pagination ...model.QueryOptions) (model.MediaFiles, error) {
+	if m.err {
+		return nil, errors.New("error")
+	}
+	var res model.MediaFiles
+	for _, a := range m.data {
+		if a.LibraryID == libId && a.Missing {
+			res = append(res, *a)
+		}
+	}
+
+	for _, a := range m.data {
+		if a.LibraryID == libId && !(*a).Missing && slices.IndexFunc(res, func(mediaFile model.MediaFile) bool {
+			return mediaFile.PID == a.PID
+		}) != -1 {
+			res = append(res, *a)
+		}
+	}
+	slices.SortFunc(res, func(i, j model.MediaFile) int {
+		return cmp.Compare(i.PID, j.PID)
+	})
 
 	return res, nil
 }
