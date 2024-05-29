@@ -1,8 +1,9 @@
 package scanner2
 
 import (
+	"cmp"
 	"context"
-	"path"
+	"slices"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
@@ -36,6 +37,9 @@ func produceMissingTracks(ctx context.Context, ds model.DataStore) ppl.ProducerF
 			if err != nil {
 				return err
 			}
+			slices.SortFunc(mfs, func(i, j model.MediaFile) int {
+				return cmp.Compare(i.PID, j.PID)
+			})
 			mt := missingTracks{lib: lib}
 			for _, mf := range mfs {
 				if mt.pid != mf.PID {
@@ -60,35 +64,51 @@ func processMissingTracks(ctx context.Context, ds model.DataStore) ppl.StageFn[*
 	return func(in *missingTracks) (*missingTracks, error) {
 		err := ds.WithTx(func(tx model.DataStore) error {
 			for _, ms := range in.missing {
+				var exactMatch model.MediaFile
+				var equivalentMatch model.MediaFile
+
+				// Identify exact and equivalent matches
 				for _, mt := range in.matched {
-					// Check if the missing track is the exact same as one of the matched tracks
-					if ms.Hash() == mt.Hash() {
-						log.Debug(ctx, "Scanner: Found missing track", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name)
-						err := moveMatched(ctx, tx, mt, ms)
-						if err != nil {
-							log.Error(ctx, "Scanner: Error moving matched track", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name, err)
-							return err
-						}
-						continue
+					if ms.Equals(mt) {
+						exactMatch = mt
+						break // Prioritize exact match
 					}
-					// Check if the missing track has the same tags and filename as one of the matched tracks
-					if ms.Tags.Hash() == mt.Tags.Hash() && baseName(ms.Path) == baseName(mt.Path) {
-						log.Debug(ctx, "Scanner: Found upgraded track with same tags", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name)
-						err := moveMatched(ctx, tx, mt, ms)
-						if err != nil {
-							log.Error(ctx, "Scanner: Error moving upgraded track", "missing", ms.Path, "matched", mt.Path, "lib", in.lib.Name, err)
-							return err
-						}
+					if ms.IsEquivalent(mt) {
+						equivalentMatch = mt
+					}
+				}
+
+				// Process the exact match if found
+				if exactMatch.ID != "" {
+					log.Debug(ctx, "Scanner: Found missing track", "missing", ms.Path, "matched", exactMatch.Path, "lib", in.lib.Name)
+					err := moveMatched(ctx, tx, exactMatch, ms)
+					if err != nil {
+						log.Error(ctx, "Scanner: Error moving matched track", "missing", ms.Path, "matched", exactMatch.Path, "lib", in.lib.Name, err)
+						return err
+					}
+					continue
+				}
+
+				// Process the equivalent match if no exact match was found
+				if equivalentMatch.ID != "" {
+					log.Debug(ctx, "Scanner: Found upgraded track with same tags", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name)
+					err := moveMatched(ctx, tx, equivalentMatch, ms)
+					if err != nil {
+						log.Error(ctx, "Scanner: Error moving upgraded track", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name, err)
+						return err
 					}
 				}
 			}
 			return nil
 		})
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+		return in, nil
 	}
 }
 
-func moveMatched(ctx context.Context, tx model.DataStore, mt model.MediaFile, ms model.MediaFile) error {
+func moveMatched(ctx context.Context, tx model.DataStore, mt, ms model.MediaFile) error {
 	discardedID := mt.ID
 	mt.ID = ms.ID
 	err := tx.MediaFile(ctx).Put(&mt)
@@ -96,10 +116,4 @@ func moveMatched(ctx context.Context, tx model.DataStore, mt model.MediaFile, ms
 		return err
 	}
 	return tx.MediaFile(ctx).Delete(discardedID)
-}
-
-func baseName(filePath string) string {
-	p := path.Base(filePath)
-	ext := path.Ext(p)
-	return p[:len(p)-len(ext)]
 }

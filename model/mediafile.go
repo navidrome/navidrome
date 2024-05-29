@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -112,10 +113,32 @@ func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 	return lyrics, nil
 }
 
+// String is mainly used for debugging
+func (mf MediaFile) String() string {
+	return mf.Path
+}
+
+// Hash returns a hash of the MediaFile based on its tags and audio properties
 func (mf MediaFile) Hash() string {
 	sum := md5.New()
 	_, _ = fmt.Fprint(sum, mf.Size, mf.Duration, mf.BitRate, mf.SampleRate, mf.Channels)
 	return fmt.Sprintf("%x", sum.Sum([]byte(mf.Tags.Hash())))
+}
+
+// Equals compares two MediaFiles by their hash. It does not consider the ID field.
+func (mf MediaFile) Equals(other MediaFile) bool {
+	return mf.Hash() == other.Hash()
+}
+
+// IsEquivalent compares two MediaFiles by their tags and path only.
+func (mf MediaFile) IsEquivalent(other MediaFile) bool {
+	return mf.Tags.Hash() == other.Tags.Hash() && baseName(mf.Path) == baseName(other.Path)
+}
+
+func baseName(filePath string) string {
+	p := path.Base(filePath)
+	ext := path.Ext(p)
+	return p[:len(p)-len(ext)]
 }
 
 type MediaFiles []MediaFile

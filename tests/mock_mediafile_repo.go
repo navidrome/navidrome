@@ -132,7 +132,10 @@ func (m *MockMediaFileRepo) GetMissingAndMatching(libId int, pagination ...model
 		}
 	}
 	slices.SortFunc(res, func(i, j model.MediaFile) int {
-		return cmp.Compare(i.PID, j.PID)
+		return cmp.Or(
+			cmp.Compare(i.PID, j.PID),
+			cmp.Compare(i.ID, j.ID),
+		)
 	})
 
 	return res, nil
