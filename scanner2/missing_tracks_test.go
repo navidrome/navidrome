@@ -124,6 +124,29 @@ var _ = Describe("missingTracks", func() {
 			Expect(movedTrack.Size).To(Equal(matchedTrack.Size))
 		})
 
+		It("should prioritize exact matches", func() {
+			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/file1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+			matchedEquivalent := model.MediaFile{ID: "2", PID: "A", Path: "dir1/file1.flac", Tags: model.Tags{"title": []string{"title1"}}, Size: 200}
+			matchedExact := model.MediaFile{ID: "3", PID: "A", Path: "dir2/file2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedEquivalent)
+			_ = ds.MediaFile(ctx).Put(&matchedExact)
+
+			in := &missingTracks{
+				missing: []model.MediaFile{missingTrack},
+				// Note that equivalent comes before the exact match
+				matched: []model.MediaFile{matchedEquivalent, matchedExact},
+			}
+
+			_, err := processMissingTracks(ctx, ds)(in)
+			Expect(err).ToNot(HaveOccurred())
+
+			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			Expect(movedTrack.Path).To(Equal(matchedExact.Path))
+			Expect(movedTrack.Size).To(Equal(matchedExact.Size))
+		})
+
 		It("should return an error when there's an error moving the matched track", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}}
