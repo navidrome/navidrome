@@ -72,6 +72,7 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 
 func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T], stages ...ppl.Stage[T]) error {
 	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phase))
+	start := time.Now()
 	var err error
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		metrics, err := ppl.Measure(producer, stages...)
@@ -80,9 +81,9 @@ func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T]
 		err = ppl.Do(producer, stages...)
 	}
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phase), err)
+		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phase), "elapsed", time.Since(start), err)
 	} else {
-		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phase))
+		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phase), "elapsed", time.Since(start))
 	}
 	return err
 }

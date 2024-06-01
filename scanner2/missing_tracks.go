@@ -3,6 +3,7 @@ package scanner2
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
@@ -27,7 +28,7 @@ func produceMissingTracks(ctx context.Context, ds model.DataStore) ppl.ProducerF
 
 		libs, err := ds.Library(ctx).GetAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading libraries: %w", err)
 		}
 		for _, lib := range libs {
 			if lib.LastScanStartedAt.IsZero() {
@@ -35,7 +36,10 @@ func produceMissingTracks(ctx context.Context, ds model.DataStore) ppl.ProducerF
 			}
 			mfs, err := ds.MediaFile(ctx).GetMissingAndMatching(lib.ID)
 			if err != nil {
-				return err
+				return fmt.Errorf("error loading missing tracks for library %s: %w", lib.Name, err)
+			}
+			if len(mfs) == 0 {
+				continue
 			}
 			slices.SortFunc(mfs, func(i, j model.MediaFile) int {
 				return cmp.Compare(i.PID, j.PID)
@@ -113,7 +117,7 @@ func moveMatched(ctx context.Context, tx model.DataStore, mt, ms model.MediaFile
 	mt.ID = ms.ID
 	err := tx.MediaFile(ctx).Put(&mt)
 	if err != nil {
-		return err
+		return fmt.Errorf("update matched track: %w", err)
 	}
 	return tx.MediaFile(ctx).Delete(discardedID)
 }
