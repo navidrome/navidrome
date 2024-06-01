@@ -137,8 +137,7 @@ func (mf MediaFile) IsEquivalent(other MediaFile) bool {
 
 func baseName(filePath string) string {
 	p := path.Base(filePath)
-	ext := path.Ext(p)
-	return p[:len(p)-len(ext)]
+	return strings.TrimSuffix(p, path.Ext(p))
 }
 
 type MediaFiles []MediaFile
