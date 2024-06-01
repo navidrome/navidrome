@@ -33,8 +33,6 @@ alter table media_file
     add column folder_id varchar default "" not null;
 alter table media_file 
     add column pid varchar default id not null;
-alter table media_file 
-    add column album_pid varchar default album_id not null;
 alter table media_file
 	add column missing boolean default false not null;
 
@@ -42,20 +40,14 @@ create index if not exists media_file_folder_id_ix
  	on media_file (folder_id);
 create index if not exists media_file_pid_ix
 	on media_file (pid);
-create index if not exists media_file_album_pid_ix
-	on media_file (album_pid);
 create index if not exists media_file_missing_ix
 	on media_file (missing,updated_at);
 
 alter table album
 	add column folder_id varchar default "" not null;
-alter table album
-	add column pid varchar default id not null;
 
 create index if not exists album_folder_id_ix
 	on album (folder_id);
-create unique index if not exists album_pid_ix
-	on album (pid);
 
 -- FIXME Needs to process current media_file.paths, creating folders as needed
 

@@ -93,7 +93,7 @@ func loadTagsFromFiles(ctx context.Context, entry *folderEntry, toImport []strin
 }
 
 func loadAlbumsFromMediaFiles(ctx context.Context, entry *folderEntry) model.Albums {
-	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumPID })
+	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumID })
 	var albums model.Albums
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)

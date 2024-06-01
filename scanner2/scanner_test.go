@@ -138,6 +138,7 @@ var _ = Describe("Scanner", func() {
 
 					albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
+					Expect(albums).ToNot(BeEmpty())
 					Expect(albums[0].CatalogNum).To(BeEmpty())
 					Expect(albums[0].SongCount).To(Equal(3))
 
