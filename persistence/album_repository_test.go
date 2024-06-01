@@ -101,7 +101,7 @@ var _ = Describe("AlbumRepository", func() {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
 
 					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, PID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
 						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
 					}
@@ -124,7 +124,7 @@ var _ = Describe("AlbumRepository", func() {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
 
 					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, PID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
 						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
 					}
@@ -146,8 +146,8 @@ var _ = Describe("AlbumRepository", func() {
 		Describe("dbAlbums.toModels", func() {
 			It("converts dbAlbums to model.Albums", func() {
 				dba := dbAlbums{
-					{Album: &model.Album{ID: "1", PID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
-					{Album: &model.Album{ID: "2", PID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
+					{Album: &model.Album{ID: "1", Name: "name", SongCount: 2, Annotations: model.Annotations{PlayCount: 4}}},
+					{Album: &model.Album{ID: "2", Name: "name2", SongCount: 3, Annotations: model.Annotations{PlayCount: 6}}},
 				}
 				albums := dba.toModels()
 				for i := range dba {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -163,7 +164,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) Put(al *model.Album) error {
-	id, err := r.putByMatch(Eq{"pid": al.PID}, al.ID, &dbAlbum{Album: al})
+	id, err := r.put(al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
 	}
@@ -191,21 +192,13 @@ func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (mo
 	return dba.toModels(), err
 }
 
-func (r *albumRepository) GetPIDs(libID int) (map[string]string, error) {
-	sq := r.selectAlbum(model.QueryOptions{Filters: Eq{"library_id": libID}}).Columns("album.id", "album.pid")
-	var rows []struct {
-		ID  string
-		PID string
+func (r *albumRepository) Touch(id string) error {
+	upd := Update(r.tableName).Set("updated_at", time.Now()).Where(Eq{"id": id})
+	c, err := r.executeSQL(upd)
+	if err == nil {
+		log.Error(r.ctx, "Touching album", "id", id, "updated", c == 1)
 	}
-	err := r.queryAll(sq, &rows)
-	if err != nil {
-		return nil, err
-	}
-	res := make(map[string]string, len(rows))
-	for _, row := range rows {
-		res[row.PID] = row.ID
-	}
-	return res, nil
+	return err
 }
 
 func (r *albumRepository) purgeEmpty() error {
