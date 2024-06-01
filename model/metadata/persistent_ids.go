@@ -15,14 +15,14 @@ import (
 func (md Metadata) trackPID(mf model.MediaFile) string {
 	value := cmp.Or(
 		mf.MbzReleaseTrackID,
-		fmt.Sprintf("%s\\%02d\\%02d", md.albumPID(), mf.DiscNumber, mf.TrackNumber),
-		fmt.Sprintf("%s\\%s", md.albumPID(), md.mapTrackTitle()),
+		fmt.Sprintf("%s\\%02d\\%02d", md.albumID(), mf.DiscNumber, mf.TrackNumber),
+		fmt.Sprintf("%s\\%s", md.albumID(), md.mapTrackTitle()),
 	)
 
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(value))))
 }
 
-func (md Metadata) albumPID() string {
+func (md Metadata) albumID() string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", md.mapAlbumArtistName(), md.mapAlbumName()))
 	if !conf.Server.Scanner.GroupAlbumReleases {
 		releaseDate := md.String(ReleaseDate)
@@ -34,12 +34,12 @@ func (md Metadata) albumPID() string {
 }
 
 //nolint:unused
-func (md Metadata) artistPID() string {
+func (md Metadata) artistID() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(md.mapTrackArtistName()))))
 }
 
 //nolint:unused
-func (md Metadata) albumArtistPID() string {
+func (md Metadata) albumArtistID() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(md.mapAlbumArtistName()))))
 }
 

@@ -57,7 +57,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.UpdatedAt = md.ModTime()
 
 	mf.PID = md.trackPID(mf)
-	mf.AlbumPID = md.albumPID()
+	mf.AlbumID = md.albumID()
 
 	return mf
 }

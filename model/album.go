@@ -12,7 +12,6 @@ type Album struct {
 	Annotations `structs:"-"`
 
 	ID                    string     `structs:"id" json:"id"`
-	PID                   string     `structs:"pid" json:"pid"`
 	LibraryID             int        `structs:"library_id" json:"libraryId"`
 	FolderID              string     `structs:"folder_id" json:"folderId"`
 	Name                  string     `structs:"name" json:"name"`
@@ -113,7 +112,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllWithoutGenres(...QueryOptions) (Albums, error)
-	GetPIDs(int) (map[string]string, error)
+	Touch(id string) error
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }

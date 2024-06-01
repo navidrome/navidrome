@@ -6,7 +6,6 @@ import (
 	"github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
@@ -23,33 +22,24 @@ func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
 			// TODO Collect all album PIDs that were affected by the changes in the folder:
 			//  - Albums from modified media_files, previous (from DB) and new PIDs (from FS)
 			//  - Albums from deleted media_files
-			//  Then get get albums from DB, merge modified/missed tracks, refresh and save them back
-			albumIds := map[string]string{}
+			//  Then get albums from DB, merge modified/missed tracks, refresh and save them back
 			for i := range entry.albums {
-				err = tx.Album(ctx).Put(&entry.albums[i])
+				err := tx.Album(ctx).Put(&entry.albums[i])
 				if err != nil {
 					log.Error(ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 					return err
 				}
-				albumIds[entry.albums[i].PID] = entry.albums[i].ID
 			}
 
 			// Save all tags to DB
-			err = slice.RangeByChunks(entry.tags, 100, func(chunk []model.Tag) error {
-				err := tx.Tag(ctx).Add(chunk...)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
-					return err
-				}
-				return nil
-			})
+			err = tx.Tag(ctx).Add(entry.tags...)
 			if err != nil {
+				log.Error(ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 				return err
 			}
 
 			// Save all tracks to DB
 			for i := range entry.tracks {
-				entry.tracks[i].AlbumID = albumIds[entry.tracks[i].AlbumPID]
 				err = tx.MediaFile(ctx).Put(&entry.tracks[i])
 				if err != nil {
 					log.Error(ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
