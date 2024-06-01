@@ -35,7 +35,6 @@ type MediaFile struct {
 	AlbumArtistID        string  `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
-	AlbumPID             string  `structs:"album_pid" json:"albumPid"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
 	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
@@ -170,7 +169,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
-		a.PID = m.AlbumPID
 		a.LibraryID = m.LibraryID
 		a.Name = m.Album
 		a.Artist = m.Artist
