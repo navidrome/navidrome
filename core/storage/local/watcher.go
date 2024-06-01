@@ -29,12 +29,12 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 		libPath := filepath.Join(s.u.Path, "...")
 		log.Debug(ctx, "Starting watcher", "lib", libPath)
 		err := notify.Watch(libPath, input, notify.All)
-		started <- struct{}{}
 		if err != nil {
 			log.Error("Error starting watcher", "lib", libPath, err)
 			return
 		}
 		defer notify.Stop(input)
+		started <- struct{}{}
 
 		for {
 			select {
@@ -51,6 +51,7 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 		}
 	}()
 	select {
+	case <-input: // In case of failure to start notify.Watch
 	case <-started:
 	case <-ctx.Done():
 	}
