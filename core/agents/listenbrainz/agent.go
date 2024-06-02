@@ -198,7 +198,7 @@ func (l *listenBrainzAgent) ImportPlaylist(ctx context.Context, update bool, syn
 	err = l.ds.WithTx(func(tx model.DataStore) error {
 		ids := make([]string, len(pls.Playlist.Tracks))
 		for i, track := range pls.Playlist.Tracks {
-			ids[i] = getIdentifier(track.Identifier)
+			ids[i] = getIdentifier(track.Identifier[0])
 		}
 
 		matched_tracks, err := tx.MediaFile(ctx).FindWithMbid(ids)
@@ -269,7 +269,7 @@ func (l *listenBrainzAgent) SyncPlaylist(ctx context.Context, tx model.DataStore
 
 	ids := make([]string, len(external.Playlist.Tracks))
 	for i, track := range external.Playlist.Tracks {
-		ids[i] = getIdentifier(track.Identifier)
+		ids[i] = getIdentifier(track.Identifier[0])
 	}
 
 	matched_tracks, err := tx.MediaFile(ctx).FindWithMbid(ids)
@@ -340,7 +340,7 @@ func (l *listenBrainzAgent) SyncRecommended(ctx context.Context, userId string) 
 	err = l.ds.WithTx(func(tx model.DataStore) error {
 		ids := make([]string, len(full_pls.Playlist.Tracks))
 		for i, track := range full_pls.Playlist.Tracks {
-			ids[i] = getIdentifier(track.Identifier)
+			ids[i] = getIdentifier(track.Identifier[0])
 		}
 
 		matched_tracks, err := tx.MediaFile(ctx).FindWithMbid(ids)

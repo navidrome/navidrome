@@ -89,9 +89,9 @@ type algoMeta struct {
 }
 
 type lbTrack struct {
-	Creator    string `json:"creator"`
-	Identifier string `json:"identifier"`
-	Title      string `json:"title"`
+	Creator    string   `json:"creator"`
+	Identifier []string `json:"identifier"`
+	Title      string   `json:"title"`
 }
 
 type listenBrainzRequestBody struct {
@@ -215,10 +215,10 @@ func (c *client) getPlaylist(ctx context.Context, apiKey, plsId string) (*listen
 
 	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, "", r)
 
-	if resp.Code == 404 {
-		return nil, model.ErrNotFound
-	} else if err != nil {
+	if err != nil {
 		return nil, err
+	} else if resp.Code == 404 {
+		return nil, model.ErrNotFound
 	}
 	return resp, nil
 }

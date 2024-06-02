@@ -105,12 +105,12 @@ var _ = Describe("client", func() {
 				Tracks: []lbTrack{
 					{
 						Creator:    "Poets of the Fall",
-						Identifier: "https://musicbrainz.org/recording/684bedbb-78d7-4946-9038-5402d5fa83b0",
+						Identifier: []string{"https://musicbrainz.org/recording/684bedbb-78d7-4946-9038-5402d5fa83b0"},
 						Title:      "Requiem for My Harlequin",
 					},
 					{
 						Creator:    "Old Gods of Asgard",
-						Identifier: "https://musicbrainz.org/recording/9f42783a-423b-4ed6-8a10-fdf4cb44456f",
+						Identifier: []string{"https://musicbrainz.org/recording/9f42783a-423b-4ed6-8a10-fdf4cb44456f"},
 						Title:      "Take Control",
 					},
 				},
