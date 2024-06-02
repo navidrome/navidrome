@@ -6,6 +6,8 @@ import (
 	"github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/maps"
 )
 
 func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
@@ -18,11 +20,8 @@ func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
 				return err
 			}
 
-			// Save all albums to DB
-			// TODO Collect all album PIDs that were affected by the changes in the folder:
-			//  - Albums from modified media_files, previous (from DB) and new PIDs (from FS)
-			//  - Albums from deleted media_files
-			//  Then get albums from DB, merge modified/missed tracks, refresh and save them back
+			// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed
+			// in phase 3
 			for i := range entry.albums {
 				err := tx.Album(ctx).Put(&entry.albums[i])
 				if err != nil {
@@ -48,10 +47,21 @@ func persistChanges(ctx context.Context) pipeline.StageFn[*folderEntry] {
 			}
 
 			// Mark all missing tracks as not available
-			err = tx.MediaFile(ctx).MarkMissing(entry.missingTracks, true)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
-				return err
+			if len(entry.missingTracks) > 0 {
+				err = tx.MediaFile(ctx).MarkMissing(entry.missingTracks, true)
+				if err != nil {
+					log.Error(ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
+					return err
+				}
+
+				// Touch all albums that have missing tracks, so they get refreshed in phase 3
+				groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf model.MediaFile) (string, struct{}) { return mf.AlbumID, struct{}{} })
+				albumsToUpdate := maps.Keys(groupedMissingTracks)
+				err = tx.Album(ctx).Touch(albumsToUpdate...)
+				if err != nil {
+					log.Error(ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
+					return err
+				}
 			}
 			return nil
 		})

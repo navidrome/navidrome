@@ -43,12 +43,6 @@ create index if not exists media_file_pid_ix
 create index if not exists media_file_missing_ix
 	on media_file (missing,updated_at);
 
-alter table album
-	add column folder_id varchar default "" not null;
-
-create index if not exists album_folder_id_ix
-	on album (folder_id);
-
 -- FIXME Needs to process current media_file.paths, creating folders as needed
 
 create table if not exists tag(
