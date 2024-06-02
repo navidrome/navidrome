@@ -192,13 +192,28 @@ func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (mo
 	return dba.toModels(), err
 }
 
-func (r *albumRepository) Touch(id string) error {
-	upd := Update(r.tableName).Set("updated_at", time.Now()).Where(Eq{"id": id})
+func (r *albumRepository) Touch(ids ...string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	upd := Update(r.tableName).Set("updated_at", time.Now()).Where(Eq{"id": ids})
 	c, err := r.executeSQL(upd)
 	if err == nil {
-		log.Error(r.ctx, "Touching album", "id", id, "updated", c == 1)
+		log.Error(r.ctx, "Touching albums", "ids", ids, "updated", c == 1)
 	}
 	return err
+}
+
+func (r *albumRepository) GetOutdatedAlbumIDs(libID int) ([]string, error) {
+	sel := r.newSelect().Columns("album.id").From("album").
+		Join("library on library.id = album.library_id").
+		Where(And{
+			Eq{"library.id": libID},
+			ConcatExpr("album.updated_at > library.last_scan_started_at"),
+		})
+	var res []string
+	err := r.queryAllSlice(sel, &res)
+	return res, err
 }
 
 func (r *albumRepository) purgeEmpty() error {
