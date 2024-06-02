@@ -215,10 +215,10 @@ func (c *client) getPlaylist(ctx context.Context, apiKey, plsId string) (*listen
 
 	resp, err := c.makeRequest(ctx, http.MethodGet, endpoint, "", r)
 
-	if err != nil {
-		return nil, err
-	} else if resp.Code == 404 {
+	if resp != nil && resp.Code == 404 {
 		return nil, model.ErrNotFound
+	} else if err != nil {
+		return nil, err
 	}
 	return resp, nil
 }

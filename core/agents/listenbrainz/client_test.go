@@ -262,5 +262,19 @@ var _ = Describe("client", func() {
 			Expect(resp).To(BeNil())
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
+
+		It("Returns error on 500", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"Code":500}`)),
+				StatusCode: 500,
+			}
+
+			resp, err := client.getPlaylist(context.Background(), "LB-TOKEN", "00000000-0000-0000-0000-000000000004")
+			Expect(resp).To(BeNil())
+			Expect(err).To(Equal(&listenBrainzError{
+				Code:    500,
+				Message: "",
+			}))
+		})
 	})
 })
