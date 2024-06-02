@@ -3,6 +3,7 @@ package scanner2
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
@@ -80,6 +81,10 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T], stages ...ppl.Stage[T]) error {
 	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phase))
 	start := time.Now()
+
+	counter, countStageFn := countTasks[T]()
+	stages = append(stages, ppl.NewStage(countStageFn, ppl.Name("count tasks")))
+
 	var err error
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		var metrics *ppl.Metrics
@@ -91,9 +96,17 @@ func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T]
 	if err != nil {
 		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phase), "elapsed", time.Since(start), err)
 	} else {
-		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phase), "elapsed", time.Since(start))
+		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phase), "elapsed", time.Since(start), "totalTasks", counter.Load())
 	}
 	return err
+}
+
+func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
+	counter := atomic.Int64{}
+	return &counter, func(in T) (T, error) {
+		counter.Add(1)
+		return in, nil
+	}
 }
 
 func logFolder(ctx context.Context) func(entry *folderEntry) (out *folderEntry, err error) {
