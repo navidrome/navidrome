@@ -51,6 +51,13 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 		)
 	}
 
+	if err == nil {
+		err = runPipeline(ctx, 3,
+			ppl.NewProducer(produceOutdatedAlbums(ctx, s.ds, libs), ppl.Name("load albums from db")),
+			ppl.NewStage(refreshAlbums(ctx, s.ds), ppl.Name("refresh albums")),
+		)
+	}
+
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
 		return err
@@ -75,7 +82,8 @@ func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T]
 	start := time.Now()
 	var err error
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
-		metrics, err := ppl.Measure(producer, stages...)
+		var metrics *ppl.Metrics
+		metrics, err = ppl.Measure(producer, stages...)
 		log.Info(metrics.String(), err)
 	} else {
 		err = ppl.Do(producer, stages...)

@@ -13,7 +13,6 @@ type Album struct {
 
 	ID                    string     `structs:"id" json:"id"`
 	LibraryID             int        `structs:"library_id" json:"libraryId"`
-	FolderID              string     `structs:"folder_id" json:"folderId"`
 	Name                  string     `structs:"name" json:"name"`
 	EmbedArtPath          string     `structs:"embed_art_path" json:"embedArtPath"`
 	ArtistID              string     `structs:"artist_id" json:"artistId"`
@@ -112,7 +111,8 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllWithoutGenres(...QueryOptions) (Albums, error)
-	Touch(id string) error
+	Touch(ids ...string) error
+	GetOutdatedAlbumIDs(libID int) ([]string, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }
