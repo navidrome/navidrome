@@ -88,7 +88,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.playlists, "imagesUpdatedAt", folder.imagesUpdatedAt,
-		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
+		"updTime", folder.updatedTime(), "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
 	results <- folder
 
@@ -96,11 +96,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 }
 
 func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderEntry, children []string, err error) {
-	folder = &folderEntry{job: job, path: dirPath, startTime: time.Now()}
-	folder.id = model.FolderID(job.lib, dirPath)
-	folder.updTime = job.getLastUpdatedInDB(folder.id)
-	folder.audioFiles = make(map[string]fs.DirEntry)
-	folder.imageFiles = make(map[string]fs.DirEntry)
+	folder = newFolderEntry(job, dirPath)
 
 	dirInfo, err := fs.Stat(job.fs, dirPath)
 	if err != nil {

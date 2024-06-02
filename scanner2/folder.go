@@ -12,7 +12,6 @@ type folderEntry struct {
 	startTime       time.Time
 	path            string    // Full path
 	id              string    // DB ID
-	updTime         time.Time // From DB
 	modTime         time.Time // From FS
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
@@ -25,6 +24,21 @@ type folderEntry struct {
 	missingTracks   model.MediaFiles
 }
 
+func newFolderEntry(job *scanJob, path string) *folderEntry {
+	return &folderEntry{
+		id:         model.FolderID(job.lib, path),
+		job:        job,
+		path:       path,
+		startTime:  time.Now(),
+		audioFiles: make(map[string]fs.DirEntry),
+		imageFiles: make(map[string]fs.DirEntry),
+	}
+}
+
+func (f *folderEntry) updatedTime() time.Time {
+	return f.job.lastUpdates[f.id]
+}
+
 func (f *folderEntry) isOutdated() bool {
-	return f.updTime.Before(f.modTime)
+	return f.updatedTime().Before(f.modTime)
 }
