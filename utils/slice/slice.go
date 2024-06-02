@@ -27,24 +27,23 @@ func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[
 }
 
 func MostFrequent[T comparable](list []T) T {
+	var zero T
 	if len(list) == 0 {
-		var zero T
 		return zero
 	}
+
+	counters := make(map[T]int)
 	var topItem T
 	var topCount int
-	counters := map[T]int{}
 
-	if len(list) == 1 {
-		topItem = list[0]
-	} else {
-		for _, id := range list {
-			c := counters[id] + 1
-			counters[id] = c
-			if c > topCount {
-				topItem = id
-				topCount = c
-			}
+	for _, value := range list {
+		if value == zero {
+			continue
+		}
+		counters[value]++
+		if counters[value] > topCount {
+			topItem = value
+			topCount = counters[value]
 		}
 	}
 
