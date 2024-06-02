@@ -3,7 +3,6 @@ package scanner2
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,9 +15,7 @@ type scanJob struct {
 	lib         model.Library
 	fs          storage.MusicFS
 	ds          model.DataStore
-	startTime   time.Time
 	lastUpdates map[string]time.Time
-	folderLock  sync.RWMutex
 	fullRescan  bool
 	numFolders  atomic.Int64
 }
@@ -42,19 +39,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		lib:         lib,
 		fs:          fsys,
 		ds:          ds,
-		startTime:   time.Now(),
 		lastUpdates: lastUpdates,
 		fullRescan:  fullRescan,
 	}, nil
-}
-
-func (s *scanJob) getLastUpdatedInDB(folderId string) time.Time {
-	s.folderLock.RLock()
-	defer s.folderLock.RUnlock()
-
-	t, ok := s.lastUpdates[folderId]
-	if !ok {
-		return time.Time{}
-	}
-	return t
 }
