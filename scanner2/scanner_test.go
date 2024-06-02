@@ -139,17 +139,16 @@ var _ = Describe("Scanner", func() {
 					albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(albums).ToNot(BeEmpty())
-					Expect(albums[0].CatalogNum).To(BeEmpty())
+					Expect(albums[0].MbzAlbumID).To(BeEmpty())
 					Expect(albums[0].SongCount).To(Equal(3))
 
-					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"catalognumber": "123"})
+					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"musicbrainz_albumid": "1111"})
 					Expect(s.RescanAll(ctx, false)).To(Succeed())
 
 					albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(albums[0].CatalogNum).To(Equal("123"))
-					// FIXME
-					//Expect(albums[0].SongCount).To(Equal(3))
+					Expect(albums[0].MbzAlbumID).To(Equal("1111"))
+					Expect(albums[0].SongCount).To(Equal(3))
 				})
 			})
 		})
