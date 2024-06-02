@@ -97,8 +97,7 @@ func loadAlbumsFromMediaFiles(ctx context.Context, entry *folderEntry) model.Alb
 	var albums model.Albums
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)
-		album := songs.ToAlbum() // TODO Remove ID from ToAlbum
-		album.FolderID = entry.id
+		album := songs.ToAlbum()
 		albums = append(albums, album)
 	}
 	return albums

@@ -74,6 +74,9 @@ var _ = Describe("Slice Utils", func() {
 		It("returns the item that appeared more times", func() {
 			Expect(slice.MostFrequent([]string{"1", "2", "1", "2", "3", "2"})).To(Equal("2"))
 		})
+		It("ignores zero values", func() {
+			Expect(slice.MostFrequent([]int{0, 0, 0, 2, 2})).To(Equal(2))
+		})
 	})
 
 	Describe("Move", func() {
