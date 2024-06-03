@@ -61,7 +61,7 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 
 	opts.Offset = p.IntOr("offset", 0)
 	opts.Max = min(p.IntOr("size", 10), 500)
-	albums, err := api.ds.Album(r.Context()).GetAllWithoutGenres(opts)
+	albums, err := api.ds.Album(r.Context()).GetAll(opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", err)
@@ -111,7 +111,7 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(options)
+	albums, err := api.ds.Album(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", err)
 		return nil, err

@@ -74,10 +74,6 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.all, nil
 }
 
-func (m *MockAlbumRepo) GetAllWithoutGenres(qo ...model.QueryOptions) (model.Albums, error) {
-	return m.GetAll(qo...)
-}
-
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.err {
 		return errors.New("error")
