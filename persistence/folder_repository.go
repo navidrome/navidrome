@@ -55,10 +55,22 @@ func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]time.Tim
 
 func (r folderRepository) Put(lib model.Library, path string) error {
 	folder := model.NewFolder(lib, path)
+	folder.Missing = false
 	_, err := r.put(folder.ID, folder)
 	return err
 }
 
+func (r folderRepository) MarkMissing(lib model.Library, path string, missing bool) error {
+	id := model.FolderID(lib, path)
+	sq := Update(r.tableName).
+		Set("missing", missing).
+		Set("updated_at", timeToSQL(time.Now())).
+		Where(Eq{"id": id})
+	_, err := r.executeSQL(sq)
+	return err
+}
+
+// TODO Remove?
 func (r folderRepository) Touch(lib model.Library, path string, t time.Time) error {
 	id := model.FolderID(lib, path)
 	sq := Update(r.tableName).Set("updated_at", timeToSQL(t)).Where(Eq{"id": id})
