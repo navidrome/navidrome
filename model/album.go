@@ -55,8 +55,11 @@ type Album struct {
 	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty"`
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
-	CreatedAt             time.Time  `structs:"created_at" json:"createdAt"`
-	UpdatedAt             time.Time  `structs:"updated_at" json:"updatedAt"`
+
+	Tags Tags `structs:"tags" json:"tags,omitempty"` // All tags for this album
+
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"`
 }
 
 func (a Album) CoverArtID() ArtworkID {
@@ -110,7 +113,6 @@ type AlbumRepository interface {
 	Put(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
-	GetAllWithoutGenres(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
 	GetOutdatedAlbumIDs(libID int) ([]string, error)
 	Search(q string, offset int, size int) (Albums, error)

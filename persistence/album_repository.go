@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -23,25 +22,40 @@ type albumRepository struct {
 type dbAlbum struct {
 	*model.Album `structs:",flatten"`
 	Discs        string `structs:"-" json:"discs"`
+	Tags         string `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
 	if a.Discs != "" {
-		return json.Unmarshal([]byte(a.Discs), &a.Album.Discs)
+		if err := json.Unmarshal([]byte(a.Discs), &a.Album.Discs); err != nil {
+			return err
+		}
 	}
+	if a.Tags == "" {
+		return nil
+	}
+	tags, err := parseTags(a.Tags)
+	if err != nil {
+		return err
+	}
+	if len(tags) != 0 {
+		a.Album.Tags = tags
+	}
+	a.Album.Genre, a.Album.Genres = tags.ToGenres()
 	return nil
 }
 
-func (a *dbAlbum) PostMapArgs(m map[string]any) error {
+func (a *dbAlbum) PostMapArgs(args map[string]any) error {
+	delete(args, "tags")
 	if len(a.Album.Discs) == 0 {
-		m["discs"] = "{}"
+		args["discs"] = "{}"
 		return nil
 	}
 	b, err := json.Marshal(a.Album.Discs)
 	if err != nil {
 		return err
 	}
-	m["discs"] = string(b)
+	args["discs"] = string(b)
 	return nil
 }
 
@@ -69,6 +83,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
+		"genre_id":        tagIDFilter,
 	}
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
@@ -125,7 +140,7 @@ func artistFilter(_ string, value interface{}) Sqlizer {
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("album.id")
-	sql = r.withGenres(sql) // Required for filtering by genre
+	sql = r.withTags(sql)
 	return r.count(sql, options...)
 }
 
@@ -135,32 +150,32 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
-	if len(options) > 0 && options[0].Filters != nil {
-		s, _, _ := options[0].Filters.ToSql()
-		// If there's any reference of genre in the filter, joins with genre
-		if strings.Contains(s, "genre") {
-			sql = r.withGenres(sql)
-			// If there's no filter on genre_id, group the results by media_file.id
-			if !strings.Contains(s, "genre_id") {
-				sql = sql.GroupBy("album.id")
-			}
-		}
-	}
+	sql = r.withTags(sql).GroupBy(r.tableName + ".id")
+	//if len(options) > 0 && options[0].Filters != nil {
+	//	s, _, _ := options[0].Filters.ToSql()
+	//	// If there's any reference of genre in the filter, joins with genre
+	//	if strings.Contains(s, "genre") {
+	//		sql = r.withGenres(sql)
+	// FIXME Genres
+	//		// If there's no filter on genre_id, group the results by media_file.id
+	//		if !strings.Contains(s, "genre_id") {
+	//			sql = sql.GroupBy("album.id")
+	//		}
+	//	}
+	//}
 	return sql
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
 	sq := r.selectAlbum().Where(Eq{"album.id": id})
-	var dba dbAlbums
-	if err := r.queryAll(sq, &dba); err != nil {
+	var res dbAlbums
+	if err := r.queryAll(sq, &res); err != nil {
 		return nil, err
 	}
-	if len(dba) == 0 {
+	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	res := dba.toModels()
-	err := loadAllGenres(r, res)
-	return &res[0], err
+	return res[0].Album, nil
 }
 
 func (r *albumRepository) Put(al *model.Album) error {
@@ -169,19 +184,10 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	return r.updateGenres(al.ID, al.Genres)
+	return r.updateTags(al.ID, al.Tags)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	res, err := r.GetAllWithoutGenres(options...)
-	if err != nil {
-		return nil, err
-	}
-	err = loadAllGenres(r, res)
-	return res, err
-}
-
-func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
 	r.resetSeededRandom(options)
 	sq := r.selectAlbum(options...)
 	var dba dbAlbums
@@ -233,9 +239,7 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 	if err != nil {
 		return nil, err
 	}
-	res := dba.toModels()
-	err = loadAllGenres(r, res)
-	return res, err
+	return dba.toModels(), err
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

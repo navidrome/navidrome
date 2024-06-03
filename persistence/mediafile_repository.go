@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/pocketbase/dbx"
 )
 
@@ -33,26 +31,15 @@ func (m *dbMediaFile) PostScan() error {
 	if m.Tags == "" {
 		return nil
 	}
-	tags := make(map[string][]string)
-	var dbTags []map[string]string
-	err := json.Unmarshal([]byte(m.Tags), &dbTags)
+	tags, err := parseTags(m.Tags)
 	if err != nil {
 		return err
-	}
-	for _, t := range dbTags {
-		for tagName, tagValue := range t {
-			if tagName == "" {
-				continue
-			}
-			tags[tagName] = append(tags[tagName], tagValue)
-			if tagName == string(metadata.Genre) {
-				m.MediaFile.Genres = append(m.MediaFile.Genres, model.Genre{Name: tagValue})
-			}
-		}
 	}
 	if len(tags) != 0 {
 		m.MediaFile.Tags = tags
 	}
+
+	m.MediaFile.Genre, m.MediaFile.Genres = tags.ToGenres()
 	return nil
 }
 
