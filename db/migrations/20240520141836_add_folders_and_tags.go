@@ -21,6 +21,7 @@ create table if not exists folder(
 	    		 	on delete cascade,
 	path varchar default '' not null,
 	name varchar default '' not null,
+	missing boolean default false not null,
 	updated_at datetime default current_timestamp not null,
 	created_at datetime default current_timestamp not null,
 	parent_id varchar default '' not null
