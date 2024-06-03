@@ -23,10 +23,10 @@ func NewTagRepository(ctx context.Context, db dbx.Builder) model.TagRepository {
 
 func (r *tagRepository) Add(tags ...model.Tag) error {
 	return slice.RangeByChunks(tags, 200, func(chunk []model.Tag) error {
-		sq := Insert(r.tableName).Columns("id", "name", "value").
+		sq := Insert(r.tableName).Columns("id", "tag_name", "tag_value").
 			Suffix("on conflict (id) do nothing")
 		for _, t := range chunk {
-			sq = sq.Values(t.ID, t.Name, t.Value)
+			sq = sq.Values(t.ID, t.TagName, t.TagValue)
 		}
 		_, err := r.executeSQL(sq)
 		return err

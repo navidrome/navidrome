@@ -48,10 +48,10 @@ create index if not exists media_file_missing_ix
 
 create table if not exists tag(
   	id varchar not null primary key,
-  	name varchar default '' not null,
-  	value varchar default '' not null,
+  	tag_name varchar default '' not null,
+  	tag_value varchar default '' not null,
   	constraint tags_name_value_ux
-		unique (name, value)
+		unique (tag_name, tag_value)
 );
 
 create table if not exists item_tags(

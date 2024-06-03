@@ -12,7 +12,7 @@ import (
 func (r sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
 	return sql.LeftJoin("item_tags it on it.item_id = " + r.tableName + ".id and it.item_type = '" + r.tableName + "'").
 		LeftJoin("tag on tag.id = it.tag_id").
-		Columns("json_group_array(json_object(ifnull(tag.name, ''), tag.value)) as tags")
+		Columns("json_group_array(json_object(ifnull(tag.tag_name, ''), tag.tag_value)) as tags")
 }
 
 func parseTags(strTags string) (model.Tags, error) {
@@ -47,14 +47,14 @@ func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
 	for name, values := range tags {
 		for _, value := range values {
 			tag := model.NewTag(name, value)
-			sqi = sqi.Values(itemID, r.tableName, tag.Name, tag.ID)
+			sqi = sqi.Values(itemID, r.tableName, tag.TagName, tag.ID)
 		}
 	}
 	_, err = r.executeSQL(sqi)
 	return err
 }
 
-func tagIDFilter(name string, value interface{}) Sqlizer {
+func tagIDFilter(name string, idValue interface{}) Sqlizer {
 	tagName := strings.TrimSuffix(name, "_id")
-	return Eq{"tag.id": value, "tag.name": tagName}
+	return Eq{"tag.id": idValue, "tag.tag_name": tagName}
 }
