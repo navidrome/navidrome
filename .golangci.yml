@@ -25,6 +25,12 @@ linters:
     - unused
     - whitespace
 
+issues:
+  exclude-rules:
+    - path: scanner2
+      linters:
+        - unused
+
 linters-settings:
   govet:
     enable:
