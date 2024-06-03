@@ -14,6 +14,7 @@ type Folder struct {
 	LibraryID int       `structs:"library_id"`
 	Path      string    `structs:"path"`
 	Name      string    `structs:"name"`
+	Missing   bool      `structs:"missing"`
 	ParentID  string    `structs:"parent_id"`
 	UpdateAt  time.Time `structs:"updated_at"`
 	CreatedAt time.Time `structs:"created_at"`
@@ -51,5 +52,6 @@ type FolderRepository interface {
 	GetAll(lib Library) ([]Folder, error)
 	GetLastUpdates(lib Library) (map[string]time.Time, error)
 	Put(lib Library, path string) error
+	MarkMissing(lib Library, path string, missing bool) error
 	Touch(lib Library, path string, t time.Time) error
 }
