@@ -33,13 +33,13 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 	sq := Select().From("tag").
 		Columns(
 			"tag.id",
-			"tag.value as name",
-			//"coalesce(a.album_count, 0) as album_count",
+			"tag.tag_value as name",
+			"coalesce(a.album_count, 0) as album_count",
 			"coalesce(m.song_count, 0) as song_count",
 		).
-		//LeftJoin("(select ag.genre_id, count(ag.album_id) as album_count from album_genres ag group by ag.genre_id) a on a.genre_id = genre.id").
-		LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it group by it.tag_id) m on m.tag_id = tag.id").
-		Where(Eq{"tag.name": metadata.Genre})
+		LeftJoin("(select it.tag_id, count(it.item_id) as album_count from item_tags it where item_type = 'album' group by it.tag_id) a on a.tag_id = tag.id").
+		LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it where item_type = 'media_file' group by it.tag_id) m on m.tag_id = tag.id").
+		Where(Eq{"tag.tag_name": metadata.Genre})
 	sq = r.applyOptions(sq, opt...)
 	sq = r.applyFilters(sq, opt...)
 	return sq
