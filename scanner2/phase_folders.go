@@ -256,6 +256,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 }
 
 func (p *phaseFolders) finalize() error {
+	// TODO Mark all folders not seen in this scan as missing. Need to change walkDirTree to return all folders
 	return nil
 }
 
