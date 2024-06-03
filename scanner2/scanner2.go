@@ -37,26 +37,16 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
 
 	// Phase 1: Scan all libraries and import new/updated files
-	err = runPipeline(ctx, 1,
-		ppl.NewProducer(produceFolders(ctx, s.ds, libs, fullRescan), ppl.Name("read folders from disk")),
-		ppl.NewStage(processFolder(ctx), ppl.Name("process folder")),
-		ppl.NewStage(persistChanges(ctx), ppl.Name("persist changes")),
-		ppl.NewStage(logFolder(ctx), ppl.Name("log results")),
-	)
+	err = runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, libs, fullRescan))
 
 	// Phase 2: Process missing files, checking for moves
 	if err == nil {
-		err = runPipeline(ctx, 2,
-			ppl.NewProducer(produceMissingTracks(ctx, s.ds), ppl.Name("load missing tracks from db")),
-			ppl.NewStage(processMissingTracks(ctx, s.ds), ppl.Name("detect moved songs")),
-		)
+		err = runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds))
 	}
 
+	// Phase 3: Refresh all new/changed albums
 	if err == nil {
-		err = runPipeline(ctx, 3,
-			ppl.NewProducer(produceOutdatedAlbums(ctx, s.ds, libs), ppl.Name("load albums from db")),
-			ppl.NewStage(refreshAlbums(ctx, s.ds), ppl.Name("refresh albums")),
-		)
+		err = runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs))
 	}
 
 	if err != nil {
@@ -78,6 +68,28 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	return nil
 }
 
+type phase[T any] interface {
+	producer() ppl.Producer[T]
+	stages() []ppl.Stage[T]
+	finalize() error
+}
+
+func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
+	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phaseNum))
+	start := time.Now()
+
+	producer := phase.producer()
+	stages := phase.stages()
+	err := runPipeline(ctx, phaseNum, producer, stages...)
+	if err != nil {
+		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
+	} else {
+		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start))
+	}
+
+	return phase.finalize()
+}
+
 func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T], stages ...ppl.Stage[T]) error {
 	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phase))
 	start := time.Now()
@@ -89,7 +101,7 @@ func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T]
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		var metrics *ppl.Metrics
 		metrics, err = ppl.Measure(producer, stages...)
-		log.Info(metrics.String(), err)
+		log.Info(ctx, "Scanner: "+metrics.String(), err)
 	} else {
 		err = ppl.Do(producer, stages...)
 	}
@@ -106,15 +118,6 @@ func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
 	return &counter, func(in T) (T, error) {
 		counter.Add(1)
 		return in, nil
-	}
-}
-
-func logFolder(ctx context.Context) func(entry *folderEntry) (out *folderEntry, err error) {
-	return func(entry *folderEntry) (*folderEntry, error) {
-		log.Debug(ctx, "Scanner: Completed processing folder", " path", entry.path,
-			"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
-			"elapsed", time.Since(entry.startTime))
-		return entry, nil
 	}
 }
 
