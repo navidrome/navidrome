@@ -10,23 +10,31 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("missingTracks", func() {
+var _ = Describe("phaseMissingTracks", func() {
+	var (
+		phase *phaseMissingTracks
+		ctx   context.Context
+		ds    model.DataStore
+		mr    *tests.MockMediaFileRepo
+		lr    *tests.MockLibraryRepo
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		mr = tests.CreateMockMediaFileRepo()
+		lr = &tests.MockLibraryRepo{}
+		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
+		ds = &tests.MockDataStore{MockedMediaFile: mr, MockedLibrary: lr}
+		phase = createPhaseMissingTracks(ctx, ds)
+	})
+
 	Describe("produceMissingTracks", func() {
 		var (
-			ctx      context.Context
-			ds       model.DataStore
-			mr       *tests.MockMediaFileRepo
-			lr       *tests.MockLibraryRepo
 			put      func(tracks *missingTracks)
 			produced []*missingTracks
 		)
 
 		BeforeEach(func() {
-			ctx = context.Background()
-			mr = tests.CreateMockMediaFileRepo()
-			lr = &tests.MockLibraryRepo{}
-			lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
-			ds = &tests.MockDataStore{MockedMediaFile: mr, MockedLibrary: lr}
 			produced = nil
 			put = func(tracks *missingTracks) {
 				produced = append(produced, tracks)
@@ -40,7 +48,7 @@ var _ = Describe("missingTracks", func() {
 					{ID: "2", PID: "A", Missing: false},
 				})
 
-				err := produceMissingTracks(ctx, ds)(put)
+				err := phase.produce(put)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(produced).To(BeEmpty())
 			})
@@ -54,7 +62,7 @@ var _ = Describe("missingTracks", func() {
 					{ID: "3", PID: "A", Missing: false, LibraryID: 1},
 				})
 
-				err := produceMissingTracks(ctx, ds)(put)
+				err := phase.produce(put)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(produced).To(HaveLen(1))
 				Expect(produced[0].pid).To(Equal("A"))
@@ -68,23 +76,14 @@ var _ = Describe("missingTracks", func() {
 					{ID: "3", PID: "C", Missing: false, LibraryID: 1},
 				})
 
-				err := produceMissingTracks(ctx, ds)(put)
+				err := phase.produce(put)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(produced).To(BeZero())
 			})
 		})
 	})
+
 	Describe("processMissingTracks", func() {
-		var (
-			ctx context.Context
-			ds  model.DataStore
-		)
-
-		BeforeEach(func() {
-			ctx = context.Background()
-			ds = &tests.MockDataStore{}
-		})
-
 		It("should move the matched track when the missing track is the exact same", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "dir2/path2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
@@ -97,7 +96,7 @@ var _ = Describe("missingTracks", func() {
 				matched: []model.MediaFile{matchedTrack},
 			}
 
-			_, err := processMissingTracks(ctx, ds)(in)
+			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
@@ -116,7 +115,7 @@ var _ = Describe("missingTracks", func() {
 				matched: []model.MediaFile{matchedTrack},
 			}
 
-			_, err := processMissingTracks(ctx, ds)(in)
+			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
@@ -139,7 +138,7 @@ var _ = Describe("missingTracks", func() {
 				matched: []model.MediaFile{matchedEquivalent, matchedExact},
 			}
 
-			_, err := processMissingTracks(ctx, ds)(in)
+			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
@@ -162,7 +161,7 @@ var _ = Describe("missingTracks", func() {
 			// Simulate an error when moving the matched track
 			_ = ds.MediaFile(ctx).Delete("2")
 
-			_, err := processMissingTracks(ctx, ds)(in)
+			_, err := phase.processMissingTracks(in)
 			Expect(err).To(HaveOccurred())
 		})
 	})
