@@ -7,51 +7,12 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"time"
 
-	"github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/pl"
 	"golang.org/x/exp/maps"
 )
-
-func produceFolders(ctx context.Context, ds model.DataStore, libs []model.Library, fullRescan bool) pipeline.ProducerFn[*folderEntry] {
-	jobChan := make(chan *scanJob, len(libs))
-	go func() {
-		defer close(jobChan)
-		for _, lib := range libs {
-			err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
-			if err != nil {
-				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
-			}
-			// TODO Check LastScanStartedAt for interrupted full scans
-			job, err := newScanJob(ctx, ds, lib, fullRescan)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
-				continue
-			}
-			jobChan <- job
-		}
-	}()
-	return func(put func(entry *folderEntry)) error {
-		// TODO Parallelize multiple job
-		var total int64
-		for job := range pl.ReadOrDone(ctx, jobChan) {
-			outputChan, err := walkDirTree(ctx, job)
-			if err != nil {
-				log.Warn(ctx, "Scanner: Error scanning library", "lib", job.lib.Name, err)
-			}
-			for folder := range pl.ReadOrDone(ctx, outputChan) {
-				put(folder)
-			}
-			total += job.numFolders.Load()
-		}
-		log.Info(ctx, "Scanner: Finished loading all folders", "numFolders", total)
-		return nil
-	}
-}
 
 func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error) {
 	results := make(chan *folderEntry)
