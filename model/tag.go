@@ -12,24 +12,24 @@ import (
 )
 
 type Tag struct {
-	ID    string
-	Name  string
-	Value string
+	ID       string
+	TagName  string
+	TagValue string
 }
 
 type TagList []Tag
 
 func (t Tag) String() string {
-	return fmt.Sprintf("%s=%s", t.Name, t.Value)
+	return fmt.Sprintf("%s=%s", t.TagName, t.TagValue)
 }
 
 func NewTag(name, value string) Tag {
 	name = strings.ToLower(name)
 	id := fmt.Sprintf("%x", md5.Sum([]byte(name+consts.Zwsp+strings.ToLower(value))))
 	return Tag{
-		ID:    id,
-		Name:  name,
-		Value: value,
+		ID:       id,
+		TagName:  name,
+		TagValue: value,
 	}
 }
 
@@ -75,8 +75,10 @@ func (t *Tags) Hash() string {
 func (t Tags) ToGenres() (string, Genres) {
 	var genres Genres
 	for _, g := range t.Values("genre") {
-		genres = append(genres, Genre{Name: g})
+		t := NewTag("genre", g)
+		genres = append(genres, Genre{ID: t.ID, Name: g})
 	}
+	// TODO This will not work, as there is only one instance of each genre in the tags
 	return slice.MostFrequent(t.Values("genre")), genres
 }
 
