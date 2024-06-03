@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
@@ -32,37 +31,4 @@ func (r *tagRepository) Add(tags ...model.Tag) error {
 		_, err := r.executeSQL(sq)
 		return err
 	})
-}
-
-func (r *sqlRepository) updateTags(itemID string, tags model.Tags) error {
-	sqd := Delete("item_tags").Where(Eq{"item_id": itemID, "item_type": r.tableName})
-	_, err := r.executeSQL(sqd)
-	if err != nil {
-		return err
-	}
-	if len(tags) == 0 {
-		return nil
-	}
-	sqi := Insert("item_tags").Columns("item_id", "item_type", "tag_name", "tag_id").
-		Suffix("on conflict (item_id, item_type, tag_id) do nothing")
-	for name, values := range tags {
-		for _, value := range values {
-			tag := model.NewTag(name, value)
-			sqi = sqi.Values(itemID, r.tableName, tag.Name, tag.ID)
-		}
-	}
-	_, err = r.executeSQL(sqi)
-	return err
-}
-
-// TODO Consolidate withTags and newSelectWithAnnotation(s)?
-func (r *sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
-	return sql.LeftJoin("item_tags it on it.item_id = " + r.tableName + ".id and it.item_type = '" + r.tableName + "'").
-		LeftJoin("tag on tag.id = it.tag_id").
-		Columns("json_group_array(json_object(ifnull(tag.name, ''), tag.value)) as tags")
-}
-
-func tagIDFilter(name string, value interface{}) Sqlizer {
-	tagName := strings.TrimSuffix(name, "_id")
-	return Eq{"tag.id": value, "tag.name": tagName}
 }

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"cmp"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -155,7 +154,7 @@ func (mfs MediaFiles) Dirs() []string {
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
-	a := Album{SongCount: len(mfs)}
+	a := Album{SongCount: len(mfs), Tags: make(Tags)}
 	var fullText []string
 	var albumArtistIds []string
 	var songArtistIds []string
@@ -196,7 +195,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		releaseDates = append(releaseDates, m.ReleaseDate)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
-		a.Genres = append(a.Genres, m.Genres...)
 		comments = append(comments, m.Comment)
 		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		songArtistIds = append(songArtistIds, m.ArtistID)
@@ -211,6 +209,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		if m.DiscNumber > 0 {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
+		a.Tags.Merge(m.Tags)
 	}
 
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
@@ -220,9 +219,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
-	a.Genre = slice.MostFrequent(a.Genres).Name
-	slices.SortFunc(a.Genres, func(a, b Genre) int { return cmp.Compare(a.ID, b.ID) })
-	a.Genres = slices.Compact(a.Genres)
 	a.FullText = " " + str.SanitizeStrings(fullText...)
 	a = fixAlbumArtist(a, albumArtistIds)
 	songArtistIds = append(songArtistIds, a.AlbumArtistID, a.ArtistID)

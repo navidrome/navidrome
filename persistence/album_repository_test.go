@@ -95,6 +95,37 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(other.Album.Discs).To(Equal(a.Discs))
 			})
 		})
+		Describe("Album.Genres", func() {
+			var a *model.Album
+			BeforeEach(func() {
+				a = &model.Album{ID: "1", Name: "name", ArtistID: "2"}
+			})
+			It("maps empty tags field", func() {
+				dba := dbAlbum{Album: a}
+
+				m := structs.Map(dba)
+				Expect(dba.PostMapArgs(m)).To(Succeed())
+				Expect(m).ToNot(HaveKey("tags"))
+
+				other := dbAlbum{Album: &model.Album{ID: "1", Name: "name"}}
+				Expect(other.PostScan()).To(Succeed())
+
+				Expect(other.Album.Genres).To(BeNil())
+			})
+			It("maps the tags field", func() {
+				a.Tags = model.Tags{"genre": {"rock", "pop"}}
+				dba := dbAlbum{Album: a}
+
+				m := structs.Map(dba)
+				Expect(dba.PostMapArgs(m)).To(Succeed())
+				Expect(m).ToNot(HaveKey("tags"))
+
+				other := dbAlbum{Album: &model.Album{ID: "1", Name: "name"}, Tags: `[{"genre":"rock"},{"genre":"pop"}]`}
+				Expect(other.PostScan()).To(Succeed())
+
+				Expect(other.Album.Genres).To(ConsistOf(model.Genre{Name: "rock"}, model.Genre{Name: "pop"}))
+			})
+		})
 		Describe("Album.PlayCount", func() {
 			DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
 				func(songCount, playCount, expected int) {

@@ -11,7 +11,7 @@ func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
 		LeftJoin("genre on ag.genre_id = genre.id")
 }
 
-func (r *sqlRepository) updateGenres(id string, genres model.Genres) error {
+func (r sqlRepository) updateGenres(id string, genres model.Genres) error {
 	tableName := r.getTableName()
 	del := Delete(tableName + "_genres").Where(Eq{tableName + "_id": id})
 	_, err := r.executeSQL(del)
