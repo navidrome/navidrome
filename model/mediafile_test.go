@@ -154,37 +154,33 @@ var _ = Describe("MediaFiles", func() {
 		})
 
 		Context("Genres", func() {
-			When("we have only one Genre", func() {
+			When("we don't have any tags", func() {
 				BeforeEach(func() {
-					mfs = MediaFiles{{Genres: Genres{{ID: "g1", Name: "Rock"}}}}
+					mfs = MediaFiles{{}}
 				})
 				It("sets the correct Genre", func() {
 					album := mfs.ToAlbum()
-					Expect(album.Genre).To(Equal("Rock"))
-					Expect(album.Genres).To(ConsistOf(Genre{ID: "g1", Name: "Rock"}))
+					Expect(album.Tags).To(BeEmpty())
+				})
+			})
+			When("we have only one Genre", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{{Tags: Tags{"genre": []string{"Rock"}}}}
+				})
+				It("sets the correct Genre", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Tags).To(HaveLen(1))
+					Expect(album.Tags).To(HaveKeyWithValue("genre", []string{"Rock"}))
 				})
 			})
 			When("we have multiple Genres", func() {
 				BeforeEach(func() {
-					mfs = MediaFiles{{Genres: Genres{{ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}, {ID: "g3", Name: "Alternative"}}}}
+					mfs = MediaFiles{{Tags: Tags{"genre": []string{"Rock"}}}, {Tags: Tags{"genre": []string{"Punk"}}}, {Tags: Tags{"genre": []string{"Alternative", "Rock"}}}}
 				})
 				It("sets the correct Genre", func() {
 					album := mfs.ToAlbum()
-					Expect(album.Genre).To(Equal("Rock"))
-					Expect(album.Genres).To(Equal(Genres{{ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}, {ID: "g3", Name: "Alternative"}}))
-				})
-			})
-			When("we have one predominant Genre", func() {
-				var album Album
-				BeforeEach(func() {
-					mfs = MediaFiles{{Genres: Genres{{ID: "g2", Name: "Punk"}, {ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}}}}
-					album = mfs.ToAlbum()
-				})
-				It("sets the correct Genre", func() {
-					Expect(album.Genre).To(Equal("Punk"))
-				})
-				It("removes duplications from Genres", func() {
-					Expect(album.Genres).To(Equal(Genres{{ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}}))
+					Expect(album.Tags).To(HaveLen(1))
+					Expect(album.Tags).To(HaveKeyWithValue("genre", []string{"Rock", "Punk", "Alternative"}))
 				})
 			})
 		})
@@ -262,7 +258,7 @@ var _ = Describe("MediaFiles", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{{MbzAlbumID: "id1"}, {MbzAlbumID: "id2"}, {MbzAlbumID: "id1"}}
 				})
-				It("sets the correct MbzAlbumID", func() {
+				It("uses the most frequent MbzAlbumID", func() {
 					album := mfs.ToAlbum()
 					Expect(album.MbzAlbumID).To(Equal("id1"))
 				})

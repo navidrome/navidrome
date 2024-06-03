@@ -363,7 +363,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 		dir.Starred = artist.StarredAt
 	}
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +377,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 	a := &responses.ArtistWithAlbumsID3{}
 	a.ArtistID3 = toArtistID3(r, *artist)
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
