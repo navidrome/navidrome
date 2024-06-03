@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type Tag struct {
@@ -69,6 +70,35 @@ func (t *Tags) Hash() string {
 		sum.Write([]byte(tag.ID))
 	}
 	return fmt.Sprintf("%x", sum.Sum(nil))
+}
+
+func (t Tags) ToGenres() (string, Genres) {
+	var genres Genres
+	for _, g := range t.Values("genre") {
+		genres = append(genres, Genre{Name: g})
+	}
+	return slice.MostFrequent(t.Values("genre")), genres
+}
+
+// Merge merges the tags from another Tags object into this one, removing any duplicates
+func (t *Tags) Merge(tags Tags) {
+	for name, values := range tags {
+		for _, v := range values {
+			t.Add(name, v)
+		}
+	}
+}
+
+func (t *Tags) Add(name string, v string) {
+	if _, ok := (*t)[name]; !ok {
+		(*t)[name] = []string{}
+	}
+	for _, existing := range (*t)[name] {
+		if existing == v {
+			return
+		}
+	}
+	(*t)[name] = append((*t)[name], v)
 }
 
 type TagRepository interface {

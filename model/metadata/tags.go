@@ -19,6 +19,7 @@ const (
 	DiscNumber    Name = "disc"
 	TotalTracks   Name = "tracktotal"
 	TotalDiscs    Name = "disctotal"
+	DiscSubtitle  Name = "discsubtitle"
 	Genre         Name = "genre"
 	Comment       Name = "comment"
 	AlbumSort     Name = "albumsort"
