@@ -120,10 +120,14 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.PostMapArgs(m)).To(Succeed())
 				Expect(m).ToNot(HaveKey("tags"))
 
-				other := dbAlbum{Album: &model.Album{ID: "1", Name: "name"}, Tags: `[{"genre":"rock"},{"genre":"pop"}]`}
+				other := dbAlbum{Album: &model.Album{ID: "1", Name: "name"}, Tags: `[{"genre":"rock"},{"genre":"pop"},{"genre":"rock"}]`}
 				Expect(other.PostScan()).To(Succeed())
 
-				Expect(other.Album.Genres).To(ConsistOf(model.Genre{Name: "rock"}, model.Genre{Name: "pop"}))
+				Expect(other.Album.Genre).To(Equal("rock"))
+				Expect(other.Album.Genres).To(HaveLen(3))
+				Expect(other.Album.Genres[0].Name).To(Equal("rock"))
+				Expect(other.Album.Genres[1].Name).To(Equal("pop"))
+				Expect(other.Album.Genres[2].Name).To(Equal("rock"))
 			})
 		})
 		Describe("Album.PlayCount", func() {
