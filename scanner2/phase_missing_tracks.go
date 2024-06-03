@@ -38,6 +38,8 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 		}
 	}
 
+	// TODO Mark all tracks from all missing folders as missing
+
 	libs, err := p.ds.Library(p.ctx).GetAll()
 	if err != nil {
 		return fmt.Errorf("error loading libraries: %w", err)
