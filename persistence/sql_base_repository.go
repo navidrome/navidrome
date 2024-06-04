@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/hasher"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -298,10 +299,9 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 		updateValues := map[string]interface{}{}
 
 		// This is a map of the columns that need to be updated, if specified
-		c2upd := map[string]struct{}{}
-		for _, c := range colsToUpdate {
-			c2upd[toSnakeCase(c)] = struct{}{}
-		}
+		c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
+			return toSnakeCase(s), struct{}{}
+		})
 		for k, v := range values {
 			if _, found := c2upd[k]; len(c2upd) == 0 || found {
 				updateValues[k] = v

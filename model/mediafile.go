@@ -81,6 +81,7 @@ type MediaFile struct {
 	Tags Tags `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
 
 	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
+	BirthTime time.Time `structs:"birth_time" json:"birthTime"` // Time of file creation (ctime)
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
 }
@@ -194,7 +195,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
-		a.CreatedAt = older(a.CreatedAt, m.CreatedAt)
+		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
 		comments = append(comments, m.Comment)
 		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		songArtistIds = append(songArtistIds, m.ArtistID)
@@ -293,7 +294,8 @@ type MediaFileRepository interface {
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
-	MarkMissing(MediaFiles, bool) error
+	MarkMissing(bool, ...MediaFile) error
+	MarkMissingByFolder(missing bool, folderIDs ...string) error
 	GetMissingAndMatching(libId int, pagination ...QueryOptions) (MediaFiles, error)
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response

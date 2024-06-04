@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -41,6 +42,7 @@ type scanJob struct {
 	lib         model.Library
 	fs          storage.MusicFS
 	lastUpdates map[string]time.Time
+	lock        sync.Mutex
 	fullRescan  bool
 	numFolders  atomic.Int64
 }
@@ -68,6 +70,15 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 	}, nil
 }
 
+func (j *scanJob) removeLastUpdated(folderID string) time.Time {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	lastUpdate := j.lastUpdates[folderID]
+	delete(j.lastUpdates, folderID)
+	return lastUpdate
+}
+
 type phaseFolders struct {
 	jobs []*scanJob
 	ds   model.DataStore
@@ -87,7 +98,10 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				log.Warn(p.ctx, "Scanner: Error scanning library", "lib", job.lib.Name, err)
 			}
 			for folder := range pl.ReadOrDone(p.ctx, outputChan) {
-				put(folder)
+				job.numFolders.Add(1)
+				if folder.isOutdated() || job.fullRescan {
+					put(folder)
+				}
 			}
 			total += job.numFolders.Load()
 		}
@@ -225,13 +239,13 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Mark all missing tracks as not available
 		if len(entry.missingTracks) > 0 {
-			err = tx.MediaFile(p.ctx).MarkMissing(entry.missingTracks, true)
+			err = tx.MediaFile(p.ctx).MarkMissing(true, entry.missingTracks...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
 				return err
 			}
 
-			// Touch all albums that have missing tracks, so they get refreshed in phase 3
+			// Touch all albums that have missing tracks, so they get refreshed in later phases
 			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf model.MediaFile) (string, struct{}) { return mf.AlbumID, struct{}{} })
 			albumsToUpdate := maps.Keys(groupedMissingTracks)
 			err = tx.Album(p.ctx).Touch(albumsToUpdate...)
@@ -255,9 +269,26 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	return entry, nil
 }
 
-func (p *phaseFolders) finalize() error {
-	// TODO Mark all folders not seen in this scan as missing. Need to change walkDirTree to return all folders
-	return nil
+func (p *phaseFolders) finalize(error) error {
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		for _, job := range p.jobs {
+			if len(job.lastUpdates) == 0 {
+				continue
+			}
+			folderIDs := maps.Keys(job.lastUpdates)
+			err := tx.Folder(p.ctx).MarkMissing(true, folderIDs...)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)
+				return err
+			}
+			err = tx.MediaFile(p.ctx).MarkMissingByFolder(true, folderIDs...)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 var _ phase[*folderEntry] = (*phaseFolders)(nil)

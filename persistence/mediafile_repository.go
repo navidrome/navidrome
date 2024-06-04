@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -102,6 +103,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
+	m.CreatedAt = time.Now()
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err
@@ -231,32 +233,52 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 	return r.executeSQL(del)
 }
 
-func (r *mediaFileRepository) MarkMissing(mfs model.MediaFiles, missing bool) error {
-	for _, mf := range mfs {
+func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...model.MediaFile) error {
+	ids := slice.Map(mfs, func(m model.MediaFile) string { return m.ID })
+	return slice.RangeByChunks(ids, 200, func(chunk []string) error {
 		upd := Update(r.tableName).
 			Set("missing", missing).
 			Set("updated_at", timeToSQL(time.Now())).
 			Where(And{
-				Eq{"id": mf.ID},
+				Eq{"id": chunk},
 				Eq{"missing": !missing},
 			})
 		c, err := r.executeSQL(upd)
 		if err != nil || c == 0 {
-			log.Error(r.ctx, "Error setting mediafile missing flag", "id", mf.ID, err)
+			log.Error(r.ctx, "Error setting mediafile missing flag", "ids", chunk, err)
 			return err
 		}
-	}
-	return nil
+		log.Debug(r.ctx, "Marked missing mediafiles", "total", c, "ids", chunk)
+		return nil
+	})
+}
+
+func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...string) error {
+	return slice.RangeByChunks(folderIDs, 200, func(chunk []string) error {
+		upd := Update(r.tableName).
+			Set("missing", missing).
+			Set("updated_at", timeToSQL(time.Now())).
+			Where(And{
+				Eq{"folder_id": chunk},
+				Eq{"missing": !missing},
+			})
+		c, err := r.executeSQL(upd)
+		if err != nil {
+			log.Error(r.ctx, "Error setting mediafile missing flag", "folderIDs", chunk, err)
+			return err
+		}
+		log.Debug(r.ctx, "Marked missing mediafiles from missing folders", "total", c, "folders", chunk)
+		return nil
+	})
 }
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
 // that were added/updated after the last scan started
 func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...model.QueryOptions) (model.MediaFiles, error) {
 	subQ := r.newSelect().Columns("pid").
-		Join("library on media_file.library_id = library.id").
 		Where(And{
 			Eq{"media_file.missing": true},
-			Eq{"library.id": libId},
+			Eq{"library_id": libId},
 		})
 	subQText, subQArgs, err := subQ.PlaceholderFormat(Question).ToSql()
 	if err != nil {
@@ -266,7 +288,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
 			Eq{"missing": true},
-			ConcatExpr("media_file.updated_at > library.last_scan_started_at"),
+			ConcatExpr("media_file.created_at > library.last_scan_started_at"),
 		}).
 		Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
