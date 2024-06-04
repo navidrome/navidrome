@@ -63,6 +63,16 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("CompactByFrequency", func() {
+		It("returns empty slice for an empty input", func() {
+			Expect(slice.CompactByFrequency([]int{})).To(BeEmpty())
+		})
+
+		It("groups by frequency", func() {
+			Expect(slice.CompactByFrequency([]int{1, 2, 1, 2, 3, 2})).To(ConsistOf(2, 1, 3))
+		})
+	})
+
 	Describe("MostFrequent", func() {
 		It("returns zero value if no arguments are passed", func() {
 			Expect(slice.MostFrequent([]int{})).To(BeZero())
