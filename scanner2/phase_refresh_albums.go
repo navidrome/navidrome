@@ -63,6 +63,6 @@ func (p *phaseRefreshAlbums) refreshAlbums(album *model.Album) (*model.Album, er
 	return album, nil
 }
 
-func (p *phaseRefreshAlbums) finalize() error {
+func (p *phaseRefreshAlbums) finalize(error) error {
 	return nil
 }

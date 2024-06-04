@@ -21,6 +21,7 @@ type folderEntry struct {
 	path            string    // Full path
 	id              string    // DB ID
 	modTime         time.Time // From FS
+	updTime         time.Time // from DB
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
 	playlists       []fs.DirEntry
@@ -33,22 +34,20 @@ type folderEntry struct {
 }
 
 func newFolderEntry(job *scanJob, path string) *folderEntry {
+	id := model.FolderID(job.lib, path)
 	return &folderEntry{
-		id:         model.FolderID(job.lib, path),
+		id:         id,
 		job:        job,
 		path:       path,
 		startTime:  time.Now(),
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
+		updTime:    job.removeLastUpdated(id),
 	}
 }
 
-func (f *folderEntry) updatedTime() time.Time {
-	return f.job.lastUpdates[f.id]
-}
-
 func (f *folderEntry) isOutdated() bool {
-	return f.updatedTime().Before(f.modTime)
+	return f.updTime.Before(f.modTime)
 }
 
 func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error) {
@@ -72,7 +71,6 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
 		return nil
 	}
-	job.numFolders.Add(1)
 	for _, c := range children {
 		err := walkFolder(ctx, job, c, results)
 		if err != nil {
@@ -80,13 +78,13 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 		}
 	}
 
-	if !folder.isOutdated() && !job.fullRescan {
-		return nil
-	}
+	//if !folder.isOutdated() && !job.fullRescan {
+	//	return nil
+	//}
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.playlists, "imagesUpdatedAt", folder.imagesUpdatedAt,
-		"updTime", folder.updatedTime(), "modTime", folder.modTime, "numChildren", len(children))
+		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
 	results <- folder
 
