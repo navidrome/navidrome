@@ -54,11 +54,13 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.Path = md.FilePath()
 	mf.Suffix = md.Suffix()
 	mf.Size = md.Size()
-	mf.CreatedAt = md.BirthTime()
+	mf.BirthTime = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
 
 	mf.PID = md.trackPID(mf)
 	mf.AlbumID = md.albumID()
+	mf.ArtistID = md.artistID()
+	mf.AlbumArtistID = md.albumArtistID()
 
 	return mf
 }

@@ -24,7 +24,10 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("gets mediafile from the DB", func() {
-		Expect(mr.Get("1004")).To(Equal(&songAntenna))
+		actual, err := mr.Get("1004")
+		Expect(err).ToNot(HaveOccurred())
+		actual.CreatedAt = time.Time{}
+		Expect(actual).To(Equal(&songAntenna))
 	})
 
 	It("returns ErrNotFound", func() {
