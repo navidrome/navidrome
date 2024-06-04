@@ -36,6 +36,8 @@ alter table media_file
     add column pid varchar default id not null;
 alter table media_file
 	add column missing boolean default false not null;
+alter table media_file
+	add column birth_time datetime default current_timestamp not null;
 
 create index if not exists media_file_folder_id_ix
  	on media_file (folder_id);
@@ -43,6 +45,8 @@ create index if not exists media_file_pid_ix
 	on media_file (pid);
 create index if not exists media_file_missing_ix
 	on media_file (missing,updated_at);
+create index if not exists media_file_birth_time_ix
+	on media_file (birth_time);
 
 -- FIXME Needs to process current media_file.paths, creating folders as needed
 
