@@ -5,6 +5,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
@@ -37,7 +38,7 @@ func (r folderRepository) GetAll(lib model.Library) ([]model.Folder, error) {
 }
 
 func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]time.Time, error) {
-	sq := r.newSelect().Columns("id", "updated_at").Where(Eq{"library_id": lib.ID})
+	sq := r.newSelect().Columns("id", "updated_at").Where(Eq{"library_id": lib.ID, "missing": false})
 	var res []struct {
 		ID        string
 		UpdatedAt time.Time
@@ -60,12 +61,12 @@ func (r folderRepository) Put(lib model.Library, path string) error {
 	return err
 }
 
-func (r folderRepository) MarkMissing(lib model.Library, path string, missing bool) error {
-	id := model.FolderID(lib, path)
+func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
+	log.Debug(r.ctx, "Marking folders as missing", "ids", ids, "missing", missing)
 	sq := Update(r.tableName).
 		Set("missing", missing).
 		Set("updated_at", timeToSQL(time.Now())).
-		Where(Eq{"id": id})
+		Where(Eq{"id": ids})
 	_, err := r.executeSQL(sq)
 	return err
 }
