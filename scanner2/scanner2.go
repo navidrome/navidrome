@@ -71,7 +71,7 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 type phase[T any] interface {
 	producer() ppl.Producer[T]
 	stages() []ppl.Stage[T]
-	finalize() error
+	finalize(error) error
 }
 
 func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
@@ -80,22 +80,10 @@ func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
 
 	producer := phase.producer()
 	stages := phase.stages()
-	err := runPipeline(ctx, phaseNum, producer, stages...)
-	if err != nil {
-		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
-	} else {
-		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start))
-	}
 
-	return phase.finalize()
-}
-
-func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T], stages ...ppl.Stage[T]) error {
-	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phase))
-	start := time.Now()
-
+	// Prepend a counter stage to the phase's pipeline
 	counter, countStageFn := countTasks[T]()
-	stages = append(stages, ppl.NewStage(countStageFn, ppl.Name("count tasks")))
+	stages = append([]ppl.Stage[T]{ppl.NewStage(countStageFn, ppl.Name("count tasks"))}, stages...)
 
 	var err error
 	if log.IsGreaterOrEqualTo(log.LevelDebug) {
@@ -105,12 +93,14 @@ func runPipeline[T any](ctx context.Context, phase int, producer ppl.Producer[T]
 	} else {
 		err = ppl.Do(producer, stages...)
 	}
+
 	if err != nil {
-		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phase), "elapsed", time.Since(start), err)
+		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
 	} else {
-		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phase), "elapsed", time.Since(start), "totalTasks", counter.Load())
+		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start), "totalTasks", counter.Load())
 	}
-	return err
+
+	return phase.finalize(err)
 }
 
 func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
