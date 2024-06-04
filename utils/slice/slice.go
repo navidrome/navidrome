@@ -3,8 +3,12 @@ package slice
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"io"
 	"iter"
+	"slices"
+
+	"golang.org/x/exp/maps"
 )
 
 func Map[T any, R any](t []T, mapFunc func(T) R) []R {
@@ -31,6 +35,19 @@ func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[
 		m[k] = v
 	}
 	return m
+}
+
+func CompactByFrequency[T comparable](list []T) []T {
+	counters := make(map[T]int)
+	for _, item := range list {
+		counters[item]++
+	}
+
+	sorted := maps.Keys(counters)
+	slices.SortFunc(sorted, func(i, j T) int {
+		return cmp.Compare(counters[j], counters[i])
+	})
+	return sorted
 }
 
 func MostFrequent[T comparable](list []T) T {
