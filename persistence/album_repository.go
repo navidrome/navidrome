@@ -215,6 +215,7 @@ func (r *albumRepository) GetOutdatedAlbumIDs(libID int) ([]string, error) {
 		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
+			// FIXME This must be time the album was touched by the scanner
 			ConcatExpr("album.updated_at > library.last_scan_started_at"),
 		})
 	var res []string
