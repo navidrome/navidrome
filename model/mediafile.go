@@ -210,6 +210,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		if m.DiscNumber > 0 {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
+		// TODO Sort values by frequency. Use slice.CompactByFrequency
 		a.Tags.Merge(m.Tags)
 	}
 
