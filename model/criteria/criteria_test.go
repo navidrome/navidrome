@@ -65,7 +65,7 @@ var _ = Describe("Criteria", func() {
 		sql, args, err := goObj.ToSql()
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		gomega.Expect(sql).To(gomega.Equal("(media_file.title LIKE ? AND media_file.title NOT LIKE ? AND (media_file.artist <> ? OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) AND COALESCE(genre.name, '') <> ?))"))
-		gomega.Expect(args).To(gomega.ConsistOf("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "test"))
+		gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "test"))
 	})
 
 	It("marshals to JSON", func() {
