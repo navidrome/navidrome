@@ -69,7 +69,7 @@ var _ = Describe("Slice Utils", func() {
 		})
 
 		It("groups by frequency", func() {
-			Expect(slice.CompactByFrequency([]int{1, 2, 1, 2, 3, 2})).To(ConsistOf(2, 1, 3))
+			Expect(slice.CompactByFrequency([]int{1, 2, 1, 2, 3, 2})).To(HaveExactElements(2, 1, 3))
 		})
 	})
 
