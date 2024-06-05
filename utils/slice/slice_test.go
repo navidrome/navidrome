@@ -60,13 +60,13 @@ var _ = Describe("Slice Utils", func() {
 
 	Describe("Move", func() {
 		It("moves item to end of slice", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 0, 2)).To(ConsistOf("2", "3", "1"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 0, 2)).To(HaveExactElements("2", "3", "1"))
 		})
 		It("moves item to beginning of slice", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 2, 0)).To(ConsistOf("3", "1", "2"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 2, 0)).To(HaveExactElements("3", "1", "2"))
 		})
 		It("keeps item in same position if srcIndex == dstIndex", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(HaveExactElements("1", "2", "3"))
 		})
 	})
 
@@ -80,14 +80,14 @@ var _ = Describe("Slice Utils", func() {
 			s := []string{"a", "b", "c"}
 			chunks := slice.BreakUp(s, 10)
 			Expect(chunks).To(HaveLen(1))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
+			Expect(chunks[0]).To(HaveExactElements("a", "b", "c"))
 		})
 		It("breaks up the slice if len > chunkSize", func() {
 			s := []string{"a", "b", "c", "d", "e"}
 			chunks := slice.BreakUp(s, 3)
 			Expect(chunks).To(HaveLen(2))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
-			Expect(chunks[1]).To(ConsistOf("d", "e"))
+			Expect(chunks[0]).To(HaveExactElements("a", "b", "c"))
+			Expect(chunks[1]).To(HaveExactElements("d", "e"))
 		})
 	})
 })

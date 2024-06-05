@@ -18,7 +18,7 @@ var _ = Describe("Operators", func() {
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(expectedSql))
-			gomega.Expect(args).To(gomega.ConsistOf(expectedArgs...))
+			gomega.Expect(args).To(gomega.HaveExactElements(expectedArgs...))
 		},
 		Entry("is [string]", Is{"title": "Low Rider"}, "media_file.title = ?", "Low Rider"),
 		Entry("is [bool]", Is{"loved": true}, "COALESCE(annotation.starred, false) = ?", true),
