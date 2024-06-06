@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/random"
+	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -74,7 +75,7 @@ func (e *externalMetadata) getAlbum(ctx context.Context, id string) (*auxAlbum, 
 	switch v := entity.(type) {
 	case *model.Album:
 		album.Album = *v
-		album.Name = clearName(v.Name)
+		album.Name = str.Clear(v.Name)
 	case *model.MediaFile:
 		return e.getAlbum(ctx, v.AlbumID)
 	default:
@@ -164,7 +165,7 @@ func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist
 	switch v := entity.(type) {
 	case *model.Artist:
 		artist.Artist = *v
-		artist.Name = clearName(v.Name)
+		artist.Name = str.Clear(v.Name)
 	case *model.MediaFile:
 		return e.getArtist(ctx, v.ArtistID)
 	case *model.Album:
@@ -173,17 +174,6 @@ func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist
 		return nil, model.ErrNotFound
 	}
 	return &artist, nil
-}
-
-// Replace some Unicode chars with their equivalent ASCII
-func clearName(name string) string {
-	name = strings.ReplaceAll(name, "–", "-")
-	name = strings.ReplaceAll(name, "‐", "-")
-	name = strings.ReplaceAll(name, "“", `"`)
-	name = strings.ReplaceAll(name, "”", `"`)
-	name = strings.ReplaceAll(name, "‘", `'`)
-	name = strings.ReplaceAll(name, "’", `'`)
-	return name
 }
 
 func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
@@ -414,7 +404,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 				squirrel.Eq{"artist_id": artistID},
 				squirrel.Eq{"album_artist_id": artistID},
 			},
-			squirrel.Like{"order_title": utils.SanitizeFieldForSorting(title)},
+			squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc ",
 		Max:  1,
@@ -434,11 +424,11 @@ func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistUR
 }
 
 func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
-	bio, err := agent.GetArtistBiography(ctx, artist.ID, clearName(artist.Name), artist.MbzArtistID)
+	bio, err := agent.GetArtistBiography(ctx, artist.ID, str.Clear(artist.Name), artist.MbzArtistID)
 	if err != nil {
 		return
 	}
-	bio = utils.SanitizeText(bio)
+	bio = str.SanitizeText(bio)
 	bio = strings.ReplaceAll(bio, "\n", " ")
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
@@ -514,7 +504,7 @@ func (e *externalMetadata) findArtistByName(ctx context.Context, artistName stri
 	}
 	artist := &auxArtist{
 		Artist: artists[0],
-		Name:   clearName(artists[0].Name),
+		Name:   str.Clear(artists[0].Name),
 	}
 	return artist, nil
 }

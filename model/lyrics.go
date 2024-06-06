@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type Line struct {
@@ -36,7 +36,7 @@ var (
 )
 
 func ToLyrics(language, text string) (*Lyrics, error) {
-	text = utils.SanitizeText(text)
+	text = str.SanitizeText(text)
 
 	lines := strings.Split(text, "\n")
 
@@ -67,7 +67,7 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 			if idTag != nil {
 				switch idTag[1] {
 				case "ar":
-					artist = utils.SanitizeText(strings.TrimSpace(idTag[2]))
+					artist = str.SanitizeText(strings.TrimSpace(idTag[2]))
 				case "offset":
 					{
 						off, err := strconv.ParseInt(strings.TrimSpace(idTag[2]), 10, 64)
@@ -78,7 +78,7 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 						}
 					}
 				case "ti":
-					title = utils.SanitizeText(strings.TrimSpace(idTag[2]))
+					title = str.SanitizeText(strings.TrimSpace(idTag[2]))
 				}
 
 				continue

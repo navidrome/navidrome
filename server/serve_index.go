@@ -15,8 +15,8 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func Index(ds model.DataStore, fs fs.FS) http.HandlerFunc {
@@ -42,9 +42,9 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"version":                   consts.Version,
 			"firstTime":                 firstTime,
 			"variousArtistsId":          consts.VariousArtistsID,
-			"baseURL":                   utils.SanitizeText(strings.TrimSuffix(conf.Server.BasePath, "/")),
-			"loginBackgroundURL":        utils.SanitizeText(conf.Server.UILoginBackgroundURL),
-			"welcomeMessage":            utils.SanitizeText(conf.Server.UIWelcomeMessage),
+			"baseURL":                   str.SanitizeText(strings.TrimSuffix(conf.Server.BasePath, "/")),
+			"loginBackgroundURL":        str.SanitizeText(conf.Server.UILoginBackgroundURL),
+			"welcomeMessage":            str.SanitizeText(conf.Server.UIWelcomeMessage),
 			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
 			"enableTranscodingConfig":   conf.Server.EnableTranscodingConfig,
 			"enableDownloads":           conf.Server.EnableDownloads,

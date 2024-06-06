@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
 )
 
@@ -140,7 +141,7 @@ func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
-	name := strings.ToLower(utils.NoArticle(a.Name))
+	name := strings.ToLower(str.NoArticle(a.Name))
 	for k, v := range r.indexGroups {
 		key := strings.ToLower(k)
 		if strings.HasPrefix(name, key) {

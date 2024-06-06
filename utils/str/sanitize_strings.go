@@ -1,4 +1,4 @@
-package utils
+package str
 
 import (
 	"html"
@@ -37,4 +37,14 @@ var policy = bluemonday.UGCPolicy()
 func SanitizeText(text string) string {
 	s := policy.Sanitize(text)
 	return html.UnescapeString(s)
+}
+
+func SanitizeFieldForSorting(originalValue string) string {
+	v := strings.TrimSpace(sanitize.Accents(originalValue))
+	return strings.ToLower(v)
+}
+
+func SanitizeFieldForSortingNoArticle(originalValue string) string {
+	v := strings.TrimSpace(sanitize.Accents(originalValue))
+	return strings.ToLower(NoArticle(v))
 }
