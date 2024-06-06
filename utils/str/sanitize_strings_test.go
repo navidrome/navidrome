@@ -63,4 +63,32 @@ var _ = Describe("Sanitize Strings", func() {
 			Expect(str.SanitizeFieldForSortingNoArticle("Õ Blésq Blom")).To(Equal("blesq blom"))
 		})
 	})
+
+	Describe("RemoveArticle", func() {
+		Context("Empty articles list", func() {
+			BeforeEach(func() {
+				conf.Server.IgnoredArticles = ""
+			})
+			It("returns empty if string is empty", func() {
+				Expect(str.RemoveArticle("")).To(BeEmpty())
+			})
+			It("returns same string", func() {
+				Expect(str.RemoveArticle("The Beatles")).To(Equal("The Beatles"))
+			})
+		})
+		Context("Default articles", func() {
+			BeforeEach(func() {
+				conf.Server.IgnoredArticles = "The El La Los Las Le Les Os As O A"
+			})
+			It("returns empty if string is empty", func() {
+				Expect(str.RemoveArticle("")).To(BeEmpty())
+			})
+			It("remove prefix article from string", func() {
+				Expect(str.RemoveArticle("Os Paralamas do Sucesso")).To(Equal("Paralamas do Sucesso"))
+			})
+			It("does not remove article if it is part of the first word", func() {
+				Expect(str.RemoveArticle("Thelonious Monk")).To(Equal("Thelonious Monk"))
+			})
+		})
+	})
 })

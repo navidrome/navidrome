@@ -8,6 +8,7 @@ import (
 
 	"github.com/deluan/sanitize"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/conf"
 )
 
 var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[\\(\\{\\]\\)\\}]")
@@ -46,5 +47,16 @@ func SanitizeFieldForSorting(originalValue string) string {
 
 func SanitizeFieldForSortingNoArticle(originalValue string) string {
 	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return strings.ToLower(NoArticle(v))
+	return strings.ToLower(RemoveArticle(v))
+}
+
+func RemoveArticle(name string) string {
+	articles := strings.Split(conf.Server.IgnoredArticles, " ")
+	for _, a := range articles {
+		n := strings.TrimPrefix(name, a+" ")
+		if n != name {
+			return n
+		}
+	}
+	return name
 }
