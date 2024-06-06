@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func (md Metadata) trackPID(mf model.MediaFile) string {
@@ -19,7 +20,7 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 		fmt.Sprintf("%s\\%s", md.albumID(), md.mapTrackTitle()),
 	)
 
-	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(value))))
+	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(value)))))
 }
 
 func (md Metadata) albumID() string {
@@ -30,17 +31,17 @@ func (md Metadata) albumID() string {
 			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
 		}
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
+	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(albumPath))))
 }
 
 //nolint:unused
 func (md Metadata) artistID() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(md.mapTrackArtistName()))))
+	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(md.mapTrackArtistName())))))
 }
 
 //nolint:unused
 func (md Metadata) albumArtistID() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(md.mapAlbumArtistName()))))
+	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(md.mapAlbumArtistName())))))
 }
 
 func (md Metadata) mapTrackTitle() string {
