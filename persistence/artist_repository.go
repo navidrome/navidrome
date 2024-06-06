@@ -141,7 +141,7 @@ func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
-	name := strings.ToLower(str.NoArticle(a.Name))
+	name := strings.ToLower(str.RemoveArticle(a.Name))
 	for k, v := range r.indexGroups {
 		key := strings.ToLower(k)
 		if strings.HasPrefix(name, key) {

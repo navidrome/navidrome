@@ -2,8 +2,6 @@ package str
 
 import (
 	"strings"
-
-	"github.com/navidrome/navidrome/conf"
 )
 
 func Clear(name string) string {
@@ -16,17 +14,6 @@ func Clear(name string) string {
 		"’", `'`,
 	)
 	return r.Replace(name)
-}
-
-func NoArticle(name string) string {
-	articles := strings.Split(conf.Server.IgnoredArticles, " ")
-	for _, a := range articles {
-		n := strings.TrimPrefix(name, a+" ")
-		if n != name {
-			return n
-		}
-	}
-	return name
 }
 
 func LongestCommonPrefix(list []string) string {
