@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func (md Metadata) ToMediaFile() model.MediaFile {
@@ -19,10 +19,10 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.SortAlbumName = md.String(AlbumSort)
 	mf.SortArtistName = md.String(TrackArtistSort)
 	mf.SortAlbumArtistName = md.String(AlbumArtistSort)
-	mf.OrderTitle = utils.SanitizeFieldForSorting(mf.Title)
-	mf.OrderAlbumName = utils.SanitizeFieldForSortingNoArticle(mf.Album)
-	mf.OrderArtistName = utils.SanitizeFieldForSortingNoArticle(mf.Artist)
-	mf.OrderAlbumArtistName = utils.SanitizeFieldForSortingNoArticle(mf.AlbumArtist)
+	mf.OrderTitle = str.SanitizeFieldForSorting(mf.Title)
+	mf.OrderAlbumName = str.SanitizeFieldForSortingNoArticle(mf.Album)
+	mf.OrderArtistName = str.SanitizeFieldForSortingNoArticle(mf.Artist)
+	mf.OrderAlbumArtistName = str.SanitizeFieldForSortingNoArticle(mf.AlbumArtist)
 	//mf.Genre = md.String(Genre)
 	mf.Compilation = md.Bool(Compilation)
 	mf.TrackNumber, _ = md.NumAndTotal(TrackNumber)
