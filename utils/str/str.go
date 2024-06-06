@@ -4,16 +4,17 @@ import (
 	"strings"
 )
 
+var utf8ToAscii = strings.NewReplacer(
+	"–", "-",
+	"‐", "-",
+	"“", `"`,
+	"”", `"`,
+	"‘", `'`,
+	"’", `'`,
+)
+
 func Clear(name string) string {
-	r := strings.NewReplacer(
-		"–", "-",
-		"‐", "-",
-		"“", `"`,
-		"”", `"`,
-		"‘", `'`,
-		"’", `'`,
-	)
-	return r.Replace(name)
+	return utf8ToAscii.Replace(name)
 }
 
 func LongestCommonPrefix(list []string) string {
