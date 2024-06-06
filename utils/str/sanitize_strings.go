@@ -30,7 +30,7 @@ func SanitizeStrings(text ...string) string {
 		}
 	}
 	sort.Strings(fullText)
-	return strings.Join(fullText, " ")
+	return Clear(strings.Join(fullText, " "))
 }
 
 var policy = bluemonday.UGCPolicy()
@@ -42,12 +42,12 @@ func SanitizeText(text string) string {
 
 func SanitizeFieldForSorting(originalValue string) string {
 	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return strings.ToLower(v)
+	return Clear(strings.ToLower(v))
 }
 
 func SanitizeFieldForSortingNoArticle(originalValue string) string {
 	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return strings.ToLower(RemoveArticle(v))
+	return Clear(strings.ToLower(RemoveArticle(v)))
 }
 
 func RemoveArticle(name string) string {
