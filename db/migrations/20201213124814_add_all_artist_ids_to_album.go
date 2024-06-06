@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
 )
 
@@ -50,7 +50,7 @@ select a.id, a.name, a.artist_id, a.album_artist_id, group_concat(mf.artist_id, 
 		if err != nil {
 			return err
 		}
-		all := utils.SanitizeStrings(artistId, albumArtistId, songArtistIds.String)
+		all := str.SanitizeStrings(artistId, albumArtistId, songArtistIds.String)
 		_, err = stmt.Exec(all, id)
 		if err != nil {
 			log.Error("Error setting album's artist_ids", "album", name, "albumId", id, err)

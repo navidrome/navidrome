@@ -1,11 +1,22 @@
-package utils
+package str
 
 import (
 	"strings"
 
-	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 )
+
+func Clear(name string) string {
+	r := strings.NewReplacer(
+		"–", "-",
+		"‐", "-",
+		"“", `"`,
+		"”", `"`,
+		"‘", `'`,
+		"’", `'`,
+	)
+	return r.Replace(name)
+}
 
 func NoArticle(name string) string {
 	articles := strings.Split(conf.Server.IgnoredArticles, " ")
@@ -32,14 +43,4 @@ func LongestCommonPrefix(list []string) string {
 		}
 	}
 	return list[0]
-}
-
-func SanitizeFieldForSorting(originalValue string) string {
-	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return strings.ToLower(v)
-}
-
-func SanitizeFieldForSortingNoArticle(originalValue string) string {
-	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return strings.ToLower(NoArticle(v))
 }
