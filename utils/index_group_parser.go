@@ -27,11 +27,8 @@ func ParseIndexGroups(spec string) IndexGroups {
 	for _, g := range split {
 		sub := indexGroupsRx.FindStringSubmatch(g)
 		if len(sub) > 0 {
-			i := 0
-			chars := strings.Split(sub[2], "")
-			for _, c := range chars {
-				parsed[c] = sub[1]
-				i++
+			for _, c := range sub[2] {
+				parsed[string(c)] = sub[1]
 			}
 		} else {
 			parsed[g] = g
