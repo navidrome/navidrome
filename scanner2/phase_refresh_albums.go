@@ -24,7 +24,7 @@ func createPhaseRefreshAlbums(ctx context.Context, ds model.DataStore, libs mode
 func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 	return ppl.NewProducer(func(put func(album *model.Album)) error {
 		for _, lib := range p.libs {
-			albumIDs, err := p.ds.Album(p.ctx).GetOutdatedAlbumIDs(lib.ID)
+			albumIDs, err := p.ds.Album(p.ctx).GetAlbumsTouched(lib.ID)
 			if err != nil {
 				return fmt.Errorf("error loading outdated albums: %w", err)
 			}

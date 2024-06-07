@@ -179,6 +179,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) Put(al *model.Album) error {
+	al.ScannedAt = time.Now()
 	id, err := r.put(al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
@@ -198,11 +199,13 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return dba.toModels(), err
 }
 
+// Touch flags an album as being scanned by the scanner, but not necessarily updated.
+// This is used for when missing tracks are detected for an album during scan.
 func (r *albumRepository) Touch(ids ...string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	upd := Update(r.tableName).Set("updated_at", time.Now()).Where(Eq{"id": ids})
+	upd := Update(r.tableName).Set("scanned_at", time.Now()).Where(Eq{"id": ids})
 	c, err := r.executeSQL(upd)
 	if err == nil {
 		log.Error(r.ctx, "Touching albums", "ids", ids, "updated", c == 1)
@@ -210,13 +213,15 @@ func (r *albumRepository) Touch(ids ...string) error {
 	return err
 }
 
-func (r *albumRepository) GetOutdatedAlbumIDs(libID int) ([]string, error) {
+// GetAlbumsTouched returns a list of album IDs that were touched by the scanner for a given library, in the
+// current library scan.
+func (r *albumRepository) GetAlbumsTouched(libID int) ([]string, error) {
 	sel := r.newSelect().Columns("album.id").From("album").
 		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
 			// FIXME This must be time the album was touched by the scanner
-			ConcatExpr("album.updated_at > library.last_scan_started_at"),
+			ConcatExpr("album.scanned_at > library.last_scan_started_at"),
 		})
 	var res []string
 	err := r.queryAllSlice(sel, &res)
