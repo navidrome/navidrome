@@ -137,8 +137,8 @@ func (p *phaseMissingTracks) moveMatched(tx model.DataStore, mt, ms model.MediaF
 	return tx.MediaFile(p.ctx).Delete(discardedID)
 }
 
-func (p *phaseMissingTracks) finalize(error) error {
-	return nil
+func (p *phaseMissingTracks) finalize(err error) error {
+	return err
 }
 
 var _ phase[*missingTracks] = (*phaseMissingTracks)(nil)
