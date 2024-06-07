@@ -56,7 +56,7 @@ type Album struct {
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
 
-	Tags Tags `structs:"tags" json:"tags,omitempty"` // All tags for this album
+	Tags Tags `structs:"tags" json:"-"` // All tags for this album
 
 	ScannedAt time.Time `structs:"scanned_at" json:"scannedAt"` // Last time this album was scanned
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Oldest CreatedAt for all songs in this album
