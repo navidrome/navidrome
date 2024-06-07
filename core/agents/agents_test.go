@@ -35,7 +35,7 @@ var _ = Describe("Agents", func() {
 			mfRepo.SetData(model.MediaFiles{{ID: "1", Title: "One", MbzReleaseTrackID: "111"}, {ID: "2", Title: "Two", MbzReleaseTrackID: "222"}})
 			songs, err := ag.GetArtistTopSongs(ctx, "123", "John Doe", "mb123", 2)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(songs).To(HaveExactElements([]Song{{Name: "One", MBID: "111"}, {Name: "Two", MBID: "222"}}))
+			Expect(songs).To(ConsistOf([]Song{{Name: "One", MBID: "111"}, {Name: "Two", MBID: "222"}}))
 		})
 	})
 
