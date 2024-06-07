@@ -94,13 +94,15 @@ func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
 		err = ppl.Do(producer, stages...)
 	}
 
+	err = phase.finalize(err)
+
 	if err != nil {
 		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
 	} else {
 		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start), "totalTasks", counter.Load())
 	}
 
-	return phase.finalize(err)
+	return err
 }
 
 func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
