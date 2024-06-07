@@ -25,22 +25,37 @@ var _ = Describe("AlbumRepository", func() {
 	})
 
 	Describe("Get", func() {
+		var Get = func(id string) (*model.Album, error) {
+			album, err := repo.Get(id)
+			if album != nil {
+				album.ScannedAt = time.Time{}
+			}
+			return album, err
+		}
 		It("returns an existent album", func() {
-			Expect(repo.Get("103")).To(Equal(&albumRadioactivity))
+			Expect(Get("103")).To(Equal(&albumRadioactivity))
 		})
 		It("returns ErrNotFound when the album does not exist", func() {
-			_, err := repo.Get("666")
+			_, err := Get("666")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
 	Describe("GetAll", func() {
+		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
+			albums, err := repo.GetAll(opts...)
+			for i := range albums {
+				albums[i].ScannedAt = time.Time{}
+			}
+			return albums, err
+		}
+
 		It("returns all records", func() {
-			Expect(repo.GetAll()).To(Equal(testAlbums))
+			Expect(GetAll()).To(Equal(testAlbums))
 		})
 
 		It("returns all records sorted", func() {
-			Expect(repo.GetAll(model.QueryOptions{Sort: "name"})).To(Equal(model.Albums{
+			Expect(GetAll(model.QueryOptions{Sort: "name"})).To(Equal(model.Albums{
 				albumAbbeyRoad,
 				albumRadioactivity,
 				albumSgtPeppers,
@@ -48,7 +63,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("returns all records sorted desc", func() {
-			Expect(repo.GetAll(model.QueryOptions{Sort: "name", Order: "desc"})).To(Equal(model.Albums{
+			Expect(GetAll(model.QueryOptions{Sort: "name", Order: "desc"})).To(Equal(model.Albums{
 				albumSgtPeppers,
 				albumRadioactivity,
 				albumAbbeyRoad,
@@ -56,7 +71,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("paginates the result", func() {
-			Expect(repo.GetAll(model.QueryOptions{Offset: 1, Max: 1})).To(Equal(model.Albums{
+			Expect(GetAll(model.QueryOptions{Offset: 1, Max: 1})).To(Equal(model.Albums{
 				albumAbbeyRoad,
 			}))
 		})
