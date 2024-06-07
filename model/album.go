@@ -58,8 +58,9 @@ type Album struct {
 
 	Tags Tags `structs:"tags" json:"tags,omitempty"` // All tags for this album
 
-	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
-	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"`
+	ScannedAt time.Time `structs:"scanned_at" json:"scannedAt"` // Last time this album was scanned
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Oldest CreatedAt for all songs in this album
+	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Newest UpdatedAt for all songs in this album
 }
 
 func (a Album) CoverArtID() ArtworkID {
@@ -114,7 +115,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
-	GetOutdatedAlbumIDs(libID int) ([]string, error)
+	GetAlbumsTouched(libID int) ([]string, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }
