@@ -43,8 +43,8 @@ type ExternalMetadata interface {
 type externalMetadata struct {
 	ds          model.DataStore
 	ag          *agents.Agents
-	artistQueue chan<- *auxArtist
-	albumQueue  chan<- *auxAlbum
+	artistQueue refreshQueue[*auxArtist]
+	albumQueue  refreshQueue[*auxAlbum]
 }
 
 type auxAlbum struct {
@@ -59,8 +59,8 @@ type auxArtist struct {
 
 func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMetadata {
 	e := &externalMetadata{ds: ds, ag: agents}
-	e.artistQueue = startRefreshQueue(context.TODO(), e.populateArtistInfo)
-	e.albumQueue = startRefreshQueue(context.TODO(), e.populateAlbumInfo)
+	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
+	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
 	return e
 }
 
@@ -100,9 +100,10 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 		}
 	}
 
+	// If info is expired, trigger a populateAlbumInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
-		enqueueRefresh(e.albumQueue, album)
+		e.albumQueue.enqueue(album)
 	}
 
 	return &album.Album, nil
@@ -205,7 +206,7 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*a
 	// If info is expired, trigger a populateArtistInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artist.Name)
-		enqueueRefresh(e.artistQueue, artist)
+		e.artistQueue.enqueue(artist)
 	}
 	return artist, nil
 }
@@ -551,7 +552,9 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 	return nil
 }
 
-func startRefreshQueue[T any](ctx context.Context, processFn func(context.Context, T) error) chan<- T {
+type refreshQueue[T any] chan<- T
+
+func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context, T) error) refreshQueue[T] {
 	queue := make(chan T, refreshQueueLength)
 	go func() {
 		for {
@@ -570,9 +573,9 @@ func startRefreshQueue[T any](ctx context.Context, processFn func(context.Contex
 	return queue
 }
 
-func enqueueRefresh[T any](queue chan<- T, item T) {
+func (q *refreshQueue[T]) enqueue(item T) {
 	select {
-	case queue <- item:
-	default: // It is ok to miss a refresh
+	case *q <- item:
+	default: // It is ok to miss a refresh request
 	}
 }
