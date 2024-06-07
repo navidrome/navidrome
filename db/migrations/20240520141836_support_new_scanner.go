@@ -50,6 +50,12 @@ create index if not exists media_file_birth_time_ix
 
 -- FIXME Needs to process current media_file.paths, creating folders as needed
 
+alter table album
+	add column scanned_at datetime default '0000-00-00 00:00:00' not null;
+
+create index if not exists album_scanned_at_ix
+	on album (scanned_at);
+
 create table if not exists tag(
   	id varchar not null primary key,
   	tag_name varchar default '' not null,
