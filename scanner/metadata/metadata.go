@@ -173,17 +173,14 @@ func (t Tags) MbzAlbumComment() string {
 }
 
 // Gain Properties
-type GainType int
 
-// Used by getGainValue to determine which gain tags to looks for
-const (
-	AlbumGain GainType = iota
-	TrackGain
-)
-
-func (t Tags) RGAlbumGain() float64 { return t.getGainValue(AlbumGain) }
+func (t Tags) RGAlbumGain() float64 {
+	return t.getGainValue("replaygain_album_gain", "r128_album_gain")
+}
 func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
-func (t Tags) RGTrackGain() float64 { return t.getGainValue(TrackGain) }
+func (t Tags) RGTrackGain() float64 {
+	return t.getGainValue("replaygain_track_gain", "r128_track_gain")
+}
 func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
 
 // File properties
@@ -245,18 +242,7 @@ func (t Tags) Lyrics() string {
 	return string(res)
 }
 
-func (t Tags) getGainValue(gainType GainType) float64 {
-	// Gain is in the form [-]a.bb dB
-	var rgTagName string
-	var r128TagName string
-	if gainType == AlbumGain {
-		rgTagName = "replaygain_album_gain"
-		r128TagName = "r128_album_gain"
-	} else {
-		rgTagName = "replaygain_track_gain"
-		r128TagName = "r128_track_gain"
-	}
-
+func (t Tags) getGainValue(rgTagName, r128TagName string) float64 {
 	// Check for ReplayGain first
 	// ReplayGain is in the form [-]a.bb dB and normalized to -18dB
 	var tag = t.getFirstTagValue(rgTagName)
