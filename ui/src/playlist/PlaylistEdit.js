@@ -1,5 +1,3 @@
-import React, { Fragment } from 'react'
-
 import {
   Edit,
   FormDataConsumer,
@@ -17,10 +15,10 @@ import { isWritable, Title } from '../common'
 
 const SyncFragment = ({ formData, variant, ...rest }) => {
   return (
-    <Fragment>
+    <>
       {formData.path && <BooleanInput source="sync" {...rest} />}
       {formData.path && <TextField source="path" {...rest} />}
-    </Fragment>
+    </>
   )
 }
 
