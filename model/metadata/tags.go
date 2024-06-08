@@ -9,62 +9,71 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Name string
+type TagName string
 
 // Tag names, as defined in the mappings.yaml file
 const (
-	Album         Name = "album"
-	Title         Name = "title"
-	TrackNumber   Name = "track"
-	DiscNumber    Name = "disc"
-	TotalTracks   Name = "tracktotal"
-	TotalDiscs    Name = "disctotal"
-	DiscSubtitle  Name = "discsubtitle"
-	Genre         Name = "genre"
-	Comment       Name = "comment"
-	AlbumSort     Name = "albumsort"
-	AlbumComment  Name = "albumcomment"
-	TitleSort     Name = "titlesort"
-	Compilation   Name = "compilation"
-	Grouping      Name = "grouping"
-	Lyrics        Name = "lyrics"
-	RecordLabel   Name = "recordlabel"
-	CatalogNumber Name = "catalognumber"
-	BPM           Name = "bpm"
+	Album         TagName = "album"
+	Title         TagName = "title"
+	TrackNumber   TagName = "track"
+	DiscNumber    TagName = "disc"
+	TotalTracks   TagName = "tracktotal"
+	TotalDiscs    TagName = "disctotal"
+	DiscSubtitle  TagName = "discsubtitle"
+	Genre         TagName = "genre"
+	Comment       TagName = "comment"
+	AlbumSort     TagName = "albumsort"
+	AlbumComment  TagName = "albumcomment"
+	TitleSort     TagName = "titlesort"
+	Compilation   TagName = "compilation"
+	Grouping      TagName = "grouping"
+	Lyrics        TagName = "lyrics"
+	RecordLabel   TagName = "recordlabel"
+	CatalogNumber TagName = "catalognumber"
+	BPM           TagName = "bpm"
 
 	// Dates and years
 
-	OriginalDate Name = "originaldate"
-	ReleaseDate  Name = "releasedate"
+	OriginalDate TagName = "originaldate"
+	ReleaseDate  TagName = "releasedate"
 
 	// Artists and roles
 
-	AlbumArtist     Name = "albumartist"
-	AlbumArtistSort Name = "albumartistsort"
-	TrackArtist     Name = "artist"
-	TrackArtistSort Name = "artistsort"
-	Composer        Name = "composer"
-	ComposerSort    Name = "composersort"
-	Performer       Name = "performer"
-	Director        Name = "director"
-	Conductor       Name = "conductor"
-	Arranger        Name = "arranger"
-	Lyricist        Name = "lyricist"
+	AlbumArtist      TagName = "albumartist"
+	AlbumArtists     TagName = "albumartists"
+	AlbumArtistSort  TagName = "albumartistsort"
+	AlbumArtistsSort TagName = "albumartistssort"
+	TrackArtist      TagName = "artist"
+	TrackArtists     TagName = "artists"
+	TrackArtistSort  TagName = "artistsort"
+	TrackArtistsSort TagName = "artistssort"
+	Composer         TagName = "composer"
+	ComposerSort     TagName = "composersort"
+	Performer        TagName = "performer"
+	Director         TagName = "director"
+	Producer         TagName = "producer"
+	Engineer         TagName = "engineer"
+	Mixer            TagName = "mixer"
+	Remixer          TagName = "remixer"
+	DJMixer          TagName = "djmixer"
+	Conductor        TagName = "conductor"
+	Arranger         TagName = "arranger"
+	Lyricist         TagName = "lyricist"
 
 	// ReplayGain
 
-	ReplayGainAlbumGain Name = "replaygain_album_gain"
-	ReplayGainAlbumPeak Name = "replaygain_album_peak"
-	ReplayGainTrackGain Name = "replaygain_track_gain"
-	ReplayGainTrackPeak Name = "replaygain_track_peak"
+	ReplayGainAlbumGain TagName = "replaygain_album_gain"
+	ReplayGainAlbumPeak TagName = "replaygain_album_peak"
+	ReplayGainTrackGain TagName = "replaygain_track_gain"
+	ReplayGainTrackPeak TagName = "replaygain_track_peak"
 
 	// MusicBrainz
 
-	MusicBrainzArtistID      Name = "musicbrainz_artistid"
-	MusicBrainzRecordingID   Name = "musicbrainz_recordingid"
-	MusicBrainzTrackID       Name = "musicbrainz_trackid"
-	MusicBrainzAlbumArtistID Name = "musicbrainz_albumartistid"
-	MusicBrainzAlbumID       Name = "musicbrainz_albumid"
+	MusicBrainzArtistID      TagName = "musicbrainz_artistid"
+	MusicBrainzRecordingID   TagName = "musicbrainz_recordingid"
+	MusicBrainzTrackID       TagName = "musicbrainz_trackid"
+	MusicBrainzAlbumArtistID TagName = "musicbrainz_albumartistid"
+	MusicBrainzAlbumID       TagName = "musicbrainz_albumid"
 )
 
 var mappings = sync.OnceValue(func() map[string][]string {
