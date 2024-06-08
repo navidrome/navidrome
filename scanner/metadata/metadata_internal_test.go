@@ -128,5 +128,17 @@ var _ = Describe("Tags", func() {
 			Entry("Infinity", "Infinity", 1.0),
 			Entry("Invalid value", "INVALID VALUE", 1.0),
 		)
+		DescribeTable("getR128GainValue",
+			func(tag string, expected float64) {
+				md := &Tags{}
+				md.Tags = map[string][]string{"r128_track_gain": {tag}}
+				Expect(md.RGTrackGain()).To(Equal(expected))
+
+			},
+			Entry("0", "0", 5.0),
+			Entry("-3776", "-3776", -9.75),
+			Entry("Infinity", "Infinity", 0.0),
+			Entry("Invalid value", "INVALID VALUE", 0.0),
+		)
 	})
 })
