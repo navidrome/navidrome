@@ -8,10 +8,10 @@ import (
 )
 
 func init() {
-	goose.AddMigrationContext(upAddFolderTable, downAddFolderTable)
+	goose.AddMigrationContext(upSupportNewScanner, downSupportNewScanner)
 }
 
-func upAddFolderTable(ctx context.Context, tx *sql.Tx) error {
+func upSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
 create table if not exists folder(
 	id varchar not null
@@ -56,6 +56,25 @@ alter table album
 create index if not exists album_scanned_at_ix
 	on album (scanned_at);
 
+create table if not exists media_file_artists(
+    	media_file_id varchar not null,
+    	artist_id varchar not null,
+    	role varchar default '' not null,
+    	sub_role varchar default '' not null,
+    	constraint artist_tracks_ux
+    	    			unique (artist_id, media_file_id)
+);
+
+create table if not exists album_artists(
+    	album_id varchar not null,
+    	artist_id varchar not null,
+    	role varchar default '' not null,
+    	constraint album_artists_ux
+    	    			unique (album_id, artist_id)
+);
+
+-- FIXME Add link all artists with role "album_artist"
+
 create table if not exists tag(
   	id varchar not null primary key,
   	tag_name varchar default '' not null,
@@ -79,7 +98,7 @@ create index if not exists item_tag_name_ix on item_tags(item_id, tag_name)
 	return err
 }
 
-func downAddFolderTable(ctx context.Context, tx *sql.Tx) error {
+func downSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
 	// This code is executed when the migration is rolled back.
 	return nil
 }
