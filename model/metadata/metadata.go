@@ -70,15 +70,18 @@ func (md Metadata) AudioProperties() AudioProperties { return md.audioProps }
 func (md Metadata) Length() float32                  { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
 func (md Metadata) HasPicture() bool                 { return md.hasPicture }
 func (md Metadata) All() map[string][]string         { return md.tags }
-func (md Metadata) Strings(key Name) []string        { return md.tags[string(key)] }
-func (md Metadata) String(key Name) string           { return md.first(key) }
-func (md Metadata) Int(key Name) int64               { v, _ := strconv.Atoi(md.first(key)); return int64(v) }
-func (md Metadata) Float(key Name) float64           { v, _ := strconv.ParseFloat(md.first(key), 64); return v }
-func (md Metadata) Bool(key Name) bool               { v, _ := strconv.ParseBool(md.first(key)); return v }
-func (md Metadata) Date(key Name) Date               { return md.date(key) }
-func (md Metadata) NumAndTotal(key Name) (int, int)  { return md.tuple(key) }
+func (md Metadata) Strings(key TagName) []string     { return md.tags[string(key)] }
+func (md Metadata) String(key TagName) string        { return md.first(key) }
+func (md Metadata) Int(key TagName) int64            { v, _ := strconv.Atoi(md.first(key)); return int64(v) }
+func (md Metadata) Float(key TagName) float64 {
+	v, _ := strconv.ParseFloat(md.first(key), 64)
+	return v
+}
+func (md Metadata) Bool(key TagName) bool              { v, _ := strconv.ParseBool(md.first(key)); return v }
+func (md Metadata) Date(key TagName) Date              { return md.date(key) }
+func (md Metadata) NumAndTotal(key TagName) (int, int) { return md.tuple(key) }
 
-func (md Metadata) first(key Name) string {
+func (md Metadata) first(key TagName) string {
 	if v, ok := md.tags[string(key)]; ok && len(v) > 0 {
 		return v[0]
 	}
@@ -86,7 +89,7 @@ func (md Metadata) first(key Name) string {
 }
 
 // Used for tracks and discs
-func (md Metadata) tuple(key Name) (int, int) {
+func (md Metadata) tuple(key TagName) (int, int) {
 	tag := md.first(key)
 	if tag == "" {
 		return 0, 0
@@ -106,7 +109,7 @@ func (md Metadata) tuple(key Name) (int, int) {
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
 // date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
-func (md Metadata) date(key Name) Date {
+func (md Metadata) date(key TagName) Date {
 	tag := md.first(key)
 	if len(tag) < 4 {
 		return ""
