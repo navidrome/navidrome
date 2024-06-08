@@ -190,9 +190,9 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
-	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 150)
-	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
-	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
+	response.AlbumInfo.SmallImageUrl = public.ImageURL(r, album.CoverArtID(), 300)
+	response.AlbumInfo.MediumImageUrl = public.ImageURL(r, album.CoverArtID(), 600)
+	response.AlbumInfo.LargeImageUrl = public.ImageURL(r, album.CoverArtID(), 1200)
 
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
