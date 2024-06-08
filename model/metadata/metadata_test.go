@@ -1,11 +1,9 @@
 package metadata_test
 
 import (
-	"io/fs"
 	"os"
 	"time"
 
-	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
@@ -144,14 +142,3 @@ var _ = Describe("Metadata", func() {
 		)
 	})
 })
-
-type testFileInfo struct {
-	fs.FileInfo
-}
-
-func (t testFileInfo) BirthTime() time.Time {
-	if ts := times.Get(t.FileInfo); ts.HasBirthTime() {
-		return ts.BirthTime()
-	}
-	return t.FileInfo.ModTime()
-}

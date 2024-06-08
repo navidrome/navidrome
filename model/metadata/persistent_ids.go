@@ -24,7 +24,7 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 }
 
 func (md Metadata) albumID() string {
-	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", md.mapAlbumArtistName(), md.mapAlbumName()))
+	albumPath := strings.ToLower(md.mapAlbumName()) // FIXME
 	if !conf.Server.Scanner.GroupAlbumReleases {
 		releaseDate := md.String(ReleaseDate)
 		if releaseDate != "" {
@@ -34,14 +34,8 @@ func (md Metadata) albumID() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(albumPath))))
 }
 
-//nolint:unused
-func (md Metadata) artistID() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(md.mapTrackArtistName())))))
-}
-
-//nolint:unused
-func (md Metadata) albumArtistID() string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(md.mapAlbumArtistName())))))
+func (md Metadata) artistID(name string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(name)))))
 }
 
 func (md Metadata) mapTrackTitle() string {
@@ -50,27 +44,6 @@ func (md Metadata) mapTrackTitle() string {
 	}
 	s := path.Base(md.FilePath())
 	return strings.TrimSuffix(s, path.Ext(s))
-}
-
-func (md Metadata) mapAlbumArtistName() string {
-	return cmp.Or(
-		md.String(AlbumArtist),
-		func() string {
-			if md.Bool(Compilation) {
-				return consts.VariousArtists
-			}
-			return ""
-		}(),
-		md.String(TrackArtist),
-		consts.UnknownArtist,
-	)
-}
-
-func (md Metadata) mapTrackArtistName() string {
-	return cmp.Or(
-		md.String(TrackArtist),
-		consts.UnknownArtist,
-	)
 }
 
 func (md Metadata) mapAlbumName() string {
