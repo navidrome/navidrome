@@ -160,6 +160,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		}
 
 		entry.albums = p.loadAlbumsFromMediaFiles(entry)
+		entry.artists = p.loadArtistsFromMediaFiles(entry)
 	}
 
 	return entry, nil
@@ -202,6 +203,18 @@ func (p *phaseFolders) loadAlbumsFromMediaFiles(entry *folderEntry) model.Albums
 	return albums
 }
 
+func (p *phaseFolders) loadArtistsFromMediaFiles(entry *folderEntry) model.Artists {
+	artists := make(map[string]model.Artist)
+	for _, track := range entry.tracks {
+		for _, participant := range track.Participations {
+			for _, artist := range participant {
+				artists[artist.ID] = artist
+			}
+		}
+	}
+	return maps.Values(artists)
+}
+
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Save folder to DB
@@ -211,21 +224,29 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			return err
 		}
 
-		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed
-		// in phase 3
+		// Save all tags to DB
+		err = tx.Tag(p.ctx).Add(entry.tags...)
+		if err != nil {
+			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
+			return err
+		}
+
+		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
+		for i := range entry.artists {
+			err := tx.Artist(p.ctx).Put(&entry.artists[i])
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i], err)
+				return err
+			}
+		}
+
+		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
 			err := tx.Album(p.ctx).Put(&entry.albums[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
 			}
-		}
-
-		// Save all tags to DB
-		err = tx.Tag(p.ctx).Add(entry.tags...)
-		if err != nil {
-			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
-			return err
 		}
 
 		// Save all tracks to DB
