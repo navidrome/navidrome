@@ -20,8 +20,8 @@ func (md Metadata) mapParticipations() model.Participations {
 	roleMappings := sync.OnceValue(func() map[model.Role]artistInfo {
 		return map[model.Role]artistInfo{
 			model.RoleComposer:  {name: Composer, sort: ComposerSort},
+			model.RoleLyricist:  {name: Lyricist, sort: LyricistSort},
 			model.RoleConductor: {name: Conductor},
-			model.RoleLyricist:  {name: Lyricist},
 			model.RoleArranger:  {name: Arranger},
 			model.RoleDirector:  {name: Director},
 			model.RoleProducer:  {name: Producer},
@@ -35,18 +35,26 @@ func (md Metadata) mapParticipations() model.Participations {
 
 	participations := make(model.Participations)
 
+	// Parse track artists
 	artists := md.parseArtists(TrackArtist, TrackArtists, TrackArtistSort, TrackArtistsSort, MusicBrainzArtistID)
 	for _, a := range artists {
 		participations.Add(a, model.RoleArtist)
 	}
+
+	// Parse album artists
 	albumArtists := md.parseArtists(AlbumArtist, AlbumArtists, AlbumArtistSort, AlbumArtistsSort, MusicBrainzAlbumArtistID)
 	if len(albumArtists) == 1 && albumArtists[0].Name == consts.UnknownArtist {
-		albumArtists = artists
+		if md.Bool(Compilation) {
+			albumArtists = md.parseArtist([]string{consts.VariousArtists}, nil, []string{consts.VariousArtistsMbzId})
+		} else {
+			albumArtists = artists
+		}
 	}
 	for _, a := range albumArtists {
 		participations.Add(a, model.RoleAlbumArtist)
 	}
 
+	// Parse all other roles
 	for role, info := range roleMappings() {
 		names := md.getTags(info.name)
 		sorts := md.getTags(info.sort)
