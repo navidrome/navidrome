@@ -57,20 +57,28 @@ create index if not exists album_scanned_at_ix
 	on album (scanned_at);
 
 create table if not exists media_file_artists(
-    	media_file_id varchar not null,
-    	artist_id varchar not null,
+    	media_file_id varchar not null
+				references media_file (id)
+	    		 	on delete cascade,
+    	artist_id varchar not null
+				references artist (id)
+	    		 	on delete cascade,
     	role varchar default '' not null,
     	sub_role varchar default '' not null,
     	constraint artist_tracks_ux
-    	    			unique (artist_id, media_file_id)
+    	    			unique (artist_id, media_file_id, role)
 );
 
 create table if not exists album_artists(
-    	album_id varchar not null,
-    	artist_id varchar not null,
+    	album_id varchar not null
+				references album (id)
+	    		 	on delete cascade,
+    	artist_id varchar not null
+				references artist (id)
+	    		 	on delete cascade,
     	role varchar default '' not null,
     	constraint album_artists_ux
-    	    			unique (album_id, artist_id)
+    	    			unique (album_id, artist_id, role)
 );
 
 -- FIXME Add link all artists with role "album_artist"
