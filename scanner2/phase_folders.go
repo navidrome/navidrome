@@ -233,7 +233,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
-			err := tx.Artist(p.ctx).Put(&entry.artists[i])
+			err := tx.Artist(p.ctx).Put(&entry.artists[i], "name", "mbz_artist_id", "sort_artist_name", "order_artist_name")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i], err)
 				return err
