@@ -64,8 +64,6 @@ func (md Metadata) mapParticipations() model.Participations {
 			participations.Add(a, role)
 		}
 	}
-	// TODO If track artist is not set, use Unknown Artist (maybe try sort name first?)
-	// TODO If album artist is not set, use track artist (maybe try sort name first?)
 	// TODO Match participants by name and copy MBID if not set
 	return participations
 }
@@ -109,39 +107,23 @@ func (md Metadata) getTags(tagNames ...TagName) []string {
 	}
 	return nil
 }
-
-func (md Metadata) mapDisplayArtist(mf model.MediaFile) string {
-	artistNames := md.Strings(TrackArtist)
-	artistsNames := md.Strings(TrackArtists)
+func (md Metadata) mapDisplayRole(mf model.MediaFile, role model.Role, tagNames ...TagName) string {
+	artistNames := md.getTags(tagNames...)
 	values := []string{
 		"",
-		mf.Participations.First(model.RoleArtist).Name,
+		mf.Participations.First(role).Name,
 		consts.UnknownArtist,
 	}
 	if len(artistNames) == 1 {
-		values[0] = artistNames[0]
-	} else if len(artistsNames) > 0 {
-		values[0] = artistsNames[0]
-	} else if len(artistNames) > 0 {
 		values[0] = artistNames[0]
 	}
 	return cmp.Or(values...)
 }
 
+func (md Metadata) mapDisplayArtist(mf model.MediaFile) string {
+	return md.mapDisplayRole(mf, model.RoleArtist, TrackArtist, TrackArtists)
+}
+
 func (md Metadata) mapDisplayAlbumArtist(mf model.MediaFile) string {
-	artistNames := md.Strings(AlbumArtist)
-	artistsNames := md.Strings(AlbumArtists)
-	values := []string{
-		"",
-		mf.Participations.First(model.RoleAlbumArtist).Name,
-		mf.Artist,
-	}
-	if len(artistNames) == 1 {
-		values[0] = artistNames[0]
-	} else if len(artistsNames) > 0 {
-		values[0] = artistsNames[0]
-	} else if len(artistNames) > 0 {
-		values[0] = artistNames[0]
-	}
-	return cmp.Or(values...)
+	return md.mapDisplayRole(mf, model.RoleAlbumArtist, AlbumArtist, AlbumArtists)
 }
