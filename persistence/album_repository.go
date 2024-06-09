@@ -20,9 +20,10 @@ type albumRepository struct {
 }
 
 type dbAlbum struct {
-	*model.Album `structs:",flatten"`
-	Discs        string `structs:"-" json:"discs"`
-	Tags         string `structs:"-" json:"-"`
+	*model.Album   `structs:",flatten"`
+	Discs          string `structs:"-" json:"discs"`
+	Tags           string `structs:"-" json:"-"`
+	Participations string `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -31,6 +32,7 @@ func (a *dbAlbum) PostScan() error {
 			return err
 		}
 	}
+	a.Album.Participations = parseParticipations(a.Participations)
 	if a.Tags == "" {
 		return nil
 	}
@@ -47,6 +49,7 @@ func (a *dbAlbum) PostScan() error {
 
 func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	delete(args, "tags")
+	delete(args, "participations")
 	if len(a.Album.Discs) == 0 {
 		args["discs"] = "{}"
 		return nil
@@ -150,6 +153,7 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
+	sql = r.withParticipations(sql)
 	sql = r.withTags(sql).GroupBy(r.tableName + ".id")
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
@@ -185,7 +189,19 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	return r.updateTags(al.ID, al.Tags)
+	// Only update participations and tags if there are any. Not the best place to put this,
+	// but updating external metadata does not provide these fields.
+	// TODO Move external metadata to a separated table
+	if len(al.Participations) > 0 {
+		err = r.updateParticipations(al.ID, al.Participations)
+		if err != nil {
+			return err
+		}
+	}
+	if len(al.Tags) > 0 {
+		err = r.updateTags(al.ID, al.Tags)
+	}
+	return err
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
