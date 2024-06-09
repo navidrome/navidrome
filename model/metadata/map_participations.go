@@ -16,11 +16,9 @@ type artistInfo struct {
 	mapName func(string) string
 }
 
-func (md Metadata) participations() model.Participations {
+func (md Metadata) mapParticipations() model.Participations {
 	roleMappings := sync.OnceValue(func() map[model.Role]artistInfo {
 		return map[model.Role]artistInfo{
-			//model.RoleArtist:      {name: TrackArtist, sort: TrackArtistSort, mbid: MusicBrainzArtistID, mapName: md.mapTrackArtistName},
-			//model.RoleAlbumArtist: {name: AlbumArtist, sort: AlbumArtistSort, mbid: MusicBrainzAlbumArtistID, mapName: md.mapAlbumArtistName},
 			model.RoleComposer:  {name: Composer, sort: ComposerSort},
 			model.RoleConductor: {name: Conductor},
 			model.RoleLyricist:  {name: Lyricist},
@@ -40,6 +38,13 @@ func (md Metadata) participations() model.Participations {
 	artists := md.parseArtists(TrackArtist, TrackArtists, TrackArtistSort, TrackArtistsSort, MusicBrainzArtistID)
 	for _, a := range artists {
 		participations.Add(a, model.RoleArtist)
+	}
+	albumArtists := md.parseArtists(AlbumArtist, AlbumArtists, AlbumArtistSort, AlbumArtistsSort, MusicBrainzAlbumArtistID)
+	if len(albumArtists) == 1 && albumArtists[0].Name == consts.UnknownArtist {
+		albumArtists = artists
+	}
+	for _, a := range albumArtists {
+		participations.Add(a, model.RoleAlbumArtist)
 	}
 
 	for role, info := range roleMappings() {
@@ -97,27 +102,7 @@ func (md Metadata) getTags(tagNames ...TagName) []string {
 	return nil
 }
 
-func (md Metadata) mapTrackArtistName(name string) string {
-	return cmp.Or(
-		name,
-		consts.UnknownArtist,
-	)
-}
-
-func (md Metadata) mapAlbumArtistName(name string) string {
-	return cmp.Or(
-		name,
-		func() string {
-			if md.Bool(Compilation) {
-				return consts.VariousArtists
-			}
-			return ""
-		}(),
-		consts.UnknownArtist,
-	)
-}
-
-func (md Metadata) displayArtist(mf model.MediaFile) string {
+func (md Metadata) mapDisplayArtist(mf model.MediaFile) string {
 	artistNames := md.Strings(TrackArtist)
 	artistsNames := md.Strings(TrackArtists)
 	values := []string{
@@ -135,7 +120,20 @@ func (md Metadata) displayArtist(mf model.MediaFile) string {
 	return cmp.Or(values...)
 }
 
-// TODO incomplete
-func (md Metadata) displayAlbumArtist(mf model.MediaFile) string {
-	return mf.Artist
+func (md Metadata) mapDisplayAlbumArtist(mf model.MediaFile) string {
+	artistNames := md.Strings(AlbumArtist)
+	artistsNames := md.Strings(AlbumArtists)
+	values := []string{
+		"",
+		mf.Participations.First(model.RoleAlbumArtist).Name,
+		mf.Artist,
+	}
+	if len(artistNames) == 1 {
+		values[0] = artistNames[0]
+	} else if len(artistsNames) > 0 {
+		values[0] = artistsNames[0]
+	} else if len(artistNames) > 0 {
+		values[0] = artistNames[0]
+	}
+	return cmp.Or(values...)
 }
