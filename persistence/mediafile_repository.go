@@ -69,7 +69,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 	r.tableName = "media_file"
 	r.filterMappings = map[string]filterFunc{
 		"id":       idFilter(r.tableName),
-		"title":    fullTextFilter,
+		"title":    fullTextFilter(r.tableName),
 		"starred":  booleanFilter,
 		"genre_id": tagIDFilter,
 	}

@@ -23,7 +23,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 
 	sq := r.newSelectWithAnnotation(r.tableName + ".id").Columns(r.tableName + ".*")
 	sq = r.withTags(sq).GroupBy(r.tableName + ".id")
-	filter := fullTextExpr(q)
+	filter := fullTextExpr(q, "")
 	if filter != nil {
 		sq = sq.Where(filter)
 		if len(orderBys) > 0 {
@@ -39,8 +39,8 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	return err
 }
 
-func fullTextExpr(value string) Sqlizer {
-	q := str.SanitizeStrings(value)
+func fullTextExpr(tableName string, s string) Sqlizer {
+	q := str.SanitizeStrings(s)
 	if q == "" {
 		return nil
 	}
@@ -51,7 +51,7 @@ func fullTextExpr(value string) Sqlizer {
 	parts := strings.Split(q, " ")
 	filters := And{}
 	for _, part := range parts {
-		filters = append(filters, Like{"full_text": "%" + sep + part + "%"})
+		filters = append(filters, Like{tableName + ".full_text": "%" + sep + part + "%"})
 	}
 	return filters
 }
