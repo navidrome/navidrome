@@ -197,34 +197,64 @@ var _ = Describe("Participations", func() {
 	})
 
 	Describe("ALBUMARTIST(S) tags", func() {
-		When("there is an ARTIST tag", func() {
-			Context("No ALBUMARTIST/ALBUMARTISTS tags", func() {
-				BeforeEach(func() {
-					mf = toMediaFile(map[string][]string{
-						"ARTIST":               {"Artist Name"},
-						"ARTISTSORT":           {"Name, Artist"},
-						"MUSICBRAINZ_ARTISTID": {"1234"},
-					})
+		Context("No ALBUMARTIST/ALBUMARTISTS tags", func() {
+			BeforeEach(func() {
+				mf = toMediaFile(map[string][]string{
+					"ARTIST":               {"Artist Name"},
+					"ARTISTSORT":           {"Name, Artist"},
+					"MUSICBRAINZ_ARTISTID": {"1234"},
 				})
+			})
 
-				It("should use the ARTIST as ALBUMARTIST", func() {
-					Expect(mf.AlbumArtist).To(Equal("Artist Name"))
+			It("should use the ARTIST as ALBUMARTIST", func() {
+				Expect(mf.AlbumArtist).To(Equal("Artist Name"))
+			})
+
+			It("should add the ARTIST to participations as ALBUMARTIST", func() {
+				participations := mf.Participations
+				Expect(participations).To(HaveLen(2))
+				Expect(participations).To(SatisfyAll(
+					HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)),
+				))
+
+				albumArtist := participations[model.RoleAlbumArtist][0]
+				Expect(albumArtist.ID).ToNot(BeEmpty())
+				Expect(albumArtist.Name).To(Equal("Artist Name"))
+				Expect(albumArtist.OrderArtistName).To(Equal("artist name"))
+				Expect(albumArtist.SortArtistName).To(Equal("Name, Artist"))
+				Expect(albumArtist.MbzArtistID).To(Equal("1234"))
+			})
+		})
+
+		Context("ALBUMARTIST tag is set", func() {
+			BeforeEach(func() {
+				mf = toMediaFile(map[string][]string{
+					"ARTIST":                    {"Track Artist Name"},
+					"ARTISTSORT":                {"Name, Track Artist"},
+					"MUSICBRAINZ_ARTISTID":      {"1234"},
+					"ALBUMARTIST":               {"Album Artist Name"},
+					"ALBUMARTISTSORT":           {"Album Artist Sort Name"},
+					"MUSICBRAINZ_ALBUMARTISTID": {"9876"},
 				})
+			})
 
-				It("should add the ARTIST to participations as ALBUMARTIST", func() {
-					participations := mf.Participations
-					Expect(participations).To(HaveLen(2))
-					Expect(participations).To(SatisfyAll(
-						HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)),
-					))
+			It("should use the ALBUMARTIST as display name", func() {
+				Expect(mf.AlbumArtist).To(Equal("Album Artist Name"))
+			})
 
-					albumArtist := participations[model.RoleAlbumArtist][0]
-					Expect(albumArtist.ID).ToNot(BeEmpty())
-					Expect(albumArtist.Name).To(Equal("Artist Name"))
-					Expect(albumArtist.OrderArtistName).To(Equal("artist name"))
-					Expect(albumArtist.SortArtistName).To(Equal("Name, Artist"))
-					Expect(albumArtist.MbzArtistID).To(Equal("1234"))
-				})
+			It("should populate the participations with the ALBUMARTIST", func() {
+				participations := mf.Participations
+				Expect(participations).To(HaveLen(2))
+				Expect(participations).To(SatisfyAll(
+					HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)),
+				))
+
+				albumArtist := participations[model.RoleAlbumArtist][0]
+				Expect(albumArtist.ID).ToNot(BeEmpty())
+				Expect(albumArtist.Name).To(Equal("Album Artist Name"))
+				Expect(albumArtist.OrderArtistName).To(Equal("album artist name"))
+				Expect(albumArtist.SortArtistName).To(Equal("Album Artist Sort Name"))
+				Expect(albumArtist.MbzArtistID).To(Equal("9876"))
 			})
 		})
 	})
