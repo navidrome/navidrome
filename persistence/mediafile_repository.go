@@ -26,9 +26,11 @@ type mediaFileRepository struct {
 type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
 	Tags             string `structs:"-" json:"-"`
+	Participations   string `structs:"-" json:"-"`
 }
 
 func (m *dbMediaFile) PostScan() error {
+	m.MediaFile.Participations = parseParticipations(m.Participations)
 	if m.Tags == "" {
 		return nil
 	}
@@ -46,6 +48,7 @@ func (m *dbMediaFile) PostScan() error {
 
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	delete(args, "tags")
+	delete(args, "participations")
 	return nil
 }
 
@@ -110,12 +113,17 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	}
 	m.ID = id
 
+	err = r.updateParticipations(m.ID, m.Participations)
+	if err != nil {
+		return err
+	}
 	return r.updateTags(m.ID, m.Tags)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
 	sql = r.withBookmark(sql, "media_file.id")
+	sql = r.withParticipations(sql)
 	sql = r.withTags(sql).GroupBy(r.tableName + ".id")
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
