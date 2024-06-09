@@ -141,3 +141,12 @@ func (n *Router) addDeleteSongRoute(r chi.Router) {
 		})
 	})
 }
+
+func (n *Router) addGetBeetsIdRoute(r chi.Router) {
+	r.Route("/getBeetsId", func(r chi.Router) {
+		r.Use(server.URLParamsMiddleware)
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			getBeetId(n.ds)(w, r)
+		})
+	})
+}

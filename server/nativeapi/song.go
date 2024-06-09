@@ -98,6 +98,7 @@ type BeetsItem struct {
 func deleteSong(ds model.DataStore) http.HandlerFunc {
 	type deleteSongPayload struct {
 		Ids []string `json:"ids"`
+		User string `json:"user"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		// todo: tests, use proper url parsing lib
@@ -120,17 +121,19 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 			//baseUrl := "http://127.0.0.1:8337"
 			baseUrl := "http://host.docker.internal:8337"
 			queryEndPoint := "/item/query/"
-			queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s", mf.Artist, mf.Title, mf.Album)
+			queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s/user:%s", mf.Artist, mf.Title, mf.Album, payload.User)
 			url := baseUrl + queryEndPoint + queryStr
 			fmt.Printf("query url: %s\n", url)
 			resp, err := http.Get(url) // nolint
 			if err != nil {
 				log.Error(err)
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				log.Error(err)
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			sb := string(body)
@@ -138,11 +141,14 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 			err = json.Unmarshal([]byte(sb), &beetsItem)
 			if err != nil {
 				log.Error(err)
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			length := len(beetsItem.Results)
 			if length != 1 {
-				log.Error("following query string matched n entries", "n", length, "queryStr", queryStr)
+			    errorStr := fmt.Sprintf("following query string matched %d entries: %s", length, queryStr)
+				log.Error(errorStr)
+			    http.Error(w, errorStr, http.StatusInternalServerError)
 				return
 			}
 			item := beetsItem.Results[0]
@@ -158,13 +164,15 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 			log.Info("delete request: ", req)
 			if err != nil {
 				log.Error(err)
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			// Fetch Request
 			client := &http.Client{}
 			del_resp, del_err := client.Do(req)
 			if del_err != nil {
-				log.Error(err)
+				log.Error(del_err)
+			    http.Error(w, del_err.Error(), http.StatusInternalServerError)
 				return
 			}
 			defer del_resp.Body.Close()
@@ -173,6 +181,7 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 			del_body, err := io.ReadAll(del_resp.Body)
 			if err != nil {
 				log.Error(err)
+			    http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
@@ -180,5 +189,58 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 			fmt.Println(string(del_body))
 			log.Info("del body: ", del_body)
 		}
+	}
+}
+
+func getBeetId(ds model.DataStore) http.HandlerFunc {
+	type deleteSongPayload struct {
+		Id string `json:"id"`
+		User string `json:"user"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		// todo: tests, use proper url parsing lib
+		var payload deleteSongPayload
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ctx := r.Context()
+		id := payload.Id
+		println(id)
+		mf, err := ds.MediaFile(ctx).Get(id)
+		if err != nil {
+			log.Error(err)
+		}
+		println(mf.Artist)
+		println(mf.Title)
+		// todo set this base from env variable
+		//baseUrl := "http://127.0.0.1:8337"
+		baseUrl := "http://host.docker.internal:8337"
+		queryEndPoint := "/item/query/"
+		queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s/user:%s", mf.Artist, mf.Title, mf.Album, payload.User)
+		url := baseUrl + queryEndPoint + queryStr
+		fmt.Printf("query url: %s\n", url)
+		resp, err := http.Get(url) // nolint
+		if err != nil {
+			log.Error(err)
+		    http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error(err)
+		    http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		sb := string(body)
+		var beetsItem BeetsItem
+		err = json.Unmarshal([]byte(sb), &beetsItem)
+		if err != nil {
+			log.Error(err)
+		    http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		return beetsItem
 	}
 }
