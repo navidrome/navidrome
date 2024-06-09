@@ -344,5 +344,22 @@ var _ = Describe("Participations", func() {
 			// TODO PERFORMER
 		)
 
+		Describe("MBID tags", func() {
+			It("should set the MBID for the artist based on the track/album artist", func() {
+				mf = toMediaFile(map[string][]string{
+					"ARTIST":               {"Artist Name"},
+					"MUSICBRAINZ_ARTISTID": {"1234"},
+					"COMPOSER":             {"Artist Name", "Second Composer"},
+				})
+
+				participations := mf.Participations
+				Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(2)))
+
+				composers := participations[model.RoleComposer]
+				Expect(composers[0].MbzArtistID).To(Equal("1234"))
+				Expect(composers[1].MbzArtistID).To(BeEmpty())
+			})
+		})
+
 	})
 })
