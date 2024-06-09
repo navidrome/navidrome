@@ -78,7 +78,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r.tableName = "album"
 	r.registerModel(&model.Album{}, map[string]filterFunc{
 		"id":              idFilter(r.tableName),
-		"name":            fullTextFilter,
+		"name":            fullTextFilter(r.tableName),
 		"compilation":     booleanFilter,
 		"artist_id":       artistFilter,
 		"year":            yearFilter,
