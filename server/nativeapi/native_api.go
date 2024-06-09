@@ -50,6 +50,7 @@ func (n *Router) routes() http.Handler {
 		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
 		n.addDeleteSongRoute(r)
+		n.addGetBeetsTrackRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -142,11 +143,11 @@ func (n *Router) addDeleteSongRoute(r chi.Router) {
 	})
 }
 
-func (n *Router) addGetBeetsIdRoute(r chi.Router) {
-	r.Route("/getBeetsId", func(r chi.Router) {
+func (n *Router) addGetBeetsTrackRoute(r chi.Router) {
+	r.Route("/getBeetTrack", func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			getBeetId(n.ds)(w, r)
+			getBeetTrack(n.ds)(w, r)
 		})
 	})
 }

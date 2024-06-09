@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -192,33 +193,23 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
-func getBeetId(ds model.DataStore) http.HandlerFunc {
-	type deleteSongPayload struct {
-		Id string `json:"id"`
-		User string `json:"user"`
-	}
+func getBeetTrack(ds model.DataStore) http.HandlerFunc {
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		// todo: tests, use proper url parsing lib
-		var payload deleteSongPayload
-		err := json.NewDecoder(r.Body).Decode(&payload)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		id := chi.URLParam(r, "id")
+		user := chi.URLParam(r, "user")
 		ctx := r.Context()
-		id := payload.Id
 		println(id)
 		mf, err := ds.MediaFile(ctx).Get(id)
 		if err != nil {
 			log.Error(err)
 		}
-		println(mf.Artist)
-		println(mf.Title)
 		// todo set this base from env variable
 		//baseUrl := "http://127.0.0.1:8337"
 		baseUrl := "http://host.docker.internal:8337"
 		queryEndPoint := "/item/query/"
-		queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s/user:%s", mf.Artist, mf.Title, mf.Album, payload.User)
+		queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s/user:%s", mf.Artist, mf.Title, mf.Album, user)
 		url := baseUrl + queryEndPoint + queryStr
 		fmt.Printf("query url: %s\n", url)
 		resp, err := http.Get(url) // nolint
@@ -241,6 +232,7 @@ func getBeetId(ds model.DataStore) http.HandlerFunc {
 		    http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		return beetsItem
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(sb)
 	}
 }
