@@ -48,7 +48,7 @@ type MediaFile struct {
 	Channels             int     `structs:"channels" json:"channels"`
 	Genre                string  `structs:"genre" json:"genre"`
 	Genres               Genres  `structs:"-" json:"genres"`
-	FullText             string  `structs:"full_text" json:"fullText"`
+	FullText             string  `structs:"full_text" json:"-"`
 	SortTitle            string  `structs:"sort_title" json:"sortTitle,omitempty"`
 	SortAlbumName        string  `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName       string  `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
