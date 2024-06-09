@@ -66,20 +66,20 @@ func (md Metadata) Size() int64          { return md.fileInfo.Size() }
 func (md Metadata) Suffix() string {
 	return strings.ToLower(strings.TrimPrefix(path.Ext(md.filePath), "."))
 }
-func (md Metadata) AudioProperties() AudioProperties { return md.audioProps }
-func (md Metadata) Length() float32                  { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
-func (md Metadata) HasPicture() bool                 { return md.hasPicture }
-func (md Metadata) All() map[string][]string         { return md.tags }
-func (md Metadata) Strings(key TagName) []string     { return md.tags[string(key)] }
-func (md Metadata) String(key TagName) string        { return md.first(key) }
-func (md Metadata) Int(key TagName) int64            { v, _ := strconv.Atoi(md.first(key)); return int64(v) }
+func (md Metadata) AudioProperties() AudioProperties   { return md.audioProps }
+func (md Metadata) Length() float32                    { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
+func (md Metadata) HasPicture() bool                   { return md.hasPicture }
+func (md Metadata) All() map[string][]string           { return md.tags }
+func (md Metadata) Strings(key TagName) []string       { return md.tags[string(key)] }
+func (md Metadata) String(key TagName) string          { return md.first(key) }
+func (md Metadata) Int(key TagName) int64              { v, _ := strconv.Atoi(md.first(key)); return int64(v) }
+func (md Metadata) Bool(key TagName) bool              { v, _ := strconv.ParseBool(md.first(key)); return v }
+func (md Metadata) Date(key TagName) Date              { return md.date(key) }
+func (md Metadata) NumAndTotal(key TagName) (int, int) { return md.tuple(key) }
 func (md Metadata) Float(key TagName) float64 {
 	v, _ := strconv.ParseFloat(md.first(key), 64)
 	return v
 }
-func (md Metadata) Bool(key TagName) bool              { v, _ := strconv.ParseBool(md.first(key)); return v }
-func (md Metadata) Date(key TagName) Date              { return md.date(key) }
-func (md Metadata) NumAndTotal(key TagName) (int, int) { return md.tuple(key) }
 
 func (md Metadata) first(key TagName) string {
 	if v, ok := md.tags[string(key)]; ok && len(v) > 0 {
