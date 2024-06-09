@@ -17,12 +17,12 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.SortAlbumName = md.String(AlbumSort)
 	mf.OrderTitle = str.SanitizeFieldForSorting(mf.Title)
 	mf.OrderAlbumName = str.SanitizeFieldForSortingNoArticle(mf.Album)
+	mf.Compilation = md.Bool(Compilation)
 
 	mf.Participations = md.mapParticipations()
 	mf.Artist = md.mapDisplayArtist(mf)
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
-	mf.Compilation = md.Bool(Compilation)
 	mf.TrackNumber, _ = md.NumAndTotal(TrackNumber)
 	mf.DiscNumber, _ = md.NumAndTotal(DiscNumber)
 	mf.DiscSubtitle = md.String(DiscSubtitle)
