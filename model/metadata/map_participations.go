@@ -64,7 +64,29 @@ func (md Metadata) mapParticipations() model.Participations {
 			participations.Add(a, role)
 		}
 	}
-	// TODO Match participants by name and copy MBID if not set
+
+	// For each artist in each role, try to figure out their MBID from the track/album artists
+	for role, artists := range participations {
+		for i, artist := range artists {
+			if artist.MbzArtistID == "" {
+				for _, trackArtist := range participations[model.RoleArtist] {
+					if artist.Name == trackArtist.Name && trackArtist.MbzArtistID != "" {
+						participations[role][i].MbzArtistID = trackArtist.MbzArtistID
+						break
+					}
+				}
+				if artist.MbzArtistID == "" {
+					for _, albumArtist := range participations[model.RoleAlbumArtist] {
+						if artist.Name == albumArtist.Name {
+							participations[role][i].MbzArtistID = albumArtist.MbzArtistID
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return participations
 }
 
