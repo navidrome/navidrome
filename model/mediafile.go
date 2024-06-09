@@ -81,7 +81,7 @@ type MediaFile struct {
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
 	Tags           Tags           `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
-	Participations Participations `structs:"-" json:"-"`                 // All artists that participated in this track
+	Participations Participations `structs:"participations" json:"-"`    // All artists that participated in this track
 
 	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
 	BirthTime time.Time `structs:"birth_time" json:"birthTime"` // Time of file creation (ctime)
