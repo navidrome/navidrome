@@ -80,8 +80,8 @@ type MediaFile struct {
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
-	Tags           Tags           `structs:"tags" json:"tags,omitempty"` // All imported tags from the original file
-	Participations Participations `structs:"participations" json:"-"`    // All artists that participated in this track
+	Tags           Tags           `structs:"tags" json:"tags,omitempty"`           // All imported tags from the original file
+	Participations Participations `structs:"participations" json:"participations"` // All artists that participated in this track
 
 	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
 	BirthTime time.Time `structs:"birth_time" json:"birthTime"` // Time of file creation (ctime)
@@ -158,7 +158,7 @@ func (mfs MediaFiles) Dirs() []string {
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
-	a := Album{SongCount: len(mfs), Tags: make(Tags)}
+	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations)}
 	var fullText []string
 	var albumArtistIds []string
 	var songArtistIds []string
@@ -215,6 +215,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 		// TODO Sort values by frequency. Use slice.CompactByFrequency
 		a.Tags.Merge(m.Tags)
+		a.Participations.Merge(m.Participations)
 	}
 
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)

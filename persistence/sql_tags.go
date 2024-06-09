@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
@@ -10,9 +11,9 @@ import (
 
 // TODO Consolidate withTags and newSelectWithAnnotation(s)?
 func (r sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
-	return sql.LeftJoin("item_tags it on it.item_id = " + r.tableName + ".id and it.item_type = '" + r.tableName + "'").
+	return sql.LeftJoin(fmt.Sprintf("item_tags it on it.item_id = %[1]s.id and it.item_type = '%[1]s'", r.tableName)).
 		LeftJoin("tag on tag.id = it.tag_id").
-		Columns("json_group_array(json_object(ifnull(tag.tag_name, ''), tag.tag_value)) as tags")
+		Columns("json_group_array(distinct(json_object(ifnull(tag.tag_name, ''), tag.tag_value))) as tags")
 }
 
 func parseTags(strTags string) (model.Tags, error) {
