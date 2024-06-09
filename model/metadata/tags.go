@@ -51,7 +51,6 @@ const (
 	ComposerSort     TagName = "composersort"
 	Lyricist         TagName = "lyricist"
 	LyricistSort     TagName = "lyricistsort"
-	Performer        TagName = "performer"
 	Director         TagName = "director"
 	Producer         TagName = "producer"
 	Engineer         TagName = "engineer"
@@ -60,6 +59,7 @@ const (
 	DJMixer          TagName = "djmixer"
 	Conductor        TagName = "conductor"
 	Arranger         TagName = "arranger"
+	Performer        TagName = "performer"
 
 	// ReplayGain
 
