@@ -170,6 +170,11 @@ var _ = Describe("Participations", func() {
 				})
 			})
 
+			XIt("should use the values concatenated as a display name ", func() {
+				Expect(mf.Artist).To(Equal("First Artist + Second Artist"))
+			})
+
+			// TODO: remove when the above is implemented
 			It("should use the first artist name as display name", func() {
 				Expect(mf.Artist).To(Equal("First Artist 2"))
 			})
@@ -343,23 +348,27 @@ var _ = Describe("Participations", func() {
 			Entry("DIRECTOR", model.RoleDirector, "DIRECTOR"),
 			// TODO PERFORMER
 		)
+	})
 
-		Describe("MBID tags", func() {
-			It("should set the MBID for the artist based on the track/album artist", func() {
-				mf = toMediaFile(map[string][]string{
-					"ARTIST":               {"Artist Name"},
-					"MUSICBRAINZ_ARTISTID": {"1234"},
-					"COMPOSER":             {"Artist Name", "Second Composer"},
-				})
-
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(2)))
-
-				composers := participations[model.RoleComposer]
-				Expect(composers[0].MbzArtistID).To(Equal("1234"))
-				Expect(composers[1].MbzArtistID).To(BeEmpty())
+	Describe("MBID tags", func() {
+		It("should set the MBID for the artist based on the track/album artist", func() {
+			mf = toMediaFile(map[string][]string{
+				"ARTIST":               {"John Doe", "Jane Doe"},
+				"MUSICBRAINZ_ARTISTID": {"1234", "5678"},
+				"COMPOSER":             {"John Doe", "Someone Else"},
+				"PRODUCER":             {"Jane Doe", "John Doe"},
 			})
-		})
 
+			participations := mf.Participations
+			Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(2)))
+
+			composers := participations[model.RoleComposer]
+			Expect(composers[0].MbzArtistID).To(Equal("1234"))
+			Expect(composers[1].MbzArtistID).To(BeEmpty())
+
+			producers := participations[model.RoleProducer]
+			Expect(producers[0].MbzArtistID).To(Equal("5678"))
+			Expect(producers[1].MbzArtistID).To(Equal("1234"))
+		})
 	})
 })
