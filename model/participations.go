@@ -1,16 +1,9 @@
 package model
 
-import "encoding/json"
-
-type Role struct {
-	role string
-}
-
-func (r Role) String() string {
-	return r.role
-}
+import "fmt"
 
 var (
+	RoleInvalid     = Role{"invalid"}
 	RoleArtist      = Role{"artist"}
 	RoleAlbumArtist = Role{"album_artist"}
 	RoleComposer    = Role{"composer"}
@@ -26,29 +19,48 @@ var (
 	RolePerformer   = Role{"performer"}
 )
 
-var AllRoles = []Role{
-	RoleArtist,
-	RoleAlbumArtist,
-	RoleComposer,
-	RoleConductor,
-	RoleLyricist,
-	RoleArranger,
-	RoleProducer,
-	RoleDirector,
-	RoleEngineer,
-	RoleMixer,
-	RoleRemixer,
-	RoleDJMixer,
-	RolePerformer,
+var allRoles = map[string]Role{
+	RoleArtist.role:      RoleArtist,
+	RoleAlbumArtist.role: RoleAlbumArtist,
+	RoleComposer.role:    RoleComposer,
+	RoleConductor.role:   RoleConductor,
+	RoleLyricist.role:    RoleLyricist,
+	RoleArranger.role:    RoleArranger,
+	RoleProducer.role:    RoleProducer,
+	RoleDirector.role:    RoleDirector,
+	RoleEngineer.role:    RoleEngineer,
+	RoleMixer.role:       RoleMixer,
+	RoleRemixer.role:     RoleRemixer,
+	RoleDJMixer.role:     RoleDJMixer,
+	RolePerformer.role:   RolePerformer,
+}
+
+type Role struct {
+	role string
+}
+
+func (r Role) String() string {
+	return r.role
+}
+
+func (r Role) MarshalText() (text []byte, err error) {
+	return []byte(r.role), nil
+}
+
+func (r *Role) UnmarshalText(text []byte) error {
+	role := RoleFromString(string(text))
+	if role == RoleInvalid {
+		return fmt.Errorf("invalid role: %s", text)
+	}
+	*r = role
+	return nil
 }
 
 func RoleFromString(role string) Role {
-	for _, r := range AllRoles {
-		if r.String() == role {
-			return r
-		}
+	if r, ok := allRoles[role]; ok {
+		return r
 	}
-	return Role{}
+	return RoleInvalid
 }
 
 type Participations map[Role][]Artist
@@ -73,26 +85,4 @@ func (p *Participations) Merge(other Participations) {
 			p.Add(artist, role)
 		}
 	}
-}
-
-func (p Participations) MarshalJSON() ([]byte, error) {
-	m := map[string][]Artist{}
-	for role, artists := range p {
-		m[role.String()] = artists
-	}
-	return json.Marshal(m)
-}
-
-func (p *Participations) UnmarshalJSON(data []byte) error {
-	m := map[string][]Artist{}
-	if err := json.Unmarshal(data, &m); err != nil {
-		return err
-	}
-	for role, artists := range m {
-		mRole := RoleFromString(role)
-		for _, artist := range artists {
-			p.Add(artist, mRole)
-		}
-	}
-	return nil
 }
