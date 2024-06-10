@@ -9,16 +9,15 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-type artistInfo struct {
-	sort    TagName
-	mbid    TagName
-	name    TagName
-	mapName func(string) string
+type roleTags struct {
+	sort TagName
+	mbid TagName
+	name TagName
 }
 
 func (md Metadata) mapParticipations() model.Participations {
-	roleMappings := sync.OnceValue(func() map[model.Role]artistInfo {
-		return map[model.Role]artistInfo{
+	roleMappings := sync.OnceValue(func() map[model.Role]roleTags {
+		return map[model.Role]roleTags{
 			model.RoleComposer:  {name: Composer, sort: ComposerSort},
 			model.RoleLyricist:  {name: Lyricist, sort: LyricistSort},
 			model.RoleConductor: {name: Conductor},
@@ -66,21 +65,13 @@ func (md Metadata) mapParticipations() model.Participations {
 	}
 
 	// For each artist in each role, try to figure out their MBID from the track/album artists
-	for role, artists := range participations {
-		for i, artist := range artists {
-			if artist.MbzArtistID == "" {
-				for _, trackArtist := range participations[model.RoleArtist] {
-					if artist.Name == trackArtist.Name && trackArtist.MbzArtistID != "" {
-						participations[role][i].MbzArtistID = trackArtist.MbzArtistID
+	for role, participants := range participations {
+		for i, participant := range participants {
+			if participant.MbzArtistID == "" {
+				for _, artist := range append(participations[model.RoleArtist], participations[model.RoleAlbumArtist]...) {
+					if participant.Name == artist.Name && artist.MbzArtistID != "" {
+						participations[role][i].MbzArtistID = artist.MbzArtistID
 						break
-					}
-				}
-				if artist.MbzArtistID == "" {
-					for _, albumArtist := range participations[model.RoleAlbumArtist] {
-						if artist.Name == albumArtist.Name {
-							participations[role][i].MbzArtistID = albumArtist.MbzArtistID
-							break
-						}
 					}
 				}
 			}
