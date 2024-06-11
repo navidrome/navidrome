@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-func getFullText(text ...string) string {
+func formatFullText(text ...string) string {
 	fullText := str.SanitizeStrings(text...)
 	return " " + fullText
 }
