@@ -107,3 +107,15 @@ func RangeByChunks[T any](items []T, chunkSize int, cb func([]T) error) error {
 	}
 	return nil
 }
+
+func Unique[T comparable](list []T) []T {
+	seen := make(map[T]struct{})
+	var result []T
+	for _, item := range list {
+		if _, ok := seen[item]; !ok {
+			seen[item] = struct{}{}
+			result = append(result, item)
+		}
+	}
+	return result
+}
