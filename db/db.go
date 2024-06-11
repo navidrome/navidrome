@@ -63,7 +63,7 @@ func Db() DB {
 
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
-			Path = "file::memory:?cache=shared&_foreign_keys=on"
+			Path = "file::memory:?cache=shared&_journal_mode=WAL&_foreign_keys=on"
 			conf.Server.DbPath = Path
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)

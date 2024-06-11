@@ -158,7 +158,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				matched: []model.MediaFile{matchedTrack},
 			}
 
-			// Simulate an error when moving the matched track
+			// Simulate an error when moving the matched track by deleting the track from the DB
 			_ = ds.MediaFile(ctx).Delete("2")
 
 			_, err := phase.processMissingTracks(in)
