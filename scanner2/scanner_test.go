@@ -2,16 +2,19 @@ package scanner2_test
 
 import (
 	"context"
+	"path/filepath"
 	"testing/fstest"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scanner2"
+	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,7 +26,7 @@ type _t = map[string]any
 var template = storagetest.Template
 var track = storagetest.Track
 
-var _ = Describe("Scanner", func() {
+var _ = Describe("Scanner", Ordered, func() {
 	var ctx context.Context
 	var lib model.Library
 	var ds model.DataStore
@@ -36,29 +39,25 @@ var _ = Describe("Scanner", func() {
 		return fs
 	}
 
+	BeforeAll(func() {
+		tmpDir := GinkgoT().TempDir()
+		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+		log.Warn("Using DB at " + conf.Server.DbPath)
+		//conf.Server.DbPath = ":memory:"
+	})
+
 	BeforeEach(func() {
 		ctx = context.Background()
-
-		//os.Remove("./test-123.db")
-		//conf.Server.DbPath = "./test-123.db"
-		conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 		db.Init()
+		DeferCleanup(func() {
+			Expect(tests.ClearDB()).To(Succeed())
+		})
+
 		ds = persistence.New(db.Db())
 		s = scanner2.GetInstance(ctx, ds)
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
-	})
-
-	AfterEach(func() {
-		_, err := db.Db().WriteDB().ExecContext(ctx, `
-			PRAGMA writable_schema = 1;
-			DELETE FROM sqlite_master;
-			PRAGMA writable_schema = 0;
-			VACUUM;
-			PRAGMA integrity_check;
-		`)
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("Scanner", func() {
@@ -136,7 +135,7 @@ var _ = Describe("Scanner", func() {
 				It("should update the album", func() {
 					Expect(s.RescanAll(ctx, true)).To(Succeed())
 
-					albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
+					albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(albums).ToNot(BeEmpty())
 					Expect(albums[0].MbzAlbumID).To(BeEmpty())
@@ -145,7 +144,7 @@ var _ = Describe("Scanner", func() {
 					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"musicbrainz_albumid": "1111"})
 					Expect(s.RescanAll(ctx, false)).To(Succeed())
 
-					albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"name": "Help!"}})
+					albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(albums[0].MbzAlbumID).To(Equal("1111"))
 					Expect(albums[0].SongCount).To(Equal(3))
