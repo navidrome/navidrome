@@ -4,12 +4,12 @@ import (
 	"cmp"
 	"crypto/md5"
 	"fmt"
-	"path"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -42,8 +42,7 @@ func (md Metadata) mapTrackTitle() string {
 	if title := md.String(Title); title != "" {
 		return title
 	}
-	s := path.Base(md.FilePath())
-	return strings.TrimSuffix(s, path.Ext(s))
+	return utils.BaseName(md.FilePath())
 }
 
 func (md Metadata) mapAlbumName() string {
