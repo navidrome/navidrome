@@ -1,6 +1,8 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var (
 	RoleInvalid     = Role{"invalid"}
@@ -35,6 +37,7 @@ var allRoles = map[string]Role{
 	RolePerformer.role:   RolePerformer,
 }
 
+// Role represents the role of an artist in a track or album.
 type Role struct {
 	role string
 }
@@ -65,16 +68,21 @@ func RoleFromString(role string) Role {
 
 type Participations map[Role][]Artist
 
+// Add adds the artists to the role, ignoring duplicates.
 func (p Participations) Add(role Role, artists ...Artist) {
-	if len(artists) == 0 {
-		return
+	seen := map[string]struct{}{}
+	for _, artist := range p[role] {
+		seen[artist.ID] = struct{}{}
 	}
-	if _, ok := p[role]; !ok {
-		p[role] = []Artist{}
+	for _, artist := range artists {
+		if _, ok := seen[artist.ID]; !ok {
+			seen[artist.ID] = struct{}{}
+			p[role] = append(p[role], artist)
+		}
 	}
-	p[role] = append(p[role], artists...)
 }
 
+// First returns the first artist for the role, or an empty artist if the role is not present.
 func (p Participations) First(role Role) Artist {
 	if artists, ok := p[role]; ok && len(artists) > 0 {
 		return artists[0]
@@ -82,6 +90,7 @@ func (p Participations) First(role Role) Artist {
 	return Artist{}
 }
 
+// Merge merges the other Participations into this one.
 func (p *Participations) Merge(other Participations) {
 	for role, artists := range other {
 		p.Add(role, artists...)
