@@ -52,6 +52,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
 	}
 	m["similar_artists"] = strings.Join(sa, ";")
+	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 	return nil
 }
 
@@ -94,7 +95,6 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
-	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := &dbArtist{Artist: a}
 	_, err := r.put(dba.ID, dba, colsToUpdate...)
 	if err != nil {
