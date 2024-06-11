@@ -224,7 +224,7 @@ func (r *albumRepository) Touch(ids ...string) error {
 	upd := Update(r.tableName).Set("scanned_at", time.Now()).Where(Eq{"id": ids})
 	c, err := r.executeSQL(upd)
 	if err == nil {
-		log.Error(r.ctx, "Touching albums", "ids", ids, "updated", c == 1)
+		log.Debug(r.ctx, "Touching albums", "ids", ids, "updated", c == 1)
 	}
 	return err
 }
