@@ -47,6 +47,10 @@ func (m *dbMediaFile) PostScan() error {
 }
 
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
+	fullText := []string{m.Title, m.Album, m.Artist, m.AlbumArtist,
+		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
+	fullText = append(fullText, m.MediaFile.Participations.AllNames()...)
+	args["full_text"] = formatFullText(fullText...)
 	delete(args, "tags")
 	delete(args, "participations")
 	return nil
@@ -104,8 +108,6 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
-	m.FullText = getFullText(m.Title, m.Album, m.Artist, m.AlbumArtist,
-		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle)
 	m.CreatedAt = time.Now()
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
