@@ -57,8 +57,8 @@ func (t Tags) FlattenAll() TagList {
 	return tags
 }
 
-func (t *Tags) Hash() string {
-	if len(*t) == 0 {
+func (t Tags) Hash() string {
+	if len(t) == 0 {
 		return ""
 	}
 	all := t.FlattenAll()
@@ -83,7 +83,7 @@ func (t Tags) ToGenres() (string, Genres) {
 }
 
 // Merge merges the tags from another Tags object into this one, removing any duplicates
-func (t *Tags) Merge(tags Tags) {
+func (t Tags) Merge(tags Tags) {
 	for name, values := range tags {
 		for _, v := range values {
 			t.Add(name, v)
@@ -91,16 +91,13 @@ func (t *Tags) Merge(tags Tags) {
 	}
 }
 
-func (t *Tags) Add(name string, v string) {
-	if _, ok := (*t)[name]; !ok {
-		(*t)[name] = []string{}
-	}
-	for _, existing := range (*t)[name] {
+func (t Tags) Add(name string, v string) {
+	for _, existing := range t[name] {
 		if existing == v {
 			return
 		}
 	}
-	(*t)[name] = append((*t)[name], v)
+	t[name] = append(t[name], v)
 }
 
 type TagRepository interface {

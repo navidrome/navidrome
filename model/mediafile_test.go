@@ -213,35 +213,47 @@ var _ = Describe("MediaFiles", func() {
 				})
 			})
 		})
-		Context("AllArtistIds", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{AlbumArtistID: "22", ArtistID: "11"},
-					{AlbumArtistID: "22", ArtistID: "33"},
-					{AlbumArtistID: "22", ArtistID: "11"},
-				}
-			})
-			It("removes duplications", func() {
-				album := mfs.ToAlbum()
-				Expect(album.AllArtistIDs).To(Equal("11 22 33"))
-			})
-		})
-		Context("FullText", func() {
+		Context("Participations", func() {
+			var album Album
 			BeforeEach(func() {
 				mfs = MediaFiles{
 					{
-						Album: "Album1", AlbumArtist: "AlbumArtist1", Artist: "Artist1", DiscSubtitle: "DiscSubtitle1",
-						SortAlbumName: "SortAlbumName1", SortAlbumArtistName: "SortAlbumArtistName1", SortArtistName: "SortArtistName1",
+						Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist1",
+						DiscSubtitle: "DiscSubtitle1", SortAlbumName: "SortAlbumName1",
+						Participations: Participations{
+							RoleAlbumArtist: {{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}},
+							RoleArtist:      {{ID: "A1", Name: "Artist1", SortArtistName: "SortArtistName1"}},
+						},
 					},
 					{
-						Album: "Album1", AlbumArtist: "AlbumArtist1", Artist: "Artist2", DiscSubtitle: "DiscSubtitle2",
-						SortAlbumName: "SortAlbumName1", SortAlbumArtistName: "SortAlbumArtistName1", SortArtistName: "SortArtistName2",
+						Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist2",
+						DiscSubtitle: "DiscSubtitle2", SortAlbumName: "SortAlbumName1",
+						Participations: Participations{
+							RoleAlbumArtist: {{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}},
+							RoleArtist:      {{ID: "A2", Name: "Artist2", SortArtistName: "SortArtistName2"}},
+							RoleComposer:    {{ID: "C1", Name: "Composer1"}},
+						},
 					},
 				}
+				album = mfs.ToAlbum()
+			})
+			It("collects all deduplicated artist ids", func() {
+				Expect(album.AllArtistIDs).To(SatisfyAll(
+					ContainSubstring("AA1"),
+					ContainSubstring("A1"),
+					ContainSubstring("A2"),
+					ContainSubstring("C1"),
+				))
 			})
 			It("fills the fullText attribute correctly", func() {
-				album := mfs.ToAlbum()
-				Expect(album.FullText).To(Equal(" album1 albumartist1 artist1 artist2 discsubtitle1 discsubtitle2 sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
+				Expect(album.FullText).To(Equal(" album1 albumartist1 artist1 artist2 composer1 discsubtitle1 discsubtitle2 display sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
+			})
+			It("gets all participations from all tracks", func() {
+				Expect(album.Participations).To(HaveKeyWithValue(RoleAlbumArtist, []Artist{{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}}))
+				Expect(album.Participations).To(HaveKeyWithValue(RoleComposer, []Artist{{ID: "C1", Name: "Composer1"}}))
+				Expect(album.Participations).To(HaveKeyWithValue(RoleArtist, []Artist{
+					{ID: "A1", Name: "Artist1", SortArtistName: "SortArtistName1"}, {ID: "A2", Name: "Artist2", SortArtistName: "SortArtistName2"},
+				}))
 			})
 		})
 		Context("MbzAlbumID", func() {
