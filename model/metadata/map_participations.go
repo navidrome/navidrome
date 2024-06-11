@@ -36,9 +36,7 @@ func (md Metadata) mapParticipations() model.Participations {
 
 	// Parse track artists
 	artists := md.parseArtists(TrackArtist, TrackArtists, TrackArtistSort, TrackArtistsSort, MusicBrainzArtistID)
-	for _, a := range artists {
-		participations.Add(a, model.RoleArtist)
-	}
+	participations.Add(model.RoleArtist, artists...)
 
 	// Parse album artists
 	albumArtists := md.parseArtists(AlbumArtist, AlbumArtists, AlbumArtistSort, AlbumArtistsSort, MusicBrainzAlbumArtistID)
@@ -49,9 +47,7 @@ func (md Metadata) mapParticipations() model.Participations {
 			albumArtists = artists
 		}
 	}
-	for _, a := range albumArtists {
-		participations.Add(a, model.RoleAlbumArtist)
-	}
+	participations.Add(model.RoleAlbumArtist, albumArtists...)
 
 	// Parse all other roles
 	for role, info := range roleMappings() {
@@ -59,9 +55,7 @@ func (md Metadata) mapParticipations() model.Participations {
 		sorts := md.getTags(info.sort)
 		mbids := md.Strings(info.mbid)
 		artists := md.parseArtist(names, sorts, mbids)
-		for _, a := range artists {
-			participations.Add(a, role)
-		}
+		participations.Add(role, artists...)
 	}
 
 	// For each artist in each role, try to figure out their MBID from the track/album artists
