@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
+	"golang.org/x/exp/maps"
 )
 
 type albumRepository struct {
@@ -48,6 +49,11 @@ func (a *dbAlbum) PostScan() error {
 }
 
 func (a *dbAlbum) PostMapArgs(args map[string]any) error {
+	fullText := []string{a.Name, a.SortAlbumName, a.AlbumArtist}
+	fullText = append(fullText, a.Album.Participations.AllNames()...)
+	fullText = append(fullText, maps.Values(a.Album.Discs)...)
+	args["full_text"] = formatFullText(fullText...)
+
 	delete(args, "tags")
 	delete(args, "participations")
 	if len(a.Album.Discs) == 0 {
