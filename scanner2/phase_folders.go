@@ -2,6 +2,7 @@ package scanner2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -290,8 +291,8 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	return entry, nil
 }
 
-func (p *phaseFolders) finalize(error) error {
-	return p.ds.WithTx(func(tx model.DataStore) error {
+func (p *phaseFolders) finalize(err error) error {
+	errF := p.ds.WithTx(func(tx model.DataStore) error {
 		for _, job := range p.jobs {
 			if len(job.lastUpdates) == 0 {
 				continue
@@ -310,6 +311,7 @@ func (p *phaseFolders) finalize(error) error {
 		}
 		return nil
 	})
+	return errors.Join(err, errF)
 }
 
 var _ phase[*folderEntry] = (*phaseFolders)(nil)
