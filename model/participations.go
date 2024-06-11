@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 var (
@@ -91,8 +93,33 @@ func (p Participations) First(role Role) Artist {
 }
 
 // Merge merges the other Participations into this one.
-func (p *Participations) Merge(other Participations) {
+func (p Participations) Merge(other Participations) {
 	for role, artists := range other {
 		p.Add(role, artists...)
 	}
+}
+
+// AllIDs returns all artist IDs found in the Participations.
+func (p Participations) AllIDs() []string {
+	var ids []string
+	for _, artists := range p {
+		for _, artist := range artists {
+			ids = append(ids, artist.ID)
+		}
+	}
+	return slice.Unique(ids)
+}
+
+// AllNames returns all artist names found in the Participations.
+func (p Participations) AllNames() []string {
+	var names []string
+	for _, artists := range p {
+		for _, artist := range artists {
+			names = append(names, artist.Name)
+			if artist.SortArtistName != "" {
+				names = append(names, artist.SortArtistName)
+			}
+		}
+	}
+	return slice.Unique(names)
 }
