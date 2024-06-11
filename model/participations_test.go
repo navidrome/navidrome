@@ -72,6 +72,12 @@ var _ = Describe("Participations", func() {
 				RoleComposer: []Artist{{ID: "5", Name: "Artist3"}},
 			}))
 		})
+		It("should not add duplicate artists", func() {
+			participations.Add(RoleArtist, Artist{ID: "1", Name: "Artist1"})
+			Expect(participations).To(Equal(Participations{
+				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
+			}))
+		})
 	})
 
 	Describe("Merge", func() {
