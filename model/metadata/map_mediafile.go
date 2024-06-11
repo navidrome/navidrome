@@ -19,10 +19,6 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.OrderAlbumName = str.SanitizeFieldForSortingNoArticle(mf.Album)
 	mf.Compilation = md.Bool(Compilation)
 
-	mf.Participations = md.mapParticipations()
-	mf.Artist = md.mapDisplayArtist(mf)
-	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
-
 	mf.TrackNumber, _ = md.NumAndTotal(TrackNumber)
 	mf.DiscNumber, _ = md.NumAndTotal(DiscNumber)
 	mf.DiscSubtitle = md.String(DiscSubtitle)
@@ -53,8 +49,17 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.BirthTime = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
 
+	mf.Participations = md.mapParticipations()
+	mf.Artist = md.mapDisplayArtist(mf)
+	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
+
 	mf.PID = md.trackPID(mf)
 	mf.AlbumID = md.albumID()
+
+	// TODO These IDs will go away once the UI handle multiple participants.
+	// For Legacy Subsonic compatibility, we will set them in the API handlers
+	mf.ArtistID = md.artistID(mf.Artist)
+	mf.AlbumArtistID = md.artistID(mf.AlbumArtist)
 
 	return mf
 }
