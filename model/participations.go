@@ -65,11 +65,14 @@ func RoleFromString(role string) Role {
 
 type Participations map[Role][]Artist
 
-func (p Participations) Add(artist Artist, role Role) {
+func (p Participations) Add(role Role, artists ...Artist) {
+	if len(artists) == 0 {
+		return
+	}
 	if _, ok := p[role]; !ok {
 		p[role] = []Artist{}
 	}
-	p[role] = append(p[role], artist)
+	p[role] = append(p[role], artists...)
 }
 
 func (p Participations) First(role Role) Artist {
@@ -81,8 +84,6 @@ func (p Participations) First(role Role) Artist {
 
 func (p *Participations) Merge(other Participations) {
 	for role, artists := range other {
-		for _, artist := range artists {
-			p.Add(artist, role)
-		}
+		p.Add(role, artists...)
 	}
 }
