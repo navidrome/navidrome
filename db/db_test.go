@@ -1,9 +1,10 @@
-package db
+package db_test
 
 import (
 	"database/sql"
 	"testing"
 
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,20 +18,20 @@ func TestDB(t *testing.T) {
 	RunSpecs(t, "DB Suite")
 }
 
-var _ = Describe("isSchemaEmpty", func() {
-	var db *sql.DB
+var _ = Describe("IsSchemaEmpty", func() {
+	var database *sql.DB
 	BeforeEach(func() {
 		path := "file::memory:"
-		db, _ = sql.Open(Driver, path)
+		database, _ = sql.Open(db.Driver, path)
 	})
 
 	It("returns false if the goose metadata table is found", func() {
-		_, err := db.Exec("create table goose_db_version (id primary key);")
+		_, err := database.Exec("create table goose_db_version (id primary key);")
 		Expect(err).ToNot(HaveOccurred())
-		Expect(isSchemaEmpty(db)).To(BeFalse())
+		Expect(db.IsSchemaEmpty(database)).To(BeFalse())
 	})
 
 	It("returns true if the schema is brand new", func() {
-		Expect(isSchemaEmpty(db)).To(BeTrue())
+		Expect(db.IsSchemaEmpty(database)).To(BeTrue())
 	})
 })
