@@ -121,4 +121,14 @@ var _ = Describe("Slice Utils", func() {
 			Expect(chunks[1]).To(HaveExactElements("d", "e"))
 		})
 	})
+
+	Describe("Unique", func() {
+		It("returns empty slice for an empty input", func() {
+			Expect(slice.Unique([]int{})).To(BeEmpty())
+		})
+
+		It("returns the unique elements", func() {
+			Expect(slice.Unique([]int{1, 2, 1, 2, 3, 2})).To(HaveExactElements(1, 2, 3))
+		})
+	})
 })
