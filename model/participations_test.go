@@ -60,13 +60,13 @@ var _ = Describe("Participations", func() {
 			}
 		})
 		It("adds the artist to the role", func() {
-			participations.Add(Artist{ID: "5", Name: "Artist3"}, RoleArtist)
+			participations.Add(RoleArtist, Artist{ID: "5", Name: "Artist3"})
 			Expect(participations).To(Equal(Participations{
 				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}, {ID: "5", Name: "Artist3"}},
 			}))
 		})
 		It("creates a new role if it doesn't exist", func() {
-			participations.Add(Artist{ID: "5", Name: "Artist3"}, RoleComposer)
+			participations.Add(RoleComposer, Artist{ID: "5", Name: "Artist3"})
 			Expect(participations).To(Equal(Participations{
 				RoleArtist:   []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
 				RoleComposer: []Artist{{ID: "5", Name: "Artist3"}},
