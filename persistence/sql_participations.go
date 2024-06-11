@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -22,11 +23,22 @@ func parseParticipations(strParticipations string) model.Participations {
 		return nil
 	}
 	for _, p := range dbParticipations {
+		// participants can be returned from the DB as `{"id":null,"name":null,"role":null}`, due to left joins
+		if p["role"] == "" || p["id"] == "" || p["name"] == "" {
+			continue
+		}
 		mRole := model.RoleFromString(p["role"])
+		if mRole == model.RoleInvalid {
+			log.Warn("Invalid role in participations", p["role"])
+			continue
+		}
 		participations[mRole] = append(participations[mRole], model.Artist{
 			ID:   p["id"],
 			Name: p["name"],
 		})
+	}
+	if len(participations) == 0 {
+		return nil
 	}
 	return participations
 }
