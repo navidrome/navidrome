@@ -87,6 +87,18 @@ func Move[T any](slice []T, srcIndex int, dstIndex int) []T {
 	return Insert(Remove(slice, srcIndex), value, dstIndex)
 }
 
+func Unique[T comparable](list []T) []T {
+	seen := make(map[T]struct{})
+	var result []T
+	for _, item := range list {
+		if _, ok := seen[item]; !ok {
+			seen[item] = struct{}{}
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 // LinesFrom returns a Seq that reads lines from the given reader
 func LinesFrom(reader io.Reader) iter.Seq[string] {
 	return func(yield func(string) bool) {
