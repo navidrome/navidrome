@@ -36,7 +36,6 @@ type Album struct {
 	Genre                 string     `structs:"genre" json:"genre"`
 	Genres                Genres     `structs:"-" json:"genres"`
 	Discs                 Discs      `structs:"discs" json:"discs,omitempty"`
-	FullText              string     `structs:"full_text" json:"-"`
 	SortAlbumName         string     `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName        string     `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
 	SortAlbumArtistName   string     `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`

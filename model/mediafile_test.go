@@ -245,9 +245,6 @@ var _ = Describe("MediaFiles", func() {
 					ContainSubstring("C1"),
 				))
 			})
-			It("fills the fullText attribute correctly", func() {
-				Expect(album.FullText).To(Equal(" album1 albumartist1 artist1 artist2 composer1 discsubtitle1 discsubtitle2 display sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
-			})
 			It("gets all participations from all tracks", func() {
 				Expect(album.Participations).To(HaveKeyWithValue(RoleAlbumArtist, []Artist{{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}}))
 				Expect(album.Participations).To(HaveKeyWithValue(RoleComposer, []Artist{{ID: "C1", Name: "Composer1"}}))
