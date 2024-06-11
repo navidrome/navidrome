@@ -109,14 +109,14 @@ func Init() func() {
 		log.Error("Error disabling foreign_keys", err)
 	}
 
-	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
+	gooseLogger := &logAdapter{silent: IsSchemaEmpty(db)}
 	goose.SetBaseFS(embedMigrations)
 
 	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
-	if !isSchemaEmpty(db) && hasPendingMigrations(db, migrationsFolder) {
+	if !IsSchemaEmpty(db) && hasPendingMigrations(db, migrationsFolder) {
 		log.Info("Upgrading DB Schema to latest version")
 	}
 	goose.SetLogger(gooseLogger)
@@ -152,7 +152,7 @@ func hasPendingMigrations(db *sql.DB, folder string) bool {
 	return l.numPending > 0
 }
 
-func isSchemaEmpty(db *sql.DB) bool {
+func IsSchemaEmpty(db *sql.DB) bool {
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
 	if err != nil {
 		log.Fatal("Database could not be opened!", err)
