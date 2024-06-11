@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
-	"github.com/navidrome/navidrome/utils/str"
 )
 
 type MediaFile struct {
@@ -52,7 +51,6 @@ type MediaFile struct {
 	Channels             int     `structs:"channels" json:"channels"`
 	Genre                string  `structs:"genre" json:"genre"`
 	Genres               Genres  `structs:"-" json:"genres,omitempty"`
-	FullText             string  `structs:"full_text" json:"-"`
 	SortTitle            string  `structs:"sort_title" json:"sortTitle,omitempty"`
 	SortAlbumName        string  `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName       string  `structs:"sort_artist_name" json:"sortArtistName,omitempty"`            // Deprecated: Use Participants instead
@@ -151,7 +149,6 @@ func (mfs MediaFiles) Dirs() []string {
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
 	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations)}
-	var fullText []string
 	var albumArtistIds []string
 	var mbzAlbumIds []string
 	var comments []string
@@ -193,7 +190,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		comments = append(comments, m.Comment)
 		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
-		fullText = append(fullText, m.DiscSubtitle, a.Artist)
 		if m.HasCoverArt && a.EmbedArtPath == "" {
 			a.EmbedArtPath = m.Path
 		}
@@ -213,9 +209,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
 	a = fixAlbumArtist(a, albumArtistIds) // TODO Validate if this it really needed
-	fullText = append(fullText, a.Name, a.SortAlbumName, a.AlbumArtist)
-	fullText = append(fullText, a.Participations.AllNames()...)
-	a.FullText = " " + str.SanitizeStrings(fullText...)
 	a.AllArtistIDs = strings.Join(a.Participations.AllIDs(), " ")
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 
