@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -132,12 +132,7 @@ func (mf MediaFile) Equals(other MediaFile) bool {
 
 // IsEquivalent compares two MediaFiles by their tags and path only.
 func (mf MediaFile) IsEquivalent(other MediaFile) bool {
-	return mf.Tags.Hash() == other.Tags.Hash() && baseName(mf.Path) == baseName(other.Path)
-}
-
-func baseName(filePath string) string {
-	p := path.Base(filePath)
-	return strings.TrimSuffix(p, path.Ext(p))
+	return mf.Tags.Hash() == other.Tags.Hash() && utils.BaseName(mf.Path) == utils.BaseName(other.Path)
 }
 
 type MediaFiles []MediaFile
