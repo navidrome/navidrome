@@ -38,7 +38,6 @@ alter table media_file
 	add column missing boolean default false not null;
 alter table media_file
 	add column birth_time datetime default current_timestamp not null;
-
 create index if not exists media_file_folder_id_ix
  	on media_file (folder_id);
 create index if not exists media_file_pid_ix
@@ -52,9 +51,24 @@ create index if not exists media_file_birth_time_ix
 
 alter table album
 	add column scanned_at datetime default '0000-00-00 00:00:00' not null;
-
 create index if not exists album_scanned_at_ix
 	on album (scanned_at);
+
+alter table artist
+    add column 	updated_at datetime default current_timestamp not null;
+alter table artist
+    add column 	created_at datetime default current_timestamp not null;
+alter table artist
+	drop column album_count;
+alter table artist
+	drop column song_count;
+drop index if exists artist_size;
+alter table artist
+	drop column size;
+;
+create index if not exists artist_updated_at_ix
+	on artist (updated_at);
+
 
 create table if not exists media_file_artists(
     	media_file_id varchar not null
