@@ -35,8 +35,8 @@ func TestPersistence(t *testing.T) {
 //)
 
 var (
-	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1}
-	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2}
+	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk"}
+	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles"}
 	testArtists     = model.Artists{
 		artistKraftwerk,
 		artistBeatles,

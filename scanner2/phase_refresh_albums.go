@@ -26,7 +26,7 @@ func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 		for _, lib := range p.libs {
 			albumIDs, err := p.ds.Album(p.ctx).GetAlbumsTouched(lib.ID)
 			if err != nil {
-				return fmt.Errorf("error loading outdated albums: %w", err)
+				return fmt.Errorf("error loading touched albums: %w", err)
 			}
 			if len(albumIDs) == 0 {
 				continue
