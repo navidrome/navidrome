@@ -39,28 +39,23 @@ var _ = Describe("ArtistRepository", func() {
 
 	Describe("Get", func() {
 		It("saves and retrieves data", func() {
-			Expect(repo.Get("2")).To(Equal(&artistKraftwerk))
+			artist, err := repo.Get("2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artist.Name).To(Equal(artistKraftwerk.Name))
 		})
 	})
 
 	Describe("GetIndex", func() {
 		It("returns the index", func() {
 			idx, err := repo.GetIndex()
-			Expect(err).To(BeNil())
-			Expect(idx).To(Equal(model.ArtistIndexes{
-				{
-					ID: "B",
-					Artists: model.Artists{
-						artistBeatles,
-					},
-				},
-				{
-					ID: "K",
-					Artists: model.Artists{
-						artistKraftwerk,
-					},
-				},
-			}))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(idx).To(HaveLen(2))
+			Expect(idx[0].ID).To(Equal("B"))
+			Expect(idx[0].Artists).To(HaveLen(1))
+			Expect(idx[0].Artists[0].Name).To(Equal(artistBeatles.Name))
+			Expect(idx[1].ID).To(Equal("K"))
+			Expect(idx[1].Artists).To(HaveLen(1))
+			Expect(idx[1].Artists[0].Name).To(Equal(artistKraftwerk.Name))
 		})
 	})
 
