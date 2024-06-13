@@ -141,7 +141,7 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 
 func (r sqlRepository) seededRandomSort() string {
 	u, _ := request.UserFrom(r.ctx)
-	return fmt.Sprintf("SEEDEDRAND('%s', id)", r.tableName+u.ID)
+	return fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.tableName+u.ID, r.tableName)
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
