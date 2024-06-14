@@ -7,35 +7,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
-	return sql.LeftJoin(r.tableName + "_genres ag on " + r.tableName + ".id = ag." + r.tableName + "_id").
-		LeftJoin("genre on ag.genre_id = genre.id")
-}
-
-func (r sqlRepository) updateGenres(id string, genres model.Genres) error {
-	tableName := r.getTableName()
-	del := Delete(tableName + "_genres").Where(Eq{tableName + "_id": id})
-	_, err := r.executeSQL(del)
-	if err != nil {
-		return err
-	}
-
-	if len(genres) == 0 {
-		return nil
-	}
-
-	for chunk := range slices.Chunk(genres, 100) {
-		ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
-		for _, genre := range chunk {
-			ins = ins.Values(genre.ID, id)
-		}
-		if _, err = r.executeSQL(ins); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type baseRepository interface {
 	queryAll(SelectBuilder, any, ...model.QueryOptions) error
 	getTableName() string
