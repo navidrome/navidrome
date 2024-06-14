@@ -6,37 +6,6 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
-	return sql.LeftJoin(r.tableName + "_genres ag on " + r.tableName + ".id = ag." + r.tableName + "_id").
-		LeftJoin("genre on ag.genre_id = genre.id")
-}
-
-func (r sqlRepository) updateGenres(id string, genres model.Genres) error {
-	tableName := r.getTableName()
-	del := Delete(tableName + "_genres").Where(Eq{tableName + "_id": id})
-	_, err := r.executeSQL(del)
-	if err != nil {
-		return err
-	}
-
-	if len(genres) == 0 {
-		return nil
-	}
-	var genreIds []string
-	for _, g := range genres {
-		genreIds = append(genreIds, g.ID)
-	}
-	err = slice.RangeByChunks(genreIds, 100, func(ids []string) error {
-		ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
-		for _, gid := range ids {
-			ins = ins.Values(gid, id)
-		}
-		_, err = r.executeSQL(ins)
-		return err
-	})
-	return err
-}
-
 type baseRepository interface {
 	queryAll(SelectBuilder, any, ...model.QueryOptions) error
 	getTableName() string
