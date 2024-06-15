@@ -59,8 +59,8 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	// TODO These IDs will go away once the UI handle multiple participants.
 	// For Legacy Subsonic compatibility, we will set them in the API handlers
 	// FIXME This is wrong? See Yussef and Caetano
-	mf.ArtistID = md.artistID(mf.Artist)
-	mf.AlbumArtistID = md.artistID(mf.AlbumArtist)
+	mf.ArtistID = mf.Participations.First(model.RoleArtist).ID
+	mf.AlbumArtistID = mf.Participations.First(model.RoleAlbumArtist).ID
 
 	return mf
 }
