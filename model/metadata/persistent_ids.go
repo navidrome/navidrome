@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
+// FIXME Must be configurable
 func (md Metadata) trackPID(mf model.MediaFile) string {
 	value := cmp.Or(
 		mf.MbzReleaseTrackID,
@@ -23,17 +23,18 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(value)))))
 }
 
+// FIXME Must be configurable
 func (md Metadata) albumID() string {
-	albumPath := strings.ToLower(md.mapAlbumName()) // FIXME
-	if !conf.Server.Scanner.GroupAlbumReleases {
-		releaseDate := md.String(ReleaseDate)
-		if releaseDate != "" {
-			albumPath = fmt.Sprintf("%s\\%s", albumPath, releaseDate)
-		}
+	parts := []string{
+		strings.ToLower(md.mapAlbumName()),
+		md.String(OriginalDate),
+		md.String(ReleaseDate),
 	}
+	albumPath := strings.Join(parts, "\\")
 	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(albumPath))))
 }
 
+// FIXME Must be configurable
 func (md Metadata) artistID(name string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(name)))))
 }
