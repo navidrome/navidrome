@@ -44,7 +44,8 @@ func parseParticipations(strParticipations string) model.Participations {
 }
 
 func (r sqlRepository) updateParticipations(itemID string, participations model.Participations) error {
-	sqd := Delete(r.tableName + "_artists").Where(Eq{r.tableName + "_id": itemID})
+	ids := participations.AllIDs()
+	sqd := Delete(r.tableName + "_artists").Where(And{Eq{r.tableName + "_id": itemID}, NotEq{"artist_id": ids}})
 	_, err := r.executeSQL(sqd)
 	if err != nil {
 		return err
