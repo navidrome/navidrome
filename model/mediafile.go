@@ -256,7 +256,7 @@ func older(t1, t2 time.Time) time.Time {
 	return t1
 }
 
-// fixAlbumArtist sets the AlbumArtist to "Various Artists" if the album has more than one artist
+// fixAlbumArtist sets the AlbumArtist to "Various Artists" if the album has more than one artist or if it is a compilation
 func fixAlbumArtist(a Album, albumArtistIds []string) Album {
 	if !a.Compilation {
 		if a.AlbumArtistID == "" {
