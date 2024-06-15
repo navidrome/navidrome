@@ -7,6 +7,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"golang.org/x/exp/maps"
 )
 
 // TODO Consolidate withTags and newSelectWithAnnotation(s)?
@@ -35,7 +36,8 @@ func parseTags(strTags string) (model.Tags, error) {
 }
 
 func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
-	sqd := Delete("item_tags").Where(Eq{"item_id": itemID, "item_type": r.tableName})
+	names := maps.Keys(tags)
+	sqd := Delete("item_tags").Where(And{Eq{"item_id": itemID, "item_type": r.tableName}, NotEq{"tag_name": names}})
 	_, err := r.executeSQL(sqd)
 	if err != nil {
 		return err
