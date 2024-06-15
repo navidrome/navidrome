@@ -128,6 +128,11 @@ type additionalInfo struct {
 	DurationMs              int      `json:"duration_ms,omitempty"`
 }
 
+type trackInfo struct {
+	RecordingName string `json:"recording_name"`
+	RecordingMbid string `json:"recording_mbid"`
+}
+
 func (c *client) validateToken(ctx context.Context, apiKey string) (*listenBrainzResponse, error) {
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
@@ -232,7 +237,45 @@ func (c *client) path(endpoint string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *client) makeRequest(ctx context.Context, method string, endpoint string, query string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
+// https://listenbrainz.readthedocs.io/en/latest/users/api/popularity.html#get--1-popularity-top-recordings-for-artist-(artist_mbid)
+// Note that this is popularity by listen. There is (as of June 15, 2024) no way
+// to limit the output
+func (c *client) getTopSongs(ctx context.Context, mbid string) ([]trackInfo, error) {
+	// Note
+	r := &listenBrainzRequest{}
+	endpoint := fmt.Sprintf("popularity/top-recordings-for-artist/%s", mbid)
+
+	response, err := c.makeRawRequest(ctx, http.MethodGet, endpoint, "", r)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+	decoder := json.NewDecoder(response.Body)
+
+	if response.StatusCode != 200 {
+		var response listenBrainzResponse
+		jsonErr := decoder.Decode(&response)
+
+		if jsonErr != nil {
+			return nil, jsonErr
+		}
+		if response.Code != 0 && response.Code != 200 {
+			return nil, &listenBrainzError{Code: response.Code, Message: response.Error}
+		}
+	}
+
+	var tracks []trackInfo
+	jsonErr := decoder.Decode(&tracks)
+
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+
+	return tracks, nil
+}
+
+func (c *client) makeRawRequest(ctx context.Context, method string, endpoint string, query string, r *listenBrainzRequest) (*http.Response, error) {
 	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err
@@ -263,6 +306,14 @@ func (c *client) makeRequest(ctx context.Context, method string, endpoint string
 		return nil, err
 	}
 
+	return resp, nil
+}
+
+func (c *client) makeRequest(ctx context.Context, method string, endpoint string, query string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
+	resp, err := c.makeRawRequest(ctx, method, endpoint, query, r)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 

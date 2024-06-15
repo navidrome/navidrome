@@ -277,4 +277,39 @@ var _ = Describe("client", func() {
 			}))
 		})
 	})
+
+	Describe("getTopSongs", func() {
+		It("should fetch top songs properly", func() {
+			f, _ := os.Open("tests/fixtures/listenbrainz.topsongs.json")
+
+			httpClient.Res = http.Response{
+				Body:       f,
+				StatusCode: 200,
+			}
+
+			res, err := client.getTopSongs(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50")
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal("BASE_URL/popularity/top-recordings-for-artist/db92a151-1ac2-438b-bc43-b82e149ddd50"))
+			Expect(err).To(BeNil())
+			Expect(res).To(Equal([]trackInfo{
+				{
+					RecordingName: "Never Gonna Give You Up",
+					RecordingMbid: "8f3471b5-7e6a-48da-86a9-c1c07a0f47ae",
+				},
+			}))
+		})
+
+		It("should error out on bad status", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"Code":500}`)),
+				StatusCode: 500,
+			}
+
+			resp, err := client.getTopSongs(context.Background(), "db92a151-1ac2-438b-bc43-b82e149ddd50")
+			Expect(resp).To(BeNil())
+			Expect(err).To(Equal(&listenBrainzError{
+				Code:    500,
+				Message: "",
+			}))
+		})
+	})
 })

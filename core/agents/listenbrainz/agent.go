@@ -392,6 +392,31 @@ func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) boo
 	return err == nil && sk != ""
 }
 
+func (l *listenBrainzAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+	if mbid == "" {
+		return nil, agents.ErrNotFound
+	}
+
+	songs, err := l.client.getTopSongs(ctx, mbid)
+	if err != nil {
+		return nil, err
+	}
+
+	var res []agents.Song
+	currentCount := 0
+
+	for _, t := range songs {
+		res = append(res, agents.Song{
+			Name: t.RecordingName,
+			MBID: t.RecordingMbid,
+		})
+
+		currentCount += 1
+	}
+
+	return res, nil
+}
+
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.ListenBrainz.Enabled {
@@ -402,6 +427,12 @@ func init() {
 			external_playlists.Register(listenBrainzAgentName, func(ds model.DataStore) external_playlists.PlaylistAgent {
 				return listenBrainzConstructor(ds)
 			})
+
+			agents.Register(listenBrainzAgentName, func(ds model.DataStore) agents.Interface {
+				return listenBrainzConstructor(ds)
+			})
 		}
 	})
 }
+
+var _ agents.ArtistTopSongsRetriever = (*listenBrainzAgent)(nil)
