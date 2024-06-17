@@ -23,7 +23,7 @@ const (
 	Genre         TagName = "genre"
 	Comment       TagName = "comment"
 	AlbumSort     TagName = "albumsort"
-	AlbumComment  TagName = "albumcomment"
+	AlbumVersion  TagName = "albumversion"
 	TitleSort     TagName = "titlesort"
 	Compilation   TagName = "compilation"
 	Grouping      TagName = "grouping"
