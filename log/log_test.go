@@ -150,6 +150,10 @@ var _ = Describe("Logger", func() {
 	})
 
 	Describe("IsGreaterOrEqualTo", func() {
+		BeforeEach(func() {
+			SetLogLevels(nil)
+		})
+
 		It("returns false if log level is below provided level", func() {
 			SetLevel(LevelError)
 			Expect(IsGreaterOrEqualTo(LevelWarn)).To(BeFalse())
