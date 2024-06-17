@@ -27,7 +27,7 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 func (md Metadata) albumID() string {
 	parts := []string{
 		strings.ToLower(md.mapAlbumName()),
-		md.String(OriginalDate),
+		strings.ToLower(md.String(AlbumVersion)),
 		md.String(ReleaseDate),
 	}
 	albumPath := strings.Join(parts, "\\")
