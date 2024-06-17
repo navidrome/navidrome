@@ -3,6 +3,7 @@ package server
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -42,7 +43,10 @@ func requestLogger(next http.Handler) http.Handler {
 			"httpStatus", ww.Status(),
 			"responseSize", ww.BytesWritten(),
 		}
-		if log.IsGreaterOrEqualTo(log.LevelDebug) {
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
+			headers, _ := json.Marshal(r.Header)
+			logArgs = append(logArgs, "header", string(headers))
+		} else if log.IsGreaterOrEqualTo(log.LevelDebug) {
 			logArgs = append(logArgs, "userAgent", r.UserAgent())
 		}
 
