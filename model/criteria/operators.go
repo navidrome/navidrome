@@ -24,7 +24,7 @@ func (all All) MarshalJSON() ([]byte, error) {
 }
 
 func (all All) ChildPlaylistIds() (ids []string) {
-	return extractPlaylistIds(all, ids)
+	return extractPlaylistIds(all)
 }
 
 type (
@@ -41,7 +41,7 @@ func (any Any) MarshalJSON() ([]byte, error) {
 }
 
 func (any Any) ChildPlaylistIds() (ids []string) {
-	return extractPlaylistIds(any, ids)
+	return extractPlaylistIds(any)
 }
 
 type Is squirrel.Eq
@@ -284,18 +284,18 @@ func inList(m map[string]interface{}, negate bool) (sql string, args []interface
 	}
 }
 
-func extractPlaylistIds(inputRule interface{}, ids []string) []string {
+func extractPlaylistIds(inputRule interface{}) (ids []string) {
 	var id string
 	var ok bool
 
 	switch rule := inputRule.(type) {
 	case Any:
 		for _, rules := range rule {
-			ids = extractPlaylistIds(rules, ids)
+			ids = append(ids, extractPlaylistIds(rules)...)
 		}
 	case All:
 		for _, rules := range rule {
-			ids = extractPlaylistIds(rules, ids)
+			ids = append(ids, extractPlaylistIds(rules)...)
 		}
 	case InPlaylist:
 		if id, ok = rule["id"].(string); ok {
@@ -307,5 +307,5 @@ func extractPlaylistIds(inputRule interface{}, ids []string) []string {
 		}
 	}
 
-	return ids
+	return
 }
