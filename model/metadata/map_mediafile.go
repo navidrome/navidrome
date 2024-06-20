@@ -26,7 +26,8 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.OriginalYear, mf.OriginalDate = origDate.Year(), string(origDate)
 	relDate := md.Date(ReleaseDate)
 	mf.ReleaseYear, mf.ReleaseDate = relDate.Year(), string(relDate)
-	mf.Year, mf.Date = relDate.Year(), string(relDate) // TODO Remove?
+	date := md.Date(RecordingDate)
+	mf.Year, mf.Date = date.Year(), string(date)
 	mf.CatalogNum = md.String(CatalogNumber)
 	mf.MbzRecordingID = md.String(MusicBrainzRecordingID)
 	mf.MbzReleaseTrackID = md.String(MusicBrainzTrackID)
