@@ -191,16 +191,16 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should import as two distinct albums", func() {
 				Expect(s.RescanAll(ctx, true)).To(Succeed())
 
-				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "date"})
+				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "release_date"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums).To(HaveLen(2))
 				Expect(albums[0]).To(SatisfyAll(
 					HaveField("Name", Equal("Help!")),
-					HaveField("Date", Equal("1965")),
+					HaveField("ReleaseDate", Equal("1965")),
 				))
 				Expect(albums[1]).To(SatisfyAll(
 					HaveField("Name", Equal("Help!")),
-					HaveField("Date", Equal("2000")),
+					HaveField("ReleaseDate", Equal("2000")),
 				))
 			})
 		})
