@@ -173,7 +173,7 @@ func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
 }
 
 func (r *mediaFileRepository) FindWithMbid(ids []string) (model.MediaFiles, error) {
-	sel := r.newSelect().Column("id").Where(Eq{"mbz_recording_id": ids})
+	sel := r.newSelect().Column("id").Where(Eq{"mbz_recording_id": ids}).GroupBy("mbz_recording_id")
 
 	res := model.MediaFiles{}
 	err := r.queryAll(sel, &res)
