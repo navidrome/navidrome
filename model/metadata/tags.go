@@ -34,8 +34,9 @@ const (
 
 	// Dates and years
 
-	OriginalDate TagName = "originaldate"
-	ReleaseDate  TagName = "releasedate"
+	OriginalDate  TagName = "originaldate"
+	ReleaseDate   TagName = "releasedate"
+	RecordingDate TagName = "recordingdate"
 
 	// Artists and roles
 
