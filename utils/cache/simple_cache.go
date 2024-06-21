@@ -1,70 +1,88 @@
 package cache
 
 import (
+	"errors"
 	"time"
 
-	"github.com/jellydator/ttlcache/v2"
+	"github.com/jellydator/ttlcache/v3"
 )
 
-type SimpleCache[V any] interface {
-	Add(key string, value V) error
-	AddWithTTL(key string, value V, ttl time.Duration) error
-	Get(key string) (V, error)
-	GetWithLoader(key string, loader func(key string) (V, time.Duration, error)) (V, error)
-	Keys() []string
+type SimpleCache[K comparable, V any] interface {
+	Add(key K, value V) error
+	AddWithTTL(key K, value V, ttl time.Duration) error
+	Get(key K) (V, error)
+	GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error)
+	Keys() []K
 }
 
 type Options struct {
-	SizeLimit  int
+	SizeLimit  uint64
 	DefaultTTL time.Duration
 }
 
-func NewSimpleCache[V any](options ...Options) SimpleCache[V] {
-	c := ttlcache.NewCache()
-	c.SkipTTLExtensionOnHit(true)
+func NewSimpleCache[K comparable, V any](options ...Options) SimpleCache[K, V] {
+	opts := []ttlcache.Option[K, V]{
+		ttlcache.WithDisableTouchOnHit[K, V](),
+	}
 	if len(options) > 0 {
-		c.SetCacheSizeLimit(options[0].SizeLimit)
-		_ = c.SetTTL(options[0].DefaultTTL)
+		o := options[0]
+		if o.SizeLimit > 0 {
+			opts = append(opts, ttlcache.WithCapacity[K, V](o.SizeLimit))
+		}
+		if o.DefaultTTL > 0 {
+			opts = append(opts, ttlcache.WithTTL[K, V](o.DefaultTTL))
+		}
 	}
 
-	return &simpleCache[V]{
+	c := ttlcache.New[K, V](opts...)
+	return &simpleCache[K, V]{
 		data: c,
 	}
 }
 
-type simpleCache[V any] struct {
-	data *ttlcache.Cache
+type simpleCache[K comparable, V any] struct {
+	data *ttlcache.Cache[K, V]
 }
 
-func (c *simpleCache[V]) Add(key string, value V) error {
-	return c.data.Set(key, value)
+func (c *simpleCache[K, V]) Add(key K, value V) error {
+	return c.AddWithTTL(key, value, ttlcache.DefaultTTL)
 }
 
-func (c *simpleCache[V]) AddWithTTL(key string, value V, ttl time.Duration) error {
-	return c.data.SetWithTTL(key, value, ttl)
-}
-
-func (c *simpleCache[V]) Get(key string) (V, error) {
-	v, err := c.data.Get(key)
-	if err != nil {
-		var zero V
-		return zero, err
+func (c *simpleCache[K, V]) AddWithTTL(key K, value V, ttl time.Duration) error {
+	item := c.data.Set(key, value, ttl)
+	if item == nil {
+		return errors.New("failed to add item")
 	}
-	return v.(V), nil
+	return nil
 }
 
-func (c *simpleCache[V]) GetWithLoader(key string, loader func(key string) (V, time.Duration, error)) (V, error) {
-	v, err := c.data.GetByLoader(key, func(key string) (interface{}, time.Duration, error) {
-		v, ttl, err := loader(key)
-		return v, ttl, err
-	})
-	if err != nil {
+func (c *simpleCache[K, V]) Get(key K) (V, error) {
+	item := c.data.Get(key)
+	if item == nil {
 		var zero V
-		return zero, err
+		return zero, errors.New("item not found")
 	}
-	return v.(V), nil
+	return item.Value(), nil
 }
 
-func (c *simpleCache[V]) Keys() []string {
-	return c.data.GetKeys()
+func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error) {
+	loaderWrapper := ttlcache.LoaderFunc[K, V](
+		func(t *ttlcache.Cache[K, V], key K) *ttlcache.Item[K, V] {
+			value, ttl, err := loader(key)
+			if err != nil {
+				return nil
+			}
+			return t.Set(key, value, ttl)
+		},
+	)
+	item := c.data.Get(key, ttlcache.WithLoader[K, V](loaderWrapper))
+	if item == nil {
+		var zero V
+		return zero, errors.New("item not found")
+	}
+	return item.Value(), nil
+}
+
+func (c *simpleCache[K, V]) Keys() []K {
+	return c.data.Keys()
 }

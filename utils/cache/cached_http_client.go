@@ -14,7 +14,7 @@ import (
 const cacheSizeLimit = 100
 
 type HTTPClient struct {
-	cache SimpleCache[string]
+	cache SimpleCache[string, string]
 	hc    httpDoer
 	ttl   time.Duration
 }
@@ -32,7 +32,7 @@ type requestData struct {
 
 func NewHTTPClient(wrapped httpDoer, ttl time.Duration) *HTTPClient {
 	c := &HTTPClient{hc: wrapped, ttl: ttl}
-	c.cache = NewSimpleCache[string](Options{
+	c.cache = NewSimpleCache[string, string](Options{
 		SizeLimit:  cacheSizeLimit,
 		DefaultTTL: ttl,
 	})
