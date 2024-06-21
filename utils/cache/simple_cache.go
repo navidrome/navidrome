@@ -14,9 +14,19 @@ type SimpleCache[V any] interface {
 	Keys() []string
 }
 
-func NewSimpleCache[V any]() SimpleCache[V] {
+type Options struct {
+	SizeLimit  int
+	DefaultTTL time.Duration
+}
+
+func NewSimpleCache[V any](options ...Options) SimpleCache[V] {
 	c := ttlcache.NewCache()
 	c.SkipTTLExtensionOnHit(true)
+	if len(options) > 0 {
+		c.SetCacheSizeLimit(options[0].SizeLimit)
+		_ = c.SetTTL(options[0].DefaultTTL)
+	}
+
 	return &simpleCache[V]{
 		data: c,
 	}
