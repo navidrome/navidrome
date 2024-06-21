@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"cmp"
 	"io/fs"
 	"path"
 	"regexp"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -45,7 +47,7 @@ func New(filePath string, info Info) Metadata {
 	return Metadata{
 		filePath:   filePath,
 		fileInfo:   info.FileInfo,
-		tags:       clean(info.Tags),
+		tags:       clean(filePath, info.Tags),
 		audioProps: info.AudioProperties,
 		hasPicture: info.HasPicture,
 	}
@@ -108,51 +110,53 @@ func (md Metadata) tuple(key TagName) (int, int) {
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
 
+func (md Metadata) date(tagName TagName) Date {
+	return Date(md.first(tagName))
+}
+
 // date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
-func (md Metadata) date(key TagName) Date {
-	tag := md.first(key)
-	if len(tag) < 4 {
+func parseDate(filePath, tagName, tagValue string) string {
+	if len(tagValue) < 4 {
 		return ""
 	}
 
 	// first get just the year
-	match := dateRegex.FindStringSubmatch(tag)
+	match := dateRegex.FindStringSubmatch(tagValue)
 	if len(match) == 0 {
-		log.Warn("Error parsing "+key+" field for year", "file", md.filePath, "date", tag)
+		log.Warn("Error parsing date", "file", filePath, "tag", tagName, "date", tagValue)
 		return ""
 	}
 
 	// if the tag is just the year, return it
-	if len(tag) < 5 {
-		return Date(match[1])
+	if len(tagValue) < 5 {
+		return match[1]
 	}
 
 	// if the tag is too long, truncate it
-	tag = tag[:min(10, len(tag))]
+	tagValue = tagValue[:min(10, len(tagValue))]
 
 	// then try to parse the full date
 	for _, mask := range []string{"2006-01-02", "2006-01"} {
-		_, err := time.Parse(mask, tag)
+		_, err := time.Parse(mask, tagValue)
 		if err == nil {
-			return Date(tag)
+			return tagValue
 		}
 	}
-
-	log.Warn("Error parsing "+key+" field for month + day", "file", md.filePath, "date", tag)
-	return Date(match[1])
+	log.Warn("Error parsing month and day from date", "file", filePath, "tag", tagName, "date", tagValue)
+	return match[1]
 }
 
 // clean filters out tags that are not in the mappings or are empty,
 // combine equivalent tags and remove duplicated values.
 // It keeps the order of the tags names as they are defined in the mappings.
-func clean(tags map[string][]string) map[string][]string {
+func clean(filePath string, tags map[string][]string) map[string][]string {
 	lowered := map[string][]string{}
 	for k, v := range tags {
 		lowered[strings.ToLower(k)] = v
 	}
 	cleaned := map[string][]string{}
-	for name, aliases := range mappings() {
-		for _, k := range aliases {
+	for name, mapping := range mappings() {
+		for _, k := range mapping.Aliases {
 			if v, ok := lowered[k]; ok {
 				cleaned[name] = append(cleaned[name], v...)
 			}
@@ -166,7 +170,7 @@ func clean(tags map[string][]string) map[string][]string {
 		}
 		cleaned[k] = clean
 	}
-	return cleaned
+	return sanitizeAll(filePath, cleaned)
 }
 
 func removeDuplicatedAndEmpty(values []string) []string {
@@ -183,4 +187,64 @@ func removeDuplicatedAndEmpty(values []string) []string {
 		result = append(result, v)
 	}
 	return result
+}
+
+func sanitizeAll(filePath string, tags map[string][]string) map[string][]string {
+	cleaned := map[string][]string{}
+	for k, v := range tags {
+		tag, found := mappings()[k]
+		if !found {
+			continue
+		}
+
+		var values []string
+		for _, value := range v {
+			cleanedValue := sanitize(filePath, k, tag, value)
+			if cleanedValue != "" {
+				values = append(values, cleanedValue)
+			}
+		}
+		if len(values) > 0 {
+			cleaned[k] = values
+		}
+	}
+	return cleaned
+}
+
+const defaultMaxTagLength = 1024
+
+func sanitize(filePath, tagName string, tag tagMapping, value string) string {
+	// First truncate the value to the maximum length
+	maxLength := cmp.Or(tag.MaxLength, defaultMaxTagLength)
+	if len(value) > maxLength {
+		log.Trace("Truncated tag value", "tag", tagName, "value", value, "length", len(value), "maxLength", maxLength)
+		value = value[:maxLength]
+	}
+
+	switch tag.Type {
+	case TagTypeDate:
+		value = parseDate(filePath, tagName, value)
+		if value == "" {
+			log.Trace("Invalid date tag value", "tag", tagName, "value", value)
+		}
+	case TagTypeInteger:
+		_, err := strconv.Atoi(value)
+		if err != nil {
+			log.Trace("Invalid integer tag value", "tag", tagName, "value", value)
+			return ""
+		}
+	case TagTypeFloat:
+		_, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			log.Trace("Invalid float tag value", "tag", tagName, "value", value)
+			return ""
+		}
+	case TagTypeUUID:
+		_, err := uuid.Parse(value)
+		if err != nil {
+			log.Trace("Invalid UUID tag value", "tag", tagName, "value", value)
+			return ""
+		}
+	}
+	return value
 }
