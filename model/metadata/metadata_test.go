@@ -2,6 +2,7 @@ package metadata_test
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model/metadata"
@@ -79,6 +80,7 @@ var _ = Describe("Metadata", func() {
 					"©ART":          {"Second Artist"},
 					"CatalogNumber": {""},
 					"Album":         {"Album Name", "", "Album Name"},
+					"Date":          {"2022-10-02 12:15:01"},
 					"Year":          {"2022", "2022", ""},
 					"Genre":         {"Pop", "", "Pop", "Rock"},
 					"Track":         {"1/10", "1/10", ""},
@@ -91,10 +93,19 @@ var _ = Describe("Metadata", func() {
 					Not(HaveKey(unknownTag)),
 					HaveKeyWithValue(string(metadata.TrackArtist), []string{"Artist Name", "Second Artist"}),
 					HaveKeyWithValue(string(metadata.Album), []string{"Album Name"}),
-					HaveKeyWithValue(string(metadata.ReleaseDate), []string{"2022"}),
+					HaveKeyWithValue(string(metadata.ReleaseDate), []string{"2022-10-02", "2022"}),
 					HaveKeyWithValue(string(metadata.Genre), []string{"Pop", "Rock"}),
 					HaveKeyWithValue(string(metadata.TrackNumber), []string{"1/10"}),
 				))
+			})
+
+			It("should truncate long strings", func() {
+				props.Tags = map[string][]string{
+					"Title": {strings.Repeat("a", 2048)},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.String(metadata.Title)).To(HaveLen(1024))
 			})
 		})
 
