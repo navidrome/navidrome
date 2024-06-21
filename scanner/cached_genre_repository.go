@@ -23,7 +23,7 @@ func newCachedGenreRepository(ctx context.Context, repo model.GenreRepository) m
 			log.Error(ctx, "Could not load genres from DB", err)
 			panic(err)
 		}
-		r.cache = cache.NewSimpleCache[string]()
+		r.cache = cache.NewSimpleCache[string, string]()
 		for _, g := range genres {
 			_ = r.cache.Add(strings.ToLower(g.Name), g.ID)
 		}
@@ -33,7 +33,7 @@ func newCachedGenreRepository(ctx context.Context, repo model.GenreRepository) m
 
 type cachedGenreRepo struct {
 	model.GenreRepository
-	cache cache.SimpleCache[string]
+	cache cache.SimpleCache[string, string]
 	ctx   context.Context
 }
 

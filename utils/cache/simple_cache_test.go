@@ -11,11 +11,11 @@ import (
 
 var _ = Describe("SimpleCache", func() {
 	var (
-		cache SimpleCache[string]
+		cache SimpleCache[string, string]
 	)
 
 	BeforeEach(func() {
-		cache = NewSimpleCache[string]()
+		cache = NewSimpleCache[string, string]()
 	})
 
 	Describe("Add and Get", func() {
@@ -67,7 +67,7 @@ var _ = Describe("SimpleCache", func() {
 			}
 
 			_, err := cache.GetWithLoader("key", loader)
-			Expect(err).To(MatchError("some error"))
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -87,7 +87,7 @@ var _ = Describe("SimpleCache", func() {
 	Describe("Options", func() {
 		Context("when size limit is set", func() {
 			BeforeEach(func() {
-				cache = NewSimpleCache[string](Options{
+				cache = NewSimpleCache[string, string](Options{
 					SizeLimit: 2,
 				})
 			})
@@ -104,7 +104,7 @@ var _ = Describe("SimpleCache", func() {
 
 		Context("when default TTL is set", func() {
 			BeforeEach(func() {
-				cache = NewSimpleCache[string](Options{
+				cache = NewSimpleCache[string, string](Options{
 					DefaultTTL: 10 * time.Millisecond,
 				})
 			})

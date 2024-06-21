@@ -37,7 +37,7 @@ type PlayTracker interface {
 type playTracker struct {
 	ds         model.DataStore
 	broker     events.Broker
-	playMap    cache.SimpleCache[NowPlayingInfo]
+	playMap    cache.SimpleCache[string, NowPlayingInfo]
 	scrobblers map[string]Scrobbler
 }
 
@@ -50,7 +50,7 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 // This constructor only exists for testing. For normal usage, the PlayTracker has to be a singleton, returned by
 // the GetPlayTracker function above
 func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
-	m := cache.NewSimpleCache[NowPlayingInfo]()
+	m := cache.NewSimpleCache[string, NowPlayingInfo]()
 	p := &playTracker{ds: ds, playMap: m, broker: broker}
 	p.scrobblers = make(map[string]Scrobbler)
 	for name, constructor := range constructors {
