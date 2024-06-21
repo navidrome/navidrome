@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -80,6 +81,42 @@ var _ = Describe("SimpleCache", func() {
 
 			keys := cache.Keys()
 			Expect(keys).To(ConsistOf("key1", "key2"))
+		})
+	})
+
+	Describe("Options", func() {
+		Context("when size limit is set", func() {
+			BeforeEach(func() {
+				cache = NewSimpleCache[string](Options{
+					SizeLimit: 2,
+				})
+			})
+
+			It("should not add more items than the size limit", func() {
+				for i := 1; i <= 3; i++ {
+					err := cache.Add(fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i))
+					Expect(err).NotTo(HaveOccurred())
+				}
+
+				Expect(cache.Keys()).To(ConsistOf("key2", "key3"))
+			})
+		})
+
+		Context("when default TTL is set", func() {
+			BeforeEach(func() {
+				cache = NewSimpleCache[string](Options{
+					DefaultTTL: 10 * time.Millisecond,
+				})
+			})
+
+			It("should expire items after the default TTL", func() {
+				_ = cache.Add("key", "value")
+
+				time.Sleep(50 * time.Millisecond)
+
+				_, err := cache.Get("key")
+				Expect(err).To(HaveOccurred())
+			})
 		})
 	})
 })
