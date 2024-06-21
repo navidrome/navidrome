@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jellydator/ttlcache/v2"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -23,9 +23,9 @@ func newCachedGenreRepository(ctx context.Context, repo model.GenreRepository) m
 			log.Error(ctx, "Could not load genres from DB", err)
 			panic(err)
 		}
-		r.cache = ttlcache.NewCache()
+		r.cache = cache.NewSimpleCache[string]()
 		for _, g := range genres {
-			_ = r.cache.Set(strings.ToLower(g.Name), g.ID)
+			_ = r.cache.Add(strings.ToLower(g.Name), g.ID)
 		}
 		return r
 	})
@@ -33,15 +33,15 @@ func newCachedGenreRepository(ctx context.Context, repo model.GenreRepository) m
 
 type cachedGenreRepo struct {
 	model.GenreRepository
-	cache *ttlcache.Cache
+	cache cache.SimpleCache[string]
 	ctx   context.Context
 }
 
 func (r *cachedGenreRepo) Put(g *model.Genre) error {
-	id, err := r.cache.GetByLoader(strings.ToLower(g.Name), func(key string) (interface{}, time.Duration, error) {
+	id, err := r.cache.GetWithLoader(strings.ToLower(g.Name), func(key string) (string, time.Duration, error) {
 		err := r.GenreRepository.Put(g)
 		return g.ID, 24 * time.Hour, err
 	})
-	g.ID = id.(string)
+	g.ID = id
 	return err
 }
