@@ -2,6 +2,8 @@ package model
 
 import (
 	"cmp"
+	"math"
+	"reflect"
 	"slices"
 	"time"
 
@@ -65,6 +67,30 @@ type Album struct {
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
+}
+
+// Equals compares two Album structs, ignoring calculated fields
+// Note: This method can change the values of some fields
+func (a Album) Equals(other Album) bool {
+	// Normalize float32 values to avoid false negatives
+	a.Duration = float32(math.Floor(float64(a.Duration)))
+	other.Duration = float32(math.Floor(float64(other.Duration)))
+
+	// Clear some tags that should not be compared
+	a.ScannedAt = time.Time{}
+	other.ScannedAt = time.Time{}
+	a.Annotations = Annotations{}
+	other.Annotations = Annotations{}
+	a.Genre = ""
+	other.Genre = ""
+	a.Genres = nil
+	other.Genres = nil
+	a.Participations.Sort()
+	other.Participations.Sort()
+	a.Tags.Sort()
+	other.Tags.Sort()
+
+	return reflect.DeepEqual(a, other)
 }
 
 // This is the list of tags that are not "first-class citizens" on the Album struct, but are still stored in the database.
@@ -132,7 +158,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
-	GetAlbumsTouched(libID int) ([]string, error)
+	GetTouchedAlbums(libID int) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }

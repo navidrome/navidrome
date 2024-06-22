@@ -44,9 +44,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = model.Album{LibraryID: 1, ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, Discs: model.Discs{}}
-	albumAbbeyRoad     = model.Album{LibraryID: 1, ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, Discs: model.Discs{}}
-	albumRadioactivity = model.Album{LibraryID: 1, ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, Discs: model.Discs{}}
+	albumSgtPeppers    = model.Album{LibraryID: 1, ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967, Discs: model.Discs{}, Tags: model.Tags{}}
+	albumAbbeyRoad     = model.Album{LibraryID: 1, ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969, Discs: model.Discs{}, Tags: model.Tags{}}
+	albumRadioactivity = model.Album{LibraryID: 1, ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2, Discs: model.Discs{}, Tags: model.Tags{}}
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
