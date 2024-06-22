@@ -135,7 +135,7 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 }
 
 func (n *Router) addDeleteSongRoute(r chi.Router) {
-	r.Route("/deleteSong", func(r chi.Router) {
+	r.Route("/delete", func(r chi.Router) {
 		r.Use(server.URLParamsMiddleware)
 		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 			deleteSong(n.ds)(w, r)

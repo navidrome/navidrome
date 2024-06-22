@@ -6,9 +6,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 type BeetsItem struct {
@@ -71,7 +71,7 @@ type BeetsItem struct {
 		Disctitle            string  `json:"disctitle"`
 		Lyrics               string  `json:"lyrics"`
 		Albumstatus          string  `json:"albumstatus"`
-		Albumtypes           string  `json:"albumtypes"`
+		Albumtypes           any  `json:"albumtypes"`
 		Releasegroupdisambig string  `json:"releasegroupdisambig"`
 		Comments             string  `json:"comments"`
 		Encoder              string  `json:"encoder"`
@@ -120,7 +120,8 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 			println(mf.Title)
 			// todo set this base from env variable
 			//baseUrl := "http://127.0.0.1:8337"
-			baseUrl := "http://host.docker.internal:8337"
+			// get docker port
+		    baseUrl := fmt.Sprintf("http://beets%s:8337", payload.User)
 			queryEndPoint := "/item/query/"
 			queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s/user:%s", mf.Artist, mf.Title, mf.Album, payload.User)
 			url := baseUrl + queryEndPoint + queryStr
@@ -146,49 +147,45 @@ func deleteSong(ds model.DataStore) http.HandlerFunc {
 				return
 			}
 			length := len(beetsItem.Results)
-			if length != 1 {
-			    errorStr := fmt.Sprintf("following query string matched %d entries: %s", length, queryStr)
-				log.Error(errorStr)
-			    http.Error(w, errorStr, http.StatusInternalServerError)
-				return
+			log.Info("following query string matched ", length, "entries: ", queryStr)
+			for _, item := range beetsItem.Results {
+				log.Info("deleting: ", item.Artist, " : ", item.Title, " id: ", item.ID)
+
+				deleteStr := fmt.Sprintf("/item/%d", item.ID)
+
+				deleteFromDiskStr := "?delete"
+
+				del_url := baseUrl + deleteStr + deleteFromDiskStr
+				// Create request
+				req, err := http.NewRequest(http.MethodDelete, del_url, nil)
+				log.Info("delete request: ", req)
+				if err != nil {
+					log.Error(err)
+				    http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				// Fetch Request
+				client := &http.Client{}
+				del_resp, del_err := client.Do(req)
+				if del_err != nil {
+					log.Error(del_err)
+				    http.Error(w, del_err.Error(), http.StatusInternalServerError)
+					return
+				}
+				defer del_resp.Body.Close()
+
+				// read the response body
+				del_body, err := io.ReadAll(del_resp.Body)
+				if err != nil {
+					log.Error(err)
+				    http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				// print the response body
+				fmt.Println(string(del_body))
+				log.Info("del body: ", del_body)
 			}
-			item := beetsItem.Results[0]
-			log.Info("deleting: ", item.Artist, " : ", item.Title, " id: ", item.ID)
-
-			deleteStr := fmt.Sprintf("/item/%d", item.ID)
-
-			deleteFromDiskStr := "?delete"
-
-			del_url := baseUrl + deleteStr + deleteFromDiskStr
-			// Create request
-			req, err := http.NewRequest(http.MethodDelete, del_url, nil)
-			log.Info("delete request: ", req)
-			if err != nil {
-				log.Error(err)
-			    http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			// Fetch Request
-			client := &http.Client{}
-			del_resp, del_err := client.Do(req)
-			if del_err != nil {
-				log.Error(del_err)
-			    http.Error(w, del_err.Error(), http.StatusInternalServerError)
-				return
-			}
-			defer del_resp.Body.Close()
-
-			// read the response body
-			del_body, err := io.ReadAll(del_resp.Body)
-			if err != nil {
-				log.Error(err)
-			    http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			// print the response body
-			fmt.Println(string(del_body))
-			log.Info("del body: ", del_body)
 		}
 	}
 }
@@ -197,19 +194,25 @@ func getBeetTrack(ds model.DataStore) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// todo: tests, use proper url parsing lib
-		id := chi.URLParam(r, "id")
-		user := chi.URLParam(r, "user")
+	    p := req.Params(r)
+	    id, _ := p.String("id")
+		user, _ := p.String("user")
+
+		log.Info("got parameters", "id", id, "user", user)
 		ctx := r.Context()
-		println(id)
 		mf, err := ds.MediaFile(ctx).Get(id)
 		if err != nil {
 			log.Error(err)
 		}
+		if mf == nil {
+			log.Error("no mediafile for id", "id", id)
+		}
+		log.Info("mediafile", "mf", mf)
 		// todo set this base from env variable
 		//baseUrl := "http://127.0.0.1:8337"
-		baseUrl := "http://host.docker.internal:8337"
+		baseUrl := fmt.Sprintf("http://beets%s:8337", user)
 		queryEndPoint := "/item/query/"
-		queryStr := fmt.Sprintf("artist:%s/title:%s/album:%s/user:%s", mf.Artist, mf.Title, mf.Album, user)
+		queryStr := fmt.Sprintf("artist:%s/title:%s/user:%s", mf.Artist, mf.Title, user)
 		url := baseUrl + queryEndPoint + queryStr
 		fmt.Printf("query url: %s\n", url)
 		resp, err := http.Get(url) // nolint
@@ -233,6 +236,6 @@ func getBeetTrack(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(sb)
+		json.NewEncoder(w).Encode(beetsItem)
 	}
 }
