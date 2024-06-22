@@ -57,6 +57,8 @@ albumversion:
   aliases: [ALBUMVERSION, MUSICBRAINZ_ALBUMCOMMENT, MUSICBRAINZ ALBUM COMMENT, VERSION]
 genre:
   aliases: [ TCON, GENRE, ©gen, WM/Genre, IGNR ]
+mood:
+  aliases: [ TMOO, MOOD, ----:com.apple.iTunes:MOOD, WM/Mood ]
 compilation:
   aliases: [ TCMP, COMPILATION, cpil, WM/IsCompilation ]
 track:
@@ -140,8 +142,6 @@ license:
   aliases: [ WCOP, TXXX:LICENSE, LICENSE, ----:com.apple.iTunes:LICENSE ]
 media:
   aliases: [ TMED, MEDIA, ----:com.apple.iTunes:MEDIA, WM/Media, IMED ]
-mood:
-  aliases: [ TMOO, MOOD, ----:com.apple.iTunes:MOOD, WM/Mood ]
 movementname:
   aliases: [ MVNM, MOVEMENTNAME, ©mvn ]
 movementtotal:
