@@ -170,7 +170,7 @@ var _ = Describe("MediaFiles", func() {
 				It("sets the correct Genre", func() {
 					album := mfs.ToAlbum()
 					Expect(album.Tags).To(HaveLen(1))
-					Expect(album.Tags).To(HaveKeyWithValue("genre", []string{"Rock"}))
+					Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock"}))
 				})
 			})
 			When("we have multiple Genres", func() {
@@ -180,7 +180,7 @@ var _ = Describe("MediaFiles", func() {
 				It("sets the correct Genre", func() {
 					album := mfs.ToAlbum()
 					Expect(album.Tags).To(HaveLen(1))
-					Expect(album.Tags).To(HaveKeyWithValue("genre", []string{"Rock", "Punk", "Alternative"}))
+					Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Punk", "Alternative"}))
 				})
 			})
 		})

@@ -57,7 +57,7 @@ func New(filePath string, info Info) Metadata {
 type Metadata struct {
 	filePath   string
 	fileInfo   FileInfo
-	tags       map[string][]string
+	tags       model.Tags
 	audioProps AudioProperties
 	hasPicture bool
 }
@@ -72,8 +72,8 @@ func (md Metadata) Suffix() string {
 func (md Metadata) AudioProperties() AudioProperties         { return md.audioProps }
 func (md Metadata) Length() float32                          { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
 func (md Metadata) HasPicture() bool                         { return md.hasPicture }
-func (md Metadata) All() map[string][]string                 { return md.tags }
-func (md Metadata) Strings(key model.TagName) []string       { return md.tags[string(key)] }
+func (md Metadata) All() model.Tags                          { return md.tags }
+func (md Metadata) Strings(key model.TagName) []string       { return md.tags[key] }
 func (md Metadata) String(key model.TagName) string          { return md.first(key) }
 func (md Metadata) Int(key model.TagName) int64              { v, _ := strconv.Atoi(md.first(key)); return int64(v) }
 func (md Metadata) Bool(key model.TagName) bool              { v, _ := strconv.ParseBool(md.first(key)); return v }
@@ -85,7 +85,7 @@ func (md Metadata) Float(key model.TagName) float64 {
 }
 
 func (md Metadata) first(key model.TagName) string {
-	if v, ok := md.tags[string(key)]; ok && len(v) > 0 {
+	if v, ok := md.tags[key]; ok && len(v) > 0 {
 		return v[0]
 	}
 	return ""
@@ -116,7 +116,7 @@ func (md Metadata) date(tagName model.TagName) Date {
 }
 
 // date tries to parse a date from a tag, it tries to get at least the year. See the tests for examples.
-func parseDate(filePath, tagName, tagValue string) string {
+func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 	if len(tagValue) < 4 {
 		return ""
 	}
@@ -150,15 +150,15 @@ func parseDate(filePath, tagName, tagValue string) string {
 // clean filters out tags that are not in the mappings or are empty,
 // combine equivalent tags and remove duplicated values.
 // It keeps the order of the tags names as they are defined in the mappings.
-func clean(filePath string, tags map[string][]string) map[string][]string {
-	lowered := map[string][]string{}
+func clean(filePath string, tags map[string][]string) model.Tags {
+	lowered := model.Tags{}
 	for k, v := range tags {
-		lowered[strings.ToLower(k)] = v
+		lowered[model.TagName(strings.ToLower(k))] = v
 	}
-	cleaned := map[string][]string{}
+	cleaned := model.Tags{}
 	for name, mapping := range mappings() {
 		for _, k := range mapping.Aliases {
-			if v, ok := lowered[k]; ok {
+			if v, ok := lowered[model.TagName(k)]; ok {
 				cleaned[name] = append(cleaned[name], v...)
 			}
 		}
@@ -190,8 +190,8 @@ func removeDuplicatedAndEmpty(values []string) []string {
 	return result
 }
 
-func sanitizeAll(filePath string, tags map[string][]string) map[string][]string {
-	cleaned := map[string][]string{}
+func sanitizeAll(filePath string, tags model.Tags) model.Tags {
+	cleaned := model.Tags{}
 	for k, v := range tags {
 		tag, found := mappings()[k]
 		if !found {
@@ -214,7 +214,7 @@ func sanitizeAll(filePath string, tags map[string][]string) map[string][]string 
 
 const defaultMaxTagLength = 1024
 
-func sanitize(filePath, tagName string, tag tagMapping, value string) string {
+func sanitize(filePath string, tagName model.TagName, tag tagMapping, value string) string {
 	// First truncate the value to the maximum length
 	maxLength := cmp.Or(tag.MaxLength, defaultMaxTagLength)
 	if len(value) > maxLength {
