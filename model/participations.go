@@ -1,7 +1,9 @@
 package model
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -84,6 +86,14 @@ func (p Participations) Add(role Role, artists ...Artist) {
 	}
 }
 
+func (p Participations) Sort() {
+	for _, artists := range p {
+		slices.SortFunc(artists, func(a1, a2 Artist) int {
+			return cmp.Compare(a1.Name, a2.Name)
+		})
+	}
+}
+
 // First returns the first artist for the role, or an empty artist if the role is not present.
 func (p Participations) First(role Role) Artist {
 	if artists, ok := p[role]; ok && len(artists) > 0 {
@@ -107,7 +117,8 @@ func (p Participations) AllIDs() []string {
 			ids = append(ids, artist.ID)
 		}
 	}
-	return slice.Unique(ids)
+	slices.Sort(ids)
+	return slices.Compact(ids)
 }
 
 // AllNames returns all artist names found in the Participations.

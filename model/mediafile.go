@@ -1,11 +1,13 @@
 package model
 
 import (
+	"cmp"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"mime"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -148,7 +150,11 @@ func (mfs MediaFiles) Dirs() []string {
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
-	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations)}
+	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations), Discs: make(Discs)}
+
+	// Sorting the mediafiles ensure the results will be consistent
+	slices.SortFunc(mfs, func(a, b MediaFile) int { return cmp.Compare(a.Path, b.Path) })
+
 	var albumArtistIds []string
 	var mbzAlbumIds []string
 	var comments []string
