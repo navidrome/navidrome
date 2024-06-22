@@ -197,7 +197,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
 		// TODO Sort values by frequency. Use slice.CompactByFrequency
-		a.Tags.Merge(m.Tags)
+		a.AddTags(m.Tags)
 		a.Participations.Merge(m.Participations)
 	}
 
