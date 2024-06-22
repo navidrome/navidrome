@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/pocketbase/dbx"
 
 	. "github.com/Masterminds/squirrel"
@@ -39,7 +38,7 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 		).
 		LeftJoin("(select it.tag_id, count(it.item_id) as album_count from item_tags it where item_type = 'album' group by it.tag_id) a on a.tag_id = tag.id").
 		LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it where item_type = 'media_file' group by it.tag_id) m on m.tag_id = tag.id").
-		Where(Eq{"tag.tag_name": metadata.Genre})
+		Where(Eq{"tag.tag_name": model.TagGenre})
 	sq = r.applyOptions(sq, opt...)
 	sq = r.applyFilters(sq, opt...)
 	return sq

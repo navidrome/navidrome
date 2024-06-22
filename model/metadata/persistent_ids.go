@@ -27,8 +27,8 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 func (md Metadata) albumID() string {
 	parts := []string{
 		strings.ToLower(md.mapAlbumName()),
-		strings.ToLower(md.String(AlbumVersion)),
-		md.String(ReleaseDate),
+		strings.ToLower(md.String(model.TagAlbumVersion)),
+		md.String(model.TagReleaseDate),
 	}
 	albumPath := strings.Join(parts, "\\")
 	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(albumPath))))
@@ -40,7 +40,7 @@ func (md Metadata) artistID(name string) string {
 }
 
 func (md Metadata) mapTrackTitle() string {
-	if title := md.String(Title); title != "" {
+	if title := md.String(model.TagTitle); title != "" {
 		return title
 	}
 	return utils.BaseName(md.FilePath())
@@ -48,7 +48,7 @@ func (md Metadata) mapTrackTitle() string {
 
 func (md Metadata) mapAlbumName() string {
 	return cmp.Or(
-		md.String(Album),
+		md.String(model.TagAlbum),
 		consts.UnknownAlbum,
 	)
 }
