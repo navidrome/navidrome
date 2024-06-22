@@ -130,7 +130,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 					mf, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(mf[0].Tags).To(HaveKeyWithValue("catalognumber", []string{"123"}))
+					Expect(mf[0].Tags).To(HaveKeyWithValue(model.TagCatalogNumber, []string{"123"}))
 				})
 
 				It("should update the album", func() {
