@@ -57,6 +57,12 @@ func (t Tags) FlattenAll() TagList {
 	return tags
 }
 
+func (t Tags) Sort() {
+	for _, values := range t {
+		slices.Sort(values)
+	}
+}
+
 func (t Tags) Hash() string {
 	if len(t) == 0 {
 		return ""
