@@ -21,6 +21,7 @@ const (
 	TotalDiscs    TagName = "disctotal"
 	DiscSubtitle  TagName = "discsubtitle"
 	Genre         TagName = "genre"
+	Mood          TagName = "mood"
 	Comment       TagName = "comment"
 	AlbumSort     TagName = "albumsort"
 	AlbumVersion  TagName = "albumversion"
