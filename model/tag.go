@@ -13,7 +13,7 @@ import (
 
 type Tag struct {
 	ID       string
-	TagName  string
+	TagName  TagName
 	TagValue string
 }
 
@@ -23,9 +23,9 @@ func (t Tag) String() string {
 	return fmt.Sprintf("%s=%s", t.TagName, t.TagValue)
 }
 
-func NewTag(name, value string) Tag {
-	name = strings.ToLower(name)
-	id := fmt.Sprintf("%x", md5.Sum([]byte(name+consts.Zwsp+strings.ToLower(value))))
+func NewTag(name TagName, value string) Tag {
+	name = name.ToLower()
+	id := fmt.Sprintf("%x", md5.Sum([]byte(string(name)+consts.Zwsp+strings.ToLower(value))))
 	return Tag{
 		ID:       id,
 		TagName:  name,
@@ -33,13 +33,13 @@ func NewTag(name, value string) Tag {
 	}
 }
 
-type Tags map[string][]string
+type Tags map[TagName][]string
 
-func (t Tags) Values(name string) []string {
+func (t Tags) Values(name TagName) []string {
 	return t[name]
 }
 
-func (t Tags) Flatten(name string) TagList {
+func (t Tags) Flatten(name TagName) TagList {
 	var tags TagList
 	for _, v := range t[name] {
 		tags = append(tags, NewTag(name, v))
@@ -91,7 +91,7 @@ func (t Tags) Merge(tags Tags) {
 	}
 }
 
-func (t Tags) Add(name string, v string) {
+func (t Tags) Add(name TagName, v string) {
 	for _, existing := range t[name] {
 		if existing == v {
 			return
@@ -105,6 +105,10 @@ type TagRepository interface {
 }
 
 type TagName string
+
+func (t TagName) ToLower() TagName {
+	return TagName(strings.ToLower(string(t)))
+}
 
 // Tag names, as defined in the mappings.yaml file
 const (
