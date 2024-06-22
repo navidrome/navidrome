@@ -34,16 +34,11 @@ func (a *dbAlbum) PostScan() error {
 		}
 	}
 	a.Album.Participations = parseParticipations(a.Participations)
-	if a.Tags == "" {
-		return nil
-	}
 	tags, err := parseTags(a.Tags)
 	if err != nil {
 		return err
 	}
-	if len(tags) != 0 {
-		a.Album.Tags = tags
-	}
+	a.Album.Tags = tags
 	a.Album.Genre, a.Album.Genres = tags.ToGenres()
 	return nil
 }
@@ -235,19 +230,18 @@ func (r *albumRepository) Touch(ids ...string) error {
 	return err
 }
 
-// GetAlbumsTouched returns a list of album IDs that were touched by the scanner for a given library, in the
+// GetTouchedAlbums returns a list of albums that were touched by the scanner for a given library, in the
 // current library scan.
-func (r *albumRepository) GetAlbumsTouched(libID int) ([]string, error) {
-	sel := r.newSelect().Columns("album.id").From("album").
+func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
+	sel := r.selectAlbum().
 		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
-			// FIXME This must be time the album was touched by the scanner
-			ConcatExpr("album.scanned_at > library.last_scan_started_at"),
+			ConcatExpr("album.scanned_at > library.last_scan_at"),
 		})
-	var res []string
-	err := r.queryAllSlice(sel, &res)
-	return res, err
+	var res dbAlbums
+	err := r.queryAll(sel, &res)
+	return res.toModels(), err
 }
 
 func (r *albumRepository) purgeEmpty() error {
