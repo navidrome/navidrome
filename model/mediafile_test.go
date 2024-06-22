@@ -207,7 +207,7 @@ var _ = Describe("MediaFiles", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{{Comment: "comment1"}, {Comment: "not the same"}, {Comment: "comment1"}}
 				})
-				It("sets the correct Genre", func() {
+				It("sets the correct comment", func() {
 					album := mfs.ToAlbum()
 					Expect(album.Comment).To(BeEmpty())
 				})
