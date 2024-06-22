@@ -67,6 +67,22 @@ func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
 }
 
+// This is the list of tags that are not "first-class citizens" on the Album struct, but are still stored in the database.
+var albumLevelTags = []TagName{
+	TagGenre,
+	TagMood,
+	TagCatalogNumber,
+	TagRecordLabel,
+}
+
+func (a Album) AddTags(tags Tags) {
+	for _, t := range albumLevelTags {
+		for _, v := range tags.Values(t) {
+			a.Tags.Add(t, v)
+		}
+	}
+}
+
 type Discs map[int]string
 
 // Add adds a disc to the Discs map. If the map is nil, it is initialized.
