@@ -66,10 +66,10 @@ var _ = Describe("Metadata", func() {
 				Expect(md.Bool(model.TagCompilation)).To(BeTrue())
 				Expect(md.All()).To(SatisfyAll(
 					HaveLen(4),
-					HaveKeyWithValue(string(model.TagTrackArtist), []string{"First Artist", "Second Artist"}),
-					HaveKeyWithValue(string(model.TagBPM), []string{"120.6"}),
-					HaveKeyWithValue(string(model.TagCompilation), []string{"1"}),
-					HaveKeyWithValue(string(model.TagCatalogNumber), []string{"1234"}),
+					HaveKeyWithValue(model.TagTrackArtist, []string{"First Artist", "Second Artist"}),
+					HaveKeyWithValue(model.TagBPM, []string{"120.6"}),
+					HaveKeyWithValue(model.TagCompilation, []string{"1"}),
+					HaveKeyWithValue(model.TagCatalogNumber, []string{"1234"}),
 				))
 
 			})
@@ -92,11 +92,11 @@ var _ = Describe("Metadata", func() {
 				Expect(md.All()).To(SatisfyAll(
 					HaveLen(5),
 					Not(HaveKey(unknownTag)),
-					HaveKeyWithValue(string(model.TagTrackArtist), []string{"Artist Name", "Second Artist"}),
-					HaveKeyWithValue(string(model.TagAlbum), []string{"Album Name"}),
-					HaveKeyWithValue(string(model.TagReleaseDate), []string{"2022-10-02", "2022"}),
-					HaveKeyWithValue(string(model.TagGenre), []string{"Pop", "Rock"}),
-					HaveKeyWithValue(string(model.TagTrackNumber), []string{"1/10"}),
+					HaveKeyWithValue(model.TagTrackArtist, []string{"Artist Name", "Second Artist"}),
+					HaveKeyWithValue(model.TagAlbum, []string{"Album Name"}),
+					HaveKeyWithValue(model.TagReleaseDate, []string{"2022-10-02", "2022"}),
+					HaveKeyWithValue(model.TagGenre, []string{"Pop", "Rock"}),
+					HaveKeyWithValue(model.TagTrackNumber, []string{"1/10"}),
 				))
 			})
 
