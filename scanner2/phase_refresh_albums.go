@@ -47,34 +47,42 @@ func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 
 func (p *phaseRefreshAlbums) stages() []ppl.Stage[*model.Album] {
 	return []ppl.Stage[*model.Album]{
+		ppl.NewStage(p.filterUnmodified, ppl.Name("filter unmodified"), ppl.Concurrency(5)),
 		ppl.NewStage(p.refreshAlbum, ppl.Name("refresh albums")),
 	}
 }
 
+func (p *phaseRefreshAlbums) filterUnmodified(album *model.Album) (*model.Album, error) {
+	mfs, err := p.ds.MediaFile(p.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": album.ID}})
+	if err != nil {
+		log.Error(p.ctx, "Error loading media files for album", "album_id", album.ID, err)
+		return nil, err
+	}
+	newAlbum := P(mfs.ToAlbum())
+	if album.Equals(*newAlbum) {
+		log.Trace("Scanner: album is up to date. Skipping", "album_id", album.ID,
+			"name", album.Name, "songCount", album.SongCount, "updatedAt", album.UpdatedAt)
+		p.skipped.Add(1)
+		return nil, nil
+	}
+	return newAlbum, nil
+}
+
 func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, error) {
-	var newAlbum *model.Album
+	if album == nil {
+		return nil, nil
+	}
 	start := time.Now()
 	err := p.ds.WithTx(func(tx model.DataStore) error {
-		mfs, err := tx.MediaFile(p.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": album.ID}})
-		if err != nil {
-			log.Error(p.ctx, "Error loading media files for album", "album_id", album.ID, err)
-			return err
-		}
-		newAlbum = P(mfs.ToAlbum())
-		if album.Equals(*newAlbum) {
-			log.Trace("Scanner: album is up to date. Skipping", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start))
-			p.skipped.Add(1)
-			return nil
-		}
-		res := tx.Album(p.ctx).Put(newAlbum)
+		res := tx.Album(p.ctx).Put(album)
 		p.refreshed.Add(1)
-		log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", newAlbum.Name, "songCount", newAlbum.SongCount, "elapsed", time.Since(start))
+		log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start))
 		return res
 	})
 	if err != nil {
 		return nil, err
 	}
-	return newAlbum, nil
+	return album, nil
 }
 
 func (p *phaseRefreshAlbums) finalize(err error) error {
