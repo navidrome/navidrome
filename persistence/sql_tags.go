@@ -19,6 +19,9 @@ func (r sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
 
 func parseTags(strTags string) (model.Tags, error) {
 	tags := model.Tags{}
+	if strTags == "" {
+		return tags, nil
+	}
 	var dbTags []map[model.TagName]string
 	err := json.Unmarshal([]byte(strTags), &dbTags)
 	if err != nil {
