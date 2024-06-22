@@ -10,24 +10,24 @@ import (
 )
 
 type roleTags struct {
-	sort TagName
-	mbid TagName
-	name TagName
+	sort model.TagName
+	mbid model.TagName
+	name model.TagName
 }
 
 func (md Metadata) mapParticipations() model.Participations {
 	roleMappings := sync.OnceValue(func() map[model.Role]roleTags {
 		return map[model.Role]roleTags{
-			model.RoleComposer:  {name: Composer, sort: ComposerSort},
-			model.RoleLyricist:  {name: Lyricist, sort: LyricistSort},
-			model.RoleConductor: {name: Conductor},
-			model.RoleArranger:  {name: Arranger},
-			model.RoleDirector:  {name: Director},
-			model.RoleProducer:  {name: Producer},
-			model.RoleEngineer:  {name: Engineer},
-			model.RoleMixer:     {name: Mixer},
-			model.RoleRemixer:   {name: Remixer},
-			model.RoleDJMixer:   {name: DJMixer},
+			model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort},
+			model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort},
+			model.RoleConductor: {name: model.TagConductor},
+			model.RoleArranger:  {name: model.TagArranger},
+			model.RoleDirector:  {name: model.TagDirector},
+			model.RoleProducer:  {name: model.TagProducer},
+			model.RoleEngineer:  {name: model.TagEngineer},
+			model.RoleMixer:     {name: model.TagMixer},
+			model.RoleRemixer:   {name: model.TagRemixer},
+			model.RoleDJMixer:   {name: model.TagDJMixer},
 			// TODO Performer (and Instruments)
 		}
 	})
@@ -35,13 +35,13 @@ func (md Metadata) mapParticipations() model.Participations {
 	participations := make(model.Participations)
 
 	// Parse track artists
-	artists := md.parseArtists(TrackArtist, TrackArtists, TrackArtistSort, TrackArtistsSort, MusicBrainzArtistID)
+	artists := md.parseArtists(model.TagTrackArtist, model.TagTrackArtists, model.TagTrackArtistSort, model.TagTrackArtistsSort, model.TagMusicBrainzArtistID)
 	participations.Add(model.RoleArtist, artists...)
 
 	// Parse album artists
-	albumArtists := md.parseArtists(AlbumArtist, AlbumArtists, AlbumArtistSort, AlbumArtistsSort, MusicBrainzAlbumArtistID)
+	albumArtists := md.parseArtists(model.TagAlbumArtist, model.TagAlbumArtists, model.TagAlbumArtistSort, model.TagAlbumArtistsSort, model.TagMusicBrainzAlbumArtistID)
 	if len(albumArtists) == 1 && albumArtists[0].Name == consts.UnknownArtist {
-		if md.Bool(Compilation) {
+		if md.Bool(model.TagCompilation) {
 			albumArtists = md.parseArtist([]string{consts.VariousArtists}, nil, []string{consts.VariousArtistsMbzId})
 		} else {
 			albumArtists = artists
@@ -75,7 +75,7 @@ func (md Metadata) mapParticipations() model.Participations {
 	return participations
 }
 
-func (md Metadata) parseArtists(name TagName, names TagName, sort TagName, sorts TagName, mbid TagName) []model.Artist {
+func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
 	nameValues := md.getTags(names, name)
 	sortValues := md.getTags(sorts, sort)
 	mbids := md.Strings(mbid)
@@ -105,7 +105,7 @@ func (md Metadata) parseArtist(names, sorts, mbids []string) []model.Artist {
 	return artists
 }
 
-func (md Metadata) getTags(tagNames ...TagName) []string {
+func (md Metadata) getTags(tagNames ...model.TagName) []string {
 	for _, tagName := range tagNames {
 		values := md.Strings(tagName)
 		if len(values) > 0 {
@@ -114,7 +114,7 @@ func (md Metadata) getTags(tagNames ...TagName) []string {
 	}
 	return nil
 }
-func (md Metadata) mapDisplayRole(mf model.MediaFile, role model.Role, tagNames ...TagName) string {
+func (md Metadata) mapDisplayRole(mf model.MediaFile, role model.Role, tagNames ...model.TagName) string {
 	artistNames := md.getTags(tagNames...)
 	values := []string{
 		"",
@@ -128,9 +128,9 @@ func (md Metadata) mapDisplayRole(mf model.MediaFile, role model.Role, tagNames 
 }
 
 func (md Metadata) mapDisplayArtist(mf model.MediaFile) string {
-	return md.mapDisplayRole(mf, model.RoleArtist, TrackArtist, TrackArtists)
+	return md.mapDisplayRole(mf, model.RoleArtist, model.TagTrackArtist, model.TagTrackArtists)
 }
 
 func (md Metadata) mapDisplayAlbumArtist(mf model.MediaFile) string {
-	return md.mapDisplayRole(mf, model.RoleAlbumArtist, AlbumArtist, AlbumArtists)
+	return md.mapDisplayRole(mf, model.RoleAlbumArtist, model.TagAlbumArtist, model.TagAlbumArtists)
 }

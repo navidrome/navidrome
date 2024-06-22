@@ -103,3 +103,73 @@ func (t Tags) Add(name string, v string) {
 type TagRepository interface {
 	Add(...Tag) error
 }
+
+type TagName string
+
+// Tag names, as defined in the mappings.yaml file
+const (
+	TagAlbum         TagName = "album"
+	TagTitle         TagName = "title"
+	TagTrackNumber   TagName = "track"
+	TagDiscNumber    TagName = "disc"
+	TagTotalTracks   TagName = "tracktotal"
+	TagTotalDiscs    TagName = "disctotal"
+	TagDiscSubtitle  TagName = "discsubtitle"
+	TagGenre         TagName = "genre"
+	TagMood          TagName = "mood"
+	TagComment       TagName = "comment"
+	TagAlbumSort     TagName = "albumsort"
+	TagAlbumVersion  TagName = "albumversion"
+	TagTitleSort     TagName = "titlesort"
+	TagCompilation   TagName = "compilation"
+	TagGrouping      TagName = "grouping"
+	TagLyrics        TagName = "lyrics"
+	TagRecordLabel   TagName = "recordlabel"
+	TagCatalogNumber TagName = "catalognumber"
+	TagBPM           TagName = "bpm"
+
+	// Dates and years
+
+	TagOriginalDate  TagName = "originaldate"
+	TagReleaseDate   TagName = "releasedate"
+	TagRecordingDate TagName = "recordingdate"
+
+	// Artists and roles
+
+	TagAlbumArtist      TagName = "albumartist"
+	TagAlbumArtists     TagName = "albumartists"
+	TagAlbumArtistSort  TagName = "albumartistsort"
+	TagAlbumArtistsSort TagName = "albumartistssort"
+	TagTrackArtist      TagName = "artist"
+	TagTrackArtists     TagName = "artists"
+	TagTrackArtistSort  TagName = "artistsort"
+	TagTrackArtistsSort TagName = "artistssort"
+	TagComposer         TagName = "composer"
+	TagComposerSort     TagName = "composersort"
+	TagLyricist         TagName = "lyricist"
+	TagLyricistSort     TagName = "lyricistsort"
+	TagDirector         TagName = "director"
+	TagProducer         TagName = "producer"
+	TagEngineer         TagName = "engineer"
+	TagMixer            TagName = "mixer"
+	TagRemixer          TagName = "remixer"
+	TagDJMixer          TagName = "djmixer"
+	TagConductor        TagName = "conductor"
+	TagArranger         TagName = "arranger"
+	TagPerformer        TagName = "performer"
+
+	// ReplayGain
+
+	TagReplayGainAlbumGain TagName = "replaygain_album_gain"
+	TagReplayGainAlbumPeak TagName = "replaygain_album_peak"
+	TagReplayGainTrackGain TagName = "replaygain_track_gain"
+	TagReplayGainTrackPeak TagName = "replaygain_track_peak"
+
+	// MusicBrainz
+
+	TagMusicBrainzArtistID      TagName = "musicbrainz_artistid"
+	TagMusicBrainzRecordingID   TagName = "musicbrainz_recordingid"
+	TagMusicBrainzTrackID       TagName = "musicbrainz_trackid"
+	TagMusicBrainzAlbumArtistID TagName = "musicbrainz_albumartistid"
+	TagMusicBrainzAlbumID       TagName = "musicbrainz_albumid"
+)
