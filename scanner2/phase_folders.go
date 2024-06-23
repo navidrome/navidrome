@@ -287,7 +287,8 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	log.Debug(p.ctx, "Scanner: Completed processing folder", " path", entry.path,
 		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
-		"elapsed", time.Since(entry.startTime))
+		"elapsed", time.Since(entry.startTime), "tracksMissing", len(entry.missingTracks),
+		"tracksImported", len(entry.tracks))
 	return entry, nil
 }
 
