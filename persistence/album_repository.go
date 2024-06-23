@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -48,6 +49,9 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, a.Album.Participations.AllNames()...)
 	fullText = append(fullText, maps.Values(a.Album.Discs)...)
 	args["full_text"] = formatFullText(fullText...)
+
+	// This may not be necessary once we have proper album<->artist M2M relationship
+	args["all_artist_ids"] = strings.Join(a.Album.Participations.AllIDs(), " ")
 
 	delete(args, "tags")
 	delete(args, "participations")

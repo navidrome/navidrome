@@ -215,7 +215,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
 	a = fixAlbumArtist(a, albumArtistIds) // TODO Validate if this it really needed
-	a.AllArtistIDs = strings.Join(a.Participations.AllIDs(), " ")
 	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
 
 	return a
