@@ -193,6 +193,23 @@ var _ = Describe("AlbumRepository", func() {
 			)
 		})
 
+		Describe("AllArtistIDs", func() {
+			It("collects all deduplicated artist ids", func() {
+				dba := dbAlbum{Album: &model.Album{
+					Participations: model.Participations{
+						model.RoleAlbumArtist: {{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}},
+						model.RoleArtist:      {{ID: "A2", Name: "Artist2", SortArtistName: "SortArtistName2"}},
+						model.RoleComposer:    {{ID: "C1", Name: "Composer1"}},
+					},
+				}}
+
+				mapped := map[string]any{}
+				err := dba.PostMapArgs(mapped)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mapped).To(HaveKeyWithValue("all_artist_ids", "A2 AA1 C1"))
+			})
+		})
+
 		Describe("dbAlbums.toModels", func() {
 			It("converts dbAlbums to model.Albums", func() {
 				dba := dbAlbums{
