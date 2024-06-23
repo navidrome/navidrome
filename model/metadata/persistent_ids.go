@@ -14,24 +14,30 @@ import (
 
 // FIXME Must be configurable
 func (md Metadata) trackPID(mf model.MediaFile) string {
+	// FIXME It will never reach the 3rd option
 	value := cmp.Or(
 		mf.MbzReleaseTrackID,
-		fmt.Sprintf("%s\\%02d\\%02d", md.albumID(), mf.DiscNumber, mf.TrackNumber),
-		fmt.Sprintf("%s\\%s", md.albumID(), md.mapTrackTitle()),
+		fmt.Sprintf("%s\\%02d\\%02d", md.albumID(mf), mf.DiscNumber, mf.TrackNumber),
+		fmt.Sprintf("%s\\%s", md.albumID(mf), md.mapTrackTitle()),
 	)
 
 	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(value)))))
 }
 
 // FIXME Must be configurable
-func (md Metadata) albumID() string {
-	parts := []string{
-		strings.ToLower(md.mapAlbumName()),
-		strings.ToLower(md.String(model.TagAlbumVersion)),
-		md.String(model.TagReleaseDate),
-	}
-	albumPath := strings.Join(parts, "\\")
-	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(albumPath))))
+func (md Metadata) albumID(mf model.MediaFile) string {
+	value := cmp.Or(
+		mf.MbzAlbumID,
+		func() string {
+			parts := []string{
+				strings.ToLower(md.mapAlbumName()),
+				strings.ToLower(md.String(model.TagAlbumVersion)),
+				md.String(model.TagReleaseDate),
+			}
+			return strings.Join(parts, "\\")
+		}(),
+	)
+	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(value))))
 }
 
 // FIXME Must be configurable
