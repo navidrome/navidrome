@@ -237,14 +237,6 @@ var _ = Describe("MediaFiles", func() {
 				}
 				album = mfs.ToAlbum()
 			})
-			It("collects all deduplicated artist ids", func() {
-				Expect(album.AllArtistIDs).To(SatisfyAll(
-					ContainSubstring("AA1"),
-					ContainSubstring("A1"),
-					ContainSubstring("A2"),
-					ContainSubstring("C1"),
-				))
-			})
 			It("gets all participations from all tracks", func() {
 				Expect(album.Participations).To(HaveKeyWithValue(RoleAlbumArtist, []Artist{{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}}))
 				Expect(album.Participations).To(HaveKeyWithValue(RoleComposer, []Artist{{ID: "C1", Name: "Composer1"}}))

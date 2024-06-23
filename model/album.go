@@ -22,7 +22,6 @@ type Album struct {
 	Artist                string     `structs:"artist" json:"artist"`
 	AlbumArtistID         string     `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
-	AllArtistIDs          string     `structs:"all_artist_ids" json:"allArtistIds"`
 	MaxYear               int        `structs:"max_year" json:"maxYear"`
 	MinYear               int        `structs:"min_year" json:"minYear"`
 	Date                  string     `structs:"date" json:"date,omitempty"`
