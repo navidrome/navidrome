@@ -57,6 +57,21 @@ var _ = Describe("MediaFiles", func() {
 		})
 	})
 	Context("Aggregated attributes", func() {
+		When("we don't have any songs", func() {
+			BeforeEach(func() {
+				mfs = MediaFiles{}
+			})
+			It("returns an empty album", func() {
+				album := mfs.ToAlbum()
+				Expect(album.Duration).To(Equal(float32(0)))
+				Expect(album.Size).To(Equal(int64(0)))
+				Expect(album.MinYear).To(Equal(0))
+				Expect(album.MaxYear).To(Equal(0))
+				Expect(album.Date).To(BeEmpty())
+				Expect(album.UpdatedAt).To(BeZero())
+				Expect(album.CreatedAt).To(BeZero())
+			})
+		})
 		When("we have only one song", func() {
 			BeforeEach(func() {
 				mfs = MediaFiles{

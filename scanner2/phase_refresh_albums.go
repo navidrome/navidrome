@@ -39,7 +39,7 @@ func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 			if len(albums) == 0 {
 				continue
 			}
-			log.Debug(p.ctx, "Scanner: checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name, "albumCount", len(albums))
+			log.Debug(p.ctx, "Scanner: Checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name, "albumCount", len(albums))
 			for _, album := range albums {
 				put(&album)
 			}
@@ -61,6 +61,13 @@ func (p *phaseRefreshAlbums) filterUnmodified(album *model.Album) (*model.Album,
 		log.Error(p.ctx, "Error loading media files for album", "album_id", album.ID, err)
 		return nil, err
 	}
+	if len(mfs) == 0 {
+		log.Debug(p.ctx, "Scanner: album has no media files. Skipping", "album_id", album.ID,
+			"name", album.Name, "songCount", album.SongCount, "updatedAt", album.UpdatedAt)
+		p.skipped.Add(1)
+		return nil, nil
+	}
+
 	newAlbum := mfs.ToAlbum()
 	if album.Equals(newAlbum) {
 		log.Trace("Scanner: album is up to date. Skipping", "album_id", album.ID,
