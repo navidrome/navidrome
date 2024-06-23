@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"slices"
 
-	"golang.org/x/exp/maps"
+	"maps"
 )
 
 // FS implements a simple merged fs.FS, that can combine a Base FS with an Overlay FS. The semantics are:
@@ -64,9 +64,8 @@ func (m FS) mergeDirs(name string, info fs.FileInfo, baseDir fs.ReadDirFile, ove
 	for _, f := range overlayFiles {
 		merged[f.Name()] = f
 	}
-	entries := maps.Values(merged)
-
-	slices.SortFunc(entries, func(i, j fs.DirEntry) int { return cmp.Compare(i.Name(), j.Name()) })
+	it := maps.Values(merged)
+	entries := slices.SortedFunc(it, func(i, j fs.DirEntry) int { return cmp.Compare(i.Name(), j.Name()) })
 	return &mergedDir{
 		name:    name,
 		info:    info,
