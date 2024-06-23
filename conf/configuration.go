@@ -48,6 +48,7 @@ type configOptions struct {
 	EnableArtworkPrecache        bool
 	AutoImportPlaylists          bool
 	PlaylistsPath                string
+	SmartPlaylistRefreshTimeout  time.Duration
 	AutoTranscodeDownload        bool
 	DefaultDownsamplingFormat    string
 	SearchFullString             bool
@@ -300,6 +301,7 @@ func init() {
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
+	viper.SetDefault("smartPlaylistRefreshTimeout", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablemediafilecoverart", true)
