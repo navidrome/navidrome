@@ -27,6 +27,10 @@ func createPhaseMissingTracks(ctx context.Context, ds model.DataStore) *phaseMis
 	return &phaseMissingTracks{ctx: ctx, ds: ds}
 }
 
+func (p *phaseMissingTracks) description() string {
+	return "Process missing files, checking for moves"
+}
+
 func (p *phaseMissingTracks) producer() ppl.Producer[*missingTracks] {
 	return ppl.NewProducer(p.produce, ppl.Name("load missing tracks from db"))
 }
