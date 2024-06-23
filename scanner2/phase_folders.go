@@ -209,15 +209,11 @@ func (p *phaseFolders) loadAlbumsFromMediaFiles(entry *folderEntry) model.Albums
 }
 
 func (p *phaseFolders) loadArtistsFromMediaFiles(entry *folderEntry) model.Artists {
-	artists := make(map[string]model.Artist)
+	participants := model.Participations{}
 	for _, track := range entry.tracks {
-		for _, participant := range track.Participations {
-			for _, artist := range participant {
-				artists[artist.ID] = artist
-			}
-		}
+		participants.Merge(track.Participations)
 	}
-	return maps.Values(artists)
+	return participants.All()
 }
 
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
