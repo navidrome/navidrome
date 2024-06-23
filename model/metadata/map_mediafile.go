@@ -55,7 +55,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
 	mf.PID = md.trackPID(mf)
-	mf.AlbumID = md.albumID()
+	mf.AlbumID = md.albumID(mf)
 
 	// TODO These IDs will go away once the UI handle multiple participants.
 	// For Legacy Subsonic compatibility, we will set them in the API handlers
