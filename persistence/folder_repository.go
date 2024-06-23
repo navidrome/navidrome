@@ -7,6 +7,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -63,12 +64,14 @@ func (r folderRepository) Put(lib model.Library, path string) error {
 
 func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 	log.Debug(r.ctx, "Marking folders as missing", "ids", ids, "missing", missing)
-	sq := Update(r.tableName).
-		Set("missing", missing).
-		Set("updated_at", timeToSQL(time.Now())).
-		Where(Eq{"id": ids})
-	_, err := r.executeSQL(sq)
-	return err
+	return slice.RangeByChunks(ids, 200, func(chunk []string) error {
+		sq := Update(r.tableName).
+			Set("missing", missing).
+			Set("updated_at", timeToSQL(time.Now())).
+			Where(Eq{"id": chunk})
+		_, err := r.executeSQL(sq)
+		return err
+	})
 }
 
 // TODO Remove?
