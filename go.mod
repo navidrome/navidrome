@@ -1,8 +1,8 @@
 module github.com/navidrome/navidrome
 
-go 1.22
+go 1.23
 
-toolchain go1.22.3
+toolchain go1.23rc1
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
