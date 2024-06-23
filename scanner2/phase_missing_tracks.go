@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync/atomic"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
@@ -19,8 +20,9 @@ type missingTracks struct {
 }
 
 type phaseMissingTracks struct {
-	ctx context.Context
-	ds  model.DataStore
+	ctx          context.Context
+	ds           model.DataStore
+	totalMatched atomic.Uint32
 }
 
 func createPhaseMissingTracks(ctx context.Context, ds model.DataStore) *phaseMissingTracks {
@@ -111,6 +113,7 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 					log.Error(p.ctx, "Scanner: Error moving matched track", "missing", ms.Path, "matched", exactMatch.Path, "lib", in.lib.Name, err)
 					return err
 				}
+				p.totalMatched.Add(1)
 				continue
 			}
 
@@ -122,6 +125,7 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 					log.Error(p.ctx, "Scanner: Error moving upgraded track", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name, err)
 					return err
 				}
+				p.totalMatched.Add(1)
 			}
 		}
 		return nil
@@ -143,6 +147,10 @@ func (p *phaseMissingTracks) moveMatched(tx model.DataStore, mt, ms model.MediaF
 }
 
 func (p *phaseMissingTracks) finalize(err error) error {
+	matched := p.totalMatched.Load()
+	if matched > 0 {
+		log.Debug(p.ctx, "Scanner: Finished checking for moved files", "matched", matched, err)
+	}
 	return err
 }
 
