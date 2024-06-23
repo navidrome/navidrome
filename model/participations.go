@@ -109,19 +109,27 @@ func (p Participations) Merge(other Participations) {
 	}
 }
 
-// AllIDs returns all artist IDs found in the Participations.
-func (p Participations) AllIDs() []string {
-	var ids []string
-	for _, artists := range p {
-		for _, artist := range artists {
-			ids = append(ids, artist.ID)
-		}
+// All returns all artists found in the Participations.
+func (p Participations) All() Artists {
+	var artists Artists
+	for _, roleArtists := range p {
+		artists = append(artists, roleArtists...)
 	}
-	slices.Sort(ids)
-	return slices.Compact(ids)
+	slices.SortFunc(artists, func(a1, a2 Artist) int {
+		return cmp.Compare(a1.ID, a2.ID)
+	})
+	return slices.CompactFunc(artists, func(a1, a2 Artist) bool {
+		return a1.ID == a2.ID
+	})
 }
 
-// AllNames returns all artist names found in the Participations.
+// AllIDs returns all artist IDs found in the Participations.
+func (p Participations) AllIDs() []string {
+	artists := p.All()
+	return slice.Map(artists, func(a Artist) string { return a.ID })
+}
+
+// AllNames returns all artist names found in the Participations, including SortArtistNames.
 func (p Participations) AllNames() []string {
 	var names []string
 	for _, artists := range p {
