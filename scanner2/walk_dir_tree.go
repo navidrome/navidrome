@@ -42,7 +42,7 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		startTime:  time.Now(),
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
-		updTime:    job.removeLastUpdated(id),
+		updTime:    job.popLastUpdate(id),
 	}
 }
 

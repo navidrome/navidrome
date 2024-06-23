@@ -24,6 +24,10 @@ func createPhaseRefreshAlbums(ctx context.Context, ds model.DataStore, libs mode
 	return &phaseRefreshAlbums{ctx: ctx, ds: ds, libs: libs}
 }
 
+func (p *phaseRefreshAlbums) description() string {
+	return "Refresh all new/changed albums"
+}
+
 func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 	return ppl.NewProducer(func(put func(album *model.Album)) error {
 		for _, lib := range p.libs {
