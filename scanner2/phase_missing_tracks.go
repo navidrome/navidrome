@@ -58,8 +58,10 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 			return fmt.Errorf("error loading missing tracks for library %s: %w", lib.Name, err)
 		}
 		if len(mfs) == 0 {
+			log.Debug(p.ctx, "Scanner: No potential moves found", "libraryId", lib.ID, "libraryName", lib.Name)
 			continue
 		}
+		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name, "trackCount", len(mfs))
 		slices.SortFunc(mfs, func(i, j model.MediaFile) int {
 			return cmp.Compare(i.PID, j.PID)
 		})
@@ -119,10 +121,10 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 
 			// Process the equivalent match if no exact match was found
 			if equivalentMatch.ID != "" {
-				log.Debug(p.ctx, "Scanner: Found upgraded track with same tags", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name)
+				log.Debug(p.ctx, "Scanner: Found track with same base path", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name)
 				err := p.moveMatched(tx, equivalentMatch, ms)
 				if err != nil {
-					log.Error(p.ctx, "Scanner: Error moving upgraded track", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name, err)
+					log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name, err)
 					return err
 				}
 				p.totalMatched.Add(1)
@@ -149,7 +151,7 @@ func (p *phaseMissingTracks) moveMatched(tx model.DataStore, mt, ms model.MediaF
 func (p *phaseMissingTracks) finalize(err error) error {
 	matched := p.totalMatched.Load()
 	if matched > 0 {
-		log.Debug(p.ctx, "Scanner: Finished checking for moved files", "matched", matched, err)
+		log.Debug(p.ctx, "Scanner: Found moved files", "total", matched, err)
 	}
 	return err
 }

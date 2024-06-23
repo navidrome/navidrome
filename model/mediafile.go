@@ -130,9 +130,9 @@ func (mf MediaFile) Equals(other MediaFile) bool {
 	return mf.Hash() == other.Hash()
 }
 
-// IsEquivalent compares two MediaFiles by their tags and path only.
+// IsEquivalent compares two MediaFiles by path only. Used for matching missing tracks.
 func (mf MediaFile) IsEquivalent(other MediaFile) bool {
-	return mf.Tags.Hash() == other.Tags.Hash() && utils.BaseName(mf.Path) == utils.BaseName(other.Path)
+	return utils.BaseName(mf.Path) == utils.BaseName(other.Path)
 }
 
 type MediaFiles []MediaFile
@@ -150,6 +150,9 @@ func (mfs MediaFiles) Dirs() []string {
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
+	if len(mfs) == 0 {
+		return Album{}
+	}
 	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations), Discs: make(Discs)}
 
 	// Sorting the mediafiles ensure the results will be consistent
