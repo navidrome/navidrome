@@ -10,7 +10,6 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type phaseRefreshAlbums struct {
@@ -36,7 +35,7 @@ func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 			if len(albums) == 0 {
 				continue
 			}
-			log.Debug(p.ctx, "Scanner: checking albums that may need refresh", "library_id", lib.ID, "total", len(albums))
+			log.Debug(p.ctx, "Scanner: checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name, "albumCount", len(albums))
 			for _, album := range albums {
 				put(&album)
 			}
@@ -58,14 +57,14 @@ func (p *phaseRefreshAlbums) filterUnmodified(album *model.Album) (*model.Album,
 		log.Error(p.ctx, "Error loading media files for album", "album_id", album.ID, err)
 		return nil, err
 	}
-	newAlbum := P(mfs.ToAlbum())
-	if album.Equals(*newAlbum) {
+	newAlbum := mfs.ToAlbum()
+	if album.Equals(newAlbum) {
 		log.Trace("Scanner: album is up to date. Skipping", "album_id", album.ID,
 			"name", album.Name, "songCount", album.SongCount, "updatedAt", album.UpdatedAt)
 		p.skipped.Add(1)
 		return nil, nil
 	}
-	return newAlbum, nil
+	return &newAlbum, nil
 }
 
 func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, error) {
