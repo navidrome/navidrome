@@ -54,6 +54,7 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 		return err
 	}
 
+	// Update last scan completed at for all libraries, if everything went well
 	_ = s.ds.WithTx(func(tx model.DataStore) error {
 		for _, lib := range libs {
 			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
@@ -72,10 +73,11 @@ type phase[T any] interface {
 	producer() ppl.Producer[T]
 	stages() []ppl.Stage[T]
 	finalize(error) error
+	description() string
 }
 
 func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
-	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d", phaseNum))
+	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d: %s", phaseNum, phase.description()))
 	start := time.Now()
 
 	producer := phase.producer()
