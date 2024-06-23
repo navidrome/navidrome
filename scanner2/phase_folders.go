@@ -71,7 +71,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 	}, nil
 }
 
-func (j *scanJob) removeLastUpdated(folderID string) time.Time {
+func (j *scanJob) popLastUpdate(folderID string) time.Time {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
@@ -84,6 +84,10 @@ type phaseFolders struct {
 	jobs []*scanJob
 	ds   model.DataStore
 	ctx  context.Context
+}
+
+func (p *phaseFolders) description() string {
+	return "Scan all libraries and import new/updated files"
 }
 
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
