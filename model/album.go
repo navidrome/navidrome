@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/maps"
 )
 
 type Album struct {
@@ -70,7 +71,6 @@ func (a Album) CoverArtID() ArtworkID {
 }
 
 // Equals compares two Album structs, ignoring calculated fields
-// Note: This method can change the values of some fields
 func (a Album) Equals(other Album) bool {
 	// Normalize float32 values to avoid false negatives
 	a.Duration = float32(math.Floor(float64(a.Duration)))
@@ -85,9 +85,29 @@ func (a Album) Equals(other Album) bool {
 	other.Genre = ""
 	a.Genres = nil
 	other.Genres = nil
+
+	// Clear external metadata
+	a.ExternalInfoUpdatedAt = nil
+	other.ExternalInfoUpdatedAt = nil
+	a.ExternalUrl = ""
+	other.ExternalUrl = ""
+	a.Description = ""
+	other.Description = ""
+	a.SmallImageUrl = ""
+	other.SmallImageUrl = ""
+	a.MediumImageUrl = ""
+	other.MediumImageUrl = ""
+	a.LargeImageUrl = ""
+	other.LargeImageUrl = ""
+
+	// Participations and Tags are cloned, to avoid mutating the original structs
+	a.Participations = maps.Clone(a.Participations)
 	a.Participations.Sort()
+	other.Participations = maps.Clone(other.Participations)
 	other.Participations.Sort()
+	a.Tags = maps.Clone(a.Tags)
 	a.Tags.Sort()
+	other.Tags = maps.Clone(other.Tags)
 	other.Tags.Sort()
 
 	return reflect.DeepEqual(a, other)
