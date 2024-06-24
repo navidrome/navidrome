@@ -38,7 +38,7 @@ require (
 	github.com/onsi/gomega v1.33.1
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pocketbase/dbx v1.10.1
-	github.com/pressly/goose/v3 v3.20.0
+	github.com/pressly/goose/v3 v3.21.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
