@@ -1,9 +1,7 @@
 package taglib
 
 import (
-	"errors"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,7 +20,7 @@ func (e extractor) Parse(files ...string) (map[string]metadata.Info, error) {
 	results := make(map[string]metadata.Info)
 	for _, path := range files {
 		props, err := e.extractMetadata(path)
-		if errors.Is(err, os.ErrPermission) {
+		if err != nil {
 			continue
 		}
 		results[path] = *props
