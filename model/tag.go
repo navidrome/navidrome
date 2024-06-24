@@ -116,6 +116,10 @@ func (t TagName) ToLower() TagName {
 	return TagName(strings.ToLower(string(t)))
 }
 
+func (t TagName) String() string {
+	return string(t)
+}
+
 // Tag names, as defined in the mappings.yaml file
 const (
 	TagAlbum         TagName = "album"
