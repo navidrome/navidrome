@@ -107,14 +107,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 }
 
 func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error) {
-	var res []NowPlayingInfo
-	for _, playerId := range p.playMap.Keys() {
-		info, err := p.playMap.Get(playerId)
-		if err != nil {
-			continue
-		}
-		res = append(res, info)
-	}
+	res := p.playMap.Values()
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].Start.After(res[j].Start)
 	})
