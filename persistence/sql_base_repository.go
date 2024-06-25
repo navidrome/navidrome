@@ -275,7 +275,10 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 }
 
 func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
-	values, _ := toSQLArgs(m)
+	values, err := toSQLArgs(m)
+	if err != nil {
+		return "", fmt.Errorf("error preparing values to write to DB: %w", err)
+	}
 	// If there's an ID, try to update first
 	if id != "" {
 		updateValues := map[string]interface{}{}

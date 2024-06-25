@@ -120,13 +120,28 @@ var _ = Describe("PlaylistRepository", func() {
 				},
 			}
 		})
-		It("Put/Get", func() {
-			newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+		Context("valid rules", func() {
+			Specify("Put/Get", func() {
+				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(Succeed())
 
-			savedPls, err := repo.Get(newPls.ID)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(savedPls.Rules).To(Equal(rules))
+				savedPls, err := repo.Get(newPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(savedPls.Rules).To(Equal(rules))
+			})
+		})
+
+		Context("invalid rules", func() {
+			It("fails to Put it in the DB", func() {
+				rules = &criteria.Criteria{
+					// This is invalid because "contains" cannot have multiple fields
+					Expression: criteria.All{
+						criteria.Contains{"genre": "Hardcore", "filetype": "mp3"},
+					},
+				}
+				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(MatchError(ContainSubstring("invalid criteria expression")))
+			})
 		})
 	})
 })

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -37,7 +38,10 @@ func (p dbPlaylist) PostMapArgs(args map[string]any) error {
 	var err error
 	if p.Playlist.IsSmartPlaylist() {
 		args["rules"], err = json.Marshal(p.Playlist.Rules)
-		return err
+		if err != nil {
+			return fmt.Errorf("invalid criteria expression: %w", err)
+		}
+		return nil
 	}
 	delete(args, "rules")
 	return nil
