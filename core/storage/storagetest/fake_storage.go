@@ -218,7 +218,7 @@ func (ffs *FakeFS) ReadTags(paths ...string) (map[string]metadata.Info, error) {
 	for _, file := range paths {
 		p, err := ffs.parseFile(file)
 		if err != nil {
-			return nil, err
+			log.Warn("Error reading metadata from file", "file", file, "err", err)
 		}
 		result[file] = *p
 	}
