@@ -39,7 +39,6 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		id:         id,
 		job:        job,
 		path:       path,
-		startTime:  time.Now(),
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
 		updTime:    job.popLastUpdate(id),
