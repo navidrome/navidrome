@@ -117,13 +117,15 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 
 func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 	return []ppl.Stage[*folderEntry]{
-		ppl.NewStage(p.processFolder, ppl.Name("process folder")),
+		ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(5)),
 		ppl.NewStage(p.persistChanges, ppl.Name("persist changes")),
 		ppl.NewStage(p.logFolder, ppl.Name("log folder")),
 	}
 }
 
 func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
+	entry.startTime = time.Now()
+
 	// Load children mediafiles from DB
 	mfs, err := p.ds.MediaFile(p.ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{squirrel.Eq{"folder_id": entry.id}},
@@ -285,10 +287,10 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 }
 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
-	log.Debug(p.ctx, "Scanner: Completed processing folder", " path", entry.path,
+	log.Info(p.ctx, "Scanner: Completed processing folder",
 		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
 		"elapsed", time.Since(entry.startTime), "tracksMissing", len(entry.missingTracks),
-		"tracksImported", len(entry.tracks))
+		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, "📂", entry.path)
 	return entry, nil
 }
 
