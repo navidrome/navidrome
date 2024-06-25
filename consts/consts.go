@@ -119,11 +119,11 @@ var (
 
 var (
 	VariousArtists = "Various Artists"
-	// TODO This will be dinamic when using disambiguation
+	// TODO This will be dynamic when using disambiguation
 	VariousArtistsID = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
 	UnknownAlbum     = "[Unknown Album]"
 	UnknownArtist    = "[Unknown Artist]"
-	// TODO This will be dinamic when using disambiguation
+	// TODO This will be dynamic when using disambiguation
 	UnknownArtistID     = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(UnknownArtist))))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
