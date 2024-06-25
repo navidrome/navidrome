@@ -2,7 +2,9 @@ package scanner2
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -14,9 +16,14 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
+var (
+	ErrAlreadyScanning = errors.New("already scanning")
+)
+
 type scanner2 struct {
 	rootCtx context.Context
 	ds      model.DataStore
+	running sync.Mutex
 }
 
 func GetInstance(rootCtx context.Context, ds model.DataStore) scanner.Scanner {
@@ -26,8 +33,13 @@ func GetInstance(rootCtx context.Context, ds model.DataStore) scanner.Scanner {
 }
 
 func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error {
-	ctx := request.AddValues(s.rootCtx, requestCtx)
+	if !s.running.TryLock() {
+		log.Debug(requestCtx, "Scanner already running, ignoring request for rescan.")
+		return ErrAlreadyScanning
+	}
+	defer s.running.Unlock()
 
+	ctx := request.AddValues(s.rootCtx, requestCtx)
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
 		return err
