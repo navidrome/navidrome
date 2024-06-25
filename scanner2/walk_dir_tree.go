@@ -114,6 +114,9 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 	}
 
 	for _, entry := range fullReadDir(ctx, dirFile) {
+		if isEntryIgnored(job.fs, dirPath, entry.Name()) {
+			continue
+		}
 		if ctx.Err() != nil {
 			return folder, children, ctx.Err()
 		}
@@ -230,4 +233,8 @@ func isDirIgnored(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) bool {
 	}
 	_, err := fs.Stat(fsys, filepath.Join(baseDir, name, consts.SkipScanFile))
 	return err == nil
+}
+
+func isEntryIgnored(fsys fs.FS, baseDir string, name string) bool {
+	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }

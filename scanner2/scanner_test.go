@@ -152,6 +152,28 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 		})
 
+		Context("Ignored entries", func() {
+			BeforeEach(func() {
+				revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+				createFS(fstest.MapFS{
+					"The Beatles/Revolver/01 - Taxman.mp3":   revolver(track(1, "Taxman")),
+					"The Beatles/Revolver/._01 - Taxman.mp3": &fstest.MapFile{Data: []byte("garbage data")},
+				})
+			})
+
+			It("should not import the ignored file", func() {
+				Expect(s.RescanAll(ctx, true)).To(Succeed())
+
+				mfs, err := ds.MediaFile(ctx).GetAll()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mfs).To(HaveLen(1))
+				for _, mf := range mfs {
+					Expect(mf.Title).To(Equal("Taxman"))
+					Expect(mf.Path).To(Equal("The Beatles/Revolver/01 - Taxman.mp3"))
+				}
+			})
+		})
+
 		Context("Same album in two different folders", func() {
 			BeforeEach(func() {
 				revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
