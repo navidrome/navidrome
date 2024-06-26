@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"path"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -139,7 +139,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	// Get list of files to import, leave in dbTracks only tracks that are missing
 	var filesToImport []string
 	for afPath, af := range entry.audioFiles {
-		fullPath := filepath.Join(entry.path, afPath)
+		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
 		if !foundInDB || entry.job.fullRescan {
 			filesToImport = append(filesToImport, fullPath)
