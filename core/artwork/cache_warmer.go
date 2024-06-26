@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -14,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/pl"
-	"golang.org/x/exp/maps"
 )
 
 type CacheWarmer interface {
@@ -94,7 +95,7 @@ func (a *cacheWarmer) run(ctx context.Context) {
 			continue
 		}
 
-		batch := maps.Keys(a.buffer)
+		batch := slices.Collect(maps.Keys(a.buffer))
 		a.buffer = make(map[model.ArtworkID]struct{})
 		a.mutex.Unlock()
 
