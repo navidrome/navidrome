@@ -137,7 +137,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	dbTracks := slice.ToMap(mfs, func(mf model.MediaFile) (string, model.MediaFile) { return mf.Path, mf })
 
 	// Get list of files to import, leave in dbTracks only tracks that are missing
-	var filesToImport []string
+	filesToImport := make([]string, 0, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
@@ -166,8 +166,8 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			return entry, nil
 		}
 
-		entry.albums = p.loadAlbumsFromMediaFiles(entry)
-		entry.artists = p.loadArtistsFromMediaFiles(entry)
+		entry.albums = p.createAlbumsFromMediaFiles(entry)
+		entry.artists = p.createArtistsFromMediaFiles(entry)
 	}
 
 	return entry, nil
@@ -176,16 +176,16 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 const filesBatchSize = 200
 
 func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) (model.MediaFiles, model.TagList, error) {
-	tracks := model.MediaFiles{}
-	uniqueTags := make(map[string]model.Tag)
+	tracks := make([]model.MediaFile, 0, len(toImport))
+	uniqueTags := make(map[string]model.Tag, len(toImport))
 	err := slice.RangeByChunks(toImport, filesBatchSize, func(chunk []string) error {
 		allInfo, err := entry.job.fs.ReadTags(toImport...)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error extracting metadata from files. Skipping", "folder", entry.path, err)
 			return err
 		}
-		for path, info := range allInfo {
-			md := metadata.New(path, info)
+		for filePath, info := range allInfo {
+			md := metadata.New(filePath, info)
 			track := md.ToMediaFile()
 			track.LibraryID = entry.job.lib.ID
 			track.FolderID = entry.id
@@ -199,7 +199,7 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) 
 	return tracks, maps.Values(uniqueTags), err
 }
 
-func (p *phaseFolders) loadAlbumsFromMediaFiles(entry *folderEntry) model.Albums {
+func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albums {
 	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumID })
 	var albums model.Albums
 	for _, group := range grouped {
@@ -210,7 +210,7 @@ func (p *phaseFolders) loadAlbumsFromMediaFiles(entry *folderEntry) model.Albums
 	return albums
 }
 
-func (p *phaseFolders) loadArtistsFromMediaFiles(entry *folderEntry) model.Artists {
+func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Artists {
 	participants := model.Participations{}
 	for _, track := range entry.tracks {
 		participants.Merge(track.Participations)
