@@ -35,6 +35,7 @@ func For(uri string) (Storage, error) {
 	// Paths without schema are treated as file:// and use the default LocalStorage implementation
 	if len(parts) < 2 {
 		uri, _ = filepath.Abs(uri)
+		uri = filepath.ToSlash(uri)
 		uri = LocalSchemaID + "://" + uri
 	}
 
