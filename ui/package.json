@@ -46,7 +46,7 @@
     "prettier": "3.3.2",
     "ra-test": "^3.19.12",
     "react-scripts": "5.0.1",
-    "workbox-cli": "^7.0.0"
+    "workbox-cli": "^7.1.0"
   },
   "scripts": {
     "start": "react-scripts start",
