@@ -34,7 +34,7 @@ func (r *libraryRepository) Put(l *model.Library) error {
 		"name":        l.Name,
 		"path":        l.Path,
 		"remote_path": l.RemotePath,
-		"updated_at":  time.Now(),
+		"updated_at":  timeToSQL(time.Now()),
 	}
 	if l.ID != 0 {
 		cols["id"] = l.ID
