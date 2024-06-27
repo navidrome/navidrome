@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/fatih/structs"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -150,13 +150,13 @@ var _ = Describe("AlbumRepository", func() {
 				func(songCount, playCount, expected int) {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
 
-					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					newID := id.NewRandom()
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
-						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
+						Expect(repo.IncPlayCount(newID, time.Now())).To(Succeed())
 					}
 
-					album, err := repo.Get(id)
+					album, err := repo.Get(newID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(album.PlayCount).To(Equal(int64(expected)))
 				},
@@ -173,13 +173,13 @@ var _ = Describe("AlbumRepository", func() {
 				func(songCount, playCount, expected int) {
 					conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
 
-					id := uuid.NewString()
-					Expect(repo.Put(&model.Album{LibraryID: 1, ID: id, Name: "name", SongCount: songCount})).To(Succeed())
+					newID := id.NewRandom()
+					Expect(repo.Put(&model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
 					for i := 0; i < playCount; i++ {
-						Expect(repo.IncPlayCount(id, time.Now())).To(Succeed())
+						Expect(repo.IncPlayCount(newID, time.Now())).To(Succeed())
 					}
 
-					album, err := repo.Get(id)
+					album, err := repo.Get(newID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(album.PlayCount).To(Equal(int64(expected)))
 				},
