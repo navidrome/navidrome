@@ -232,5 +232,9 @@ func (r *albumRepository) NewInstance() interface{} {
 	return &model.Album{}
 }
 
+func (r *albumRepository) DeleteMany(ids ...string) error {
+	return r.delete(Eq{"album.id": ids})
+}
+
 var _ model.AlbumRepository = (*albumRepository)(nil)
 var _ model.ResourceRepository = (*albumRepository)(nil)
