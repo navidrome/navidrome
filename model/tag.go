@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -25,9 +25,9 @@ func (t Tag) String() string {
 
 func NewTag(name TagName, value string) Tag {
 	name = name.ToLower()
-	id := fmt.Sprintf("%x", md5.Sum([]byte(string(name)+consts.Zwsp+strings.ToLower(value))))
+	hashID := id.NewHash(string(name), strings.ToLower(value))
 	return Tag{
-		ID:       id,
+		ID:       hashID,
 		TagName:  name,
 		TagValue: value,
 	}

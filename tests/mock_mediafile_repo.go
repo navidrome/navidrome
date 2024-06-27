@@ -7,8 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -68,7 +68,7 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 		return errors.New("error")
 	}
 	if mf.ID == "" {
-		mf.ID = uuid.NewString()
+		mf.ID = id.NewRandom()
 	}
 	m.data[mf.ID] = mf
 	return nil
@@ -113,7 +113,7 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	return res, nil
 }
 
-func (m *MockMediaFileRepo) GetMissingAndMatching(libId int, pagination ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) GetMissingAndMatching(libId int, _ ...model.QueryOptions) (model.MediaFiles, error) {
 	if m.err {
 		return nil, errors.New("error")
 	}
