@@ -4,9 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 func CreateMockAlbumRepo() *MockAlbumRepo {
@@ -58,7 +57,7 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 		return errors.New("error")
 	}
 	if al.ID == "" {
-		al.ID = uuid.NewString()
+		al.ID = id.NewRandom()
 	}
 	m.data[al.ID] = al
 	return nil

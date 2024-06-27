@@ -15,12 +15,12 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"golang.org/x/text/cases"
@@ -140,7 +140,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	now := time.Now()
 	caser := cases.Title(language.Und)
 	initialUser := model.User{
-		ID:          uuid.NewString(),
+		ID:          id.NewRandom(),
 		UserName:    username,
 		Name:        caser.String(username),
 		Email:       "",
@@ -216,7 +216,7 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 	return username
 }
 
-func UsernameFromConfig(r *http.Request) string {
+func UsernameFromConfig(*http.Request) string {
 	return conf.Server.DevAutoLoginUsername
 }
 
@@ -295,11 +295,11 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	if user == nil || err != nil {
 		log.Info(r, "User passed in header not found", "user", username)
 		newUser := model.User{
-			ID:          uuid.NewString(),
+			ID:          id.NewRandom(),
 			UserName:    username,
 			Name:        username,
 			Email:       "",
-			NewPassword: consts.PasswordAutogenPrefix + uuid.NewString(),
+			NewPassword: consts.PasswordAutogenPrefix + id.NewRandom(),
 			IsAdmin:     false,
 		}
 		err := userRepo.Put(&newUser)

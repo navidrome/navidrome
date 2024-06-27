@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -92,7 +92,7 @@ func (b *broker) prepareMessage(ctx context.Context, event Event) message {
 }
 
 // writeEvent writes a message to the given io.Writer, formatted as a Server-Sent Event.
-// If the writer is an http.Flusher, it flushes the data immediately instead of buffering it.
+// If the writer is a http.Flusher, it flushes the data immediately instead of buffering it.
 func writeEvent(ctx context.Context, w io.Writer, event message, timeout time.Duration) error {
 	if err := setWriteTimeout(w, timeout); err != nil {
 		log.Debug(ctx, "Error setting write timeout", err)
@@ -103,7 +103,7 @@ func writeEvent(ctx context.Context, w io.Writer, event message, timeout time.Du
 		return err
 	}
 
-	// If the writer is an http.Flusher, flush the data immediately.
+	// If the writer is a http.Flusher, flush the data immediately.
 	if flusher, ok := w.(http.Flusher); ok && flusher != nil {
 		flusher.Flush()
 	}
@@ -164,7 +164,7 @@ func (b *broker) subscribe(r *http.Request) client {
 	user, _ := request.UserFrom(ctx)
 	clientUniqueId, _ := request.ClientUniqueIdFrom(ctx)
 	c := client{
-		id:             uuid.NewString(),
+		id:             id.NewRandom(),
 		username:       user.UserName,
 		address:        r.RemoteAddr,
 		userAgent:      r.UserAgent(),

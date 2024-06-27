@@ -3,13 +3,12 @@ package persistence
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -75,7 +74,7 @@ func (r *radioRepository) Put(radio *model.Radio) error {
 
 	if radio.ID == "" {
 		radio.CreatedAt = time.Now()
-		radio.ID = strings.ReplaceAll(uuid.NewString(), "-", "")
+		radio.ID = id.NewRandom()
 		values, _ = toSQLArgs(*radio)
 	} else {
 		values, _ = toSQLArgs(*radio)

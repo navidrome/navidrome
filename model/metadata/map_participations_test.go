@@ -17,14 +17,14 @@ var _ = Describe("Participations", func() {
 		props        metadata.Info
 		md           metadata.Metadata
 		mf           model.MediaFile
-		uuid1, uuid2 string
+		mbid1, mbid2 string
 	)
 
 	BeforeEach(func() {
 		_, filePath, _ := tests.TempFile(GinkgoT(), "test", ".mp3")
 		fileInfo, _ := os.Stat(filePath)
-		uuid1 = uuid.NewString()
-		uuid2 = uuid.NewString()
+		mbid1 = uuid.NewString()
+		mbid2 = uuid.NewString()
 		props = metadata.Info{
 			FileInfo: testFileInfo{fileInfo},
 		}
@@ -64,7 +64,7 @@ var _ = Describe("Participations", func() {
 				mf = toMediaFile(map[string][]string{
 					"ARTIST":               {"Artist Name"},
 					"ARTISTSORT":           {"Name, Artist"},
-					"MUSICBRAINZ_ARTISTID": {uuid1},
+					"MUSICBRAINZ_ARTISTID": {mbid1},
 				})
 			})
 
@@ -86,7 +86,7 @@ var _ = Describe("Participations", func() {
 				Expect(artist.Name).To(Equal("Artist Name"))
 				Expect(artist.OrderArtistName).To(Equal("artist name"))
 				Expect(artist.SortArtistName).To(Equal("Name, Artist"))
-				Expect(artist.MbzArtistID).To(Equal(uuid1))
+				Expect(artist.MbzArtistID).To(Equal(mbid1))
 			})
 		})
 
@@ -95,7 +95,7 @@ var _ = Describe("Participations", func() {
 				mf = toMediaFile(map[string][]string{
 					"ARTIST":               {"First Artist", "Second Artist"},
 					"ARTISTSORT":           {"Name, First Artist", "Name, Second Artist"},
-					"MUSICBRAINZ_ARTISTID": {uuid1, uuid2},
+					"MUSICBRAINZ_ARTISTID": {mbid1, mbid2},
 				})
 			})
 
@@ -115,14 +115,14 @@ var _ = Describe("Participations", func() {
 				Expect(artist0.Name).To(Equal("First Artist"))
 				Expect(artist0.OrderArtistName).To(Equal("first artist"))
 				Expect(artist0.SortArtistName).To(Equal("Name, First Artist"))
-				Expect(artist0.MbzArtistID).To(Equal(uuid1))
+				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
 				artist1 := participations[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Second Artist"))
 				Expect(artist1.OrderArtistName).To(Equal("second artist"))
 				Expect(artist1.SortArtistName).To(Equal("Name, Second Artist"))
-				Expect(artist1.MbzArtistID).To(Equal(uuid2))
+				Expect(artist1.MbzArtistID).To(Equal(mbid2))
 			})
 		})
 
@@ -131,7 +131,7 @@ var _ = Describe("Participations", func() {
 				mf = toMediaFile(map[string][]string{
 					"ARTIST":               {"First Artist & Second Artist"},
 					"ARTISTSORT":           {"Name, First Artist & Name, Second Artist"},
-					"MUSICBRAINZ_ARTISTID": {uuid1, uuid2},
+					"MUSICBRAINZ_ARTISTID": {mbid1, mbid2},
 					"ARTISTS":              {"First Artist", "Second Artist"},
 					"ARTISTSSORT":          {"Name, First Artist", "Name, Second Artist"},
 				})
@@ -152,14 +152,14 @@ var _ = Describe("Participations", func() {
 				Expect(artist0.Name).To(Equal("First Artist"))
 				Expect(artist0.OrderArtistName).To(Equal("first artist"))
 				Expect(artist0.SortArtistName).To(Equal("Name, First Artist"))
-				Expect(artist0.MbzArtistID).To(Equal(uuid1))
+				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
 				artist1 := participations[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Second Artist"))
 				Expect(artist1.OrderArtistName).To(Equal("second artist"))
 				Expect(artist1.SortArtistName).To(Equal("Name, Second Artist"))
-				Expect(artist1.MbzArtistID).To(Equal(uuid2))
+				Expect(artist1.MbzArtistID).To(Equal(mbid2))
 			})
 		})
 
@@ -168,7 +168,7 @@ var _ = Describe("Participations", func() {
 				mf = toMediaFile(map[string][]string{
 					"ARTIST":               {"First Artist", "Second Artist"},
 					"ARTISTSORT":           {"Name, First Artist", "Name, Second Artist"},
-					"MUSICBRAINZ_ARTISTID": {uuid1, uuid2},
+					"MUSICBRAINZ_ARTISTID": {mbid1, mbid2},
 					"ARTISTS":              {"First Artist 2", "Second Artist 2"},
 					"ARTISTSSORT":          {"2, First Artist Name", "2, Second Artist Name"},
 				})
@@ -194,14 +194,14 @@ var _ = Describe("Participations", func() {
 				Expect(artist0.Name).To(Equal("First Artist 2"))
 				Expect(artist0.OrderArtistName).To(Equal("first artist 2"))
 				Expect(artist0.SortArtistName).To(Equal("2, First Artist Name"))
-				Expect(artist0.MbzArtistID).To(Equal(uuid1))
+				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
 				artist1 := participations[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Second Artist 2"))
 				Expect(artist1.OrderArtistName).To(Equal("second artist 2"))
 				Expect(artist1.SortArtistName).To(Equal("2, Second Artist Name"))
-				Expect(artist1.MbzArtistID).To(Equal(uuid2))
+				Expect(artist1.MbzArtistID).To(Equal(mbid2))
 			})
 		})
 	})
@@ -213,7 +213,7 @@ var _ = Describe("Participations", func() {
 					mf = toMediaFile(map[string][]string{
 						"ARTIST":               {"Artist Name"},
 						"ARTISTSORT":           {"Name, Artist"},
-						"MUSICBRAINZ_ARTISTID": {uuid1},
+						"MUSICBRAINZ_ARTISTID": {mbid1},
 					})
 				})
 
@@ -233,7 +233,7 @@ var _ = Describe("Participations", func() {
 					Expect(albumArtist.Name).To(Equal("Artist Name"))
 					Expect(albumArtist.OrderArtistName).To(Equal("artist name"))
 					Expect(albumArtist.SortArtistName).To(Equal("Name, Artist"))
-					Expect(albumArtist.MbzArtistID).To(Equal(uuid1))
+					Expect(albumArtist.MbzArtistID).To(Equal(mbid1))
 				})
 			})
 
@@ -270,10 +270,10 @@ var _ = Describe("Participations", func() {
 				mf = toMediaFile(map[string][]string{
 					"ARTIST":                    {"Track Artist Name"},
 					"ARTISTSORT":                {"Name, Track Artist"},
-					"MUSICBRAINZ_ARTISTID":      {uuid1},
+					"MUSICBRAINZ_ARTISTID":      {mbid1},
 					"ALBUMARTIST":               {"Album Artist Name"},
 					"ALBUMARTISTSORT":           {"Album Artist Sort Name"},
-					"MUSICBRAINZ_ALBUMARTISTID": {uuid2},
+					"MUSICBRAINZ_ALBUMARTISTID": {mbid2},
 				})
 			})
 
@@ -293,7 +293,7 @@ var _ = Describe("Participations", func() {
 				Expect(albumArtist.Name).To(Equal("Album Artist Name"))
 				Expect(albumArtist.OrderArtistName).To(Equal("album artist name"))
 				Expect(albumArtist.SortArtistName).To(Equal("Album Artist Sort Name"))
-				Expect(albumArtist.MbzArtistID).To(Equal(uuid2))
+				Expect(albumArtist.MbzArtistID).To(Equal(mbid2))
 			})
 		})
 	})
@@ -358,7 +358,7 @@ var _ = Describe("Participations", func() {
 		It("should set the MBID for the artist based on the track/album artist", func() {
 			mf = toMediaFile(map[string][]string{
 				"ARTIST":               {"John Doe", "Jane Doe"},
-				"MUSICBRAINZ_ARTISTID": {uuid1, uuid2},
+				"MUSICBRAINZ_ARTISTID": {mbid1, mbid2},
 				"COMPOSER":             {"John Doe", "Someone Else"},
 				"PRODUCER":             {"Jane Doe", "John Doe"},
 			})
@@ -367,12 +367,12 @@ var _ = Describe("Participations", func() {
 			Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(2)))
 
 			composers := participations[model.RoleComposer]
-			Expect(composers[0].MbzArtistID).To(Equal(uuid1))
+			Expect(composers[0].MbzArtistID).To(Equal(mbid1))
 			Expect(composers[1].MbzArtistID).To(BeEmpty())
 
 			producers := participations[model.RoleProducer]
-			Expect(producers[0].MbzArtistID).To(Equal(uuid2))
-			Expect(producers[1].MbzArtistID).To(Equal(uuid1))
+			Expect(producers[0].MbzArtistID).To(Equal(mbid2))
+			Expect(producers[1].MbzArtistID).To(Equal(mbid1))
 		})
 	})
 })

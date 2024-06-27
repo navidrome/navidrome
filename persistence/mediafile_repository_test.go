@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -79,12 +79,12 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("delete tracks by id", func() {
-		id := uuid.NewString()
-		Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
+		newID := id.NewRandom()
+		Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID})).To(BeNil())
 
-		Expect(mr.Delete(id)).To(BeNil())
+		Expect(mr.Delete(newID)).To(BeNil())
 
-		_, err := mr.Get(id)
+		_, err := mr.Get(newID)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 

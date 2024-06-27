@@ -1,11 +1,12 @@
 package model
 
 import (
-	"crypto/md5"
 	"fmt"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/model/id"
 )
 
 // Folder represents a folder in the library. Its path is relative to the library root.
@@ -23,7 +24,7 @@ type Folder struct {
 func FolderID(lib Library, path string) string {
 	path = strings.TrimPrefix(path, lib.Path)
 	key := fmt.Sprintf("%d:%s", lib.ID, path)
-	return fmt.Sprintf("%x", md5.Sum([]byte(key)))
+	return id.NewHash(key)
 }
 func NewFolder(lib Library, folderPath string) *Folder {
 	id := FolderID(lib, folderPath)

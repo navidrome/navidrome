@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -79,7 +79,7 @@ func aPlayQueue(userId, current string, position int64, items ...model.MediaFile
 	createdAt := time.Now()
 	updatedAt := createdAt.Add(time.Minute)
 	return &model.PlayQueue{
-		ID:        uuid.NewString(),
+		ID:        id.NewRandom(),
 		UserID:    userId,
 		Current:   current,
 		Position:  position,

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 )
 
@@ -24,24 +24,24 @@ type players struct {
 	ds model.DataStore
 }
 
-func (p *players) Register(ctx context.Context, id, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
+func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
 	var plr *model.Player
 	var trc *model.Transcoding
 	var err error
 	user, _ := request.UserFrom(ctx)
-	if id != "" {
-		plr, err = p.ds.Player(ctx).Get(id)
+	if playerID != "" {
+		plr, err = p.ds.Player(ctx).Get(playerID)
 		if err == nil && plr.Client != client {
-			id = ""
+			playerID = ""
 		}
 	}
-	if err != nil || id == "" {
+	if err != nil || playerID == "" {
 		plr, err = p.ds.Player(ctx).FindMatch(user.ID, client, userAgent)
 		if err == nil {
 			log.Debug(ctx, "Found matching player", "id", plr.ID, "client", client, "username", userName, "type", userAgent)
 		} else {
 			plr = &model.Player{
-				ID:              uuid.NewString(),
+				ID:              id.NewRandom(),
 				UserId:          user.ID,
 				Client:          client,
 				ScrobbleEnabled: true,
