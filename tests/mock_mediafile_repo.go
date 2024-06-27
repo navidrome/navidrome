@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/maps"
 
@@ -69,7 +69,7 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 		return errors.New("error")
 	}
 	if mf.ID == "" {
-		mf.ID = uuid.NewString()
+		mf.ID = id.NewRandom()
 	}
 	m.data[mf.ID] = mf
 	return nil

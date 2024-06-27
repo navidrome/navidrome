@@ -10,10 +10,10 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	id2 "github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -321,7 +321,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 	}
 	// If it does not have an ID OR the ID was not found (when it is a new record with predefined id)
 	if id == "" {
-		id = uuid.NewString()
+		id = id2.NewRandom()
 		values["id"] = id
 	}
 	insert := Insert(r.tableName).SetMap(values)
