@@ -3,13 +3,12 @@ package persistence
 import (
 	"context"
 
-	"github.com/google/uuid"
-	"github.com/pocketbase/dbx"
-
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/pocketbase/dbx"
 )
 
 type genreRepository struct {
@@ -55,7 +54,7 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 // insert the new genre in the DB and returns its new created ID.
 func (r *genreRepository) Put(m *model.Genre) error {
 	if m.ID == "" {
-		m.ID = uuid.NewString()
+		m.ID = id.NewRandom()
 	}
 	sql := Insert("genre").Columns("id", "name").Values(m.ID, m.Name).
 		Suffix("on conflict (name) do update set name=excluded.name returning id")
