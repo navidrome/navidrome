@@ -6,8 +6,8 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -38,7 +38,7 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 
 func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
 	ins := Insert(r.tableName).SetMap(map[string]interface{}{
-		"id":            uuid.NewString(),
+		"id":            id.NewRandom(),
 		"user_id":       userId,
 		"service":       service,
 		"media_file_id": mediaFileId,

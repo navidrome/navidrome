@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 type testingT interface {
@@ -15,7 +15,7 @@ type testingT interface {
 }
 
 func TempFileName(t testingT, prefix, suffix string) string {
-	return filepath.Join(t.TempDir(), prefix+uuid.NewString()+suffix)
+	return filepath.Join(t.TempDir(), prefix+id.NewRandom()+suffix)
 }
 
 func TempFile(t testingT, prefix, suffix string) (fs.File, string, error) {

@@ -2,12 +2,12 @@ package metadata
 
 import (
 	"cmp"
-	"crypto/md5"
 	"fmt"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -21,7 +21,7 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 		fmt.Sprintf("%s\\%s", md.albumID(mf), md.mapTrackTitle()),
 	)
 
-	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(value)))))
+	return id.NewHash(str.Clear(strings.ToLower(value)))
 }
 
 // FIXME Must be configurable
@@ -37,12 +37,12 @@ func (md Metadata) albumID(mf model.MediaFile) string {
 			return strings.Join(parts, "\\")
 		}(),
 	)
-	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(value))))
+	return id.NewHash(str.Clear(strings.ToLower(value)))
 }
 
 // FIXME Must be configurable
 func (md Metadata) artistID(name string) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(str.Clear(strings.ToLower(name)))))
+	return id.NewHash(str.Clear(strings.ToLower(name)))
 }
 
 func (md Metadata) mapTrackTitle() string {
