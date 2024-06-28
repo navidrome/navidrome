@@ -27,7 +27,7 @@ func FolderID(lib Library, path string) string {
 	return id.NewHash(key)
 }
 func NewFolder(lib Library, folderPath string) *Folder {
-	id := FolderID(lib, folderPath)
+	newID := FolderID(lib, folderPath)
 	dir, name := path.Split(folderPath)
 	dir = path.Clean(dir)
 	var parentID string
@@ -39,7 +39,7 @@ func NewFolder(lib Library, folderPath string) *Folder {
 	}
 	return &Folder{
 		LibraryID: lib.ID,
-		ID:        id,
+		ID:        newID,
 		Path:      dir,
 		Name:      name,
 		ParentID:  parentID,
