@@ -298,7 +298,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
 			Eq{"missing": true},
-			ConcatExpr("media_file.created_at > library.last_scan_started_at"), // TODO Should it be `last_scan_at`?
+			ConcatExpr("media_file.created_at > library.last_scan_started_at"),
 		}).
 		Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
