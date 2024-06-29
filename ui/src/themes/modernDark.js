@@ -1,12 +1,12 @@
 const modernColours = {
-  lighter: '#a6ccff', //aac6f8
-  main: '#0084ff', //7aa0ec
-  darker: '#0062f6', //5e80c5
-  mainBackground: '#14172e', //2b3142
-  lightBackground: '#181d37', //31374b
-  lighterBackground: '#222541', //363c52
-  darkerBackgroundHighlight: '#32375b', //444d68
-  backgroundHighlight: '#464b77', //535e7e
+  lighter: '#a6ccff',
+  main: '#0084ff',
+  darker: '#0062f6',
+  mainBackground: '#14172e',
+  lightBackground: '#181d37',
+  lighterBackground: '#222541',
+  darkerBackgroundHighlight: '#32375b',
+  backgroundHighlight: '#464b77',
 }
 
 // For Album, Playlist
