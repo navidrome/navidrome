@@ -6,7 +6,6 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -52,7 +51,6 @@ func (r sqlRepository) annUpsert(values map[string]interface{}, itemIDs ...strin
 	c, err := r.executeSQL(upd)
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		for _, itemID := range itemIDs {
-			values["ann_id"] = uuid.NewString()
 			values["user_id"] = userId(r.ctx)
 			values["item_type"] = r.tableName
 			values["item_id"] = itemID
@@ -83,7 +81,6 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		values := map[string]interface{}{}
-		values["ann_id"] = uuid.NewString()
 		values["user_id"] = userId(r.ctx)
 		values["item_type"] = r.tableName
 		values["item_id"] = itemID
