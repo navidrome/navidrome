@@ -183,8 +183,7 @@ export default {
     },
     MuiAppBar: {
       positionFixed: {
-        boxShadow:
-          'unset',
+        boxShadow: 'unset',
       },
       colorSecondary: {
         backgroundColor: 'unset',
@@ -452,7 +451,8 @@ export default {
       content: {
         padding: '0 !important',
         background: `${modernColours['lighterBackground']} !important`,
-        '&::before': { // Very bodgy!!
+        '&::before': {
+          // Very bodgy!!
           content: '""',
           backgroundColor: modernColours['lighterBackground'],
           color: modernColours['lighterBackground'],
@@ -471,7 +471,7 @@ export default {
       appFrame: {
         '@media (min-width: 0px)': {
           marginTop: '48px',
-        }
+        },
       },
     },
     RaList: {
