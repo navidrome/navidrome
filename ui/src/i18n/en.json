@@ -400,6 +400,12 @@
                     "none": "Disabled",
                     "album": "Use Album Gain",
                     "track": "Use Track Gain"
+                },
+                "playerRatingControl": "Player rating control",
+                "playerRatingControls": {
+                    "none": "None",
+                    "love": "Love",
+                    "rating": "Rating"
                 }
             }
         },

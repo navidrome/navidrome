@@ -9,6 +9,7 @@ import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
 import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
 import config from '../config'
 import { ReplayGainToggle } from './ReplayGainToggle'
+import { SelectPlayerRatingControl } from './SelectPlayerRatingControl'
 
 const useStyles = makeStyles({
   root: { marginTop: '1em' },
@@ -26,6 +27,7 @@ const Personal = () => {
         <SelectLanguage />
         <SelectDefaultView />
         {config.enableReplayGain && <ReplayGainToggle />}
+        <SelectPlayerRatingControl />
         <NotificationsToggle />
         {config.lastFMEnabled && localStorage.getItem('lastfm-apikey') && (
           <LastfmScrobbleToggle />
