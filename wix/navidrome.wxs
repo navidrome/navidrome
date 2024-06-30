@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<?if $(var.Platform) = x64 ?>
+  <?define ProductName = "Navidrome" ?>
+  <?define UpgradeCode = "b54dbfd6-7377-4e4e-b47b-e1e16f85716c" ?>
+  <?define PlatformProgramFilesFolder = "ProgramFiles64Folder" ?>
+  <?define Win64 = 'yes' ?>
+<?else ?>
+  <?define ProductName = "Navidrome (x86)" ?>
+  <?define UpgradeCode = "c4028a36-f78c-4a9e-8769-6424a505ce72" ?>
+  <?define PlatformProgramFilesFolder = "ProgramFilesFolder" ?>
+  <?define Win64 = "no" ?>
+<?endif ?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <Product Name="$(var.ProductName)" Id="*" UpgradeCode="$(var.UpgradeCode)" Language='1033' Codepage='1252' Version='$(var.MajorVersion).$(var.MinorVersion).$(var.RevisionNumber)' Manufacturer='Deluan'>
+
+	<Package Id='*' Keywords='Installer' Description="$(var.ProductName)" Comments='' Manufacturer='Deluan' InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252' InstallScope='perMachine' />
+
+	<MajorUpgrade AllowDowngrades="no" DowngradeErrorMessage="A newer version of $(var.ProductName) is already installed." />
+
+	<Media Id='1' Cabinet='main.cab' EmbedCab='yes' DiskPrompt="CD-ROM #1" />
+	<Property Id='DiskPrompt' Value="Navidrome Install [1]" />
+	<Property Id="REBOOT" Value="ReallySuppress" />
+
+	<Directory Id='TARGETDIR' Name='SourceDir'>
+	  <Directory Id="$(var.PlatformProgramFilesFolder)">
+		<Directory Id='INSTALLDIR' Name='Navidrome'>
+
+			<Component Id='MainExecutable' Guid='c6a59257-d304-4ebc-8d98-440d0ec5b9b9' Win64="$(var.Win64)">
+				<File Id='NavidromeExe' Name='Navidrome.exe' DiskId='1' Source='Navidrome.exe' KeyPath='yes' />
+				<ServiceInstall
+					Description='Navidrome - Your Personal Streaming Service'
+					ErrorControl='ignore'
+					Name = 'Navidrome'
+					Id='NavidromeService'
+					Start='auto'
+					Type='ownProcess'
+					Vital='yes'
+				/>
+				<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='Navidrome' Wait='yes' />
+			</Component>
+			
+			<Component Id='LICENSEFile' Guid='aee053cf-73c2-4fed-b7e5-bc76e34797e6' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='yes'>
+			  <File Id='LICENSE' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
+			</Component>
+	
+			<Component Id='README.mdFile' Guid='88501e6f-b777-40af-b7c7-0b97ce318a6c' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='yes'>
+			  <File Id='README.md' Name='README.md' DiskId='1' Source='README.md' KeyPath='yes' />
+			</Component>
+
+		  </Directory>
+	  </Directory>
+	</Directory>
+
+	<Feature Id='Complete' Level='1'>
+	  <ComponentRef Id='MainExecutable' />
+	  <ComponentRef Id='LICENSEFile' />
+	  <ComponentRef Id='README.mdFile' />
+	</Feature>
+  </Product>
+</Wix>
