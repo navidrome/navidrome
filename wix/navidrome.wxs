@@ -26,7 +26,7 @@
 		<Directory Id='INSTALLDIR' Name='Navidrome'>
 
 			<Component Id='MainExecutable' Guid='c6a59257-d304-4ebc-8d98-440d0ec5b9b9' Win64="$(var.Win64)">
-				<File Id='NavidromeExe' Name='Navidrome.exe' DiskId='1' Source='Navidrome.exe' KeyPath='yes' />
+				<File Id='NavidromeExe' Name='Navidrome.exe' DiskId='1' Source='navidrome.exe' KeyPath='yes' />
 				<ServiceInstall
 					Description='Navidrome - Your Personal Streaming Service'
 					ErrorControl='ignore'
