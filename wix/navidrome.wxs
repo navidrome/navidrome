@@ -11,7 +11,7 @@
   <?define Win64 = "no" ?>
 <?endif ?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-  <Product Name="$(var.ProductName)" Id="*" UpgradeCode="$(var.UpgradeCode)" Language='1033' Codepage='1252' Version='$(var.MajorVersion).$(var.MinorVersion).$(var.RevisionNumber)' Manufacturer='Deluan'>
+  <Product Name="$(var.ProductName)" Id="*" UpgradeCode="$(var.UpgradeCode)" Language='1033' Codepage='1252' Version='$(var.MajorVersion).$(var.MinorVersion)' Manufacturer='Deluan'>
 
 	<Package Id='*' Keywords='Installer' Description="$(var.ProductName)" Comments='' Manufacturer='Deluan' InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252' InstallScope='perMachine' />
 
