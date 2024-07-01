@@ -249,10 +249,7 @@ func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...model.MediaFile) 
 		upd := Update(r.tableName).
 			Set("missing", missing).
 			Set("updated_at", timeToSQL(time.Now())).
-			Where(And{
-				Eq{"id": chunk},
-				Eq{"missing": !missing},
-			})
+			Where(Eq{"id": chunk})
 		c, err := r.executeSQL(upd)
 		if err != nil || c == 0 {
 			log.Error(r.ctx, "Error setting mediafile missing flag", "ids", chunk, err)

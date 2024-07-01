@@ -57,9 +57,11 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.PID = md.trackPID(mf)
 	mf.AlbumID = md.albumID(mf)
 
+	// FIXME Use PIDs for matching albums (AlbumPID method), but it does not need to be saved in the DB
+	// FIXME Album must also have a ArtistPID method, not saved to the DB as well.
+
 	// TODO These IDs will go away once the UI handle multiple participants.
-	// For Legacy Subsonic compatibility, we will set them in the API handlers
-	// FIXME This is wrong? See Yussef and Caetano
+	// TODO For Legacy Subsonic compatibility, we will set them in the API handlers
 	mf.ArtistID = mf.Participations.First(model.RoleArtist).ID
 	mf.AlbumArtistID = mf.Participations.First(model.RoleAlbumArtist).ID
 
