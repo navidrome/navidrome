@@ -45,7 +45,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
-	github.com/unrolled/secure v1.14.0
+	github.com/unrolled/secure v1.15.0
 	github.com/xrash/smetrics v0.0.0-20240312152122-5f08fbb34913
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
 	golang.org/x/image v0.18.0
