@@ -112,12 +112,16 @@ func (a Album) Equals(other Album) bool {
 	return reflect.DeepEqual(a, other)
 }
 
-// This is the list of tags that are not "first-class citizens" on the Album struct, but are still stored in the database.
+// This is the list of tags that are not "first-class citizens" on the Album struct, but are
+// still stored in the database.
 var albumLevelTags = []TagName{
 	TagGenre,
 	TagMood,
-	TagCatalogNumber,
+	TagGrouping,
 	TagRecordLabel,
+	TagReleaseType,
+	TagMedia,
+	TagCatalogNumber,
 }
 
 func (a Album) AddTags(tags Tags) {
@@ -130,12 +134,8 @@ func (a Album) AddTags(tags Tags) {
 
 type Discs map[int]string
 
-// Add adds a disc to the Discs map. If the map is nil, it is initialized.
-func (d *Discs) Add(discNumber int, discSubtitle string) {
-	if *d == nil {
-		*d = Discs{}
-	}
-	(*d)[discNumber] = discSubtitle
+func (d Discs) Add(discNumber int, discSubtitle string) {
+	d[discNumber] = discSubtitle
 }
 
 type DiscID struct {
