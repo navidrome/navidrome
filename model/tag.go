@@ -139,6 +139,8 @@ const (
 	TagGrouping      TagName = "grouping"
 	TagLyrics        TagName = "lyrics"
 	TagRecordLabel   TagName = "recordlabel"
+	TagReleaseType   TagName = "releasetype"
+	TagMedia         TagName = "media"
 	TagCatalogNumber TagName = "catalognumber"
 	TagBPM           TagName = "bpm"
 
