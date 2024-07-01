@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -196,7 +197,7 @@ func UsernameFromToken(r *http.Request) string {
 }
 
 func UsernameFromReverseProxyHeader(r *http.Request) string {
-	if conf.Server.ReverseProxyWhitelist == "" && !strings.HasPrefix(conf.Server.Address, "unix:") {
+	if conf.Server.ReverseProxyWhitelist == "" {
 		return ""
 	}
 	reverseProxyIp, ok := request.ReverseProxyIpFrom(r.Context())
@@ -324,14 +325,16 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 }
 
 func validateIPAgainstList(ip string, comaSeparatedList string) bool {
+	if comaSeparatedList == "" || ip == "" {
+		return false
+	}
+
+	cidrs := strings.Split(comaSeparatedList, ",")
+
 	// Per https://github.com/golang/go/issues/49825, the remote address
 	// on a unix socket is '@'
 	if ip == "@" && strings.HasPrefix(conf.Server.Address, "unix:") {
-		return true
-	}
-
-	if comaSeparatedList == "" || ip == "" {
-		return false
+		return slices.Contains(cidrs, "@")
 	}
 
 	if net.ParseIP(ip) == nil {
@@ -342,7 +345,6 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 		return false
 	}
 
-	cidrs := strings.Split(comaSeparatedList, ",")
 	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
 
 	if err != nil {
