@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 )
 
@@ -27,7 +27,7 @@ func Init(ds model.DataStore) {
 		secret, err := ds.Property(context.TODO()).Get(consts.JWTSecretKey)
 		if err != nil || secret == "" {
 			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
-			secret = uuid.NewString()
+			secret = id.NewRandom()
 		}
 		Secret = []byte(secret)
 		TokenAuth = jwtauth.New("HS256", Secret, nil)

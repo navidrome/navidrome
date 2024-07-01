@@ -1,5 +1,12 @@
 package slice
 
+import (
+	"cmp"
+	"slices"
+
+	"golang.org/x/exp/maps"
+)
+
 func Map[T any, R any](t []T, mapFunc func(T) R) []R {
 	r := make([]R, len(t))
 	for i, e := range t {
@@ -17,25 +24,46 @@ func Group[T any, K comparable](s []T, keyFunc func(T) K) map[K][]T {
 	return m
 }
 
+func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[K]V {
+	m := map[K]V{}
+	for _, item := range s {
+		k, v := transformFunc(item)
+		m[k] = v
+	}
+	return m
+}
+
+func CompactByFrequency[T comparable](list []T) []T {
+	counters := make(map[T]int)
+	for _, item := range list {
+		counters[item]++
+	}
+
+	sorted := maps.Keys(counters)
+	slices.SortFunc(sorted, func(i, j T) int {
+		return cmp.Compare(counters[j], counters[i])
+	})
+	return sorted
+}
+
 func MostFrequent[T comparable](list []T) T {
+	var zero T
 	if len(list) == 0 {
-		var zero T
 		return zero
 	}
+
+	counters := make(map[T]int)
 	var topItem T
 	var topCount int
-	counters := map[T]int{}
 
-	if len(list) == 1 {
-		topItem = list[0]
-	} else {
-		for _, id := range list {
-			c := counters[id] + 1
-			counters[id] = c
-			if c > topCount {
-				topItem = id
-				topCount = c
-			}
+	for _, value := range list {
+		if value == zero {
+			continue
+		}
+		counters[value]++
+		if counters[value] > topCount {
+			topItem = value
+			topCount = counters[value]
 		}
 	}
 
@@ -78,4 +106,16 @@ func RangeByChunks[T any](items []T, chunkSize int, cb func([]T) error) error {
 		}
 	}
 	return nil
+}
+
+func Unique[T comparable](list []T) []T {
+	seen := make(map[T]struct{})
+	var result []T
+	for _, item := range list {
+		if _, ok := seen[item]; !ok {
+			seen[item] = struct{}{}
+			result = append(result, item)
+		}
+	}
+	return result
 }

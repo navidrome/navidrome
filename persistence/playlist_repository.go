@@ -229,6 +229,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		" AND annotation.item_type = 'media_file'" +
 		" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		LeftJoin("media_file_genres ag on media_file.id = ag.media_file_id").
+		// TODO genres (and other tags)
 		LeftJoin("genre on ag.genre_id = genre.id").GroupBy("media_file.id")
 	sq = r.addCriteria(sq, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
@@ -334,7 +335,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 		Set("duration", res.Duration).
 		Set("size", res.Size).
 		Set("song_count", res.Count).
-		Set("updated_at", time.Now()).
+		Set("updated_at", timeToSQL(time.Now())).
 		Where(Eq{"id": pls.ID})
 	_, err = r.executeSQL(upd)
 	if err != nil {

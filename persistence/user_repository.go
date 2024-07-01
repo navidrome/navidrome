@@ -11,11 +11,11 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/pocketbase/dbx"
 )
@@ -61,7 +61,7 @@ func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, err
 
 func (r *userRepository) Put(u *model.User) error {
 	if u.ID == "" {
-		u.ID = uuid.NewString()
+		u.ID = id.NewRandom()
 	}
 	u.UpdatedAt = time.Now()
 	if u.NewPassword != "" {
@@ -77,7 +77,7 @@ func (r *userRepository) Put(u *model.User) error {
 	if count > 0 {
 		return nil
 	}
-	values["created_at"] = time.Now()
+	values["created_at"] = timeToSQL(time.Now())
 	insert := Insert(r.tableName).SetMap(values)
 	_, err = r.executeSQL(insert)
 	return err
