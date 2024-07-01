@@ -202,8 +202,8 @@ var _ = Describe("Scanner", Ordered, func() {
 		Context("Same album, different release dates", func() {
 			BeforeEach(func() {
 				conf.Server.Scanner.GroupAlbumReleases = false
-				help := template(_t{"albumartist": "The Beatles", "album": "Help!", "date": 1965})
-				help2 := template(_t{"albumartist": "The Beatles", "album": "Help!", "date": 2000})
+				help := template(_t{"albumartist": "The Beatles", "album": "Help!", "releasedate": 1965})
+				help2 := template(_t{"albumartist": "The Beatles", "album": "Help!", "releasedate": 2000})
 				createFS(fstest.MapFS{
 					"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
 					"The Beatles/Help! (remaster)/01 - Help!.mp3": help2(track(1, "Help!")),
