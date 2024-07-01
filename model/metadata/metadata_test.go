@@ -94,7 +94,7 @@ var _ = Describe("Metadata", func() {
 					Not(HaveKey(unknownTag)),
 					HaveKeyWithValue(model.TagTrackArtist, []string{"Artist Name", "Second Artist"}),
 					HaveKeyWithValue(model.TagAlbum, []string{"Album Name"}),
-					HaveKeyWithValue(model.TagReleaseDate, []string{"2022-10-02", "2022"}),
+					HaveKeyWithValue(model.TagRecordingDate, []string{"2022-10-02", "2022"}),
 					HaveKeyWithValue(model.TagGenre, []string{"Pop", "Rock"}),
 					HaveKeyWithValue(model.TagTrackNumber, []string{"1/10"}),
 				))
@@ -117,7 +117,7 @@ var _ = Describe("Metadata", func() {
 				}
 				md = metadata.New(filePath, props)
 
-				testDate := md.Date(model.TagReleaseDate)
+				testDate := md.Date(model.TagRecordingDate)
 				Expect(string(testDate)).To(Equal(expectedDate))
 				Expect(testDate.Year()).To(Equal(expectedYear))
 			},

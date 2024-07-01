@@ -82,13 +82,13 @@ comment:
   aliases: [ COMM:description, COMMENT, ©cmt, Description, ICMT ]
   maxLength: 4096
 originaldate:
-  aliases: [ TDOR, TORY, ORIGINALDATE, ----:com.apple.iTunes:originaldate, WM/OriginalReleaseTime, ORIGINALYEAR, ----:com.apple.iTunes:originalyear, WM/OriginalReleaseYear ]
+  aliases: [ TDOR, ORIGINALDATE, ----:com.apple.iTunes:originaldate, WM/OriginalReleaseTime, TORY, ORIGINALYEAR, ----:com.apple.iTunes:originalyear, WM/OriginalReleaseYear ]
   type: date
 recordingdate:
-  aliases: [ TDOR, TORY, ORIGINALDATE, ----:com.apple.iTunes:originaldate, WM/OriginalReleaseTime, ORIGINALYEAR, ----:com.apple.iTunes:originalyear, WM/OriginalReleaseYear ]
+  aliases: [ TDRC, DATE, ICRD, ©day, WM/Year, YEAR ]
   type: date
 releasedate:
-  aliases: [ TDRC, TYER, TDAT, RELEASEDATE, DATE, Year, ©day, WM/Year, ICRD ]
+  aliases: [ TDRL, RELEASEDATE ]
   type: date
 catalognumber:
   aliases: [ TXXX:CATALOGNUMBER, CATALOGNUMBER, ----:com.apple.iTunes:CATALOGNUMBER, WM/CatalogNo ]

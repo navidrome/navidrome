@@ -35,15 +35,16 @@ var _ = Describe("ToMediaFile", func() {
 		It("should parse the dates like Picard", func() {
 			mf = toMediaFile(map[string][]string{
 				"ORIGINALDATE": {"1978-09-10"},
-				"DATE":         {"2002-03-04"},
+				"DATE":         {"1977-03-04"},
+				"RELEASEDATE":  {"2002-01-02"},
 			})
 
-			Expect(mf.Year).To(Equal(1978))
-			Expect(mf.Date).To(Equal("1978-09-10"))
+			Expect(mf.Year).To(Equal(1977))
+			Expect(mf.Date).To(Equal("1977-03-04"))
 			Expect(mf.OriginalYear).To(Equal(1978))
 			Expect(mf.OriginalDate).To(Equal("1978-09-10"))
 			Expect(mf.ReleaseYear).To(Equal(2002))
-			Expect(mf.ReleaseDate).To(Equal("2002-03-04"))
+			Expect(mf.ReleaseDate).To(Equal("2002-01-02"))
 		})
 	})
 })
