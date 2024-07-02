@@ -48,7 +48,7 @@ lintall: lint ##@Development Lint Go and JS code
 .PHONY: lintall
 
 format: ##@Development Format code
-	@(cd ./ui && npm run prettier)
+#	@(cd ./ui && npm run prettier)
 	@go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v _gen.go$$`
 	@go mod tidy
 .PHONY: format
