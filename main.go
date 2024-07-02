@@ -41,6 +41,9 @@ func main() {
 	}
 	err = s.Run()
 	if err != nil {
-		logger.Error(err)
+		logErr := logger.Error(err)
+		if logErr != nil {
+			log.Println(logErr)
+		}
 	}
 }
