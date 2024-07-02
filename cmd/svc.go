@@ -50,7 +50,7 @@ func (p *svcControl) Start(_ service.Service) error {
 }
 
 func (p *svcControl) run() {
-	runNavidrome(p.ctx)
+	runNavidrome()
 }
 
 func (p *svcControl) Stop(_ service.Service) error {
