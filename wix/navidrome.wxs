@@ -39,11 +39,11 @@
 				<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='$(var.ProductName)' Wait='yes' />
 			</Component>
 			
-			<Component Id='LICENSEFile' Guid='aee053cf-73c2-4fed-b7e5-bc76e34797e6' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='yes'>
+			<Component Id='LICENSEFile' Guid='aee053cf-73c2-4fed-b7e5-bc76e34797e6' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='no'>
 			  <File Id='LICENSE' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
 			</Component>
 	
-			<Component Id='README.mdFile' Guid='88501e6f-b777-40af-b7c7-0b97ce318a6c' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='yes'>
+			<Component Id='README.mdFile' Guid='88501e6f-b777-40af-b7c7-0b97ce318a6c' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='no'>
 			  <File Id='README.md' Name='README.md' DiskId='1' Source='README.md' KeyPath='yes' />
 			</Component>
 
