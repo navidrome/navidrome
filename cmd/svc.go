@@ -76,8 +76,8 @@ func svcInstance() service.Service {
 			DisplayName: "Navidrome",
 			Description: "Navidrome is a self-hosted music server and streamer",
 			Dependencies: []string{
-				"Requires=network.target",
-				"After=network-online.target syslog.target"},
+				"Requires=",
+				"After="},
 			WorkingDirectory: executablePath(),
 			Option:           options,
 		}
