@@ -30,7 +30,7 @@
 				<ServiceInstall
 					Description='Navidrome - Your Personal Streaming Service'
 					ErrorControl='ignore'
-					Name = 'Navidrome'
+					Name = '$(var.ProductName)'
 					Id='NavidromeService'
 					Start='auto'
 					Type='ownProcess'
