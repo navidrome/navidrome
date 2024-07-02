@@ -36,7 +36,7 @@
 					Type='ownProcess'
 					Vital='yes'
 				/>
-				<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='Navidrome' Wait='yes' />
+				<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='$(var.ProductName)' Wait='yes' />
 			</Component>
 			
 			<Component Id='LICENSEFile' Guid='aee053cf-73c2-4fed-b7e5-bc76e34797e6' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='yes'>
