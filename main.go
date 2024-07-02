@@ -24,26 +24,30 @@ func (p *program) Stop(s service.Service) error {
 }
 
 func main() {
-	svcConfig := &service.Config{
-		Name:        "Navidrome",
-		DisplayName: "Navidrome",
-		Description: "Your Personal Streaming Service",
-	}
+	if service.Interactive() {
+		cmd.Execute()
+	} else {
+		svcConfig := &service.Config{
+			Name:        "Navidrome",
+			DisplayName: "Navidrome",
+			Description: "Your Personal Streaming Service",
+		}
 
-	prg := &program{}
-	s, err := service.New(prg, svcConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
-	logger, err = s.Logger(nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = s.Run()
-	if err != nil {
-		logErr := logger.Error(err)
-		if logErr != nil {
-			log.Println(logErr)
+		prg := &program{}
+		s, err := service.New(prg, svcConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		logger, err = s.Logger(nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = s.Run()
+		if err != nil {
+			logErr := logger.Error(err)
+			if logErr != nil {
+				log.Println(logErr)
+			}
 		}
 	}
 }
