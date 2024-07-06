@@ -75,7 +75,7 @@ func runNavidrome() {
 	ctx, cancel := mainContext()
 	defer cancel()
 
-	g, ctx := errgroup.WithContext(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
