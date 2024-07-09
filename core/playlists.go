@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/navidrome/navidrome/conf"
 	"io"
 	"net/url"
 	"os"
@@ -193,6 +194,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
+		newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
 }
