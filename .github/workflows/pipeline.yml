@@ -131,6 +131,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build MSI
+        run: |
+          ls $GITHUB_WORKSPACE
+
       - uses: actions/upload-artifact@v4
         with:
           name: binaries
@@ -205,3 +209,4 @@ jobs:
           platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
