@@ -11,7 +11,7 @@
   <?define Win64 = "no" ?>
 <?endif ?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-  <Product Name="$(var.ProductName)" Id="*" UpgradeCode="$(var.UpgradeCode)" Language='1033' Codepage='1252' Version='$(var.MajorVersion).$(var.MinorVersion)' Manufacturer='Deluan'>
+  <Product Name="$(var.ProductName)" Id="*" UpgradeCode="$(var.UpgradeCode)" Language='1033' Codepage='1252' Version='$(var.Version)' Manufacturer='Deluan'>
 
 	<Package Id='*' Keywords='Installer' Description="$(var.ProductName)" Comments='' Manufacturer='Deluan' InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252' InstallScope='perMachine' />
 
@@ -39,11 +39,11 @@
 				<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='$(var.ProductName)' Wait='yes' />
 			</Component>
 			
-			<Component Id='LICENSEFile' Guid='aee053cf-73c2-4fed-b7e5-bc76e34797e6' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='no'>
+			<Component Id='LICENSEFile' Guid='aee053cf-73c2-4fed-b7e5-bc76e34797e6' Win64="$(var.Win64)" NeverOverwrite='no' Permanent='no'>
 			  <File Id='LICENSE' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
 			</Component>
 	
-			<Component Id='README.mdFile' Guid='88501e6f-b777-40af-b7c7-0b97ce318a6c' Win64="$(var.Win64)" NeverOverwrite='yes' Permanent='no'>
+			<Component Id='README.mdFile' Guid='88501e6f-b777-40af-b7c7-0b97ce318a6c' Win64="$(var.Win64)" NeverOverwrite='no' Permanent='no'>
 			  <File Id='README.md' Name='README.md' DiskId='1' Source='README.md' KeyPath='yes' />
 			</Component>
 
