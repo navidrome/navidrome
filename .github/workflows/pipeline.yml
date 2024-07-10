@@ -133,7 +133,23 @@ jobs:
 
       - name: Build MSI
         run: |
-          ls $GITHUB_WORKSPACE
+          mkdir $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
+
+          cp $GITHUB_WORKSPACE/wix/386 $GITHUB/wix/amd64
+
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
+
+          cd $GITHUB_WORKSPACE/wix/386
+          wixl ../navidrome.wxs -D MajorVersion=0 -D MinorVersion=0 -D Platform=x86 --arch x86 --output ../navidrome_386.msi
+
+          cd $GITHUB_WORKSPACE/wix/amd64
+          wixl ../navidrome.wxs -D MajorVersion=0 -D MinorVersion=0 -D Platform=x64 --arch x64 --output ../navidrome_amd64.msi
+
+          cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist
+          cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist
 
       - uses: actions/upload-artifact@v4
         with:
