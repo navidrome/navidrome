@@ -135,7 +135,7 @@ jobs:
         run: |
           apt-get install -y wixl jq
 
-          NAVIDROME_BUILD_VERSION=$(jq '.version' < $GITHUB_WORKSPACE/dist/metadata.json  | sed -s 's/^v//')
+          NAVIDROME_BUILD_VERSION=$(jq '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
 
           mkdir $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
