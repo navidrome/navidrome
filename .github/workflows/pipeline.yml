@@ -139,7 +139,7 @@ jobs:
           cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
 
-          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB/wix/amd64
+          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
 
           cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
