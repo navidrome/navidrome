@@ -133,8 +133,8 @@ jobs:
 
       - name: Build MSI
         run: |
-          sudo apt-get install -y wixl
-          
+          apt-get install -y wixl
+
           mkdir $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
