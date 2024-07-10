@@ -150,8 +150,8 @@ jobs:
           cd $GITHUB_WORKSPACE/wix/amd64
           wixl ../navidrome.wxs -D Version=0 -D Platform=x64 --arch x64 --output ../navidrome_amd64.msi
 
-          cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist
-          cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist
+          cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386
+          cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1
 
       - uses: actions/upload-artifact@v4
         with:
