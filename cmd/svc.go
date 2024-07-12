@@ -69,7 +69,7 @@ func svcInstance() service.Service {
 		options := make(service.KeyValue)
 		options["Restart"] = "on-success"
 		options["SuccessExitStatus"] = "1 2 8 SIGKILL"
-		options["UserService"] = true
+		options["UserService"] = false
 		options["LogDirectory"] = conf.Server.DataFolder
 		svcConfig := &service.Config{
 			Name:        "Navidrome",
