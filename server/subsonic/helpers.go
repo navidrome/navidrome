@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"path"
 	"sort"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -367,4 +369,63 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses
 		StructuredLyrics: lyricList,
 	}
 	return res
+}
+
+func buildPodcast(ctx context.Context, withEpisodes bool, pd *model.Podcast) responses.PodcastChannel {
+	channel := responses.PodcastChannel{
+		ID:               pd.ExternalId(),
+		Url:              pd.Url,
+		Title:            pd.Title,
+		Description:      pd.Description,
+		CoverArt:         pd.ExternalId(),
+		OriginalImageUrl: pd.ImageUrl,
+		Status:           pd.State,
+		ErrorMessage:     pd.Error,
+	}
+
+	if withEpisodes {
+		for i := range pd.PodcastEpisodes {
+			ep := buildPodcastEpisode(ctx, &pd.PodcastEpisodes[i])
+			channel.Episodes = append(channel.Episodes, ep)
+		}
+	}
+	return channel
+}
+
+func buildPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) responses.PodcastEpisode {
+	id := ep.ExternalId()
+
+	episode := responses.PodcastEpisode{}
+	episode.ChannelId = ep.PodcastId
+	episode.ContentType = mime.TypeByExtension("." + ep.Suffix)
+	episode.CoverArt = id
+	episode.Description = ep.Description
+	episode.Duration = int32(ep.Duration)
+	// Some clients will use the podcast ID over stream ID to scrobble, star
+	// or bookmark. We will expose the ID as `pe-` to remove ambiguity and
+	// remove it from Subsonic layer before processing
+	episode.Id = id
+	episode.Genre = "Podcasts"
+	episode.PublishDate = ep.PublishDate
+	episode.Size = ep.Size
+	episode.Status = ep.State
+	episode.StreamId = id
+	episode.Suffix = ep.Suffix
+	episode.Title = ep.Title
+
+	if ep.State == consts.PodcastStatusCompleted {
+		episode.BitRate = int32(ep.BitRate)
+
+		player, ok := request.PlayerFrom(ctx)
+		if ok && player.ReportRealPath {
+			episode.Path = path.Join(conf.Server.PodcastFolder, ep.BasePath())
+		} else {
+			episode.Path = ep.BasePath()
+		}
+	}
+
+	if ep.PublishDate != nil {
+		episode.Year = int32(ep.PublishDate.Year())
+	}
+	return episode
 }

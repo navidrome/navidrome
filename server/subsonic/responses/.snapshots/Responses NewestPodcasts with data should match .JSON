@@ -1,0 +1,56 @@
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "newestPodcasts": {
+    "episode": [
+      {
+        "id": "12345",
+        "isDir": false,
+        "title": "Podcast episode title",
+        "genre": "Podcast",
+        "coverArt": "pe-12345",
+        "size": 10000,
+        "suffix": "mp3",
+        "duration": 6000,
+        "bitRate": 120,
+        "isVideo": false,
+        "bpm": 0,
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "genres": [],
+        "replayGain": {},
+        "channelCount": 0,
+        "samplingRate": 0,
+        "streamId": "pod-12345",
+        "channelId": "1234",
+        "status": "completed",
+        "description": "Podcast episode description",
+        "publishDate": "2006-01-02T15:04:00Z"
+      },
+      {
+        "id": "12346",
+        "isDir": false,
+        "title": "Broken podcast episode",
+        "genre": "Podcast",
+        "isVideo": false,
+        "bpm": 0,
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "genres": [],
+        "replayGain": {},
+        "channelCount": 0,
+        "samplingRate": 0,
+        "streamId": "",
+        "channelId": "",
+        "status": "error"
+      }
+    ]
+  }
+}

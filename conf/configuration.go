@@ -84,6 +84,7 @@ type configOptions struct {
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
 	Jukebox                      jukeboxOptions
+	PodcastFolder                string
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -188,6 +189,15 @@ func Load() {
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
+	}
+
+	if Server.PodcastFolder == "" {
+		Server.PodcastFolder = filepath.Join(Server.DataFolder, "podcasts")
+	}
+	err = os.MkdirAll(Server.PodcastFolder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating podcast path:", "path", Server.PodcastFolder, err)
+		os.Exit(1)
 	}
 
 	log.SetLevelString(Server.LogLevel)

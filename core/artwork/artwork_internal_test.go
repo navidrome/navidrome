@@ -272,6 +272,64 @@ var _ = Describe("Artwork", func() {
 			)
 		})
 	})
+	Describe("getArtworkId", func() {
+		BeforeEach(func() {
+			album := model.Album{ID: "1111"}
+			_ = ds.Album(ctx).Put(&album)
+
+			artist := model.Artist{ID: "2222"}
+			_ = ds.Artist(ctx).Put(&artist)
+
+			file := model.MediaFile{ID: "3333", HasCoverArt: true}
+			_ = ds.MediaFile(ctx).Put(&file)
+
+			withoutAlbum := model.MediaFile{ID: "4444", AlbumID: "1111"}
+			_ = ds.MediaFile(ctx).Put(&withoutAlbum)
+
+			podcast := model.Podcast{ID: "123"}
+			_ = ds.Podcast(ctx).Put(&podcast)
+
+			episode := model.PodcastEpisode{ID: "321", PodcastId: "123"}
+			_ = ds.PodcastEpisode(ctx).Put(&episode)
+		})
+
+		DescribeTable("get id by type", func(id, stringified string, expected model.ArtworkID) {
+			art, err := aw.getArtworkId(ctx, id)
+			if id == "fake" {
+				Expect(err).To(Equal(model.ErrNotFound))
+			} else {
+				Expect(err).To(BeNil())
+			}
+
+			Expect(art).To(Equal(expected))
+			Expect(art.String()).To(Equal(stringified))
+		},
+			Entry("album", "1111", "al-1111_0", model.ArtworkID{
+				Kind: model.KindAlbumArtwork,
+				ID:   "1111",
+			}),
+			Entry("artist", "2222", "ar-2222_0", model.ArtworkID{
+				Kind: model.KindArtistArtwork,
+				ID:   "2222",
+			}),
+			Entry("mediafile", "3333", "mf-3333_0", model.ArtworkID{
+				Kind: model.KindMediaFileArtwork,
+				ID:   "3333",
+			}),
+			Entry("mediafile without art", "4444", "al-1111_0", model.ArtworkID{
+				Kind: model.KindAlbumArtwork,
+				ID:   "1111",
+			}),
+			Entry("podcast", "pd-123", "pd-123_0", model.ArtworkID{
+				Kind: model.KindPodcastArtwork,
+				ID:   "123",
+			}),
+			Entry("podcast episode", "pe-321", "pe-321_0", model.ArtworkID{
+				Kind: model.KindPodcastEpisodeArtwork,
+				ID:   "321",
+			}),
+			Entry("nonexisting id", "fake", "", model.ArtworkID{}))
+	})
 })
 
 func createImage(format string, landscape bool, size int) string {

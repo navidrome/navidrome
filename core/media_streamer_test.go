@@ -24,10 +24,14 @@ var _ = Describe("MediaStreamer", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.CacheFolder, _ = os.MkdirTemp("", "file_caches")
+		conf.Server.PodcastFolder = "tests"
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
+		})
+		ds.PodcastEpisode(ctx).(*tests.MockedPodcastEpisodeRepo).SetData(model.PodcastEpisodes{
+			{ID: "test", PodcastId: "fixtures", Suffix: "mp3", BitRate: 128},
 		})
 		testCache := core.NewTranscodingCache()
 		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
@@ -67,6 +71,15 @@ var _ = Describe("MediaStreamer", func() {
 			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
 
 			s, err = streamer.NewStream(ctx, "123", "mp3", 32, 0)
+			Expect(err).To(BeNil())
+			Expect(s.Seekable()).To(BeTrue())
+		})
+		It("errors when trying to deal with nonexistent podcast episode", func() {
+			_, err := streamer.NewStream(ctx, "pe-123", "raw", 0, 0)
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+		It("returns existing podcast episode", func() {
+			s, err := streamer.NewStream(ctx, "pe-test", "raw", 0, 0)
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeTrue())
 		})

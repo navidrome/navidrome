@@ -64,7 +64,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer)
+	podcastManager := core.NewPodcasts(dataStore)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer, podcastManager)
 	return router
 }
 

@@ -23,6 +23,8 @@ var _ = Describe("PlayTracker", func() {
 	var track model.MediaFile
 	var album model.Album
 	var artist model.Artist
+	var podcast model.Podcast
+	var episode model.PodcastEpisode
 	var fake fakeScrobbler
 
 	BeforeEach(func() {
@@ -56,6 +58,12 @@ var _ = Describe("PlayTracker", func() {
 		_ = ds.Artist(ctx).Put(&artist)
 		album = model.Album{ID: "al-1"}
 		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
+
+		podcast = model.Podcast{ID: "fixtures"}
+		_ = ds.Podcast(ctx).Put(&podcast)
+
+		episode = model.PodcastEpisode{ID: "test", PodcastId: "fixtures", Suffix: "mp3", BitRate: 128}
+		_ = ds.PodcastEpisode(ctx).Put(&episode)
 	})
 
 	Describe("NowPlaying", func() {
@@ -183,8 +191,24 @@ var _ = Describe("PlayTracker", func() {
 			Expect(artist.PlayCount).To(Equal(int64(1)))
 		})
 
-	})
+		It("does nothing when trying to increment nonexistent podcast", func() {
+			err := tracker.Submit(ctx, []Submission{{TrackID: "pe-123", Timestamp: time.Now()}})
 
+			Expect(err).To(BeNil())
+			Expect(fake.ScrobbleCalled).To(BeFalse())
+			Expect(episode.PlayCount).To(Equal(int64(0)))
+			Expect(podcast.PlayCount).To(Equal(int64(0)))
+		})
+
+		It("updates play counts successfully but does not scrobble", func() {
+			err := tracker.Submit(ctx, []Submission{{TrackID: "pe-test", Timestamp: time.Now()}})
+
+			Expect(err).To(BeNil())
+			Expect(fake.ScrobbleCalled).To(BeFalse())
+			Expect(episode.PlayCount).To(Equal(int64(1)))
+			Expect(podcast.PlayCount).To(Equal(int64(1)))
+		})
+	})
 })
 
 type fakeScrobbler struct {

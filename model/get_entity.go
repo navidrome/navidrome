@@ -6,6 +6,14 @@ import (
 
 // TODO: Should the type be encoded in the ID?
 func GetEntityByID(ctx context.Context, ds DataStore, id string) (interface{}, error) {
+	if IsPodcastId(id) {
+		return ds.Podcast(ctx).Get(ExtractExternalId(id), false)
+	}
+
+	if IsPodcastEpisodeId(id) {
+		return ds.PodcastEpisode(ctx).Get(ExtractExternalId(id))
+	}
+
 	ar, err := ds.Artist(ctx).Get(id)
 	if err == nil {
 		return ar, nil

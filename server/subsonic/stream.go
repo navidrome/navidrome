@@ -128,6 +128,8 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	}
 
 	switch v := entity.(type) {
+	// Podcast episodes are handled the the same way via NewStream
+	case *model.PodcastEpisode:
 	case *model.MediaFile:
 		stream, err := api.streamer.NewStream(ctx, id, format, maxBitRate, 0)
 		if err != nil {

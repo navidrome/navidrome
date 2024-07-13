@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 func CreateMockArtistRepo() *MockArtistRepo {
@@ -68,6 +69,35 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if d, ok := m.data[id]; ok {
 		d.PlayCount++
 		d.PlayDate = &timestamp
+		return nil
+	}
+	return model.ErrNotFound
+}
+
+func (m *MockArtistRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.err {
+		return errors.New("error")
+	}
+
+	for _, item := range itemIDs {
+		if d, ok := m.data[item]; ok {
+			d.Starred = starred
+			d.StarredAt = gg.P(time.Now())
+		} else {
+			return model.ErrNotFound
+		}
+	}
+
+	return nil
+}
+
+func (m *MockArtistRepo) SetRating(rating int, itemID string) error {
+	if m.err {
+		return errors.New("error")
+	}
+
+	if d, ok := m.data[itemID]; ok {
+		d.Rating = rating
 		return nil
 	}
 	return model.ErrNotFound

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/exp/maps"
 
@@ -99,6 +100,35 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	}
 
 	return res, nil
+}
+
+func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.err {
+		return errors.New("error")
+	}
+
+	for _, item := range itemIDs {
+		if d, ok := m.data[item]; ok {
+			d.Starred = starred
+			d.StarredAt = gg.P(time.Now())
+		} else {
+			return model.ErrNotFound
+		}
+	}
+
+	return nil
+}
+
+func (m *MockMediaFileRepo) SetRating(rating int, itemID string) error {
+	if m.err {
+		return errors.New("error")
+	}
+
+	if d, ok := m.data[itemID]; ok {
+		d.Rating = rating
+		return nil
+	}
+	return model.ErrNotFound
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

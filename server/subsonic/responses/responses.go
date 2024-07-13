@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"time"
+
+	"github.com/navidrome/navidrome/consts"
 )
 
 type Subsonic struct {
@@ -59,6 +61,9 @@ type Subsonic struct {
 
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
 	LyricsList             *LyricsList             `xml:"lyricsList,omitempty" json:"lyricsList,omitempty"`
+
+	Podcasts       *Podcasts       `xml:"podcasts,omitempty" json:"podcasts,omitempty"`
+	NewestPodcasts *NewestPodcasts `xml:"newestPodcasts,omitempty" json:"newestPodcasts,omitempty"`
 }
 
 const (
@@ -527,4 +532,34 @@ type ItemDate struct {
 	Year  int32 `xml:"year,attr,omitempty" json:"year,omitempty"`
 	Month int32 `xml:"month,attr,omitempty" json:"month,omitempty"`
 	Day   int32 `xml:"day,attr,omitempty" json:"day,omitempty"`
+}
+
+type PodcastChannel struct {
+	ID               string               `xml:"id,attr" json:"id"`
+	Url              string               `xml:"url,attr" json:"url"`
+	Title            string               `xml:"title,attr,omitempty" json:"title,omitempty"`
+	Description      string               `xml:"description,attr,omitempty" json:"description,omitempty"`
+	CoverArt         string               `xml:"coverAt,attr,omitempty" json:"coverArt,omitempty"`
+	OriginalImageUrl string               `xml:"originalImageUrl,attr,omitempty" json:"originalImageUrl,omitempty"`
+	Status           consts.PodcastStatus `xml:"status,attr" json:"status"`
+	ErrorMessage     string               `xml:"errorMessage,attr,omitempty" json:"errorMessage,omitempty"`
+
+	Episodes []PodcastEpisode `xml:"episode" json:"episode,omitempty"`
+}
+
+type PodcastEpisode struct {
+	Child
+	StreamId    string               `xml:"streamId,attr" json:"streamId"`
+	ChannelId   string               `xml:"channelId,attr" json:"channelId"`
+	Status      consts.PodcastStatus `xml:"status,attr" json:"status"`
+	Description string               `xml:"description,attr,omitempty" json:"description,omitempty"`
+	PublishDate *time.Time           `xml:"publishDate,attr,omitempty" json:"publishDate,omitempty"`
+}
+
+type Podcasts struct {
+	Podcasts []PodcastChannel `xml:"channel" json:"channel,omitempty"`
+}
+
+type NewestPodcasts struct {
+	Episodes []PodcastEpisode `xml:"episode" json:"episode,omitempty"`
 }

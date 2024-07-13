@@ -1,0 +1,13 @@
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+  <podcasts>
+    <channel id="1234" url="https://example.com/feed.rss" title="Sample title" description="Sample description" coverAt="pod-1234" originalImageUrl="https://example.com/favicon.ico" status="error" errorMessage="Could not download a track">
+      <episode id="12345" isDir="false" title="Podcast episode title" genre="Podcast" coverArt="pe-12345" size="10000" suffix="mp3" duration="6000" bitRate="120" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0" samplingRate="0" streamId="pod-12345" channelId="1234" status="completed" description="Podcast episode description" publishDate="2006-01-02T15:04:00Z">
+        <replayGain></replayGain>
+      </episode>
+      <episode id="12346" isDir="false" title="Broken podcast episode" genre="Podcast" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0" samplingRate="0" streamId="" channelId="" status="error">
+        <replayGain></replayGain>
+      </episode>
+    </channel>
+    <channel id="2345" url="https://example.com/empty.atom" status="new"></channel>
+  </podcasts>
+</subsonic-response>

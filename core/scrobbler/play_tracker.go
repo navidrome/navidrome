@@ -124,6 +124,22 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	success := 0
 
 	for _, s := range submissions {
+		if model.IsPodcastEpisodeId(s.TrackID) {
+			pe, err := p.ds.PodcastEpisode(ctx).Get(model.ExtractExternalId(s.TrackID))
+
+			if err != nil {
+				log.Error(ctx, "Cannot find podcast for scrobbling", "id", s.TrackID, "user", username, err)
+				continue
+			}
+
+			err = p.incPodcastPlay(ctx, pe, s.Timestamp)
+			if err != nil {
+				log.Error(ctx, "Error updating podcast play counts", "id", pe.ID, "track", "user", username, err)
+			}
+
+			continue
+		}
+
 		mf, err := p.ds.MediaFile(ctx).Get(s.TrackID)
 		if err != nil {
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
@@ -159,6 +175,17 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 			return err
 		}
 		err = tx.Artist(ctx).IncPlayCount(track.ArtistID, timestamp)
+		return err
+	})
+}
+
+func (p *playTracker) incPodcastPlay(ctx context.Context, episode *model.PodcastEpisode, timestamp time.Time) error {
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		err := tx.PodcastEpisode(ctx).IncPlayCount(episode.ID, timestamp)
+		if err != nil {
+			return err
+		}
+		err = tx.Podcast(ctx).IncPlayCount(episode.PodcastId, timestamp)
 		return err
 	})
 }
