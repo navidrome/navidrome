@@ -34,6 +34,7 @@ require (
 	github.com/mattn/go-zglob v0.0.4
 	github.com/microcosm-cc/bluemonday v1.0.26
 	github.com/mileusna/useragent v1.3.4
+	github.com/mmcdole/gofeed v1.3.0
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/pelletier/go-toml/v2 v2.2.2
@@ -84,7 +85,6 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/mmcdole/gofeed v1.3.0 // indirect
 	github.com/mmcdole/goxpp v1.1.1-0.20240225020742-a0c311522b23 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
