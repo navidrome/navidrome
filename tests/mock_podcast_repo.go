@@ -7,9 +7,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/maps"
 )
 
 type MockedPodcastRepo struct {
+	Cleaned bool
 	model.PodcastRepository
 	err  bool
 	data map[string]*model.Podcast
@@ -19,6 +22,28 @@ func CreateMockPodcastRepo() *MockedPodcastRepo {
 	return &MockedPodcastRepo{
 		data: make(map[string]*model.Podcast),
 	}
+}
+
+func (m *MockedPodcastRepo) Cleanup() error {
+	if m.err {
+		return errors.New("Error")
+	}
+	m.Cleaned = true
+	return nil
+}
+
+func (m *MockedPodcastRepo) DeleteInternal(id string) error {
+	if m.err {
+		return errors.New("Error")
+	}
+
+	_, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+
+	delete(m.data, id)
+	return nil
 }
 
 func (m *MockedPodcastRepo) IncPlayCount(id string, timestamp time.Time) error {
@@ -46,6 +71,16 @@ func (m *MockedPodcastRepo) Get(id string, withEpisodes bool) (*model.Podcast, e
 	return item, nil
 }
 
+func (m *MockedPodcastRepo) GetAll(_ bool, qo ...model.QueryOptions) (model.Podcasts, error) {
+	if m.err {
+		return nil, errors.New("Error!")
+	}
+	values := maps.Values(m.data)
+	return slice.Map(values, func(p *model.Podcast) model.Podcast {
+		return *p
+	}), nil
+}
+
 func (m *MockedPodcastRepo) Put(pd *model.Podcast) error {
 	if m.err {
 		return errors.New("error")
@@ -55,6 +90,10 @@ func (m *MockedPodcastRepo) Put(pd *model.Podcast) error {
 	}
 	m.data[pd.ID] = pd
 	return nil
+}
+
+func (m *MockedPodcastRepo) PutInternal(pd *model.Podcast) error {
+	return m.Put(pd)
 }
 
 func (m *MockedPodcastRepo) SetData(podcasts model.Podcasts) {

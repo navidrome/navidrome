@@ -26,11 +26,15 @@ type deleteReq struct {
 	isPodcast bool
 }
 
+type httpDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type podcastManager struct {
 	// An empty string denotes a refresh, and a non-empty string
 	// denotes a podcast to be downloaded
 	ch     chan string
-	client *http.Client
+	client httpDoer
 	del    chan deleteReq
 	ds     model.DataStore
 	parser *gofeed.Parser
@@ -51,6 +55,7 @@ func NewPodcasts(ds model.DataStore) PodcastManager {
 	client := http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
+	parser.Client = &client
 
 	ch := make(chan string, 5)
 	del := make(chan deleteReq, 5)
@@ -79,7 +84,11 @@ func (p *podcastManager) CreateFeed(ctx context.Context, url string) (*model.Pod
 		Url:         url,
 		Title:       feed.Title,
 		Description: feed.Description,
-		ImageUrl:    feed.Image.URL,
+		State:       consts.PodcastStatusNew,
+	}
+
+	if feed.Image != nil {
+		podcast.ImageUrl = feed.Image.URL
 	}
 
 	err = p.ds.Podcast(ctx).PutInternal(&podcast)
@@ -185,6 +194,11 @@ func (p *podcastManager) addPodcastEpisode(ctx context.Context, channelId string
 		duration = durationToSeconds(item.ITunesExt.Duration)
 	}
 
+	var imageUrl string
+	if item.Image != nil {
+		imageUrl = item.Image.URL
+	}
+
 	episode := model.PodcastEpisode{
 		PodcastId:   channelId,
 		Guid:        item.GUID,
@@ -192,7 +206,7 @@ func (p *podcastManager) addPodcastEpisode(ctx context.Context, channelId string
 		Description: item.Description,
 		Title:       item.Title,
 		State:       consts.PodcastStatusSkipped,
-		ImageUrl:    item.Image.URL,
+		ImageUrl:    imageUrl,
 		PublishDate: item.PublishedParsed,
 		Duration:    duration,
 		Suffix:      suffix,
@@ -304,12 +318,16 @@ func (p *podcastManager) refreshPodcasts(ctx context.Context) {
 		if err != nil {
 			podcast.Error = err.Error()
 			podcast.State = consts.PodcastStatusError
-			updErr := p.ds.Podcast(ctx).PutInternal(podcast)
-			log.Error(ctx, "Failed to refresh podcast", "id", podcast.ID, "error", err)
+		} else if podcast.State != "" {
+			podcast.State = ""
+			podcast.Error = ""
+		}
 
-			if updErr != nil {
-				log.Error(ctx, "Failed to update podcast error", "id", podcast.ID, "error", updErr)
-			}
+		updErr := p.ds.Podcast(ctx).PutInternal(podcast)
+		log.Error(ctx, "Failed to refresh podcast", "id", podcast.ID, "error", err)
+
+		if updErr != nil {
+			log.Error(ctx, "Failed to update podcast error", "id", podcast.ID, "error", updErr)
 		}
 	}
 }
@@ -378,6 +396,14 @@ func (p *podcastManager) downloadPodcast(ctx context.Context, id string) error {
 	req.Header.Add("User-Agent", userAgent)
 	resp, err := p.client.Do(req)
 	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		err = gofeed.HTTPError{
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+		}
 		return err
 	}
 
