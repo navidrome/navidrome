@@ -10,7 +10,6 @@
         "id": "12345",
         "isDir": false,
         "title": "Podcast episode title",
-        "genre": "Podcast",
         "coverArt": "pe-12345",
         "size": 10000,
         "suffix": "mp3",
@@ -36,7 +35,6 @@
         "id": "12346",
         "isDir": false,
         "title": "Broken podcast episode",
-        "genre": "Podcast",
         "isVideo": false,
         "bpm": 0,
         "comment": "",
@@ -49,7 +47,8 @@
         "samplingRate": 0,
         "streamId": "",
         "channelId": "",
-        "status": "error"
+        "status": "error",
+        "errorMessage": "not found"
       }
     ]
   }

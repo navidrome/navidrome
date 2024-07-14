@@ -84,7 +84,7 @@ type configOptions struct {
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
 	Jukebox                      jukeboxOptions
-	PodcastFolder                string
+	Podcast                      podcastOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -150,6 +150,11 @@ type jukeboxOptions struct {
 	AdminOnly bool
 }
 
+type podcastOptions struct {
+	Path      string
+	AdminOnly bool
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -191,12 +196,12 @@ func Load() {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 
-	if Server.PodcastFolder == "" {
-		Server.PodcastFolder = filepath.Join(Server.DataFolder, "podcasts")
+	if Server.Podcast.Path == "" {
+		Server.Podcast.Path = filepath.Join(Server.DataFolder, "podcasts")
 	}
-	err = os.MkdirAll(Server.PodcastFolder, os.ModePerm)
+	err = os.MkdirAll(Server.Podcast.Path, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating podcast path:", "path", Server.PodcastFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating podcast path:", "path", Server.Podcast.Path, err)
 		os.Exit(1)
 	}
 
@@ -352,6 +357,8 @@ func init() {
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
 	viper.SetDefault("jukebox.adminonly", true)
+
+	viper.SetDefault("podcast.adminonly", true)
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")

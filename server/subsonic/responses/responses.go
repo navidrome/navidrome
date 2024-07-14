@@ -549,11 +549,13 @@ type PodcastChannel struct {
 
 type PodcastEpisode struct {
 	Child
-	StreamId    string               `xml:"streamId,attr" json:"streamId"`
-	ChannelId   string               `xml:"channelId,attr" json:"channelId"`
-	Status      consts.PodcastStatus `xml:"status,attr" json:"status"`
-	Description string               `xml:"description,attr,omitempty" json:"description,omitempty"`
-	PublishDate *time.Time           `xml:"publishDate,attr,omitempty" json:"publishDate,omitempty"`
+	StreamId     string               `xml:"streamId,attr" json:"streamId"`
+	ChannelId    string               `xml:"channelId,attr" json:"channelId"`
+	Status       consts.PodcastStatus `xml:"status,attr" json:"status"`
+	ErrorMessage string               `xml:"errorMessage,attr,omitempty" json:"errorMessage,omitempty"`
+
+	Description string     `xml:"description,attr,omitempty" json:"description,omitempty"`
+	PublishDate *time.Time `xml:"publishDate,attr,omitempty" json:"publishDate,omitempty"`
 }
 
 type Podcasts struct {

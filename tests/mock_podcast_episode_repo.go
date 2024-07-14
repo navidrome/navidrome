@@ -86,6 +86,18 @@ func (m *MockedPodcastEpisodeRepo) GetEpisodeGuids(id string) (map[string]bool, 
 	return mapping, nil
 }
 
+func (m *MockedPodcastEpisodeRepo) GetNewestEpisodes(count int) (model.PodcastEpisodes, error) {
+	if m.err {
+		return nil, errors.New("Error")
+	}
+
+	if len(m.all) > count {
+		return m.all[:count], nil
+	}
+
+	return m.all, nil
+}
+
 func (m *MockedPodcastEpisodeRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.err {
 		return errors.New("error")

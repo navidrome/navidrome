@@ -47,7 +47,7 @@ var _ = Describe("PodcastManager", func() {
 			configtest.SetupConfig()
 			_ = os.RemoveAll(tmpDir)
 		})
-		conf.Server.PodcastFolder = tmpDir
+		conf.Server.Podcast.Path = tmpDir
 		conf.Server.Scanner.Extractor = "taglib"
 
 		server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +140,7 @@ var _ = Describe("PodcastManager", func() {
 				}
 			}
 
-			Expect(episodes).To(BeComparableTo(model.PodcastEpisodes{
+			Expect(episodes).To(Equal(model.PodcastEpisodes{
 				{
 					Guid:        "dzpodtop10",
 					Url:         "https://www.example.com/podcasts/dafnas-zebras/audio/toptenmyths.mp3",
@@ -395,7 +395,7 @@ var _ = Describe("PodcastManager", func() {
 					}
 				}
 
-				Expect(episodes).To(BeComparableTo(model.PodcastEpisodes{
+				Expect(episodes).To(Equal(model.PodcastEpisodes{
 					episode, addition,
 				}))
 
@@ -417,7 +417,7 @@ var _ = Describe("PodcastManager", func() {
 				}
 				Expect(episodes).To(HaveLen(2))
 				addition.ID = episodes[1].ID
-				Expect(episodes).To(BeComparableTo(model.PodcastEpisodes{
+				Expect(episodes).To(Equal(model.PodcastEpisodes{
 					episode, addition,
 				}))
 
@@ -436,7 +436,7 @@ var _ = Describe("PodcastManager", func() {
 				Expect(err).To(BeNil())
 				Expect(episodes).To(HaveLen(2))
 				addition.ID = episodes[1].ID
-				Expect(episodes).To(BeComparableTo(model.PodcastEpisodes{
+				Expect(episodes).To(Equal(model.PodcastEpisodes{
 					episode, addition,
 				}))
 			})

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
@@ -12,9 +13,11 @@ import (
 
 func (api *Router) CreatePodcastChannel(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	user := getUser(ctx)
-	if !user.IsAdmin {
-		return nil, newError(responses.ErrorAuthorizationFail, "Creating podcasts is admin only")
+	if conf.Server.Podcast.AdminOnly {
+		user := getUser(ctx)
+		if !user.IsAdmin {
+			return nil, newError(responses.ErrorAuthorizationFail, "Creating podcasts is admin only")
+		}
 	}
 
 	p := req.Params(r)
@@ -34,9 +37,11 @@ func (api *Router) CreatePodcastChannel(r *http.Request) (*responses.Subsonic, e
 
 func (api *Router) DeletePodcastChannel(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	user := getUser(ctx)
-	if !user.IsAdmin {
-		return nil, newError(responses.ErrorAuthorizationFail, "Deleting podcasts is admin only")
+	if conf.Server.Podcast.AdminOnly {
+		user := getUser(ctx)
+		if !user.IsAdmin {
+			return nil, newError(responses.ErrorAuthorizationFail, "Deleting podcasts is admin only")
+		}
 	}
 
 	p := req.Params(r)
@@ -61,9 +66,11 @@ func (api *Router) DeletePodcastChannel(r *http.Request) (*responses.Subsonic, e
 
 func (api *Router) DeletePodcastEpisode(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	user := getUser(ctx)
-	if !user.IsAdmin {
-		return nil, newError(responses.ErrorAuthorizationFail, "Deleting podcast episodes is admin only")
+	if conf.Server.Podcast.AdminOnly {
+		user := getUser(ctx)
+		if !user.IsAdmin {
+			return nil, newError(responses.ErrorAuthorizationFail, "Deleting podcast episodes is admin only")
+		}
 	}
 
 	p := req.Params(r)
@@ -88,9 +95,11 @@ func (api *Router) DeletePodcastEpisode(r *http.Request) (*responses.Subsonic, e
 
 func (api *Router) DownloadPodcastEpisode(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	user := getUser(ctx)
-	if !user.IsAdmin {
-		return nil, newError(responses.ErrorAuthorizationFail, "Downloading podcast episodes is admin only")
+	if conf.Server.Podcast.AdminOnly {
+		user := getUser(ctx)
+		if !user.IsAdmin {
+			return nil, newError(responses.ErrorAuthorizationFail, "Downloading podcast episodes is admin only")
+		}
 	}
 
 	p := req.Params(r)
@@ -176,9 +185,11 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) RefreshPodcasts(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	user := getUser(ctx)
-	if !user.IsAdmin {
-		return nil, newError(responses.ErrorAuthorizationFail, "Refreshing podcasts is admin only")
+	if conf.Server.Podcast.AdminOnly {
+		user := getUser(ctx)
+		if !user.IsAdmin {
+			return nil, newError(responses.ErrorAuthorizationFail, "Refreshing podcasts is admin only")
+		}
 	}
 
 	err := api.podcastManager.Refresh(ctx)

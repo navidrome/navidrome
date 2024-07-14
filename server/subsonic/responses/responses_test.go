@@ -897,7 +897,6 @@ var _ = Describe("Responses", func() {
 								Child: Child{
 									Id:       "12345",
 									Title:    "Podcast episode title",
-									Genre:    "Podcast",
 									BitRate:  120,
 									Duration: 6000,
 									Suffix:   "mp3",
@@ -914,7 +913,6 @@ var _ = Describe("Responses", func() {
 								Child: Child{
 									Id:    "12346",
 									Title: "Broken podcast episode",
-									Genre: "Podcast",
 								},
 								Status: consts.PodcastStatusError,
 							},
@@ -961,7 +959,6 @@ var _ = Describe("Responses", func() {
 						Child: Child{
 							Id:       "12345",
 							Title:    "Podcast episode title",
-							Genre:    "Podcast",
 							BitRate:  120,
 							Duration: 6000,
 							Suffix:   "mp3",
@@ -978,9 +975,9 @@ var _ = Describe("Responses", func() {
 						Child: Child{
 							Id:    "12346",
 							Title: "Broken podcast episode",
-							Genre: "Podcast",
 						},
-						Status: consts.PodcastStatusError,
+						Status:       consts.PodcastStatusError,
+						ErrorMessage: "not found",
 					},
 				}
 			})

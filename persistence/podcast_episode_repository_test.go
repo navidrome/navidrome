@@ -100,7 +100,7 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 			Expect(err).To(BeNil())
 
 			retrieved.UpdatedAt = episode.UpdatedAt
-			Expect(retrieved).To(BeComparableTo(episode))
+			Expect(retrieved).To(Equal(episode))
 		},
 			Entry("simple episode", &basicEpisode),
 			Entry("complete podcast", &completeEpisode),
@@ -119,7 +119,7 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 			for i := range episodes {
 				episodes[i].UpdatedAt = testPodcastEpisodes[i].UpdatedAt
 			}
-			Expect(episodes).To(BeComparableTo(testPodcastEpisodes))
+			Expect(episodes).To(Equal(testPodcastEpisodes))
 		})
 	})
 
@@ -138,7 +138,7 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 
 			eps[0].UpdatedAt = completeEpisode.UpdatedAt
 			eps[1].UpdatedAt = basicEpisode.UpdatedAt
-			Expect(eps).To(BeComparableTo(model.PodcastEpisodes{completeEpisode, basicEpisode}))
+			Expect(eps).To(Equal(model.PodcastEpisodes{completeEpisode, basicEpisode}))
 
 		})
 	})
@@ -178,7 +178,7 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 			item.CreatedAt = episode.CreatedAt
 			item.UpdatedAt = episode.UpdatedAt
 
-			Expect(*item).To(BeComparableTo(episode))
+			Expect(*item).To(Equal(episode))
 		})
 	})
 })

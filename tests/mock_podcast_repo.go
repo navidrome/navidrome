@@ -7,19 +7,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
 )
 
 type MockedPodcastRepo struct {
 	Cleaned bool
 	model.PodcastRepository
 	err  bool
+	all  model.Podcasts
 	data map[string]*model.Podcast
 }
 
 func CreateMockPodcastRepo() *MockedPodcastRepo {
 	return &MockedPodcastRepo{
+		all:  make([]model.Podcast, 0),
 		data: make(map[string]*model.Podcast),
 	}
 }
@@ -43,6 +43,14 @@ func (m *MockedPodcastRepo) DeleteInternal(id string) error {
 	}
 
 	delete(m.data, id)
+
+	newArray := make(model.Podcasts, len(m.all)-1)
+	for _, item := range m.all {
+		if item.ID != id {
+			newArray = append(newArray, item)
+		}
+	}
+	m.all = newArray
 	return nil
 }
 
@@ -71,14 +79,20 @@ func (m *MockedPodcastRepo) Get(id string, withEpisodes bool) (*model.Podcast, e
 	return item, nil
 }
 
-func (m *MockedPodcastRepo) GetAll(_ bool, qo ...model.QueryOptions) (model.Podcasts, error) {
+func (m *MockedPodcastRepo) GetAll(withEpisodes bool, qo ...model.QueryOptions) (model.Podcasts, error) {
 	if m.err {
 		return nil, errors.New("Error!")
 	}
-	values := maps.Values(m.data)
-	return slice.Map(values, func(p *model.Podcast) model.Podcast {
-		return *p
-	}), nil
+
+	if len(qo) > 0 && qo[0].Filters != nil {
+		_, data, _ := qo[0].Filters.ToSql()
+		episode, err := m.Get(data[0].(string), withEpisodes)
+		if err != nil {
+			return nil, err
+		}
+		return model.Podcasts{*episode}, nil
+	}
+	return m.all, nil
 }
 
 func (m *MockedPodcastRepo) Put(pd *model.Podcast) error {
@@ -89,6 +103,7 @@ func (m *MockedPodcastRepo) Put(pd *model.Podcast) error {
 		pd.ID = uuid.NewString()
 	}
 	m.data[pd.ID] = pd
+	m.all = append(m.all, *pd)
 	return nil
 }
 
@@ -97,8 +112,9 @@ func (m *MockedPodcastRepo) PutInternal(pd *model.Podcast) error {
 }
 
 func (m *MockedPodcastRepo) SetData(podcasts model.Podcasts) {
+	m.all = podcasts
 	m.data = make(map[string]*model.Podcast)
-	for i, e := range podcasts {
+	for i, e := range m.all {
 		m.data[e.ID] = &podcasts[i]
 	}
 }

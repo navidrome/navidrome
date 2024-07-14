@@ -4,12 +4,17 @@ import (
 	"path"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Podcasts", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
 	Describe("ExtractExternalId", func() {
 		It("should strip out external prefix off of podcast and episode", func() {
 			Expect(model.ExtractExternalId("pd-2345")).To(Equal("2345"))
@@ -22,7 +27,7 @@ var _ = Describe("Podcasts", func() {
 
 		Describe("AbsolutePath", func() {
 			It("should return path from server configuration", func() {
-				conf.Server.PodcastFolder = "tmp"
+				conf.Server.Podcast.Path = "tmp"
 
 				Expect(p.AbsolutePath()).To(Equal(path.Join("tmp", "1234")))
 			})
@@ -57,7 +62,7 @@ var _ = Describe("Podcasts", func() {
 
 		Describe("AbsolutePath", func() {
 			It("should handle absolute path", func() {
-				conf.Server.PodcastFolder = "tmp"
+				conf.Server.Podcast.Path = "tmp"
 				Expect(episode.AbsolutePath()).To(Equal(path.Join("tmp", "4321", "1234.mp3")))
 			})
 		})
@@ -90,9 +95,9 @@ var _ = Describe("Podcasts", func() {
 
 		Describe("ToMediaFile", func() {
 			It("should convert to mediafile with necessary fields", func() {
-				conf.Server.PodcastFolder = "tmp"
+				conf.Server.Podcast.Path = "tmp"
 
-				Expect(episode.ToMediaFile()).To(BeComparableTo(&model.MediaFile{
+				Expect(episode.ToMediaFile()).To(Equal(&model.MediaFile{
 					Annotations: model.Annotations{
 						PlayCount: 5,
 						Rating:    3,
@@ -101,7 +106,6 @@ var _ = Describe("Podcasts", func() {
 					ID:       "pe-1234",
 					BitRate:  128,
 					Duration: 1234,
-					Genre:    "Podcast",
 					Path:     path.Join("tmp", "4321", "1234.mp3"),
 					Size:     4100512,
 					Suffix:   "mp3",

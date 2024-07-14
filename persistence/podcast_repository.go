@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
@@ -72,7 +73,7 @@ func (r *podcastRepository) DeleteInternal(id string) error {
 }
 
 func (r *podcastRepository) Delete(id string) error {
-	if !r.isAdmin() {
+	if conf.Server.Podcast.AdminOnly && !r.isAdmin() {
 		return rest.ErrPermissionDenied
 	}
 	return r.delete(Eq{"id": id})
@@ -126,7 +127,7 @@ func (r *podcastRepository) NewInstance() interface{} {
 }
 
 func (r *podcastRepository) Put(p *model.Podcast) error {
-	if !r.isAdmin() {
+	if conf.Server.Podcast.AdminOnly && !r.isAdmin() {
 		return rest.ErrPermissionDenied
 	}
 	return r.PutInternal(p)

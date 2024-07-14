@@ -396,7 +396,7 @@ func buildPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) response
 	id := ep.ExternalId()
 
 	episode := responses.PodcastEpisode{}
-	episode.ChannelId = ep.PodcastId
+	episode.ChannelId = "pd-" + ep.PodcastId
 	episode.ContentType = mime.TypeByExtension("." + ep.Suffix)
 	episode.CoverArt = id
 	episode.Description = ep.Description
@@ -405,20 +405,32 @@ func buildPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) response
 	// or bookmark. We will expose the ID as `pe-` to remove ambiguity and
 	// remove it from Subsonic layer before processing
 	episode.Id = id
-	episode.Genre = "Podcasts"
 	episode.PublishDate = ep.PublishDate
 	episode.Size = ep.Size
 	episode.Status = ep.State
 	episode.StreamId = id
 	episode.Suffix = ep.Suffix
 	episode.Title = ep.Title
+	episode.ErrorMessage = ep.Error
+
+	if ep.Rating != 0 {
+		episode.UserRating = int32(ep.Rating)
+	}
+
+	if ep.Starred {
+		episode.Starred = ep.StarredAt
+	}
+
+	if ep.PlayCount > 0 {
+		episode.PlayCount = ep.PlayCount
+	}
 
 	if ep.State == consts.PodcastStatusCompleted {
 		episode.BitRate = int32(ep.BitRate)
 
 		player, ok := request.PlayerFrom(ctx)
 		if ok && player.ReportRealPath {
-			episode.Path = path.Join(conf.Server.PodcastFolder, ep.BasePath())
+			episode.Path = path.Join(conf.Server.Podcast.Path, ep.BasePath())
 		} else {
 			episode.Path = ep.BasePath()
 		}

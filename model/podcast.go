@@ -34,7 +34,7 @@ type Podcast struct {
 type Podcasts []Podcast
 
 func (p Podcast) AbsolutePath() string {
-	return path.Join(conf.Server.PodcastFolder, p.ID)
+	return path.Join(conf.Server.Podcast.Path, p.ID)
 }
 
 func (p Podcast) CoverArtID() ArtworkID {
@@ -96,7 +96,7 @@ func (pe *PodcastEpisode) BasePath() string {
 }
 
 func (pe *PodcastEpisode) AbsolutePath() string {
-	return path.Join(conf.Server.PodcastFolder, pe.BasePath())
+	return path.Join(conf.Server.Podcast.Path, pe.BasePath())
 }
 
 func (pe PodcastEpisode) CoverArtID() ArtworkID {
@@ -112,7 +112,6 @@ func (pe *PodcastEpisode) ToMediaFile() *MediaFile {
 		ID:       pe.ExternalId(),
 		BitRate:  pe.BitRate,
 		Duration: pe.Duration,
-		Genre:    "Podcast",
 		Path:     pe.AbsolutePath(),
 		Size:     pe.Size,
 		Suffix:   pe.Suffix,

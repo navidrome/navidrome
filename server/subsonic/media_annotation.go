@@ -51,6 +51,8 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	case *model.Album:
 		repo = api.ds.Album(ctx)
 		resource = "album"
+	// podcast/podcast episode have pd-/pe- prefix, respectively
+	// to get the resource, strip out this first
 	case *model.Podcast:
 		repo = api.ds.Podcast(ctx)
 		id = item.ID

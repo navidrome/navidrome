@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -39,6 +41,7 @@ var _ = Describe("PodcastRepository", func() {
 		fullPodcast.StarredAt = podcast.StarredAt
 		testPodcasts[1] = fullPodcast
 
+		DeferCleanup(configtest.SetupConfig())
 	})
 
 	AfterEach(func() {
@@ -87,6 +90,15 @@ var _ = Describe("PodcastRepository", func() {
 		It("fails to delete item as regular user", func() {
 			err := repo.Delete(simplePodcast.ID)
 			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("deletes as regular user when not admin only", func() {
+			conf.Server.Podcast.AdminOnly = false
+			err := repo.Delete(simplePodcast.ID)
+			Expect(err).To(BeNil())
+
+			_, err = repo.Get(simplePodcast.ID, false)
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -141,7 +153,7 @@ var _ = Describe("PodcastRepository", func() {
 
 					retrieved.CreatedAt = podcast.CreatedAt
 					retrieved.UpdatedAt = podcast.UpdatedAt
-					Expect(*retrieved).To(BeComparableTo(expected))
+					Expect(*retrieved).To(Equal(expected))
 				}
 			},
 
@@ -171,7 +183,7 @@ var _ = Describe("PodcastRepository", func() {
 				for i := range podcasts {
 					podcasts[i].UpdatedAt = testPodcasts[i].UpdatedAt
 				}
-				Expect(podcasts).To(BeComparableTo(testPodcasts))
+				Expect(podcasts).To(Equal(testPodcasts))
 			}
 
 		})
@@ -198,7 +210,7 @@ var _ = Describe("PodcastRepository", func() {
 					}
 					podcasts[i].UpdatedAt = expected[i].UpdatedAt
 				}
-				Expect(podcasts).To(BeComparableTo(expected))
+				Expect(podcasts).To(Equal(expected))
 			}
 
 		})
@@ -245,6 +257,22 @@ var _ = Describe("PodcastRepository", func() {
 		It("fails to update as regular user", func() {
 			err := repo.Put(&fullPodcast)
 			Expect(err).To(Equal(rest.ErrPermissionDenied))
+		})
+
+		It("Successfully updates as regular user when not admin only", func() {
+			conf.Server.Podcast.AdminOnly = false
+
+			podcast := fullPodcast
+			podcast.Annotations = model.Annotations{}
+			podcast.ID = brokenEpisode.ID
+
+			err := repo.Put(&podcast)
+			Expect(err).To(BeNil())
+
+			item, err := repo.Get(podcast.ID, false)
+			Expect(err).To(BeNil())
+			item.UpdatedAt = podcast.UpdatedAt
+			Expect(*item).To(Equal(podcast))
 		})
 	})
 
