@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"io"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -77,6 +78,10 @@ var _ = Describe("PodcastManager", func() {
 			parser: parser,
 		}
 		status = 200
+
+		// I have no idea why Github returns m4a when parsing.
+		// Let's see if manually adding the extension type works
+		_ = mime.AddExtensionType(".mp3", "audio/mpeg")
 	})
 
 	AfterEach(func() {
