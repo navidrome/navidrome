@@ -129,8 +129,12 @@ var _ = Describe("Album Lists", func() {
 				PodcastId:   "4444",
 				Url:         "https://example.org",
 				Title:       "Podcast title",
+				ImageUrl:    "https://example.org/ep.png",
 				Description: "Podcast description",
+				PublishDate: &time.Time{},
 				Suffix:      "mp3",
+				Size:        1000,
+				Duration:    100,
 				BitRate:     320,
 				State:       consts.PodcastStatusCompleted,
 			}
@@ -205,6 +209,8 @@ var _ = Describe("Album Lists", func() {
 							Starred:     &time.Time{},
 							BitRate:     320,
 							PlayCount:   1,
+							Duration:    100,
+							Size:        1000,
 							Played:      &time.Time{},
 							Created:     &time.Time{},
 							AlbumId:     "pd-4444",
@@ -212,6 +218,7 @@ var _ = Describe("Album Lists", func() {
 							UserRating:  1,
 							MediaType:   "podcast",
 							Genres:      responses.ItemGenres{},
+							Year:        1,
 						},
 						UserName:   "a",
 						PlayerId:   1,
@@ -283,7 +290,7 @@ var _ = Describe("Album Lists", func() {
 			Expect(err).To(BeNil())
 			baseResponse.Entry[0].Path = "4444/3333.mp3"
 			baseResponse.Entry[1].Path = "this/is/a/fake/path.mp3"
-			Expect(resp.NowPlaying).To(Equal(baseResponse))
+			Expect(resp.NowPlaying).To(BeComparableTo(baseResponse))
 		})
 	})
 })

@@ -6,20 +6,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
 
 	"github.com/navidrome/navidrome/model"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFileRepo {
 	return &MockMediaFileRepo{
+		all:  make(model.MediaFiles, 0),
 		data: make(map[string]*model.MediaFile),
 	}
 }
 
 type MockMediaFileRepo struct {
 	model.MediaFileRepository
+	all  model.MediaFiles
 	data map[string]*model.MediaFile
 	err  bool
 }
@@ -29,6 +29,7 @@ func (m *MockMediaFileRepo) SetError(err bool) {
 }
 
 func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
+	m.all = mfs
 	m.data = make(map[string]*model.MediaFile)
 	for i, mf := range mfs {
 		m.data[mf.ID] = &mfs[i]
@@ -57,10 +58,7 @@ func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, err
 	if m.err {
 		return nil, errors.New("error")
 	}
-	values := maps.Values(m.data)
-	return slice.Map(values, func(p *model.MediaFile) model.MediaFile {
-		return *p
-	}), nil
+	return m.all, nil
 }
 
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
@@ -69,6 +67,8 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	}
 	if mf.ID == "" {
 		mf.ID = uuid.NewString()
+	} else {
+		m.all = append(m.all, *mf)
 	}
 	m.data[mf.ID] = mf
 	return nil

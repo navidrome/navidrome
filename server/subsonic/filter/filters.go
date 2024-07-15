@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -125,5 +126,14 @@ func SongsWithLyrics(artist, title string) Options {
 		Sort:    "updated_at",
 		Order:   "desc",
 		Filters: squirrel.And{squirrel.Eq{"artist": artist, "title": title}, squirrel.NotEq{"lyrics": ""}},
+	}
+}
+
+func DownloadedEpisodes(channel string) Options {
+	return Options{
+		Filters: squirrel.And{
+			squirrel.Eq{"podcast_id": channel},
+			squirrel.Eq{"state": consts.PodcastStatusCompleted},
+		},
 	}
 }

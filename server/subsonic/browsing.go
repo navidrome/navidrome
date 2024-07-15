@@ -107,6 +107,8 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 		dir, err = api.buildArtistDirectory(ctx, v)
 	case *model.Album:
 		dir, err = api.buildAlbumDirectory(ctx, v)
+	case *model.Podcast:
+		dir, err = api.buildPodcastDirectory(ctx, v)
 	default:
 		log.Error(r, "Requested ID of invalid type", "id", id, "entity", v)
 		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
@@ -414,4 +416,30 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	dir.AlbumID3 = buildAlbumID3(ctx, *album)
 	dir.Song = childrenFromMediaFiles(ctx, mfs)
 	return dir
+}
+
+func (api *Router) buildPodcastDirectory(ctx context.Context, podcast *model.Podcast) (*responses.Directory, error) {
+	eps, err := api.ds.PodcastEpisode(ctx).GetAll(filter.DownloadedEpisodes(podcast.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	dir := &responses.Directory{}
+	dir.Id = podcast.ID
+	dir.Name = podcast.Title
+	dir.PlayCount = podcast.PlayCount
+	if podcast.PlayCount > 0 {
+		dir.Played = podcast.PlayDate
+	}
+	dir.UserRating = int32(podcast.Rating)
+	dir.CoverArt = podcast.CoverArtID().String()
+	if podcast.Starred {
+		dir.Starred = podcast.StarredAt
+	}
+
+	dir.Child = make([]responses.Child, len(eps))
+	for i := range eps {
+		dir.Child[i] = childFromPodcastEpisode(ctx, &eps[i])
+	}
+	return dir, nil
 }

@@ -392,52 +392,62 @@ func buildPodcast(ctx context.Context, withEpisodes bool, pd *model.Podcast) res
 	return channel
 }
 
-func buildPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) responses.PodcastEpisode {
-	id := ep.ExternalId()
-
-	episode := responses.PodcastEpisode{}
-	episode.ChannelId = "pd-" + ep.PodcastId
-	episode.ContentType = mime.TypeByExtension("." + ep.Suffix)
-	episode.CoverArt = id
-	episode.Description = ep.Description
-	episode.Duration = int32(ep.Duration)
+func childFromPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) responses.Child {
+	child := responses.Child{}
 	// Some clients will use the podcast ID over stream ID to scrobble, star
 	// or bookmark. We will expose the ID as `pe-` to remove ambiguity and
 	// remove it from Subsonic layer before processing
-	episode.Id = id
-	episode.PublishDate = ep.PublishDate
-	episode.Size = ep.Size
-	episode.Status = ep.State
-	episode.StreamId = id
-	episode.Suffix = ep.Suffix
-	episode.Title = ep.Title
-	episode.ErrorMessage = ep.Error
+	child.Id = ep.ExternalId()
+	child.Size = ep.Size
+	child.Suffix = ep.Suffix
+	child.Title = ep.Title
+	child.Parent = "pd-" + ep.PodcastId
+	child.ContentType = mime.TypeByExtension("." + ep.Suffix)
+	child.CoverArt = ep.CoverArtID().String()
+	child.Duration = int32(ep.Duration)
+	child.Created = &ep.CreatedAt
+	child.Type = "podcast"
 
 	if ep.Rating != 0 {
-		episode.UserRating = int32(ep.Rating)
+		child.UserRating = int32(ep.Rating)
 	}
 
 	if ep.Starred {
-		episode.Starred = ep.StarredAt
+		child.Starred = ep.StarredAt
 	}
 
 	if ep.PlayCount > 0 {
-		episode.PlayCount = ep.PlayCount
+		child.PlayCount = ep.PlayCount
+		child.Played = ep.PlayDate
 	}
 
 	if ep.State == consts.PodcastStatusCompleted {
-		episode.BitRate = int32(ep.BitRate)
+		child.BitRate = int32(ep.BitRate)
 
 		player, ok := request.PlayerFrom(ctx)
 		if ok && player.ReportRealPath {
-			episode.Path = path.Join(conf.Server.Podcast.Path, ep.BasePath())
+			child.Path = path.Join(conf.Server.Podcast.Path, ep.BasePath())
 		} else {
-			episode.Path = ep.BasePath()
+			child.Path = ep.BasePath()
 		}
 	}
 
 	if ep.PublishDate != nil {
-		episode.Year = int32(ep.PublishDate.Year())
+		child.Year = int32(ep.PublishDate.Year())
 	}
+	return child
+}
+
+func buildPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) responses.PodcastEpisode {
+	episode := responses.PodcastEpisode{
+		Child: childFromPodcastEpisode(ctx, ep),
+	}
+
+	episode.ChannelId = "pd-" + ep.PodcastId
+	episode.Description = ep.Description
+	episode.PublishDate = ep.PublishDate
+	episode.StreamId = episode.Id
+	episode.ErrorMessage = ep.Error
+	episode.Status = ep.State
 	return episode
 }

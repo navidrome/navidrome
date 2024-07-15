@@ -60,6 +60,8 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 	}
 	if al.ID == "" {
 		al.ID = uuid.NewString()
+	} else {
+		m.all = append(m.all, *al)
 	}
 	m.data[al.ID] = al
 	return nil

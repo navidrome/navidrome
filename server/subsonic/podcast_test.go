@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Subsonic", func() {
+var _ = Describe("Podcast", func() {
 	var router *Router
 	var podcast *tests.MockedPodcastRepo
 	var episode *tests.MockedPodcastEpisodeRepo
@@ -318,8 +318,9 @@ var _ = Describe("Subsonic", func() {
 							{
 								Child: responses.Child{
 									Id:          "pe-full",
+									Parent:      "pd-full",
 									Title:       "Title",
-									CoverArt:    "pe-full",
+									CoverArt:    "pe-full_0",
 									Size:        124214,
 									ContentType: "audio/mpeg",
 									Suffix:      "mp3",
@@ -330,6 +331,8 @@ var _ = Describe("Subsonic", func() {
 									UserRating:  3,
 									Starred:     &time.Time{},
 									PlayCount:   5,
+									Type:        "podcast",
+									Created:     &time.Time{},
 								},
 								StreamId:    "pe-full",
 								ChannelId:   "pd-full",
@@ -340,7 +343,10 @@ var _ = Describe("Subsonic", func() {
 							{
 								Child: responses.Child{
 									Id:       "pe-partial",
-									CoverArt: "pe-partial",
+									Parent:   "pd-full",
+									CoverArt: "pe-partial_0",
+									Type:     "podcast",
+									Created:  &time.Time{},
 								},
 								StreamId:     "pe-partial",
 								ChannelId:    "pd-full",
@@ -364,7 +370,7 @@ var _ = Describe("Subsonic", func() {
 			r = newGetRequest()
 			resp, err := router.GetPodcasts(r)
 			Expect(err).To(BeNil())
-			Expect(*resp.Podcasts).To(Equal(expectedResponse))
+			Expect(*resp.Podcasts).To(BeComparableTo(expectedResponse))
 		})
 
 		It("gets podcasts without episodes", func() {
