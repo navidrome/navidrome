@@ -3,8 +3,13 @@ package subsonic
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
+	"time"
 
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 
@@ -19,13 +24,15 @@ var _ = Describe("Album Lists", func() {
 	var router *Router
 	var ds model.DataStore
 	var mockRepo *tests.MockAlbumRepo
+	var mockTracker *mockPlayTracker
 	var w *httptest.ResponseRecorder
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		mockRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		mockTracker = &mockPlayTracker{}
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, mockTracker, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -101,4 +108,195 @@ var _ = Describe("Album Lists", func() {
 			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
 		})
 	})
+
+	Describe("GetNowPlaying", func() {
+		var r *http.Request
+		var baseResponse *responses.NowPlaying
+
+		BeforeEach(func() {
+			now := time.Now().Add(-1 * time.Minute)
+
+			episode := model.PodcastEpisode{
+				Annotations: model.Annotations{
+					PlayCount: 1,
+					PlayDate:  &time.Time{},
+					Rating:    1,
+					Starred:   true,
+					StarredAt: &time.Time{},
+				},
+				ID:          "3333",
+				Guid:        "3333",
+				PodcastId:   "4444",
+				Url:         "https://example.org",
+				Title:       "Podcast title",
+				Description: "Podcast description",
+				Suffix:      "mp3",
+				BitRate:     320,
+				State:       consts.PodcastStatusCompleted,
+			}
+
+			mockTracker.data = []scrobbler.NowPlayingInfo{
+				{
+					MediaFile:  *episode.ToMediaFile(),
+					Start:      now,
+					Username:   "a",
+					PlayerId:   "a",
+					PlayerName: "a",
+				},
+				{
+					MediaFile: model.MediaFile{
+						Annotations: model.Annotations{
+							PlayCount: 5,
+							PlayDate:  &time.Time{},
+							Rating:    3,
+							Starred:   true,
+							StarredAt: &time.Time{},
+						},
+						Bookmarkable: model.Bookmarkable{BookmarkPosition: 125},
+						ID:           "1234",
+						Title:        "Title",
+						Album:        "Album",
+						AlbumID:      "1234",
+						Year:         2024,
+						Artist:       "Artist",
+						ArtistID:     "1234",
+						Genre:        "Genre",
+						Genres: model.Genres{
+							{Name: "Genre"},
+							{Name: "Genre 2"},
+						},
+						Path:           "this/is/a/fake/path.mp3",
+						TrackNumber:    3,
+						Duration:       33.5,
+						Size:           1234,
+						Suffix:         "mp3",
+						BitRate:        128,
+						DiscNumber:     1,
+						Comment:        "Comment",
+						Bpm:            100,
+						MbzRecordingID: "1234",
+						RgAlbumGain:    1,
+						RgAlbumPeak:    1,
+						RgTrackGain:    1,
+						RgTrackPeak:    1,
+						Channels:       2,
+						SampleRate:     48000,
+					},
+					Start:      now,
+					Username:   "b",
+					PlayerId:   "b",
+					PlayerName: "b",
+				},
+			}
+
+			r = newGetRequest("")
+
+			baseResponse = &responses.NowPlaying{
+				Entry: []responses.NowPlayingEntry{
+					{
+						Child: responses.Child{
+							Id:          "pe-3333",
+							Title:       "Podcast title",
+							Parent:      "pd-4444",
+							Path:        "//Podcast title.mp3",
+							CoverArt:    "pe-3333",
+							ContentType: "audio/mpeg",
+							Suffix:      "mp3",
+							Starred:     &time.Time{},
+							BitRate:     320,
+							PlayCount:   1,
+							Played:      &time.Time{},
+							Created:     &time.Time{},
+							AlbumId:     "pd-4444",
+							Type:        "podcast",
+							UserRating:  1,
+							MediaType:   "podcast",
+							Genres:      responses.ItemGenres{},
+						},
+						UserName:   "a",
+						PlayerId:   1,
+						PlayerName: "a",
+						MinutesAgo: 1,
+					},
+					{
+						Child: responses.Child{
+							Id:               "1234",
+							Parent:           "1234",
+							Title:            "Title",
+							Album:            "Album",
+							AlbumId:          "1234",
+							Artist:           "Artist",
+							ArtistId:         "1234",
+							Track:            3,
+							Year:             2024,
+							Genre:            "Genre",
+							CoverArt:         "al-1234_0",
+							Size:             1234,
+							ContentType:      "audio/mpeg",
+							Suffix:           "mp3",
+							Starred:          &time.Time{},
+							Duration:         33,
+							BitRate:          128,
+							Path:             "/Album/03 - Title.mp3",
+							PlayCount:        5,
+							Played:           &time.Time{},
+							Created:          &time.Time{},
+							Type:             "music",
+							UserRating:       3,
+							BookmarkPosition: 125,
+							DiscNumber:       1,
+							Bpm:              100,
+							Comment:          "Comment",
+							MediaType:        "song",
+							MusicBrainzId:    "1234",
+							Genres:           responses.ItemGenres{{Name: "Genre"}, {Name: "Genre 2"}},
+							ReplayGain: responses.ReplayGain{
+								TrackGain: 1,
+								AlbumGain: 1,
+								TrackPeak: 1,
+								AlbumPeak: 1,
+							},
+							ChannelCount: 2,
+							SamplingRate: 48000,
+						},
+						UserName:   "b",
+						PlayerId:   2,
+						PlayerName: "b",
+						MinutesAgo: 1,
+					},
+				},
+			}
+		})
+
+		It("should return podcast and media file", func() {
+			resp, err := router.GetNowPlaying(r)
+			Expect(err).To(BeNil())
+			Expect(resp.NowPlaying).To(Equal(baseResponse))
+		})
+
+		It("should return real path", func() {
+			player := model.Player{ReportRealPath: true}
+			ctx := request.WithPlayer(ctx, player)
+			r := r.WithContext(ctx)
+
+			resp, err := router.GetNowPlaying(r)
+			Expect(err).To(BeNil())
+			baseResponse.Entry[0].Path = "4444/3333.mp3"
+			baseResponse.Entry[1].Path = "this/is/a/fake/path.mp3"
+			Expect(resp.NowPlaying).To(Equal(baseResponse))
+		})
+	})
 })
+
+type mockPlayTracker struct {
+	scrobbler.PlayTracker
+	data []scrobbler.NowPlayingInfo
+	err  error
+}
+
+func (m *mockPlayTracker) GetNowPlaying(ctx context.Context) ([]scrobbler.NowPlayingInfo, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.data, nil
+}

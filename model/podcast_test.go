@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"path"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -55,10 +56,13 @@ var _ = Describe("Podcasts", func() {
 	})
 
 	Context("PodcastEpisode", func() {
-		episode := model.PodcastEpisode{BitRate: 128, Duration: 1234, ID: "1234", PodcastId: "4321", Size: 4100512, Suffix: "mp3"}
+		baseTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+		episode := model.PodcastEpisode{BitRate: 128, Duration: 1234, ID: "1234", PodcastId: "4321", Size: 4100512, Title: "Title", Suffix: "mp3", CreatedAt: baseTime, UpdatedAt: baseTime}
+		episode.PlayDate = &time.Time{}
 		episode.PlayCount = 5
 		episode.Rating = 3
 		episode.Starred = true
+		episode.StarredAt = &baseTime
 
 		Describe("AbsolutePath", func() {
 			It("should handle absolute path", func() {
@@ -99,16 +103,22 @@ var _ = Describe("Podcasts", func() {
 
 				Expect(episode.ToMediaFile()).To(Equal(&model.MediaFile{
 					Annotations: model.Annotations{
+						PlayDate:  &time.Time{},
 						PlayCount: 5,
 						Rating:    3,
 						Starred:   true,
+						StarredAt: &baseTime,
 					},
-					ID:       "pe-1234",
-					BitRate:  128,
-					Duration: 1234,
-					Path:     path.Join("tmp", "4321", "1234.mp3"),
-					Size:     4100512,
-					Suffix:   "mp3",
+					ID:        "pe-1234",
+					AlbumID:   "pd-4321",
+					BitRate:   128,
+					Duration:  1234,
+					Path:      path.Join("tmp", "4321", "1234.mp3"),
+					Size:      4100512,
+					Suffix:    "mp3",
+					Title:     "Title",
+					CreatedAt: baseTime,
+					UpdatedAt: baseTime,
 				}))
 			})
 		})

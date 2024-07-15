@@ -153,7 +153,15 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	response.NowPlaying = &responses.NowPlaying{}
 	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfo))
 	for i, np := range npInfo {
-		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, np.MediaFile)
+		child := childFromMediaFile(ctx, np.MediaFile)
+		if model.IsPodcastEpisodeId(np.MediaFile.ID) {
+			child.CoverArt = np.MediaFile.ID
+			child.Type = "podcast"
+			child.MediaType = responses.MediaTypePodcast
+		}
+
+		response.NowPlaying.Entry[i].Child = child
+
 		response.NowPlaying.Entry[i].UserName = np.Username
 		response.NowPlaying.Entry[i].MinutesAgo = int32(time.Since(np.Start).Minutes())
 		response.NowPlaying.Entry[i].PlayerId = int32(i + 1) // Fake numeric playerId, it does not seem to be used for anything

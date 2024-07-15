@@ -33,7 +33,7 @@ type Podcast struct {
 
 type Podcasts []Podcast
 
-func (p Podcast) AbsolutePath() string {
+func (p *Podcast) AbsolutePath() string {
 	return path.Join(conf.Server.Podcast.Path, p.ID)
 }
 
@@ -41,7 +41,7 @@ func (p Podcast) CoverArtID() ArtworkID {
 	return artworkIDFromPodcast(p)
 }
 
-func (p Podcast) ExternalId() string {
+func (p *Podcast) ExternalId() string {
 	return podcastIdPrefix + p.ID
 }
 
@@ -103,18 +103,22 @@ func (pe PodcastEpisode) CoverArtID() ArtworkID {
 	return artworkIDFromPodcastEpisode(pe)
 }
 
-func (pe PodcastEpisode) ExternalId() string {
+func (pe *PodcastEpisode) ExternalId() string {
 	return episodeIdPrefix + pe.ID
 }
 
 func (pe *PodcastEpisode) ToMediaFile() *MediaFile {
 	mf := &MediaFile{
-		ID:       pe.ExternalId(),
-		BitRate:  pe.BitRate,
-		Duration: pe.Duration,
-		Path:     pe.AbsolutePath(),
-		Size:     pe.Size,
-		Suffix:   pe.Suffix,
+		ID:        pe.ExternalId(),
+		AlbumID:   "pd-" + pe.PodcastId,
+		BitRate:   pe.BitRate,
+		Duration:  pe.Duration,
+		Path:      pe.AbsolutePath(),
+		Size:      pe.Size,
+		Suffix:    pe.Suffix,
+		Title:     pe.Title,
+		CreatedAt: pe.CreatedAt,
+		UpdatedAt: pe.UpdatedAt,
 	}
 
 	if pe.PublishDate != nil {
@@ -125,8 +129,13 @@ func (pe *PodcastEpisode) ToMediaFile() *MediaFile {
 		mf.PlayCount = pe.PlayCount
 	}
 
+	if pe.PlayDate != nil {
+		mf.PlayDate = pe.PlayDate
+	}
+
 	if pe.Starred {
 		mf.Starred = pe.Starred
+		mf.StarredAt = pe.StarredAt
 	}
 
 	mf.Rating = pe.Rating

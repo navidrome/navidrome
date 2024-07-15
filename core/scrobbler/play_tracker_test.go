@@ -100,6 +100,18 @@ var _ = Describe("PlayTracker", func() {
 		})
 	})
 
+	Describe("NowPlayingPodcast", func() {
+		It("fails if track does not exist", func() {
+			err := tracker.NowPlayingPodcast(ctx, "player-id", "player-name", "fake")
+			Expect(err).To(Equal(model.ErrNotFound))
+		})
+
+		It("stores podcast media file", func() {
+			err := tracker.NowPlayingPodcast(ctx, "player-id", "player-name", "test")
+			Expect(err).To(BeNil())
+		})
+	})
+
 	Describe("GetNowPlaying", func() {
 		It("returns current playing music", func() {
 			track2 := track

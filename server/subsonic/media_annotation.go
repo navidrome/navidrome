@@ -229,28 +229,43 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 }
 
 func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) error {
+	var player model.Player
+
 	// We don't need to handle now playing for podcast episodes
 	if model.IsPodcastEpisodeId(trackId) {
-		return nil
+		trackId = model.ExtractExternalId(trackId)
+		pd, err := api.ds.PodcastEpisode(ctx).Get(trackId)
+
+		if err != nil {
+			return err
+		}
+		if pd == nil {
+			return fmt.Errorf(`ID "%s" not found`, trackId)
+		}
+
+		username, _ := request.UsernameFrom(ctx)
+		log.Info(ctx, "Now Playing", "title", pd.Title, "artist", "user", username, "player", player.Name)
+	} else {
+		mf, err := api.ds.MediaFile(ctx).Get(trackId)
+		if err != nil {
+			return err
+		}
+		if mf == nil {
+			return fmt.Errorf(`ID "%s" not found`, trackId)
+		}
+
+		player, _ = request.PlayerFrom(ctx)
+		username, _ := request.UsernameFrom(ctx)
+
+		log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
 	}
 
-	mf, err := api.ds.MediaFile(ctx).Get(trackId)
-	if err != nil {
-		return err
-	}
-	if mf == nil {
-		return fmt.Errorf(`ID "%s" not found`, trackId)
-	}
-
-	player, _ := request.PlayerFrom(ctx)
-	username, _ := request.UsernameFrom(ctx)
 	client, _ := request.ClientFrom(ctx)
 	clientId, ok := request.ClientUniqueIdFrom(ctx)
 	if !ok {
 		clientId = player.ID
 	}
 
-	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
-	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
+	err := api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
 	return err
 }

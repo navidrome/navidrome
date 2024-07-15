@@ -243,7 +243,7 @@ var _ = Describe("MediaAnnotationController", func() {
 
 				_, err := router.Scrobble(req)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(playTracker.Playing).To(HaveLen(0))
+				Expect(playTracker.Playing).To(Equal(map[string]string{"": "12"}))
 			})
 		})
 	})
@@ -256,6 +256,17 @@ type fakePlayTracker struct {
 }
 
 func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string) error {
+	if f.Error != nil {
+		return f.Error
+	}
+	if f.Playing == nil {
+		f.Playing = make(map[string]string)
+	}
+	f.Playing[playerId] = trackId
+	return nil
+}
+
+func (f *fakePlayTracker) NowPlayingPodcast(_ context.Context, playerId string, _ string, trackId string) error {
 	if f.Error != nil {
 		return f.Error
 	}

@@ -120,9 +120,10 @@ type Indexes struct {
 type MediaType string
 
 const (
-	MediaTypeSong   MediaType = "song"
-	MediaTypeAlbum  MediaType = "album"
-	MediaTypeArtist MediaType = "artist"
+	MediaTypeSong    MediaType = "song"
+	MediaTypeAlbum   MediaType = "album"
+	MediaTypeArtist  MediaType = "artist"
+	MediaTypePodcast MediaType = "podcast"
 )
 
 type Child struct {

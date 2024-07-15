@@ -30,6 +30,7 @@ type Submission struct {
 
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
+	NowPlayingPodcast(ctx context.Context, playerId string, playerName string, trackId string) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
 }
@@ -85,6 +86,29 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	if player.ScrobbleEnabled {
 		p.dispatchNowPlaying(ctx, user.ID, mf)
 	}
+	return nil
+}
+
+func (p *playTracker) NowPlayingPodcast(ctx context.Context, playerId string, playerName string, trackId string) error {
+	pd, err := p.ds.PodcastEpisode(ctx).Get(trackId)
+	if err != nil {
+		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
+		return err
+	}
+
+	mf := pd.ToMediaFile()
+
+	user, _ := request.UserFrom(ctx)
+	info := NowPlayingInfo{
+		MediaFile:  *mf,
+		Start:      time.Now(),
+		Username:   user.UserName,
+		PlayerId:   playerId,
+		PlayerName: playerName,
+	}
+
+	ttl := time.Duration(int(mf.Duration)+5) * time.Second
+	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	return nil
 }
 
