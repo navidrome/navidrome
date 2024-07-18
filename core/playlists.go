@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/navidrome/navidrome/conf"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/conf"
 
 	"github.com/RaveNoX/go-jsoncommentstrip"
 	"github.com/navidrome/navidrome/log"
