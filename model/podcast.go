@@ -2,6 +2,7 @@ package model
 
 import (
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -33,8 +34,12 @@ type Podcast struct {
 
 type Podcasts []Podcast
 
+func cleanId(id string) string {
+	return filepath.Join("/", id)[1:]
+}
+
 func (p *Podcast) AbsolutePath() string {
-	return path.Join(conf.Server.Podcast.Path, p.ID)
+	return path.Join(conf.Server.Podcast.Path, cleanId(p.ID))
 }
 
 func (p Podcast) CoverArtID() ArtworkID {
@@ -92,7 +97,10 @@ type PodcastEpisode struct {
 }
 
 func (pe *PodcastEpisode) BasePath() string {
-	return path.Join(pe.PodcastId, pe.ID+"."+pe.Suffix)
+	return path.Join(
+		cleanId(pe.PodcastId),
+		cleanId(pe.ID+"."+pe.Suffix),
+	)
 }
 
 func (pe *PodcastEpisode) AbsolutePath() string {

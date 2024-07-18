@@ -27,10 +27,16 @@ var _ = Describe("Podcasts", func() {
 		p := model.Podcast{ID: "1234"}
 
 		Describe("AbsolutePath", func() {
-			It("should return path from server configuration", func() {
-				conf.Server.Podcast.Path = "tmp"
+			conf.Server.Podcast.Path = "tmp"
 
+			It("should return path from server configuration", func() {
 				Expect(p.AbsolutePath()).To(Equal(path.Join("tmp", "1234")))
+			})
+
+			It("should prevent directory traversal with bad id", func() {
+				bad := model.Podcast{ID: "../../root"}
+				Expect(bad.AbsolutePath()).To(Equal(path.Join("tmp", "root")))
+
 			})
 		})
 
@@ -65,15 +71,31 @@ var _ = Describe("Podcasts", func() {
 		episode.StarredAt = &baseTime
 
 		Describe("AbsolutePath", func() {
+			conf.Server.Podcast.Path = "tmp"
+
 			It("should handle absolute path", func() {
-				conf.Server.Podcast.Path = "tmp"
 				Expect(episode.AbsolutePath()).To(Equal(path.Join("tmp", "4321", "1234.mp3")))
+			})
+
+			It("should prevent directory traversal for podcast episode id", func() {
+				bad := model.PodcastEpisode{ID: "../../hi", PodcastId: "234", Suffix: "mp3"}
+				Expect(bad.AbsolutePath()).To(Equal(path.Join("tmp", "234", "hi.mp3")))
+			})
+
+			It("prevent directory traversal for channel and episode id", func() {
+				bad := model.PodcastEpisode{ID: "../../hi", PodcastId: "../../234", Suffix: "mp3"}
+				Expect(bad.AbsolutePath()).To(Equal(path.Join("tmp", "234", "hi.mp3")))
 			})
 		})
 
 		Describe("BasePath", func() {
 			It("should handle base path", func() {
 				Expect(episode.BasePath()).To(Equal(path.Join("4321", "1234.mp3")))
+			})
+
+			It("should prevent directory traversal", func() {
+				bad := model.PodcastEpisode{ID: "../../hi", PodcastId: "../../234", Suffix: "mp3"}
+				Expect(bad.BasePath()).To(Equal(path.Join("234", "hi.mp3")))
 			})
 		})
 

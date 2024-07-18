@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
-	"path"
 	"sort"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -426,7 +424,7 @@ func childFromPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) resp
 
 		player, ok := request.PlayerFrom(ctx)
 		if ok && player.ReportRealPath {
-			child.Path = path.Join(conf.Server.Podcast.Path, ep.BasePath())
+			child.Path = ep.AbsolutePath()
 		} else {
 			child.Path = ep.BasePath()
 		}
