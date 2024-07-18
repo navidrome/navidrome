@@ -69,6 +69,7 @@ var _ = Describe("Podcasts", func() {
 		episode.Rating = 3
 		episode.Starred = true
 		episode.StarredAt = &baseTime
+		episode.BookmarkPosition = int64(46)
 
 		Describe("AbsolutePath", func() {
 			conf.Server.Podcast.Path = "tmp"
@@ -130,6 +131,9 @@ var _ = Describe("Podcasts", func() {
 						Rating:    3,
 						Starred:   true,
 						StarredAt: &baseTime,
+					},
+					Bookmarkable: model.Bookmarkable{
+						BookmarkPosition: 46,
 					},
 					ID:        "pe-1234",
 					AlbumID:   "pd-4321",

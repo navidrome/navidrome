@@ -188,7 +188,7 @@ var _ = Describe("Browsing", func() {
 			}
 
 			if expected != nil {
-				Expect(resp.Directory).To(BeComparableTo(expected))
+				Expect(resp.Directory).To(Equal(expected))
 			} else {
 				Expect(resp).To(BeNil())
 			}

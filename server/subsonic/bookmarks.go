@@ -19,11 +19,33 @@ func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
+	epRepo := api.ds.PodcastEpisode(r.Context())
+	epBkmks, err := epRepo.GetBookmarks()
+	if err != nil {
+		return nil, err
+	}
+
 	response := newResponse()
 	response.Bookmarks = &responses.Bookmarks{}
 	for _, bmk := range bmks {
 		b := responses.Bookmark{
 			Entry:    childFromMediaFile(r.Context(), bmk.Item),
+			Position: bmk.Position,
+			Username: user.UserName,
+			Comment:  bmk.Comment,
+			Created:  bmk.CreatedAt,
+			Changed:  bmk.UpdatedAt,
+		}
+		response.Bookmarks.Bookmark = append(response.Bookmarks.Bookmark, b)
+	}
+
+	for _, bmk := range epBkmks {
+		child := childFromMediaFile(r.Context(), bmk.Item)
+		child.CoverArt = child.Id
+		child.Type = "podcast"
+		child.MediaType = responses.MediaTypePodcast
+		b := responses.Bookmark{
+			Entry:    child,
 			Position: bmk.Position,
 			Username: user.UserName,
 			Comment:  bmk.Comment,
@@ -45,7 +67,14 @@ func (api *Router) CreateBookmark(r *http.Request) (*responses.Subsonic, error) 
 	comment, _ := p.String("comment")
 	position := p.Int64Or("position", 0)
 
-	repo := api.ds.MediaFile(r.Context())
+	var repo model.BookmarkableRepository
+	if model.IsPodcastEpisodeId(id) {
+		repo = api.ds.PodcastEpisode(r.Context())
+		id = model.ExtractExternalId(id)
+	} else {
+		repo = api.ds.MediaFile(r.Context())
+	}
+
 	err = repo.AddBookmark(id, comment, position)
 	if err != nil {
 		return nil, err
@@ -60,7 +89,14 @@ func (api *Router) DeleteBookmark(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	repo := api.ds.MediaFile(r.Context())
+	var repo model.BookmarkableRepository
+	if model.IsPodcastEpisodeId(id) {
+		repo = api.ds.PodcastEpisode(r.Context())
+		id = model.ExtractExternalId(id)
+	} else {
+		repo = api.ds.MediaFile(r.Context())
+	}
+
 	err = repo.DeleteBookmark(id)
 	if err != nil {
 		return nil, err

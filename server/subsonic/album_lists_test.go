@@ -290,7 +290,7 @@ var _ = Describe("Album Lists", func() {
 			Expect(err).To(BeNil())
 			baseResponse.Entry[0].Path = "4444/3333.mp3"
 			baseResponse.Entry[1].Path = "this/is/a/fake/path.mp3"
-			Expect(resp.NowPlaying).To(BeComparableTo(baseResponse))
+			Expect(resp.NowPlaying).To(Equal(baseResponse))
 		})
 	})
 })

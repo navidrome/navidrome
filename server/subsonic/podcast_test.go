@@ -273,6 +273,9 @@ var _ = Describe("Podcast", func() {
 								Starred:   true,
 								StarredAt: &time.Time{},
 							},
+							Bookmarkable: model.Bookmarkable{
+								BookmarkPosition: 234,
+							},
 							ID:          "full",
 							Guid:        "guid",
 							PodcastId:   "full",
@@ -317,22 +320,23 @@ var _ = Describe("Podcast", func() {
 						Episodes: []responses.PodcastEpisode{
 							{
 								Child: responses.Child{
-									Id:          "pe-full",
-									Parent:      "pd-full",
-									Title:       "Title",
-									CoverArt:    "pe-full_0",
-									Size:        124214,
-									ContentType: "audio/mpeg",
-									Suffix:      "mp3",
-									Year:        2024,
-									Duration:    31,
-									BitRate:     128,
-									Path:        "full/full.mp3",
-									UserRating:  3,
-									Starred:     &time.Time{},
-									PlayCount:   5,
-									Type:        "podcast",
-									Created:     &time.Time{},
+									Id:               "pe-full",
+									Parent:           "pd-full",
+									Title:            "Title",
+									CoverArt:         "pe-full_0",
+									Size:             124214,
+									ContentType:      "audio/mpeg",
+									Suffix:           "mp3",
+									Year:             2024,
+									Duration:         31,
+									BitRate:          128,
+									Path:             "full/full.mp3",
+									UserRating:       3,
+									Starred:          &time.Time{},
+									PlayCount:        5,
+									Type:             "podcast",
+									Created:          &time.Time{},
+									BookmarkPosition: 234,
 								},
 								StreamId:    "pe-full",
 								ChannelId:   "pd-full",
@@ -370,7 +374,7 @@ var _ = Describe("Podcast", func() {
 			r = newGetRequest()
 			resp, err := router.GetPodcasts(r)
 			Expect(err).To(BeNil())
-			Expect(*resp.Podcasts).To(BeComparableTo(expectedResponse))
+			Expect(*resp.Podcasts).To(Equal(expectedResponse))
 		})
 
 		It("gets podcasts without episodes", func() {

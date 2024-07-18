@@ -111,7 +111,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	epIds := []string{}
 	for _, t := range tracks {
 		if model.IsPodcastEpisodeId(t.ID) {
-			epIds = append(epIds, t.ID)
+			epIds = append(epIds, model.ExtractExternalId(t.ID))
 		} else {
 			ids = append(ids, t.ID)
 		}
@@ -138,7 +138,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	epChunks := slice.BreakUp(epIds, 50)
 	epRepo := NewPodcastEpisodeRepository(r.ctx, r.db)
 	for i := range epChunks {
-		idsFilter := Eq{"podcast_episode.id": chunks[i]}
+		idsFilter := Eq{"podcast_episode.id": epChunks[i]}
 		episodes, err := epRepo.GetAll(model.QueryOptions{Filters: idsFilter})
 		if err != nil {
 			u := loggedUser(r.ctx)

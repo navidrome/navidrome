@@ -433,6 +433,8 @@ func childFromPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) resp
 	if ep.PublishDate != nil {
 		child.Year = int32(ep.PublishDate.Year())
 	}
+
+	child.BookmarkPosition = ep.BookmarkPosition
 	return child
 }
 

@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/pocketbase/dbx"
 
 	. "github.com/Masterminds/squirrel"
@@ -31,6 +33,18 @@ func (r *podcastEpisodeRepository) Cleanup() error {
 	}
 
 	return r.cleanBookmarks()
+}
+
+func (r podcastEpisodeRepository) cleanBookmarks() error {
+	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
+	c, err := r.executeSQL(del)
+	if err != nil {
+		return err
+	}
+	if c > 0 {
+		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c)
+	}
+	return nil
 }
 
 func (r *podcastEpisodeRepository) Count(options ...rest.QueryOptions) (int64, error) {
@@ -67,6 +81,53 @@ func (r *podcastEpisodeRepository) GetAll(options ...model.QueryOptions) (model.
 	res := model.PodcastEpisodes{}
 	err := r.queryAll(sel, &res)
 	return res, err
+}
+
+func (r *podcastEpisodeRepository) GetBookmarks() (model.Bookmarks, error) {
+	user, _ := request.UserFrom(r.ctx)
+
+	idField := r.tableName + ".id"
+	sq := r.newSelectWithAnnotation(idField).Columns(r.tableName + ".*")
+	sq = r.withBookmark(sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
+	var eps model.PodcastEpisodes
+	err := r.queryAll(sq, &eps)
+	if err != nil {
+		log.Error(r.ctx, "Error getting podcast episodes with bookmarks", "user", user.UserName, err)
+		return nil, err
+	}
+
+	ids := make([]string, len(eps))
+	mfMap := make(map[string]int)
+	for i, ep := range eps {
+		ids[i] = ep.ID
+		mfMap[ep.ID] = i
+	}
+
+	sq = Select("*").From(bookmarkTable).Where(r.bmkID(ids...))
+	var bmks []bookmark
+	err = r.queryAll(sq, &bmks)
+	if err != nil {
+		log.Error(r.ctx, "Error getting bookmarks", "user", user.UserName, "ids", ids, err)
+		return nil, err
+	}
+
+	resp := make(model.Bookmarks, len(bmks))
+	for i, bmk := range bmks {
+		if itemIdx, ok := mfMap[bmk.ItemID]; !ok {
+			log.Debug(r.ctx, "Invalid bookmark", "id", bmk.ItemID, "user", user.UserName)
+			continue
+		} else {
+			resp[i] = model.Bookmark{
+				Comment:   bmk.Comment,
+				Position:  bmk.Position,
+				CreatedAt: bmk.CreatedAt,
+				UpdatedAt: bmk.UpdatedAt,
+				ChangedBy: bmk.ChangedBy,
+				Item:      *eps[itemIdx].ToMediaFile(),
+			}
+		}
+	}
+	return resp, nil
 }
 
 func (r *podcastEpisodeRepository) GetEpisodeGuids(id string) (map[string]bool, error) {

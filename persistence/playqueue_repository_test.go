@@ -51,6 +51,18 @@ var _ = Describe("PlayQueueRepository", func() {
 			AssertPlayQueue(another, actual)
 			Expect(countPlayQueues(repo, "userid")).To(Equal(1))
 		})
+
+		DescribeTable("handles mix of items", func(current string, items ...model.MediaFile) {
+			expected := aPlayQueue("userid", completeEpisode.ExternalId(), 123, items...)
+			Expect(repo.Store(expected)).To(Succeed())
+
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+			AssertPlayQueue(expected, actual)
+		},
+			Entry("podcast episode only", basicEpisode.ExternalId(), *basicEpisode.ToMediaFile(), *completeEpisode.ToMediaFile(), *brokenEpisode.ToMediaFile()),
+			Entry("Mix of pdocast and mediafile", completeEpisode.ExternalId(), *completeEpisode.ToMediaFile(), songAntenna, *basicEpisode.ToMediaFile()),
+		)
 	})
 })
 

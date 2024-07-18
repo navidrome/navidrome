@@ -75,7 +75,8 @@ type PodcastRepository interface {
 }
 
 type PodcastEpisode struct {
-	Annotations `structs:"-"`
+	Annotations  `structs:"-"`
+	Bookmarkable `structs:"-"`
 
 	ID          string               `structs:"id" json:"id"`
 	Guid        string               `structs:"guid" json:"guid"`
@@ -146,6 +147,7 @@ func (pe *PodcastEpisode) ToMediaFile() *MediaFile {
 		mf.StarredAt = pe.StarredAt
 	}
 
+	mf.BookmarkPosition = pe.BookmarkPosition
 	mf.Rating = pe.Rating
 
 	return mf
@@ -159,6 +161,7 @@ type PodcastEpisodes []PodcastEpisode
 
 type PodcastEpisodeRepository interface {
 	AnnotatedRepository
+	BookmarkableRepository
 	ResourceRepository
 
 	// Removes podcast episode annotations and bookmarks

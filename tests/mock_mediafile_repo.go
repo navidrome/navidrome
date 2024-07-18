@@ -36,6 +36,30 @@ func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 	}
 }
 
+func (m *MockMediaFileRepo) AddBookmark(id, comment string, position int64) error {
+	if m.err {
+		return errors.New("Error")
+	}
+	item, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+	item.BookmarkPosition = position
+	return nil
+}
+
+func (m *MockMediaFileRepo) DeleteBookmark(id string) error {
+	if m.err {
+		return errors.New("Error")
+	}
+	item, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+	item.BookmarkPosition = 0
+	return nil
+}
+
 func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
 	if m.err {
 		return false, errors.New("error")

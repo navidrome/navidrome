@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -13,12 +14,13 @@ import (
 
 var _ = Describe("PodcastEpisodeRepository", func() {
 	var repo model.PodcastEpisodeRepository
+	var database *dbxBuilder
+	var ctx context.Context
 
 	BeforeEach(func() {
-		db := NewDBXBuilder(db.Db())
-
-		ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: false})
-		repo = NewPodcastEpisodeRepository(ctx, db)
+		database = NewDBXBuilder(db.Db())
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: false})
+		repo = NewPodcastEpisodeRepository(ctx, database)
 
 		for i := range testPodcastEpisodes {
 			err := repo.Put(&testPodcastEpisodes[i])
@@ -179,6 +181,123 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 			item.UpdatedAt = episode.UpdatedAt
 
 			Expect(*item).To(Equal(episode))
+		})
+	})
+
+	Context("Bookmarks", func() {
+		var mfRepo model.MediaFileRepository
+
+		validateMfUnchanged := func() {
+			mfBook, err := mfRepo.GetBookmarks()
+			Expect(err).To(BeNil())
+			Expect(mfBook).To(HaveLen(1))
+		}
+
+		BeforeEach(func() {
+			mfRepo = NewMediaFileRepository(ctx, database)
+			_ = mfRepo.AddBookmark(songDayInALife.ID, "comment", 60)
+		})
+
+		AfterEach(func() {
+			_ = repo.Cleanup()
+			_ = mfRepo.DeleteBookmark(songDayInALife.ID)
+		})
+
+		It("should add bookmark", func() {
+			now := time.Now()
+			err := repo.AddBookmark(completeEpisode.ID, "this is a comment", int64(4))
+			Expect(err).To(BeNil())
+
+			validateMfUnchanged()
+
+			bookmark, err := repo.GetBookmarks()
+			Expect(err).To(BeNil())
+			Expect(bookmark).To(HaveLen(1))
+			Expect(bookmark[0].CreatedAt).To(BeTemporally(">", now))
+			Expect(bookmark[0].UpdatedAt).To(BeTemporally(">", now))
+			bookmark[0].Item.UpdatedAt = time.Time{}
+			bookmark[0].CreatedAt = time.Time{}
+			bookmark[0].UpdatedAt = time.Time{}
+
+			mf := *completeEpisode.ToMediaFile()
+			mf.BookmarkPosition = 4
+
+			Expect(bookmark).To(Equal(model.Bookmarks{
+				{
+					Item: model.MediaFile{
+						Annotations: model.Annotations{
+							Starred:   true,
+							StarredAt: completeEpisode.StarredAt,
+						},
+						Bookmarkable: model.Bookmarkable{
+							BookmarkPosition: 4,
+						},
+						ID:          "pe-2",
+						LibraryID:   0,
+						Path:        completeEpisode.AbsolutePath(),
+						Title:       "Sample episode",
+						AlbumID:     "pd-2345",
+						HasCoverArt: false,
+						Year:        2024,
+						Size:        41256,
+						Suffix:      "ogg",
+						Duration:    30.5,
+						BitRate:     320,
+					},
+					Comment:  "this is a comment",
+					Position: 4,
+				},
+			}))
+		})
+
+		It("should delete bookmark", func() {
+			err := repo.AddBookmark(completeEpisode.ID, "this is a comment", int64(4))
+			Expect(err).To(BeNil())
+
+			validateMfUnchanged()
+
+			bookmark, err := repo.GetBookmarks()
+			Expect(err).To(BeNil())
+			Expect(bookmark).To(HaveLen(1))
+			Expect(bookmark[0].Item.ID).To(Equal(completeEpisode.ExternalId()))
+
+			// Run this twice. Second delete should have no impact
+			for range 2 {
+				err = repo.DeleteBookmark(completeEpisode.ID)
+				Expect(err).To(BeNil())
+				validateMfUnchanged()
+			}
+		})
+
+		It("should cleanup bookmarks", func() {
+			for _, item := range testPodcastEpisodes {
+				err := repo.AddBookmark(item.ID, "a comment", 4)
+				Expect(err).To(BeNil())
+			}
+
+			validateMfUnchanged()
+
+			bookmark, err := repo.GetBookmarks()
+			Expect(err).To(BeNil())
+			Expect(bookmark).To(HaveLen(3))
+			Expect(bookmark[0].Item.ID).To(Equal(basicEpisode.ExternalId()))
+			Expect(bookmark[1].Item.ID).To(Equal(completeEpisode.ExternalId()))
+			Expect(bookmark[2].Item.ID).To(Equal(brokenEpisode.ExternalId()))
+
+			for _, ep := range testPodcastEpisodes[1:] {
+				err = repo.Delete(ep.ID)
+				Expect(err).To(BeNil())
+			}
+
+			err = repo.Cleanup()
+			Expect(err).To(BeNil())
+
+			bookmark, err = repo.GetBookmarks()
+			Expect(err).To(BeNil())
+			Expect(bookmark).To(HaveLen(1))
+			Expect(bookmark[0].Item.ID).To(Equal(basicEpisode.ExternalId()))
+
+			validateMfUnchanged()
 		})
 	})
 })

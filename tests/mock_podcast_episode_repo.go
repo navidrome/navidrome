@@ -24,11 +24,35 @@ func CreateMockedPodcastEpisodeRepo() *MockedPodcastEpisodeRepo {
 	}
 }
 
+func (m *MockedPodcastEpisodeRepo) AddBookmark(id, comment string, position int64) error {
+	if m.err {
+		return errors.New("Error")
+	}
+	item, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+	item.BookmarkPosition = position
+	return nil
+}
+
 func (m *MockedPodcastEpisodeRepo) Cleanup() error {
 	if m.err {
 		return errors.New("Error")
 	}
 	m.Cleaned = true
+	return nil
+}
+
+func (m *MockedPodcastEpisodeRepo) DeleteBookmark(id string) error {
+	if m.err {
+		return errors.New("Error")
+	}
+	item, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+	item.BookmarkPosition = 0
 	return nil
 }
 
