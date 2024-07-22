@@ -1,6 +1,7 @@
 package hasher_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/navidrome/navidrome/utils/hasher"
@@ -53,5 +54,15 @@ var _ = Describe("HashFunc", func() {
 
 		hasher.SetSeed(id, "original_seed")
 		Expect(sum).To(Equal(hashFunc(id, input)))
+	})
+
+	It("does not cause race conditions", func() {
+		for i := 0; i < 1000; i++ {
+			go func() {
+				hashFunc := hasher.HashFunc()
+				sum := hashFunc(strconv.Itoa(i), input)
+				Expect(sum).ToNot(BeZero())
+			}()
+		}
 	})
 })
