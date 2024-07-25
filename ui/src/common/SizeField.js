@@ -13,6 +13,7 @@ const useStyles = makeStyles((theme) => ({
 export const SizeField = ({ source, ...rest }) => {
   const classes = useStyles()
   const record = useRecordContext(rest)
+  if (!record) return null
   return <span className={classes.root}>{formatBytes(record[source])}</span>
 }
 
