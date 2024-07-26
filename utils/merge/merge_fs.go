@@ -5,9 +5,8 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"slices"
-
 	"maps"
+	"slices"
 )
 
 // FS implements a simple merged fs.FS, that can combine a Base FS with an Overlay FS. The semantics are:
