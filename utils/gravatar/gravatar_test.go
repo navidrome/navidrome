@@ -19,13 +19,13 @@ func TestGravatar(t *testing.T) {
 
 var _ = Describe("Gravatar", func() {
 	It("returns a well formatted gravatar URL", func() {
-		Expect(gravatar.Url("my@email.com", 100)).To(Equal("https://www.gravatar.com/avatar/4f384e9f3e8e625aae72b52658323d70?s=100"))
+		Expect(gravatar.Url("my@email.com", 100)).To(Equal("https://www.gravatar.com/avatar/cf3d8259741b19a2b09e17d4fa9a97c63adc44bf2a5fa075cdcb5491f525feaa?s=100"))
 	})
 	It("sets the default size", func() {
-		Expect(gravatar.Url("my@email.com", 0)).To(Equal("https://www.gravatar.com/avatar/4f384e9f3e8e625aae72b52658323d70?s=80"))
+		Expect(gravatar.Url("my@email.com", 0)).To(Equal("https://www.gravatar.com/avatar/cf3d8259741b19a2b09e17d4fa9a97c63adc44bf2a5fa075cdcb5491f525feaa?s=80"))
 	})
 	It("caps maximum size", func() {
-		Expect(gravatar.Url("my@email.com", 3000)).To(Equal("https://www.gravatar.com/avatar/4f384e9f3e8e625aae72b52658323d70?s=2048"))
+		Expect(gravatar.Url("my@email.com", 3000)).To(Equal("https://www.gravatar.com/avatar/cf3d8259741b19a2b09e17d4fa9a97c63adc44bf2a5fa075cdcb5491f525feaa?s=2048"))
 	})
 	It("ignores case", func() {
 		Expect(gravatar.Url("MY@email.com", 0)).To(Equal(gravatar.Url("my@email.com", 0)))

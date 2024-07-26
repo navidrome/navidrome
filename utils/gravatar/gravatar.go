@@ -1,7 +1,7 @@
 package gravatar
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 )
@@ -13,7 +13,7 @@ const maxSize = 2048
 func Url(email string, size int) string {
 	email = strings.ToLower(email)
 	email = strings.TrimSpace(email)
-	hash := md5.Sum([]byte(email))
+	hash := sha256.Sum256([]byte(email))
 	if size < 1 {
 		size = defaultSize
 	}
