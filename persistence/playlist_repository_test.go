@@ -2,7 +2,9 @@ package persistence
 
 import (
 	"context"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -141,6 +143,34 @@ var _ = Describe("PlaylistRepository", func() {
 				}
 				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
 				Expect(repo.Put(&newPls)).To(MatchError(ContainSubstring("invalid criteria expression")))
+			})
+		})
+
+		Context("child smart playlists", func() {
+			It("Should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+				conf.Server.SmartPlaylistRefreshTimeout = -1 * time.Second
+
+				nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&nestedPls)).To(Succeed())
+
+				parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+					Expression: criteria.All{
+						criteria.InPlaylist{"id": nestedPls.ID},
+					},
+				}}
+				Expect(repo.Put(&parentPls)).To(Succeed())
+
+				nestedPlsRead, err := repo.Get(nestedPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = repo.GetWithTracks(parentPls.ID, true)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
+				nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally(">", *nestedPlsRead.EvaluatedAt))
 			})
 		})
 	})
