@@ -321,13 +321,13 @@ func (p *podcastManager) refreshPodcasts(ctx context.Context) {
 		if err != nil {
 			podcast.Error = err.Error()
 			podcast.State = consts.PodcastStatusError
+			log.Error(ctx, "Failed to refresh podcast", "id", podcast.ID, "error", err)
 		} else if podcast.State != "" {
 			podcast.State = ""
 			podcast.Error = ""
 		}
 
 		updErr := p.ds.Podcast(ctx).PutInternal(podcast)
-		log.Error(ctx, "Failed to refresh podcast", "id", podcast.ID, "error", err)
 
 		if updErr != nil {
 			log.Error(ctx, "Failed to update podcast error", "id", podcast.ID, "error", updErr)
