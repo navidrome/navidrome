@@ -151,8 +151,10 @@ type jukeboxOptions struct {
 }
 
 type podcastOptions struct {
-	Path      string
-	AdminOnly bool
+	AdminOnly       bool
+	Enabled         bool
+	Path            string
+	RefreshSchedule string
 }
 
 var (
@@ -212,6 +214,12 @@ func Load() {
 
 	if err := validateScanSchedule(); err != nil {
 		os.Exit(1)
+	}
+
+	if Server.Podcast.Enabled {
+		if err := validatePodcastSchedule(); err != nil {
+			os.Exit(1)
+		}
 	}
 
 	if Server.BaseURL != "" {
@@ -284,6 +292,23 @@ func validateScanSchedule() error {
 		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
 	}
 	return err
+}
+
+func validatePodcastSchedule() error {
+	if Server.Podcast.RefreshSchedule == "0" || Server.Podcast.RefreshSchedule == "" {
+		Server.Podcast.RefreshSchedule = ""
+		return nil
+	}
+	if _, err := time.ParseDuration(Server.Podcast.RefreshSchedule); err == nil {
+		Server.Podcast.RefreshSchedule = "@every " + Server.Podcast.RefreshSchedule
+	}
+	c := cron.New()
+	id, err := c.AddFunc(Server.Podcast.RefreshSchedule, func() {})
+	if err != nil {
+		log.Error("Invalid Podcast RefreshSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.Podcast.RefreshSchedule, err)
+	}
+	c.Remove(id)
+	return nil
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
@@ -359,6 +384,8 @@ func init() {
 	viper.SetDefault("jukebox.adminonly", true)
 
 	viper.SetDefault("podcast.adminonly", true)
+	viper.SetDefault("podcast.enabled", true)
+	viper.SetDefault("podcast.refreshschedule", "")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")

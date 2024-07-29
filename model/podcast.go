@@ -51,7 +51,7 @@ func (p *Podcast) ExternalId() string {
 }
 
 func IsPodcastId(id string) bool {
-	return strings.HasPrefix(id, podcastIdPrefix) && len(id) > 3
+	return conf.Server.Podcast.Enabled && strings.HasPrefix(id, podcastIdPrefix) && len(id) > 3
 }
 
 func ExtractExternalId(external string) string {
@@ -154,7 +154,7 @@ func (pe *PodcastEpisode) ToMediaFile() *MediaFile {
 }
 
 func IsPodcastEpisodeId(id string) bool {
-	return strings.HasPrefix(id, episodeIdPrefix) && len(id) > 3
+	return conf.Server.Podcast.Enabled && strings.HasPrefix(id, episodeIdPrefix) && len(id) > 3
 }
 
 type PodcastEpisodes []PodcastEpisode

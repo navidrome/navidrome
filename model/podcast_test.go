@@ -58,6 +58,11 @@ var _ = Describe("Podcasts", func() {
 			It("should return false for empty string", func() {
 				Expect(model.IsPodcastId("")).To(BeFalse())
 			})
+
+			It("Should return false if podcasts are disabled", func() {
+				conf.Server.Podcast.Enabled = false
+				Expect(model.IsPodcastId("pd-1234")).To(BeFalse())
+			})
 		})
 	})
 
@@ -117,6 +122,11 @@ var _ = Describe("Podcasts", func() {
 
 			It("should return false for empty string", func() {
 				Expect(model.IsPodcastEpisodeId("")).To(BeFalse())
+			})
+
+			It("Should return false if podcasts are disabled", func() {
+				conf.Server.Podcast.Enabled = false
+				Expect(model.IsPodcastId("pe-1234")).To(BeFalse())
 			})
 		})
 

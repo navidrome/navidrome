@@ -81,3 +81,9 @@ func GetPlaybackServer() playback.PlaybackServer {
 		allProviders,
 	))
 }
+
+func GetPodcastManager() core.PodcastManager {
+	panic(wire.Build(
+		allProviders,
+	))
+}

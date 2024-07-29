@@ -9,7 +9,7 @@ import (
 )
 
 var Set = wire.NewSet(
-	NewPodcasts,
+	NewPodcastManager,
 	NewMediaStreamer,
 	GetTranscodingCache,
 	NewArchiver,

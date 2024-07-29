@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model/request"
@@ -34,6 +35,7 @@ var _ = Describe("Album Lists", func() {
 		mockTracker = &mockPlayTracker{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, mockTracker, nil, nil, nil)
 		w = httptest.NewRecorder()
+		conf.Server.Podcast.Enabled = true
 	})
 
 	Describe("GetAlbumList", func() {

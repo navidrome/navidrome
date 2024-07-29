@@ -195,15 +195,19 @@ func (api *Router) routes() http.Handler {
 		h501(r, "jukeboxControl")
 	}
 
-	r.Group(func(r chi.Router) {
-		h(r, "createPodcastChannel", api.CreatePodcastChannel)
-		h(r, "deletePodcastChannel", api.DeletePodcastChannel)
-		h(r, "deletePodcastEpisode", api.DeletePodcastEpisode)
-		h(r, "downloadPodcastEpisode", api.DownloadPodcastEpisode)
-		h(r, "getNewestPodcasts", api.GetNewestPodcasts)
-		h(r, "getPodcasts", api.GetPodcasts)
-		h(r, "refreshPodcasts", api.RefreshPodcasts)
-	})
+	if conf.Server.Podcast.Enabled {
+		r.Group(func(r chi.Router) {
+			h(r, "createPodcastChannel", api.CreatePodcastChannel)
+			h(r, "deletePodcastChannel", api.DeletePodcastChannel)
+			h(r, "deletePodcastEpisode", api.DeletePodcastEpisode)
+			h(r, "downloadPodcastEpisode", api.DownloadPodcastEpisode)
+			h(r, "getNewestPodcasts", api.GetNewestPodcasts)
+			h(r, "getPodcasts", api.GetPodcasts)
+			h(r, "refreshPodcasts", api.RefreshPodcasts)
+		})
+	} else {
+		h501(r, "createPodcastChannel", "deletePodcastChannel", "deletePodcastEpisode", "downloadPodcastEpisode", "getNewestPodcasts", "getPodcasts", "refreshPodcasts")
+	}
 
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 

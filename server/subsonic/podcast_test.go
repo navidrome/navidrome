@@ -36,6 +36,7 @@ var _ = Describe("Podcast", func() {
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, manager)
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Podcast.AdminOnly = true
+		conf.Server.Podcast.Enabled = true
 
 		adminCtx = request.WithUser(context.TODO(), model.User{ID: "1234", IsAdmin: true})
 	})

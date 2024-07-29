@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -28,6 +29,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil, nil)
+		conf.Server.Podcast.Enabled = true
 	})
 
 	Context("Annotations", func() {

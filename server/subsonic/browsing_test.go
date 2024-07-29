@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -172,6 +173,8 @@ var _ = Describe("Browsing", func() {
 			ID:   "ar-1",
 			Name: "artist",
 		})
+
+		conf.Server.Podcast.Enabled = true
 	})
 
 	Describe("GetMusicDirectory", func() {
@@ -188,6 +191,7 @@ var _ = Describe("Browsing", func() {
 			}
 
 			if expected != nil {
+				Expect(resp).ToNot(BeNil())
 				Expect(resp.Directory).To(Equal(expected))
 			} else {
 				Expect(resp).To(BeNil())

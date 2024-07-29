@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -92,6 +93,7 @@ var _ = Describe("Browsing", func() {
 
 		_ = ds.MediaFile(ctx).Put(&fullMediafile)
 		_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "mf-2"})
+		conf.Server.Podcast.Enabled = true
 	})
 
 	Describe("CreateBookmark", func() {

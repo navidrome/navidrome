@@ -81,6 +81,7 @@ func runNavidrome() {
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(startPodcastRefreshSchedule(ctx))
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -176,6 +177,35 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+func startPodcastRefreshSchedule(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.Podcast.RefreshSchedule
+		if !conf.Server.Podcast.Enabled || schedule == "" {
+			log.Debug("Podcast refresh is DISABLED")
+			return nil
+		}
+
+		manager := GetPodcastManager()
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling periodic podcast refresh", "schedule", schedule)
+		err := schedulerInstance.Add(schedule, func() {
+			_ = manager.Refresh(ctx)
+		})
+		if err != nil {
+			log.Error("Error scheduling periodic podcast refresh")
+		}
+
+		time.Sleep(2 * time.Second)
+		log.Debug("Executing initial podcast refresh")
+		if err := manager.Refresh(ctx); err != nil {
+			log.Error("Error executing initial podcast refresh")
+		}
+		log.Debug("Finished initial podcast refresh")
+		return nil
 	}
 }
 

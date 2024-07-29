@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/utils/singleton"
 )
 
 var (
@@ -48,30 +49,32 @@ type PodcastManager interface {
 	Refresh(ctx context.Context) error
 }
 
-func NewPodcasts(ds model.DataStore) PodcastManager {
-	parser := gofeed.NewParser()
-	parser.UserAgent = userAgent
+func NewPodcastManager(ds model.DataStore) PodcastManager {
+	return singleton.GetInstance(func() *podcastManager {
+		parser := gofeed.NewParser()
+		parser.UserAgent = userAgent
 
-	client := http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
-	parser.Client = &client
+		client := http.Client{
+			Timeout: consts.DefaultHttpClientTimeOut,
+		}
+		parser.Client = &client
 
-	ch := make(chan string, 5)
-	del := make(chan deleteReq, 5)
+		ch := make(chan string, 5)
+		del := make(chan deleteReq, 5)
 
-	podcasts := &podcastManager{
-		ch:     ch,
-		client: &client,
-		del:    del,
-		ds:     ds,
-		parser: parser,
-	}
+		podcasts := &podcastManager{
+			ch:     ch,
+			client: &client,
+			del:    del,
+			ds:     ds,
+			parser: parser,
+		}
 
-	go podcasts.processDeletes()
-	go podcasts.processFetch()
+		go podcasts.processDeletes()
+		go podcasts.processFetch()
 
-	return podcasts
+		return podcasts
+	})
 }
 
 func (p *podcastManager) CreateFeed(ctx context.Context, url string) (*model.Podcast, error) {
