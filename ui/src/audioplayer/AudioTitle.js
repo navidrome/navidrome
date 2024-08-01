@@ -4,17 +4,28 @@ import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { QualityInfo } from '../common'
 import useStyle from './styles'
+import { useDrag } from 'react-dnd'
+import { DraggableTypes } from '../consts'
 
 const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
   const isDesktop = useMediaQuery('(min-width:810px)')
 
-  if (!audioInfo.song) {
+  const song = audioInfo.song
+  const [, dragSongRef] = useDrag(
+    () => ({
+      type: DraggableTypes.SONG,
+      item: { ids: [song?.id] },
+      options: { dropEffect: 'copy' },
+    }),
+    [song]
+  )
+
+  if (!song) {
     return ''
   }
 
-  const song = audioInfo.song
   const qi = {
     suffix: song.suffix,
     bitRate: song.bitRate,
@@ -30,6 +41,7 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
           : `/album/${song.albumId}/show`
       }
       className={className}
+      ref={dragSongRef}
     >
       <span>
         <span className={clsx(classes.songTitle, 'songTitle')}>

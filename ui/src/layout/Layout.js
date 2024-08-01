@@ -3,8 +3,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Layout as RALayout, toggleSidebar } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { HotKeys } from 'react-hotkeys'
-import { HTML5Backend } from 'react-dnd-html5-backend'
-import { DndProvider } from 'react-dnd'
 import Menu from './Menu'
 import AppBar from './AppBar'
 import Notification from './Notification'
@@ -25,18 +23,16 @@ const Layout = (props) => {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <HotKeys handlers={keyHandlers}>
-        <RALayout
-          {...props}
-          className={classes.root}
-          menu={Menu}
-          appBar={AppBar}
-          theme={theme}
-          notification={Notification}
-        />
-      </HotKeys>
-    </DndProvider>
+    <HotKeys handlers={keyHandlers}>
+      <RALayout
+        {...props}
+        className={classes.root}
+        menu={Menu}
+        appBar={AppBar}
+        theme={theme}
+        notification={Notification}
+      />
+    </HotKeys>
   )
 }
 
