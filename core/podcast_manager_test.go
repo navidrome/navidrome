@@ -117,6 +117,7 @@ var _ = Describe("PodcastManager", func() {
 			Expect(err).To(BeNil())
 			Expect(file.IsDir()).To(BeTrue())
 
+			// This description MUST be sanitized
 			podcast.ID = ""
 			Expect(*podcast).To(Equal(model.Podcast{
 				Url:         server.URL + "/good.rss",
@@ -152,11 +153,12 @@ var _ = Describe("PodcastManager", func() {
 					Size:        34216300,
 					State:       "skipped",
 				},
+				// Similarly, this second value MUST be sanitized
 				{
 					Guid:        "dzpodclean",
 					Url:         "https://www.example.com/podcasts/dafnas-zebras/audio/cleanstripes.mp3",
 					Title:       "Keeping those stripes neat and clean",
-					Description: "Keeping your zebra clean is time consuming, but worth the effort.",
+					Description: "<p>Keeping your zebra clean is time consuming, but worth the effort.</p>",
 					ImageUrl:    "https://example.org/episode.jpg",
 					PublishDate: gg.P(time.Date(2017, 2, 24, 12, 0, 0, 0, time.UTC)),
 					Duration:    1390,

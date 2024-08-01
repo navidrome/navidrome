@@ -238,14 +238,14 @@ var _ = Describe("MediaAnnotationController", func() {
 				Expect(playTracker.Playing).To(HaveKey("player-1"))
 			})
 
-			It("does not register NowPlaying for podcast", func() {
+			It("registers NowPlaying for podcast", func() {
 				ctx = request.WithPlayer(ctx, model.Player{ID: "player-1"})
 				req = newGetRequest("id=pe-12", "submission=false")
 				req = req.WithContext(ctx)
 
 				_, err := router.Scrobble(req)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(playTracker.Playing).To(Equal(map[string]string{"": "12"}))
+				Expect(playTracker.Playing).To(Equal(map[string]string{"player-1": "12"}))
 			})
 		})
 	})

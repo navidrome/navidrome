@@ -8,7 +8,7 @@
         <itunes:email>dafna@example.com</itunes:email>
     </itunes:owner>
     <itunes:author>Dafna</itunes:author>
-    <description>A pet-owner's guide to the popular striped equine.</description>
+    <description><![CDATA[A pet-owner's guide to the popular striped equine.<script>console.log(2)</script>]]></description>
     <itunes:image href="https://www.example.com/podcasts/dafnas-zebras/img/dafna-zebra-pod-logo.jpg"/>
     <language>en-us</language>
     <link>https://www.example.com/podcasts/dafnas-zebras/</link>
@@ -23,7 +23,7 @@
     </item>
     <item>
       <title>Keeping those stripes neat and clean</title>
-      <description>Keeping your zebra clean is time consuming, but worth the effort.</description>
+      <description><![CDATA[<p>Keeping <script>console.log(1)</script>your zebra clean is time consuming, but worth the effort.</p>]]></description>
       <pubDate>Fri, 24 Feb 2017 12:00:00 GMT</pubDate>
       <enclosure url="https://www.example.com/podcasts/dafnas-zebras/audio/cleanstripes.mp3"
                  type="audio/mpeg" length="26004388"/>

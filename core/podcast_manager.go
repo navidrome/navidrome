@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 var (
@@ -86,7 +87,7 @@ func (p *podcastManager) CreateFeed(ctx context.Context, url string) (*model.Pod
 	podcast := model.Podcast{
 		Url:         url,
 		Title:       feed.Title,
-		Description: feed.Description,
+		Description: str.SanitizeText(feed.Description),
 		State:       consts.PodcastStatusNew,
 	}
 
@@ -206,7 +207,7 @@ func (p *podcastManager) addPodcastEpisode(ctx context.Context, channelId string
 		PodcastId:   channelId,
 		Guid:        item.GUID,
 		Url:         url,
-		Description: item.Description,
+		Description: str.SanitizeText(item.Description),
 		Title:       item.Title,
 		State:       consts.PodcastStatusSkipped,
 		ImageUrl:    imageUrl,
