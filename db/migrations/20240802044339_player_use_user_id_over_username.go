@@ -12,8 +12,6 @@ func init() {
 }
 
 func upPlayerUseUserIdOverUsername(ctx context.Context, tx *sql.Tx) error {
-	// Additional note; we also rename ip_address to IP. For some bizarre
-	// reason, ip_address is never serialized
 	_, err := tx.ExecContext(ctx, `
 create table player_dg_tmp
 (
