@@ -83,6 +83,12 @@ var (
 	testPlaylists []*model.Playlist
 )
 
+var (
+	adminUser   = model.User{ID: "userid", UserName: "userid", Name: "admin", Email: "admin@email.com", IsAdmin: true}
+	regularUser = model.User{ID: "2222", UserName: "regular-user", Name: "Regular User", Email: "regular@example.com"}
+	testUsers   = model.Users{adminUser, regularUser}
+)
+
 func P(path string) string {
 	return filepath.FromSlash(path)
 }
@@ -92,13 +98,14 @@ func P(path string) string {
 var _ = BeforeSuite(func() {
 	conn := NewDBXBuilder(db.Db())
 	ctx := log.NewContext(context.TODO())
-	user := model.User{ID: "userid", UserName: "userid", IsAdmin: true}
-	ctx = request.WithUser(ctx, user)
+	ctx = request.WithUser(ctx, adminUser)
 
 	ur := NewUserRepository(ctx, conn)
-	err := ur.Put(&user)
-	if err != nil {
-		panic(err)
+	for i := range testUsers {
+		err := ur.Put(&testUsers[i])
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	gr := NewGenreRepository(ctx, conn)
