@@ -13,7 +13,7 @@ import (
 )
 
 var _ = Describe("PlayerRepository", func() {
-	var adminRepo model.PlayerRepository
+	var adminRepo *playerRepository
 	var database *dbxBuilder
 
 	var (
@@ -29,16 +29,11 @@ var _ = Describe("PlayerRepository", func() {
 		ctx = request.WithUser(ctx, adminUser)
 
 		database = NewDBXBuilder(db.Db())
-		adminRepo = NewPlayerRepository(ctx, database)
+		adminRepo = NewPlayerRepository(ctx, database).(*playerRepository)
 
 		for idx := range players {
 			err := adminRepo.Put(&players[idx])
 			Expect(err).To(BeNil())
-		}
-
-		_, err := database.NewQuery("PRAGMA foreign_keys = ON").Execute()
-		if err != nil {
-			panic(err)
 		}
 	})
 
@@ -50,11 +45,6 @@ var _ = Describe("PlayerRepository", func() {
 		for i := range players {
 			err = adminRepo.Delete(players[i].ID)
 			Expect(err).To(BeNil())
-		}
-
-		_, err = database.NewQuery("PRAGMA foreign_keys = OFF").Execute()
-		if err != nil {
-			panic(err)
 		}
 	})
 
@@ -97,7 +87,7 @@ var _ = Describe("PlayerRepository", func() {
 	})
 
 	DescribeTableSubtree("per context", func(admin bool, players model.Players, userPlayer model.Player, otherPlayer model.Player) {
-		var repo model.PlayerRepository
+		var repo *playerRepository
 
 		BeforeEach(func() {
 			if admin {
@@ -105,7 +95,7 @@ var _ = Describe("PlayerRepository", func() {
 			} else {
 				ctx := log.NewContext(context.TODO())
 				ctx = request.WithUser(ctx, regularUser)
-				repo = NewPlayerRepository(ctx, database)
+				repo = NewPlayerRepository(ctx, database).(*playerRepository)
 			}
 		})
 
