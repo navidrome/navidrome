@@ -31,7 +31,7 @@ func (r *playerRepository) Put(p *model.Player) error {
 	return err
 }
 
-func (r *playerRepository) baseRequest(options ...model.QueryOptions) SelectBuilder {
+func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
 		Columns("player.*").
 		Join("user ON player.user_id = user.id").
@@ -39,14 +39,14 @@ func (r *playerRepository) baseRequest(options ...model.QueryOptions) SelectBuil
 }
 
 func (r *playerRepository) Get(id string) (*model.Player, error) {
-	sel := r.baseRequest().Where(Eq{"player.id": id})
+	sel := r.selectPlayer().Where(Eq{"player.id": id})
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
 func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.Player, error) {
-	sel := r.baseRequest().Where(And{
+	sel := r.selectPlayer().Where(And{
 		Eq{"client": client},
 		Eq{"user_agent": userAgent},
 		Eq{"user_id": userId},
@@ -57,7 +57,7 @@ func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.P
 }
 
 func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
-	s := r.baseRequest(options...)
+	s := r.selectPlayer(options...)
 	return s.Where(r.addRestriction())
 }
 
