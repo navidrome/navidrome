@@ -118,7 +118,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	username, _ := request.UsernameFrom(ctx)
 	player, _ := request.PlayerFrom(ctx)
 	if !player.ScrobbleEnabled {
-		log.Debug(ctx, "External scrobbling disabled for this player", "player", player.Name, "ip", player.IPAddress, "user", username)
+		log.Debug(ctx, "External scrobbling disabled for this player", "player", player.Name, "ip", player.IP, "user", username)
 	}
 	event := &events.RefreshResource{}
 	success := 0
