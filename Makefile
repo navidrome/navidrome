@@ -80,14 +80,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
 
-buildall: buildjs build ##@Build Build the project, both frontend and backend
-.PHONY: buildall
-
-build: check_go_env buildjs ##@Build Build only backend
+build: check_go_env buildjs ##@Build Build the project
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
-debug-build: check_go_env buildjs ##@Build Build only backend (with remote debug on)
+buildall: deprecated build
+.PHONY: buildall
+
+debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
 	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: debug-build
 
@@ -174,6 +174,10 @@ check_node_env:
 
 pre-push: lintall testall
 .PHONY: pre-push
+
+deprecated:
+	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
+.PHONY: deprecated
 
 .DEFAULT_GOAL := help
 
