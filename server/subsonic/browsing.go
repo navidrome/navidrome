@@ -223,7 +223,9 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetGenres(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
+	// TODO Put back when album_count is available
+	//genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
+	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, name desc", Order: "desc"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -361,7 +363,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 		dir.Starred = artist.StarredAt
 	}
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +377,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 	a := &responses.ArtistWithAlbumsID3{}
 	a.ArtistID3 = toArtistID3(r, *artist)
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}

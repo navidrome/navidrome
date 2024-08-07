@@ -10,12 +10,13 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	id2 "github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/hasher"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -274,6 +275,20 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	return res.Count, err
 }
 
+func (r sqlRepository) putByMatch(filter Sqlizer, id string, m interface{}, colsToUpdate ...string) (string, error) {
+	if id != "" {
+		return r.put(id, m, colsToUpdate...)
+	}
+	existsQuery := r.newSelect().Columns("id").From(r.tableName).Where(filter)
+
+	var res struct{ ID string }
+	err := r.queryOne(existsQuery, &res)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return "", err
+	}
+	return r.put(res.ID, m, colsToUpdate...)
+}
+
 func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
 	values, err := toSQLArgs(m)
 	if err != nil {
@@ -284,16 +299,16 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 		updateValues := map[string]interface{}{}
 
 		// This is a map of the columns that need to be updated, if specified
-		c2upd := map[string]struct{}{}
-		for _, c := range colsToUpdate {
-			c2upd[toSnakeCase(c)] = struct{}{}
-		}
+		c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
+			return toSnakeCase(s), struct{}{}
+		})
 		for k, v := range values {
 			if _, found := c2upd[k]; len(c2upd) == 0 || found {
 				updateValues[k] = v
 			}
 		}
 
+		updateValues["id"] = id
 		delete(updateValues, "created_at")
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
@@ -306,7 +321,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 	}
 	// If it does not have an ID OR the ID was not found (when it is a new record with predefined id)
 	if id == "" {
-		id = uuid.NewString()
+		id = id2.NewRandom()
 		values["id"] = id
 	}
 	insert := Insert(r.tableName).SetMap(values)

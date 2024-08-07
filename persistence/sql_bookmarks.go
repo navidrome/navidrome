@@ -36,7 +36,7 @@ func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 	values := map[string]interface{}{
 		"comment":    comment,
 		"position":   position,
-		"updated_at": time.Now(),
+		"updated_at": timeToSQL(time.Now()),
 		"changed_by": client,
 	}
 
@@ -49,8 +49,8 @@ func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 		values["user_id"] = user.ID
 		values["item_type"] = r.tableName
 		values["item_id"] = itemID
-		values["created_at"] = time.Now()
-		values["updated_at"] = time.Now()
+		values["created_at"] = timeToSQL(time.Now())
+		values["updated_at"] = timeToSQL(time.Now())
 		ins := Insert(bookmarkTable).SetMap(values)
 		_, err = r.executeSQL(ins)
 		if err != nil {
