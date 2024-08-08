@@ -863,4 +863,131 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("Podcasts", func() {
+		BeforeEach(func() {
+			response.Podcasts = &Podcasts{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				timeFmt := "2006-01-02 15:04:00"
+				time, _ := time.Parse(timeFmt, timeFmt)
+
+				response.Podcasts.Podcasts = []PodcastChannel{
+					{
+						ID:               "1234",
+						Url:              "https://example.com/feed.rss",
+						Title:            "Sample title",
+						Description:      "Sample description",
+						CoverArt:         "pod-1234",
+						OriginalImageUrl: "https://example.com/favicon.ico",
+						Status:           consts.PodcastStatusError,
+						ErrorMessage:     "Could not download a track",
+						Episodes: []PodcastEpisode{
+							{
+								Child: Child{
+									Id:       "12345",
+									Title:    "Podcast episode title",
+									BitRate:  120,
+									Duration: 6000,
+									Suffix:   "mp3",
+									Size:     10000,
+									CoverArt: "pe-12345",
+								},
+								StreamId:    "pod-12345",
+								ChannelId:   "1234",
+								Description: "Podcast episode description",
+								PublishDate: &time,
+								Status:      consts.PodcastStatusCompleted,
+							},
+							{
+								Child: Child{
+									Id:    "12346",
+									Title: "Broken podcast episode",
+								},
+								Status: consts.PodcastStatusError,
+							},
+						},
+					},
+					{
+						ID:     "2345",
+						Url:    "https://example.com/empty.atom",
+						Status: consts.PodcastStatusNew,
+					},
+				}
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
+
+	Describe("NewestPodcasts", func() {
+		BeforeEach(func() {
+			response.NewestPodcasts = &NewestPodcasts{}
+		})
+
+		Describe("without data", func() {
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
+		Describe("with data", func() {
+			BeforeEach(func() {
+				timeFmt := "2006-01-02 15:04:00"
+				timestamp, _ := time.Parse(timeFmt, timeFmt)
+
+				response.NewestPodcasts.Episodes = []PodcastEpisode{
+					{
+						Child: Child{
+							Id:       "12345",
+							Title:    "Podcast episode title",
+							BitRate:  120,
+							Duration: 6000,
+							Suffix:   "mp3",
+							Size:     10000,
+							CoverArt: "pe-12345",
+						},
+						StreamId:    "pod-12345",
+						ChannelId:   "1234",
+						Description: "Podcast episode description",
+						PublishDate: &timestamp,
+						Status:      consts.PodcastStatusCompleted,
+					},
+					{
+						Child: Child{
+							Id:    "12346",
+							Title: "Broken podcast episode",
+						},
+						Status:       consts.PodcastStatusError,
+						ErrorMessage: "not found",
+					},
+				}
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+	})
 })

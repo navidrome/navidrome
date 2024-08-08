@@ -41,11 +41,13 @@ type Router struct {
 	scrobbler        scrobbler.PlayTracker
 	share            core.Share
 	playback         playback.PlaybackServer
+	podcastManager   core.PodcastManager
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
 	players core.Players, externalMetadata core.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
+	podcastManager core.PodcastManager,
 ) *Router {
 	r := &Router{
 		ds:               ds,
@@ -60,6 +62,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreame
 		scrobbler:        scrobbler,
 		share:            share,
 		playback:         playback,
+		podcastManager:   podcastManager,
 	}
 	r.Handler = r.routes()
 	return r
@@ -192,9 +195,20 @@ func (api *Router) routes() http.Handler {
 		h501(r, "jukeboxControl")
 	}
 
-	// Not Implemented (yet?)
-	h501(r, "getPodcasts", "getNewestPodcasts", "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel",
-		"deletePodcastEpisode", "downloadPodcastEpisode")
+	if conf.Server.Podcast.Enabled {
+		r.Group(func(r chi.Router) {
+			h(r, "createPodcastChannel", api.CreatePodcastChannel)
+			h(r, "deletePodcastChannel", api.DeletePodcastChannel)
+			h(r, "deletePodcastEpisode", api.DeletePodcastEpisode)
+			h(r, "downloadPodcastEpisode", api.DownloadPodcastEpisode)
+			h(r, "getNewestPodcasts", api.GetNewestPodcasts)
+			h(r, "getPodcasts", api.GetPodcasts)
+			h(r, "refreshPodcasts", api.RefreshPodcasts)
+		})
+	} else {
+		h501(r, "createPodcastChannel", "deletePodcastChannel", "deletePodcastEpisode", "downloadPodcastEpisode", "getNewestPodcasts", "getPodcasts", "refreshPodcasts")
+	}
+
 	h501(r, "createUser", "updateUser", "deleteUser", "changePassword")
 
 	// Deprecated/Won't implement/Out of scope endpoints

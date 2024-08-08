@@ -48,7 +48,20 @@ func (j *streamJob) Key() string {
 }
 
 func (ms *mediaStreamer) NewStream(ctx context.Context, id string, reqFormat string, reqBitRate int, reqOffset int) (*Stream, error) {
-	mf, err := ms.ds.MediaFile(ctx).Get(id)
+	var mf *model.MediaFile
+	var err error
+
+	if model.IsPodcastEpisodeId(id) {
+		var pe *model.PodcastEpisode
+		pe, err = ms.ds.PodcastEpisode(ctx).Get(model.ExtractExternalId(id))
+
+		if err == nil {
+			mf = pe.ToMediaFile()
+		}
+	} else {
+		mf, err = ms.ds.MediaFile(ctx).Get(id)
+	}
+
 	if err != nil {
 		return nil, err
 	}

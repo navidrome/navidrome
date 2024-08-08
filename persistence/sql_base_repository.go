@@ -44,6 +44,11 @@ func loggedUser(ctx context.Context) *model.User {
 	}
 }
 
+func (r sqlRepository) isAdmin() bool {
+	user := loggedUser(r.ctx)
+	return user.IsAdmin
+}
+
 func (r sqlRepository) getTableName() string {
 	return r.tableName
 }

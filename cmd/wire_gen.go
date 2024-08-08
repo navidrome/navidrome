@@ -64,7 +64,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer)
+	podcastManager := core.NewPodcastManager(dataStore)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer, podcastManager)
 	return router
 }
 
@@ -118,6 +119,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 	dataStore := persistence.New(dbDB)
 	playbackServer := playback.GetInstance(dataStore)
 	return playbackServer
+}
+
+func GetPodcastManager() core.PodcastManager {
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
+	podcastManager := core.NewPodcastManager(dataStore)
+	return podcastManager
 }
 
 // wire_injectors.go:

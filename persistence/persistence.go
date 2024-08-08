@@ -78,6 +78,14 @@ func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepos
 	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Podcast(ctx context.Context) model.PodcastRepository {
+	return NewPodcastRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) PodcastEpisode(ctx context.Context) model.PodcastEpisodeRepository {
+	return NewPodcastEpisodeRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:
@@ -100,6 +108,10 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Radio(ctx).(model.ResourceRepository)
 	case model.Share:
 		return s.Share(ctx).(model.ResourceRepository)
+	case model.Podcast:
+		return s.Podcast(ctx).(model.ResourceRepository)
+	case model.PodcastEpisode:
+		return s.PodcastEpisode(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil

@@ -44,13 +44,23 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	if err != nil {
 		return err
 	}
-	switch entity.(type) {
+	switch item := entity.(type) {
 	case *model.Artist:
 		repo = api.ds.Artist(ctx)
 		resource = "artist"
 	case *model.Album:
 		repo = api.ds.Album(ctx)
 		resource = "album"
+	// podcast/podcast episode have pd-/pe- prefix, respectively
+	// to get the resource, strip out this first
+	case *model.Podcast:
+		repo = api.ds.Podcast(ctx)
+		id = item.ID
+		resource = "podcast"
+	case *model.PodcastEpisode:
+		repo = api.ds.PodcastEpisode(ctx)
+		id = item.ID
+		resource = "podcast_episode"
 	default:
 		repo = api.ds.MediaFile(ctx)
 		resource = "song"
@@ -114,6 +124,26 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 	event := &events.RefreshResource{}
 	err := api.ds.WithTx(func(tx model.DataStore) error {
 		for _, id := range ids {
+			if model.IsPodcastId(id) {
+				id := model.ExtractExternalId(id)
+				err := tx.Podcast(ctx).SetStar(star, id)
+				if err != nil {
+					return err
+				}
+				event = event.With("podcast", id)
+				continue
+			}
+
+			if model.IsPodcastEpisodeId(id) {
+				id := model.ExtractExternalId(id)
+				err := tx.PodcastEpisode(ctx).SetStar(star, id)
+				if err != nil {
+					return err
+				}
+				event = event.With("podcast_episode", id)
+				continue
+			}
+
 			exist, err := tx.Album(ctx).Exists(id)
 			if err != nil {
 				return err
@@ -199,23 +229,40 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 }
 
 func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) error {
-	mf, err := api.ds.MediaFile(ctx).Get(trackId)
-	if err != nil {
-		return err
-	}
-	if mf == nil {
-		return fmt.Errorf(`ID "%s" not found`, trackId)
-	}
-
 	player, _ := request.PlayerFrom(ctx)
 	username, _ := request.UsernameFrom(ctx)
+
 	client, _ := request.ClientFrom(ctx)
 	clientId, ok := request.ClientUniqueIdFrom(ctx)
 	if !ok {
 		clientId = player.ID
 	}
 
-	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
-	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
-	return err
+	if model.IsPodcastEpisodeId(trackId) {
+		trackId = model.ExtractExternalId(trackId)
+		pd, err := api.ds.PodcastEpisode(ctx).Get(trackId)
+
+		if err != nil {
+			return err
+		}
+		if pd == nil {
+			return fmt.Errorf(`ID "%s" not found`, trackId)
+		}
+
+		log.Info(ctx, "Now Playing", "title", pd.Title, "user", username, "player", player.Name)
+
+		return api.scrobbler.NowPlayingPodcast(ctx, clientId, client, trackId)
+	} else {
+		mf, err := api.ds.MediaFile(ctx).Get(trackId)
+		if err != nil {
+			return err
+		}
+		if mf == nil {
+			return fmt.Errorf(`ID "%s" not found`, trackId)
+		}
+
+		log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
+
+		return api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
+	}
 }

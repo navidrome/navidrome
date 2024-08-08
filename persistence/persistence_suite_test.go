@@ -4,14 +4,17 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -75,6 +78,24 @@ var (
 	radioWithoutHomePage = model.Radio{ID: "1235", StreamUrl: "https://example.com:8000/1/stream.mp3", HomePageUrl: "", Name: "No Homepage"}
 	radioWithHomePage    = model.Radio{ID: "5010", StreamUrl: "https://example.com/stream.mp3", Name: "Example Radio", HomePageUrl: "https://example.com"}
 	testRadios           = model.Radios{radioWithoutHomePage, radioWithHomePage}
+)
+
+var (
+	simplePodcast  = model.Podcast{ID: "1234", Url: "https://example.com/podcast.rss"}
+	fullPodcast    = model.Podcast{ID: "2345", Url: "https://example.com/podcast.atom", Title: "A sample podcast", Description: "A sample description", ImageUrl: "https://example.com/podcast.png"}
+	erroredPodcast = model.Podcast{ID: "3456", Url: "https://example.com/broken", Error: "Could not fetch URL"}
+	testPodcasts   = model.Podcasts{
+		simplePodcast, fullPodcast, erroredPodcast,
+	}
+)
+
+var (
+	basicEpisode        = model.PodcastEpisode{ID: "1", PodcastId: "1234", Guid: "1", Url: "https://example.com/episode.mp3", PublishDate: gg.P(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)), State: consts.PodcastStatusSkipped}
+	completeEpisode     = model.PodcastEpisode{ID: "2", PodcastId: "2345", Guid: "2", Url: "https://example.com/episode.ogg", Title: "Sample episode", Description: "Sample Description", ImageUrl: "https://example.com/episode.jpeg", PublishDate: gg.P(time.Date(2024, time.Month(5), 30, 0, 0, 0, 0, time.UTC)), Duration: 30.5, Suffix: "ogg", Size: 41256, BitRate: 320, State: consts.PodcastStatusCompleted}
+	brokenEpisode       = model.PodcastEpisode{ID: "3", PodcastId: "1234", Guid: "3", Url: "https://example.com/broken.ogg", State: consts.PodcastStatusError, Error: "404 not found"}
+	testPodcastEpisodes = model.PodcastEpisodes{
+		basicEpisode, completeEpisode, brokenEpisode,
+	}
 )
 
 var (
@@ -148,6 +169,24 @@ var _ = BeforeSuite(func() {
 	for i := range testRadios {
 		r := testRadios[i]
 		err := rar.Put(&r)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	pod := NewPodcastRepository(ctx, conn)
+	for i := range testPodcasts {
+		p := testPodcasts[i]
+		err := pod.Put(&p)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	pde := NewPodcastEpisodeRepository(ctx, conn)
+	for i := range testPodcastEpisodes {
+		p := testPodcastEpisodes[i]
+		err := pde.Put(&p)
 		if err != nil {
 			panic(err)
 		}

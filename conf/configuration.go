@@ -84,6 +84,7 @@ type configOptions struct {
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
 	Jukebox                      jukeboxOptions
+	Podcast                      podcastOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -149,6 +150,13 @@ type jukeboxOptions struct {
 	AdminOnly bool
 }
 
+type podcastOptions struct {
+	AdminOnly       bool
+	Enabled         bool
+	Path            string
+	RefreshSchedule string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -190,6 +198,15 @@ func Load() {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 
+	if Server.Podcast.Path == "" {
+		Server.Podcast.Path = filepath.Join(Server.DataFolder, "podcasts")
+	}
+	err = os.MkdirAll(Server.Podcast.Path, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating podcast path:", "path", Server.Podcast.Path, err)
+		os.Exit(1)
+	}
+
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
@@ -197,6 +214,12 @@ func Load() {
 
 	if err := validateScanSchedule(); err != nil {
 		os.Exit(1)
+	}
+
+	if Server.Podcast.Enabled {
+		if err := validatePodcastSchedule(); err != nil {
+			os.Exit(1)
+		}
 	}
 
 	if Server.BaseURL != "" {
@@ -271,6 +294,23 @@ func validateScanSchedule() error {
 	return err
 }
 
+func validatePodcastSchedule() error {
+	if Server.Podcast.RefreshSchedule == "0" || Server.Podcast.RefreshSchedule == "" {
+		Server.Podcast.RefreshSchedule = ""
+		return nil
+	}
+	if _, err := time.ParseDuration(Server.Podcast.RefreshSchedule); err == nil {
+		Server.Podcast.RefreshSchedule = "@every " + Server.Podcast.RefreshSchedule
+	}
+	c := cron.New()
+	id, err := c.AddFunc(Server.Podcast.RefreshSchedule, func() {})
+	if err != nil {
+		log.Error("Invalid Podcast RefreshSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.Podcast.RefreshSchedule, err)
+	}
+	c.Remove(id)
+	return nil
+}
+
 // AddHook is used to register initialization code that should run as soon as the config is loaded
 func AddHook(hook func()) {
 	hooks = append(hooks, hook)
@@ -342,6 +382,10 @@ func init() {
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
 	viper.SetDefault("jukebox.adminonly", true)
+
+	viper.SetDefault("podcast.adminonly", true)
+	viper.SetDefault("podcast.enabled", true)
+	viper.SetDefault("podcast.refreshschedule", "")
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")

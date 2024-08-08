@@ -47,6 +47,18 @@ var _ = Describe("ArtworkID", func() {
 			Expect(id.Kind).To(Equal(model.KindPlaylistArtwork))
 			Expect(id.ID).To(Equal("18690de0-151b-4d86-81cb-f418a907315a"))
 		})
+		It("parses podcast artwork ids", func() {
+			id, err := model.ParseArtworkID("pd-c6471791-d346-4dcc-9c2f-117673dffa26")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(id.Kind).To(Equal(model.KindPodcastArtwork))
+			Expect(id.ID).To(Equal("c6471791-d346-4dcc-9c2f-117673dffa26"))
+		})
+		It("parses podcast episode artwork ids", func() {
+			id, err := model.ParseArtworkID("pe-c6471791-d346-4dcc-9c2f-117673dffa26")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(id.Kind).To(Equal(model.KindPodcastEpisodeArtwork))
+			Expect(id.ID).To(Equal("c6471791-d346-4dcc-9c2f-117673dffa26"))
+		})
 		It("fails to parse malformed ids", func() {
 			_, err := model.ParseArtworkID("a6f8d2b1")
 			Expect(err).To(MatchError("invalid artwork id"))

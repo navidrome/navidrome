@@ -36,6 +36,8 @@ type DataStore interface {
 	User(ctx context.Context) UserRepository
 	UserProps(ctx context.Context) UserPropsRepository
 	ScrobbleBuffer(ctx context.Context) ScrobbleBufferRepository
+	Podcast(ctx context.Context) PodcastRepository
+	PodcastEpisode(ctx context.Context) PodcastEpisodeRepository
 
 	Resource(ctx context.Context, model interface{}) ResourceRepository
 

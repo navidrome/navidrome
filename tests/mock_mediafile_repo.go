@@ -5,20 +5,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
+	"github.com/navidrome/navidrome/utils/gg"
 
 	"github.com/navidrome/navidrome/model"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFileRepo {
 	return &MockMediaFileRepo{
+		all:  make(model.MediaFiles, 0),
 		data: make(map[string]*model.MediaFile),
 	}
 }
 
 type MockMediaFileRepo struct {
 	model.MediaFileRepository
+	all  model.MediaFiles
 	data map[string]*model.MediaFile
 	err  bool
 }
@@ -28,10 +29,35 @@ func (m *MockMediaFileRepo) SetError(err bool) {
 }
 
 func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
+	m.all = mfs
 	m.data = make(map[string]*model.MediaFile)
 	for i, mf := range mfs {
 		m.data[mf.ID] = &mfs[i]
 	}
+}
+
+func (m *MockMediaFileRepo) AddBookmark(id, comment string, position int64) error {
+	if m.err {
+		return errors.New("Error")
+	}
+	item, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+	item.BookmarkPosition = position
+	return nil
+}
+
+func (m *MockMediaFileRepo) DeleteBookmark(id string) error {
+	if m.err {
+		return errors.New("Error")
+	}
+	item, ok := m.data[id]
+	if !ok {
+		return model.ErrNotFound
+	}
+	item.BookmarkPosition = 0
+	return nil
 }
 
 func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
@@ -56,10 +82,7 @@ func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, err
 	if m.err {
 		return nil, errors.New("error")
 	}
-	values := maps.Values(m.data)
-	return slice.Map(values, func(p *model.MediaFile) model.MediaFile {
-		return *p
-	}), nil
+	return m.all, nil
 }
 
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
@@ -68,6 +91,8 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	}
 	if mf.ID == "" {
 		mf.ID = uuid.NewString()
+	} else {
+		m.all = append(m.all, *mf)
 	}
 	m.data[mf.ID] = mf
 	return nil
@@ -99,6 +124,35 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	}
 
 	return res, nil
+}
+
+func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+	if m.err {
+		return errors.New("error")
+	}
+
+	for _, item := range itemIDs {
+		if d, ok := m.data[item]; ok {
+			d.Starred = starred
+			d.StarredAt = gg.P(time.Now())
+		} else {
+			return model.ErrNotFound
+		}
+	}
+
+	return nil
+}
+
+func (m *MockMediaFileRepo) SetRating(rating int, itemID string) error {
+	if m.err {
+		return errors.New("error")
+	}
+
+	if d, ok := m.data[itemID]; ok {
+		d.Rating = rating
+		return nil
+	}
+	return model.ErrNotFound
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

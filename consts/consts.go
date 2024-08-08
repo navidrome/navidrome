@@ -127,3 +127,14 @@ var (
 
 	ServerStart = time.Now()
 )
+
+type PodcastStatus string
+
+const (
+	PodcastStatusNew         PodcastStatus = "new"
+	PodcastStatusDownloading PodcastStatus = "downloading"
+	PodcastStatusCompleted   PodcastStatus = "completed"
+	PodcastStatusError       PodcastStatus = "error"
+	PodcastStatusDeleted     PodcastStatus = "deleted"
+	PodcastStatusSkipped     PodcastStatus = "skipped"
+)

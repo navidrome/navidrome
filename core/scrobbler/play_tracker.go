@@ -30,6 +30,7 @@ type Submission struct {
 
 type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
+	NowPlayingPodcast(ctx context.Context, playerId string, playerName string, trackId string) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
 }
@@ -88,6 +89,29 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	return nil
 }
 
+func (p *playTracker) NowPlayingPodcast(ctx context.Context, playerId string, playerName string, trackId string) error {
+	pd, err := p.ds.PodcastEpisode(ctx).Get(trackId)
+	if err != nil {
+		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
+		return err
+	}
+
+	mf := pd.ToMediaFile()
+
+	user, _ := request.UserFrom(ctx)
+	info := NowPlayingInfo{
+		MediaFile:  *mf,
+		Start:      time.Now(),
+		Username:   user.UserName,
+		PlayerId:   playerId,
+		PlayerName: playerName,
+	}
+
+	ttl := time.Duration(int(mf.Duration)+5) * time.Second
+	_ = p.playMap.AddWithTTL(playerId, info, ttl)
+	return nil
+}
+
 func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
@@ -124,6 +148,22 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	success := 0
 
 	for _, s := range submissions {
+		if model.IsPodcastEpisodeId(s.TrackID) {
+			pe, err := p.ds.PodcastEpisode(ctx).Get(model.ExtractExternalId(s.TrackID))
+
+			if err != nil {
+				log.Error(ctx, "Cannot find podcast for scrobbling", "id", s.TrackID, "user", username, err)
+				continue
+			}
+
+			err = p.incPodcastPlay(ctx, pe, s.Timestamp)
+			if err != nil {
+				log.Error(ctx, "Error updating podcast play counts", "id", pe.ID, "track", "user", username, err)
+			}
+
+			continue
+		}
+
 		mf, err := p.ds.MediaFile(ctx).Get(s.TrackID)
 		if err != nil {
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
@@ -159,6 +199,17 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 			return err
 		}
 		err = tx.Artist(ctx).IncPlayCount(track.ArtistID, timestamp)
+		return err
+	})
+}
+
+func (p *playTracker) incPodcastPlay(ctx context.Context, episode *model.PodcastEpisode, timestamp time.Time) error {
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		err := tx.PodcastEpisode(ctx).IncPlayCount(episode.ID, timestamp)
+		if err != nil {
+			return err
+		}
+		err = tx.Podcast(ctx).IncPlayCount(episode.PodcastId, timestamp)
 		return err
 	})
 }

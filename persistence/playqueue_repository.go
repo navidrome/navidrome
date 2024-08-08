@@ -107,9 +107,14 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	}
 
 	// Collect all ids
-	ids := make([]string, len(tracks))
-	for i, t := range tracks {
-		ids[i] = t.ID
+	ids := []string{}
+	epIds := []string{}
+	for _, t := range tracks {
+		if model.IsPodcastEpisodeId(t.ID) {
+			epIds = append(epIds, model.ExtractExternalId(t.ID))
+		} else {
+			ids = append(ids, t.ID)
+		}
 	}
 
 	// Break the list in chunks, up to 50 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
@@ -127,6 +132,21 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 		}
 		for _, t := range tracks {
 			trackMap[t.ID] = t
+		}
+	}
+
+	epChunks := slice.BreakUp(epIds, 50)
+	epRepo := NewPodcastEpisodeRepository(r.ctx, r.db)
+	for i := range epChunks {
+		idsFilter := Eq{"podcast_episode.id": epChunks[i]}
+		episodes, err := epRepo.GetAll(model.QueryOptions{Filters: idsFilter})
+		if err != nil {
+			u := loggedUser(r.ctx)
+			log.Error(r.ctx, "Could not load playqueue/bookmark's tracks", "user", u.UserName, err)
+		}
+		for _, e := range episodes {
+			mf := e.ToMediaFile()
+			trackMap[mf.ID] = *mf
 		}
 	}
 

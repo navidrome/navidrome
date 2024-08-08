@@ -368,3 +368,86 @@ func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList) *responses
 	}
 	return res
 }
+
+func buildPodcast(ctx context.Context, withEpisodes bool, pd *model.Podcast) responses.PodcastChannel {
+	channel := responses.PodcastChannel{
+		ID:               pd.ExternalId(),
+		Url:              pd.Url,
+		Title:            pd.Title,
+		Description:      pd.Description,
+		CoverArt:         pd.ExternalId(),
+		OriginalImageUrl: pd.ImageUrl,
+		Status:           pd.State,
+		ErrorMessage:     pd.Error,
+	}
+
+	if withEpisodes {
+		for i := range pd.PodcastEpisodes {
+			ep := buildPodcastEpisode(ctx, &pd.PodcastEpisodes[i])
+			channel.Episodes = append(channel.Episodes, ep)
+		}
+	}
+	return channel
+}
+
+func childFromPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) responses.Child {
+	child := responses.Child{}
+	// Some clients will use the podcast ID over stream ID to scrobble, star
+	// or bookmark. We will expose the ID as `pe-` to remove ambiguity and
+	// remove it from Subsonic layer before processing
+	child.Id = ep.ExternalId()
+	child.Size = ep.Size
+	child.Suffix = ep.Suffix
+	child.Title = ep.Title
+	child.Parent = "pd-" + ep.PodcastId
+	child.ContentType = mime.TypeByExtension("." + ep.Suffix)
+	child.CoverArt = ep.CoverArtID().String()
+	child.Duration = int32(ep.Duration)
+	child.Created = &ep.CreatedAt
+	child.Type = "podcast"
+
+	if ep.Rating != 0 {
+		child.UserRating = int32(ep.Rating)
+	}
+
+	if ep.Starred {
+		child.Starred = ep.StarredAt
+	}
+
+	if ep.PlayCount > 0 {
+		child.PlayCount = ep.PlayCount
+		child.Played = ep.PlayDate
+	}
+
+	if ep.State == consts.PodcastStatusCompleted {
+		child.BitRate = int32(ep.BitRate)
+
+		player, ok := request.PlayerFrom(ctx)
+		if ok && player.ReportRealPath {
+			child.Path = ep.AbsolutePath()
+		} else {
+			child.Path = ep.BasePath()
+		}
+	}
+
+	if ep.PublishDate != nil {
+		child.Year = int32(ep.PublishDate.Year())
+	}
+
+	child.BookmarkPosition = ep.BookmarkPosition
+	return child
+}
+
+func buildPodcastEpisode(ctx context.Context, ep *model.PodcastEpisode) responses.PodcastEpisode {
+	episode := responses.PodcastEpisode{
+		Child: childFromPodcastEpisode(ctx, ep),
+	}
+
+	episode.ChannelId = "pd-" + ep.PodcastId
+	episode.Description = ep.Description
+	episode.PublishDate = ep.PublishDate
+	episode.StreamId = episode.Id
+	episode.ErrorMessage = ep.Error
+	episode.Status = ep.State
+	return episode
+}
