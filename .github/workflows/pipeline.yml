@@ -131,6 +131,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build MSI
+        run: |
+          apt-get install -y wixl jq
+
+          NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
+
+          mkdir $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
+
+          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
+
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
+
+          cd $GITHUB_WORKSPACE/wix/386
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --output ../navidrome_386.msi
+
+          cd $GITHUB_WORKSPACE/wix/amd64
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --output ../navidrome_amd64.msi
+
+          cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386
+          cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1
+
       - uses: actions/upload-artifact@v4
         with:
           name: binaries
@@ -205,3 +229,4 @@ jobs:
           platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
