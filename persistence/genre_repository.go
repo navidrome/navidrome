@@ -23,7 +23,7 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 	r.db = db
 	r.tableName = "genre"
 	r.filterMappings = map[string]filterFunc{
-		"name": containsFilter,
+		"name": containsFilter("name"),
 	}
 	return r
 }

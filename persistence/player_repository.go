@@ -21,7 +21,7 @@ func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerReposi
 	r.db = db
 	r.tableName = "player"
 	r.filterMappings = map[string]filterFunc{
-		"name": containsFilter,
+		"name": containsFilter("player.name"),
 	}
 	return r
 }
