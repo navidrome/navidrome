@@ -1,4 +1,3 @@
-
 {
     "languageName": "Magyar",
     "resources": {
@@ -19,7 +18,6 @@
                 "size": "Fájlméret",
                 "updatedAt": "Frissítve",
                 "bitRate": "Bitráta",
-                "channels": "Csatornák",
                 "discSubtitle": "Lemez felirat",
                 "starred": "Kedvenc",
                 "comment": "Megjegyzés",
@@ -27,6 +25,7 @@
                 "quality": "Minőség",
                 "bpm": "BPM",
                 "playDate": "Utoljára lejátszva",
+                "channels": "Csatornák",
                 "createdAt": "Hozzáadva"
             },
             "actions": {
@@ -47,29 +46,29 @@
                 "duration": "Hossz",
                 "songCount": "Számok",
                 "playCount": "Lejátszva",
-                "size": "Méret",
                 "name": "Név",
                 "genre": "Stílus",
                 "compilation": "Összeállítva",
                 "year": "Év",
-                "originalDate": "Eredeti",
-                "releaseDate": "Megjelent",
-                "releases": "Kiadó |||| Kiadók",
-                "released": "Kiadta",
                 "updatedAt": "Frissítve",
                 "comment": "Megjegyzés",
                 "rating": "Értékelés",
-                "createdAt": "Hozzáadva"
+                "createdAt": "Hozzáadva",
+                "size": "Méret",
+                "originalDate": "Eredeti",
+                "releaseDate": "Megjelent",
+                "releases": "Kiadó |||| Kiadók",
+                "released": "Kiadta"
             },
             "actions": {
                 "playAll": "Lejátszás",
                 "playNext": "Műsorlistára tűz",
                 "addToQueue": "Műsorlistához ad",
-                "share": "Megosztás",
                 "shuffle": "Véletlenszerű",
                 "addToPlaylist": "Lejátszási listához ad",
                 "download": "Letöltés",
-                "info": "Infó"
+                "info": "Infó",
+                "share": "Megosztás"
             },
             "lists": {
                 "all": "Mind",
@@ -87,10 +86,10 @@
                 "name": "Név",
                 "albumCount": "Albumok száma",
                 "songCount": "Számok száma",
-                "size": "Méret",
                 "playCount": "Lejátszva",
                 "rating": "Értékelés",
-                "genre": "Stílus"
+                "genre": "Stílus",
+                "size": "Méret"
             }
         },
         "user": {
@@ -188,7 +187,6 @@
                 "username": "Megosztotta",
                 "url": "URL",
                 "description": "Leírás",
-                "downloadable": "Engedélyezed a Letöltéseket?",
                 "contents": "Tartalom",
                 "expiresAt": "Lejár",
                 "lastVisitedAt": "Utoljára látogatva",
@@ -196,11 +194,8 @@
                 "format": "Formátum",
                 "maxBitRate": "Max. Bitráta",
                 "updatedAt": "Frissítve",
-                "createdAt": "Létrehozva"
-            },
-            "notifications": {
-            },
-            "actions": {
+                "createdAt": "Létrehozva",
+                "downloadable": "Engedélyezed a Letöltéseket?"
             }
         }
     },
@@ -238,7 +233,6 @@
             "add": "Hozzáadás",
             "back": "Vissza",
             "bulk_actions": "1 kiválasztott elem |||| %{smart_count} kiválasztott elem",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "Mégse",
             "clear_input_value": "Üres érték",
             "clone": "Klón",
@@ -262,8 +256,9 @@
             "close_menu": "Menü bezárása",
             "unselect": "Törölje a  kijelölését",
             "skip": "Ugrás",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "Megosztás",
-            "download":  "Letöltés"
+            "download": "Letöltés"
         },
         "boolean": {
             "true": "Igen",
@@ -362,23 +357,23 @@
         "lastfmLinkFailure": "Last.fm nem lehetett összekapcsolni",
         "lastfmUnlinkSuccess": "Last.fm leválasztva és a statisztika kikapcsolva",
         "lastfmUnlinkFailure": "Last.fm nem lehetett leválasztani",
-        "listenBrainzLinkSuccess": "ListenBrainz sikeresen összekapcsolva és a statisztika engedélyezve a felhasználónak: %{user}",
-        "listenBrainzLinkFailure": "ListenBrainz nem lehetett összekapcsolni: %{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz leválasztva és a statisztika kikapcsolva",
-        "listenBrainzUnlinkFailure": "ListenBrainz nem lehetett leválasztani",
         "openIn": {
             "lastfm": "Megnyitás Last.fm-ben",
             "musicbrainz": "Megnyitás MusicBrainz-ben"
         },
         "lastfmLink": "Bővebben...",
+        "listenBrainzLinkSuccess": "ListenBrainz sikeresen összekapcsolva és a statisztika engedélyezve a felhasználónak: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz nem lehetett összekapcsolni: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz leválasztva és a statisztika kikapcsolva",
+        "listenBrainzUnlinkFailure": "ListenBrainz nem lehetett leválasztani",
+        "downloadOriginalFormat": "Letöltés eredeti formátumban",
         "shareOriginalFormat": "Megosztás eredeti formátumban",
         "shareDialogTitle": "Megosztás %{resource} '%{name}'",
         "shareBatchDialogTitle": "Megosztás 1 %{resource} |||| Megosztás %{smart_count} %{resource}",
-        "shareCopyToClipboard": "Másolás vágólapra: Ctrl+C, Enter",
         "shareSuccess": "Hivatkozás másolva a vágólapra: %{url}",
         "shareFailure": "Hiba történt a hivatkozás %{url} vágólapra másolása közben",
         "downloadDialogTitle": "Letöltés %{resource} '%{name}' (%{size})",
-        "downloadOriginalFormat": "Letöltés eredeti formátumban"
+        "shareCopyToClipboard": "Másolás vágólapra: Ctrl+C, Enter"
     },
     "menu": {
         "library": "Könyvtár",
@@ -404,9 +399,9 @@
             }
         },
         "albumList": "Albumok",
+        "about": "Rólunk",
         "playlists": "Lejátszási listák",
-        "sharedPlaylists": "Megosztott lejátszási listák ",
-        "about": "Rólunk"
+        "sharedPlaylists": "Megosztott lejátszási listák "
     },
     "player": {
         "playListsText": "Műsorlista",
@@ -432,7 +427,6 @@
             "singleLoop": "Ismétlés egyszer",
             "shufflePlay": "Véletlenszerű"
         }
-
     },
     "about": {
         "links": {
@@ -457,10 +451,10 @@
             "toggle_play": "Lejátszás / Szünet",
             "prev_song": "Előző Szám",
             "next_song": "Következő Szám",
-            "current_song": "Menj az aktuális számhoz",
             "vol_up": "Hangerő Fel",
             "vol_down": "Hangerő Le",
-            "toggle_love": "Ad hozzá ezt a sávot a kedvencekhez"
+            "toggle_love": "Ad hozzá ezt a sávot a kedvencekhez",
+            "current_song": "Menj az aktuális számhoz"
         }
     }
 }
