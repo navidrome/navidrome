@@ -177,7 +177,11 @@ func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
 }
 
 func (r *mediaFileRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
+	return r.DeleteMany(id)
+}
+
+func (r *mediaFileRepository) DeleteMany(ids ...string) error {
+	return r.delete(Eq{"id": ids})
 }
 
 // DeleteByPath delete from the DB all mediafiles that are direct children of path

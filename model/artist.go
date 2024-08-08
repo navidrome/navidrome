@@ -54,5 +54,6 @@ type ArtistRepository interface {
 	GetAll(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
 	GetIndex() (ArtistIndexes, error)
+	DeleteMany(ids ...string) error
 	AnnotatedRepository
 }
