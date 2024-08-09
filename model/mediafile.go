@@ -73,6 +73,9 @@ type MediaFile struct {
 	RgAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+	ExternalLyrics       string  `structs:"external_lyrics" json:"externalLyrics,omitempty"`
+
+	ExternalLyricsUpdatedAt *time.Time `structs:"external_lyrics_updated_at" json:"externalLyricsUpdatedAt"`
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
@@ -98,6 +101,15 @@ func (mf MediaFile) AlbumCoverArtID() ArtworkID {
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {
 	lyrics := LyricList{}
 	err := json.Unmarshal([]byte(mf.Lyrics), &lyrics)
+	if err != nil {
+		return nil, err
+	}
+	return lyrics, nil
+}
+
+func (mf MediaFile) StructuredExternalLyrics() (LyricList, error) {
+	lyrics := LyricList{}
+	err := json.Unmarshal([]byte(mf.ExternalLyrics), &lyrics)
 	if err != nil {
 		return nil, err
 	}
