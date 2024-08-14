@@ -115,10 +115,11 @@ type scannerOptions struct {
 }
 
 type lastfmOptions struct {
-	Enabled  bool
-	ApiKey   string
-	Secret   string
-	Language string
+	Enabled    bool
+	ApiKey     string
+	Secret     string
+	Language   string
+	ProxyStars bool
 }
 
 type spotifyOptions struct {
@@ -127,8 +128,9 @@ type spotifyOptions struct {
 }
 
 type listenBrainzOptions struct {
-	Enabled bool
-	BaseURL string
+	Enabled    bool
+	BaseURL    string
+	ProxyStars bool
 }
 
 type secureOptions struct {
@@ -352,10 +354,13 @@ func init() {
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.proxystars", false)
+
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+	viper.SetDefault("listenbrainz.proxystars", false)
 
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
 

@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -19,8 +17,9 @@ func CreateMockMediaFileRepo() *MockMediaFileRepo {
 
 type MockMediaFileRepo struct {
 	model.MediaFileRepository
-	data map[string]*model.MediaFile
-	err  bool
+	data        map[string]*model.MediaFile
+	err         bool
+	lastOptions []model.QueryOptions
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -32,6 +31,24 @@ func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 	for i, mf := range mfs {
 		m.data[mf.ID] = &mfs[i]
 	}
+}
+
+// WARNING: This does not actually use any of the filters
+// Use it in mocks with caution
+func (m *MockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	m.lastOptions = options
+
+	if m.err {
+		return nil, errors.New("Error!")
+	}
+
+	files := model.MediaFiles{}
+
+	for _, mf := range m.data {
+		files = append(files, *mf)
+	}
+
+	return files, nil
 }
 
 func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
@@ -50,16 +67,6 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 		return d, nil
 	}
 	return nil, model.ErrNotFound
-}
-
-func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
-	if m.err {
-		return nil, errors.New("error")
-	}
-	values := maps.Values(m.data)
-	return slice.Map(values, func(p *model.MediaFile) model.MediaFile {
-		return *p
-	}), nil
 }
 
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {

@@ -182,9 +182,34 @@ var _ = Describe("PlayTracker", func() {
 			Expect(album.PlayCount).To(Equal(int64(1)))
 			Expect(artist.PlayCount).To(Equal(int64(1)))
 		})
-
 	})
 
+	Describe("ProxyStar", func() {
+		// Caution: this uses mocked GetAll which ignores filter.
+		It("Expects to star", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+
+			err := tracker.ProxyStar(ctx, true, "123")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.StarCalled).To(BeTrue())
+			Expect(fake.IsStarred).To(BeTrue())
+			Expect(fake.UserID).To(Equal("u-1"))
+			Expect(fake.StarredTrack.ID).To(Equal("123"))
+		})
+
+		It("Expects to unstar", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
+
+			err := tracker.ProxyStar(ctx, false, "123")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.StarCalled).To(BeTrue())
+			Expect(fake.IsStarred).To(BeFalse())
+			Expect(fake.UserID).To(Equal("u-1"))
+			Expect(fake.StarredTrack.ID).To(Equal("123"))
+		})
+	})
 })
 
 type fakeScrobbler struct {
@@ -195,6 +220,9 @@ type fakeScrobbler struct {
 	Track            *model.MediaFile
 	LastScrobble     Scrobble
 	Error            error
+	StarCalled       bool
+	StarredTrack     *model.MediaFile
+	IsStarred        bool
 }
 
 func (f *fakeScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
@@ -218,5 +246,24 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	}
 	f.UserID = userId
 	f.LastScrobble = s
+	return nil
+}
+
+func (f *fakeScrobbler) CanProxyStars(ctx context.Context, userId string) bool {
+	return f.Error == nil && f.Authorized
+}
+
+func (f *fakeScrobbler) CanStar(track *model.MediaFile) bool {
+	return true
+}
+
+func (f *fakeScrobbler) Star(ctx context.Context, userId string, star bool, track *model.MediaFile) error {
+	f.StarCalled = true
+	if f.Error != nil {
+		return f.Error
+	}
+	f.UserID = userId
+	f.StarredTrack = track
+	f.IsStarred = star
 	return nil
 }

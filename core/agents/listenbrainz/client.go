@@ -48,6 +48,11 @@ type listenBrainzRequest struct {
 	Body   listenBrainzRequestBody
 }
 
+type listenBrainzFeedbackBody struct {
+	RecordingMBID string `json:"recording_mbid"`
+	Score         int    `json:"score"`
+}
+
 type listenBrainzRequestBody struct {
 	ListenType listenType   `json:"listen_type,omitempty"`
 	Payload    []listenInfo `json:"payload,omitempty"`
@@ -86,7 +91,7 @@ func (c *client) validateToken(ctx context.Context, apiKey string) (*listenBrain
 	r := &listenBrainzRequest{
 		ApiKey: apiKey,
 	}
-	response, err := c.makeRequest(ctx, http.MethodGet, "validate-token", r)
+	response, err := c.makeRequest(ctx, http.MethodGet, "validate-token", r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +107,7 @@ func (c *client) updateNowPlaying(ctx context.Context, apiKey string, li listenI
 		},
 	}
 
-	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
+	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r, nil)
 	if err != nil {
 		return err
 	}
@@ -120,13 +125,42 @@ func (c *client) scrobble(ctx context.Context, apiKey string, li listenInfo) err
 			Payload:    []listenInfo{li},
 		},
 	}
-	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r)
+	resp, err := c.makeRequest(ctx, http.MethodPost, "submit-listens", r, nil)
 	if err != nil {
 		return err
 	}
 	if resp.Status != "ok" {
 		log.Warn(ctx, "ListenBrainz: Scrobble was not accepted", "status", resp.Status)
 	}
+	return nil
+}
+
+func (c *client) Star(ctx context.Context, apiKey string, star bool, id string) error {
+	r := &listenBrainzRequest{
+		ApiKey: apiKey,
+	}
+
+	var score int
+
+	if star {
+		score = 1
+	} else {
+		score = 0
+	}
+
+	resp, err := c.makeRequest(ctx, http.MethodPost, "feedback/recording-feedback", r, &listenBrainzFeedbackBody{
+		RecordingMBID: id,
+		Score:         score,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if resp.Status != "ok" {
+		log.Warn(ctx, "ListenBrainz: Changing star not accepted", "status", resp.Status)
+	}
+
 	return nil
 }
 
@@ -139,8 +173,15 @@ func (c *client) path(endpoint string) (string, error) {
 	return u.String(), nil
 }
 
-func (c *client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest) (*listenBrainzResponse, error) {
-	b, _ := json.Marshal(r.Body)
+func (c *client) makeRequest(ctx context.Context, method string, endpoint string, r *listenBrainzRequest, fb *listenBrainzFeedbackBody) (*listenBrainzResponse, error) {
+	var b []byte
+
+	if fb != nil {
+		b, _ = json.Marshal(fb)
+	} else {
+		b, _ = json.Marshal(r.Body)
+	}
+
 	uri, err := c.path(endpoint)
 	if err != nil {
 		return nil, err

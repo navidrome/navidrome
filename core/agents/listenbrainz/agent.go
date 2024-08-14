@@ -23,6 +23,7 @@ type listenBrainzAgent struct {
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
 	baseURL     string
+	proxyStars  bool
 	client      *client
 }
 
@@ -31,6 +32,7 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 		ds:          ds,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 		baseURL:     conf.Server.ListenBrainz.BaseURL,
+		proxyStars:  conf.Server.ListenBrainz.ProxyStars,
 	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
@@ -107,6 +109,43 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) bool {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	return err == nil && sk != ""
+}
+
+func (l *listenBrainzAgent) CanProxyStars(ctx context.Context, userId string) bool {
+	if !l.proxyStars {
+		return false
+	}
+	return l.IsAuthorized(ctx, userId)
+}
+
+func (l *listenBrainzAgent) CanStar(track *model.MediaFile) bool {
+	return track.MbzRecordingID != ""
+}
+
+func (l *listenBrainzAgent) Star(ctx context.Context, userId string, star bool, track *model.MediaFile) error {
+	sk, err := l.sessionKeys.Get(ctx, userId)
+	if err != nil || sk == "" {
+		return scrobbler.ErrNotAuthorized
+	}
+
+	if track.MbzRecordingID != "" {
+		err = l.client.Star(ctx, sk, star, track.MbzRecordingID)
+	}
+
+	if err == nil {
+		return nil
+	}
+
+	var lbErr *listenBrainzError
+	isListenBrainzError := errors.As(err, &lbErr)
+	if !isListenBrainzError {
+		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", track.Title, err)
+		return scrobbler.ErrRetryLater
+	}
+	if lbErr.Code == 500 || lbErr.Code == 503 {
+		return scrobbler.ErrRetryLater
+	}
+	return scrobbler.ErrUnrecoverable
 }
 
 func init() {

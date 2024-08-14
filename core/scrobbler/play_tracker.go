@@ -32,6 +32,7 @@ type PlayTracker interface {
 	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
+	ProxyStar(ctx context.Context, isStar bool, id ...string) error
 }
 
 type playTracker struct {
@@ -185,6 +186,57 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 			continue
 		}
 	}
+}
+
+func (p *playTracker) ProxyStar(ctx context.Context, isStar bool, id ...string) error {
+	u, _ := request.UserFrom(ctx)
+
+	var err error
+	var t *model.MediaFile
+
+	for name, s := range p.scrobblers {
+		if !s.CanProxyStars(ctx, u.ID) {
+			continue
+		}
+
+		if isStar {
+			log.Debug(ctx, "Sending star", "service", name, "ids", id)
+		} else {
+			log.Debug(ctx, "Removing star", "service", name, "ids", id)
+		}
+
+		for _, trackId := range id {
+			t, err = p.ds.MediaFile(ctx).Get(trackId)
+
+			if !s.CanStar(t) {
+				continue
+			}
+
+			if err != nil {
+				log.Error(ctx, "Track not found", "service", name, "track id", trackId)
+				continue
+			}
+
+			if conf.Server.DevEnableBufferedScrobble {
+				log.Debug(ctx, "Buffering Star", "service", name, "track", t.Title, "artist", t.Artist)
+			} else {
+				log.Debug(ctx, "Sending Star", "service", name, "track", t.Title, "artist", t.Artist)
+			}
+
+			err = s.Star(ctx, u.ID, isStar, t)
+
+			if err != nil {
+				log.Error(ctx, "Error sending star", "service", name, "track", t.Title, "artist", t.Artist, err)
+				continue
+			}
+		}
+
+		if err != nil {
+			log.Error(ctx, "Error toggling star", "service", name, err)
+		}
+	}
+
+	return err
 }
 
 var constructors map[string]Constructor

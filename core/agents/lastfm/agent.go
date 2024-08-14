@@ -32,6 +32,7 @@ type lastfmAgent struct {
 	sessionKeys *agents.SessionKeys
 	apiKey      string
 	secret      string
+	proxyStars  bool
 	lang        string
 	client      *client
 }
@@ -42,6 +43,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 		lang:        conf.Server.LastFM.Language,
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
+		proxyStars:  conf.Server.LastFM.ProxyStars,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := &http.Client{
@@ -306,6 +308,40 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	return err == nil && sk != ""
+}
+
+func (l *lastfmAgent) CanProxyStars(ctx context.Context, userId string) bool {
+	if !l.proxyStars {
+		return false
+	}
+	return l.IsAuthorized(ctx, userId)
+}
+
+func (l *lastfmAgent) CanStar(_ *model.MediaFile) bool {
+	return true
+}
+
+func (l *lastfmAgent) Star(ctx context.Context, userId string, star bool, track *model.MediaFile) error {
+	sk, err := l.sessionKeys.Get(ctx, userId)
+	if err != nil || sk == "" {
+		return scrobbler.ErrNotAuthorized
+	}
+
+	err = l.client.Star(ctx, sk, star, track.Artist, track.Title)
+
+	if err == nil {
+		return nil
+	}
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
+	if !isLastFMError {
+		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", track.Title, err)
+		return scrobbler.ErrRetryLater
+	}
+	if lfErr.Code == 11 || lfErr.Code == 16 {
+		return scrobbler.ErrRetryLater
+	}
+	return scrobbler.ErrUnrecoverable
 }
 
 func init() {

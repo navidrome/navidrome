@@ -180,6 +180,47 @@ func (c *client) scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	return nil
 }
 
+func (c *client) Star(ctx context.Context, sessionKey string, star bool, artist string, title string) error {
+	params := url.Values{}
+	params.Add("format", "json")
+	params.Add("api_key", c.apiKey)
+	params.Add("artist", artist)
+	params.Add("track", title)
+	params.Add("sk", sessionKey)
+	if star {
+		params.Add("method", "track.love")
+	} else {
+		params.Add("method", "track.unlove")
+	}
+
+	c.sign(params)
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, apiBaseUrl, nil)
+	req.URL.RawQuery = params.Encode()
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+
+	var response StarResponse
+	jsonErr := decoder.Decode(&response)
+	if resp.StatusCode != 200 && jsonErr != nil {
+		return fmt.Errorf("last.fm http status: (%d)", resp.StatusCode)
+	}
+	if jsonErr != nil {
+		return jsonErr
+	}
+	if response.Error != 0 {
+		return &lastFMError{Code: response.Error, Message: response.Message}
+	}
+
+	return nil
+}
+
 func (c *client) makeRequest(ctx context.Context, method string, params url.Values, signed bool) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)
