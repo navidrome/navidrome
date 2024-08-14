@@ -2,86 +2,84 @@ package persistence
 
 import (
 	"context"
-	"database/sql"
 	"reflect"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type SQLStore struct {
-	orm orm.QueryExecutor
-	db  *sql.DB
+	db dbx.Builder
 }
 
-func New(db *sql.DB) model.DataStore {
-	return &SQLStore{db: db}
+func New(d db.DB) model.DataStore {
+	return &SQLStore{db: NewDBXBuilder(d)}
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
-	return NewAlbumRepository(ctx, s.getOrmer())
+	return NewAlbumRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
-	return NewArtistRepository(ctx, s.getOrmer())
+	return NewArtistRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	return NewMediaFileRepository(ctx, s.getOrmer())
+	return NewMediaFileRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) MediaFolder(ctx context.Context) model.MediaFolderRepository {
-	return NewMediaFolderRepository(ctx, s.getOrmer())
+func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
+	return NewLibraryRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
-	return NewGenreRepository(ctx, s.getOrmer())
+	return NewGenreRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	return NewPlayQueueRepository(ctx, s.getOrmer())
+	return NewPlayQueueRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	return NewPlaylistRepository(ctx, s.getOrmer())
+	return NewPlaylistRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
-	return NewPropertyRepository(ctx, s.getOrmer())
+	return NewPropertyRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
-	return NewRadioRepository(ctx, s.getOrmer())
+	return NewRadioRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
-	return NewUserPropsRepository(ctx, s.getOrmer())
+	return NewUserPropsRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
-	return NewShareRepository(ctx, s.getOrmer())
+	return NewShareRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) User(ctx context.Context) model.UserRepository {
-	return NewUserRepository(ctx, s.getOrmer())
+	return NewUserRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository {
-	return NewTranscodingRepository(ctx, s.getOrmer())
+	return NewTranscodingRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
-	return NewPlayerRepository(ctx, s.getOrmer())
+	return NewPlayerRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
-	return NewScrobbleBufferRepository(ctx, s.getOrmer())
+	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) StarBuffer(ctx context.Context) model.StarBufferRepository {
-	return NewStarBufferRepository(ctx, s.getOrmer())
+	return NewStarBufferRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRepository {
@@ -111,14 +109,18 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 	return nil
 }
 
+type transactional interface {
+	Transactional(f func(*dbx.Tx) error) (err error)
+}
+
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
-	if err != nil {
-		return err
+	// If we are already in a transaction, just pass it down
+	if conn, ok := s.db.(*dbx.Tx); ok {
+		return block(&SQLStore{db: conn})
 	}
-	return o.DoTx(func(ctx context.Context, txOrm orm.TxOrmer) error {
-		newDb := &SQLStore{orm: txOrm}
-		return block(newDb)
+
+	return s.db.(transactional).Transactional(func(tx *dbx.Tx) error {
+		return block(&SQLStore{db: tx})
 	})
 }
 
@@ -175,13 +177,9 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	return err
 }
 
-func (s *SQLStore) getOrmer() orm.QueryExecutor {
-	if s.orm == nil {
-		o, err := orm.NewOrmWithDB(db.Driver, "default", s.db)
-		if err != nil {
-			log.Error("Error obtaining new orm instance", err)
-		}
-		return o
+func (s *SQLStore) getDBXBuilder() dbx.Builder {
+	if s.db == nil {
+		return NewDBXBuilder(db.Db())
 	}
-	return s.orm
+	return s.db
 }

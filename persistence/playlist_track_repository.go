@@ -1,8 +1,11 @@
 package persistence
 
 import (
+	"database/sql"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -21,13 +24,23 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.playlistRepo = r
 	p.playlistId = playlistId
 	p.ctx = r.ctx
-	p.ormer = r.ormer
+	p.db = r.db
 	p.tableName = "playlist_tracks"
 	p.sortMappings = map[string]string{
-		"id": "playlist_tracks.id",
+		"id":     "playlist_tracks.id",
+		"artist": "order_artist_name asc",
+		"album":  "order_album_name asc, order_album_artist_name asc",
+		"title":  "order_title",
 	}
+	if conf.Server.PreferSortTags {
+		p.sortMappings["artist"] = "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc"
+		p.sortMappings["album"] = "COALESCE(NULLIF(sort_album_name,''),order_album_name)"
+		p.sortMappings["title"] = "COALESCE(NULLIF(sort_title,''),title)"
+	}
+
 	pls, err := r.Get(playlistId)
 	if err != nil {
+		log.Warn(r.ctx, "Error getting playlist's tracks", "playlistId", playlistId, err)
 		return nil
 	}
 	if refreshSmartPlaylist {
@@ -47,12 +60,26 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			"annotation.item_id = media_file_id"+
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
-		Columns("starred", "starred_at", "play_count", "play_date", "rating", "f.*", "playlist_tracks.*").
+		Columns(
+			"coalesce(starred, 0) as starred",
+			"coalesce(play_count, 0) as play_count",
+			"coalesce(rating, 0) as rating",
+			"starred_at",
+			"play_date",
+			"f.*",
+			"playlist_tracks.*",
+		).
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
 	var trk model.PlaylistTrack
 	err := r.queryOne(sel, &trk)
 	return &trk, err
+}
+
+// This is a "hack" to allow loadAllGenres to work with playlist tracks. Will be removed once we have a new
+// one-to-many relationship solution
+func (r *playlistTrackRepository) getTableName() string {
+	return "media_file"
 }
 
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
@@ -61,7 +88,7 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 		return nil, err
 	}
 	mfs := tracks.MediaFiles()
-	err = r.loadMediaFileGenres(&mfs)
+	err = loadAllGenres(r, mfs)
 	if err != nil {
 		log.Error(r.ctx, "Error loading genres for playlist", "playlist", r.playlist.Name, "id", r.playlist.ID, err)
 		return nil, err
@@ -77,7 +104,7 @@ func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]
 		Join("media_file mf on mf.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
 	var ids []string
-	err := r.queryAll(sql, &ids)
+	err := r.queryAllSlice(sql, &ids)
 	if err != nil {
 		return nil, err
 	}
@@ -112,20 +139,20 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 	}
 
 	// Get next pos (ID) in playlist
-	sql := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
-	var max int
-	err := r.queryOne(sql, &max)
+	sq := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
+	var res struct{ Max sql.NullInt32 }
+	err := r.queryOne(sq, &res)
 	if err != nil {
 		return 0, err
 	}
 
-	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, max+1, mediaFileIds)
+	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, int(res.Max.Int32+1), mediaFileIds)
 }
 
 func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {
 	sq := Select("id").From("media_file").Where(cond).OrderBy("album_artist, album, release_date, disc_number, track_number")
 	var ids []string
-	err := r.queryAll(sq, &ids)
+	err := r.queryAllSlice(sq, &ids)
 	if err != nil {
 		log.Error(r.ctx, "Error getting tracks to add to playlist", err)
 		return 0, err
@@ -156,7 +183,7 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 func (r *playlistTrackRepository) getTracks() ([]string, error) {
 	all := r.newSelect().Columns("media_file_id").Where(Eq{"playlist_id": r.playlistId}).OrderBy("id")
 	var ids []string
-	err := r.queryAll(all, &ids)
+	err := r.queryAllSlice(all, &ids)
 	if err != nil {
 		log.Error(r.ctx, "Error querying current tracks from playlist", "playlistId", r.playlistId, err)
 		return nil, err

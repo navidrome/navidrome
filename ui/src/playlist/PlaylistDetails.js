@@ -1,9 +1,7 @@
-import React from 'react'
 import { Card, CardContent, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
-import { DurationField, SizeField } from '../common'
-import Linkify from '../common/Linkify'
+import { CollapsibleComment, DurationField, SizeField } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -38,7 +36,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDPlaylistDetails',
-  }
+  },
 )
 
 const PlaylistDetails = (props) => {
@@ -51,9 +49,6 @@ const PlaylistDetails = (props) => {
       <CardContent className={classes.details}>
         <Typography variant="h5" className={classes.title}>
           {record.name || translate('ra.page.loading')}
-        </Typography>
-        <Typography component="h6">
-          <Linkify text={record.comment} />
         </Typography>
         <Typography component="p">
           {record.songCount ? (
@@ -71,6 +66,7 @@ const PlaylistDetails = (props) => {
             <span>&nbsp;</span>
           )}
         </Typography>
+        <CollapsibleComment record={record} />
       </CardContent>
     </Card>
   )

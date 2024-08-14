@@ -6,18 +6,19 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type scrobbleBufferRepository struct {
 	sqlRepository
 }
 
-func NewScrobbleBufferRepository(ctx context.Context, o orm.QueryExecutor) model.ScrobbleBufferRepository {
+func NewScrobbleBufferRepository(ctx context.Context, db dbx.Builder) model.ScrobbleBufferRepository {
 	r := &scrobbleBufferRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "scrobble_buffer"
 	return r
 }
@@ -31,12 +32,13 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 		GroupBy("user_id").
 		OrderBy("count(*)")
 	var userIds []string
-	err := r.queryAll(sql, &userIds)
+	err := r.queryAllSlice(sql, &userIds)
 	return userIds, err
 }
 
 func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
 	ins := Insert(r.tableName).SetMap(map[string]interface{}{
+		"id":            uuid.NewString(),
 		"user_id":       userId,
 		"service":       service,
 		"media_file_id": mediaFileId,
@@ -48,7 +50,8 @@ func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, 
 }
 
 func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.ScrobbleEntry, error) {
-	sql := Select().Columns("s.*, m.*").
+	// Put `s.*` last or else m.id overrides s.id
+	sql := Select().Columns("m.*, s.*").
 		From(r.tableName+" s").
 		LeftJoin("media_file m on m.id = s.media_file_id").
 		Where(And{
@@ -57,24 +60,20 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 		}).
 		OrderBy("play_time", "s.rowid").Limit(1)
 
-	res := model.ScrobbleEntries{}
-	// TODO Rewrite queryOne to use QueryRows, to workaround the recursive embedded structs issue
-	err := r.queryAll(sql, &res)
-	if errors.Is(err, model.ErrNotFound) || len(res) == 0 {
+	res := &model.ScrobbleEntry{}
+	err := r.queryOne(sql, res)
+	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &res[0], nil
+	res.MediaFile.ID = res.MediaFileID
+	return res, nil
 }
 
 func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {
-	return r.delete(And{
-		Eq{"service": entry.Service},
-		Eq{"media_file_id": entry.MediaFile.ID},
-		Eq{"play_time": entry.PlayTime},
-	})
+	return r.delete(Eq{"id": entry.ID})
 }
 
 func (r *scrobbleBufferRepository) Length() (int64, error) {

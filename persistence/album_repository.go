@@ -2,15 +2,16 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type albumRepository struct {
@@ -18,18 +19,46 @@ type albumRepository struct {
 	sqlRestful
 }
 
-func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRepository {
+type dbAlbum struct {
+	*model.Album `structs:",flatten"`
+	Discs        string `structs:"-" json:"discs"`
+}
+
+func (a *dbAlbum) PostScan() error {
+	if a.Discs != "" {
+		return json.Unmarshal([]byte(a.Discs), &a.Album.Discs)
+	}
+	return nil
+}
+
+func (a *dbAlbum) PostMapArgs(m map[string]any) error {
+	if len(a.Album.Discs) == 0 {
+		m["discs"] = "{}"
+		return nil
+	}
+	b, err := json.Marshal(a.Album.Discs)
+	if err != nil {
+		return err
+	}
+	m["discs"] = string(b)
+	return nil
+}
+
+type dbAlbums []dbAlbum
+
+func (dba dbAlbums) toModels() model.Albums {
+	res := make(model.Albums, len(dba))
+	for i := range dba {
+		res[i] = *dba[i].Album
+	}
+	return res
+}
+
+func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
 	r := &albumRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "album"
-	r.sortMappings = map[string]string{
-		"name":           "order_album_name asc, order_album_artist_name asc",
-		"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
-		"random":         "RANDOM()",
-		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
-		"recently_added": recentlyAddedSort(),
-	}
 	r.filterMappings = map[string]filterFunc{
 		"id":              idFilter(r.tableName),
 		"name":            fullTextFilter,
@@ -39,6 +68,25 @@ func NewAlbumRepository(ctx context.Context, o orm.QueryExecutor) model.AlbumRep
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
+	}
+	if conf.Server.PreferSortTags {
+		r.sortMappings = map[string]string{
+			"name":           "COALESCE(NULLIF(sort_album_name,''),order_album_name)",
+			"artist":         "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"albumArtist":    "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
+			"random":         r.seededRandomSort(),
+			"recently_added": recentlyAddedSort(),
+		}
+	} else {
+		r.sortMappings = map[string]string{
+			"name":           "order_album_name asc, order_album_artist_name asc",
+			"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
+			"albumArtist":    "compilation asc, order_album_artist_name asc, order_album_name asc",
+			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
+			"random":         r.seededRandomSort(),
+			"recently_added": recentlyAddedSort(),
+		}
 	}
 
 	return r
@@ -51,15 +99,15 @@ func recentlyAddedSort() string {
 	return "created_at"
 }
 
-func recentlyPlayedFilter(field string, value interface{}) Sqlizer {
+func recentlyPlayedFilter(string, interface{}) Sqlizer {
 	return Gt{"play_count": 0}
 }
 
-func hasRatingFilter(field string, value interface{}) Sqlizer {
+func hasRatingFilter(string, interface{}) Sqlizer {
 	return Gt{"rating": 0}
 }
 
-func yearFilter(field string, value interface{}) Sqlizer {
+func yearFilter(_ string, value interface{}) Sqlizer {
 	return Or{
 		And{
 			Gt{"min_year": 0},
@@ -70,13 +118,13 @@ func yearFilter(field string, value interface{}) Sqlizer {
 	}
 }
 
-func artistFilter(field string, value interface{}) Sqlizer {
+func artistFilter(_ string, value interface{}) Sqlizer {
 	return Like{"all_artist_ids": fmt.Sprintf("%%%s%%", value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("album.id")
-	sql = r.withGenres(sql)
+	sql = r.withGenres(sql) // Required for filtering by genre
 	return r.count(sql, options...)
 }
 
@@ -102,23 +150,24 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
 	sq := r.selectAlbum().Where(Eq{"album.id": id})
-	var res model.Albums
-	if err := r.queryAll(sq, &res); err != nil {
+	var dba dbAlbums
+	if err := r.queryAll(sq, &dba); err != nil {
 		return nil, err
 	}
-	if len(res) == 0 {
+	if len(dba) == 0 {
 		return nil, model.ErrNotFound
 	}
-	err := r.loadAlbumGenres(&res)
+	res := dba.toModels()
+	err := loadAllGenres(r, res)
 	return &res[0], err
 }
 
 func (r *albumRepository) Put(m *model.Album) error {
-	_, err := r.put(m.ID, m)
+	_, err := r.put(m.ID, &dbAlbum{Album: m})
 	if err != nil {
 		return err
 	}
-	return r.updateGenres(m.ID, r.tableName, m.Genres)
+	return r.updateGenres(m.ID, m.Genres)
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
@@ -126,18 +175,19 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadAlbumGenres(&res)
+	err = loadAllGenres(r, res)
 	return res, err
 }
 
 func (r *albumRepository) GetAllWithoutGenres(options ...model.QueryOptions) (model.Albums, error) {
+	r.resetSeededRandom(options)
 	sq := r.selectAlbum(options...)
-	res := model.Albums{}
-	err := r.queryAll(sq, &res)
+	var dba dbAlbums
+	err := r.queryAll(sq, &dba)
 	if err != nil {
 		return nil, err
 	}
-	return res, err
+	return dba.toModels(), err
 }
 
 func (r *albumRepository) purgeEmpty() error {
@@ -152,9 +202,14 @@ func (r *albumRepository) purgeEmpty() error {
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	results := model.Albums{}
-	err := r.doSearch(q, offset, size, &results, "name")
-	return results, err
+	var dba dbAlbums
+	err := r.doSearch(q, offset, size, &dba, "name")
+	if err != nil {
+		return nil, err
+	}
+	res := dba.toModels()
+	err = loadAllGenres(r, res)
+	return res, err
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

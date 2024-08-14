@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -19,8 +19,8 @@ var _ = Describe("PlayQueueRepository", func() {
 
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "user1", UserName: "user1", IsAdmin: true})
-		repo = NewPlayQueueRepository(ctx, orm.NewOrm())
+		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		repo = NewPlayQueueRepository(ctx, NewDBXBuilder(db.Db()))
 	})
 
 	Describe("PlayQueues", func() {
@@ -32,24 +32,24 @@ var _ = Describe("PlayQueueRepository", func() {
 		It("stores and retrieves the playqueue for the user", func() {
 			By("Storing a playqueue for the user")
 
-			expected := aPlayQueue("user1", songDayInALife.ID, 123, songComeTogether, songDayInALife)
-			Expect(repo.Store(expected)).To(BeNil())
+			expected := aPlayQueue("userid", songDayInALife.ID, 123, songComeTogether, songDayInALife)
+			Expect(repo.Store(expected)).To(Succeed())
 
-			actual, err := repo.Retrieve("user1")
-			Expect(err).To(BeNil())
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
 
 			AssertPlayQueue(expected, actual)
 
 			By("Storing a new playqueue for the same user")
 
-			another := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
-			Expect(repo.Store(another)).To(BeNil())
+			another := aPlayQueue("userid", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
+			Expect(repo.Store(another)).To(Succeed())
 
-			actual, err = repo.Retrieve("user1")
-			Expect(err).To(BeNil())
+			actual, err = repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
 
 			AssertPlayQueue(another, actual)
-			Expect(countPlayQueues(repo, "user1")).To(Equal(1))
+			Expect(countPlayQueues(repo, "userid")).To(Equal(1))
 		})
 	})
 })

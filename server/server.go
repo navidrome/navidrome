@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +24,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/ui"
-	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type Server struct {
@@ -34,8 +35,8 @@ type Server struct {
 
 func New(ds model.DataStore, broker events.Broker) *Server {
 	s := &Server{ds: ds, broker: broker}
-	auth.Init(s.ds)
 	initialSetup(ds)
+	auth.Init(s.ds)
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
 	s.mountRootRedirector()
@@ -71,13 +72,9 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	var err error
 	if strings.HasPrefix(addr, "unix:") {
 		socketPath := strings.TrimPrefix(addr, "unix:")
-		// Remove the socket file if it already exists
-		if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("error removing previous unix socket file: %w", err)
-		}
-		listener, err = net.Listen("unix", socketPath)
+		listener, err = createUnixSocketFile(socketPath, conf.Server.UnixSocketPerm)
 		if err != nil {
-			return fmt.Errorf("error creating unix socket listener: %w", err)
+			return err
 		}
 	} else {
 		addr = fmt.Sprintf("%s:%d", addr, port)
@@ -136,50 +133,63 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	return nil
 }
 
+func createUnixSocketFile(socketPath string, socketPerm string) (net.Listener, error) {
+	// Remove the socket file if it already exists
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("error removing previous unix socket file: %w", err)
+	}
+	// Create listener
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating unix socket listener: %w", err)
+	}
+	// Converts the socketPerm to uint and updates the permission of the unix socket file
+	perm, err := strconv.ParseUint(socketPerm, 8, 32)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing unix socket file permissions: %w", err)
+	}
+	err = os.Chmod(socketPath, os.FileMode(perm))
+	if err != nil {
+		return nil, fmt.Errorf("error updating permission of unix socket file: %w", err)
+	}
+	return listener, nil
+}
+
 func (s *Server) initRoutes() {
 	s.appRoot = path.Join(conf.Server.BasePath, consts.URLPathUI)
 
 	r := chi.NewRouter()
 
-	middlewares := chi.Middlewares{
+	defaultMiddlewares := chi.Middlewares{
 		secureMiddleware(),
 		corsHandler(),
 		middleware.RequestID,
-	}
-	if conf.Server.ReverseProxyWhitelist == "" {
-		middlewares = append(middlewares, middleware.RealIP)
-	}
-
-	middlewares = append(middlewares,
+		realIPMiddleware,
 		middleware.Recoverer,
 		middleware.Heartbeat("/ping"),
 		robotsTXT(ui.BuildAssets()),
 		serverAddressMiddleware,
 		clientUniqueIDMiddleware,
-	)
+		compressMiddleware(),
+		loggerInjector,
+		authHeaderMapper,
+		jwtVerifier,
+	}
 
-	// Mount the Native API /events endpoint with all middlewares, except the compress and request logger,
-	// adding the authentication middlewares
+	// Mount the Native API /events endpoint with all default middlewares, adding the authentication middlewares
 	if conf.Server.DevActivityPanel {
 		r.Group(func(r chi.Router) {
-			r.Use(middlewares...)
-			r.Use(loggerInjector)
-			r.Use(authHeaderMapper)
-			r.Use(jwtVerifier)
+			r.Use(defaultMiddlewares...)
 			r.Use(Authenticator(s.ds))
 			r.Use(JWTRefresher)
 			r.Handle(path.Join(conf.Server.BasePath, consts.URLPathNativeAPI, "events"), s.broker)
 		})
 	}
 
-	// Configure the router with the default middlewares
+	// Configure the router with the default middlewares and requestLogger
 	r.Group(func(r chi.Router) {
-		r.Use(middlewares...)
-		r.Use(compressMiddleware())
-		r.Use(loggerInjector)
+		r.Use(defaultMiddlewares...)
 		r.Use(requestLogger)
-		r.Use(authHeaderMapper)
-		r.Use(jwtVerifier)
 		s.router = r
 	})
 }
@@ -227,7 +237,7 @@ func AbsoluteURL(r *http.Request, u string, params url.Values) string {
 	if strings.HasPrefix(u, "/") {
 		buildUrl.Path = path.Join(conf.Server.BasePath, buildUrl.Path)
 		if conf.Server.BaseHost != "" {
-			buildUrl.Scheme = If(conf.Server.BaseScheme, "http")
+			buildUrl.Scheme = cmp.Or(conf.Server.BaseScheme, "http")
 			buildUrl.Host = conf.Server.BaseHost
 		} else {
 			buildUrl.Scheme = r.URL.Scheme

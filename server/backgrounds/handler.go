@@ -12,7 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/random"
 	"gopkg.in/yaml.v3"
 )
 
@@ -51,7 +51,7 @@ func (h *Handler) getRandomImage(ctx context.Context) (string, error) {
 	if len(list) == 0 {
 		return "", errors.New("no images available")
 	}
-	rnd := number.RandomInt64(int64(len(list)))
+	rnd := random.Int64N(len(list))
 	return list[rnd], nil
 }
 

@@ -6,18 +6,18 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/navidrome/navidrome/model"
+	"github.com/pocketbase/dbx"
 )
 
 type starBufferRepository struct {
 	sqlRepository
 }
 
-func NewStarBufferRepository(ctx context.Context, o orm.QueryExecutor) model.StarBufferRepository {
+func NewStarBufferRepository(ctx context.Context, db dbx.Builder) model.StarBufferRepository {
 	r := &starBufferRepository{}
 	r.ctx = ctx
-	r.ormer = o
+	r.db = db
 	r.tableName = "star_buffer"
 	return r
 }

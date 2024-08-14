@@ -54,7 +54,11 @@
                 "comment": "Komentarz",
                 "rating": "Ocena",
                 "createdAt": "Data dodania",
-                "size": "Rozmiar"
+                "size": "Rozmiar",
+                "originalDate": "Pierwotna Data",
+                "releaseDate": "Data Wydania",
+                "releases": "Wydanie |||| Wydania",
+                "released": "Wydany"
             },
             "actions": {
                 "playAll": "Odtwarzaj",

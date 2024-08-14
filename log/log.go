@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -106,7 +107,9 @@ func levelFromString(l string) Level {
 	return level
 }
 
+// SetLogLevels sets the log levels for specific paths in the codebase.
 func SetLogLevels(levels map[string]string) {
+	logLevels = nil
 	for k, v := range levels {
 		logLevels = append(logLevels, levelPath{path: k, level: levelFromString(v)})
 	}
@@ -154,6 +157,11 @@ func CurrentLevel() Level {
 	return currentLevel
 }
 
+// IsGreaterOrEqualTo returns true if the caller's current log level is equal or greater than the provided level.
+func IsGreaterOrEqualTo(level Level) bool {
+	return shouldLog(level, 2)
+}
+
 func Fatal(args ...interface{}) {
 	log(LevelFatal, args...)
 	os.Exit(1)
@@ -180,14 +188,14 @@ func Trace(args ...interface{}) {
 }
 
 func log(level Level, args ...interface{}) {
-	if !shouldLog(level) {
+	if !shouldLog(level, 3) {
 		return
 	}
 	logger, msg := parseArgs(args)
 	logger.Log(logrus.Level(level), msg)
 }
 
-func shouldLog(requiredLevel Level) bool {
+func shouldLog(requiredLevel Level, skip int) bool {
 	if currentLevel >= requiredLevel {
 		return true
 	}
@@ -195,7 +203,7 @@ func shouldLog(requiredLevel Level) bool {
 		return false
 	}
 
-	_, file, _, ok := runtime.Caller(3)
+	_, file, _, ok := runtime.Caller(skip)
 	if !ok {
 		return false
 	}
@@ -261,7 +269,12 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 				case time.Duration:
 					logger = logger.WithField(name, ShortDur(v))
 				case fmt.Stringer:
-					logger = logger.WithField(name, v.String())
+					vOf := reflect.ValueOf(v)
+					if vOf.Kind() == reflect.Pointer && vOf.IsNil() {
+						logger = logger.WithField(name, "nil")
+					} else {
+						logger = logger.WithField(name, v.String())
+					}
 				default:
 					logger = logger.WithField(name, v)
 				}

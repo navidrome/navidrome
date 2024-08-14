@@ -26,7 +26,7 @@
                 "bpm": "BPM",
                 "playDate": "Derniers joués",
                 "channels": "Canaux",
-                "createdAt": ""
+                "createdAt": "Date d'ajout"
             },
             "actions": {
                 "addToQueue": "Ajouter à la file",
@@ -53,8 +53,12 @@
                 "updatedAt": "Mis à jour le",
                 "comment": "Commentaire",
                 "rating": "Classement",
-                "createdAt": "",
-                "size": ""
+                "createdAt": "Date d'ajout",
+                "size": "Taille",
+                "originalDate": "Original",
+                "releaseDate": "Sortie",
+                "releases": "Sortie |||| Sorties",
+                "released": "Sortie"
             },
             "actions": {
                 "playAll": "Lire",
@@ -64,7 +68,7 @@
                 "addToPlaylist": "Ajouter à la playlist",
                 "download": "Télécharger",
                 "info": "Plus d'informations",
-                "share": ""
+                "share": "Partager"
             },
             "lists": {
                 "all": "Tous",
@@ -85,7 +89,7 @@
                 "playCount": "Lectures",
                 "rating": "Classement",
                 "genre": "Genre",
-                "size": ""
+                "size": "Taille"
             }
         },
         "user": {
@@ -144,9 +148,9 @@
                 "name": "Nom",
                 "duration": "Durée",
                 "ownerName": "Propriétaire",
-                "public": "Public",
+                "public": "Publique",
                 "updatedAt": "Mise à jour le",
-                "createdAt": "Créé le",
+                "createdAt": "Créée le",
                 "songCount": "Titres",
                 "comment": "Commentaire",
                 "sync": "Import automatique",
@@ -165,33 +169,33 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Radio |||| Radios",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Nom",
+                "streamUrl": "Lien du stream",
+                "homePageUrl": "Lien de la page d'accueil",
+                "updatedAt": "Mise à jour le",
+                "createdAt": "Créée le"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Jouer"
             }
         },
         "share": {
-            "name": "",
+            "name": "Partage |||| Partages",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
+                "username": "Partagé(e) par",
+                "url": "Lien URL",
+                "description": "Description",
+                "contents": "Contenu",
+                "expiresAt": "Expire le",
+                "lastVisitedAt": "Visité pour la dernière fois",
+                "visitCount": "Nombre de visites",
+                "format": "Format",
+                "maxBitRate": "Bitrate maximum",
+                "updatedAt": "Mis à jour le",
+                "createdAt": "Créé le",
+                "downloadable": "Autoriser les téléchargements ?"
             }
         }
     },
@@ -222,7 +226,7 @@
             "oneOf": "Doit être au choix : %{options}",
             "regex": "Doit respecter un format spécifique (regexp) : %{pattern}",
             "unique": "Doit être unique",
-            "url": ""
+            "url": "Doit être un lien URL correct"
         },
         "action": {
             "add_filter": "Ajouter un filtre",
@@ -252,9 +256,9 @@
             "close_menu": "Fermer le menu",
             "unselect": "Désélectionner",
             "skip": "Ignorer",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Partager",
+            "download": "Télécharger"
         },
         "boolean": {
             "true": "Oui",
@@ -270,7 +274,7 @@
             "not_found": "Page manquante",
             "show": "%{name} #%{id}",
             "empty": "Pas encore de %{name}.",
-            "invite": "Voulez-vous en créer un ?"
+            "invite": "Voulez-vous en créer ?"
         },
         "input": {
             "file": {
@@ -358,18 +362,18 @@
             "musicbrainz": "Ouvrir dans MusicBrainz"
         },
         "lastfmLink": "Lire plus...",
-        "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur: %{user}",
-        "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz: %{error}",
+        "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur : %{user}",
+        "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz : %{error}",
         "listenBrainzUnlinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant désactivés",
         "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "downloadOriginalFormat": "Télécharger au format original",
+        "shareOriginalFormat": "Partager avec le format original",
+        "shareDialogTitle": "Partager %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Partager 1 %{resource} |||| Partager %{smart_count} %{resource}",
+        "shareSuccess": "Lien copié vers le presse-papier : %{url}",
+        "shareFailure": "Erreur en copiant le lien %{url} vers le presse-papier",
+        "downloadDialogTitle": "Télécharger %{resource} '%{name}' (%{size})",
+        "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter"
     },
     "menu": {
         "library": "Bibliothèque",
@@ -385,12 +389,12 @@
                 "desktop_notifications": "Notifications de bureau",
                 "lastfmScrobbling": "Scrobbler vers Last.fm",
                 "listenBrainzScrobbling": "Scrobbler vers ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "Mode ReplayGain",
+                "preAmp": "Pré-amplification ReplayGain (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Désactivé",
+                    "album": "Utiliser le gain de l'album",
+                    "track": "Utiliser le gain des pistes"
                 }
             }
         },
@@ -450,7 +454,7 @@
             "vol_up": "Augmenter le volume",
             "vol_down": "Baisser le volume",
             "toggle_love": "Ajouter/Enlever le morceau des favoris",
-            "current_song": ""
+            "current_song": "Aller à la chanson en cours"
         }
     }
 }

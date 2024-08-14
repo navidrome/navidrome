@@ -2,23 +2,27 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/hasher"
+	"github.com/pocketbase/dbx"
 )
 
 type sqlRepository struct {
 	ctx          context.Context
 	tableName    string
-	ormer        orm.QueryExecutor
+	db           dbx.Builder
 	sortMappings map[string]string
 }
 
@@ -38,6 +42,10 @@ func loggedUser(ctx context.Context) *model.User {
 	} else {
 		return &user
 	}
+}
+
+func (r sqlRepository) getTableName() string {
+	return r.tableName
 }
 
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
@@ -62,12 +70,23 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
-func (r sqlRepository) buildSortOrder(sort, order string) string {
+// TODO Change all sortMappings to have a consistent case
+func (r sqlRepository) sortMapping(sort string) string {
 	if mapping, ok := r.sortMappings[sort]; ok {
-		sort = mapping
+		return mapping
 	}
-
+	if mapping, ok := r.sortMappings[toCamelCase(sort)]; ok {
+		return mapping
+	}
 	sort = toSnakeCase(sort)
+	if mapping, ok := r.sortMappings[sort]; ok {
+		return mapping
+	}
+	return sort
+}
+
+func (r sqlRepository) buildSortOrder(sort, order string) string {
+	sort = r.sortMapping(sort)
 	order = strings.ToLower(strings.TrimSpace(order))
 	var reverseOrder string
 	if order == "desc" {
@@ -120,14 +139,34 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
+func (r sqlRepository) seededRandomSort() string {
+	u, _ := request.UserFrom(r.ctx)
+	return fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.tableName+u.ID, r.tableName)
+}
+
+func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
+	if len(options) == 0 || options[0].Sort != "random" {
+		return
+	}
+
+	if options[0].Seed != "" {
+		hasher.SetSeed(r.tableName+userId(r.ctx), options[0].Seed)
+		return
+	}
+
+	if options[0].Offset == 0 {
+		hasher.Reseed(r.tableName + userId(r.ctx))
+	}
+}
+
 func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
-	query, args, err := sq.ToSql()
+	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return 0, err
 	}
 	start := time.Now()
 	var c int64
-	res, err := r.ormer.Raw(query, args...).Exec()
+	res, err := r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Execute()
 	if res != nil {
 		c, _ = res.RowsAffected()
 	}
@@ -140,16 +179,29 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	return res.RowsAffected()
 }
 
-// Note: Due to a bug in the QueryRow method, this function does not map any embedded structs (ex: annotations)
-// In this case, use the queryAll method and get the first item of the returned list
-func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
+func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 	query, args, err := sq.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	// Replace query placeholders with named params
+	params := dbx.Params{}
+	for i, arg := range args {
+		p := fmt.Sprintf("p%d", i)
+		query = strings.Replace(query, "?", "{:"+p+"}", 1)
+		params[p] = arg
+	}
+	return query, params, nil
+}
+
+func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
+	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
 	}
 	start := time.Now()
-	err = r.ormer.Raw(query, args...).QueryRow(response)
-	if errors.Is(err, orm.ErrNoRows) {
+	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).One(response)
+	if errors.Is(err, sql.ErrNoRows) {
 		r.logSQL(query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
@@ -157,19 +209,51 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	return err
 }
 
-func (r sqlRepository) queryAll(sq Sqlizer, response interface{}) error {
-	query, args, err := sq.ToSql()
+func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options ...model.QueryOptions) error {
+	if len(options) > 0 && options[0].Offset > 0 {
+		sq = r.optimizePagination(sq, options[0])
+	}
+	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
 	}
 	start := time.Now()
-	c, err := r.ormer.Raw(query, args...).QueryRows(response)
-	if errors.Is(err, orm.ErrNoRows) {
-		r.logSQL(query, args, nil, c, start)
+	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).All(response)
+	if errors.Is(err, sql.ErrNoRows) {
+		r.logSQL(query, args, nil, -1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, nil, c, start)
+	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
 	return err
+}
+
+// queryAllSlice is a helper function to query a single column and return the result in a slice
+func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) error {
+	query, args, err := r.toSQL(sq)
+	if err != nil {
+		return err
+	}
+	start := time.Now()
+	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Column(response)
+	if errors.Is(err, sql.ErrNoRows) {
+		r.logSQL(query, args, nil, -1, start)
+		return model.ErrNotFound
+	}
+	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
+	return err
+}
+
+// optimizePagination uses a less inefficient pagination, by not using OFFSET.
+// See https://gist.github.com/ssokolow/262503
+func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
+	if options.Offset > conf.Server.DevOffsetOptimize {
+		sq = sq.RemoveOffset()
+		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
+		oidSq = oidSq.Limit(uint64(options.Offset))
+		oidSql, args, _ := oidSq.ToSql()
+		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
+	}
+	return sq
 }
 
 func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
@@ -180,7 +264,10 @@ func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
-	countQuery = countQuery.Columns("count(distinct " + r.tableName + ".id) as count").From(r.tableName)
+	countQuery = countQuery.
+		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
+		RemoveOffset().RemoveLimit().
+		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
@@ -188,7 +275,10 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 }
 
 func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
-	values, _ := toSqlArgs(m)
+	values, err := toSQLArgs(m)
+	if err != nil {
+		return "", fmt.Errorf("error preparing values to write to DB: %w", err)
+	}
 	// If there's an ID, try to update first
 	if id != "" {
 		updateValues := map[string]interface{}{}
@@ -227,28 +317,28 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 func (r sqlRepository) delete(cond Sqlizer) error {
 	del := Delete(r.tableName).Where(cond)
 	_, err := r.executeSQL(del)
-	if errors.Is(err, orm.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return model.ErrNotFound
 	}
 	return err
 }
 
-func (r sqlRepository) logSQL(sql string, args []interface{}, err error, rowsAffected int64, start time.Time) {
+func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	var fmtArgs []string
-	for i := range args {
-		var f string
-		switch a := args[i].(type) {
-		case string:
-			f = `'` + a + `'`
-		default:
-			f = fmt.Sprintf("%v", a)
-		}
-		fmtArgs = append(fmtArgs, f)
-	}
+	//var fmtArgs []string
+	//for name, val := range args {
+	//	var f string
+	//	switch a := args[val].(type) {
+	//	case string:
+	//		f = `'` + a + `'`
+	//	default:
+	//		f = fmt.Sprintf("%v", a)
+	//	}
+	//	fmtArgs = append(fmtArgs, f)
+	//}
 	if err != nil {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	} else {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", `[`+strings.Join(fmtArgs, ",")+`]`, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
 	}
 }

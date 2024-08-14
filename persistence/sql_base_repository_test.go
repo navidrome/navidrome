@@ -31,6 +31,83 @@ var _ = Describe("sqlRepository", func() {
 		})
 	})
 
+	Describe("toSQL", func() {
+		var r sqlRepository
+
+		BeforeEach(func() {
+			r = sqlRepository{}
+		})
+
+		It("returns error for invalid SQL", func() {
+			sq := squirrel.Select("*").From("test").Where(1)
+			_, _, err := r.toSQL(sq)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("returns the same query when there are no placeholders", func() {
+			sq := squirrel.Select("*").From("test")
+			query, params, err := r.toSQL(sq)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("SELECT * FROM test"))
+			Expect(params).To(BeEmpty())
+		})
+
+		It("replaces one placeholder correctly", func() {
+			sq := squirrel.Select("*").From("test").Where(squirrel.Eq{"id": 1})
+			query, params, err := r.toSQL(sq)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("SELECT * FROM test WHERE id = {:p0}"))
+			Expect(params).To(HaveKeyWithValue("p0", 1))
+		})
+
+		It("replaces multiple placeholders correctly", func() {
+			sq := squirrel.Select("*").From("test").Where(squirrel.Eq{"id": 1, "name": "test"})
+			query, params, err := r.toSQL(sq)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(query).To(Equal("SELECT * FROM test WHERE id = {:p0} AND name = {:p1}"))
+			Expect(params).To(HaveKeyWithValue("p0", 1))
+			Expect(params).To(HaveKeyWithValue("p1", "test"))
+		})
+	})
+
+	Describe("sortMapping", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{
+				"sort1":      "mappedSort1",
+				"sortTwo":    "mappedSort2",
+				"sort_three": "mappedSort3",
+			}
+		})
+
+		It("returns the mapped value when sort key exists", func() {
+			Expect(r.sortMapping("sort1")).To(Equal("mappedSort1"))
+		})
+
+		Context("when sort key does not exist", func() {
+			It("returns the original sort key, snake cased", func() {
+				Expect(r.sortMapping("NotFoundSort")).To(Equal("not_found_sort"))
+			})
+		})
+
+		Context("when sort key is camel cased", func() {
+			It("returns the mapped value when camel case sort key exists", func() {
+				Expect(r.sortMapping("sortTwo")).To(Equal("mappedSort2"))
+			})
+			It("returns the mapped value when passing a snake case key", func() {
+				Expect(r.sortMapping("sort_two")).To(Equal("mappedSort2"))
+			})
+		})
+
+		Context("when sort key is snake cased", func() {
+			It("returns the mapped value when snake case sort key exists", func() {
+				Expect(r.sortMapping("sort_three")).To(Equal("mappedSort3"))
+			})
+			It("returns the mapped value when passing a camel case key", func() {
+				Expect(r.sortMapping("sortThree")).To(Equal("mappedSort3"))
+			})
+		})
+	})
+
 	Describe("buildSortOrder", func() {
 		Context("single field", func() {
 			It("sorts by specified field", func() {

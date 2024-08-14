@@ -1,0 +1,43 @@
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "lyricsList": {
+    "structuredLyrics": [
+      {
+        "displayArtist": "Rick Astley",
+        "displayTitle": "Never Gonna Give You Up",
+        "lang": "eng",
+        "line": [
+          {
+            "start": 18800,
+            "value": "We're no strangers to love"
+          },
+          {
+            "start": 22801,
+            "value": "You know the rules and so do I"
+          }
+        ],
+        "offset": 100,
+        "synced": true
+      },
+      {
+        "displayArtist": "Rick Astley",
+        "displayTitle": "Never Gonna Give You Up",
+        "lang": "xxx",
+        "line": [
+          {
+            "value": "We're no strangers to love"
+          },
+          {
+            "value": "You know the rules and so do I"
+          }
+        ],
+        "offset": 100,
+        "synced": false
+      }
+    ]
+  }
+}

@@ -9,6 +9,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/navidrome/navidrome/model/request"
+
+	"github.com/google/uuid"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -31,9 +36,11 @@ var _ = Describe("Auth", func() {
 		})
 
 		Describe("createAdmin", func() {
+			var createdAt time.Time
 			BeforeEach(func() {
 				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
 				resp = httptest.NewRecorder()
+				createdAt = time.Now()
 				createAdmin(ds)(resp, req)
 			})
 
@@ -43,6 +50,7 @@ var _ = Describe("Auth", func() {
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
+				Expect(*u.LastLoginAt).To(BeTemporally(">=", createdAt, time.Second))
 			})
 
 			It("returns the expected payload", func() {
@@ -58,6 +66,13 @@ var _ = Describe("Auth", func() {
 		})
 
 		Describe("Login from HTTP headers", func() {
+			const (
+				trustedIpv4   = "192.168.0.42"
+				untrustedIpv4 = "8.8.8.8"
+				trustedIpv6   = "2001:4860:4860:1234:5678:0000:4242:8888"
+				untrustedIpv6 = "5005:0:3003"
+			)
+
 			fs := os.DirFS("tests/fixtures")
 
 			BeforeEach(func() {
@@ -71,7 +86,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
-				req.RemoteAddr = "192.168.0.42:25293"
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -81,7 +96,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv4 does not match whitelist", func() {
-				req.RemoteAddr = "8.8.8.8:25293"
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), untrustedIpv4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -89,7 +104,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data if IPv6 matches whitelist", func() {
-				req.RemoteAddr = "[2001:4860:4860:1234:5678:0000:4242:8888]:25293"
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
@@ -99,23 +114,28 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets no auth data if IPv6 does not match whitelist", func() {
-				req.RemoteAddr = "[5005:0:3003]:25293"
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), untrustedIpv6))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
 				Expect(config["auth"]).To(BeNil())
 			})
 
-			It("sets no auth data if user does not exist", func() {
-				req.Header.Set("Remote-User", "INVALID_USER")
+			It("creates user and sets auth data if user does not exist", func() {
+				newUser := "NEW_USER_" + uuid.NewString()
+
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
+				req.Header.Set("Remote-User", newUser)
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())
-				Expect(config["auth"]).To(BeNil())
+				parsed := config["auth"].(map[string]interface{})
+
+				Expect(parsed["username"]).To(Equal(newUser))
 			})
 
 			It("sets auth data if user exists", func() {
-				req.RemoteAddr = "192.168.0.42:25293"
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				serveIndex(ds, fs, nil)(resp, req)
 
 				config := extractAppConfig(resp.Body.String())

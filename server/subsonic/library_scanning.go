@@ -8,11 +8,11 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
-	// TODO handle multiple mediafolders
+	// TODO handle multiple libraries
 	ctx := r.Context()
 	mediaFolder := conf.Server.MusicFolder
 	status, err := api.scanner.Status(mediaFolder)
@@ -41,7 +41,8 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 
-	fullScan := utils.ParamBool(r, "fullScan", false)
+	p := req.Params(r)
+	fullScan := p.BoolOr("fullScan", false)
 
 	go func() {
 		start := time.Now()

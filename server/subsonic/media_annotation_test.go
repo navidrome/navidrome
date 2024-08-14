@@ -6,13 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/model/request"
-
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -29,7 +27,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		ds = &tests.MockDataStore{}
 		playTracker = &fakePlayTracker{}
 		eventBroker = &fakeEventBroker{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, eventBroker, nil, playTracker, nil, nil)
 	})
 
 	Describe("Scrobble", func() {
@@ -49,9 +47,9 @@ var _ = Describe("MediaAnnotationController", func() {
 
 		It("submit all scrobbles with respective times", func() {
 			time1 := time.Now().Add(-20 * time.Minute)
-			t1 := utils.ToMillis(time1)
+			t1 := time1.UnixMilli()
 			time2 := time.Now().Add(-10 * time.Minute)
-			t2 := utils.ToMillis(time2)
+			t2 := time2.UnixMilli()
 			r := newGetRequest("id=12", "id=34", fmt.Sprintf("time=%d", t1), fmt.Sprintf("time=%d", t2))
 
 			_, err := router.Scrobble(r)

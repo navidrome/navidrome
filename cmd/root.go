@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,13 +19,10 @@ import (
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
 )
-
-var interrupted = errors.New("service was interrupted")
 
 var (
 	cfgFile  string
@@ -41,10 +39,14 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 		Run: func(cmd *cobra.Command, args []string) {
 			runNavidrome()
 		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			postRun()
+		},
 		Version: consts.Version,
 	}
 )
 
+// Execute runs the root cobra command, which will start the Navidrome server by calling the runNavidrome function.
 func Execute() {
 	rootCmd.SetVersionTemplate(`{{println .Version}}`)
 	if err := rootCmd.Execute(); err != nil {
@@ -60,26 +62,42 @@ func preRun() {
 	conf.Load()
 }
 
-func runNavidrome() {
-	db.Init()
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Error("Error closing DB", err)
-		}
-		log.Info("Navidrome stopped, bye.")
-	}()
+func postRun() {
+	log.Info("Navidrome stopped, bye.")
+}
 
-	g, ctx := errgroup.WithContext(context.Background())
+// runNavidrome is the main entry point for the Navidrome server. It starts all the services and blocks.
+// If any of the services returns an error, it will log it and exit. If the process receives a signal to exit,
+// it will cancel the context and exit gracefully.
+func runNavidrome() {
+	defer db.Init()()
+
+	ctx, cancel := mainContext()
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
-	g.Go(startSignaler(ctx))
+	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
+	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 
-	if err := g.Wait(); err != nil && !errors.Is(err, interrupted) {
+	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
 	}
 }
 
+// mainContext returns a context that is cancelled when the process receives a signal to exit.
+func mainContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(context.Background(),
+		os.Interrupt,
+		syscall.SIGHUP,
+		syscall.SIGTERM,
+		syscall.SIGABRT,
+	)
+}
+
+// startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateServer(conf.Server.MusicFolder)
@@ -107,6 +125,7 @@ func startServer(ctx context.Context) func() error {
 	}
 }
 
+// schedulePeriodicScan schedules a periodic scan of the music library, if configured.
 func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.ScanSchedule
@@ -136,13 +155,27 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
+// startScheduler starts the Navidrome scheduler, which is used to run periodic tasks.
 func startScheduler(ctx context.Context) func() error {
-	log.Info(ctx, "Starting scheduler")
-	schedulerInstance := scheduler.GetInstance()
-
 	return func() error {
+		log.Info(ctx, "Starting scheduler")
+		schedulerInstance := scheduler.GetInstance()
 		schedulerInstance.Run(ctx)
 		return nil
+	}
+}
+
+// startPlaybackServer starts the Navidrome playback server, if configured.
+// It is responsible for the Jukebox functionality
+func startPlaybackServer(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.Jukebox.Enabled {
+			log.Debug("Jukebox is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Starting Jukebox service")
+		playbackInstance := GetPlaybackServer()
+		return playbackInstance.Run(ctx)
 	}
 }
 
@@ -168,6 +201,7 @@ func init() {
 	rootCmd.Flags().IntP("port", "p", viper.GetInt("port"), "HTTP port Navidrome will listen to")
 	rootCmd.Flags().String("baseurl", viper.GetString("baseurl"), "base URL to configure Navidrome behind a proxy (ex: /music or http://my.server.com)")
 	rootCmd.Flags().String("tlscert", viper.GetString("tlscert"), "optional path to a TLS cert file (enables HTTPS listening)")
+	rootCmd.Flags().String("unixsocketperm", viper.GetString("unixsocketperm"), "optional file permission for the unix socket")
 	rootCmd.Flags().String("tlskey", viper.GetString("tlskey"), "optional path to a TLS key file (enables HTTPS listening)")
 
 	rootCmd.Flags().Duration("sessiontimeout", viper.GetDuration("sessiontimeout"), "how long Navidrome will wait before closing web ui idle sessions")
@@ -176,6 +210,7 @@ func init() {
 	rootCmd.Flags().Bool("enabletranscodingconfig", viper.GetBool("enabletranscodingconfig"), "enables transcoding configuration in the UI")
 	rootCmd.Flags().String("transcodingcachesize", viper.GetString("transcodingcachesize"), "size of transcoding cache")
 	rootCmd.Flags().String("imagecachesize", viper.GetString("imagecachesize"), "size of image (art work) cache. set to 0 to disable cache")
+	rootCmd.Flags().String("albumplaycountmode", viper.GetString("albumplaycountmode"), "how to compute playcount for albums. absolute (default) or normalized")
 	rootCmd.Flags().Bool("autoimportplaylists", viper.GetBool("autoimportplaylists"), "enable/disable .m3u playlist auto-import`")
 
 	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
@@ -184,6 +219,7 @@ func init() {
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("tlscert", rootCmd.Flags().Lookup("tlscert"))
+	_ = viper.BindPFlag("unixsocketperm", rootCmd.Flags().Lookup("unixsocketperm"))
 	_ = viper.BindPFlag("tlskey", rootCmd.Flags().Lookup("tlskey"))
 	_ = viper.BindPFlag("baseurl", rootCmd.Flags().Lookup("baseurl"))
 

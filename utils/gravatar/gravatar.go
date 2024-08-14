@@ -1,11 +1,9 @@
 package gravatar
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"strings"
-
-	"github.com/navidrome/navidrome/utils/number"
 )
 
 const baseUrl = "https://www.gravatar.com/avatar"
@@ -15,11 +13,11 @@ const maxSize = 2048
 func Url(email string, size int) string {
 	email = strings.ToLower(email)
 	email = strings.TrimSpace(email)
-	hash := md5.Sum([]byte(email))
+	hash := sha256.Sum256([]byte(email))
 	if size < 1 {
 		size = defaultSize
 	}
-	size = number.Min(maxSize, size)
+	size = min(maxSize, size)
 
 	return fmt.Sprintf("%s/%x?s=%d", baseUrl, hash, size)
 }

@@ -1,1 +1,17 @@
-{"status":"ok","version":"1.8.0","type":"navidrome","serverVersion":"v0.0.0","openSubsonic":true,"internetRadioStations":{"internetRadioStation":[{"id":"12345678","name":"Example Stream","streamUrl":"https://example.com/stream","homePageUrl":"https://example.com"}]}}
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "internetRadioStations": {
+    "internetRadioStation": [
+      {
+        "id": "12345678",
+        "name": "Example Stream",
+        "streamUrl": "https://example.com/stream",
+        "homePageUrl": "https://example.com"
+      }
+    ]
+  }
+}

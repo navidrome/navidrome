@@ -97,8 +97,8 @@ const ContextMenu = ({
             record,
             record.duration !== undefined
               ? DOWNLOAD_MENU_ALBUM
-              : DOWNLOAD_MENU_ARTIST
-          )
+              : DOWNLOAD_MENU_ARTIST,
+          ),
         )
       },
     },
@@ -127,7 +127,7 @@ const ContextMenu = ({
   let extractSongsData = function (response) {
     const data = response.data.reduce(
       (acc, cur) => ({ ...acc, [cur.id]: cur }),
-      {}
+      {},
     )
     const ids = response.data.map((r) => r.id)
     return { data, ids }
@@ -186,7 +186,7 @@ const ContextMenu = ({
               <MenuItem value={key} key={key} onClick={handleItemClick}>
                 {options[key].label}
               </MenuItem>
-            )
+            ),
         )}
       </Menu>
     </span>

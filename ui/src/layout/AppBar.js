@@ -31,7 +31,7 @@ const useStyles = makeStyles(
   }),
   {
     name: 'NDAppBar',
-  }
+  },
 )
 
 const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
@@ -90,7 +90,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
     }
     return renderSettingsMenuItemLink(
       userResource,
-      permissions !== 'admin' ? localStorage.getItem('userId') : null
+      permissions !== 'admin' ? localStorage.getItem('userId') : null,
     )
   }
 

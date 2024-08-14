@@ -27,7 +27,7 @@ const scrobble = (id, time, submission = true) =>
     url('scrobble', id, {
       ...(submission && time && { time }),
       submission,
-    })
+    }),
   )
 
 const nowPlaying = (id) => scrobble(id, null, false)
@@ -45,10 +45,11 @@ const startScan = (options) => httpClient(url('startScan', null, options))
 
 const getScanStatus = () => httpClient(url('getScanStatus'))
 
-const getCoverArtUrl = (record, size) => {
+const getCoverArtUrl = (record, size, square) => {
   const options = {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
+    ...(square && { square }),
   }
 
   // TODO Move this logic to server. `song` and `album` should have a CoverArtID
@@ -74,7 +75,7 @@ const streamUrl = (id, options) => {
     url('stream', id, {
       ts: true,
       ...options,
-    })
+    }),
   )
 }
 

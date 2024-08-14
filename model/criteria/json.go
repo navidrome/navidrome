@@ -66,6 +66,10 @@ func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 		return InTheLast(m)
 	case "notinthelast":
 		return NotInTheLast(m)
+	case "inplaylist":
+		return InPlaylist(m)
+	case "notinplaylist":
+		return NotInPlaylist(m)
 	}
 	return nil
 }

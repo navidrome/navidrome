@@ -1,5 +1,5 @@
 {
-    "languageName": "انگلیسی",
+    "languageName": "فارسی",
     "resources": {
         "song": {
             "name": "ترانه |||| ترانه ها",
@@ -54,7 +54,11 @@
                 "comment": "اظهارنظر",
                 "rating": "رتبه بندی",
                 "createdAt": "",
-                "size": ""
+                "size": "",
+                "originalDate": "",
+                "releaseDate": "",
+                "releases": "",
+                "released": ""
             },
             "actions": {
                 "playAll": "پخش",

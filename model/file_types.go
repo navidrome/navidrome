@@ -3,12 +3,12 @@ package model
 import (
 	"mime"
 	"path/filepath"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 var excludeAudioType = []string{
+	"audio/mpegurl",
 	"audio/x-mpegurl",
 	"audio/x-scpls",
 }

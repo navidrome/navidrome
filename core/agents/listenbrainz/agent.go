@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/cache"
 )
 
 const (
@@ -37,7 +37,7 @@ func listenBrainzConstructor(ds model.DataStore) *listenBrainzAgent {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.client = newClient(l.baseURL, chc)
 	return l
 }
@@ -59,6 +59,7 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 				ArtistMbzIDs:            []string{track.MbzArtistID},
 				RecordingMbzID:          track.MbzRecordingID,
 				ReleaseMbID:             track.MbzAlbumID,
+				DurationMs:              int(track.Duration * 1000),
 			},
 		},
 	}

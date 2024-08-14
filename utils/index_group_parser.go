@@ -18,18 +18,17 @@ type IndexGroups map[string]string
 // for grouping accented characters (such as A, \u00C0 and \u00C1)
 //
 // Files and folders that are not covered by an index entry will be placed under the index entry "#".
+
+var indexGroupsRx = regexp.MustCompile(`(.+)\((.+)\)`)
+
 func ParseIndexGroups(spec string) IndexGroups {
 	parsed := make(IndexGroups)
 	split := strings.Split(spec, " ")
-	re := regexp.MustCompile(`(.+)\((.+)\)`)
 	for _, g := range split {
-		sub := re.FindStringSubmatch(g)
+		sub := indexGroupsRx.FindStringSubmatch(g)
 		if len(sub) > 0 {
-			i := 0
-			chars := strings.Split(sub[2], "")
-			for _, c := range chars {
-				parsed[c] = sub[1]
-				i++
+			for _, c := range sub[2] {
+				parsed[string(c)] = sub[1]
 			}
 		} else {
 			parsed[g] = g

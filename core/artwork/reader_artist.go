@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type artistReader struct {
@@ -56,7 +56,7 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 		}
 	}
 	a.files = strings.Join(files, consts.Zwsp)
-	a.artistFolder = utils.LongestCommonPrefix(paths)
+	a.artistFolder = str.LongestCommonPrefix(paths)
 	if !strings.HasSuffix(a.artistFolder, string(filepath.Separator)) {
 		a.artistFolder, _ = filepath.Split(a.artistFolder)
 	}

@@ -65,7 +65,7 @@ const TogglePublicInput = ({ resource, source }) => {
         console.log(error)
         notify('ra.page.error', 'warning')
       },
-    }
+    },
   )
 
   const handleClick = (e) => {
@@ -80,6 +80,39 @@ const TogglePublicInput = ({ resource, source }) => {
       disabled={!isWritable(record.ownerId)}
     />
   )
+}
+
+const ToggleAutoImport = ({ resource, source }) => {
+  const record = useRecordContext()
+  console.log(record)
+  const notify = useNotify()
+  const [ToggleAutoImport] = useUpdate(
+    resource,
+    record.id,
+    {
+      ...record,
+      sync: !record.sync,
+    },
+    {
+      undoable: false,
+      onFailure: (error) => {
+        console.log(error)
+        notify('ra.page.error', 'warning')
+      },
+    },
+  )
+  const handleClick = (e) => {
+    ToggleAutoImport()
+    e.stopPropagation()
+  }
+
+  return record.path ? (
+    <Switch
+      checked={record[source]}
+      onClick={handleClick}
+      disabled={!isWritable(record.ownerId)}
+    />
+  ) : null
 }
 
 const PlaylistListBulkActions = (props) => (
@@ -107,8 +140,9 @@ const PlaylistList = (props) => {
         <TogglePublicInput source="public" sortByOrder={'DESC'} />
       ),
       comment: <TextField source="comment" />,
+      sync: <ToggleAutoImport source="sync" sortByOrder={'DESC'} />,
     }),
-    [isDesktop, isXsmall]
+    [isDesktop, isXsmall],
   )
 
   const columns = useSelectedFields({

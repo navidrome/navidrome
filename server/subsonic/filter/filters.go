@@ -24,7 +24,7 @@ func AlbumsByFrequent() Options {
 }
 
 func AlbumsByRandom() Options {
-	return Options{Sort: "random()"}
+	return Options{Sort: "random"}
 }
 
 func AlbumsByName() Options {
@@ -100,7 +100,7 @@ func SongsByAlbum(albumId string) Options {
 
 func SongsByRandom(genre string, fromYear, toYear int) Options {
 	options := Options{
-		Sort: "random()",
+		Sort: "random",
 	}
 	ff := squirrel.And{}
 	if genre != "" {

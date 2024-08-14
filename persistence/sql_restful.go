@@ -42,6 +42,10 @@ func (r sqlRestful) parseRestOptions(options ...rest.QueryOptions) model.QueryOp
 		qo.Order = strings.ToLower(options[0].Order)
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset
+		if seed, ok := options[0].Filters["seed"].(string); ok {
+			qo.Seed = seed
+			delete(options[0].Filters, "seed")
+		}
 		qo.Filters = r.parseRestFilters(options[0])
 	}
 	return qo
@@ -55,8 +59,10 @@ func startsWithFilter(field string, value interface{}) Sqlizer {
 	return Like{field: fmt.Sprintf("%s%%", value)}
 }
 
-func containsFilter(field string, value interface{}) Sqlizer {
-	return Like{field: fmt.Sprintf("%%%s%%", value)}
+func containsFilter(field string) func(string, any) Sqlizer {
+	return func(_ string, value any) Sqlizer {
+		return Like{field: fmt.Sprintf("%%%s%%", value)}
+	}
 }
 
 func booleanFilter(field string, value interface{}) Sqlizer {
