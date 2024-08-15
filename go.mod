@@ -2,8 +2,6 @@ module github.com/navidrome/navidrome
 
 go 1.23
 
-toolchain go1.23rc1
-
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0
