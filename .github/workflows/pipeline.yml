@@ -147,10 +147,10 @@ jobs:
           cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
 
           cd $GITHUB_WORKSPACE/wix/386
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --output ../navidrome_386.msi
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
 
           cd $GITHUB_WORKSPACE/wix/amd64
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --output ../navidrome_amd64.msi
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
 
           cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386
           cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1
