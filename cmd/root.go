@@ -81,6 +81,7 @@ func runNavidrome() {
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(schedulePeriodicBackup(ctx))
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -152,6 +153,34 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		}
 		log.Debug("Finished initial scan")
 		return nil
+	}
+}
+
+func schedulePeriodicBackup(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.BackupSchedule
+		if schedule == "" {
+			log.Warn("Periodic backup is DISABLED")
+			return nil
+		}
+
+		database := db.Db()
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling periodic backup", "schedule", schedule)
+		err := schedulerInstance.Add(schedule, func() {
+			start := time.Now()
+			err := database.Backup(ctx)
+			elapsed := time.Since(start)
+			if err != nil {
+				log.Error("Error backing up database", "elapsed", elapsed, err)
+			} else {
+				log.Info("Backup complete", "elapsed", elapsed)
+			}
+
+		})
+
+		return err
 	}
 }
 
