@@ -177,7 +177,6 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 			} else {
 				log.Info("Backup complete", "elapsed", elapsed)
 			}
-
 		})
 
 		return err
