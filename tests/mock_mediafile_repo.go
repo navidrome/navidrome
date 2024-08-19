@@ -2,13 +2,13 @@ package tests
 
 import (
 	"errors"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
-
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func CreateMockMediaFileRepo() *MockMediaFileRepo {
@@ -56,7 +56,7 @@ func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, err
 	if m.err {
 		return nil, errors.New("error")
 	}
-	values := maps.Values(m.data)
+	values := slices.Collect(maps.Values(m.data))
 	return slice.Map(values, func(p *model.MediaFile) model.MediaFile {
 		return *p
 	}), nil

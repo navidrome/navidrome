@@ -3,7 +3,9 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
 )
 
 // refresher is responsible for rolling up mediafiles attributes into albums attributes,
@@ -71,7 +72,7 @@ func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity 
 		return nil
 	}
 
-	ids := maps.Keys(m)
+	ids := slices.Collect(maps.Keys(m))
 	chunks := slice.BreakUp(ids, 100)
 	for _, chunk := range chunks {
 		err := refresh(ctx, chunk...)

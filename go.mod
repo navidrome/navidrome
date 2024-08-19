@@ -1,8 +1,10 @@
 module github.com/navidrome/navidrome
 
+// This must match the ci-goreleaser Go version
 go 1.22
 
-toolchain go1.22.3
+// This is the version used by the project
+toolchain go1.23.0
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
