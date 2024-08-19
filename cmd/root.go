@@ -158,7 +158,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 
 func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.BackupSchedule
+		schedule := conf.Server.Backup.Schedule
 		if schedule == "" {
 			log.Warn("Periodic backup is DISABLED")
 			return nil

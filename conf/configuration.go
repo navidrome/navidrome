@@ -84,11 +84,7 @@ type configOptions struct {
 	Prometheus                   prometheusOptions
 	Scanner                      scannerOptions
 	Jukebox                      jukeboxOptions
-	BackupCount                  int
-	BackupPath                   string
-	BackupSchedule               string
-	// A flag that should only be set when manually backing up
-	BackupCountIgnore bool
+	Backup                       backupOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -154,6 +150,17 @@ type jukeboxOptions struct {
 	AdminOnly bool
 }
 
+type backupOptions struct {
+	Bypass   bool
+	Hourly   int
+	Daily    int
+	Weekly   int
+	Monthly  int
+	Yearly   int
+	Path     string
+	Schedule string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -195,10 +202,10 @@ func Load() {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 
-	if Server.BackupPath != "" && Server.BackupCount > 0 {
-		err = os.MkdirAll(Server.BackupPath, os.ModePerm)
+	if Server.Backup.Path != "" {
+		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", "path", Server.BackupPath, err)
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", "path", Server.Backup.Path, err)
 			os.Exit(1)
 		}
 	}
@@ -283,13 +290,14 @@ func validateScanSchedule() error {
 }
 
 func validateBackupSchedule() error {
-	if Server.BackupPath == "" || Server.BackupSchedule == "" || Server.BackupCount < 1 {
-		Server.BackupSchedule = ""
+	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || (Server.Backup.Hourly == 0 && Server.Backup.Daily == 0 &&
+		Server.Backup.Weekly == 0 && Server.Backup.Monthly == 0 && Server.Backup.Yearly == 0) {
+		Server.Backup.Schedule = ""
 		return nil
 	}
 
 	var err error
-	Server.BackupSchedule, err = validateSchedule(Server.BackupSchedule, "BackupSchedule")
+	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "BackupSchedule")
 
 	return err
 }
@@ -396,9 +404,13 @@ func init() {
 
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
 
-	viper.SetDefault("backuppath", "")
-	viper.SetDefault("backupcount", 0)
-	viper.SetDefault("backupschedule", "")
+	viper.SetDefault("backup.path", "")
+	viper.SetDefault("backup.schedule", "")
+	viper.SetDefault("backup.hourly", 0)
+	viper.SetDefault("backup.daily", 0)
+	viper.SetDefault("backup.weekly", 0)
+	viper.SetDefault("backup.monthly", 0)
+	viper.SetDefault("backup.yearly", 0)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

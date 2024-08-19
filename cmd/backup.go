@@ -31,9 +31,9 @@ var backupCmd = &cobra.Command{
 }
 
 func runBackup() {
-	conf.Server.BackupCountIgnore = true
+	conf.Server.Backup.Bypass = true
 	if backupPath != "" {
-		conf.Server.BackupPath = backupPath
+		conf.Server.Backup.Path = backupPath
 	}
 
 	idx := strings.LastIndex(conf.Server.DbPath, "?")

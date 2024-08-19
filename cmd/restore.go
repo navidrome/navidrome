@@ -34,7 +34,7 @@ var restoreCommand = &cobra.Command{
 }
 
 func runRestore() {
-	conf.Server.BackupCountIgnore = true
+	conf.Server.Backup.Bypass = true
 
 	idx := strings.LastIndex(conf.Server.DbPath, "?")
 	var path string
