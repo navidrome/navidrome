@@ -11,6 +11,7 @@ wiki
 TODO.md
 var
 navidrome.toml
+!contrib/navidrome.toml
 master.zip
 testDB
 navidrome.db
