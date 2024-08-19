@@ -34,8 +34,8 @@
 			<Directory Id="$(var.PlatformProgramFilesFolder)">
 				<Directory Id='INSTALLDIR' Name='Navidrome'>
 
-					<Component Id='LICENSEFile' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
-						<File Id='LICENSE' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
+					<Component Id='License.rtfFile' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
+						<File Id='License.rtf' Name='License.rtf' DiskId='1' Source='License.rtf' KeyPath='yes' />
 					</Component>
 
 					<Component Id='README.mdFile' Guid='d1ee412b-2ebc-4b0b-9fa7-0228ab707686' Win64="$(var.Win64)">
@@ -55,7 +55,7 @@
 					<Component Id='MainExecutable' Guid='e645aa06-8bbc-40d6-8d3c-73b4f5b76fd7' Win64="$(var.Win64)">
 						<File Id='NavidromeExe' Name='Navidrome.exe' DiskId='1' Source='navidrome.exe' KeyPath='yes' />
 						<ServiceInstall
-							Description='Navidrome - Your Personal Streaming Service'
+							Description='Navidrome is a self-hosted music server and streamer'
 							ErrorControl='ignore'
 							Name = '$(var.ProductName)'
 							Id='NavidromeService'
@@ -83,7 +83,7 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='convertIniToToml.vbsFile' />
-			<ComponentRef Id='LICENSEFile' />
+			<ComponentRef Id='License.rtfFile' />
 			<ComponentRef Id='README.mdFile' />
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
