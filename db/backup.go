@@ -93,7 +93,7 @@ func (d *db) backupOrRestore(ctx context.Context, isBackup bool, path string) er
 		})
 	})
 
-	if err == nil {
+	if err == nil && !conf.Server.Backup.Bypass {
 		files, err := os.ReadDir(conf.Server.Backup.Path)
 		if err != nil {
 			return fmt.Errorf("unable to read database backup entries: %w", err)
