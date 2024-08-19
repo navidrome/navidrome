@@ -12,7 +12,7 @@ on:
 jobs:
   go-lint:
     name: Lint Go code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: deluan/ci-goreleaser:1.22.3-1
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
 
   go:
     name: Test Go code
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: deluan/ci-goreleaser:1.22.3-1
     steps:
       - name: Check out code into the Go module directory
@@ -63,7 +63,7 @@ jobs:
 
   js:
     name: Build JS bundle
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
@@ -167,7 +167,7 @@ jobs:
   docker:
     name: Build and publish Docker images
     needs: [binaries]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
