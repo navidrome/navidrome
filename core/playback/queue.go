@@ -104,7 +104,7 @@ func (pd *Queue) Shuffle() {
 	var err error
 	pd.Index, err = pd.getMediaFileIndexByID(backupID)
 	if err != nil {
-		log.Error("Could not find ID while shuffling: " + backupID)
+		log.Error("Could not find ID while shuffling: %d", backupID)
 	}
 }
 
@@ -114,7 +114,7 @@ func (pd *Queue) getMediaFileIndexByID(id string) (int, error) {
 			return idx, nil
 		}
 	}
-	return -1, fmt.Errorf("ID not found in playlist: " + id)
+	return -1, fmt.Errorf("ID not found in playlist: %d", id)
 }
 
 // Sets the index to a new, valid value inside the Items. Values lower than zero are going to be zero,
