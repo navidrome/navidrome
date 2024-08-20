@@ -145,6 +145,8 @@ jobs:
     needs: [binaries]
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v4
+      
       - uses: actions/download-artifact@v4
         with:
           name: binaries
@@ -156,7 +158,7 @@ jobs:
 
           NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
 
-          mkdir $GITHUB_WORKSPACE/wix/386
+          mkdir -p $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386/License.rtf
           cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
 
