@@ -174,12 +174,11 @@ jobs:
           wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
           
           ls -la $GITHUB_WORKSPACE/wix/*.msi
-          
+
       - uses: actions/upload-artifact@v4
         with:
-          name: binaries
-          path: |
-            $GITHUB_WORKSPACE/wix/*.msi
+          name: installers
+          path: $GITHUB_WORKSPACE/wix/*.msi
           retention-days: 7
 
   docker:
