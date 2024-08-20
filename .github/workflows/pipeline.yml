@@ -152,7 +152,7 @@ jobs:
 
       - name: Build MSI
         run: |
-          apt-get install -y wixl jq
+          sudo apt-get install -y wixl jq
 
           NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
 
