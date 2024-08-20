@@ -179,7 +179,8 @@ jobs:
         with:
           name: binaries
           path: |
-            $GITHUB_WORKSPACE/wix/*.msi
+            $GITHUB_WORKSPACE/wix/386/*.msi
+            $GITHUB_WORKSPACE/wix/amd64/*.msi
           retention-days: 7
 
   docker:
