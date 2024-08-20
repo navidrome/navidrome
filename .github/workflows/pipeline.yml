@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: actions/download-artifact@v4
         with:
           name: binaries
@@ -155,7 +155,10 @@ jobs:
       - name: Build MSI
         run: |
           sudo apt-get install -y wixl jq
-
+          
+          ls -la
+          ls -la $GITHUB_WORKSPACE
+          
           NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
 
           mkdir -p $GITHUB_WORKSPACE/wix/386
