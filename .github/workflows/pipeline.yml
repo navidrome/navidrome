@@ -141,7 +141,7 @@ jobs:
           retention-days: 7
 
   msi:
-   name: Build and publish MSI files
+    name: Build and publish MSI files
     needs: [binaries]
     runs-on: ubuntu-24.04
     steps:
