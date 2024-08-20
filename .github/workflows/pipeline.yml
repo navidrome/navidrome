@@ -12,7 +12,7 @@ on:
 jobs:
   go-lint:
     name: Lint Go code
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     container: deluan/ci-goreleaser:1.22.3-1
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
 
   go:
     name: Test Go code
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     container: deluan/ci-goreleaser:1.22.3-1
     steps:
       - name: Check out code into the Go module directory
@@ -63,7 +63,7 @@ jobs:
 
   js:
     name: Build JS bundle
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
@@ -103,7 +103,7 @@ jobs:
   binaries:
     name: Build binaries
     needs: [js, go, go-lint]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     container: deluan/ci-goreleaser:1.22.3-1
     steps:
       - name: Checkout Code
@@ -131,6 +131,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            dist
+            !dist/*.tar.gz
+            !dist/*.zip
+          retention-days: 7
+
+  msi:
+   name: Build and publish MSI files
+    needs: [binaries]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist
+
       - name: Build MSI
         run: |
           apt-get install -y wixl jq
@@ -155,19 +174,11 @@ jobs:
           cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386
           cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: binaries
-          path: |
-            dist
-            !dist/*.tar.gz
-            !dist/*.zip
-          retention-days: 7
 
   docker:
     name: Build and publish Docker images
     needs: [binaries]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
