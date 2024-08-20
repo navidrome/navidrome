@@ -173,7 +173,13 @@ jobs:
 
           cp $GITHUB_WORKSPACE/wix/navidrome_386.msi $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386
           cp $GITHUB_WORKSPACE/wix/navidrome_amd64.msi $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1
-
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            $GITHUB_WORKSPACE/wix/*.msi
+          retention-days: 7
 
   docker:
     name: Build and publish Docker images
@@ -240,4 +246,3 @@ jobs:
           platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-
