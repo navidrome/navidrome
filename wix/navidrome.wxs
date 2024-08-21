@@ -34,7 +34,7 @@
 			<Directory Id="$(var.PlatformProgramFilesFolder)">
 				<Directory Id='INSTALLDIR' Name='Navidrome'>
 
-					<Component Id='License.rtfFile' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
+					<Component Id='License.rtf' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
 						<File Id='License.rtf' Name='License.rtf' DiskId='1' Source='License.rtf' KeyPath='yes' />
 					</Component>
 
@@ -83,7 +83,7 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='convertIniToToml.vbsFile' />
-			<ComponentRef Id='License.rtfFile' />
+			<ComponentRef Id='License.rtf' />
 			<ComponentRef Id='README.mdFile' />
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
