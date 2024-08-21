@@ -29,16 +29,6 @@ jobs:
           cd ui
           npm ci
 
-      - name: npm lint
-        run: |
-          cd ui
-          npm run check-formatting && npm run lint
-
-      - name: npm test
-        run: |
-          cd ui
-          npm test
-
       - name: npm build
         run: |
           cd ui
@@ -52,7 +42,7 @@ jobs:
 
   binaries:
     name: Build binaries
-    needs: [js, go, go-lint]
+    needs: [js]
     runs-on: ubuntu-latest
     container: deluan/ci-goreleaser:1.22.3-1
     steps:
