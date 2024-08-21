@@ -91,7 +91,6 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 	searchResult2 := &responses.SearchResult2{}
 	searchResult2.Artist = make([]responses.Artist, len(as))
 	for i, artist := range as {
-		artist := artist
 		searchResult2.Artist[i] = responses.Artist{
 			Id:             artist.ID,
 			Name:           artist.Name,

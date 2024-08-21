@@ -4,11 +4,11 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
+    - copyloopvar
     - dogsled
     - durationcheck
     - errcheck
     - errorlint
-    - exportloopref
     - gocyclo
     - goprintffuncname
     - gosec
@@ -34,3 +34,4 @@ linters-settings:
       - G501
       - G401
       - G505
+      - G115 # Temporarily disabled, see discussion in https://github.com/securego/gosec/pull/1149
