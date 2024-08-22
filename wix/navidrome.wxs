@@ -12,6 +12,7 @@
 <?endif ?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 	<?include SettingsDlg.wxs?>
+	<?include Navidrome_UI_Flow.wxs?>
 	<Product Name="$(var.ProductName)" Id="*" UpgradeCode="$(var.UpgradeCode)" Language='1033' Codepage='1252' Version='$(var.Version)' Manufacturer='Deluan'>
 
 		<Package Id='*' Keywords='Installer' Description="$(var.ProductName)" Comments='' Manufacturer='Deluan' InstallerVersion='200' Languages='1033' Compressed='yes' SummaryCodepage='1252' InstallScope='perMachine' />
@@ -26,7 +27,7 @@
 		<Property Id="ND_MUSICFOLDER" Value="C:\Music" />
 		<Property Id="ND_DATAFOLDER" Value="C:\ProgramData\Navidrome" />
 
-		<UIRef Id="WixUI_Minimal"/>
+		<UIRef Id="Navidrome_UI_Flow"/>
 
 		<Property Id="CSCRIPT_LOCATION" Value="C:\Windows\System32\cscript.exe" />
 
@@ -34,8 +35,8 @@
 			<Directory Id="$(var.PlatformProgramFilesFolder)">
 				<Directory Id='INSTALLDIR' Name='Navidrome'>
 
-					<Component Id='License.rtf' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
-						<File Id='License.rtf' Name='License.rtf' DiskId='1' Source='License.rtf' KeyPath='yes' />
+					<Component Id='LICENSEFile' Guid='eb5610a4-e3f3-4f36-ae2c-e96914e460c2' Win64="$(var.Win64)">
+						<File Id='LICENSE' Name='LICENSE' DiskId='1' Source='LICENSE' KeyPath='yes' />
 					</Component>
 
 					<Component Id='README.mdFile' Guid='d1ee412b-2ebc-4b0b-9fa7-0228ab707686' Win64="$(var.Win64)">
@@ -83,7 +84,7 @@
 
 		<Feature Id='Complete' Level='1'>
 			<ComponentRef Id='convertIniToToml.vbsFile' />
-			<ComponentRef Id='License.rtf' />
+			<ComponentRef Id='LICENSEFile' />
 			<ComponentRef Id='README.mdFile' />
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
