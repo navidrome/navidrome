@@ -75,7 +75,7 @@
 		<CustomAction Id="HackIniIntoTOML" Impersonate="no" Property="CSCRIPT_LOCATION" Execute="deferred" ExeCommand='&quot;[INSTALLDIR]convertIniToToml.vbs&quot; &quot;[INSTALLDIR]navidrome-msi.ini&quot; &quot;[INSTALLDIR]navidrome.toml&quot;' />
 
 		<InstallUISequence>
-			<Show Dialog="MyCustomPropertiesDlg" After="WelcomeEulaDlg">Not Installed AND NOT WIX_UPGRADE_DETECTED</Show>
+			<Show Dialog="MyCustomPropertiesDlg" After="WelcomeDlg">Not Installed AND NOT WIX_UPGRADE_DETECTED</Show>
 		</InstallUISequence>
 
 		<InstallExecuteSequence>
