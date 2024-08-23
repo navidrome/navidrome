@@ -107,6 +107,10 @@ jobs:
           cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
 
+          # workaround for wixl WixVariable not working to override bmp locations
+          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-0.103/ext/ui/bitmaps/bannrbmp.bmp
+          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-0.103/ext/ui/bitmaps/dlgbmp.bmp
+
           cd $GITHUB_WORKSPACE/wix/386
           wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
 
