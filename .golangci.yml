@@ -34,4 +34,4 @@ linters-settings:
       - G501
       - G401
       - G505
-      - G115 # Temporarily disabled, see discussion in https://github.com/securego/gosec/pull/1149
+      - G115 # Can't check context, where the warning is clearly a false positive. See discussion in https://github.com/securego/gosec/pull/1149

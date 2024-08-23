@@ -20,7 +20,7 @@ var _ = Describe("FileHaunter", func() {
 	var cacheDir string
 	var err error
 	var maxItems int
-	var maxSize int64
+	var maxSize uint64
 
 	JustBeforeEach(func() {
 		tempDir, _ := os.MkdirTemp("", "spread_fs")
@@ -29,7 +29,9 @@ var _ = Describe("FileHaunter", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tempDir) })
 
-		fsCache, err = fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(cache.NewFileHaunter("", maxItems, maxSize, 300*time.Millisecond)))
+		fsCache, err = fscache.NewCacheWithHaunter(fs, fscache.NewLRUHaunterStrategy(
+			cache.NewFileHaunter("", maxItems, maxSize, 300*time.Millisecond),
+		))
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(fsCache.Clean)
 
