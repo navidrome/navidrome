@@ -40,6 +40,7 @@ const ContextMenu = ({
   color,
   className,
   songQueryParams,
+  hideShare,
   hideInfo,
 }) => {
   const classes = useStyles({ color })
@@ -80,13 +81,15 @@ const ContextMenu = ({
       label: translate('resources.album.actions.addToPlaylist'),
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
-    share: {
-      enabled: config.enableSharing,
-      needData: false,
-      label: translate('ra.action.share'),
-      action: (record) =>
-        dispatch(openShareMenu([record.id], resource, record.name)),
-    },
+    ...(!hideShare && {
+      share: {
+        enabled: config.enableSharing,
+        needData: false,
+        label: translate('ra.action.share'),
+        action: (record) =>
+          dispatch(openShareMenu([record.id], resource, record.name)),
+      },
+    }),
     download: {
       enabled: config.enableDownloads && record.size,
       needData: false,
