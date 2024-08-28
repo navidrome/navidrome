@@ -300,7 +300,7 @@ func init() {
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
-	viper.SetDefault("defaultplaylistpublicvisibility", true)
+	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
