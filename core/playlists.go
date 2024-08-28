@@ -14,9 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-
 	"github.com/RaveNoX/go-jsoncommentstrip"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
