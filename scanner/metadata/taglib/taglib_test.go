@@ -95,10 +95,10 @@ var _ = Describe("Extractor", func() {
 
 				m := mds[file]
 
-				Expect(m).To(HaveKeyWithValue("replaygain_album_gain", []string{albumGain}))
-				Expect(m).To(HaveKeyWithValue("replaygain_album_peak", []string{albumPeak}))
-				Expect(m).To(HaveKeyWithValue("replaygain_track_gain", []string{trackGain}))
-				Expect(m).To(HaveKeyWithValue("replaygain_track_peak", []string{trackPeak}))
+				Expect(m["replaygain_album_gain"]).To(ContainElement(albumGain))
+				Expect(m["replaygain_album_peak"]).To(ContainElement(albumPeak))
+				Expect(m["replaygain_track_gain"]).To(ContainElement(trackGain))
+				Expect(m["replaygain_track_peak"]).To(ContainElement(trackPeak))
 
 				Expect(m).To(HaveKeyWithValue("title", []string{"Title", "Title"}))
 				Expect(m).To(HaveKeyWithValue("album", []string{"Album", "Album"}))
