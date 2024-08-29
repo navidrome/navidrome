@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/RaveNoX/go-jsoncommentstrip"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -193,6 +194,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
+		newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
 }

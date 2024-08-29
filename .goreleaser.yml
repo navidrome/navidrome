@@ -1,5 +1,6 @@
 # GoReleaser config
 project_name: navidrome
+version: 2
 
 builds:
   - id: navidrome_linux_amd64
@@ -121,7 +122,7 @@ checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-SNAPSHOT"
+  version_template: "{{ .Tag }}-SNAPSHOT"
 
 release:
   draft: true
