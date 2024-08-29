@@ -1,7 +1,7 @@
 module github.com/navidrome/navidrome
 
 // This must match the ci-goreleaser Go version
-go 1.22
+go 1.23
 
 // This is the version used by the project
 toolchain go1.23.0
