@@ -28,7 +28,7 @@ var _ = Describe("AlbumRepository", func() {
 		var Get = func(id string) (*model.Album, error) {
 			album, err := repo.Get(id)
 			if album != nil {
-				album.ScannedAt = time.Time{}
+				album.ImportedAt = time.Time{}
 			}
 			return album, err
 		}
@@ -45,7 +45,7 @@ var _ = Describe("AlbumRepository", func() {
 		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
 			albums, err := repo.GetAll(opts...)
 			for i := range albums {
-				albums[i].ScannedAt = time.Time{}
+				albums[i].ImportedAt = time.Time{}
 			}
 			return albums, err
 		}
