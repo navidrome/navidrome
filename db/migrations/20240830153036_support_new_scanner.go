@@ -215,9 +215,9 @@ create index if not exists artist_updated_at_ix
 func upSupportNewScanner_UpdateTableAlbum(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `
 alter table album
-	add column scanned_at datetime default '0000-00-00 00:00:00' not null;
-create index if not exists album_scanned_at_ix
-	on album (scanned_at);
+	add column imported_at datetime default '0000-00-00 00:00:00' not null;
+create index if not exists album_imported_at_ix
+	on album (imported_at);
 `)
 	return err
 }
