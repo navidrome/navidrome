@@ -84,8 +84,9 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
 	sql = sql.Columns("ifnull(count(distinct mf.album_id), 0) as album_count",
 		"ifnull(count(distinct mf.id), 0) as song_count", "ifnull(sum(distinct mf.size), 0) as size").
-		// TODO Role should be parameterized
-		LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
+		// TODO Should Role be parameterized?
+		//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
+		LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
 		LeftJoin("media_file mf on mfa.media_file_id = mf.id")
 	return r.withTags(sql).GroupBy("artist.id")
 }
