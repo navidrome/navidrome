@@ -287,7 +287,11 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 }
 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
-	log.Info(p.ctx, "Scanner: Completed processing folder",
+	logCall := log.Info
+	if entry.hasNoFiles() {
+		logCall = log.Trace
+	}
+	logCall(p.ctx, "Scanner: Completed processing folder",
 		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
 		"elapsed", time.Since(entry.startTime), "tracksMissing", len(entry.missingTracks),
 		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, "📂", entry.path)
