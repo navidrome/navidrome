@@ -14,10 +14,10 @@ import (
 
 var _ = Describe("Participations", func() {
 	var (
-		props        metadata.Info
-		md           metadata.Metadata
-		mf           model.MediaFile
-		mbid1, mbid2 string
+		props               metadata.Info
+		md                  metadata.Metadata
+		mf                  model.MediaFile
+		mbid1, mbid2, mbid3 string
 	)
 
 	BeforeEach(func() {
@@ -25,6 +25,7 @@ var _ = Describe("Participations", func() {
 		fileInfo, _ := os.Stat(filePath)
 		mbid1 = uuid.NewString()
 		mbid2 = uuid.NewString()
+		mbid3 = uuid.NewString()
 		props = metadata.Info{
 			FileInfo: testFileInfo{fileInfo},
 		}
@@ -357,19 +358,22 @@ var _ = Describe("Participations", func() {
 	Describe("MBID tags", func() {
 		It("should set the MBID for the artist based on the track/album artist", func() {
 			mf = toMediaFile(map[string][]string{
-				"ARTIST":               {"John Doe", "Jane Doe"},
-				"MUSICBRAINZ_ARTISTID": {mbid1, mbid2},
-				"COMPOSER":             {"John Doe", "Someone Else"},
-				"PRODUCER":             {"Jane Doe", "John Doe"},
+				"ARTIST":                    {"John Doe", "Jane Doe"},
+				"MUSICBRAINZ_ARTISTID":      {mbid1, mbid2},
+				"ALBUMARTIST":               {"The Album Artist"},
+				"MUSICBRAINZ_ALBUMARTISTID": {mbid3},
+				"COMPOSER":                  {"John Doe", "Someone Else", "The Album Artist"},
+				"PRODUCER":                  {"Jane Doe", "John Doe"},
 			})
 
 			participations := mf.Participations
-			Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(2)))
-
+			Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
 			composers := participations[model.RoleComposer]
 			Expect(composers[0].MbzArtistID).To(Equal(mbid1))
 			Expect(composers[1].MbzArtistID).To(BeEmpty())
+			Expect(composers[2].MbzArtistID).To(Equal(mbid3))
 
+			Expect(participations).To(HaveKeyWithValue(model.RoleProducer, HaveLen(2)))
 			producers := participations[model.RoleProducer]
 			Expect(producers[0].MbzArtistID).To(Equal(mbid2))
 			Expect(producers[1].MbzArtistID).To(Equal(mbid1))
