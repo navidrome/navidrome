@@ -33,6 +33,10 @@ type folderEntry struct {
 	missingTracks   model.MediaFiles
 }
 
+func (f *folderEntry) hasNoFiles() bool {
+	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && len(f.playlists) == 0
+}
+
 func newFolderEntry(job *scanJob, path string) *folderEntry {
 	id := model.FolderID(job.lib, path)
 	return &folderEntry{
