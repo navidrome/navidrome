@@ -188,7 +188,7 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 }
 
 func (r *albumRepository) Put(al *model.Album) error {
-	al.ScannedAt = time.Now()
+	al.ImportedAt = time.Now()
 	id, err := r.put(al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
@@ -226,7 +226,7 @@ func (r *albumRepository) Touch(ids ...string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	upd := Update(r.tableName).Set("scanned_at", timeToSQL(time.Now())).Where(Eq{"id": ids})
+	upd := Update(r.tableName).Set("imported_at", timeToSQL(time.Now())).Where(Eq{"id": ids})
 	c, err := r.executeSQL(upd)
 	if err == nil {
 		log.Debug(r.ctx, "Touching albums", "ids", ids, "updated", c == 1)
@@ -241,7 +241,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
-			ConcatExpr("album.scanned_at > library.last_scan_at"),
+			ConcatExpr("album.imported_at > library.last_scan_at"),
 		})
 	var res dbAlbums
 	err := r.queryAll(sel, &res)

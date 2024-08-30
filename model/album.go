@@ -60,9 +60,9 @@ type Album struct {
 	Tags           Tags           `structs:"tags" json:"-"`                        // All tags for this album
 	Participations Participations `structs:"participations" json:"participations"` // All artists that participated in this album
 
-	ScannedAt time.Time `structs:"scanned_at" json:"scannedAt"` // Last time this album was scanned
-	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Oldest CreatedAt for all songs in this album
-	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Newest UpdatedAt for all songs in this album
+	ImportedAt time.Time `structs:"imported_at" json:"importedAt"` // When this album was imported/updated
+	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`   // Oldest CreatedAt for all songs in this album
+	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`   // Newest UpdatedAt for all songs in this album
 }
 
 func (a Album) CoverArtID() ArtworkID {
@@ -76,8 +76,8 @@ func (a Album) Equals(other Album) bool {
 	other.Duration = float32(math.Floor(float64(other.Duration)))
 
 	// Clear some tags that should not be compared
-	a.ScannedAt = time.Time{}
-	other.ScannedAt = time.Time{}
+	a.ImportedAt = time.Time{}
+	other.ImportedAt = time.Time{}
 	a.Annotations = Annotations{}
 	other.Annotations = Annotations{}
 	a.Genre = ""
