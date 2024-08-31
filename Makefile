@@ -34,6 +34,10 @@ test: ##@Development Run Go tests
 	go test -race -shuffle=on ./...
 .PHONY: test
 
+test:ci:
+	go run github.com/onsi/ginkgo/v2/ginkgo@latest --github-output ./...
+.PHONY: test:ci
+
 testall: test ##@Development Run Go and JS tests
 	@(cd ./ui && npm test -- --watchAll=false)
 .PHONY: testall

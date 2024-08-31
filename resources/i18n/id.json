@@ -4,7 +4,7 @@
         "song": {
             "name": "Lagu |||| Lagu",
             "fields": {
-                "albumArtist": "Artis Album",
+                "albumArtist": "Artis Album"
                 "duration": "Durasi",
                 "trackNumber": "#",
                 "playCount": "Dimainkan",
