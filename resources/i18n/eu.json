@@ -342,7 +342,7 @@
             "grid": "Sareta",
             "table": "Taula"
         }
-    },-
+    },
     "message": {
         "note": "OHARRA",
         "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
