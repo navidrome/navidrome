@@ -105,9 +105,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
+          set -e
           for file in resources/i18n/*.json; do
             echo "Validating $file"
-            jq empty "$file" || echo "$file is invalid" && exit 1
+            jq empty "$file"
           done
 
   binaries:
