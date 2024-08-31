@@ -107,7 +107,7 @@ jobs:
       - run: |
           for file in resources/i18n/*.json; do
             echo "Validating $file"
-            jq empty "$file" || echo "$file is invalid"
+            jq empty "$file" || echo "$file is invalid" && exit 1
           done
 
   binaries:
