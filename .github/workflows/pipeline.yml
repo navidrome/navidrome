@@ -59,7 +59,7 @@ jobs:
 
       - name: Test
         continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
-        run: go test -shuffle=on -race -cover ./... -v
+        run: go run github.com/onsi/ginkgo/v2/ginkgo --github-output -race -cover ./... -v
 
   js:
     name: Build JS bundle
