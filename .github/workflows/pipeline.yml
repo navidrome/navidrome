@@ -108,7 +108,12 @@ jobs:
           set -e
           for file in resources/i18n/*.json; do
             echo "Validating $file"
-            jq empty "$file"
+            if ! jq empty "$file" 2>error.log; then
+              error_message=$(cat error.log)
+              line_number=$(echo "$error_message" | grep -oP 'line \K[0-9]+')
+              echo "::error file=$file,line=$line_number::$error_message"
+              exit 1
+            fi
           done
 
   binaries:

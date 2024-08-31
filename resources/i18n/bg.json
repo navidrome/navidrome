@@ -161,7 +161,7 @@
                 "addNewPlaylist": "Създай \"%{name}\"",
                 "export": "Експорт",
                 "makePublic": "Направи публичен",
-                "makePrivate": "Направи личен"
+                "makePrivate": "Направи личен",
             },
             "message": {
                 "duplicate_song": "Добави дублирани песни",
