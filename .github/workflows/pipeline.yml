@@ -99,10 +99,20 @@ jobs:
           name: js-bundle
           path: ui/build
           retention-days: 7
+  i18n-lint:
+    name: Lint i18n files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          for file in resources/i18n/*.json; do
+            echo "Validating $file"
+            jq empty "$file" || echo "$file is invalid"
+          done
 
   binaries:
     name: Build binaries
-    needs: [js, go, go-lint]
+    needs: [js, go, go-lint, i18n-lint]
     runs-on: ubuntu-latest
     container: deluan/ci-goreleaser:1.23.0-1
     steps:
