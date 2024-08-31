@@ -1,3 +1,4 @@
+
 {
     "languageName": "Euskara",
     "resources": {
@@ -18,6 +19,7 @@
                 "size": "Fitxategiaren tamaina",
                 "updatedAt": "Eguneratze-data:",
                 "bitRate": "Bit tasa",
+                "channels": "Kanalak",
                 "discSubtitle": "Diskoaren azpititulua",
                 "starred": "Gogokoa",
                 "comment": "Iruzkina",
@@ -25,14 +27,13 @@
                 "quality": "Kalitatea",
                 "bpm": "BPM",
                 "playDate": "Azken erreproduzitzeak:",
-                "channels": "Kanalak",
-                "createdAt": "Sortze-data:"
+                "createdAt": "Gehitu zen data:"
             },
             "actions": {
                 "addToQueue": "Erreproduzitu ondoren",
                 "playNow": "Erreproduzitu orain",
                 "addToPlaylist": "Gehitu erreprodukzio-zerrendara",
-                "shuffleAll": "Guztiak aleatorioak",
+                "shuffleAll": "Erreprodukzio aleatorioa",
                 "download": "Deskargatu",
                 "playNext": "Hurrengoa",
                 "info": "Lortu informazioa"
@@ -46,36 +47,36 @@
                 "duration": "Iraupena",
                 "songCount": "Abestiak",
                 "playCount": "Erreprodukzioak",
+                "size": "Fitxategiaren tamaina",
                 "name": "Izena",
                 "genre": "Generoa",
                 "compilation": "Konpilazioa",
                 "year": "Urtea",
-                "updatedAt": "Aktualizatze-data:",
-                "comment": "Iruzkina",
-                "rating": "Balorazioa",
-                "createdAt": "Sortze-data:",
-                "size": "Fitxategiaren tamaina",
                 "originalDate": "Jatorrizkoa",
                 "releaseDate": "Argitaratze-data:",
                 "releases": "Argitaratzea |||| Argitaratzeak",
                 "released": "Argitaratua"
+                "updatedAt": "Aktualizatze-data:",
+                "comment": "Iruzkina",
+                "rating": "Balorazioa",
+                "createdAt": "Gehitu zen data:"
             },
             "actions": {
                 "playAll": "Erreproduzitu",
                 "playNext": "Erreproduzitu segidan",
                 "addToQueue": "Erreproduzitu amaieran",
+                "share": "Partekatu",
                 "shuffle": "Aletorioa",
                 "addToPlaylist": "Gehitu zerrendara",
                 "download": "Deskargatu",
-                "info": "Lortu informazioa",
-                "share": "Partekatu"
+                "info": "Lortu informazioa"
             },
             "lists": {
                 "all": "Guztiak",
                 "random": "Aleatorioa",
                 "recentlyAdded": "Berriki gehitutakoak",
                 "recentlyPlayed": "Berriki entzundakoak",
-                "mostPlayed": "Gehien erreproduzitutakoak",
+                "mostPlayed": "Gehien entzundakoak",
                 "starred": "Gogokoak",
                 "topRated": "Balorazio handiena dutenak"
             }
@@ -86,10 +87,10 @@
                 "name": "Izena",
                 "albumCount": "Album kopurua",
                 "songCount": "Abesti kopurua",
+                "size": "Tamaina",
                 "playCount": "Erreprodukzio kopurua",
                 "rating": "Balorazioa",
-                "genre": "Generoa",
-                "size": "Tamaina"
+                "genre": "Generoa"
             }
         },
         "user": {
@@ -184,9 +185,10 @@
         "share": {
             "name": "Partekatu",
             "fields": {
-                "username": "Erabiltzailearen izena",
+                "username": "Partekatzailea:",
                 "url": "URLa",
                 "description": "Deskribapena",
+                "downloadable": "Deskargatzea ahalbidetu?",
                 "contents": "Edukia",
                 "expiresAt": "Iraungitze-data:",
                 "lastVisitedAt": "Azkenekoz bisitatu zen:",
@@ -194,8 +196,11 @@
                 "format": "Formatua",
                 "maxBitRate": "Gehienezko bit tasa",
                 "updatedAt": "Eguneratze-data:",
-                "createdAt": "Sortze-data:",
-                "downloadable": "Deskargatzea ahalbidetu?"
+                "createdAt": "Sortze-data:"
+            },
+            "notifications": {
+            },
+            "actions": {
             }
         }
     },
@@ -399,9 +404,9 @@
             }
         },
         "albumList": "Albumak",
-        "about": "Honi buruz",
         "playlists": "Erreprodukzio-zerrendak",
-        "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak"
+        "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak",
+        "about": "Honi buruz"
     },
     "player": {
         "playListsText": "Erreprodukzio-zerrenda",
@@ -427,6 +432,7 @@
             "singleLoop": "Errepikatu bakarra",
             "shufflePlay": "Aleatorioa"
         }
+        
     },
     "about": {
         "links": {
