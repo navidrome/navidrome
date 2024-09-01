@@ -48,6 +48,7 @@ type Album struct {
 	MbzAlbumArtistID      string     `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
 	MbzAlbumType          string     `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment       string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	MbzReleaseGroupID     string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
 	ImageFiles            string     `structs:"image_files" json:"imageFiles,omitempty"`
 	Paths                 string     `structs:"paths" json:"paths,omitempty"`
 	Description           string     `structs:"description" json:"description,omitempty"`
