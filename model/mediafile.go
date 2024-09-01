@@ -69,6 +69,7 @@ type MediaFile struct {
 	MbzRecordingID       string  `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
 	MbzReleaseTrackID    string  `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty"`
 	MbzAlbumID           string  `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
+	MbzReleaseGroupID    string  `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
 	MbzArtistID          string  `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"`            // Deprecated: Use Participants instead
 	MbzAlbumArtistID     string  `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"` // Deprecated: Use Participants instead
 	MbzAlbumType         string  `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
@@ -160,6 +161,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 
 	var albumArtistIds []string
 	var mbzAlbumIds []string
+	var mbzReleaseGroupIds []string
 	var comments []string
 	var years []int
 	var dates []string
@@ -199,6 +201,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		comments = append(comments, m.Comment)
 		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
+		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
 		if m.HasCoverArt && a.EmbedArtPath == "" {
 			a.EmbedArtPath = m.Path
 		}
@@ -217,8 +220,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
-	a = fixAlbumArtist(a, albumArtistIds) // TODO Validate if this it really needed
-	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
+	a = fixAlbumArtist(a, albumArtistIds)          // TODO Validate if this it really needed
+	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds) // TODO Should we use the most frequent or all? Same below
+	a.MbzReleaseGroupID, _ = allOrNothing(mbzReleaseGroupIds)
 
 	return a
 }
