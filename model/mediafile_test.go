@@ -22,14 +22,15 @@ var _ = Describe("MediaFiles", func() {
 					SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 					OrderAlbumName: "OrderAlbumName", OrderAlbumArtistName: "OrderAlbumArtistName",
 					MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-					Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3",
+					MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3",
 				},
 				{
 					ID: "2", Album: "Album", ArtistID: "ArtistID", Artist: "Artist", AlbumArtistID: "AlbumArtistID", AlbumArtist: "AlbumArtist", AlbumID: "AlbumID",
 					SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 					OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 					MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-					Compilation: true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3",
+					MbzReleaseGroupID: "MbzReleaseGroupID",
+					Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3",
 				},
 			}
 		})
@@ -50,6 +51,7 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.MbzAlbumArtistID).To(Equal("MbzAlbumArtistID"))
 			Expect(album.MbzAlbumType).To(Equal("MbzAlbumType"))
 			Expect(album.MbzAlbumComment).To(Equal("MbzAlbumComment"))
+			Expect(album.MbzReleaseGroupID).To(Equal("MbzReleaseGroupID"))
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
 			Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
