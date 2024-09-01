@@ -98,10 +98,26 @@ jobs:
           name: js-bundle
           path: ui/build
           retention-days: 7
+  i18n-lint:
+    name: Lint i18n files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          for file in resources/i18n/*.json; do
+            echo "Validating $file"
+            if ! jq empty "$file" 2>error.log; then
+              error_message=$(cat error.log)
+              line_number=$(echo "$error_message" | grep -oP 'line \K[0-9]+')
+              echo "::error file=$file,line=$line_number::$error_message"
+              exit 1
+            fi
+          done
 
   binaries:
     name: Build binaries
-    needs: [js, go, go-lint]
+    needs: [js, go, go-lint, i18n-lint]
     runs-on: ubuntu-latest
     container: deluan/ci-goreleaser:1.23.0-1
     steps:
