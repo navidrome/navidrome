@@ -32,6 +32,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.MbzRecordingID = md.String(model.TagMusicBrainzRecordingID)
 	mf.MbzReleaseTrackID = md.String(model.TagMusicBrainzTrackID)
 	mf.MbzAlbumID = md.String(model.TagMusicBrainzAlbumID)
+	mf.MbzReleaseGroupID = md.String(model.TagMusicBrainzReleaseGroupID)
 	mf.RgAlbumPeak = md.Float(model.TagReplayGainAlbumPeak)
 	mf.RgAlbumGain = md.Float(model.TagReplayGainAlbumGain)
 	mf.RgTrackPeak = md.Float(model.TagReplayGainTrackPeak)

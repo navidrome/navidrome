@@ -107,6 +107,9 @@ musicbrainz_albumartistid:
 musicbrainz_albumid:
   aliases: [ TXXX:MusicBrainz Album Id, MUSICBRAINZ_ALBUMID, MUSICBRAINZ ALBUM ID, ----:com.apple.iTunes:MusicBrainz Album Id, MusicBrainz/Album Id ]
   type: uuid
+musicbrainz_releasegroupid:
+  aliases: [ TXXX:MusicBrainz Release Group Id, MUSICBRAINZ_RELEASEGROUPID, ----:com.apple.iTunes:MusicBrainz Release Group Id, MusicBrainz/Release Group Id ]
+  type: uuid
 releasetype:
   aliases: [ TXXX:MusicBrainz Album Type, RELEASETYPE, MUSICBRAINZ_ALBUMTYPE, ----:com.apple.iTunes:MusicBrainz Album Type, MusicBrainz/Album Type ]
 replaygain_album_gain:
