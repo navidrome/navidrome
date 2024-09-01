@@ -1,17 +1,17 @@
 package responses
 
 const (
-	ErrorGeneric            = 0
-	ErrorMissingParameter   = 10
-	ErrorClientTooOld       = 20
-	ErrorServerTooOld       = 30
-	ErrorAuthenticationFail = 40
-	ErrorAuthorizationFail  = 50
-	ErrorTrialExpired       = 60
-	ErrorDataNotFound       = 70
+	ErrorGeneric            int32 = 0
+	ErrorMissingParameter   int32 = 10
+	ErrorClientTooOld       int32 = 20
+	ErrorServerTooOld       int32 = 30
+	ErrorAuthenticationFail int32 = 40
+	ErrorAuthorizationFail  int32 = 50
+	ErrorTrialExpired       int32 = 60
+	ErrorDataNotFound       int32 = 70
 )
 
-var errors = map[int]string{
+var errors = map[int32]string{
 	ErrorGeneric:            "A generic error",
 	ErrorMissingParameter:   "Required parameter is missing",
 	ErrorClientTooOld:       "Incompatible Subsonic REST protocol version. Client must upgrade",
@@ -22,7 +22,7 @@ var errors = map[int]string{
 	ErrorDataNotFound:       "The requested data was not found",
 }
 
-func ErrorMsg(code int) string {
+func ErrorMsg(code int32) string {
 	if v, found := errors[code]; found {
 		return v
 	}

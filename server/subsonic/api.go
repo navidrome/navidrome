@@ -281,7 +281,7 @@ func sendError(w http.ResponseWriter, r *http.Request, err error) {
 	subErr := mapToSubsonicError(err)
 	response := newResponse()
 	response.Status = responses.StatusFailed
-	response.Error = &responses.Error{Code: int32(subErr.code), Message: subErr.Error()}
+	response.Error = &responses.Error{Code: subErr.code, Message: subErr.Error()}
 
 	sendResponse(w, r, response)
 }
