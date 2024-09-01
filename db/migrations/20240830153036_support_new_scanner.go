@@ -216,8 +216,12 @@ func upSupportNewScanner_UpdateTableAlbum(ctx context.Context, tx *sql.Tx) error
 	_, err := tx.ExecContext(ctx, `
 alter table album
 	add column imported_at datetime default '0000-00-00 00:00:00' not null;
+alter table album
+	add column mbz_release_group_id varchar default '' not null;
 create index if not exists album_imported_at_ix
 	on album (imported_at);
+create index if not exists album_mbz_release_group_id_ix
+	on album (mbz_release_group_id);
 `)
 	return err
 }
@@ -230,6 +234,8 @@ alter table media_file
     add column pid varchar default '' not null;
 alter table media_file
 	add column missing boolean default false not null;
+alter table media_file
+	add column mbz_release_group_id varchar default '' not null;
 update media_file 
 	set pid = id where pid = '';
 `)

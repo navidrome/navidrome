@@ -183,9 +183,10 @@ const (
 
 	// MusicBrainz
 
-	TagMusicBrainzArtistID      TagName = "musicbrainz_artistid"
-	TagMusicBrainzRecordingID   TagName = "musicbrainz_recordingid"
-	TagMusicBrainzTrackID       TagName = "musicbrainz_trackid"
-	TagMusicBrainzAlbumArtistID TagName = "musicbrainz_albumartistid"
-	TagMusicBrainzAlbumID       TagName = "musicbrainz_albumid"
+	TagMusicBrainzArtistID       TagName = "musicbrainz_artistid"
+	TagMusicBrainzRecordingID    TagName = "musicbrainz_recordingid"
+	TagMusicBrainzTrackID        TagName = "musicbrainz_trackid"
+	TagMusicBrainzAlbumArtistID  TagName = "musicbrainz_albumartistid"
+	TagMusicBrainzAlbumID        TagName = "musicbrainz_albumid"
+	TagMusicBrainzReleaseGroupID TagName = "musicbrainz_releasegroupid"
 )
