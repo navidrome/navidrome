@@ -128,11 +128,7 @@ func (s *Stream) EstimatedContentLength() int {
 }
 
 func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model.MediaFile, reqFormat string, reqBitRate int) (format string, bitRate int) {
-	if reqFormat == "raw" {
-		return "raw", 0
-	}
-
-	if reqFormat == mf.Suffix && reqBitRate == 0 {
+	if reqFormat == "raw" || reqFormat == mf.Suffix && reqBitRate == 0 {
 		return "raw", mf.BitRate
 	}
 
@@ -145,14 +141,16 @@ func selectTranscodingOptions(ctx context.Context, ds model.DataStore, mf *model
 }
 
 func determineFormatAndBitRate(ctx context.Context, reqFormat string, reqBitRate int, mf *model.MediaFile) (string, int) {
-	trc, hasDefault := request.TranscodingFrom(ctx)
-	var format = reqFormat
-	var bitRate = reqBitRate
+	if reqFormat != "" {
+		return reqFormat, reqBitRate
+	}
 
-	if format == "" && hasDefault {
+	format, bitRate := "", 0
+	if trc, hasDefault := request.TranscodingFrom(ctx); hasDefault {
 		format = trc.TargetFormat
 		bitRate = trc.DefaultBitRate
-		if p, ok := request.PlayerFrom(ctx); ok {
+
+		if p, ok := request.PlayerFrom(ctx); ok && p.MaxBitRate > 0 && p.MaxBitRate < bitRate {
 			bitRate = p.MaxBitRate
 		}
 	} else if reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "" {
@@ -163,23 +161,22 @@ func determineFormatAndBitRate(ctx context.Context, reqFormat string, reqBitRate
 		format = conf.Server.DefaultDownsamplingFormat
 	}
 
+	if reqBitRate > 0 {
+		bitRate = reqBitRate
+	}
+
 	return format, bitRate
 }
 
 func findTranscoding(ctx context.Context, ds model.DataStore, mf *model.MediaFile, format string, bitRate int) (string, int) {
 	t, err := ds.Transcoding(ctx).FindByFormat(format)
-	if err != nil || t == nil {
+	if err != nil || t == nil || format == mf.Suffix && bitRate >= mf.BitRate {
 		return "raw", 0
 	}
 
 	if bitRate == 0 {
 		bitRate = t.DefaultBitRate
 	}
-
-	if format == mf.Suffix && bitRate >= mf.BitRate {
-		return "raw", 0
-	}
-
 	return t.TargetFormat, bitRate
 }
 
