@@ -129,7 +129,8 @@ func (s *Stream) EstimatedContentLength() int {
 }
 
 // selectTranscodingOptions selects the appropriate transcoding options based on the requested format and bitrate.
-// If the requested format is "raw" or matches the media file's suffix and the requested bitrate is 0, it returns the original format and bitrate.
+// If the requested format is "raw" or matches the media file's suffix and the requested bitrate is 0, it returns the
+// original format and bitrate.
 // Otherwise, it determines the format and bitrate using determineFormatAndBitRate and findTranscoding functions.
 //
 // NOTE: It is easier to follow the tests in core/media_streamer_internal_test.go to understand the different scenarios.
@@ -166,7 +167,7 @@ func determineFormatAndBitRate(ctx context.Context, srcBitRate int, reqFormat st
 		// If no format is specified and no transcoding associated to the player, but a bitrate is specified,
 		// and there is no transcoding set for the player, we use the default downsampling format.
 		// But only if the requested bitRate is lower than the original bitRate.
-		log.Debug("Default Downsampling", "Using default downsampling format", conf.Server.DefaultDownsamplingFormat)
+		log.Debug(ctx, "Using default downsampling format", "format", conf.Server.DefaultDownsamplingFormat)
 		format = conf.Server.DefaultDownsamplingFormat
 	}
 
@@ -175,7 +176,8 @@ func determineFormatAndBitRate(ctx context.Context, srcBitRate int, reqFormat st
 
 // findTranscoding finds the appropriate transcoding settings for the given format and bitrate.
 // If the format matches the media file's suffix and the bitrate is greater than or equal to the original bitrate,
-// it returns the original format and bitrate. Otherwise, it returns the target format and bitrate from the
+// it returns the original format and bitrate.
+// Otherwise, it returns the target format and bitrate from the
 // transcoding settings.
 func findTranscoding(ctx context.Context, ds model.DataStore, mf *model.MediaFile, format string, bitRate int) (string, int) {
 	t, err := ds.Transcoding(ctx).FindByFormat(format)
