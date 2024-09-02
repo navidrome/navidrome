@@ -36,7 +36,7 @@ func (a *dbAlbum) PostScan() error {
 	a.Album.Participations = parseParticipations(a.Participations)
 	tags, err := parseTags(a.Tags)
 	if err != nil {
-		return err
+		return fmt.Errorf("error parsing album tags: %w", err)
 	}
 	a.Album.Tags = tags
 	a.Album.Genre, a.Album.Genres = tags.ToGenres()
