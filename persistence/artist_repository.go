@@ -56,6 +56,16 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	return nil
 }
 
+type dbArtists []dbArtist
+
+func (dba dbArtists) toModels() model.Artists {
+	res := make(model.Artists, len(dba))
+	for i := range dba {
+		res[i] = *dba[i].Artist
+	}
+	return res
+}
+
 func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistRepository {
 	r := &artistRepository{}
 	r.ctx = ctx
@@ -113,34 +123,26 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	sel := r.selectArtist().Where(Eq{"artist.id": id})
-	var dba []dbArtist
+	var dba dbArtists
 	if err := r.queryAll(sel, &dba); err != nil {
 		return nil, err
 	}
 	if len(dba) == 0 {
 		return nil, model.ErrNotFound
 	}
-	res := r.toModels(dba)
+	res := dba.toModels()
 	return &res[0], nil
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
-	var dba []dbArtist
+	var dba dbArtists
 	err := r.queryAll(sel, &dba)
 	if err != nil {
 		return nil, err
 	}
-	res := r.toModels(dba)
+	res := dba.toModels()
 	return res, err
-}
-
-func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
-	res := model.Artists{}
-	for i := range dba {
-		res = append(res, *dba[i].Artist)
-	}
-	return res
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
@@ -202,12 +204,12 @@ func (r *artistRepository) purgeEmpty() error {
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
-	var dba []dbArtist
+	var dba dbArtists
 	err := r.doSearch(q, offset, size, &dba, "name")
 	if err != nil {
 		return nil, err
 	}
-	return r.toModels(dba), nil
+	return dba.toModels(), nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
