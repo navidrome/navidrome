@@ -2,8 +2,15 @@
 
 set -e
 
-download_lang() {
-  filename=resources/i18n/"$1".json
+I18N_DIR=resources/i18n
+
+# Function to process JSON: remove empty attributes and sort
+process_json() {
+  jq 'walk(if type == "object" then with_entries(select(.value != null and .value != "" and .value != [] and .value != {})) | to_entries | sort_by(.key) | from_entries else . end)' "$1"
+}
+
+check_lang_diff() {
+  filename=${I18N_DIR}/"$1".json
   url=$(curl -s -X POST https://poeditor.com/api/ \
     -d api_token="${POEDITOR_APIKEY}" \
     -d action="export" \
@@ -15,17 +22,23 @@ download_lang() {
     return 1
   fi
   curl -sSL "$url" > poeditor.json
-  if [ "$(jq -c . < $filename)" != "$(jq -c . < poeditor.json)" ]; then
+
+  process_json "$filename" > "$filename".tmp
+  process_json poeditor.json > poeditor.tmp
+  
+  diff=$(diff -u "$filename".tmp poeditor.tmp) || true
+  if [ -n "$diff" ]; then
+    echo "$diff"
     mv poeditor.json "$filename"
-  else
-    rm poeditor.json
   fi
+  
+  rm -f poeditor.json poeditor.tmp "$filename".tmp
 }
 
-for file in resources/i18n/*.json; do
+for file in ${I18N_DIR}/*.json; do
   name=$(basename "$file")
   code=$(echo "$name" | cut -f1 -d.)
   lang=$(jq -r .languageName < "$file")
   echo "Downloading $lang ($code)"
-  download_lang "$code"
+  check_lang_diff "$code"
 done
