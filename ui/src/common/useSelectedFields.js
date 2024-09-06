@@ -3,7 +3,6 @@ import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { setOmittedFields, setToggleableFields } from '../actions'
 
-// TODO Refactor
 export const useSelectedFields = ({
   resource,
   columns,
@@ -23,15 +22,14 @@ export const useSelectedFields = ({
   useEffect(() => {
     if (
       !resourceFields ||
-      Object.keys(resourceFields).length !== Object.keys(columns).length ||
-      !Object.keys(columns).every((c) => c in resourceFields)
+      Object.keys(resourceFields).length !== Object.keys(columns).length
     ) {
-      const obj = {}
-      for (const key of Object.keys(columns)) {
-        obj[key] = !defaultOff.includes(key)
-      }
-      dispatch(setToggleableFields({ [resource]: obj }))
+      const fieldState = Object.fromEntries(
+        Object.keys(columns).map((key) => [key, !defaultOff.includes(key)]),
+      )
+      dispatch(setToggleableFields({ [resource]: fieldState }))
     }
+
     if (!omittedFields) {
       dispatch(setOmittedFields({ [resource]: omittedColumns }))
     }
@@ -47,23 +45,25 @@ export const useSelectedFields = ({
 
   useEffect(() => {
     if (resourceFields) {
-      const filtered = []
-      const omitted = omittedColumns
-      for (const [key, val] of Object.entries(columns)) {
-        if (!val) omitted.push(key)
-        else if (resourceFields[key]) filtered.push(val)
-      }
+      const filtered = Object.entries(columns)
+        .filter(([key, val]) => resourceFields[key] && val)
+        .map(([_, val]) => val)
+
+      const omitted = omittedColumns.concat(
+        Object.keys(columns).filter((key) => !columns[key]),
+      )
       if (filteredComponents.length !== filtered.length)
         setFilteredComponents(filtered)
-      if (omittedFields.length !== omitted.length)
+      if (omittedFields?.length !== omitted.length)
         dispatch(setOmittedFields({ [resource]: omitted }))
     }
   }, [
     resourceFields,
     columns,
-    dispatch,
-    omittedColumns,
+    defaultOff,
     omittedFields,
+    omittedColumns,
+    dispatch,
     resource,
     filteredComponents.length,
   ])
@@ -72,8 +72,8 @@ export const useSelectedFields = ({
 }
 
 useSelectedFields.propTypes = {
-  resource: PropTypes.string,
-  columns: PropTypes.object,
+  resource: PropTypes.string.isRequired,
+  columns: PropTypes.object.isRequired,
   omittedColumns: PropTypes.arrayOf(PropTypes.string),
   defaultOff: PropTypes.arrayOf(PropTypes.string),
 }
@@ -83,27 +83,24 @@ export const useSetToggleableFields = (
   toggleableColumns,
   defaultOff = [],
 ) => {
-  const current = useSelector((state) => state.settings.toggleableFields)?.album
+  const currentFields = useSelector(
+    (state) => state.settings.toggleableFields?.[resource],
+  )
   const dispatch = useDispatch()
+
   useEffect(() => {
-    if (!current) {
-      dispatch(
-        setToggleableFields({
-          [resource]: toggleableColumns.reduce((acc, cur) => {
-            return {
-              ...acc,
-              ...{ [cur]: true },
-            }
-          }, {}),
-        }),
+    if (!currentFields) {
+      const initialToggleState = Object.fromEntries(
+        toggleableColumns.map((col) => [col, true]),
       )
+      dispatch(setToggleableFields({ [resource]: initialToggleState }))
       dispatch(setOmittedFields({ [resource]: defaultOff }))
     }
-  }, [resource, toggleableColumns, dispatch, current, defaultOff])
+  }, [currentFields, toggleableColumns, defaultOff, dispatch, resource])
 }
 
 useSetToggleableFields.propTypes = {
-  resource: PropTypes.string,
-  toggleableColumns: PropTypes.arrayOf(PropTypes.string),
+  resource: PropTypes.string.isRequired,
+  toggleableColumns: PropTypes.arrayOf(PropTypes.string).isRequired,
   defaultOff: PropTypes.arrayOf(PropTypes.string),
 }
