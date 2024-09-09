@@ -150,8 +150,7 @@ const AlbumTableView = ({
       <TextField source="name" />
       {columns}
       <AlbumContextMenu
-        source={'starred'}
-        sortBy={'starred ASC, starredAt ASC'}
+        source={'starred_at'}
         sortByOrder={'DESC'}
         sortable={config.enableFavourites}
         className={classes.contextMenu}

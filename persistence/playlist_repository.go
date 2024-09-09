@@ -19,7 +19,6 @@ import (
 
 type playlistRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 type dbPlaylist struct {
@@ -51,11 +50,10 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r := &playlistRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "playlist"
-	r.filterMappings = map[string]filterFunc{
+	r.registerModel(&model.Playlist{}, map[string]filterFunc{
 		"q":     playlistFilter,
 		"smart": smartPlaylistFilter,
-	}
+	})
 	return r
 }
 
@@ -372,7 +370,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playlistRepository) Read(id string) (interface{}, error) {
@@ -380,7 +378,7 @@ func (r *playlistRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *playlistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playlistRepository) EntityName() string {
