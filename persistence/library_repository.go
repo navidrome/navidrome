@@ -18,7 +18,7 @@ func NewLibraryRepository(ctx context.Context, db dbx.Builder) model.LibraryRepo
 	r := &libraryRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "library"
+	r.registerModel(&model.Library{}, nil)
 	return r
 }
 

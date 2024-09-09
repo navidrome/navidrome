@@ -22,7 +22,6 @@ import (
 
 type userRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 var (
@@ -34,7 +33,9 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r := &userRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "user"
+	r.registerModel(&model.User{}, map[string]filterFunc{
+		"password": invalidFilter(ctx),
+	})
 	once.Do(func() {
 		_ = r.initPasswordEncryptionKey()
 	})
@@ -91,7 +92,7 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	sel := r.newSelect().Columns("*").Where(Like{"user_name": username})
+	sel := r.newSelect().Columns("*").Where(Expr("user_name = ? COLLATE NOCASE", username))
 	var usr model.User
 	err := r.queryOne(sel, &usr)
 	return &usr, err
@@ -123,10 +124,10 @@ func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	if !usr.IsAdmin {
 		return 0, rest.ErrPermissionDenied
 	}
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *userRepository) Read(id string) (interface{}, error) {
+func (r *userRepository) Read(id string) (any, error) {
 	usr := loggedUser(r.ctx)
 	if !usr.IsAdmin && usr.ID != id {
 		return nil, rest.ErrPermissionDenied
@@ -138,23 +139,23 @@ func (r *userRepository) Read(id string) (interface{}, error) {
 	return usr, err
 }
 
-func (r *userRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+func (r *userRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	usr := loggedUser(r.ctx)
 	if !usr.IsAdmin {
 		return nil, rest.ErrPermissionDenied
 	}
-	return r.GetAll(r.parseRestOptions(options...))
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *userRepository) EntityName() string {
 	return "user"
 }
 
-func (r *userRepository) NewInstance() interface{} {
+func (r *userRepository) NewInstance() any {
 	return &model.User{}
 }
 
-func (r *userRepository) Save(entity interface{}) (string, error) {
+func (r *userRepository) Save(entity any) (string, error) {
 	usr := loggedUser(r.ctx)
 	if !usr.IsAdmin {
 		return "", rest.ErrPermissionDenied
@@ -170,7 +171,7 @@ func (r *userRepository) Save(entity interface{}) (string, error) {
 	return u.ID, err
 }
 
-func (r *userRepository) Update(id string, entity interface{}, cols ...string) error {
+func (r *userRepository) Update(id string, entity any, _ ...string) error {
 	u := entity.(*model.User)
 	u.ID = id
 	usr := loggedUser(r.ctx)

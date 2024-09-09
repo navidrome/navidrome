@@ -145,8 +145,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
       <TextField source="name" />
       {columns}
       <ArtistContextMenu
-        source={'starred'}
-        sortBy={'starred ASC, starredAt ASC'}
+        source={'starred_at'}
         sortByOrder={'DESC'}
         sortable={config.enableFavourites}
         className={classes.contextMenu}

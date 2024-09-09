@@ -18,34 +18,34 @@ import (
 
 type mediaFileRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepository {
 	r := &mediaFileRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "media_file"
-	r.filterMappings = map[string]filterFunc{
+	r.registerModel(&model.MediaFile{}, map[string]filterFunc{
 		"id":      idFilter(r.tableName),
 		"title":   fullTextFilter,
 		"starred": booleanFilter,
-	}
+	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"title":     "COALESCE(NULLIF(sort_title,''),title)",
-			"artist":    "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
-			"album":     "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
-			"random":    r.seededRandomSort(),
-			"createdAt": "media_file.created_at",
+			"title":        "COALESCE(NULLIF(sort_title,''),title)",
+			"artist":       "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
+			"album":        "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
+			"random":       r.seededRandomSort(),
+			"created_at":   "media_file.created_at",
+			"track_number": "album, release_date, disc_number, track_number",
 		}
 	} else {
 		r.sortMappings = map[string]string{
-			"title":     "order_title",
-			"artist":    "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
-			"album":     "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
-			"random":    r.seededRandomSort(),
-			"createdAt": "media_file.created_at",
+			"title":        "order_title",
+			"artist":       "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
+			"album":        "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+			"random":       r.seededRandomSort(),
+			"created_at":   "media_file.created_at",
+			"track_number": "album, release_date, disc_number, track_number",
 		}
 	}
 	return r
@@ -209,7 +209,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 }
 
 func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *mediaFileRepository) Read(id string) (interface{}, error) {
@@ -217,7 +217,7 @@ func (r *mediaFileRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *mediaFileRepository) EntityName() string {

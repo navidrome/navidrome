@@ -20,7 +20,6 @@ import (
 
 type artistRepository struct {
 	sqlRepository
-	sqlRestful
 	indexGroups utils.IndexGroups
 }
 
@@ -60,12 +59,11 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.ctx = ctx
 	r.db = db
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
-	r.tableName = "artist"
-	r.filterMappings = map[string]filterFunc{
+	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":      idFilter(r.tableName),
 		"name":    fullTextFilter,
 		"starred": booleanFilter,
-	}
+	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
 			"name": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
@@ -200,7 +198,7 @@ func (r *artistRepository) Search(q string, offset int, size int) (model.Artists
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *artistRepository) Read(id string) (interface{}, error) {
@@ -208,7 +206,7 @@ func (r *artistRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *artistRepository) EntityName() string {

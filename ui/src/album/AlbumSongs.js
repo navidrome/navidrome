@@ -97,12 +97,7 @@ const AlbumSongs = (props) => {
   const toggleableFields = useMemo(() => {
     return {
       trackNumber: isDesktop && (
-        <TextField
-          source="trackNumber"
-          sortBy="releaseDate asc, discNumber asc, trackNumber asc"
-          label="#"
-          sortable={false}
-        />
+        <TextField source="trackNumber" label="#" sortable={false} />
       ),
       title: (
         <SongTitleField

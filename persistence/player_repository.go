@@ -12,17 +12,15 @@ import (
 
 type playerRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerRepository {
 	r := &playerRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "player"
-	r.filterMappings = map[string]filterFunc{
+	r.registerModel(&model.Player{}, map[string]filterFunc{
 		"name": containsFilter("player.name"),
-	}
+	})
 	return r
 }
 
@@ -74,7 +72,7 @@ func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
 }
 
 func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(r.newRestSelect(), r.parseRestOptions(options...))
+	return r.count(r.newRestSelect(), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playerRepository) Read(id string) (interface{}, error) {
@@ -85,7 +83,7 @@ func (r *playerRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newRestSelect(r.parseRestOptions(options...))
+	sel := r.newRestSelect(r.parseRestOptions(r.ctx, options...))
 	res := model.Players{}
 	err := r.queryAll(sel, &res)
 	return res, err
