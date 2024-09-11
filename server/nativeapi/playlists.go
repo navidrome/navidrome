@@ -22,14 +22,16 @@ type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.Handler
 func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	// Add a middleware to capture the playlistId
 	wrapper := func(handler restHandler) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
 			constructor := func(ctx context.Context) rest.Repository {
 				plsRepo := ds.Playlist(ctx)
-				plsId := chi.URLParam(req, "playlistId")
-				return plsRepo.Tracks(plsId, true)
+				plsId := chi.URLParam(r, "playlistId")
+				p := req.Params(r)
+				start := p.Int64Or("_start", 0)
+				return plsRepo.Tracks(plsId, start == 0)
 			}
 
-			handler(constructor).ServeHTTP(res, req)
+			handler(constructor).ServeHTTP(w, r)
 		}
 	}
 
