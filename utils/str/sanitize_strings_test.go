@@ -32,6 +32,9 @@ var _ = Describe("Sanitize Strings", func() {
 		It("remove opening brackets", func() {
 			Expect(str.SanitizeStrings("[Five Years]")).To(Equal("five years"))
 		})
+		It("remove slashes", func() {
+			Expect(str.SanitizeStrings("folder/file\\yyyy")).To(Equal("folder file yyyy"))
+		})
 	})
 
 	Describe("SanitizeFieldForSorting", func() {
