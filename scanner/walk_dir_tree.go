@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -160,6 +160,11 @@ func isDirOrSymlinkToDir(baseDir string, dirEnt fs.DirEntry) (bool, error) {
 	return fileInfo.IsDir(), nil
 }
 
+var ignoredDirs = []string{
+	"$RECYCLE.BIN",
+	"#snapshot",
+}
+
 // isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after skipScanFile)
 func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
@@ -168,8 +173,7 @@ func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
 	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
 		return true
 	}
-
-	if runtime.GOOS == "windows" && strings.EqualFold(name, "$RECYCLE.BIN") {
+	if slices.IndexFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) != -1 {
 		return true
 	}
 	_, err := os.Stat(filepath.Join(baseDir, name, consts.SkipScanFile))
