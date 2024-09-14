@@ -191,7 +191,7 @@ var _ = Describe("PlayerRepository", func() {
 				Expect(err).To(BeNil())
 
 				clone.ID = id
-				new, err := repo.Get(id)
+				newItem, err := repo.Get(id)
 
 				if clone.UserId == "" {
 					Expect(count).To(Equal(baseCount))
@@ -199,7 +199,7 @@ var _ = Describe("PlayerRepository", func() {
 				} else {
 					Expect(count).To(Equal(baseCount + 1))
 					Expect(err).To(BeNil())
-					Expect(*new).To(Equal(clone))
+					Expect(*newItem).To(Equal(clone))
 				}
 			},
 				Entry("same user", userPlayer),
@@ -225,14 +225,14 @@ var _ = Describe("PlayerRepository", func() {
 				}
 
 				clone.MaxBitRate = player.MaxBitRate
-				new, err := repo.Get(clone.ID)
+				newItem, err := repo.Get(clone.ID)
 
 				if player.UserId == "" {
 					Expect(err).To(Equal(model.ErrNotFound))
 				} else if !admin && player.UserId == adminUser.ID {
-					Expect(*new).To(Equal(player))
+					Expect(*newItem).To(Equal(player))
 				} else {
-					Expect(*new).To(Equal(clone))
+					Expect(*newItem).To(Equal(clone))
 				}
 			},
 				Entry("same user", userPlayer),

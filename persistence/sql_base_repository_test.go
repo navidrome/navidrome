@@ -1,8 +1,11 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -149,6 +152,14 @@ var _ = Describe("sqlRepository", func() {
 			It("handles nested functions", func() {
 				sql := r.buildSortOrder("name desc, coalesce(nullif(release_date, ''), nullif(original_date, '')), status asc", "desc")
 				Expect(sql).To(Equal("name asc, coalesce(nullif(release_date, ''), nullif(original_date, '')) desc, status desc"))
+			})
+		})
+		Context("seededRandomSort", func() {
+			It("returns a random sort order function call", func() {
+				r.ctx = request.WithUser(context.Background(), model.User{ID: "2"})
+				r.tableName = "media_file"
+				sql := r.seededRandomSort()
+				Expect(sql).To(ContainSubstring("SEEDEDRAND('media_file2', media_file.id)"))
 			})
 		})
 	})
