@@ -139,9 +139,12 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
+func (r sqlRepository) seedKey() string {
+	return r.tableName + userId(r.ctx)
+}
+
 func (r sqlRepository) seededRandomSort() string {
-	u, _ := request.UserFrom(r.ctx)
-	return fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.tableName+u.ID, r.tableName)
+	return fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
@@ -150,12 +153,12 @@ func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	}
 
 	if options[0].Seed != "" {
-		hasher.SetSeed(r.tableName+userId(r.ctx), options[0].Seed)
+		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return
 	}
 
 	if options[0].Offset == 0 {
-		hasher.Reseed(r.tableName + userId(r.ctx))
+		hasher.Reseed(r.seedKey())
 	}
 }
 
