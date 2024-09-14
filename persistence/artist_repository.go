@@ -73,9 +73,9 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter(r.tableName),
-		"starred": booleanFilter,
+		"id":       idFilter(r.tableName),
+		"name":     fullTextFilter(r.tableName),
+		"starred":  booleanFilter,
 		"genre_id": tagIDFilter,
 	})
 	if conf.Server.PreferSortTags {
