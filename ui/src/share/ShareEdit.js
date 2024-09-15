@@ -6,14 +6,14 @@ import {
   SimpleForm,
   TextInput,
 } from 'react-admin'
-import { shareUrl } from '../utils'
+import { sharePlayerUrl } from '../utils'
 import { Link } from '@material-ui/core'
 import { DateField } from '../common'
 import config from '../config'
 
 export const ShareEdit = (props) => {
   const { id, basePath, hasCreate, ...rest } = props
-  const url = shareUrl(id)
+  const url = sharePlayerUrl(id)
   return (
     <Edit {...props}>
       <SimpleForm {...rest}>
