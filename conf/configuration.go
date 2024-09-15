@@ -68,6 +68,7 @@ type configOptions struct {
 	EnableStarRating                bool
 	EnableUserEditing               bool
 	EnableSharing                   bool
+	ShareURL                        string
 	DefaultDownloadableShare        bool
 	DefaultTheme                    string
 	DefaultLanguage                 string
@@ -368,6 +369,7 @@ func init() {
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
