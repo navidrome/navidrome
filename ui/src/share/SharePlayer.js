@@ -39,6 +39,7 @@ const SharePlayer = () => {
       src: shareDownloadUrl(shareInfo?.id),
     })
   }
+  console.log(list)
   const options = {
     audioLists: list,
     mode: 'full',
