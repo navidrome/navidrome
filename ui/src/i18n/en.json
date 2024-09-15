@@ -219,7 +219,7 @@
             "logout": "Logout"
         },
         "validation": {
-            "invalidChars": "Please only use letter and numbers",
+            "invalidChars": "Please only use letters and numbers",
             "passwordDoesNotMatch": "Password does not match",
             "required": "Required",
             "minLength": "Must be %{min} characters at least",
