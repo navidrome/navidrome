@@ -23,6 +23,10 @@ func (all All) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("all", all)
 }
 
+func (all All) ChildPlaylistIds() (ids []string) {
+	return extractPlaylistIds(all)
+}
+
 type (
 	Any squirrel.Or
 	Or  = Any
@@ -34,6 +38,10 @@ func (any Any) ToSql() (sql string, args []interface{}, err error) {
 
 func (any Any) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("any", any)
+}
+
+func (any Any) ChildPlaylistIds() (ids []string) {
+	return extractPlaylistIds(any)
 }
 
 type Is squirrel.Eq
@@ -274,4 +282,30 @@ func inList(m map[string]interface{}, negate bool) (sql string, args []interface
 	} else {
 		return "media_file.id IN (" + subQText + ")", subQArgs, nil
 	}
+}
+
+func extractPlaylistIds(inputRule interface{}) (ids []string) {
+	var id string
+	var ok bool
+
+	switch rule := inputRule.(type) {
+	case Any:
+		for _, rules := range rule {
+			ids = append(ids, extractPlaylistIds(rules)...)
+		}
+	case All:
+		for _, rules := range rule {
+			ids = append(ids, extractPlaylistIds(rules)...)
+		}
+	case InPlaylist:
+		if id, ok = rule["id"].(string); ok {
+			ids = append(ids, id)
+		}
+	case NotInPlaylist:
+		if id, ok = rule["id"].(string); ok {
+			ids = append(ids, id)
+		}
+	}
+
+	return
 }
