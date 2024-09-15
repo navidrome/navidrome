@@ -28,11 +28,11 @@ func newResponse() *responses.Subsonic {
 }
 
 type subError struct {
-	code     int
+	code     int32
 	messages []interface{}
 }
 
-func newError(code int, message ...interface{}) error {
+func newError(code int32, message ...interface{}) error {
 	return subError{
 		code:     code,
 		messages: message,

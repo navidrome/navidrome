@@ -98,15 +98,7 @@ const SongList = (props) => {
 
   const toggleableFields = React.useMemo(() => {
     return {
-      album: isDesktop && (
-        <AlbumLinkField
-          source="album"
-          sortBy={
-            'album, order_album_artist_name, release_date, disc_number, track_number, title'
-          }
-          sortByOrder={'ASC'}
-        />
-      ),
+      album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
       albumArtist: <ArtistLinkField source="albumArtist" />,
       trackNumber: isDesktop && <NumberField source="trackNumber" />,
@@ -179,8 +171,7 @@ const SongList = (props) => {
             <SongTitleField source="title" showTrackNumbers={false} />
             {columns}
             <SongContextMenu
-              source={'starred'}
-              sortBy={'starred ASC, starredAt ASC'}
+              source={'starred_at'}
               sortByOrder={'DESC'}
               sortable={config.enableFavourites}
               className={classes.contextMenu}
