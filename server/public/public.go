@@ -2,6 +2,7 @@ package public
 
 import (
 	"net/http"
+	"net/url"
 	"path"
 
 	"github.com/go-chi/chi/v5"
@@ -65,5 +66,19 @@ func (pub *Router) routes() http.Handler {
 
 func ShareURL(r *http.Request, id string) string {
 	uri := path.Join(consts.URLPathPublic, id)
-	return server.AbsoluteURL(r, uri, nil)
+	return publicURL(r, uri, nil)
+}
+
+func publicURL(r *http.Request, u string, params url.Values) string {
+	if conf.Server.ShareURL != "" {
+		shareUrl, _ := url.Parse(conf.Server.ShareURL)
+		buildUrl, _ := url.Parse(u)
+		buildUrl.Scheme = shareUrl.Scheme
+		buildUrl.Host = shareUrl.Host
+		if len(params) > 0 {
+			buildUrl.RawQuery = params.Encode()
+		}
+		return buildUrl.String()
+	}
+	return server.AbsoluteURL(r, u, params)
 }
