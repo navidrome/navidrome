@@ -147,30 +147,60 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		Context("child smart playlists", func() {
-			It("Should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
-				conf.Server.SmartPlaylistRefreshTimeout = -1 * time.Second
+			When("refresh day has expired", func() {
+				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
 
-				nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
-				Expect(repo.Put(&nestedPls)).To(Succeed())
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
 
-				parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
-					Expression: criteria.All{
-						criteria.InPlaylist{"id": nestedPls.ID},
-					},
-				}}
-				Expect(repo.Put(&parentPls)).To(Succeed())
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
 
-				nestedPlsRead, err := repo.Get(nestedPls.ID)
-				Expect(err).ToNot(HaveOccurred())
+					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
 
-				_, err = repo.GetWithTracks(parentPls.ID, true)
-				Expect(err).ToNot(HaveOccurred())
+					_, err = repo.GetWithTracks(parentPls.ID, true)
+					Expect(err).ToNot(HaveOccurred())
 
-				// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
-				nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
-				Expect(err).ToNot(HaveOccurred())
+					// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
+					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
 
-				Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally(">", *nestedPlsRead.EvaluatedAt))
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally(">", *nestedPlsRead.EvaluatedAt))
+				})
+			})
+
+			When("refresh day has not expired", func() {
+				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+
+					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					_, err = repo.GetWithTracks(parentPls.ID, true)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Check that the nested playlist was not refreshed by parent get by verifying evaluatedAt is not updated since first nestedPls get
+					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
+				})
 			})
 		})
 	})

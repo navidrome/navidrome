@@ -49,7 +49,7 @@ type configOptions struct {
 	AutoImportPlaylists             bool
 	DefaultPlaylistPublicVisibility bool
 	PlaylistsPath                   string
-	SmartPlaylistRefreshTimeout     time.Duration
+	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
 	SearchFullString                bool
@@ -303,7 +303,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
-	viper.SetDefault("smartplaylistrefreshtimeout", 5*time.Second)
+	viper.SetDefault("smartPlaylistRefreshDelay", 1*time.Minute)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablemediafilecoverart", true)
