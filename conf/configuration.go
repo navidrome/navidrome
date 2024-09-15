@@ -303,7 +303,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
-	viper.SetDefault("smartPlaylistRefreshDelay", 1*time.Minute)
+	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablemediafilecoverart", true)
