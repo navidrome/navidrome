@@ -4,21 +4,21 @@
         "song": {
             "name": "Szám |||| Számok",
             "fields": {
-                "albumArtist": "Album előadó",
+                "albumArtist": "Album Előadó",
                 "duration": "Hossz",
                 "trackNumber": "#",
-                "playCount": "Lejátszások",
+                "playCount": "Lejátszva",
                 "title": "Cím",
                 "artist": "Előadó",
                 "album": "Album",
                 "path": "Elérési út",
                 "genre": "Műfaj",
-                "compilation": "Válogatásalbum",
+                "compilation": "Összeállítva",
                 "year": "Év",
                 "size": "Fájlméret",
-                "updatedAt": "Legutóbb frissítve",
+                "updatedAt": "Frissítve",
                 "bitRate": "Bitráta",
-                "discSubtitle": "Lemezfelirat",
+                "discSubtitle": "Lemez felirat",
                 "starred": "Kedvenc",
                 "comment": "Megjegyzés",
                 "rating": "Értékelés",
@@ -29,55 +29,55 @@
                 "createdAt": "Hozzáadva"
             },
             "actions": {
-                "addToQueue": "Lejátszás útolsóként",
-                "playNow": "Lejátszás",
-                "addToPlaylist": "Lejátszási listához adás",
+                "addToQueue": "Műsorlistához ad",
+                "playNow": "Lejátszás Most",
+                "addToPlaylist": "Lejátszási listához ad",
                 "shuffleAll": "Keverés",
                 "download": "Letöltés",
-                "playNext": "Lejátszás következőként",
-                "info": "Részletek"
+                "playNext": "Műsorlistára tűz",
+                "info": "Info"
             }
         },
         "album": {
             "name": "Album |||| Albumok",
             "fields": {
-                "albumArtist": "Album előadó",
+                "albumArtist": "Album Előadó",
                 "artist": "Előadó",
                 "duration": "Hossz",
                 "songCount": "Számok",
-                "playCount": "Lejátszások",
+                "playCount": "Lejátszva",
                 "name": "Név",
                 "genre": "Stílus",
-                "compilation": "Válogatásalbum",
+                "compilation": "Összeállítva",
                 "year": "Év",
-                "updatedAt": "Legutóbb frissítve",
+                "updatedAt": "Frissítve",
                 "comment": "Megjegyzés",
                 "rating": "Értékelés",
-                "createdAt": "Létrehozva",
+                "createdAt": "Hozzáadva",
                 "size": "Méret",
                 "originalDate": "Eredeti",
-                "releaseDate": "Kiadva",
+                "releaseDate": "Megjelent",
                 "releases": "Kiadó |||| Kiadók",
                 "released": "Kiadta"
             },
             "actions": {
                 "playAll": "Lejátszás",
-                "playNext": "Lejátszás következőként",
-                "addToQueue": "Lejátszás útolsóként",
-                "shuffle": "Keverés",
-                "addToPlaylist": "Lejátszási listához adás",
+                "playNext": "Műsorlistára tűz",
+                "addToQueue": "Műsorlistához ad",
+                "shuffle": "Véletlenszerű",
+                "addToPlaylist": "Lejátszási listához ad",
                 "download": "Letöltés",
-                "info": "Részletek",
+                "info": "Infó",
                 "share": "Megosztás"
             },
             "lists": {
                 "all": "Mind",
                 "random": "Véletlenszerű",
-                "recentlyAdded": "Nemrég hozzáadott",
-                "recentlyPlayed": "Nemrég lejátszott",
-                "mostPlayed": "Legtöbbször lejátszott",
+                "recentlyAdded": "Nemrég Hozzáadott",
+                "recentlyPlayed": "Nemrég Lejátszott",
+                "mostPlayed": "Legtöbbször Lejátszott",
                 "starred": "Kedvencek",
-                "topRated": "Legjobbra értékelt"
+                "topRated": "Legjobbra Értékelt"
             }
         },
         "artist": {
@@ -86,7 +86,7 @@
                 "name": "Név",
                 "albumCount": "Albumok száma",
                 "songCount": "Számok száma",
-                "playCount": "Lejátszások",
+                "playCount": "Lejátszva",
                 "rating": "Értékelés",
                 "genre": "Stílus",
                 "size": "Méret"
@@ -95,10 +95,10 @@
         "user": {
             "name": "Felhasználó |||| Felhasználók",
             "fields": {
-                "userName": "Felhasználónév",
+                "userName": "Felhasználó név",
                 "isAdmin": "Admin",
-                "lastLoginAt": "Utolsó belépés",
-                "updatedAt": "Legutóbb frissítve",
+                "lastLoginAt": "Utolső belépés",
+                "updatedAt": "Frissítve",
                 "name": "Név",
                 "password": "Jelszó",
                 "createdAt": "Létrehozva",
@@ -111,25 +111,25 @@
                 "name": "A névváltoztatások csak a következő bejelentkezéskor jelennek meg"
             },
             "notifications": {
-                "created": "Felhasználó létrehozva",
-                "updated": "Felhasználó frissítve",
-                "deleted": "Felhasználó törölve"
+                "created": "Felhasználó létrehozta",
+                "updated": "Felhasználó frissítette",
+                "deleted": "Felhasználó törölte"
             },
             "message": {
-                "listenBrainzToken": "Add meg a ListenBrainz felhasználó tokened.",
-                "clickHereForToken": "Kattints ide, hogy megszerezd a tokened"
+                "listenBrainzToken": "Add meg a ListenBrainz felhasználó tokent.",
+                "clickHereForToken": "Kattints ide, hogy megszerezd a tokent"
             }
         },
         "player": {
-            "name": "Lejátszó |||| Lejátszók",
+            "name": "Player |||| Players",
             "fields": {
                 "name": "Név",
                 "transcodingId": "Átkódolás",
-                "maxBitRate": "Max. bitráta",
+                "maxBitRate": "Max. Bitráta",
                 "client": "Kliens",
                 "userName": "Felhasználó név",
-                "lastSeen": "Utoljára bejelentkezett",
-                "reportRealPath": "Valódi fájlútvonal küldése",
+                "lastSeen": "Utoljára itt járt",
+                "reportRealPath": "Valódi útvonal jelentése",
                 "scrobbleEnabled": "Statisztika küldése külső szolgáltatásoknak"
             }
         },
@@ -138,7 +138,7 @@
             "fields": {
                 "name": "Név",
                 "targetFormat": "Cél formátum",
-                "defaultBitRate": "Alapértelmezett bitráta",
+                "defaultBitRate": "Alapértelmezett Bitráta",
                 "command": "Parancs"
             }
         },
@@ -157,15 +157,15 @@
                 "path": "Importálás"
             },
             "actions": {
-                "selectPlaylist": "Válassz egy lejátszási listát:",
-                "addNewPlaylist": "\"%{name}\" létrehozása",
+                "selectPlaylist": "Válasz egy lejátszási listát:",
+                "addNewPlaylist": "Létrehoz \"%{name}\"",
                 "export": "Exportálás",
-                "makePublic": "Publikussá tétel",
-                "makePrivate": "Priváttá tétel"
+                "makePublic": "Legyen Publikus",
+                "makePrivate": "Legyen Privát"
             },
             "message": {
                 "duplicate_song": "Duplikált számok hozzáadása",
-                "song_exist": "Egyes számok már hozzá vannak adva a listához. Még egyszer hozzá akarod adni?"
+                "song_exist": "Duplikátumokat adsz hozzá a lejátszási listához. Maradjon vagy ne?"
             }
         },
         "radio": {
@@ -178,7 +178,7 @@
                 "createdAt": "Létrehozva"
             },
             "actions": {
-                "playNow": "Lejátszás"
+                "playNow": "Lejátszás Most"
             }
         },
         "share": {
@@ -188,40 +188,40 @@
                 "url": "URL",
                 "description": "Leírás",
                 "contents": "Tartalom",
-                "expiresAt": "Lejárat",
+                "expiresAt": "Lejár",
                 "lastVisitedAt": "Utoljára látogatva",
                 "visitCount": "Látogatók",
                 "format": "Formátum",
-                "maxBitRate": "Max. bitráta",
+                "maxBitRate": "Max. Bitráta",
                 "updatedAt": "Frissítve",
                 "createdAt": "Létrehozva",
-                "downloadable": "Engedélyezed a letöltéseket?"
+                "downloadable": "Engedélyezed a Letöltéseket?"
             }
         }
     },
     "ra": {
         "auth": {
-            "welcome1": "Köszönjük, hogy a Navidrome-ot telepítetted!",
-            "welcome2": "A kezdéshez hozz létre egy admin felhasználót!",
+            "welcome1": "Köszönjük a Navidrome telepítését!",
+            "welcome2": "A kezdéshez hoz létre egy admin felhasználót",
             "confirmPassword": "Jelszó megerősítése",
             "buttonCreateAdmin": "Admin hozzáadása",
-            "auth_check_error": "Jelentkezz be a folytatáshoz!",
+            "auth_check_error": "Jelentkezz be a folytatáshoz",
             "user_menu": "Profil",
             "username": "Felhasználó név",
             "password": "Jelszó",
             "sign_in": "Bejelentkezés",
-            "sign_in_error": "A hitelesítés sikertelen. Kérjük, próbáld újra!",
+            "sign_in_error": "A hitelesítés sikertelen. Kérjük, próbáld újra",
             "logout": "Kijelentkezés"
         },
         "validation": {
-            "invalidChars": "Kérlek, csak betűket és számokat használj!",
-            "passwordDoesNotMatch": "A jelszó nem egyezik.",
+            "invalidChars": "Kérlek, csak betűket és számokat használj",
+            "passwordDoesNotMatch": "A jelszó nem egyezik",
             "required": "Szükséges",
-            "minLength": "Legalább %{min} karakternek kell lennie",
-            "maxLength": "Legfeljebb %{max} karakternek kell lennie",
+            "minLength": "Legalább %{min} karakter kell, hogy legyen",
+            "maxLength": "Legfeljebb %{max} karakter kell, hogy legyen",
             "minValue": "Legalább %{min}",
             "maxValue": "Legfeljebb %{max} vagy kevesebb",
-            "number": "Számnak kell lennie",
+            "number": "Egy szám kell, hogy legyen",
             "email": "Érvényes email címnek kell lennie",
             "oneOf": "Az egyiknek kell lennie: %{options}",
             "regex": "Meg kell felelnie egy adott formátumnak (regexp): %{pattern}",
@@ -235,27 +235,27 @@
             "bulk_actions": "1 kiválasztott elem |||| %{smart_count} kiválasztott elem",
             "cancel": "Mégse",
             "clear_input_value": "Üres érték",
-            "clone": "Klónozás",
-            "confirm": "Megerősítés",
-            "create": "Létrehozás",
+            "clone": "Klón",
+            "confirm": "Megerősít",
+            "create": "Létrehoz",
             "delete": "Törlés",
             "edit": "Szerkesztés",
-            "export": "Exportálás",
+            "export": "Export",
             "list": "Lista",
             "refresh": "Frissítés",
             "remove_filter": "Szűrő eltávolítása",
-            "remove": "Eltávolítás",
+            "remove": "Eltávolít",
             "save": "Mentés",
             "search": "Keresés",
-            "show": "Megjelenítés",
+            "show": "Mutat",
             "sort": "Rendezés",
-            "undo": "Vísszavonás",
-            "expand": "Kiterjesztés",
+            "undo": "Vísszavon",
+            "expand": "Kiterjeszt",
             "close": "Bezárás",
             "open_menu": "Menü megnyitása",
             "close_menu": "Menü bezárása",
-            "unselect": "Kijelölés törlése",
-            "skip": "Átugrás",
+            "unselect": "Törölje a  kijelölését",
+            "skip": "Ugrás",
             "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "Megosztás",
             "download": "Letöltés"
@@ -265,10 +265,10 @@
             "false": "Nem"
         },
         "page": {
-            "create": "%{name} létrehozása",
+            "create": "Létrehoz %{name}",
             "dashboard": "Műszerfal",
             "edit": "%{name} #%{id}",
-            "error": "Valami probléma történt",
+            "error": "Valami probléma van",
             "list": "%{name}",
             "loading": "Betöltés",
             "not_found": "Nem található",
@@ -278,16 +278,16 @@
         },
         "input": {
             "file": {
-                "upload_several": "Húzz ide néhány feltöltendő fájlt vagy válassz egyet.",
-                "upload_single": "Húzz ide egy feltöltendő fájlt vagy válassz egyet."
+                "upload_several": "Tölts fel néhány fájlt vagy válassz egyet.",
+                "upload_single": "Tölts fel egy fájlt vagy válassz egyet."
             },
             "image": {
-                "upload_several": "Húzz ide néhány feltöltendő képet vagy válassz egyet.",
-                "upload_single": "Húzz ide egy feltöltendő képet vagy válassz egyet."
+                "upload_several": "Tölts fel néhány képet vagy válassz egyet.",
+                "upload_single": "Tölts fel egy képet vagy válassz egyet."
             },
             "references": {
-                "all_missing": "Hivatkozási adatok nem találhatóak.",
-                "many_missing": "Legalább az egyik kapcsolódó hivatkozás már nem elérhető.",
+                "all_missing": "Nem találom a hivatkozási adatokat.",
+                "many_missing": "Úgy tűnik, hogy legalább az egyik kapcsolódó hivatkozás már nem elérhető.",
                 "single_missing": "A kapcsolódó hivatkozás már nem elérhető."
             },
             "password": {
@@ -299,12 +299,12 @@
             "about": "Rólunk",
             "are_you_sure": "Biztos vagy benne?",
             "bulk_delete_content": "Biztos, hogy törölni akarod %{name}? |||| Biztos, hogy törölni akarod ezeket az %{smart_count} elemeket?",
-            "bulk_delete_title": "%{name} törlése |||| %{smart_count} %{name} elem törlése",
+            "bulk_delete_title": "Törlés %{name} |||| Törlés %{smart_count} %{name}",
             "delete_content": "Biztos, hogy törlöd ezt az elemet?",
-            "delete_title": "%{name} #%{id} törlése",
+            "delete_title": "Törlés %{name} #%{id}",
             "details": "Részletek",
-            "error": "Kliens hiba lépett fel, és a kérést nem lehetett teljesíteni.",
-            "invalid_form": "Az űrlap érvénytelen. Kérlek, ellenőrizzd a hibákat.",
+            "error": "Kliens hiba lépett fel, és a kérését nem lehetett teljesíteni.",
+            "invalid_form": "Az űrlap érvénytelen. Kérlek, ellenőrizzd a hibákat",
             "loading": "Az oldal betöltődik. Egy pillanat.",
             "no": "Nem",
             "not_found": "Rossz hivatkozást írtál be, vagy egy rossz linket adtál meg.",
@@ -312,7 +312,7 @@
             "unsaved_changes": "Néhány módosítás nem lett elmentve. Biztos, hogy figyelmen kívül akarod hagyni?"
         },
         "navigation": {
-            "no_results": "Nincs találat.",
+            "no_results": "Nincs eredmény.",
             "no_more_results": "Az oldalszám %{page} kívül esik a határokon. Próbáld meg az előző oldalt.",
             "page_out_of_boundaries": "Az oldalszám %{page} kívül esik a határokon.",
             "page_out_from_end": "Nem lehet az utolsó oldal után menni",
@@ -324,17 +324,17 @@
             "skip_nav": "Ugrás a tartalomra"
         },
         "notification": {
-            "updated": "Elem frissítve |||| %{smart_count} elemek frissíteve",
-            "created": "Elem létrehozva",
-            "deleted": "Elem törölve |||| %{smart_count} elemek frissítve",
-            "bad_item": "Hibás elem",
-            "item_doesnt_exist": "Elem nem létezik",
+            "updated": "Állomány frissítve |||| %{smart_count} frissített állományok",
+            "created": "Állomány létrehozva",
+            "deleted": "Állomány törölve |||| %{smart_count} törölt állományok",
+            "bad_item": "Hibás állomány",
+            "item_doesnt_exist": "Állományok nem léteznek",
             "http_error": "Szerver kommunikációs hiba",
             "data_provider_error": "Adatszolgáltatói hiba. Ellenőrizzd a konzolt a részletekért.",
-            "i18n_error": "Nem lehet betölteni a fordítást a kért nyelven",
+            "i18n_error": "Nem tudom betölteni a fordítást a kért nyelven",
             "canceled": "A művelet visszavonva",
-            "logged_out": "A munkamenet lejárt. Kérlek, csatlakozz újra.",
-            "new_version": "Új verzió elérhető! Kérlek, frissítsd ezt az ablakot!"
+            "logged_out": "A munkamenet véget ért. Kérlek, csatlakozz újra.",
+            "new_version": "Új verzió elérhető! Kérlek, frissítsd ezt az ablakot."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Megjelenítendő oszlopok",
@@ -344,34 +344,34 @@
         }
     },
     "message": {
-        "note": "MEGJEGYZÉS",
+        "note": "NOTE",
         "transcodingDisabled": "Az átkódolási konfiguráció módosítása a webes felületen keresztül biztonsági okokból nem lehetséges. Ha módosítani szeretnéd az átkódolási beállításokat, indítsd újra a kiszolgálót a %{config} konfigurációs opcióval.",
-        "transcodingEnabled": "A Navidrome jelenleg a következőkkel fut %{config}, ez lehetővé teszi a rendszerparancsok futtatását az átkódolási beállításokból a webes felület segítségével. Javasoljuk, hogy biztonsági okokból tiltsd ezt le, és csak az átkódolási beállítások konfigurálásának idejére kapcsold be.",
-        "songsAddedToPlaylist": "1 szám hozzáadva a lejátszási listához |||| %{smart_count} szám hozzáadva a lejátszási listához",
+        "transcodingEnabled": "A Navidrome jelenleg a következőkkel fut %{config}, ez lehetővé teszi a rendszerparancsok futtatását az átkódolási beállításokból a webes felület segítségével. Javasoljuk, hogy biztonsági okokból tiltsd le, és csak az átkódolási beállítások konfigurálásakor kapcsold be.",
+        "songsAddedToPlaylist": "Hozzáadtál 1 számot a lejátszási listához |||| Added %{smart_count} szám a lejátszási listán",
         "noPlaylistsAvailable": "Nem áll rendelkezésre",
         "delete_user_title": "Felhasználó törlése '%{name}'",
-        "delete_user_content": "Biztos, hogy törölni akarod ezt a felhasználót az adataival (beállítások és lejátszási listák) együtt?",
-        "notifications_blocked": "A böngésződ beállításaiban letiltottad az értesítéseket erre az oldalra.",
-        "notifications_not_available": "Ez a böngésző nem támogatja az asztali értesítéseket, vagy a Navidrome-ot nem https-en keresztül használod.",
-        "lastfmLinkSuccess": "Sikeresen összekapcsolva Last.fm-el és halgatott számok küldése engedélyezve.",
-        "lastfmLinkFailure": "Nem lehet kapcsolódni a Last.fm-hez.",
-        "lastfmUnlinkSuccess": "Last.fm leválasztva és a halgatott számok küldése kikapcsolva.",
-        "lastfmUnlinkFailure": "Nem sikerült leválasztani a Last.fm-et.",
+        "delete_user_content": "Biztos, hogy törölni akarod ezt a felhasználót az adataival együtt?",
+        "notifications_blocked": "Böngésződ beállításaiban letiltottad az értesítéseket erre az oldalra vonatkozóan.",
+        "notifications_not_available": "Ez a böngésző nem támogatja az asztali értesítéseket, vagy a Navidrome-ot nem lehet https-en keresztül elérni.",
+        "lastfmLinkSuccess": "Last.fm sikeresen összekapcsolva és a statisztika engedélyezve",
+        "lastfmLinkFailure": "Last.fm nem lehetett összekapcsolni",
+        "lastfmUnlinkSuccess": "Last.fm leválasztva és a statisztika kikapcsolva",
+        "lastfmUnlinkFailure": "Last.fm nem lehetett leválasztani",
         "openIn": {
             "lastfm": "Megnyitás Last.fm-ben",
             "musicbrainz": "Megnyitás MusicBrainz-ben"
         },
         "lastfmLink": "Bővebben...",
-        "listenBrainzLinkSuccess": "Sikeresen összekapcsolva ListenBrainz-el és halgatott számok küldése %{user} felhasználónak engedélyezve.",
-        "listenBrainzLinkFailure": "Nem lehet kapcsolódni a Listenbrainz-hez: %{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz Last.fm leválasztva és a halgatott számok küldése kikapcsolva.",
-        "listenBrainzUnlinkFailure": "Nem sikerült leválasztani a ListenBrainz-et.",
+        "listenBrainzLinkSuccess": "ListenBrainz sikeresen összekapcsolva és a statisztika engedélyezve a felhasználónak: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz nem lehetett összekapcsolni: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz leválasztva és a statisztika kikapcsolva",
+        "listenBrainzUnlinkFailure": "ListenBrainz nem lehetett leválasztani",
         "downloadOriginalFormat": "Letöltés eredeti formátumban",
         "shareOriginalFormat": "Megosztás eredeti formátumban",
         "shareDialogTitle": "Megosztás %{resource} '%{name}'",
-        "shareBatchDialogTitle": "1 %{resource} megosztása |||| %{smart_count} %{resource} megosztása",
+        "shareBatchDialogTitle": "Megosztás 1 %{resource} |||| Megosztás %{smart_count} %{resource}",
         "shareSuccess": "Hivatkozás másolva a vágólapra: %{url}",
-        "shareFailure": "Hiba történt a hivatkozás %{url} vágólapra másolása közben.",
+        "shareFailure": "Hiba történt a hivatkozás %{url} vágólapra másolása közben",
         "downloadDialogTitle": "Letöltés %{resource} '%{name}' (%{size})",
         "shareCopyToClipboard": "Másolás vágólapra: Ctrl+C, Enter"
     },
@@ -385,12 +385,12 @@
             "options": {
                 "theme": "Téma",
                 "language": "Nyelv",
-                "defaultView": "Alapértelmezett nézet",
+                "defaultView": "Alapértelmezett Nézet",
                 "desktop_notifications": "Asztali értesítések",
-                "lastfmScrobbling": "Halgatott számok küldése a Last.fm-nek",
-                "listenBrainzScrobbling": "Halgatott számok küldése a ListenBrainz-nek",
-                "replaygain": "ReplayGain mód",
-                "preAmp": "ReplayGain előerősítő (dB)",
+                "lastfmScrobbling": "Statisztika a Last.fm-nek",
+                "listenBrainzScrobbling": "Statisztika a ListenBrainz-nek",
+                "replaygain": "Hangerő-korrekció Mód",
+                "preAmp": "Hangerő-korrekció Előerősítés (dB)",
                 "gain": {
                     "none": "Kikapcsolva",
                     "album": "Album",
@@ -401,22 +401,22 @@
         "albumList": "Albumok",
         "about": "Rólunk",
         "playlists": "Lejátszási listák",
-        "sharedPlaylists": "Megosztott lej. listák"
+        "sharedPlaylists": "Megosztott lejátszási listák "
     },
     "player": {
-        "playListsText": "Lejátszási lista",
+        "playListsText": "Műsorlista",
         "openText": "Megnyitás",
         "closeText": "Bezárás",
         "notContentText": "Nincs zene",
         "clickToPlayText": "Lejátszás",
         "clickToPauseText": "Szünet",
-        "nextTrackText": "Következő szám",
-        "previousTrackText": "Előző szám",
+        "nextTrackText": "Következő sáv",
+        "previousTrackText": "Előző sáv",
         "reloadText": "Újratöltés",
         "volumeText": "Hangerő",
-        "toggleLyricText": "Zeneszöveg",
-        "toggleMiniModeText": "Minimalizálás",
-        "destroyText": "Bezárás",
+        "toggleLyricText": "Szöveg be",
+        "toggleMiniModeText": "Minimális",
+        "destroyText": "Kikapcsol",
         "downloadText": "Letöltés",
         "removeAudioListsText": "Audio listák törlése",
         "clickToDeleteText": "Kattints a törléshez %{name}",
@@ -424,7 +424,7 @@
         "playModeText": {
             "order": "Sorrendben",
             "orderLoop": "Ismétlés",
-            "singleLoop": "Egy szám ismétlése",
+            "singleLoop": "Ismétlés egyszer",
             "shufflePlay": "Véletlenszerű"
         }
     },
@@ -451,10 +451,10 @@
             "toggle_play": "Lejátszás / Szünet",
             "prev_song": "Előző Szám",
             "next_song": "Következő Szám",
-            "vol_up": "Hangerő fel",
-            "vol_down": "Hangerő le",
-            "toggle_love": "Ad hozzá ezt a számot a kedvencekhez",
-            "current_song": "Aktuális számhoz ugrás"
+            "vol_up": "Hangerő Fel",
+            "vol_down": "Hangerő Le",
+            "toggle_love": "Ad hozzá ezt a sávot a kedvencekhez",
+            "current_song": "Menj az aktuális számhoz"
         }
     }
 }
