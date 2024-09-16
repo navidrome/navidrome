@@ -62,7 +62,7 @@ const (
 	UICoverArtSize       = 300
 	DefaultUIVolume      = 100
 
-	DefaultHttpClientTimeOut = 10 * time.Second
+	DefaultHttpClientTimeOut = 20 * time.Second
 
 	DefaultScannerExtractor = "taglib"
 
