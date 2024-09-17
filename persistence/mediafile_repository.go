@@ -24,10 +24,12 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 	r := &mediaFileRepository{}
 	r.ctx = ctx
 	r.db = db
+	r.tableName = "media_file"
 	r.registerModel(&model.MediaFile{}, map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"title":   fullTextFilter,
-		"starred": booleanFilter,
+		"id":       idFilter(r.tableName),
+		"title":    fullTextFilter,
+		"starred":  booleanFilter,
+		"genre_id": eqFilter,
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{

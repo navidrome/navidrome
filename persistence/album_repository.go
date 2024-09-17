@@ -57,6 +57,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.db = db
+	r.tableName = "album"
 	r.registerModel(&model.Album{}, map[string]filterFunc{
 		"id":              idFilter(r.tableName),
 		"name":            fullTextFilter,
@@ -66,6 +67,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
+		"genre_id":        eqFilter,
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
