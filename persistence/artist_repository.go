@@ -59,10 +59,12 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.ctx = ctx
 	r.db = db
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
+	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter,
-		"starred": booleanFilter,
+		"id":       idFilter(r.tableName),
+		"name":     fullTextFilter,
+		"starred":  booleanFilter,
+		"genre_id": eqFilter,
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
