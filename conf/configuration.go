@@ -49,6 +49,7 @@ type configOptions struct {
 	AutoImportPlaylists             bool
 	DefaultPlaylistPublicVisibility bool
 	PlaylistsPath                   string
+	SmartPlaylistRefreshDelay       time.Duration
 	AutoTranscodeDownload           bool
 	DefaultDownsamplingFormat       string
 	SearchFullString                bool
@@ -68,6 +69,7 @@ type configOptions struct {
 	EnableStarRating                bool
 	EnableUserEditing               bool
 	EnableSharing                   bool
+	ShareURL                        string
 	DefaultDownloadableShare        bool
 	DefaultTheme                    string
 	DefaultLanguage                 string
@@ -302,6 +304,7 @@ func init() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
+	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablemediafilecoverart", true)
@@ -368,6 +371,7 @@ func init() {
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
