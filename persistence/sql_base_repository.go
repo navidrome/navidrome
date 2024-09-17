@@ -172,7 +172,7 @@ func (r sqlRepository) seededRandomSort() string {
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
-	if len(options) == 0 || options[0].Sort != "random" {
+	if len(options) == 0 || !strings.HasPrefix(options[0].Sort, "SEEDEDRAND(") {
 		return
 	}
 
