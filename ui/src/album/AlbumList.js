@@ -29,6 +29,7 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { useMemo } from 'react'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -88,6 +89,13 @@ const AlbumList = (props) => {
   const refresh = useRefresh()
   useResourceRefresh('album')
 
+  const randomStartingSeed = useMemo(() => {
+    const seed = Math.random().toString()
+    return seed
+  }, [])
+
+  const seed = `${randomStartingSeed}-${version}`
+
   const albumListType = location.pathname
     .replace(/^\/album/, '')
     .replace(/^\//, '')
@@ -130,7 +138,7 @@ const AlbumList = (props) => {
         {...props}
         exporter={false}
         bulkActionButtons={false}
-        filter={{ seed: version }}
+        filter={{ seed }}
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}
