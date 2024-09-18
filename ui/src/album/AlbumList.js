@@ -90,8 +90,7 @@ const AlbumList = (props) => {
   useResourceRefresh('album')
 
   const randomStartingSeed = useMemo(() => {
-    const seed = Math.random().toString()
-    return seed
+    return Math.random().toString()
   }, [])
 
   const seed = `${randomStartingSeed}-${version}`
