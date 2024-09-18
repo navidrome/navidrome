@@ -127,6 +127,15 @@ func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) 
 	return &res[0], nil
 }
 
+func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"path collate nocase": paths})
+	var res model.MediaFiles
+	if err := r.queryAll(sel, &res); err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 func cleanPath(path string) string {
 	path = filepath.Clean(path)
 	if !strings.HasSuffix(path, string(os.PathSeparator)) {
