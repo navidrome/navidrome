@@ -13,7 +13,7 @@ import React from 'react'
 import { IconButton, Link, useMediaQuery } from '@material-ui/core'
 import ShareIcon from '@material-ui/icons/Share'
 import { DateField, QualityInfo } from '../common'
-import { shareUrl } from '../utils'
+import { sharePlayerUrl } from '../utils'
 import config from '../config'
 
 export const FormatInfo = ({ record, size }) => {
@@ -30,7 +30,7 @@ const ShareList = (props) => {
   const notify = useNotify()
 
   const handleShare = (r) => (e) => {
-    const url = shareUrl(r?.id)
+    const url = sharePlayerUrl(r?.id)
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard
         .writeText(url)
@@ -89,7 +89,7 @@ const ShareList = (props) => {
             source={'id'}
             render={(r) => (
               <Link
-                href={shareUrl(r.id)}
+                href={sharePlayerUrl(r.id)}
                 label="URL"
                 target="_blank"
                 rel="noopener noreferrer"

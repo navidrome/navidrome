@@ -14,17 +14,15 @@ import (
 
 type genreRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreRepository {
 	r := &genreRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "genre"
-	r.filterMappings = map[string]filterFunc{
-		"name": containsFilter,
-	}
+	r.registerModel(&model.Genre{}, map[string]filterFunc{
+		"name": containsFilter("name"),
+	})
 	return r
 }
 
@@ -60,7 +58,7 @@ func (r *genreRepository) Put(m *model.Genre) error {
 }
 
 func (r *genreRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select(), r.parseRestOptions(options...))
+	return r.count(Select(), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *genreRepository) Read(id string) (interface{}, error) {
@@ -71,7 +69,7 @@ func (r *genreRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *genreRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newSelect(r.parseRestOptions(options...)).Columns("*")
+	sel := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
 	res := model.Genres{}
 	err := r.queryAll(sel, &res)
 	return res, err

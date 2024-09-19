@@ -14,7 +14,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import { useEffect, useState } from 'react'
-import { shareUrl } from '../utils'
+import { sharePlayerUrl } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
 import { useDispatch, useSelector } from 'react-redux'
 import { closeShareMenu } from '../actions'
@@ -52,7 +52,7 @@ export const ShareDialog = () => {
     },
     {
       onSuccess: (res) => {
-        const url = shareUrl(res?.data?.id)
+        const url = sharePlayerUrl(res?.data?.id)
         if (navigator.clipboard && window.isSecureContext) {
           navigator.clipboard
             .writeText(url)

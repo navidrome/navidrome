@@ -4,7 +4,7 @@
 		"dockerfile": "Dockerfile",
 		"args": {
 			// Update the VARIANT arg to pick a version of Go: 1, 1.15, 1.14
-			"VARIANT": "1.22",
+			"VARIANT": "1.23",
 			// Options
 			"INSTALL_NODE": "true",
 			"NODE_VERSION": "v20"
@@ -18,33 +18,37 @@
 		"--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z"
 	],
 	// Set *default* container specific settings.json values on container create.
-	"settings": {
-		"terminal.integrated.shell.linux": "/bin/bash",
-		"go.useGoProxyToCheckForToolUpdates": false,
-		"go.useLanguageServer": true,
-		"go.gopath": "/go",
-		"go.goroot": "/usr/local/go",
-		"go.toolsGopath": "/go/bin",
-		"go.formatTool": "goimports",
-		"go.lintOnSave": "package",
-		"go.lintTool": "golangci-lint",
-		"editor.formatOnSave": true,
-		"[javascript]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode"
-		},
-		"[json]": {
-			"editor.defaultFormatter": "esbenp.prettier-vscode"
-		},
-		"[jsonc]": {
-			"editor.defaultFormatter": "vscode.json-language-features"
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.shell.linux": "/bin/bash",
+				"go.useGoProxyToCheckForToolUpdates": false,
+				"go.useLanguageServer": true,
+				"go.gopath": "/go",
+				"go.goroot": "/usr/local/go",
+				"go.toolsGopath": "/go/bin",
+				"go.formatTool": "goimports",
+				"go.lintOnSave": "package",
+				"go.lintTool": "golangci-lint",
+				"editor.formatOnSave": true,
+				"[javascript]": {
+					"editor.defaultFormatter": "esbenp.prettier-vscode"
+				},
+				"[json]": {
+					"editor.defaultFormatter": "esbenp.prettier-vscode"
+				},
+				"[jsonc]": {
+					"editor.defaultFormatter": "vscode.json-language-features"
+				}
+			},
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"golang.Go",
+				"esbenp.prettier-vscode",
+				"tamasfe.even-better-toml"
+			]
 		}
 	},
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"golang.Go",
-		"esbenp.prettier-vscode",
-		"tamasfe.even-better-toml"
-	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		4533,

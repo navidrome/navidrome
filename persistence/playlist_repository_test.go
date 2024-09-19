@@ -2,7 +2,9 @@ package persistence
 
 import (
 	"context"
+	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -120,13 +122,86 @@ var _ = Describe("PlaylistRepository", func() {
 				},
 			}
 		})
-		It("Put/Get", func() {
-			newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+		Context("valid rules", func() {
+			Specify("Put/Get", func() {
+				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(Succeed())
 
-			savedPls, err := repo.Get(newPls.ID)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(savedPls.Rules).To(Equal(rules))
+				savedPls, err := repo.Get(newPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(savedPls.Rules).To(Equal(rules))
+			})
+		})
+
+		Context("invalid rules", func() {
+			It("fails to Put it in the DB", func() {
+				rules = &criteria.Criteria{
+					// This is invalid because "contains" cannot have multiple fields
+					Expression: criteria.All{
+						criteria.Contains{"genre": "Hardcore", "filetype": "mp3"},
+					},
+				}
+				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(MatchError(ContainSubstring("invalid criteria expression")))
+			})
+		})
+
+		Context("child smart playlists", func() {
+			When("refresh day has expired", func() {
+				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+
+					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					_, err = repo.GetWithTracks(parentPls.ID, true)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
+					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally(">", *nestedPlsRead.EvaluatedAt))
+				})
+			})
+
+			When("refresh day has not expired", func() {
+				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+
+					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					_, err = repo.GetWithTracks(parentPls.ID, true)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Check that the nested playlist was not refreshed by parent get by verifying evaluatedAt is not updated since first nestedPls get
+					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
+				})
+			})
 		})
 	})
 })

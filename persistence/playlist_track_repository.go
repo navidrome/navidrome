@@ -13,7 +13,6 @@ import (
 
 type playlistTrackRepository struct {
 	sqlRepository
-	sqlRestful
 	playlistId   string
 	playlist     *model.Playlist
 	playlistRepo *playlistRepository
@@ -26,11 +25,13 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.ctx = r.ctx
 	p.db = r.db
 	p.tableName = "playlist_tracks"
+	p.registerModel(&model.PlaylistTrack{}, nil)
 	p.sortMappings = map[string]string{
-		"id":     "playlist_tracks.id",
-		"artist": "order_artist_name asc",
-		"album":  "order_album_name asc, order_album_artist_name asc",
-		"title":  "order_title",
+		"id":       "playlist_tracks.id",
+		"artist":   "order_artist_name asc",
+		"album":    "order_album_name asc, order_album_artist_name asc",
+		"title":    "order_title",
+		"duration": "duration", // To make sure the field will be whitelisted
 	}
 	if conf.Server.PreferSortTags {
 		p.sortMappings["artist"] = "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc"
@@ -51,7 +52,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 }
 
 func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select().Where(Eq{"playlist_id": r.playlistId}), r.parseRestOptions(options...))
+	return r.count(Select().Where(Eq{"playlist_id": r.playlistId}), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
@@ -112,7 +113,7 @@ func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]
 }
 
 func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playlistTrackRepository) EntityName() string {

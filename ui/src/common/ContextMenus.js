@@ -40,6 +40,7 @@ const ContextMenu = ({
   color,
   className,
   songQueryParams,
+  hideShare,
   hideInfo,
 }) => {
   const classes = useStyles({ color })
@@ -80,13 +81,15 @@ const ContextMenu = ({
       label: translate('resources.album.actions.addToPlaylist'),
       action: (data, ids) => dispatch(openAddToPlaylist({ selectedIds: ids })),
     },
-    share: {
-      enabled: config.enableSharing,
-      needData: false,
-      label: translate('ra.action.share'),
-      action: (record) =>
-        dispatch(openShareMenu([record.id], resource, record.name)),
-    },
+    ...(!hideShare && {
+      share: {
+        enabled: config.enableSharing,
+        needData: false,
+        label: translate('ra.action.share'),
+        action: (record) =>
+          dispatch(openShareMenu([record.id], resource, record.name)),
+      },
+    }),
     download: {
       enabled: config.enableDownloads && record.size,
       needData: false,
@@ -200,7 +203,7 @@ export const AlbumContextMenu = (props) =>
       resource={'album'}
       songQueryParams={{
         pagination: { page: 1, perPage: -1 },
-        sort: { field: 'releaseDate, discNumber, trackNumber', order: 'ASC' },
+        sort: { field: 'trackNumber', order: 'ASC' },
         filter: {
           album_id: props.record.id,
           release_date: props.releaseDate,
@@ -231,7 +234,7 @@ export const ArtistContextMenu = (props) =>
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },
         sort: {
-          field: 'album, releaseDate, discNumber, trackNumber',
+          field: 'trackNumber',
           order: 'ASC',
         },
         filter: { album_artist_id: props.record.id },

@@ -338,6 +338,7 @@ export default {
       content: {
         padding: '0 !important',
         background: '#3B4252',
+        backgroundColor: 'rgb(59, 66, 82)',
       },
       root: {
         backgroundColor: '#2E3440',
