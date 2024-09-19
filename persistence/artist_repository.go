@@ -141,7 +141,15 @@ func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
-	name := strings.ToLower(str.RemoveArticle(a.Name))
+	source := a.Name
+	if conf.Server.PreferSortTags {
+		if len(a.SortArtistName) > 0 {
+			source = a.SortArtistName
+		} else if len(a.OrderArtistName) > 0 {
+			source = a.OrderArtistName
+		}
+	}
+	name := strings.ToLower(str.RemoveArticle(source))
 	for k, v := range r.indexGroups {
 		key := strings.ToLower(k)
 		if strings.HasPrefix(name, key) {
@@ -153,7 +161,11 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	all, err := r.GetAll(model.QueryOptions{Sort: "order_artist_name"})
+	sortColumn := "order_artist_name"
+	if conf.Server.PreferSortTags {
+		sortColumn = "sort_artist_name, order_artist_name"
+	}
+	all, err := r.GetAll(model.QueryOptions{Sort: sortColumn})
 	if err != nil {
 		return nil, err
 	}
