@@ -27,10 +27,11 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.tableName = "playlist_tracks"
 	p.registerModel(&model.PlaylistTrack{}, nil)
 	p.sortMappings = map[string]string{
-		"id":     "playlist_tracks.id",
-		"artist": "order_artist_name asc",
-		"album":  "order_album_name asc, order_album_artist_name asc",
-		"title":  "order_title",
+		"id":       "playlist_tracks.id",
+		"artist":   "order_artist_name asc",
+		"album":    "order_album_name asc, order_album_artist_name asc",
+		"title":    "order_title",
+		"duration": "duration", // To make sure the field will be whitelisted
 	}
 	if conf.Server.PreferSortTags {
 		p.sortMappings["artist"] = "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc"
