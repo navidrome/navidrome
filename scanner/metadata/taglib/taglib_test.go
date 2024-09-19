@@ -3,7 +3,6 @@ package taglib
 import (
 	"io/fs"
 	"os"
-	"path/filepath"
 
 	"github.com/navidrome/navidrome/scanner/metadata"
 	"github.com/navidrome/navidrome/utils"
@@ -90,7 +89,6 @@ var _ = Describe("Extractor", func() {
 		DescribeTable("Format-Specific tests",
 			func(file, duration, channels, samplerate, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
 				file = "tests/fixtures/" + file
-				ext := filepath.Ext(file)
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(mds).To(HaveLen(1))
@@ -120,7 +118,7 @@ var _ = Describe("Extractor", func() {
 				// WMA does not have a "compilation" tag, but "wm/iscompilation"
 				if _, ok := m["compilation"]; ok {
 					Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
-				} else if ext == ".wma" {
+				} else {
 					Expect(m).To(HaveKeyWithValue("wm/iscompilation", []string{"1"}))
 				}
 
