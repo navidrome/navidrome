@@ -68,11 +68,13 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"name": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
+			"name":       "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
+			"starred_at": "starred, starred_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
-			"name": "order_artist_name",
+			"name":       "order_artist_name",
+			"starred_at": "starred, starred_at",
 		}
 	}
 	return r

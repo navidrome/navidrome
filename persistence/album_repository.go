@@ -77,6 +77,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"random":         r.seededRandomSort(),
 			"recently_added": recentlyAddedSort(),
+			"starred_at":     "starred, starred_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
@@ -86,6 +87,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
 			"random":         r.seededRandomSort(),
 			"recently_added": recentlyAddedSort(),
+			"starred_at":     "starred, starred_at",
 		}
 	}
 
