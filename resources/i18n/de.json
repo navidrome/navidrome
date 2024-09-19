@@ -440,8 +440,8 @@
         "totalScanned": "Insgesamt gescannte Ordner",
         "quickScan": "Schneller Scan",
         "fullScan": "Kompletter Scan",
-        "serverUptime": "",
-        "serverDown": ""
+        "serverUptime": "Server-Betriebszeit",
+        "serverDown": "OFFLINE"
     },
     "help": {
         "title": "Navidrome Hotkeys",
