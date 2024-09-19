@@ -39,6 +39,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 			"random":       r.seededRandomSort(),
 			"created_at":   "media_file.created_at",
 			"track_number": "album, release_date, disc_number, track_number",
+			"starred_at":   "starred, starred_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
@@ -48,6 +49,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 			"random":       r.seededRandomSort(),
 			"created_at":   "media_file.created_at",
 			"track_number": "album, release_date, disc_number, track_number",
+			"starred_at":   "starred, starred_at",
 		}
 	}
 	return r
