@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -358,12 +359,11 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	currentTracks map[string]model.MediaFile,
 	filesToUpdate []string,
 ) (int, error) {
-	numUpdatedTracks := 0
-
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
+
+	numUpdatedTracks := 0
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
-	chunks := slice.BreakUp(filesToUpdate, filesBatchSize)
-	for _, chunk := range chunks {
+	for chunk := range slice.CollectChunks(filesBatchSize, slices.Values(filesToUpdate)) {
 		// Load tracks Metadata from the folder
 		newTracks, err := s.loadTracks(chunk)
 		if err != nil {
