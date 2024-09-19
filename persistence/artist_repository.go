@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -143,11 +144,7 @@ func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
 	source := a.Name
 	if conf.Server.PreferSortTags {
-		if len(a.SortArtistName) > 0 {
-			source = a.SortArtistName
-		} else if len(a.OrderArtistName) > 0 {
-			source = a.OrderArtistName
-		}
+		source = cmp.Or(a.SortArtistName, a.OrderArtistName, source)
 	}
 	name := strings.ToLower(str.RemoveArticle(source))
 	for k, v := range r.indexGroups {
