@@ -29,7 +29,6 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
-import { useMemo } from 'react'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -80,6 +79,8 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
+const randomStartingSeed = Math.random().toString()
+
 const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
@@ -88,10 +89,6 @@ const AlbumList = (props) => {
   const version = useVersion()
   const refresh = useRefresh()
   useResourceRefresh('album')
-
-  const randomStartingSeed = useMemo(() => {
-    return Math.random().toString()
-  }, [])
 
   const seed = `${randomStartingSeed}-${version}`
 
