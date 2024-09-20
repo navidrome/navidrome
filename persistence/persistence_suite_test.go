@@ -23,7 +23,7 @@ func TestPersistence(t *testing.T) {
 	//conf.Server.DbPath = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 	defer db.Init()()
-	log.SetLevel(log.LevelError)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
 }
