@@ -15,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -311,7 +310,7 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	// Add new tracks, chunk by chunk
 	pos := startingPos
-	for chunk := range slice.CollectChunks(200, slices.Values(mediaFileIds)) {
+	for chunk := range slices.Chunk(mediaFileIds, 200) {
 		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id")
 		for _, t := range chunk {
 			ins = ins.Values(playlistId, t, pos)

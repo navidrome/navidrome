@@ -71,7 +71,7 @@ func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity 
 		return nil
 	}
 
-	for chunk := range slice.CollectChunks(200, maps.Keys(m)) {
+	for chunk := range slice.CollectChunks(maps.Keys(m), 200) {
 		err := refresh(ctx, chunk...)
 		if err != nil {
 			log.Error(ctx, fmt.Sprintf("Error writing %ss to the DB", entity), err)

@@ -133,7 +133,7 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) (*model.Playlist, error) {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
-	for lines := range slice.CollectChunks(400, slice.LinesFrom(reader)) {
+	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
 		var filteredLines []string
 		for _, line := range lines {
 			line := strings.TrimSpace(line)

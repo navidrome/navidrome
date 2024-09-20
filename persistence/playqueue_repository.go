@@ -115,7 +115,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	ids := slice.SeqFunc(tracks, func(t model.MediaFile) string { return t.ID })
 
 	// Break the list in chunks, up to 500 items, to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
-	for chunk := range slice.CollectChunks(500, ids) {
+	for chunk := range slice.CollectChunks(ids, 500) {
 		idsFilter := Eq{"media_file.id": chunk}
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
 		if err != nil {

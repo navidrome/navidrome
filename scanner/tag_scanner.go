@@ -21,7 +21,6 @@ import (
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
 	"github.com/navidrome/navidrome/utils/pl"
-	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -363,7 +362,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 
 	numUpdatedTracks := 0
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
-	for chunk := range slice.CollectChunks(filesBatchSize, slices.Values(filesToUpdate)) {
+	for chunk := range slices.Chunk(filesToUpdate, filesBatchSize) {
 		// Load tracks Metadata from the folder
 		newTracks, err := s.loadTracks(chunk)
 		if err != nil {

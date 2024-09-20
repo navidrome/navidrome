@@ -5,7 +5,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func (r sqlRepository) withGenres(sql SelectBuilder) SelectBuilder {
@@ -25,13 +24,10 @@ func (r *sqlRepository) updateGenres(id string, genres model.Genres) error {
 		return nil
 	}
 
-	// Create a iterator to collect the genre IDs
-	genreIds := slice.SeqFunc(genres, func(g model.Genre) string { return g.ID })
-
-	for chunk := range slice.CollectChunks(100, genreIds) {
+	for chunk := range slices.Chunk(genres, 100) {
 		ins := Insert(tableName+"_genres").Columns("genre_id", tableName+"_id")
-		for _, gid := range chunk {
-			ins = ins.Values(gid, id)
+		for _, genre := range chunk {
+			ins = ins.Values(genre.ID, id)
 		}
 		if _, err = r.executeSQL(ins); err != nil {
 			return err
@@ -75,7 +71,7 @@ func appendGenre[T modelWithGenres](item *T, genre model.Genre) {
 func loadGenres[T modelWithGenres](r baseRepository, ids []string, items map[string]*T) error {
 	tableName := r.getTableName()
 
-	for chunk := range slice.CollectChunks(900, slices.Values(ids)) {
+	for chunk := range slices.Chunk(ids, 900) {
 		sql := Select("genre.*", tableName+"_id as item_id").From("genre").
 			Join(tableName+"_genres ig on genre.id = ig.genre_id").
 			OrderBy(tableName+"_id", "ig.rowid").Where(Eq{tableName + "_id": chunk})

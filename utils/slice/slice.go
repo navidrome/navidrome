@@ -100,7 +100,7 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 }
 
 // CollectChunks collects chunks of n elements from the input sequence and return a Seq of chunks
-func CollectChunks[T any](n int, it iter.Seq[T]) iter.Seq[[]T] {
+func CollectChunks[T any](it iter.Seq[T], n int) iter.Seq[[]T] {
 	return func(yield func([]T) bool) {
 		s := make([]T, 0, n)
 		for x := range it {

@@ -92,7 +92,7 @@ var _ = Describe("Slice Utils", func() {
 	DescribeTable("CollectChunks",
 		func(input []int, n int, expected [][]int) {
 			var result [][]int
-			for chunks := range slice.CollectChunks(n, slices.Values(input)) {
+			for chunks := range slice.CollectChunks(slices.Values(input), n) {
 				result = append(result, chunks)
 			}
 			Expect(result).To(Equal(expected))
