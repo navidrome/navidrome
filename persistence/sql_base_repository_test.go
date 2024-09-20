@@ -6,16 +6,25 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/hasher"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("sqlRepository", func() {
-	r := sqlRepository{}
+	var r sqlRepository
+	BeforeEach(func() {
+		r.ctx = request.WithUser(context.Background(), model.User{ID: "user-id"})
+		r.tableName = "table"
+	})
+
 	Describe("applyOptions", func() {
 		var sq squirrel.SelectBuilder
 		BeforeEach(func() {
 			sq = squirrel.Select("*").From("test")
+			r.sortMappings = map[string]string{
+				"name": "title",
+			}
 		})
 		It("does not add any clauses when options is empty", func() {
 			sq = r.applyOptions(sq, model.QueryOptions{})
@@ -30,17 +39,11 @@ var _ = Describe("sqlRepository", func() {
 				Offset: 2,
 			})
 			sql, _, _ := sq.ToSql()
-			Expect(sql).To(Equal("SELECT * FROM test ORDER BY name desc LIMIT 1 OFFSET 2"))
+			Expect(sql).To(Equal("SELECT * FROM test ORDER BY title desc LIMIT 1 OFFSET 2"))
 		})
 	})
 
 	Describe("toSQL", func() {
-		var r sqlRepository
-
-		BeforeEach(func() {
-			r = sqlRepository{}
-		})
-
 		It("returns error for invalid SQL", func() {
 			sq := squirrel.Select("*").From("test").Where(1)
 			_, _, err := r.toSQL(sq)
@@ -175,13 +178,37 @@ var _ = Describe("sqlRepository", func() {
 				Expect(sql).To(Equal("name asc, coalesce(nullif(release_date, ''), nullif(original_date, '')) desc, status desc"))
 			})
 		})
-		Context("seededRandomSort", func() {
-			It("returns a random sort order function call", func() {
-				r.ctx = request.WithUser(context.Background(), model.User{ID: "2"})
-				r.tableName = "media_file"
-				sql := r.seededRandomSort()
-				Expect(sql).To(ContainSubstring("SEEDEDRAND('media_file2', media_file.id)"))
-			})
+	})
+
+	Describe("resetSeededRandom", func() {
+		var id string
+		BeforeEach(func() {
+			id = r.seedKey()
+			hasher.SetSeed(id, "")
+		})
+		It("does not reset seed if sort is not random", func() {
+			var options []model.QueryOptions
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(BeEmpty())
+		})
+		It("resets seed if sort is random", func() {
+			options := []model.QueryOptions{{Sort: "random"}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).NotTo(BeEmpty())
+		})
+		It("resets seed if sort is random and seed is provided", func() {
+			options := []model.QueryOptions{{Sort: "random", Seed: "seed"}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
+		})
+		It("keeps seed when paginating", func() {
+			options := []model.QueryOptions{{Sort: "random", Seed: "seed", Offset: 0}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
+
+			options = []model.QueryOptions{{Sort: "random", Offset: 1}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 	})
 })
