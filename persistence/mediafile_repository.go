@@ -33,7 +33,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"title":        "COALESCE(NULLIF(sort_title,''),title)",
+			"title":        "COALESCE(NULLIF(sort_title,''),order_title)",
 			"artist":       "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
 			"album":        "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
 			"random":       "random",
