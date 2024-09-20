@@ -18,6 +18,12 @@ func SetSeed(id string, seed string) {
 	instance.SetSeed(id, seed)
 }
 
+func CurrentSeed(id string) string {
+	instance.mutex.RLock()
+	defer instance.mutex.RUnlock()
+	return instance.seeds[id]
+}
+
 func HashFunc() func(id, str string) uint64 {
 	return instance.HashFunc()
 }
