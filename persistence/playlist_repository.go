@@ -308,7 +308,7 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 }
 
 func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) error {
-	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
+	// Break the track list in chunks to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	// Add new tracks, chunk by chunk
 	pos := startingPos
 	for chunk := range slice.CollectChunks(200, slices.Values(mediaFileIds)) {
