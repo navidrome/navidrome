@@ -48,14 +48,15 @@ This improves the readability of the messages
 It can be one of the following:
 1. **feat**: Addition of a new feature
 2. **fix**: Bug fix
-3. **docs**: Documentation Changes
-4. **style**: Changes to styling
-5. **refactor**: Refactoring of code
-6. **perf**: Code that affects performance
-7. **test**: Updating or improving the current tests
-8. **build**: Changes to Build process
-9. **revert**: Reverting to a previous commit 
-10. **chore** : updating grunt tasks etc
+3. **sec**: Fixing security issues
+4. **docs**: Documentation Changes
+5. **style**: Changes to styling
+6. **refactor**: Refactoring of code
+7. **perf**: Code that affects performance
+8. **test**: Updating or improving the current tests
+9. **build**: Changes to Build process
+10. **revert**: Reverting to a previous commit
+11. **chore** : updating grunt tasks etc
 
 If there is a breaking change in your Pull Request, please add `BREAKING CHANGE` in the optional body section
 
