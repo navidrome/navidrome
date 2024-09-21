@@ -21,6 +21,9 @@ func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerReposi
 	r.registerModel(&model.Player{}, map[string]filterFunc{
 		"name": containsFilter("player.name"),
 	})
+	r.sortMappings = map[string]string{
+		"user_name": "username",
+	}
 	return r
 }
 
