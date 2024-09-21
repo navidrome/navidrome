@@ -33,23 +33,21 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"title":        "COALESCE(NULLIF(sort_title,''),order_title)",
-			"artist":       "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
-			"album":        "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
-			"random":       "random",
-			"created_at":   "media_file.created_at",
-			"track_number": "album, release_date, disc_number, track_number",
-			"starred_at":   "starred, starred_at",
+			"title":      "COALESCE(NULLIF(sort_title,''),order_title)",
+			"artist":     "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
+			"album":      "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
+			"random":     "random",
+			"created_at": "media_file.created_at",
+			"starred_at": "starred, starred_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
-			"title":        "order_title",
-			"artist":       "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
-			"album":        "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
-			"random":       "random",
-			"created_at":   "media_file.created_at",
-			"track_number": "album, release_date, disc_number, track_number",
-			"starred_at":   "starred, starred_at",
+			"title":      "order_title",
+			"artist":     "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
+			"album":      "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
+			"random":     "random",
+			"created_at": "media_file.created_at",
+			"starred_at": "starred, starred_at",
 		}
 	}
 	return r
