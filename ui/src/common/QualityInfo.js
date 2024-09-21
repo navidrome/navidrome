@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import PropTypes from 'prop-types'
 import Chip from '@material-ui/core/Chip'
 import config from '../config'
 import { makeStyles } from '@material-ui/core'
 import clsx from 'clsx'
+import { calculateGain } from '../utils/calculateReplayGain'
 
 const llFormats = new Set(config.losslessFormats.split(','))
 const placeholder = 'N/A'
@@ -21,7 +22,8 @@ const useStyle = makeStyles(
 
 export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
   const classes = useStyle()
-  let { suffix, bitRate } = record
+  let { suffix, bitRate, rgAlbumGain, rgAlbumPeak, rgTrackGain, rgTrackPeak } =
+    record
   let info = placeholder
 
   if (suffix) {
@@ -32,18 +34,26 @@ export const QualityInfo = ({ record, size, gainMode, preAmp, className }) => {
     }
   }
 
-  if (gainMode !== 'none') {
-    info += ` (${
-      (gainMode === 'album' ? record.albumGain : record.trackGain) + preAmp
-    } dB)`
-  }
+  const extra = useMemo(() => {
+    if (gainMode !== 'none') {
+      const gainValue = calculateGain(
+        { gainMode, preAmp },
+        { rgAlbumGain, rgAlbumPeak, rgTrackGain, rgTrackPeak },
+      )
+      // convert normalized gain (after peak) back to dB
+      const toDb = (Math.log10(gainValue) * 20).toFixed(2)
+      return ` (${toDb} dB)`
+    }
+
+    return ''
+  }, [gainMode, preAmp, rgAlbumGain, rgAlbumPeak, rgTrackGain, rgTrackPeak])
 
   return (
     <Chip
       className={clsx(classes.chip, className)}
       variant="outlined"
       size={size}
-      label={info}
+      label={`${info}${extra}`}
     />
   )
 }
