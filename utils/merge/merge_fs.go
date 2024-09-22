@@ -1,10 +1,12 @@
 package merge
 
 import (
+	"cmp"
 	"errors"
 	"io"
 	"io/fs"
-	"sort"
+	"maps"
+	"slices"
 )
 
 // FS implements a simple merged fs.FS, that can combine a Base FS with an Overlay FS. The semantics are:
@@ -44,33 +46,25 @@ func (m FS) Open(name string) (fs.File, error) {
 }
 
 func (m FS) mergeDirs(name string, info fs.FileInfo, baseDir fs.ReadDirFile, overlayDir fs.ReadDirFile) (fs.File, error) {
-	merged := map[string]fs.DirEntry{}
-
 	baseFiles, err := baseDir.ReadDir(-1)
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(baseFiles, func(i, j int) bool { return baseFiles[i].Name() < baseFiles[j].Name() })
 
 	overlayFiles, err := overlayDir.ReadDir(-1)
 	if err != nil {
 		overlayFiles = nil
 	}
-	sort.Slice(overlayFiles, func(i, j int) bool { return overlayFiles[i].Name() < overlayFiles[j].Name() })
 
+	merged := map[string]fs.DirEntry{}
 	for _, f := range baseFiles {
 		merged[f.Name()] = f
 	}
 	for _, f := range overlayFiles {
 		merged[f.Name()] = f
 	}
-
-	var entries []fs.DirEntry
-	for _, i := range merged {
-		entries = append(entries, i)
-	}
-
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	it := maps.Values(merged)
+	entries := slices.SortedFunc(it, func(i, j fs.DirEntry) int { return cmp.Compare(i.Name(), j.Name()) })
 	return &mergedDir{
 		name:    name,
 		info:    info,

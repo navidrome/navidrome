@@ -1,8 +1,6 @@
 package core
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,10 +13,12 @@ import (
 	"time"
 
 	"github.com/RaveNoX/go-jsoncommentstrip"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type Playlists interface {
@@ -132,34 +132,39 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 
 func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) (*model.Playlist, error) {
 	mediaFileRepository := s.ds.MediaFile(ctx)
-	scanner := bufio.NewScanner(reader)
-	scanner.Split(scanLines)
 	var mfs model.MediaFiles
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "#PLAYLIST:") {
-			if split := strings.Split(line, ":"); len(split) >= 2 {
-				pls.Name = split[1]
+	for lines := range slice.CollectChunks[string](400, slice.LinesFrom(reader)) {
+		var filteredLines []string
+		for _, line := range lines {
+			line := strings.TrimSpace(line)
+			if strings.HasPrefix(line, "#PLAYLIST:") {
+				if split := strings.Split(line, ":"); len(split) >= 2 {
+					pls.Name = split[1]
+				}
+				continue
 			}
-			continue
+			// Skip empty lines and extended info
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			if strings.HasPrefix(line, "file://") {
+				line = strings.TrimPrefix(line, "file://")
+				line, _ = url.QueryUnescape(line)
+			}
+			if baseDir != "" && !filepath.IsAbs(line) {
+				line = filepath.Join(baseDir, line)
+			}
+			filteredLines = append(filteredLines, line)
 		}
-		// Skip empty lines and extended info
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if strings.HasPrefix(line, "file://") {
-			line = strings.TrimPrefix(line, "file://")
-			line, _ = url.QueryUnescape(line)
-		}
-		if baseDir != "" && !filepath.IsAbs(line) {
-			line = filepath.Join(baseDir, line)
-		}
-		mf, err := mediaFileRepository.FindByPath(line)
+		found, err := mediaFileRepository.FindByPaths(filteredLines)
 		if err != nil {
-			log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", line, err)
+			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
-		mfs = append(mfs, *mf)
+		if len(found) != len(filteredLines) {
+			logMissingFiles(ctx, pls, filteredLines, found)
+		}
+		mfs = append(mfs, found...)
 	}
 	if pls.Name == "" {
 		pls.Name = time.Now().Format(time.RFC3339)
@@ -167,7 +172,20 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)
 
-	return pls, scanner.Err()
+	return pls, nil
+}
+
+func logMissingFiles(ctx context.Context, pls *model.Playlist, lines []string, found model.MediaFiles) {
+	missing := make(map[string]bool)
+	for _, line := range lines {
+		missing[line] = true
+	}
+	for _, mf := range found {
+		delete(missing, mf.Path)
+	}
+	for path := range missing {
+		log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
+	}
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
@@ -193,32 +211,9 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) 
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID
+		newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
 	}
 	return s.ds.Playlist(ctx).Put(newPls)
-}
-
-// From https://stackoverflow.com/a/41433698
-func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if atEOF && len(data) == 0 {
-		return 0, nil, nil
-	}
-	if i := bytes.IndexAny(data, "\r\n"); i >= 0 {
-		if data[i] == '\n' {
-			// We have a line terminated by single newline.
-			return i + 1, data[0:i], nil
-		}
-		advance = i + 1
-		if len(data) > i+1 && data[i+1] == '\n' {
-			advance += 1
-		}
-		return advance, data[0:i], nil
-	}
-	// If we're at EOF, we have a final, non-terminated line. Return it.
-	if atEOF {
-		return len(data), data, nil
-	}
-	// Request more data.
-	return 0, nil, nil
 }
 
 func (s *playlists) Update(ctx context.Context, playlistID string,

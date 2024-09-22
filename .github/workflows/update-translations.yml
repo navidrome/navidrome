@@ -14,7 +14,7 @@ jobs:
           POEDITOR_PROJECTID: ${{ secrets.POEDITOR_PROJECTID }}
           POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
         run: |
-          ./update-translations.sh
+          .github/workflows/update-translations.sh
       - name: Show changes, if any
         run: |
           git status --porcelain
@@ -24,5 +24,5 @@ jobs:
         with:
           token: ${{ secrets.PAT }}
           commit-message: Update translations
-          title: Update translations from POEditor
+          title: "fix(ui): update translations from POEditor"
           branch: update-translations

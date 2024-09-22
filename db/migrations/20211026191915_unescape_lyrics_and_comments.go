@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
 )
 
@@ -33,8 +33,8 @@ func upUnescapeLyricsAndComments(_ context.Context, tx *sql.Tx) error {
 			return err
 		}
 
-		newComment := utils.SanitizeText(comment.String)
-		newLyrics := utils.SanitizeText(lyrics.String)
+		newComment := str.SanitizeText(comment.String)
+		newLyrics := str.SanitizeText(lyrics.String)
 		_, err = stmt.Exec(newComment, newLyrics, id)
 		if err != nil {
 			log.Error("Error unescaping media_file's lyrics and comments", "title", title, "id", id, err)

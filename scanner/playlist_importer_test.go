@@ -77,6 +77,15 @@ func (r *mockedMediaFile) FindByPath(s string) (*model.MediaFile, error) {
 	}, nil
 }
 
+func (r *mockedMediaFile) FindByPaths(paths []string) (model.MediaFiles, error) {
+	var mfs model.MediaFiles
+	for _, path := range paths {
+		mf, _ := r.FindByPath(path)
+		mfs = append(mfs, *mf)
+	}
+	return mfs, nil
+}
+
 type mockedPlaylist struct {
 	model.PlaylistRepository
 }

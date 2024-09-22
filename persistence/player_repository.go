@@ -12,16 +12,17 @@ import (
 
 type playerRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerRepository {
 	r := &playerRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "player"
-	r.filterMappings = map[string]filterFunc{
-		"name": containsFilter,
+	r.registerModel(&model.Player{}, map[string]filterFunc{
+		"name": containsFilter("player.name"),
+	})
+	r.sortMappings = map[string]string{
+		"user_name": "username", //TODO rename all user_name and userName to username
 	}
 	return r
 }
@@ -31,18 +32,25 @@ func (r *playerRepository) Put(p *model.Player) error {
 	return err
 }
 
+func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBuilder {
+	return r.newSelect(options...).
+		Columns("player.*").
+		Join("user ON player.user_id = user.id").
+		Columns("user.user_name username")
+}
+
 func (r *playerRepository) Get(id string) (*model.Player, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
+	sel := r.selectPlayer().Where(Eq{"player.id": id})
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *playerRepository) FindMatch(userName, client, userAgent string) (*model.Player, error) {
-	sel := r.newSelect().Columns("*").Where(And{
+func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.Player, error) {
+	sel := r.selectPlayer().Where(And{
 		Eq{"client": client},
 		Eq{"user_agent": userAgent},
-		Eq{"user_name": userName},
+		Eq{"user_id": userId},
 	})
 	var res model.Player
 	err := r.queryOne(sel, &res)
@@ -50,7 +58,7 @@ func (r *playerRepository) FindMatch(userName, client, userAgent string) (*model
 }
 
 func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
-	s := r.newSelect(options...)
+	s := r.selectPlayer(options...)
 	return s.Where(r.addRestriction())
 }
 
@@ -63,22 +71,22 @@ func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
 	if u.IsAdmin {
 		return s
 	}
-	return append(s, Eq{"user_name": u.UserName})
+	return append(s, Eq{"user_id": u.ID})
 }
 
 func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(r.newRestSelect(), r.parseRestOptions(options...))
+	return r.count(r.newRestSelect(), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playerRepository) Read(id string) (interface{}, error) {
-	sel := r.newRestSelect().Columns("*").Where(Eq{"id": id})
+	sel := r.newRestSelect().Where(Eq{"player.id": id})
 	var res model.Player
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
 func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newRestSelect(r.parseRestOptions(options...)).Columns("*")
+	sel := r.newRestSelect(r.parseRestOptions(r.ctx, options...))
 	res := model.Players{}
 	err := r.queryAll(sel, &res)
 	return res, err
@@ -94,7 +102,7 @@ func (r *playerRepository) NewInstance() interface{} {
 
 func (r *playerRepository) isPermitted(p *model.Player) bool {
 	u := loggedUser(r.ctx)
-	return u.IsAdmin || p.UserName == u.UserName
+	return u.IsAdmin || p.UserId == u.ID
 }
 
 func (r *playerRepository) Save(entity interface{}) (string, error) {
@@ -123,7 +131,7 @@ func (r *playerRepository) Update(id string, entity interface{}, cols ...string)
 }
 
 func (r *playerRepository) Delete(id string) error {
-	filter := r.addRestriction(And{Eq{"id": id}})
+	filter := r.addRestriction(And{Eq{"player.id": id}})
 	err := r.delete(filter)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound

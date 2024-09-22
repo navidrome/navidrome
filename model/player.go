@@ -5,12 +5,14 @@ import (
 )
 
 type Player struct {
+	Username string `structs:"-" json:"userName"`
+
 	ID              string    `structs:"id" json:"id"`
 	Name            string    `structs:"name" json:"name"`
 	UserAgent       string    `structs:"user_agent" json:"userAgent"`
-	UserName        string    `structs:"user_name" json:"userName"`
+	UserId          string    `structs:"user_id" json:"userId"`
 	Client          string    `structs:"client" json:"client"`
-	IPAddress       string    `structs:"ip_address" json:"ipAddress"`
+	IP              string    `structs:"ip" json:"ip"`
 	LastSeen        time.Time `structs:"last_seen" json:"lastSeen"`
 	TranscodingId   string    `structs:"transcoding_id" json:"transcodingId"`
 	MaxBitRate      int       `structs:"max_bit_rate" json:"maxBitRate"`
@@ -22,7 +24,7 @@ type Players []Player
 
 type PlayerRepository interface {
 	Get(id string) (*Player, error)
-	FindMatch(userName, client, typ string) (*Player, error)
+	FindMatch(userId, client, userAgent string) (*Player, error)
 	Put(p *Player) error
 	// TODO: Add CountAll method. Useful at least for metrics.
 }

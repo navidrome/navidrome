@@ -1,75 +1,29 @@
-package utils
+package str_test
 
 import (
-	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/utils/str"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Strings", func() {
-	Describe("NoArticle", func() {
-		Context("Empty articles list", func() {
-			BeforeEach(func() {
-				conf.Server.IgnoredArticles = ""
-			})
-			It("returns empty if string is empty", func() {
-				Expect(NoArticle("")).To(BeEmpty())
-			})
-			It("returns same string", func() {
-				Expect(NoArticle("The Beatles")).To(Equal("The Beatles"))
-			})
-		})
-		Context("Default articles", func() {
-			BeforeEach(func() {
-				conf.Server.IgnoredArticles = "The El La Los Las Le Les Os As O A"
-			})
-			It("returns empty if string is empty", func() {
-				Expect(NoArticle("")).To(BeEmpty())
-			})
-			It("remove prefix article from string", func() {
-				Expect(NoArticle("Os Paralamas do Sucesso")).To(Equal("Paralamas do Sucesso"))
-			})
-			It("does not remove article if it is part of the first word", func() {
-				Expect(NoArticle("Thelonious Monk")).To(Equal("Thelonious Monk"))
-			})
-		})
-	})
-
-	Describe("sanitizeFieldForSorting", func() {
-		BeforeEach(func() {
-			conf.Server.IgnoredArticles = "The O"
-		})
-		It("sanitize accents", func() {
-			Expect(SanitizeFieldForSorting("Céu")).To(Equal("ceu"))
-		})
-		It("removes articles", func() {
-			Expect(SanitizeFieldForSorting("The Beatles")).To(Equal("the beatles"))
-		})
-		It("removes accented articles", func() {
-			Expect(SanitizeFieldForSorting("Õ Blésq Blom")).To(Equal("o blesq blom"))
-		})
-	})
-	Describe("SanitizeFieldForSortingNoArticle", func() {
-		BeforeEach(func() {
-			conf.Server.IgnoredArticles = "The O"
-		})
-		It("sanitize accents", func() {
-			Expect(SanitizeFieldForSortingNoArticle("Céu")).To(Equal("ceu"))
-		})
-		It("removes articles", func() {
-			Expect(SanitizeFieldForSortingNoArticle("The Beatles")).To(Equal("beatles"))
-		})
-		It("removes accented articles", func() {
-			Expect(SanitizeFieldForSortingNoArticle("Õ Blésq Blom")).To(Equal("blesq blom"))
-		})
+var _ = Describe("String Utils", func() {
+	Describe("Clear", func() {
+		DescribeTable("replaces some Unicode chars with their equivalent ASCII",
+			func(input, expected string) {
+				Expect(str.Clear(input)).To(Equal(expected))
+			},
+			Entry("k-os", "k–os", "k-os"),
+			Entry("k‐os", "k‐os", "k-os"),
+			Entry(`"Weird" Al Yankovic`, "“Weird” Al Yankovic", `"Weird" Al Yankovic`),
+			Entry("Single quotes", "‘Single’ quotes", "'Single' quotes"),
+		)
 	})
 
 	Describe("LongestCommonPrefix", func() {
 		It("finds the longest common prefix", func() {
-			Expect(LongestCommonPrefix(testPaths)).To(Equal("/Music/iTunes 1/iTunes Media/Music/"))
+			Expect(str.LongestCommonPrefix(testPaths)).To(Equal("/Music/iTunes 1/iTunes Media/Music/"))
 		})
 	})
-
 })
 
 var testPaths = []string{

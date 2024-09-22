@@ -3,6 +3,7 @@ package hasher
 import (
 	"hash/maphash"
 	"strconv"
+	"sync"
 
 	"github.com/navidrome/navidrome/utils/random"
 )
@@ -17,12 +18,19 @@ func SetSeed(id string, seed string) {
 	instance.SetSeed(id, seed)
 }
 
+func CurrentSeed(id string) string {
+	instance.mutex.RLock()
+	defer instance.mutex.RUnlock()
+	return instance.seeds[id]
+}
+
 func HashFunc() func(id, str string) uint64 {
 	return instance.HashFunc()
 }
 
 type Hasher struct {
 	seeds    map[string]string
+	mutex    sync.RWMutex
 	hashSeed maphash.Seed
 }
 
@@ -35,6 +43,8 @@ func NewHasher() *Hasher {
 
 // SetSeed sets a seed for the given id
 func (h *Hasher) SetSeed(id string, seed string) {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
 	h.seeds[id] = seed
 }
 
@@ -45,16 +55,17 @@ func (h *Hasher) Reseed(id string) {
 
 func (h *Hasher) reseed(id string) string {
 	seed := strconv.FormatUint(random.Uint64(), 36)
-	h.seeds[id] = seed
+	h.SetSeed(id, seed)
 	return seed
 }
 
 // HashFunc returns a function that hashes a string using the seed for the given id
 func (h *Hasher) HashFunc() func(id, str string) uint64 {
 	return func(id, str string) uint64 {
-		var seed string
-		var ok bool
-		if seed, ok = h.seeds[id]; !ok {
+		h.mutex.RLock()
+		seed, ok := h.seeds[id]
+		h.mutex.RUnlock()
+		if !ok {
 			seed = h.reseed(id)
 		}
 

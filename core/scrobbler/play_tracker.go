@@ -5,17 +5,15 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jellydator/ttlcache/v2"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
-
-const maxNowPlayingExpire = 60 * time.Minute
 
 type NowPlayingInfo struct {
 	MediaFile  model.MediaFile
@@ -39,7 +37,7 @@ type PlayTracker interface {
 type playTracker struct {
 	ds         model.DataStore
 	broker     events.Broker
-	playMap    *ttlcache.Cache
+	playMap    cache.SimpleCache[string, NowPlayingInfo]
 	scrobblers map[string]Scrobbler
 }
 
@@ -52,9 +50,7 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 // This constructor only exists for testing. For normal usage, the PlayTracker has to be a singleton, returned by
 // the GetPlayTracker function above
 func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
-	m := ttlcache.NewCache()
-	m.SkipTTLExtensionOnHit(true)
-	_ = m.SetTTL(maxNowPlayingExpire)
+	m := cache.NewSimpleCache[string, NowPlayingInfo]()
 	p := &playTracker{ds: ds, playMap: m, broker: broker}
 	p.scrobblers = make(map[string]Scrobbler)
 	for name, constructor := range constructors {
@@ -84,7 +80,7 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 
 	ttl := time.Duration(int(mf.Duration)+5) * time.Second
-	_ = p.playMap.SetWithTTL(playerId, info, ttl)
+	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
 		p.dispatchNowPlaying(ctx, user.ID, mf)
@@ -111,15 +107,7 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 }
 
 func (p *playTracker) GetNowPlaying(_ context.Context) ([]NowPlayingInfo, error) {
-	var res []NowPlayingInfo
-	for _, playerId := range p.playMap.GetKeys() {
-		value, err := p.playMap.Get(playerId)
-		if err != nil {
-			continue
-		}
-		info := value.(NowPlayingInfo)
-		res = append(res, info)
-	}
+	res := p.playMap.Values()
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].Start.After(res[j].Start)
 	})
@@ -130,7 +118,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	username, _ := request.UsernameFrom(ctx)
 	player, _ := request.PlayerFrom(ctx)
 	if !player.ScrobbleEnabled {
-		log.Debug(ctx, "External scrobbling disabled for this player", "player", player.Name, "ip", player.IPAddress, "user", username)
+		log.Debug(ctx, "External scrobbling disabled for this player", "player", player.Name, "ip", player.IP, "user", username)
 	}
 	event := &events.RefreshResource{}
 	success := 0

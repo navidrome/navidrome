@@ -23,16 +23,7 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
-
-function calculateReplayGain(preAmp, gain, peak) {
-  if (gain === undefined || peak === undefined) {
-    return 1
-  }
-
-  // https://wiki.hydrogenaud.io/index.php?title=ReplayGain_1.0_specification&section=19
-  // Normalized to max gain
-  return Math.min(10 ** ((gain + preAmp) / 20), 1 / peak)
-}
+import { calculateGain } from '../utils/calculateReplayGain'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -93,40 +84,10 @@ const Player = () => {
       const current = playerState.current || {}
       const song = current.song || {}
 
-      let numericGain
-
-      switch (gainInfo.gainMode) {
-        case 'album': {
-          numericGain = calculateReplayGain(
-            gainInfo.preAmp,
-            song.rgAlbumGain,
-            song.rgAlbumPeak,
-          )
-          break
-        }
-        case 'track': {
-          numericGain = calculateReplayGain(
-            gainInfo.preAmp,
-            song.rgTrackGain,
-            song.rgTrackPeak,
-          )
-          break
-        }
-        default: {
-          numericGain = 1
-        }
-      }
-
+      const numericGain = calculateGain(gainInfo, song)
       gainNode.gain.setValueAtTime(numericGain, context.currentTime)
     }
-  }, [
-    audioInstance,
-    context,
-    gainNode,
-    gainInfo.gainMode,
-    gainInfo.preAmp,
-    playerState,
-  ])
+  }, [audioInstance, context, gainNode, playerState, gainInfo])
 
   const defaultOptions = useMemo(
     () => ({

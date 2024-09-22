@@ -283,8 +283,6 @@ var _ = Describe("serveIndex", func() {
 
 	It("sets the lastFMEnabled", func() {
 		conf.Server.LastFM.Enabled = true
-		conf.Server.LastFM.ApiKey = "123"
-		conf.Server.LastFM.Secret = "456"
 
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()

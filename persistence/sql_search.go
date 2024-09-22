@@ -6,11 +6,11 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func getFullText(text ...string) string {
-	fullText := utils.SanitizeStrings(text...)
+	fullText := str.SanitizeStrings(text...)
 	return " " + fullText
 }
 
@@ -39,7 +39,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 }
 
 func fullTextExpr(value string) Sqlizer {
-	q := utils.SanitizeStrings(value)
+	q := str.SanitizeStrings(value)
 	if q == "" {
 		return nil
 	}

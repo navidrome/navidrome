@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"cmp"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -20,7 +21,6 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -183,7 +183,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 					MaxAge:   consts.CookieExpiry,
 					HttpOnly: true,
 					SameSite: http.SameSiteStrictMode,
-					Path:     If(conf.Server.BasePath, "/"),
+					Path:     cmp.Or(conf.Server.BasePath, "/"),
 				}
 				http.SetCookie(w, cookie)
 			}

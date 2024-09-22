@@ -136,6 +136,8 @@ const DiscSubtitleRow = forwardRef(
             releaseDate={record.releaseDate}
             showLove={false}
             className={classes.contextMenu}
+            hideShare={true}
+            hideInfo={true}
             visible={contextAlwaysVisible}
           />
         </TableCell>

@@ -9,7 +9,9 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.22.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION ?= 1.23.0-1 ## https://github.com/navidrome/ci-goreleaser
+
+UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
 setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
@@ -20,7 +22,7 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 	npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
-server: check_go_env  ##@Development Start the backend in development mode
+server: check_go_env buildjs ##@Development Start the backend in development mode
 	@go run github.com/cespare/reflex@latest -d none -c reflex.conf
 .PHONY: server
 
@@ -78,28 +80,30 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 	@(cd .git/hooks && ln -sf ../../git/* .)
 .PHONY: setup-git
 
-buildall: buildjs build ##@Build Build the project, both frontend and backend
-.PHONY: buildall
-
-build: warning-noui-build check_go_env  ##@Build Build only backend
+build: check_go_env buildjs ##@Build Build the project
 	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: build
 
-debug-build: warning-noui-build check_go_env  ##@Build Build only backend (with remote debug on)
+buildall: deprecated build
+.PHONY: buildall
+
+debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
 	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
 .PHONY: debug-build
 
-buildjs: check_node_env ##@Build Build only frontend
-	@(cd ./ui && npm run build)
+buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
 .PHONY: buildjs
 
-all: warning-noui-build ##@Cross_Compilation Build binaries for all supported platforms. It does not build the frontend
+ui/build/index.html: $(UI_SRC_FILES)
+	@(cd ./ui && npm run build)
+
+all: buildjs ##@Cross_Compilation Build binaries for all supported platforms.
 	@echo "Building binaries for all platforms using builder ${CI_RELEASER_VERSION}"
 	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
  		goreleaser release --clean --skip=publish --snapshot
 .PHONY: all
 
-single: warning-noui-build ##@Cross_Compilation Build binaries for a single supported platforms. It does not build the frontend
+single: buildjs ##@Cross_Compilation Build binaries for a single supported platforms.
 	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
 		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
 		echo "Options:"; \
@@ -116,10 +120,6 @@ docker: buildjs ##@Build Build Docker linux/amd64 image (tagged as `deluan/navid
 	@echo "Building Docker image"
 	docker build . --platform linux/amd64 -t deluan/navidrome:develop -f .github/workflows/pipeline.dockerfile
 .PHONY: docker
-
-warning-noui-build:
-	@echo "WARNING: This command does not build the frontend, it uses the latest built with 'make buildjs'"
-.PHONY: warning-noui-build
 
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music
@@ -174,6 +174,10 @@ check_node_env:
 
 pre-push: lintall testall
 .PHONY: pre-push
+
+deprecated:
+	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
+.PHONY: deprecated
 
 .DEFAULT_GOAL := help
 

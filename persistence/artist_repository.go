@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"net/url"
@@ -14,12 +15,12 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
 )
 
 type artistRepository struct {
 	sqlRepository
-	sqlRestful
 	indexGroups utils.IndexGroups
 }
 
@@ -59,19 +60,22 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.ctx = ctx
 	r.db = db
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
-	r.tableName = "artist"
-	r.filterMappings = map[string]filterFunc{
-		"id":      idFilter(r.tableName),
-		"name":    fullTextFilter,
-		"starred": booleanFilter,
-	}
+	r.tableName = "artist" // To be used by the idFilter below
+	r.registerModel(&model.Artist{}, map[string]filterFunc{
+		"id":       idFilter(r.tableName),
+		"name":     fullTextFilter,
+		"starred":  booleanFilter,
+		"genre_id": eqFilter,
+	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
-			"name": "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
+			"name":       "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
+			"starred_at": "starred, starred_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
-			"name": "order_artist_name",
+			"name":       "order_artist_name",
+			"starred_at": "starred, starred_at",
 		}
 	}
 	return r
@@ -140,7 +144,11 @@ func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
-	name := strings.ToLower(utils.NoArticle(a.Name))
+	source := a.Name
+	if conf.Server.PreferSortTags {
+		source = cmp.Or(a.SortArtistName, a.OrderArtistName, source)
+	}
+	name := strings.ToLower(str.RemoveArticle(source))
 	for k, v := range r.indexGroups {
 		key := strings.ToLower(k)
 		if strings.HasPrefix(name, key) {
@@ -152,7 +160,11 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	all, err := r.GetAll(model.QueryOptions{Sort: "order_artist_name"})
+	sortColumn := "order_artist_name"
+	if conf.Server.PreferSortTags {
+		sortColumn = "sort_artist_name, order_artist_name"
+	}
+	all, err := r.GetAll(model.QueryOptions{Sort: sortColumn})
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +211,7 @@ func (r *artistRepository) Search(q string, offset int, size int) (model.Artists
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *artistRepository) Read(id string) (interface{}, error) {
@@ -207,7 +219,7 @@ func (r *artistRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	return r.GetAll(r.parseRestOptions(options...))
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *artistRepository) EntityName() string {

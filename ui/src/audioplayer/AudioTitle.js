@@ -18,8 +18,10 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   const qi = {
     suffix: song.suffix,
     bitRate: song.bitRate,
-    albumGain: song.rgAlbumGain,
-    trackGain: song.rgTrackGain,
+    rgAlbumGain: song.rgAlbumGain,
+    rgAlbumPeak: song.rgAlbumPeak,
+    rgTrackGain: song.rgTrackGain,
+    rgTrackPeak: song.rgTrackPeak,
   }
 
   return (

@@ -3,6 +3,7 @@ package server
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -12,11 +13,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/navidrome/navidrome/conf"
-	. "github.com/navidrome/navidrome/utils/gg"
-
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
@@ -44,7 +43,10 @@ func requestLogger(next http.Handler) http.Handler {
 			"httpStatus", ww.Status(),
 			"responseSize", ww.BytesWritten(),
 		}
-		if log.IsGreaterOrEqualTo(log.LevelDebug) {
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
+			headers, _ := json.Marshal(r.Header)
+			logArgs = append(logArgs, "header", string(headers))
+		} else if log.IsGreaterOrEqualTo(log.LevelDebug) {
 			logArgs = append(logArgs, "userAgent", r.UserAgent())
 		}
 
@@ -139,7 +141,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     If(conf.Server.BasePath, "/"),
+				Path:     cmp.Or(conf.Server.BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {

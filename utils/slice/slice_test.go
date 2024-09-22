@@ -1,15 +1,19 @@
 package slice_test
 
 import (
+	"os"
+	"slices"
 	"strconv"
 	"testing"
 
+	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func TestSlice(t *testing.T) {
+	tests.Init(t, false)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Slice Suite")
 }
@@ -60,13 +64,13 @@ var _ = Describe("Slice Utils", func() {
 
 	Describe("Move", func() {
 		It("moves item to end of slice", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 0, 2)).To(ConsistOf("2", "3", "1"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 0, 2)).To(HaveExactElements("2", "3", "1"))
 		})
 		It("moves item to beginning of slice", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 2, 0)).To(ConsistOf("3", "1", "2"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 2, 0)).To(HaveExactElements("3", "1", "2"))
 		})
 		It("keeps item in same position if srcIndex == dstIndex", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(HaveExactElements("1", "2", "3"))
 		})
 	})
 
@@ -80,14 +84,42 @@ var _ = Describe("Slice Utils", func() {
 			s := []string{"a", "b", "c"}
 			chunks := slice.BreakUp(s, 10)
 			Expect(chunks).To(HaveLen(1))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
+			Expect(chunks[0]).To(HaveExactElements("a", "b", "c"))
 		})
 		It("breaks up the slice if len > chunkSize", func() {
 			s := []string{"a", "b", "c", "d", "e"}
 			chunks := slice.BreakUp(s, 3)
 			Expect(chunks).To(HaveLen(2))
-			Expect(chunks[0]).To(ConsistOf("a", "b", "c"))
-			Expect(chunks[1]).To(ConsistOf("d", "e"))
+			Expect(chunks[0]).To(HaveExactElements("a", "b", "c"))
+			Expect(chunks[1]).To(HaveExactElements("d", "e"))
 		})
 	})
+
+	DescribeTable("LinesFrom",
+		func(path string, expected int) {
+			count := 0
+			file, _ := os.Open(path)
+			defer file.Close()
+			for _ = range slice.LinesFrom(file) {
+				count++
+			}
+			Expect(count).To(Equal(expected))
+		},
+		Entry("returns empty slice for an empty input", "tests/fixtures/empty.txt", 0),
+		Entry("returns the lines of a file", "tests/fixtures/playlists/pls1.m3u", 3),
+		Entry("returns empty if file does not exist", "tests/fixtures/NON-EXISTENT", 0),
+	)
+
+	DescribeTable("CollectChunks",
+		func(input []int, n int, expected [][]int) {
+			result := [][]int{}
+			for chunks := range slice.CollectChunks[int](n, slices.Values(input)) {
+				result = append(result, chunks)
+			}
+			Expect(result).To(Equal(expected))
+		},
+		Entry("returns empty slice for an empty input", []int{}, 1, [][]int{}),
+		Entry("returns the slice in one chunk if len < chunkSize", []int{1, 2, 3}, 10, [][]int{{1, 2, 3}}),
+		Entry("breaks up the slice if len > chunkSize", []int{1, 2, 3, 4, 5}, 3, [][]int{{1, 2, 3}, {4, 5}}),
+	)
 })

@@ -12,8 +12,8 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type MediaFile struct {
@@ -48,7 +48,7 @@ type MediaFile struct {
 	Channels             int     `structs:"channels" json:"channels"`
 	Genre                string  `structs:"genre" json:"genre"`
 	Genres               Genres  `structs:"-" json:"genres"`
-	FullText             string  `structs:"full_text" json:"fullText"`
+	FullText             string  `structs:"full_text" json:"-"`
 	SortTitle            string  `structs:"sort_title" json:"sortTitle,omitempty"`
 	SortAlbumName        string  `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName       string  `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
@@ -187,7 +187,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.Genre = slice.MostFrequent(a.Genres).Name
 	slices.SortFunc(a.Genres, func(a, b Genre) int { return cmp.Compare(a.ID, b.ID) })
 	a.Genres = slices.Compact(a.Genres)
-	a.FullText = " " + utils.SanitizeStrings(fullText...)
+	a.FullText = " " + str.SanitizeStrings(fullText...)
 	a = fixAlbumArtist(a, albumArtistIds)
 	songArtistIds = append(songArtistIds, a.AlbumArtistID, a.ArtistID)
 	slices.Sort(songArtistIds)
@@ -265,6 +265,7 @@ type MediaFileRepository interface {
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 	FindAllByPath(path string) (MediaFiles, error)
 	FindByPath(path string) (*MediaFile, error)
+	FindByPaths(paths []string) (MediaFiles, error)
 	FindPathsRecursively(basePath string) ([]string, error)
 	DeleteByPath(path string) (int64, error)
 

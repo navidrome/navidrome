@@ -21,9 +21,9 @@ func TestPersistence(t *testing.T) {
 
 	//os.Remove("./test-123.db")
 	//conf.Server.DbPath = "./test-123.db"
-	conf.Server.DbPath = "file::memory:?cache=shared"
+	conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 	defer db.Init()()
-	log.SetLevel(log.LevelError)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
 }
@@ -35,8 +35,8 @@ var (
 )
 
 var (
-	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1, FullText: " kraftwerk"}
-	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, FullText: " beatles the"}
+	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", OrderArtistName: "kraftwerk", AlbumCount: 1, FullText: " kraftwerk"}
+	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", OrderArtistName: "beatles", AlbumCount: 2, FullText: " beatles the"}
 	testArtists     = model.Artists{
 		artistKraftwerk,
 		artistBeatles,
@@ -83,6 +83,12 @@ var (
 	testPlaylists []*model.Playlist
 )
 
+var (
+	adminUser   = model.User{ID: "userid", UserName: "userid", Name: "admin", Email: "admin@email.com", IsAdmin: true}
+	regularUser = model.User{ID: "2222", UserName: "regular-user", Name: "Regular User", Email: "regular@example.com"}
+	testUsers   = model.Users{adminUser, regularUser}
+)
+
 func P(path string) string {
 	return filepath.FromSlash(path)
 }
@@ -92,13 +98,14 @@ func P(path string) string {
 var _ = BeforeSuite(func() {
 	conn := NewDBXBuilder(db.Db())
 	ctx := log.NewContext(context.TODO())
-	user := model.User{ID: "userid", UserName: "userid", IsAdmin: true}
-	ctx = request.WithUser(ctx, user)
+	ctx = request.WithUser(ctx, adminUser)
 
 	ur := NewUserRepository(ctx, conn)
-	err := ur.Put(&user)
-	if err != nil {
-		panic(err)
+	for i := range testUsers {
+		err := ur.Put(&testUsers[i])
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	gr := NewGenreRepository(ctx, conn)
