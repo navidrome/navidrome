@@ -26,7 +26,7 @@
                 "rating": "Balorazioa",
                 "quality": "Kalitatea",
                 "bpm": "BPM",
-                "playDate": "Azken erreproduzitzeak:",
+                "playDate": "Azkenekoz erreproduzitua:",
                 "createdAt": "Gehitu zen data:"
             },
             "actions": {
@@ -45,7 +45,7 @@
                 "albumArtist": "Albumaren artista",
                 "artist": "Artista",
                 "duration": "Iraupena",
-                "songCount": "Abestiak",
+                "songCount": "abesti",
                 "playCount": "Erreprodukzioak",
                 "size": "Fitxategiaren tamaina",
                 "name": "Izena",
@@ -78,7 +78,7 @@
                 "recentlyPlayed": "Berriki entzundakoak",
                 "mostPlayed": "Gehien entzundakoak",
                 "starred": "Gogokoak",
-                "topRated": "Balorazio handiena dutenak"
+                "topRated": "Hobekien baloratutakoak"
             }
         },
         "artist": {
@@ -152,7 +152,7 @@
                 "public": "Publikoa",
                 "updatedAt": "Eguneratze-data:",
                 "createdAt": "Sortze-data:",
-                "songCount": "Abestiak",
+                "songCount": "abesti",
                 "comment": "Iruzkina",
                 "sync": "Automatikoki inportatuak",
                 "path": "Inportatze-data:"
@@ -404,7 +404,7 @@
             }
         },
         "albumList": "Albumak",
-        "playlists": "Erreprodukzio-zerrendak",
+        "playlists": "Zerrendak",
         "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak",
         "about": "Honi buruz"
     },
