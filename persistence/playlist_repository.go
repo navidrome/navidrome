@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -14,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -307,14 +307,12 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 }
 
 func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) error {
-	// Break the track list in chunks to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	chunks := slice.BreakUp(mediaFileIds, 200)
-
+	// Break the track list in chunks to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	// Add new tracks, chunk by chunk
 	pos := startingPos
-	for i := range chunks {
+	for chunk := range slices.Chunk(mediaFileIds, 200) {
 		ins := Insert("playlist_tracks").Columns("playlist_id", "media_file_id", "id")
-		for _, t := range chunks[i] {
+		for _, t := range chunk {
 			ins = ins.Values(playlistId, t, pos)
 			pos++
 		}
