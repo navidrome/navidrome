@@ -62,31 +62,7 @@ func Move[T any](slice []T, srcIndex int, dstIndex int) []T {
 	return Insert(Remove(slice, srcIndex), value, dstIndex)
 }
 
-func BreakUp[T any](items []T, chunkSize int) [][]T {
-	numTracks := len(items)
-	var chunks [][]T
-	for i := 0; i < numTracks; i += chunkSize {
-		end := i + chunkSize
-		if end > numTracks {
-			end = numTracks
-		}
-
-		chunks = append(chunks, items[i:end])
-	}
-	return chunks
-}
-
-func RangeByChunks[T any](items []T, chunkSize int, cb func([]T) error) error {
-	chunks := BreakUp(items, chunkSize)
-	for _, chunk := range chunks {
-		err := cb(chunk)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
+// LinesFrom returns a Seq that reads lines from the given reader
 func LinesFrom(reader io.Reader) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		scanner := bufio.NewScanner(reader)
@@ -123,20 +99,32 @@ func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	return 0, nil, nil
 }
 
-func CollectChunks[T any](n int, it iter.Seq[T]) iter.Seq[[]T] {
+// CollectChunks collects chunks of n elements from the input sequence and return a Seq of chunks
+func CollectChunks[T any](it iter.Seq[T], n int) iter.Seq[[]T] {
 	return func(yield func([]T) bool) {
-		var s []T
+		s := make([]T, 0, n)
 		for x := range it {
 			s = append(s, x)
 			if len(s) >= n {
 				if !yield(s) {
 					return
 				}
-				s = nil
+				s = make([]T, 0, n)
 			}
 		}
 		if len(s) > 0 {
 			yield(s)
+		}
+	}
+}
+
+// SeqFunc returns a Seq that iterates over the slice with the given mapping function
+func SeqFunc[I, O any](s []I, f func(I) O) iter.Seq[O] {
+	return func(yield func(O) bool) {
+		for _, x := range s {
+			if !yield(f(x)) {
+				return
+			}
 		}
 	}
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -72,9 +71,7 @@ func (r *refresher) flushMap(ctx context.Context, m map[string]struct{}, entity 
 		return nil
 	}
 
-	ids := slices.Collect(maps.Keys(m))
-	chunks := slice.BreakUp(ids, 100)
-	for _, chunk := range chunks {
+	for chunk := range slice.CollectChunks(maps.Keys(m), 200) {
 		err := refresh(ctx, chunk...)
 		if err != nil {
 			log.Error(ctx, fmt.Sprintf("Error writing %ss to the DB", entity), err)
