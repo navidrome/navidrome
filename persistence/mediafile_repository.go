@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -254,8 +255,8 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 }
 
 func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...model.MediaFile) error {
-	ids := slice.Map(mfs, func(m model.MediaFile) string { return m.ID })
-	return slice.RangeByChunks(ids, 200, func(chunk []string) error {
+	ids := slice.SeqFunc(mfs, func(m model.MediaFile) string { return m.ID })
+	for chunk := range slice.CollectChunks(ids, 200) {
 		upd := Update(r.tableName).
 			Set("missing", missing).
 			Set("updated_at", timeToSQL(time.Now())).
@@ -266,12 +267,12 @@ func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...model.MediaFile) 
 			return err
 		}
 		log.Debug(r.ctx, "Marked missing mediafiles", "total", c, "ids", chunk)
-		return nil
-	})
+	}
+	return nil
 }
 
 func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...string) error {
-	return slice.RangeByChunks(folderIDs, 200, func(chunk []string) error {
+	for chunk := range slices.Chunk(folderIDs, 200) {
 		upd := Update(r.tableName).
 			Set("missing", missing).
 			Set("updated_at", timeToSQL(time.Now())).
@@ -285,8 +286,8 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 			return err
 		}
 		log.Debug(r.ctx, "Marked missing mediafiles from missing folders", "total", c, "folders", chunk)
-		return nil
-	})
+	}
+	return nil
 }
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
