@@ -57,6 +57,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r := &albumRepository{}
 	r.ctx = ctx
 	r.db = db
+	r.tableName = "album"
 	r.registerModel(&model.Album{}, map[string]filterFunc{
 		"id":              idFilter(r.tableName),
 		"name":            fullTextFilter,
@@ -66,6 +67,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"recently_played": recentlyPlayedFilter,
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
+		"genre_id":        eqFilter,
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
@@ -73,8 +75,9 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"artist":         "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"album_artist":   "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"random":         r.seededRandomSort(),
+			"random":         "random",
 			"recently_added": recentlyAddedSort(),
+			"starred_at":     "starred, starred_at",
 		}
 	} else {
 		r.sortMappings = map[string]string{
@@ -82,8 +85,9 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 			"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
 			"album_artist":   "compilation asc, order_album_artist_name asc, order_album_name asc",
 			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
-			"random":         r.seededRandomSort(),
+			"random":         "random",
 			"recently_added": recentlyAddedSort(),
+			"starred_at":     "starred, starred_at",
 		}
 	}
 

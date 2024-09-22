@@ -1,0 +1,466 @@
+
+{
+    "languageName": "српски",
+    "resources": {
+        "song": {
+            "name": "Песма |||| Песме",
+            "fields": {
+                "albumArtist": "Уметник албума",
+                "duration": "Трајање",
+                "trackNumber": "#",
+                "playCount": "Пуштано",
+                "title": "Наслов",
+                "artist": "Уметник",
+                "album": "Албум",
+                "path": "Путања фајла",
+                "genre": "Жанр",
+                "compilation": "Компилација",
+                "year": "Година",
+                "size": "Величина фајла",
+                "updatedAt": "Ажурирано",
+                "bitRate": "Битски проток",
+                "channels": "Канала",
+                "discSubtitle": "Поднаслов диска",
+                "starred": "Омиљено",
+                "comment": "Коментар",
+                "rating": "Рејтинг",
+                "quality": "Квалитет",
+                "bpm": "BPM",
+                "playDate": "Последње пуштано",
+                "createdAt": "Датум додавања"
+            },
+            "actions": {
+                "addToQueue": "Пусти касније",
+                "playNow": "Пусти одмах",
+                "addToPlaylist": "Додај у плејлисту",
+                "shuffleAll": "Измешај све",
+                "download": "Преузми",
+                "playNext": "Пусти наредно",
+                "info": "Прикажи инфо"
+            }
+        },
+        "album": {
+            "name": "Албум |||| Албуми",
+            "fields": {
+                "albumArtist": "Уметник албума",
+                "artist": "Уметник",
+                "duration": "Трајање",
+                "songCount": "Песме",
+                "playCount": "Пуштано",
+                "size": "Величина",
+                "name": "Назив",
+                "genre": "Жанр",
+                "compilation": "Компилација",
+                "year": "Година",
+                "originalDate": "Оригинално",
+                "releaseDate": "Објављено",
+                "releases": "Издање|||| Издања",
+                "released": "Објављено",
+                "updatedAt": "Ажурирано",
+                "comment": "Коментар",
+                "rating": "Рејтинг",
+                "createdAt": "Датум додавања"
+            },
+            "actions": {
+                "playAll": "Пусти",
+                "playNext": "Пусти наредно",
+                "addToQueue": "Пусти касније",
+                "share": "Дели",
+                "shuffle": "Измешај",
+                "addToPlaylist": "Додај у плејлисту",
+                "download": "Преузми",
+                "info": "Прикажи инфо"
+            },
+            "lists": {
+                "all": "Све",
+                "random": "Насумично",
+                "recentlyAdded": "Додато недавно",
+                "recentlyPlayed": "Пуштано недавно",
+                "mostPlayed": "Најчешће пуштано",
+                "starred": "Омиљено",
+                "topRated": "Најбоље рангирано"
+            }
+        },
+        "artist": {
+            "name": "Уметник |||| Уметници",
+            "fields": {
+                "name": "Име",
+                "albumCount": "Број албума",
+                "songCount": "Број песама",
+                "size": "Величина",
+                "playCount": "Пуштано",
+                "rating": "Рејтинг",
+                "genre": "Жанр"
+            }
+        },
+        "user": {
+            "name": "Корисник |||| Корисници",
+            "fields": {
+                "userName": "Корисничко име",
+                "isAdmin": "Да ли је Админ",
+                "lastLoginAt": "Последња пријава",
+                "updatedAt": "Ажурирано",
+                "name": "Име",
+                "password": "Лозинка",
+                "createdAt": "Креирана",
+                "changePassword": "Измени лозинку?",
+                "currentPassword": "Текућа лозинка",
+                "newPassword": "Нова лозинка",
+                "token": "Жетон"
+            },
+            "helperTexts": {
+                "name": "Измене вашег имена ће постати видљиве након следеће пријаве"
+            },
+            "notifications": {
+                "created": "Корисник креиран",
+                "updated": "Корисник ажуриран",
+                "deleted": "Корисник обрисан"
+            },
+            "message": {
+                "listenBrainzToken": "Унесите свој ListenBrainz кориснички жетон.",
+                "clickHereForToken": "Кликните овде да преузмете свој жетон"
+            }
+        },
+        "player": {
+            "name": "Плејер |||| Плејери",
+            "fields": {
+                "name": "Назив",
+                "transcodingId": "Транскодирање",
+                "maxBitRate": "Макс. битски проток",
+                "client": "Клијент",
+                "userName": "Корисничко име",
+                "lastSeen": "последњи пут виђен",
+                "reportRealPath": "Пријављуј реалну путању",
+                "scrobbleEnabled": "Шаљи скроблове на спољне сервисе"
+            }
+        },
+        "transcoding": {
+            "name": "Транскодирање |||| Транскодирања",
+            "fields": {
+                "name": "Назив",
+                "targetFormat": "Циљни формат",
+                "defaultBitRate": "Подразумевани битски проток",
+                "command": "Команда"
+            }
+        },
+        "playlist": {
+            "name": "Плејлиста |||| Плејлисте",
+            "fields": {
+                "name": "Назив",
+                "duration": "Трајање",
+                "ownerName": "Власник",
+                "public": "Јавна",
+                "updatedAt": "Ажурирана",
+                "createdAt": "Креирана",
+                "songCount": "Песме",
+                "comment": "Коментар",
+                "sync": "Ауто-увоз",
+                "path": "Увоз из"
+            },
+            "actions": {
+                "selectPlaylist": "Изабери плејлисту",
+                "addNewPlaylist": "Креирај \"%{name}\"",
+                "export": "Извоз",
+                "makePublic": "Учини јавном",
+                "makePrivate": "Учини приватном"
+            },
+            "message": {
+                "duplicate_song": "Додај дуплиране песме",
+                "song_exist": "У плејлисту се додају дупликати. Желите ли да се додају, или да се прескоче?"
+            }
+        },
+        "radio": {
+            "name": "Радио |||| Радији",
+            "fields": {
+                "name": "Назив",
+                "streamUrl": "URL тока",
+                "homePageUrl": "URL почетне странице",
+                "updatedAt": "Ажурирано",
+                "createdAt": "Креирано"
+            },
+            "actions": {
+                "playNow": "Пусти одмах"
+            }
+        },
+        "share": {
+            "name": "Дељење |||| Дељења",
+            "fields": {
+                "username": "Поделио",
+                "url": "URL",
+                "description": "Опис",
+                "downloadable": "Допушта се преузимање?",
+                "contents": "Садржај",
+                "expiresAt": "Истиче",
+                "lastVisitedAt": "Последњи пут посећено",
+                "visitCount": "Број посета",
+                "format": "Формат",
+                "maxBitRate": "Макс. битски проток",
+                "updatedAt": "Ажурирано",
+                "createdAt": "Креирано"
+            },
+            "notifications": {
+            },
+            "actions": {
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Хвала што сте инсталирали Navidrome!",
+            "welcome2": "За почетак, креирајте админ корисника",
+            "confirmPassword": "Потврдите лозинку",
+            "buttonCreateAdmin": "Креирај админа",
+            "auth_check_error": "Ако желите да наставите, молимо вас да се пријавите",
+            "user_menu": "Профил",
+            "username": "Корисничко име",
+            "password": "Лозинка",
+            "sign_in": "Пријави се",
+            "sign_in_error": "Потврда идентитета није успела, покушајте поново",
+            "logout": "Одјави се"
+        },
+        "validation": {
+            "invalidChars": "Молимо вас да користите само слова и цифре",
+            "passwordDoesNotMatch": "Лозинка се не подудара",
+            "required": "Неопходно",
+            "minLength": "Мора да буде барем %{min} карактера",
+            "maxLength": "Мора да буде %{max} карактера или мање",
+            "minValue": "Мора да буде барем %{min}",
+            "maxValue": "Мора да буде %{max} или мање",
+            "number": "Мора да буде број",
+            "email": "Мора да буде исправна и-мејл адреса",
+            "oneOf": "Мора да буде једно од: %{options}",
+            "regex": "Мора да се подудара са одређеним форматом (регуларни израз): %{pattern}",
+            "unique": "Мора да буде јединствено",
+            "url": "Мора да буде исправна URL адреса"
+        },
+        "action": {
+            "add_filter": "Додај филтер",
+            "add": "Додај",
+            "back": "Иди назад",
+            "bulk_actions": "изабрана је 1 ставка |||| изабрано је %{smart_count} ставки",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "cancel": "Откажи",
+            "clear_input_value": "Обриши вредност",
+            "clone": "Клонирај",
+            "confirm": "Потврди",
+            "create": "Креирај",
+            "delete": "Обриши",
+            "edit": "Уреди",
+            "export": "Извези",
+            "list": "Листа",
+            "refresh": "Освежи",
+            "remove_filter": "Уклони овај филтер",
+            "remove": "Уклони",
+            "save": "Сачувај",
+            "search": "Тражи",
+            "show": "Прикажи",
+            "sort": "Сортирај",
+            "undo": "Поништи",
+            "expand": "Развиј",
+            "close": "Затвори",
+            "open_menu": "Отвори мени",
+            "close_menu": "Затвори мени",
+            "unselect": "Уклони избор",
+            "skip": "Прескочи",
+            "share": "Подели",
+            "download":  "Преузми"
+        },
+        "boolean": {
+            "true": "Да",
+            "false": "Не"
+        },
+        "page": {
+            "create": "Креирај %{name}",
+            "dashboard": "Контролна табла",
+            "edit": "%{name} #%{id}",
+            "error": "Нешто је пошло наопако",
+            "list": "%{name}",
+            "loading": "Учитава се",
+            "not_found": "Није пронађено",
+            "show": "%{name} #%{id}",
+            "empty": "Још увек нема %{name}.",
+            "invite": "Желите ли да се дода?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Упустите фајлове да се отпреме, или кликните да их изаберете.",
+                "upload_single": "Упустите фајл да се отпреми, или кликните да га изаберете."
+            },
+            "image": {
+                "upload_several": "Упустите слике да се отпреме, или кликните да их изаберете.",
+                "upload_single": "Упустите слику да се отпреми, или кликните да је изаберете."
+            },
+            "references": {
+                "all_missing": "Не могу да се нађу подаци референци.",
+                "many_missing": "Изгледа да барем једна од придружених референци више није доступна.",
+                "single_missing": "Изгледа да придружена референца више није доступна."
+            },
+            "password": {
+                "toggle_visible": "Сакриј лозинку",
+                "toggle_hidden": "Прикажи лозинку"
+            }
+        },
+        "message": {
+            "about": "О програму",
+            "are_you_sure": "Да ли сте сигурни?",
+            "bulk_delete_content": "Да ли заиста желите да обришете %{name}? |||| Да ли заиста желите да обришете %{smart_count} ставке?",
+            "bulk_delete_title": "Брисање %{name} |||| Брисање %{smart_count} %{name}",
+            "delete_content": "Да ли заиста желите да обришете ову ставку?",
+            "delete_title": "Брисање %{name} #%{id}",
+            "details": "Детаљи",
+            "error": "Дошло је до клијентске грешке и ваш захтев није могао да се изврши.",
+            "invalid_form": "Формулар није исправан. Молимо вас да исправите грешке",
+            "loading": "Страница се учитава, сачекајте мало",
+            "no": "Не",
+            "not_found": "Или сте откуцали погрешну URL адресу, или сте следили неисправан линк.",
+            "yes": "Да",
+            "unsaved_changes": "Неке од ваших измена нису сачуване. Да ли заиста желите да их одбаците?"
+        },
+        "navigation": {
+            "no_results": "Није пронађен ниједан резултат",
+            "no_more_results": "Број странице %{page} је ван опсега. Покушајте претходну страницу.",
+            "page_out_of_boundaries": "Број странице %{page} је ван опсега",
+            "page_out_from_end": "Не може да се иде након последње странице",
+            "page_out_from_begin": "Не може да се иде испред странице 1",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd} од %{total}",
+            "page_rows_per_page": "Ставки по страници:",
+            "next": "Наредна",
+            "prev": "Претход",
+            "skip_nav": "Прескочи на садржај"
+        },
+        "notification": {
+            "updated": "Елемент је ажуриран |||| %{smart_count} елемената је ажурирано",
+            "created": "Елемент је креиран",
+            "deleted": "Елемент је обрисан |||| %{smart_count} елемената је обрисано",
+            "bad_item": "Неисправни елемент",
+            "item_doesnt_exist": "Елемент не постоји",
+            "http_error": "Грешка у комуникацији са сервером",
+            "data_provider_error": "dataProvider грешка. За више детаља погледајте конзолу.",
+            "i18n_error": "Не могу да се учитају преводи за наведени језик",
+            "canceled": "Акција је отказана",
+            "logged_out": "Ваша сесија је завршена, молимо вас да се повежите поново.",
+            "new_version": "Доступна је нова верзија! Молимо вас да освежите овај прозор."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Колоне за приказ",
+            "layout": "Распоред",
+            "grid": "Мрежа",
+            "table": "Табела"
+        }
+    },
+    "message": {
+        "note": "НАПОМЕНА",
+        "transcodingDisabled": "Измена конфигурације транскодирања кроз веб интерфејс је искључена из разлога безбедности. Ако желите да измените (уредите или додате) опције транскодирања, поново покрените сервер са %{config} конфигурационом опцијом.",
+        "transcodingEnabled": "Navidrome се тренутно извршава са %{config}, чиме је омогућено извршавање системских команди из подешавања транскодирања коришћењем веб интерфејса. Из разлога безбедности, препоручујемо да то искључите, а да омогућите само када конфигуришете опције транскодирања.",
+        "songsAddedToPlaylist": "У плејлисту је додата 1 песма |||| У плејлисту је додато %{smart_count} песама",
+        "noPlaylistsAvailable": "Није доступна ниједна",
+        "delete_user_title": "Брисање корисника ’%{name}’",
+        "delete_user_content": "Да ли заиста желите да обришете овог корисника, заједно са свим његовим подацима (плејлистама и подешавањима)?",
+        "notifications_blocked": "У подешавањима интернет прегледача за овај сајт, блокирали сте обавештења",
+        "notifications_not_available": "Овај интернет прегледач не подржава десктоп обавештења, или Navidrome серверу не приступате преко https протокола",
+        "lastfmLinkSuccess": "Last.fm је успешно повезан и укључено је скробловање",
+        "lastfmLinkFailure": "Last.fm није могао да се повеже",
+        "lastfmUnlinkSuccess": "Last.fm више није повезан и скробловање је искључено",
+        "lastfmUnlinkFailure": "Није могла да се уклони веза са Last.fm",
+        "listenBrainzLinkSuccess": "ListenBrainz је успешно повезан и скробловање је укључено као корисник: %{user}",
+        "listenBrainzLinkFailure": "ListenBrainz није могао да се повеже: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz више није повезан и скробловање је искључено",
+        "listenBrainzUnlinkFailure": "Није могла да се уклони веза са ListenBrainz",
+        "openIn": {
+            "lastfm": "Отвори у Last.fm",
+            "musicbrainz": "Отвори у MusicBrainz"
+        },
+        "lastfmLink": "Прочитај још...",
+        "shareOriginalFormat": "Подели у оригиналном формату",
+        "shareDialogTitle": "Подели %{resource} ’%{name}’",
+        "shareBatchDialogTitle": "Подели 1 %{resource} |||| Подели %{smart_count} %{resource}",
+        "shareCopyToClipboard": "Копирај у клипборд: Ctrl+C, Ентер",
+        "shareSuccess": "URL је копиран у клипборд: %{url}",
+        "shareFailure": "Грешка приликом копирања URL адресе %{url} у клипборд",
+        "downloadDialogTitle": "Преузимање %{resource} ’%{name}’ (%{size})",
+        "downloadOriginalFormat": "Преузми у оригиналном формату"
+    },
+    "menu": {
+        "library": "Библиотека",
+        "settings": "Подешавања",
+        "version": "Верзија",
+        "theme": "Тема",
+        "personal": {
+            "name": "Лична",
+            "options": {
+                "theme": "Тема",
+                "language": "Језик",
+                "defaultView": "Подразумевани поглед",
+                "desktop_notifications": "Десктоп обавештења",
+                "lastfmScrobbling": "Скроблуј на Last.fm",
+                "listenBrainzScrobbling": "Скроблуј на ListenBrainz",
+                "replaygain": "ReplayGain режим",
+                "preAmp": "ReplayGain претпојачање (dB)",
+                "gain": {
+                    "none": "ИскљученоDisabled",
+                    "album": "Користи Album појачање",
+                    "track": "Користи Track појачање"
+                }
+            }
+        },
+        "albumList": "Албуми",
+        "playlists": "Плејлисте",
+        "sharedPlaylists": "Дељене плејлисте",
+        "about": "О"
+    },
+    "player": {
+        "playListsText": "Ред за пуштање",
+        "openText": "Отвори",
+        "closeText": "Затвори",
+        "notContentText": "Нема музике",
+        "clickToPlayText": "Кликни за пуштање",
+        "clickToPauseText": "Кликни за паузирање",
+        "nextTrackText": "Наредна нумера",
+        "previousTrackText": "Претходна нумера",
+        "reloadText": "Поново учитај",
+        "volumeText": "Јачина",
+        "toggleLyricText": "Укљ./Искљ. стихове",
+        "toggleMiniModeText": "Умањи",
+        "destroyText": "Уништи",
+        "downloadText": "Преузми",
+        "removeAudioListsText": "Обриши аудио листе",
+        "clickToDeleteText": "Кликните да обришете %{name}",
+        "emptyLyricText": "Нема стихова",
+        "playModeText": {
+            "order": "По редоследу",
+            "orderLoop": "Понови",
+            "singleLoop": "Понови једну",
+            "shufflePlay": "Промешано"
+        }
+
+    },
+    "about": {
+        "links": {
+            "homepage": "Почетна страница",
+            "source": "Изворни кôд",
+            "featureRequests": "Захтеви за функцијама"
+        }
+    },
+    "activity": {
+        "title": "Активност",
+        "totalScanned": "Укупан број скенираних фолдера",
+        "quickScan": "Брзо скенирање",
+        "fullScan": "Комплетно скенирање",
+        "serverUptime": "Сервер се извршава",
+        "serverDown": "ВАН МРЕЖЕ"
+    },
+    "help": {
+        "title": "Navidrome пречице",
+        "hotkeys": {
+            "show_help": "Прикажи ову помоћ",
+            "toggle_menu": "Укљ./Искљ. бочну траку менија",
+            "toggle_play": "Пусти / Паузирај",
+            "prev_song": "Претходна песма",
+            "next_song": "Наредна песма",
+            "current_song": "Иди на текућу песму",
+            "vol_up": "Појачај",
+            "vol_down": "Утишај",
+            "toggle_love": "Додај ову нумеру у омиљене"
+        }
+    }
+}

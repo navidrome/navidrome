@@ -112,8 +112,8 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 		ids[i] = t.ID
 	}
 
-	// Break the list in chunks, up to 50 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
-	chunks := slice.BreakUp(ids, 50)
+	// Break the list in chunks, up to 500 items, to avoid hitting SQLITE_MAX_FUNCTION_ARG limit
+	chunks := slice.BreakUp(ids, 500)
 
 	// Query each chunk of media_file ids and store results in a map
 	mfRepo := NewMediaFileRepository(r.ctx, r.db)
@@ -131,9 +131,12 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	}
 
 	// Create a new list of tracks with the same order as the original
-	newTracks := make(model.MediaFiles, len(tracks))
-	for i, t := range tracks {
-		newTracks[i] = trackMap[t.ID]
+	// Exclude tracks that are not in the DB anymore
+	newTracks := make(model.MediaFiles, 0, len(tracks))
+	for _, t := range tracks {
+		if track, ok := trackMap[t.ID]; ok {
+			newTracks = append(newTracks, track)
+		}
 	}
 	return newTracks
 }

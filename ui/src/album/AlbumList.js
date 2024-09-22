@@ -79,6 +79,8 @@ const AlbumListTitle = ({ albumListType }) => {
   return <Title subTitle={title} args={{ smart_count: 2 }} />
 }
 
+const randomStartingSeed = Math.random().toString()
+
 const AlbumList = (props) => {
   const { width } = props
   const albumView = useSelector((state) => state.albumView)
@@ -87,6 +89,8 @@ const AlbumList = (props) => {
   const version = useVersion()
   const refresh = useRefresh()
   useResourceRefresh('album')
+
+  const seed = `${randomStartingSeed}-${version}`
 
   const albumListType = location.pathname
     .replace(/^\/album/, '')
@@ -130,7 +134,7 @@ const AlbumList = (props) => {
         {...props}
         exporter={false}
         bulkActionButtons={false}
-        filter={{ seed: version }}
+        filter={{ seed }}
         actions={<AlbumListActions />}
         filters={<AlbumFilter />}
         perPage={perPage}

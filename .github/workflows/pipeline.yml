@@ -24,7 +24,6 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           problem-matchers: true
           args: --timeout 2m
 
@@ -98,6 +97,7 @@ jobs:
           name: js-bundle
           path: ui/build
           retention-days: 7
+
   i18n-lint:
     name: Lint i18n files
     runs-on: ubuntu-latest

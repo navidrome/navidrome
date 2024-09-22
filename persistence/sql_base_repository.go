@@ -167,20 +167,15 @@ func (r sqlRepository) seedKey() string {
 	return r.tableName + userId(r.ctx)
 }
 
-func (r sqlRepository) seededRandomSort() string {
-	return fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
-}
-
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) == 0 || options[0].Sort != "random" {
 		return
 	}
-
+	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
 		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return
 	}
-
 	if options[0].Offset == 0 {
 		hasher.Reseed(r.seedKey())
 	}
