@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -178,11 +179,11 @@ const filesBatchSize = 200
 func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) (model.MediaFiles, model.TagList, error) {
 	tracks := make([]model.MediaFile, 0, len(toImport))
 	uniqueTags := make(map[string]model.Tag, len(toImport))
-	err := slice.RangeByChunks(toImport, filesBatchSize, func(chunk []string) error {
-		allInfo, err := entry.job.fs.ReadTags(toImport...)
+	for chunk := range slices.Chunk(toImport, filesBatchSize) {
+		allInfo, err := entry.job.fs.ReadTags(chunk...)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error extracting metadata from files. Skipping", "folder", entry.path, err)
-			return err
+			return nil, nil, err
 		}
 		for filePath, info := range allInfo {
 			md := metadata.New(filePath, info)
@@ -194,9 +195,8 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) 
 				uniqueTags[t.ID] = t
 			}
 		}
-		return nil
-	})
-	return tracks, maps.Values(uniqueTags), err
+	}
+	return tracks, maps.Values(uniqueTags), nil
 }
 
 func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albums {
