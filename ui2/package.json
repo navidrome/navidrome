@@ -1,0 +1,36 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write ./src",
+    "check-format": "prettier -c ./src"
+  },
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-admin": "^5.2.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@nabla/vite-plugin-eslint": "^2.0.2",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "prettier": "^3.3.3",
+    "typescript": "^5.1.6",
+    "vite": "^5.3.5"
+  },
+  "name": "ui2"
+}
