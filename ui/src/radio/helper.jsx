@@ -9,7 +9,9 @@ export async function songFromRadio(radio) {
     url.pathname = '/favicon.ico'
     await resourceExists(url)
     cover = url.toString()
-  } catch {}
+  } catch {
+    // ignore
+  }
 
   return {
     ...radio,

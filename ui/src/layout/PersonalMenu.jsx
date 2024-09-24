@@ -26,4 +26,6 @@ const PersonalMenu = forwardRef(({ onClick, sidebarIsOpen, dense }, ref) => {
   )
 })
 
+PersonalMenu.displayName = 'PersonalMenu'
+
 export default PersonalMenu

@@ -62,7 +62,6 @@ const TogglePublicInput = ({ resource, source }) => {
     {
       undoable: false,
       onFailure: (error) => {
-        console.log(error)
         notify('ra.page.error', 'warning')
       },
     },
@@ -84,7 +83,6 @@ const TogglePublicInput = ({ resource, source }) => {
 
 const ToggleAutoImport = ({ resource, source }) => {
   const record = useRecordContext()
-  console.log(record)
   const notify = useNotify()
   const [ToggleAutoImport] = useUpdate(
     resource,
@@ -96,7 +94,6 @@ const ToggleAutoImport = ({ resource, source }) => {
     {
       undoable: false,
       onFailure: (error) => {
-        console.log(error)
         notify('ra.page.error', 'warning')
       },
     },
