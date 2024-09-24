@@ -66,4 +66,6 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   )
 })
 
+AudioTitle.displayName = 'AudioTitle'
+
 export default AudioTitle

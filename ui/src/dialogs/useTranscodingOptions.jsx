@@ -45,7 +45,7 @@ export const useTranscodingOptions = () => {
   )
 
   const TranscodingOptionsInput = useMemo(() => {
-    return ({ label, basePath, ...props }) => {
+    const Component = ({ label, basePath, ...props }) => {
       return (
         <>
           <BooleanInput
@@ -83,6 +83,9 @@ export const useTranscodingOptions = () => {
         </>
       )
     }
+
+    Component.displayName = 'TranscodingOptionsInput'
+    return Component
   }, [
     handleOriginal,
     formatOptions,

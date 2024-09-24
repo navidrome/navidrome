@@ -100,6 +100,8 @@ const ReleaseRow = forwardRef(
   },
 )
 
+ReleaseRow.displayName = 'ReleaseRow'
+
 const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -145,6 +147,8 @@ const DiscSubtitleRow = forwardRef(
     )
   },
 )
+
+DiscSubtitleRow.displayName = 'DiscSubtitleRow'
 
 export const SongDatagridRow = ({
   record,

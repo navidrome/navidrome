@@ -67,6 +67,8 @@ const AlbumViewToggler = React.forwardRef(
   },
 )
 
+AlbumViewToggler.displayName = 'AlbumViewToggler'
+
 const AlbumListActions = ({
   currentSort,
   className,

@@ -60,6 +60,8 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
   )
 })
 
+AboutMenuItem.displayName = 'AboutMenuItem'
+
 const settingsResources = (resource) =>
   resource.name !== 'user' &&
   resource.hasList &&
