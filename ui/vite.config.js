@@ -12,9 +12,9 @@ if (process.env.PORT !== undefined) {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // plugins: [react(), eslintPlugin({ formatter: 'stylish' })],
   plugins: [
     react(),
+    eslintPlugin({ formatter: 'stylish' }),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {

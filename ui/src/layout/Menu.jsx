@@ -3,7 +3,6 @@ import { useSelector } from 'react-redux'
 import { Divider, makeStyles } from '@material-ui/core'
 import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
-import { withRouter } from 'react-router-dom'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
@@ -142,4 +141,4 @@ const Menu = ({ dense = false }) => {
   )
 }
 
-export default withRouter(Menu)
+export default Menu
