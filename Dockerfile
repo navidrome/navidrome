@@ -16,7 +16,7 @@ COPY . /build
 
 WORKDIR /build
 
-RUN (cd ./ui && npm ci)
+RUN (cd ./ui && npm ci && npm run build)
 
 RUN go build
 
