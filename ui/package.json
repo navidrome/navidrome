@@ -11,7 +11,7 @@
     "test:coverage": "vitest run --coverage --watch=false",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write ./src",
+    "prettier": "prettier --write ./src",
     "check-formatting": "prettier -c ./src"
   },
   "dependencies": {
