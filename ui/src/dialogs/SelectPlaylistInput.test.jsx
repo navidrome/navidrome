@@ -9,11 +9,12 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { SelectPlaylistInput } from './SelectPlaylistInput'
+import { describe, beforeAll, afterEach, it, expect, vi } from 'vitest'
 
 describe('SelectPlaylistInput', () => {
   beforeAll(() => localStorage.setItem('userId', 'admin'))
   afterEach(cleanup)
-  const onChangeHandler = jest.fn()
+  const onChangeHandler = vi.fn()
 
   it('should call the handler with the selections', async () => {
     const mockData = [
@@ -34,7 +35,7 @@ describe('SelectPlaylistInput', () => {
     }
 
     const mockDataProvider = {
-      getList: jest
+      getList: vi
         .fn()
         .mockResolvedValue({ data: mockData, total: mockData.length }),
     }

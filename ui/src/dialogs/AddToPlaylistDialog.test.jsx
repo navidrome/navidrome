@@ -9,6 +9,7 @@ import {
   screen,
 } from '@testing-library/react'
 import { AddToPlaylistDialog } from './AddToPlaylistDialog'
+import { describe, beforeAll, afterEach, it, expect, vi } from 'vitest'
 
 const mockData = [
   { id: 'sample-id1', name: 'sample playlist 1', ownerId: 'admin' },
@@ -62,9 +63,9 @@ const createTestUtils = (mockDataProvider) =>
     </DataProviderContext.Provider>,
   )
 
-jest.mock('../dataProvider', () => ({
-  ...jest.requireActual('../dataProvider'),
-  httpClient: jest.fn(),
+vi.mock('../dataProvider', () => ({
+  ...vi.importActual('../dataProvider'),
+  httpClient: vi.fn(),
 }))
 
 describe('AddToPlaylistDialog', () => {
@@ -72,15 +73,15 @@ describe('AddToPlaylistDialog', () => {
   afterEach(cleanup)
 
   it('adds distinct songs to already existing playlists', async () => {
-    const dataProvider = require('../dataProvider')
-    jest.spyOn(dataProvider, 'httpClient').mockResolvedValue({ data: mockData })
+    const dataProvider = await import('../dataProvider')
+    vi.spyOn(dataProvider, 'httpClient').mockResolvedValue({ data: mockData })
 
     const mockDataProvider = {
-      getList: jest
+      getList: vi
         .fn()
         .mockResolvedValue({ data: mockData, total: mockData.length }),
-      getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
-      create: jest.fn().mockResolvedValue({
+      getOne: vi.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
+      create: vi.fn().mockResolvedValue({
         data: { id: 'created-id', name: 'created-name' },
       }),
     }
@@ -121,11 +122,11 @@ describe('AddToPlaylistDialog', () => {
 
   it('adds distinct songs to a new playlist', async () => {
     const mockDataProvider = {
-      getList: jest
+      getList: vi
         .fn()
         .mockResolvedValue({ data: mockData, total: mockData.length }),
-      getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
-      create: jest.fn().mockResolvedValue({
+      getOne: vi.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
+      create: vi.fn().mockResolvedValue({
         data: { id: 'created-id1', name: 'created-name' },
       }),
     }
@@ -159,11 +160,11 @@ describe('AddToPlaylistDialog', () => {
 
   it('adds distinct songs to multiple new playlists', async () => {
     const mockDataProvider = {
-      getList: jest
+      getList: vi
         .fn()
         .mockResolvedValue({ data: mockData, total: mockData.length }),
-      getOne: jest.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
-      create: jest.fn().mockResolvedValue({
+      getOne: vi.fn().mockResolvedValue({ data: { id: 'song-3' }, total: 1 }),
+      create: vi.fn().mockResolvedValue({
         data: { id: 'created-id1', name: 'created-name' },
       }),
     }

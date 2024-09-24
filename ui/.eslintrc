@@ -2,8 +2,7 @@
   "env": {
     "browser": true,
     "node": true,
-    "es6": true,
-    "jest": true
+    "es6": true
   },
   "extends": [
     "eslint:recommended",
@@ -12,7 +11,6 @@
     "plugin:jsx-a11y/recommended",
     "eslint-config-prettier",
     "plugin:@typescript-eslint/recommended",
-    "plugin:jest/recommended"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -36,7 +34,7 @@
       }
     }
   },
-  "plugins": ["react-refresh", "jest"],
+  "plugins": ["react-refresh"],
   "rules": {
     "no-console": "error",
 //    "no-unused-vars": "off",
