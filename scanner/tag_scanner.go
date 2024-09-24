@@ -400,7 +400,9 @@ func (s *TagScanner) loadTracks(filePaths []string, externalTags []external.Tags
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
-		md.Tags = external.PatchTags(md.FilePath(), md.Tags, externalTags)
+		if len(externalTags) > 0 {
+			md.Tags = external.PatchTags(md.FilePath(), md.Tags, externalTags)
+		}
 		mf := s.mapper.ToMediaFile(md)
 		mfs = append(mfs, mf)
 	}
