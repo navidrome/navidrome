@@ -2,24 +2,9 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
 import { withWidth } from '@material-ui/core'
-import { useAlbumsPerPage } from './index'
-import config from '../config'
+import { useGetHandleArtistClick } from './useGetHandleArtistClick.jsx'
 
-export const useGetHandleArtistClick = (width) => {
-  const [perPage] = useAlbumsPerPage(width)
-  return (id) => {
-    return config.devShowArtistPage && id !== config.variousArtistsId
-      ? `/artist/${id}/show`
-      : `/album?filter={"artist_id":"${id}"}&order=ASC&sort=max_year&displayedFilters={"compilation":true}&perPage=${perPage}`
-  }
-}
-
-export const ArtistLinkField = withWidth()(({
-  record,
-  className,
-  width,
-  source,
-}) => {
+const ArtistLinkField = withWidth()(({ record, className, width, source }) => {
   const artistLink = useGetHandleArtistClick(width)
 
   const id = record[source + 'Id']
@@ -50,3 +35,5 @@ ArtistLinkField.defaultProps = {
   addLabel: true,
   source: 'albumArtist',
 }
+
+export default ArtistLinkField

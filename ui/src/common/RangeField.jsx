@@ -1,20 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useRecordContext } from 'react-admin'
-
-export const formatRange = (record, source) => {
-  const nameCapitalized = source.charAt(0).toUpperCase() + source.slice(1)
-  const min = record[`min${nameCapitalized}`]
-  const max = record[`max${nameCapitalized}`]
-  let range = []
-  if (min) {
-    range.push(min)
-  }
-  if (max && max !== min) {
-    range.push(max)
-  }
-  return range.join('-')
-}
+import { formatRange } from './formatRange.jsx'
 
 export const RangeField = ({ className, source, ...rest }) => {
   const record = useRecordContext(rest)
