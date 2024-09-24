@@ -106,7 +106,7 @@ const useStyles = makeStyles(
   },
 )
 
-export const useGetHandleGenreClick = (width) => {
+const useGetHandleGenreClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
 
   return (id) => {
