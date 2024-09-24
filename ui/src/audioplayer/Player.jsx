@@ -257,6 +257,7 @@ const Player = () => {
       dispatch(currentPlaying(info))
       dataProvider
         .getOne('keepalive', { id: info.trackId })
+        // eslint-disable-next-line no-console
         .catch((e) => console.log('Keepalive error:', e))
     },
     [dispatch, dataProvider],

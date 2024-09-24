@@ -74,7 +74,7 @@ const App = () => (
 
 const Admin = (props) => {
   useChangeThemeColor()
-
+  /* eslint-disable react/jsx-key */
   return (
     <RAAdmin
       disableTelemetry
@@ -125,6 +125,7 @@ const Admin = (props) => {
       ]}
     </RAAdmin>
   )
+  /* eslint-enable react/jsx-key */
 }
 
 const AppWithHotkeys = () => {

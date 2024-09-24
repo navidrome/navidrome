@@ -25,6 +25,7 @@ export const useRating = (resource, record) => {
         }
       })
       .catch((e) => {
+        // eslint-disable-next-line no-console
         console.log('Error encountered: ' + e)
       })
   }, [dataProvider, record, resource])
@@ -35,6 +36,7 @@ export const useRating = (resource, record) => {
       .setRating(id, val)
       .then(refreshRating)
       .catch((e) => {
+        // eslint-disable-next-line no-console
         console.log('Error setting star rating: ', e)
         notify('ra.page.error', 'warning')
         if (mountedRef.current) {

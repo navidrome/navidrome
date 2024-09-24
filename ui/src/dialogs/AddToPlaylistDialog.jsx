@@ -86,8 +86,7 @@ export const AddToPlaylistDialog = () => {
         }
         setCheck(true)
       })
-      .catch((error) => {
-        console.error(error)
+      .catch(() => {
         notify('ra.page.error', 'warning')
       })
   }

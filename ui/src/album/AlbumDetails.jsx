@@ -244,6 +244,7 @@ const AlbumDetails = (props) => {
         }
       })
       .catch((e) => {
+        // eslint-disable-next-line no-console
         console.error('error on album page', e)
       })
   }, [record])

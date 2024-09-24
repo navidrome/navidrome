@@ -31,6 +31,7 @@ export const useToggleLove = (resource, record = {}) => {
     toggle(record.id)
       .then(refreshRecord)
       .catch((e) => {
+        // eslint-disable-next-line no-console
         console.log('Error toggling love: ', e)
         notify('ra.page.error', 'warning')
         if (mountedRef.current) {
