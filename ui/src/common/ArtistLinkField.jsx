@@ -2,7 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
 import { withWidth } from '@material-ui/core'
-import { useGetHandleArtistClick } from './useGetHandleArtistClick.jsx'
+import { useGetHandleArtistClick } from './useGetHandleArtistClick'
 
 const ArtistLinkField = withWidth()(({ record, className, width, source }) => {
   const artistLink = useGetHandleArtistClick(width)

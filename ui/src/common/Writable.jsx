@@ -1,15 +1,5 @@
-import { cloneElement, Children, isValidElement } from 'react'
-
-export const isWritable = (ownerId) => {
-  return (
-    localStorage.getItem('userId') === ownerId ||
-    localStorage.getItem('role') === 'admin'
-  )
-}
-
-export const isReadOnly = (ownerId) => {
-  return !isWritable(ownerId)
-}
+import { Children, cloneElement, isValidElement } from 'react'
+import { isWritable } from './playlistUtils.js'
 
 export const Writable = (props) => {
   const { record = {}, children } = props
@@ -20,8 +10,3 @@ export const Writable = (props) => {
   }
   return null
 }
-
-export const isSmartPlaylist = (pls) => !!pls.rules
-
-export const canChangeTracks = (pls) =>
-  isWritable(pls.ownerId) && !isSmartPlaylist(pls)

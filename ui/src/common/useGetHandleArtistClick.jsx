@@ -1,4 +1,4 @@
-import { useAlbumsPerPage } from './useAlbumsPerPage.jsx'
+import { useAlbumsPerPage } from './useAlbumsPerPage'
 import config from '../config.js'
 
 export const useGetHandleArtistClick = (width) => {
