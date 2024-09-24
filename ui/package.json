@@ -3,13 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
     "build": "vite build",
     "serve": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write ./src",
-    "check-format": "prettier -c ./src"
+    "check-formatting": "prettier -c ./src"
   },
   "dependencies": {
     "@material-ui/core": "^4.11.4",
