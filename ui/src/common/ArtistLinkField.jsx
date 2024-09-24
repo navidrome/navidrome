@@ -4,7 +4,12 @@ import { Link } from 'react-admin'
 import { withWidth } from '@material-ui/core'
 import { useGetHandleArtistClick } from './useGetHandleArtistClick'
 
-const ArtistLinkField = withWidth()(({ record, className, width, source }) => {
+export const ArtistLinkField = withWidth()(({
+  record,
+  className,
+  width,
+  source,
+}) => {
   const artistLink = useGetHandleArtistClick(width)
 
   const id = record[source + 'Id']
@@ -35,5 +40,3 @@ ArtistLinkField.defaultProps = {
   addLabel: true,
   source: 'albumArtist',
 }
-
-export default ArtistLinkField
