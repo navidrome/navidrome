@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import { VitePWA } from 'vite-plugin-pwa'
 import eslintPlugin from '@nabla/vite-plugin-eslint'
 
 let frontendPort = 4533
@@ -12,7 +13,15 @@ if (process.env.PORT !== undefined) {
 // https://vitejs.dev/config/
 export default defineConfig({
   // plugins: [react(), eslintPlugin({ formatter: 'stylish' })],
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        // Workbox options
+      },
+    }),
+  ],
   server: {
     host: true,
     port: frontendPort,

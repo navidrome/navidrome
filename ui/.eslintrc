@@ -2,7 +2,8 @@
   "env": {
     "browser": true,
     "node": true,
-    "es6": true
+    "es6": true,
+    "jest": true
   },
   "extends": [
     "eslint:recommended",
@@ -10,7 +11,8 @@
     "plugin:react-hooks/recommended",
     "plugin:jsx-a11y/recommended",
     "eslint-config-prettier",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "plugin:jest/recommended"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
@@ -34,16 +36,17 @@
       }
     }
   },
-  "plugins": ["react-refresh"],
+  "plugins": ["react-refresh", "jest"],
   "rules": {
     "no-console": "error",
-    "no-unused-vars": "off",
+//    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "off",
     "react-refresh/only-export-components": [
       "warn",
       { "allowConstantExport": true }
     ],
     "react/jsx-uses-react": "off",
     "react/react-in-jsx-scope": "off",
-    "react/prop-types": "off"
+    "react/prop-types": "off",
   }
 }
