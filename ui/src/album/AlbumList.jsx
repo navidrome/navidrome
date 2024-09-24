@@ -152,4 +152,6 @@ const AlbumList = (props) => {
   )
 }
 
-export default withWidth()(AlbumList)
+const AlbumListWithWidth = withWidth()(AlbumList)
+
+export default AlbumListWithWidth

@@ -179,4 +179,6 @@ const ArtistList = (props) => {
   )
 }
 
-export default withWidth()(ArtistList)
+const ArtistListWithWidth = withWidth()(ArtistList)
+
+export default ArtistListWithWidth

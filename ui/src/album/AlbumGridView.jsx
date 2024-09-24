@@ -210,4 +210,6 @@ const AlbumGridView = ({ albumListType, loaded, loading, ...props }) => {
   return hide ? <Loading /> : <LoadedAlbumGrid {...props} />
 }
 
-export default withWidth()(AlbumGridView)
+const AlbumGridViewWithWidth = withWidth()(AlbumGridView)
+
+export default AlbumGridViewWithWidth

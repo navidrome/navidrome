@@ -1,4 +1,4 @@
-import { removeAlbumCommentsFromSongs } from './AlbumSongs'
+import { removeAlbumCommentsFromSongs } from './utils.js'
 
 describe('removeAlbumCommentsFromSongs', () => {
   const data = { 1: { comment: 'one' }, 2: { comment: 'two' } }

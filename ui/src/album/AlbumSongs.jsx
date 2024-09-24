@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react'
 import {
   BulkActionsToolbar,
-  ListToolbar,
-  TextField,
-  NumberField,
-  useVersion,
-  useListContext,
   FunctionField,
+  ListToolbar,
+  NumberField,
+  TextField,
+  useListContext,
+  useVersion,
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
@@ -15,22 +15,23 @@ import { makeStyles } from '@material-ui/core/styles'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { playTracks } from '../actions'
 import {
+  ArtistLinkField,
+  DateField,
   DurationField,
+  QualityInfo,
+  RatingField,
+  SizeField,
   SongBulkActions,
   SongContextMenu,
   SongDatagrid,
   SongInfo,
   SongTitleField,
-  RatingField,
-  QualityInfo,
-  useSelectedFields,
   useResourceRefresh,
-  DateField,
-  SizeField,
-  ArtistLinkField,
+  useSelectedFields,
 } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { removeAlbumCommentsFromSongs } from './utils.js'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -191,14 +192,6 @@ const AlbumSongs = (props) => {
       <ExpandInfoDialog content={<SongInfo />} />
     </>
   )
-}
-
-export const removeAlbumCommentsFromSongs = ({ album, data }) => {
-  if (album?.comment && data) {
-    Object.values(data).forEach((song) => {
-      song.comment = ''
-    })
-  }
 }
 
 const SanitizedAlbumSongs = (props) => {
