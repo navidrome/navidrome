@@ -1,7 +1,7 @@
 package external
 
 import (
-	"path/filepath"
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 type Tags struct {
@@ -15,6 +15,6 @@ func (t Tags) matchesFile(filePath string) bool {
 	if t.Pattern == "" {
 		return true
 	}
-	ok, _ := filepath.Match(t.Pattern, filePath)
-	return ok
+	ok, err := doublestar.Match(t.Pattern, filePath)
+	return err == nil && ok
 }
