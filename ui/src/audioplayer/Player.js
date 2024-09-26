@@ -25,6 +25,8 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 
+const PLAYMODE_KEY = 'playMode'
+
 const Player = () => {
   const theme = useCurrentTheme()
   const translate = useTranslate()
@@ -93,6 +95,7 @@ const Player = () => {
     () => ({
       theme: playerTheme,
       bounds: 'body',
+      playMode: localStorage.getItem(PLAYMODE_KEY),
       mode: 'full',
       loadAudioErrorPlayNext: false,
       autoPlayInitLoadPlayList: true,
@@ -294,6 +297,7 @@ const Player = () => {
         onAudioPlay={onAudioPlay}
         onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
+        onPlayModeChange={(mode) => localStorage.setItem(PLAYMODE_KEY, mode)}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}
         onBeforeDestroy={onBeforeDestroy}

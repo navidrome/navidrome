@@ -4,6 +4,8 @@ import { shareCoverUrl, shareDownloadUrl, shareStreamUrl } from '../utils'
 
 import { makeStyles } from '@material-ui/core/styles'
 
+const PLAYMODE_KEY = 'playMode'
+
 const useStyle = makeStyles({
   player: {
     '& .group .next-audio': {
@@ -43,6 +45,7 @@ const SharePlayer = () => {
   const options = {
     audioLists: list,
     mode: 'full',
+    playMode: localStorage.getItem(PLAYMODE_KEY),
     toggleMode: false,
     mobileMediaQuery: '',
     showDownload: shareInfo?.downloadable && config.enableDownloads,
@@ -60,6 +63,7 @@ const SharePlayer = () => {
       {...options}
       className={classes.player}
       onBeforeAudioDownload={onBeforeAudioDownload}
+      onPlayModeChange={(mode) => localStorage.setItem(PLAYMODE_KEY, mode)}
     />
   )
 }
