@@ -35,7 +35,7 @@ var (
 
 type FolderScanner interface {
 	// Scan process finds any changes after `lastModifiedSince` and returns the number of changes found
-	Scan(ctx context.Context, fullRescan bool, progress chan uint32) (int64, error)
+	Scan(ctx context.Context, lib model.Library, fullRescan bool, progress chan uint32) (int64, error)
 }
 
 var isScanning sync.Mutex
@@ -98,7 +98,7 @@ func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) e
 	progress, cancel := s.startProgressTracker(library)
 	defer cancel()
 
-	changeCount, err := folderScanner.Scan(ctx, fullRescan, progress)
+	changeCount, err := folderScanner.Scan(ctx, lib, fullRescan, progress)
 	if err != nil {
 		log.Error("Error scanning Library", "folder", library, err)
 	}
@@ -241,7 +241,7 @@ func (s *scanner) loadFolders() {
 	libs, _ := s.ds.Library(ctx).GetAll()
 	for _, lib := range libs {
 		log.Info("Configuring Media Folder", "name", lib.Name, "path", lib.Path)
-		s.folders[lib.Path] = s.newScanner(lib)
+		s.folders[lib.Path] = s.newScanner()
 		s.libs[lib.Path] = lib
 		s.status[lib.Path] = &scanStatus{
 			active:      false,
@@ -252,6 +252,6 @@ func (s *scanner) loadFolders() {
 	}
 }
 
-func (s *scanner) newScanner(f model.Library) FolderScanner {
-	return NewTagScanner(f, s.ds, s.pls, s.cacheWarmer)
+func (s *scanner) newScanner() FolderScanner {
+	return NewTagScanner(s.ds, s.pls, s.cacheWarmer)
 }
