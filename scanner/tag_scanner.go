@@ -118,7 +118,7 @@ func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool,
 	g, walkCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		for folderStats := range pl.ReadOrDone(walkCtx, foldersFound) {
-			progress <- folderStats.AudioFilesCount
+			updateProgress(progress, folderStats.AudioFilesCount)
 			allFSDirs[folderStats.Path] = folderStats
 
 			if s.folderHasChanged(folderStats, allDBDirs, s.lib.LastScanAt) || fullScan {
@@ -183,6 +183,13 @@ func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool,
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 
 	return s.cnt.total(), err
+}
+
+func updateProgress(progress chan uint32, count uint32) {
+	select {
+	case progress <- count:
+	default: // It is ok to miss a count update
+	}
 }
 
 func isDirEmpty(ctx context.Context, dir string) (bool, error) {
