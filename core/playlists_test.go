@@ -120,8 +120,9 @@ func (r *mockedMediaFile) FindByPath(s string) (*model.MediaFile, error) {
 
 func (r *mockedMediaFile) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
-	for _, path := range paths {
-		mf, _ := r.FindByPath(path)
+	for idx := range paths {
+		// intentionally go in reverse order. This must not impact the results
+		mf, _ := r.FindByPath(paths[len(paths)-idx-1])
 		mfs = append(mfs, *mf)
 	}
 	return mfs, nil

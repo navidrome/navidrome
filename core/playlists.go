@@ -161,10 +161,18 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
-		if len(found) != len(filteredLines) {
-			logMissingFiles(ctx, pls, filteredLines, found)
+		existing := make(map[string]int, len(found))
+		for idx := range found {
+			existing[found[idx].Path] = idx
 		}
-		mfs = append(mfs, found...)
+		for _, path := range filteredLines {
+			found_idx, ok := existing[path]
+			if ok {
+				mfs = append(mfs, found[found_idx])
+			} else {
+				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
+			}
+		}
 	}
 	if pls.Name == "" {
 		pls.Name = time.Now().Format(time.RFC3339)
@@ -173,19 +181,6 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	pls.AddMediaFiles(mfs)
 
 	return pls, nil
-}
-
-func logMissingFiles(ctx context.Context, pls *model.Playlist, lines []string, found model.MediaFiles) {
-	missing := make(map[string]bool)
-	for _, line := range lines {
-		missing[line] = true
-	}
-	for _, mf := range found {
-		delete(missing, mf.Path)
-	}
-	for path := range missing {
-		log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
-	}
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
