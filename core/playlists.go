@@ -54,9 +54,9 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 	pls := &model.Playlist{
 		OwnerID: owner.ID,
 		Public:  false,
-		Sync:    true,
+		Sync:    false,
 	}
-	pls, err := s.parseM3U(ctx, pls, "", reader)
+	err := s.parseM3U(ctx, pls, "", reader)
 	if err != nil {
 		log.Error(ctx, "Error parsing playlist", err)
 		return nil, err
@@ -84,10 +84,11 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, base
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
-		return s.parseNSP(ctx, pls, file)
+		err = s.parseNSP(ctx, pls, file)
 	default:
-		return s.parseM3U(ctx, pls, baseDir, file)
+		err = s.parseM3U(ctx, pls, baseDir, file)
 	}
+	return pls, err
 }
 
 func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*model.Playlist, error) {
@@ -111,14 +112,14 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 	return pls, nil
 }
 
-func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
+func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) error {
 	nsp := &nspFile{}
 	reader := jsoncommentstrip.NewReader(file)
 	dec := json.NewDecoder(reader)
 	err := dec.Decode(nsp)
 	if err != nil {
 		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
-		return nil, err
+		return err
 	}
 	pls.Rules = &nsp.Criteria
 	if nsp.Name != "" {
@@ -127,20 +128,18 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 	if nsp.Comment != "" {
 		pls.Comment = nsp.Comment
 	}
-	return pls, nil
+	return nil
 }
 
-func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) (*model.Playlist, error) {
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) error {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
-		var filteredLines []string
+		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
 			if strings.HasPrefix(line, "#PLAYLIST:") {
-				if split := strings.Split(line, ":"); len(split) >= 2 {
-					pls.Name = split[1]
-				}
+				pls.Name = line[len("#PLAYLIST:"):]
 				continue
 			}
 			// Skip empty lines and extended info
@@ -161,10 +160,18 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
 		}
-		if len(found) != len(filteredLines) {
-			logMissingFiles(ctx, pls, filteredLines, found)
+		existing := make(map[string]int, len(found))
+		for idx := range found {
+			existing[found[idx].Path] = idx
 		}
-		mfs = append(mfs, found...)
+		for _, path := range filteredLines {
+			idx, ok := existing[path]
+			if ok {
+				mfs = append(mfs, found[idx])
+			} else {
+				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
+			}
+		}
 	}
 	if pls.Name == "" {
 		pls.Name = time.Now().Format(time.RFC3339)
@@ -172,20 +179,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)
 
-	return pls, nil
-}
-
-func logMissingFiles(ctx context.Context, pls *model.Playlist, lines []string, found model.MediaFiles) {
-	missing := make(map[string]bool)
-	for _, line := range lines {
-		missing[line] = true
-	}
-	for _, mf := range found {
-		delete(missing, mf.Path)
-	}
-	for path := range missing {
-		log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
-	}
+	return nil
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
