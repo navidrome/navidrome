@@ -97,6 +97,7 @@ var _ = Describe("Playlists", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.OwnerID).To(Equal("123"))
 			Expect(pls.Name).To(Equal("playlist 1"))
+			Expect(pls.Sync).To(BeFalse())
 			Expect(pls.Tracks).To(HaveLen(3))
 			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
 			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))

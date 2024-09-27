@@ -54,7 +54,7 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 	pls := &model.Playlist{
 		OwnerID: owner.ID,
 		Public:  false,
-		Sync:    true,
+		Sync:    false,
 	}
 	err := s.parseM3U(ctx, pls, "", reader)
 	if err != nil {
