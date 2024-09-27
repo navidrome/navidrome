@@ -3,19 +3,20 @@ package core
 import (
 	"context"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
-
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Playlists", func() {
-	var ds model.DataStore
+	var ds *tests.MockDataStore
 	var ps Playlists
 	var mp mockedPlaylist
 	ctx := context.Background()
@@ -23,8 +24,7 @@ var _ = Describe("Playlists", func() {
 	BeforeEach(func() {
 		mp = mockedPlaylist{}
 		ds = &tests.MockDataStore{
-			MockedMediaFile: &mockedMediaFile{},
-			MockedPlaylist:  &mp,
+			MockedPlaylist: &mp,
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
 	})
@@ -32,12 +32,13 @@ var _ = Describe("Playlists", func() {
 	Describe("ImportFile", func() {
 		BeforeEach(func() {
 			ps = NewPlaylists(ds)
+			ds.MockedMediaFile = &mockedMediaFileRepo{}
 		})
 
 		Describe("M3U", func() {
 			It("parses well-formed playlists", func() {
 				pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/pls1.m3u")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Tracks).To(HaveLen(3))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
@@ -48,13 +49,13 @@ var _ = Describe("Playlists", func() {
 
 			It("parses playlists using LF ending", func() {
 				pls, err := ps.ImportFile(ctx, "tests/fixtures/playlists", "lf-ended.m3u")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
 
 			It("parses playlists using CR ending (old Mac format)", func() {
 				pls, err := ps.ImportFile(ctx, "tests/fixtures/playlists", "cr-ended.m3u")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
 		})
@@ -62,7 +63,7 @@ var _ = Describe("Playlists", func() {
 		Describe("NSP", func() {
 			It("parses well-formed playlists", func() {
 				pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/recently_played.nsp")
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				Expect(mp.last).To(Equal(pls))
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Name).To(Equal("Recently Played"))
@@ -76,18 +77,27 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("ImportM3U", func() {
+		var repo *mockedMediaFileFromListRepo
 		BeforeEach(func() {
+			repo = &mockedMediaFileFromListRepo{}
+			ds.MockedMediaFile = repo
 			ps = NewPlaylists(ds)
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
 
 		It("parses well-formed playlists", func() {
-			f, _ := os.Open("tests/fixtures/playlists/pls-post-with-name.m3u")
+			repo.data = []string{
+				"tests/fixtures/test.mp3",
+				"tests/fixtures/test.ogg",
+				"/tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+			}
+			f, _ := os.Open("tests/fixtures/playlists/pls-with-name.m3u")
 			defer f.Close()
 			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.OwnerID).To(Equal("123"))
 			Expect(pls.Name).To(Equal("playlist 1"))
-			Expect(err).To(BeNil())
+			Expect(pls.Tracks).To(HaveLen(3))
 			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
 			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
 			Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
@@ -97,33 +107,72 @@ var _ = Describe("Playlists", func() {
 		})
 
 		It("sets the playlist name as a timestamp if the #PLAYLIST directive is not present", func() {
-			f, _ := os.Open("tests/fixtures/playlists/pls-post.m3u")
+			repo.data = []string{
+				"tests/fixtures/test.mp3",
+				"tests/fixtures/test.ogg",
+				"/tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+			}
+			f, _ := os.Open("tests/fixtures/playlists/pls-without-name.m3u")
 			defer f.Close()
 			pls, err := ps.ImportM3U(ctx, f)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			_, err = time.Parse(time.RFC3339, pls.Name)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(3))
+		})
+
+		It("returns only tracks that exist in the database and in the same other as the m3u", func() {
+			repo.data = []string{
+				"test1.mp3",
+				"test2.mp3",
+				"test3.mp3",
+			}
+			m3u := strings.Join([]string{
+				"test3.mp3",
+				"test1.mp3",
+				"test4.mp3",
+				"test2.mp3",
+			}, "\n")
+			f := strings.NewReader(m3u)
+			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(3))
+			Expect(pls.Tracks[0].Path).To(Equal("test3.mp3"))
+			Expect(pls.Tracks[1].Path).To(Equal("test1.mp3"))
+			Expect(pls.Tracks[2].Path).To(Equal("test2.mp3"))
 		})
 	})
 })
 
-type mockedMediaFile struct {
+// mockedMediaFileRepo's FindByPaths method returns a list of MediaFiles with the same paths as the input
+type mockedMediaFileRepo struct {
 	model.MediaFileRepository
 }
 
-func (r *mockedMediaFile) FindByPath(s string) (*model.MediaFile, error) {
-	return &model.MediaFile{
-		ID:   "123",
-		Path: s,
-	}, nil
+func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+	var mfs model.MediaFiles
+	for idx, path := range paths {
+		mfs = append(mfs, model.MediaFile{
+			ID:   strconv.Itoa(idx),
+			Path: path,
+		})
+	}
+	return mfs, nil
 }
 
-func (r *mockedMediaFile) FindByPaths(paths []string) (model.MediaFiles, error) {
+// mockedMediaFileFromListRepo's FindByPaths method returns a list of MediaFiles based on the data field
+type mockedMediaFileFromListRepo struct {
+	model.MediaFileRepository
+	data []string
+}
+
+func (r *mockedMediaFileFromListRepo) FindByPaths([]string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
-	for idx := range paths {
-		// intentionally go in reverse order. This must not impact the results
-		mf, _ := r.FindByPath(paths[len(paths)-idx-1])
-		mfs = append(mfs, *mf)
+	for idx, path := range r.data {
+		mfs = append(mfs, model.MediaFile{
+			ID:   strconv.Itoa(idx),
+			Path: path,
+		})
 	}
 	return mfs, nil
 }
