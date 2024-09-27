@@ -2,12 +2,14 @@ import {
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
   SET_TOGGLEABLE_FIELDS,
+  SET_PLAYER_RATING_CONTROL,
 } from '../actions'
 
 const initialState = {
   notifications: false,
   toggleableFields: {},
   omittedFields: {},
+  playerRatingControl: localStorage.getItem('playerRating') ?? 'love',
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -33,6 +35,12 @@ export const settingsReducer = (previousState = initialState, payload) => {
           ...previousState.omittedFields,
           ...data,
         },
+      }
+    case SET_PLAYER_RATING_CONTROL:
+      localStorage.setItem('playerRating', data)
+      return {
+        ...previousState,
+        playerRatingControl: data,
       }
     default:
       return previousState
