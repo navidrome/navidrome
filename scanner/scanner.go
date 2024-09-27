@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"golang.org/x/time/rate"
 )
 
 type Scanner interface {
@@ -117,7 +118,8 @@ func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) e
 func (s *scanner) startProgressTracker(library string) (chan uint32, context.CancelFunc) {
 	// Must be a new context (not the one passed to the scan method) to allow broadcasting the scan status to all clients
 	ctx, cancel := context.WithCancel(context.Background())
-	progress := make(chan uint32, 100)
+	progress := make(chan uint32, 1000)
+	limiter := rate.Sometimes{Every: 10}
 	go func() {
 		s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 		defer func() {
@@ -138,10 +140,12 @@ func (s *scanner) startProgressTracker(library string) (chan uint32, context.Can
 					continue
 				}
 				totalFolders, totalFiles := s.incStatusCounter(library, count)
-				s.broker.SendMessage(ctx, &events.ScanStatus{
-					Scanning:    true,
-					Count:       int64(totalFiles),
-					FolderCount: int64(totalFolders),
+				limiter.Do(func() {
+					s.broker.SendMessage(ctx, &events.ScanStatus{
+						Scanning:    true,
+						Count:       int64(totalFiles),
+						FolderCount: int64(totalFolders),
+					})
 				})
 			}
 		}
