@@ -56,7 +56,7 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 		Public:  false,
 		Sync:    true,
 	}
-	pls, err := s.parseM3U(ctx, pls, "", reader)
+	err := s.parseM3U(ctx, pls, "", reader)
 	if err != nil {
 		log.Error(ctx, "Error parsing playlist", err)
 		return nil, err
@@ -84,10 +84,11 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, base
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
-		return s.parseNSP(ctx, pls, file)
+		err = s.parseNSP(ctx, pls, file)
 	default:
-		return s.parseM3U(ctx, pls, baseDir, file)
+		err = s.parseM3U(ctx, pls, baseDir, file)
 	}
+	return pls, err
 }
 
 func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*model.Playlist, error) {
@@ -111,14 +112,14 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 	return pls, nil
 }
 
-func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) (*model.Playlist, error) {
+func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) error {
 	nsp := &nspFile{}
 	reader := jsoncommentstrip.NewReader(file)
 	dec := json.NewDecoder(reader)
 	err := dec.Decode(nsp)
 	if err != nil {
 		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
-		return nil, err
+		return err
 	}
 	pls.Rules = &nsp.Criteria
 	if nsp.Name != "" {
@@ -127,10 +128,10 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 	if nsp.Comment != "" {
 		pls.Comment = nsp.Comment
 	}
-	return pls, nil
+	return nil
 }
 
-func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) (*model.Playlist, error) {
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) error {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
@@ -178,7 +179,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	pls.Tracks = nil
 	pls.AddMediaFiles(mfs)
 
-	return pls, nil
+	return nil
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
