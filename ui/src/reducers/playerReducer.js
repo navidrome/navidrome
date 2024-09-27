@@ -9,6 +9,7 @@ import {
   PLAYER_SET_TRACK,
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
+  PLAYER_SET_MODE,
 } from '../actions'
 import config from '../config'
 
@@ -178,6 +179,13 @@ const reduceCurrent = (state, { data }) => {
   }
 }
 
+const reduceMode = (state, { data: { mode } }) => {
+  return {
+    ...state,
+    mode,
+  }
+}
+
 export const playerReducer = (previousState = initialState, payload) => {
   const { type } = payload
   switch (type) {
@@ -197,6 +205,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceSyncQueue(previousState, payload)
     case PLAYER_CURRENT:
       return reduceCurrent(previousState, payload)
+    case PLAYER_SET_MODE:
+      return reduceMode(previousState, payload)
     default:
       return previousState
   }
