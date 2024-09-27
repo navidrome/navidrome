@@ -135,7 +135,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
-		filteredLines := make([]string, 0, 400)
+		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
 			if strings.HasPrefix(line, "#PLAYLIST:") {
