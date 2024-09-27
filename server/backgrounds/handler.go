@@ -24,7 +24,7 @@ type Handler struct {
 func NewHandler() *Handler {
 	h := &Handler{}
 	go func() {
-		_, _ = h.getImageList(context.Background())
+		_, _ = h.getImageList(log.NewContext(context.Background()))
 	}()
 	return h
 }
