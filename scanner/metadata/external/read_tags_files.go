@@ -68,14 +68,15 @@ func parseSimpleMap(basePath string, pattern string, raw any) (Tags, bool) {
 	if len(simpleMapAny) == 0 {
 		return Tags{}, false
 	}
-	setTags, ok := createSetTags(simpleMapAny)
+	setTags, removeTags, ok := parseTagsMap(simpleMapAny)
 	if !ok {
 		return Tags{}, false
 	}
 	return Tags{
-		BasePath: basePath,
-		Pattern:  pattern,
-		SetTags:  setTags,
+		BasePath:   basePath,
+		Pattern:    pattern,
+		SetTags:    setTags,
+		RemoveTags: removeTags,
 	}, true
 }
 
@@ -92,11 +93,10 @@ func parseFullEntry(basePath string, pattern string, raw any) (Tags, bool) {
 	if len(fullEntry.SetTags) == 0 && len(fullEntry.RemoveTags) == 0 {
 		return Tags{}, false
 	}
-	setTags, ok := createSetTags(fullEntry.SetTags)
+	setTags, removeTags, ok := parseTagsMap(fullEntry.SetTags)
 	if !ok {
 		return Tags{}, false
 	}
-	removeTags := make(map[string]struct{}, len(fullEntry.RemoveTags))
 	for _, tag := range fullEntry.RemoveTags {
 		removeTags[normalizeTagKey(tag)] = struct{}{}
 	}
@@ -108,34 +108,41 @@ func parseFullEntry(basePath string, pattern string, raw any) (Tags, bool) {
 	}, true
 }
 
-func createSetTags(rawMap map[string]any) (map[string]string, bool) {
+func parseTagsMap(rawMap map[string]any) (map[string]string, map[string]struct{}, bool) {
 	if len(rawMap) == 0 {
-		return nil, false
+		return nil, nil, false
 	}
-	parsedMap := make(map[string]string, len(rawMap))
+	parsedMap := make(map[string]string)
+	removeMap := make(map[string]struct{})
 	for key, rawValue := range rawMap {
-		value, ok := parseTagValue(rawValue)
+		value, isNil, ok := parseTagValue(rawValue)
 		if !ok {
-			return nil, false
+			return nil, nil, false
 		}
-		parsedMap[normalizeTagKey(key)] = value
+		if isNil {
+			removeMap[normalizeTagKey(key)] = struct{}{}
+		} else {
+			parsedMap[normalizeTagKey(key)] = value
+		}
 	}
-	return parsedMap, true
+	return parsedMap, removeMap, true
 }
 
-func parseTagValue(raw any) (string, bool) {
+func parseTagValue(raw any) (string, bool, bool) {
 	switch raw := raw.(type) {
 	case string:
-		return raw, true
+		return raw, false, true
 	case int:
-		return strconv.Itoa(raw), true
+		return strconv.Itoa(raw), false, true
 	case bool:
 		if raw {
-			return "1", true
+			return "1", false, true
 		}
-		return "0", true
+		return "0", false, true
+	case nil:
+		return "", true, true
 	}
-	return "", false
+	return "", false, false
 }
 
 func normalizeTagKey(key string) string {
