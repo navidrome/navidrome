@@ -16,7 +16,13 @@ import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import useStyle from './styles'
 import AudioTitle from './AudioTitle'
-import { clearQueue, currentPlaying, setPlayMode, setVolume, syncQueue } from '../actions'
+import {
+  clearQueue,
+  currentPlaying,
+  setPlayMode,
+  setVolume,
+  syncQueue,
+} from '../actions'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification } from '../utils'
 import subsonic from '../subsonic'

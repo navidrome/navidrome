@@ -179,10 +179,10 @@ const reduceCurrent = (state, { data }) => {
   }
 }
 
-const reduceMode = (state, { data: { mode }}) => {
+const reduceMode = (state, { data: { mode } }) => {
   return {
     ...state,
-    mode
+    mode,
   }
 }
 

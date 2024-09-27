@@ -93,5 +93,5 @@ export const setVolume = (volume) => ({
 
 export const setPlayMode = (mode) => ({
   type: PLAYER_SET_MODE,
-  data: { mode }
+  data: { mode },
 })
