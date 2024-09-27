@@ -16,7 +16,7 @@ import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import useStyle from './styles'
 import AudioTitle from './AudioTitle'
-import { clearQueue, currentPlaying, setVolume, syncQueue } from '../actions'
+import { clearQueue, currentPlaying, setPlayMode, setVolume, syncQueue } from '../actions'
 import PlayerToolbar from './PlayerToolbar'
 import { sendNotification } from '../utils'
 import subsonic from '../subsonic'
@@ -24,8 +24,6 @@ import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
-
-const PLAYMODE_KEY = 'playMode'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -95,7 +93,7 @@ const Player = () => {
     () => ({
       theme: playerTheme,
       bounds: 'body',
-      playMode: localStorage.getItem(PLAYMODE_KEY),
+      playMode: playerState.mode,
       mode: 'full',
       loadAudioErrorPlayNext: false,
       autoPlayInitLoadPlayList: true,
@@ -124,7 +122,7 @@ const Player = () => {
       ),
       locale: locale(translate),
     }),
-    [gainInfo, isDesktop, playerTheme, translate],
+    [gainInfo, isDesktop, playerTheme, translate, playerState.mode],
   )
 
   const options = useMemo(() => {
@@ -297,7 +295,7 @@ const Player = () => {
         onAudioPlay={onAudioPlay}
         onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
-        onPlayModeChange={(mode) => localStorage.setItem(PLAYMODE_KEY, mode)}
+        onPlayModeChange={(mode) => dispatch(setPlayMode(mode))}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}
         onBeforeDestroy={onBeforeDestroy}
