@@ -134,13 +134,11 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
-		var filteredLines []string
+		filteredLines := make([]string, 0, 400)
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
 			if strings.HasPrefix(line, "#PLAYLIST:") {
-				if split := strings.Split(line, ":"); len(split) >= 2 {
-					pls.Name = split[1]
-				}
+				pls.Name = line[len("#PLAYLIST:"):]
 				continue
 			}
 			// Skip empty lines and extended info
@@ -166,9 +164,9 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 			existing[found[idx].Path] = idx
 		}
 		for _, path := range filteredLines {
-			found_idx, ok := existing[path]
+			idx, ok := existing[path]
 			if ok {
-				mfs = append(mfs, found[found_idx])
+				mfs = append(mfs, found[idx])
 			} else {
 				log.Warn(ctx, "Path in playlist not found", "playlist", pls.Name, "path", path)
 			}
