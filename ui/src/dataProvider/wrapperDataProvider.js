@@ -6,14 +6,14 @@ const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
 const mapResource = (resource, params) => {
   switch (resource) {
-    case 'playlistTrack':
+    case 'playlistTrack': {
       // /api/playlistTrack?playlist_id=123  => /api/playlist/123/tracks
       let plsId = '0'
       if (params.filter) {
         plsId = params.filter.playlist_id
       }
       return [`playlist/${plsId}/tracks`, params]
-
+    }
     default:
       return [resource, params]
   }

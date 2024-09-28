@@ -1,3 +1,5 @@
+import stylesheet from './nuclear.css.js'
+
 const nukeCol = {
   primary: '#1d2021',
   secondary: '#282828',
@@ -198,6 +200,6 @@ export default {
   },
   player: {
     theme: 'dark',
-    stylesheet: require('./nuclear.css.js'),
+    stylesheet,
   },
 }
