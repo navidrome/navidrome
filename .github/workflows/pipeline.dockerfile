@@ -16,7 +16,7 @@ RUN chmod +x /navidrome
 
 #####################################################
 ### Build Final Image
-FROM alpine:3.18
+FROM alpine:3.20
 LABEL maintainer="deluan@navidrome.org"
 
 # Install ffmpeg and mpv
