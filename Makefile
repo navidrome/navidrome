@@ -35,7 +35,7 @@ test: ##@Development Run Go tests
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
-	@(cd ./ui && npm test -- --watchAll=false)
+	@(cd ./ui && npm run test:ci)
 .PHONY: testall
 
 lint: ##@Development Lint Go code
