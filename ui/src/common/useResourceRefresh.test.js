@@ -1,47 +1,57 @@
+import { vi } from 'vitest'
 import * as React from 'react'
 import * as Redux from 'react-redux'
 import * as RA from 'react-admin'
 import { useResourceRefresh } from './useResourceRefresh'
 
-jest.mock('react', () => ({
-  ...jest.requireActual('react'),
-  useState: jest.fn(),
-}))
+vi.mock('react', async () => {
+  const actual = await vi.importActual('react')
+  return {
+    ...actual,
+    useState: vi.fn(),
+  }
+})
 
-jest.mock('react-redux', () => ({
-  ...jest.requireActual('react-redux'),
-  useSelector: jest.fn(),
-}))
+vi.mock('react-redux', async () => {
+  const actual = await vi.importActual('react-redux')
+  return {
+    ...actual,
+    useSelector: vi.fn(),
+  }
+})
 
-jest.mock('react-admin', () => ({
-  ...jest.requireActual('react-admin'),
-  useRefresh: jest.fn(),
-  useDataProvider: jest.fn(),
-}))
+vi.mock('react-admin', async () => {
+  const actual = await vi.importActual('react-admin')
+  return {
+    ...actual,
+    useRefresh: vi.fn(),
+    useDataProvider: vi.fn(),
+  }
+})
 
 describe('useResourceRefresh', () => {
-  const setState = jest.fn()
+  const setState = vi.fn()
   const useStateMock = (initState) => [initState, setState]
-  const refresh = jest.fn()
+  const refresh = vi.fn()
   const useRefreshMock = () => refresh
-  const getMany = jest.fn()
+  const getMany = vi.fn()
   const useDataProviderMock = () => ({ getMany })
   let lastTime
 
   beforeEach(() => {
-    jest.spyOn(React, 'useState').mockImplementation(useStateMock)
-    jest.spyOn(RA, 'useRefresh').mockImplementation(useRefreshMock)
-    jest.spyOn(RA, 'useDataProvider').mockImplementation(useDataProviderMock)
+    vi.spyOn(React, 'useState').mockImplementation(useStateMock)
+    vi.spyOn(RA, 'useRefresh').mockImplementation(useRefreshMock)
+    vi.spyOn(RA, 'useDataProvider').mockImplementation(useDataProviderMock)
     lastTime = new Date(new Date().valueOf() + 1000)
   })
 
   afterEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('stores last time checked, to avoid redundant runs', () => {
     const useSelectorMock = () => ({ lastReceived: lastTime })
-    jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+    vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
     useResourceRefresh()
 
@@ -49,9 +59,9 @@ describe('useResourceRefresh', () => {
   })
 
   it("does not run again if lastTime didn't change", () => {
-    jest.spyOn(React, 'useState').mockImplementation(() => [lastTime, setState])
+    vi.spyOn(React, 'useState').mockImplementation(() => [lastTime, setState])
     const useSelectorMock = () => ({ lastReceived: lastTime })
-    jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+    vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
     useResourceRefresh()
 
@@ -64,7 +74,7 @@ describe('useResourceRefresh', () => {
         lastReceived: lastTime,
         resources: { '*': '*' },
       })
-      jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh()
 
@@ -77,7 +87,7 @@ describe('useResourceRefresh', () => {
         lastReceived: lastTime,
         resources: { album: ['*'] },
       })
-      jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh()
 
@@ -90,7 +100,7 @@ describe('useResourceRefresh', () => {
         lastReceived: lastTime,
         resources: { album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] },
       })
-      jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh()
 
@@ -107,7 +117,7 @@ describe('useResourceRefresh', () => {
         lastReceived: lastTime,
         resources: { '*': '*' },
       })
-      jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh('album')
 
@@ -120,7 +130,7 @@ describe('useResourceRefresh', () => {
         lastReceived: lastTime,
         resources: { album: ['al-1', 'al-2'], song: ['sg-1', 'sg-2'] },
       })
-      jest.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
+      vi.spyOn(Redux, 'useSelector').mockImplementation(useSelectorMock)
 
       useResourceRefresh('song')
 

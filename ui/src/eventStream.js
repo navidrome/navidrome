@@ -35,12 +35,14 @@ const startEventStream = async (dispatchFn) => {
       newStream.addEventListener('refreshResource', eventHandler(dispatchFn))
       newStream.addEventListener('keepAlive', eventHandler(dispatchFn))
       newStream.onerror = (e) => {
+        // eslint-disable-next-line no-console
         console.log('EventStream error', e)
         dispatchFn(serverDown())
       }
       return newStream
     })
     .catch((e) => {
+      // eslint-disable-next-line no-console
       console.log(`Error connecting to server:`, e)
     })
 }

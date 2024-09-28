@@ -1,0 +1,5 @@
+node_modules/
+build/
+prettier.config.js
+.eslintrc
+vite.config.js

@@ -1,4 +1,4 @@
-module.exports = `
+const stylesheet = `
 .react-jinke-music-player-main.light-theme .loading svg {
     color: #5f5fc4;
     font-size: 24px
@@ -118,3 +118,5 @@ module.exports = `
     color: #5f5fc4 !important
 }
 `
+
+export default stylesheet

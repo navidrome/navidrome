@@ -1,4 +1,4 @@
-module.exports = `
+const stylesheet = `
 
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
     color: #458588
@@ -50,5 +50,6 @@ module.exports = `
 .MuiCheckbox-colorSecondary.Mui-checked {
     color: #458588 !important
 }
-
 `
+
+export default stylesheet

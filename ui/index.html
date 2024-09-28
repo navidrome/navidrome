@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+            name="description"
+            content="Navidrome Music Server - {{.Version}}"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5b5fd5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      manifest.webmanifest provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta property="og:site_name" content="Navidrome">
+    <meta property="og:url" content="{{ .ShareURL }}">
+    <meta property="og:title" content="{{ .ShareDescription }}">
+    <meta property="og:image" content="{{ .ShareImageURL }}">
+    <meta property="og:image:width" content="300">
+    <meta property="og:image:height" content="300">
+    <title>Navidrome</title>
+    <script>
+      window.__APP_CONFIG__ = {{ .AppConfig }}
+    </script>
+    <script>
+      window.__SHARE_INFO__ = {{ .ShareInfo }}
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+  <script type="module" src="/src/index.jsx"></script>
+</html>

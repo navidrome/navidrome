@@ -8,6 +8,7 @@ if (config.auth) {
   try {
     storeAuthenticationInfo(config.auth)
   } catch (e) {
+    // eslint-disable-next-line no-console
     console.log(e)
   }
 }
