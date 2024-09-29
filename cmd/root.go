@@ -50,8 +50,7 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 func Execute() {
 	rootCmd.SetVersionTemplate(`{{println .Version}}`)
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
 
