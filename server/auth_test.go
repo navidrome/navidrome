@@ -154,6 +154,40 @@ var _ = Describe("Auth", func() {
 				// Request Header authentication should not generate a JWT token
 				Expect(parsed).ToNot(HaveKey("token"))
 			})
+
+			It("does not set auth data when listening on unix socket without whitelist", func() {
+				conf.Server.Address = "unix:/tmp/navidrome-test"
+				conf.Server.ReverseProxyWhitelist = ""
+
+				// No ReverseProxyIp in request context
+				serveIndex(ds, fs, nil)(resp, req)
+
+				config := extractAppConfig(resp.Body.String())
+				Expect(config["auth"]).To(BeNil())
+			})
+
+			It("does not set auth data when listening on unix socket with incorrect whitelist", func() {
+				conf.Server.Address = "unix:/tmp/navidrome-test"
+
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
+				serveIndex(ds, fs, nil)(resp, req)
+
+				config := extractAppConfig(resp.Body.String())
+				Expect(config["auth"]).To(BeNil())
+			})
+
+			It("sets auth data when listening on unix socket with correct whitelist", func() {
+				conf.Server.Address = "unix:/tmp/navidrome-test"
+				conf.Server.ReverseProxyWhitelist = conf.Server.ReverseProxyWhitelist + ",@"
+
+				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
+				serveIndex(ds, fs, nil)(resp, req)
+
+				config := extractAppConfig(resp.Body.String())
+				parsed := config["auth"].(map[string]interface{})
+
+				Expect(parsed["id"]).To(Equal("111"))
+			})
 		})
 
 		Describe("login", func() {
