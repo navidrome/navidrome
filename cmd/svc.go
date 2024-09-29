@@ -197,9 +197,9 @@ func buildExecuteCmd() *cobra.Command {
 		Short: "Run navidrome as a service in the foreground (it is very unlikely you want to run this, you are better off running just navidrome)",
 		Run: func(cmd *cobra.Command, args []string) {
 			err := svcInstance().Run()
-			if err!= nil {
-                log.Fatal(err)
-            }
+			if err != nil {
+				log.Fatal(err)
+			}
 		},
 	}
 }
