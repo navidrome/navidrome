@@ -44,59 +44,47 @@ type svcControl struct {
 	cancel context.CancelFunc
 }
 
-func (p *svcControl) Start(_ service.Service) error {
+func (p *svcControl) Start(service.Service) error {
 	p.ctx, p.cancel = context.WithCancel(context.Background())
-	go p.run()
+	go runNavidrome(p.ctx)
 	return nil
 }
 
-func (p *svcControl) run() {
-	runNavidrome(p.ctx)
-}
-
-func (p *svcControl) Stop(_ service.Service) error {
+func (p *svcControl) Stop(service.Service) error {
 	log.Info("Stopping service")
 	p.cancel()
 	return nil
 }
 
-var (
-	svc     service.Service
-	svcOnce = sync.Once{}
-)
+var svcInstance = sync.OnceValue(func() service.Service {
+	options := make(service.KeyValue)
+	options["Restart"] = "on-success"
+	options["SuccessExitStatus"] = "1 2 8 SIGKILL"
+	options["UserService"] = false
+	options["LogDirectory"] = conf.Server.DataFolder
+	svcConfig := &service.Config{
+		Name:        "navidrome",
+		DisplayName: "Navidrome",
+		Description: "Your Personal Streaming Service",
+		Dependencies: []string{
+			"Requires=",
+			"After="},
+		WorkingDirectory: executablePath(),
+		Option:           options,
+	}
+	arguments := []string{"service", "execute"}
+	if conf.Server.ConfigFile != "" {
+		arguments = append(arguments, "-c", conf.Server.ConfigFile)
+	}
+	svcConfig.Arguments = arguments
 
-func svcInstance() service.Service {
-	svcOnce.Do(func() {
-		options := make(service.KeyValue)
-		options["Restart"] = "on-success"
-		options["SuccessExitStatus"] = "1 2 8 SIGKILL"
-		options["UserService"] = false
-		options["LogDirectory"] = conf.Server.DataFolder
-		svcConfig := &service.Config{
-			Name:        "navidrome",
-			DisplayName: "Navidrome",
-			Description: "Navidrome is a self-hosted music server and streamer",
-			Dependencies: []string{
-				"Requires=",
-				"After="},
-			WorkingDirectory: executablePath(),
-			Option:           options,
-		}
-		arguments := []string{"service", "execute"}
-		if conf.Server.ConfigFile != "" {
-			arguments = append(arguments, "-c", conf.Server.ConfigFile)
-		}
-		svcConfig.Arguments = arguments
-
-		prg := &svcControl{}
-		var err error
-		svc, err = service.New(prg, svcConfig)
-		if err != nil {
-			log.Fatal(err)
-		}
-	})
+	prg := &svcControl{}
+	svc, err := service.New(prg, svcConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return svc
-}
+})
 
 func runServiceCmd(cmd *cobra.Command, _ []string) {
 	_ = cmd.Help()
