@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/kardianos/service"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -37,7 +38,12 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 			preRun()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			runNavidrome()
+			if service.Interactive() {
+				runNavidrome()
+			} else {
+				prg := &SvcControl{}
+				prg.Run()
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			postRun()
