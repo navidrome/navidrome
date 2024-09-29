@@ -38,25 +38,29 @@ var svcCmd = &cobra.Command{
 	Run:     runServiceCmd,
 }
 
-type svcControl struct {
+type SvcControl struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func (p *svcControl) Start(_ service.Service) error {
+func (p *SvcControl) Start(_ service.Service) error {
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	go p.run()
 	return nil
 }
 
-func (p *svcControl) run() {
+func (p *SvcControl) run() {
 	runNavidrome()
 }
 
-func (p *svcControl) Stop(_ service.Service) error {
+func (p *SvcControl) Stop(_ service.Service) error {
 	log.Info("Stopping service")
 	p.cancel()
 	return nil
+}
+
+func (p *SvcControl) Run() {
+	p.run()
 }
 
 var (
@@ -84,7 +88,7 @@ func svcInstance() service.Service {
 		if conf.Server.ConfigFile != "" {
 			svcConfig.Arguments = []string{"-c", conf.Server.ConfigFile}
 		}
-		prg := &svcControl{}
+		prg := &SvcControl{}
 		var err error
 		svc, err = service.New(prg, svcConfig)
 		if err != nil {
