@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/kardianos/service"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -38,12 +37,7 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 			preRun()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			if service.Interactive() {
-				runNavidrome()
-			} else {
-				prg := &SvcControl{}
-				prg.Run()
-			}
+			runNavidrome()
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			postRun()

@@ -27,6 +27,7 @@ func init() {
 	svcCmd.AddCommand(buildStartCmd())
 	svcCmd.AddCommand(buildStopCmd())
 	svcCmd.AddCommand(buildStatusCmd())
+	svcCmd.AddCommand(buildExecuteCmd())
 	rootCmd.AddCommand(svcCmd)
 }
 
@@ -38,29 +39,25 @@ var svcCmd = &cobra.Command{
 	Run:     runServiceCmd,
 }
 
-type SvcControl struct {
+type svcControl struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func (p *SvcControl) Start(_ service.Service) error {
+func (p *svcControl) Start(_ service.Service) error {
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	go p.run()
 	return nil
 }
 
-func (p *SvcControl) run() {
+func (p *svcControl) run() {
 	runNavidrome()
 }
 
-func (p *SvcControl) Stop(_ service.Service) error {
+func (p *svcControl) Stop(_ service.Service) error {
 	log.Info("Stopping service")
 	p.cancel()
 	return nil
-}
-
-func (p *SvcControl) Run() {
-	p.run()
 }
 
 var (
@@ -88,7 +85,7 @@ func svcInstance() service.Service {
 		if conf.Server.ConfigFile != "" {
 			svcConfig.Arguments = []string{"-c", conf.Server.ConfigFile}
 		}
-		prg := &SvcControl{}
+		prg := &svcControl{}
 		var err error
 		svc, err = service.New(prg, svcConfig)
 		if err != nil {
@@ -190,6 +187,16 @@ func buildStatusCmd() *cobra.Command {
 				log.Fatal(err)
 			}
 			fmt.Printf("Navidrome is %s.\n", svcStatusLabels[status])
+		},
+	}
+}
+
+func buildExecuteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "execute",
+		Short: "Run navidrome as a service in the foreground (it is very unlikely you want to run this, you are better off running just navidrome)",
+		Run: func(cmd *cobra.Command, args []string) {
+			svcInstance().Run()
 		},
 	}
 }
