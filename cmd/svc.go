@@ -73,7 +73,7 @@ func svcInstance() service.Service {
 		options["UserService"] = false
 		options["LogDirectory"] = conf.Server.DataFolder
 		svcConfig := &service.Config{
-			Name:        "Navidrome",
+			Name:        "navidrome",
 			DisplayName: "Navidrome",
 			Description: "Navidrome is a self-hosted music server and streamer",
 			Dependencies: []string{
@@ -82,9 +82,12 @@ func svcInstance() service.Service {
 			WorkingDirectory: executablePath(),
 			Option:           options,
 		}
+		arguments := []string{"service", "execute"}
 		if conf.Server.ConfigFile != "" {
-			svcConfig.Arguments = []string{"-c", conf.Server.ConfigFile}
+			arguments = append([]string{"-c", conf.Server.ConfigFile})
 		}
+		svcConfig.Arguments = arguments
+
 		prg := &svcControl{}
 		var err error
 		svc, err = service.New(prg, svcConfig)
