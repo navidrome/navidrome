@@ -12,14 +12,13 @@ import (
 
 type transcodingRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewTranscodingRepository(ctx context.Context, db dbx.Builder) model.TranscodingRepository {
 	r := &transcodingRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "transcoding"
+	r.registerModel(&model.Transcoding{}, nil)
 	return r
 }
 
@@ -47,7 +46,7 @@ func (r *transcodingRepository) Put(t *model.Transcoding) error {
 }
 
 func (r *transcodingRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select(), r.parseRestOptions(options...))
+	return r.count(Select(), r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *transcodingRepository) Read(id string) (interface{}, error) {
@@ -55,7 +54,7 @@ func (r *transcodingRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *transcodingRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sel := r.newSelect(r.parseRestOptions(options...)).Columns("*")
+	sel := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
 	res := model.Transcodings{}
 	err := r.queryAll(sel, &res)
 	return res, err

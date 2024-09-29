@@ -17,14 +17,16 @@ import (
 
 type shareRepository struct {
 	sqlRepository
-	sqlRestful
 }
 
 func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareRepository {
 	r := &shareRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "share"
+	r.registerModel(&model.Share{}, map[string]filterFunc{})
+	r.sortMappings = map[string]string{
+		"username": "username",
+	}
 	return r
 }
 
@@ -166,7 +168,7 @@ func (r *shareRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *shareRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *shareRepository) EntityName() string {
@@ -185,7 +187,7 @@ func (r *shareRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
-	sq := r.selectShare(r.parseRestOptions(options...))
+	sq := r.selectShare(r.parseRestOptions(r.ctx, options...))
 	res := model.Shares{}
 	err := r.queryAll(sq, &res)
 	return res, err

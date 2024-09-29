@@ -1,4 +1,4 @@
-module.exports = `
+const stylesheet = `
 
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
     color: #fd971f
@@ -46,5 +46,6 @@ module.exports = `
 .progress-bar-content .audio-title a {
     color: #f8f8f2
 }
-
 `
+
+export default stylesheet

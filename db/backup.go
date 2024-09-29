@@ -21,7 +21,9 @@ const (
 	backupRegexString = backupPrefix + "_(.+)\\.db"
 )
 
-func backupPath(t *time.Time) string {
+var backupRegex = regexp.MustCompile(backupRegexString)
+
+func backupPath(t time.Time) string {
 	return filepath.Join(
 		conf.Server.Backup.Path,
 		fmt.Sprintf("%s_%s.db", backupPrefix, t.Format(time.RFC3339)),
@@ -30,7 +32,7 @@ func backupPath(t *time.Time) string {
 
 func (d *db) backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
-	backupDb, err := sql.Open(Driver+"_custom", path)
+	backupDb, err := sql.Open(Driver, path)
 	if err != nil {
 		return err
 	}
@@ -93,119 +95,61 @@ func (d *db) backupOrRestore(ctx context.Context, isBackup bool, path string) er
 		})
 	})
 
-	if err == nil && !conf.Server.Backup.Bypass {
-		files, err := os.ReadDir(conf.Server.Backup.Path)
-		if err != nil {
-			return fmt.Errorf("unable to read database backup entries: %w", err)
-		}
-
-		times := []time.Time{}
-
-		for _, file := range files {
-			if !file.IsDir() {
-				submatch := backupRegex.FindStringSubmatch(file.Name())
-				if len(submatch) == 2 {
-					timestamp, err := time.Parse(time.RFC3339, submatch[1])
-					if err == nil {
-						times = append(times, timestamp)
-					}
-				}
-			}
-		}
-
-		slices.SortFunc(times, func(a, b time.Time) int {
-			return b.Compare(a)
-		})
-
-		toPrune := pruneBackups(ctx, times)
-
-		if len(toPrune) > 0 {
-			var errs []error
-
-			for _, time := range toPrune {
-				path := backupPath(&time)
-				err = os.Remove(path)
-
-				if err != nil {
-					errs = append(errs, err)
-				}
-			}
-
-			if len(errs) > 0 {
-				err = errors.Join(errs...)
-				log.Error(ctx, "Failed to delete one or more files", "errors", err)
-			}
-		}
+	if err == nil && !conf.Server.Backup.Bypass && conf.Server.Backup.Count != 0 {
+		_, err = prune(ctx)
 	}
 
 	return err
 }
 
-type backupSchedule struct {
-	count  int
-	format string
-	text   string
-}
-
-var (
-	backupRegex = regexp.MustCompile(backupRegexString)
-)
-
-func pruneBackups(ctx context.Context, times []time.Time) []time.Time {
-	startingIdx := 0
-	toPrune := []time.Time{}
-
-	backupSchedules := []backupSchedule{
-		{conf.Server.Backup.Hourly, "2006-01-02T15", "hourly"},
-		{conf.Server.Backup.Daily, time.DateOnly, "daily"},
-		{conf.Server.Backup.Weekly, "", "weekly"},
-		{conf.Server.Backup.Monthly, "2006-Jan", "monthly"},
-		{conf.Server.Backup.Yearly, "2006", "yearly"},
+func prune(ctx context.Context) (int, error) {
+	files, err := os.ReadDir(conf.Server.Backup.Path)
+	if err != nil {
+		return 0, fmt.Errorf("unable to read database backup entries: %w", err)
 	}
 
-	for _, mapping := range backupSchedules {
-		if mapping.count == 0 {
-			continue
-		}
+	var backupTimes []time.Time
 
-		var idx int
-		var item time.Time
-		count := 0
-		prior := ""
-
-		for idx, item = range times[startingIdx:] {
-			var current string
-			if mapping.text == "weekly" {
-				year, week := item.ISOWeek()
-				current = fmt.Sprintf("%d-%d", year, week)
-			} else {
-				current = item.Format(mapping.format)
-			}
-
-			if prior != current {
-				prior = current
-				count += 1
-
-				log.Debug(ctx, "Keeping backup", "time", item, "rule", mapping.text, "count", count)
-
-				if count == mapping.count {
-					break
+	for _, file := range files {
+		if !file.IsDir() {
+			submatch := backupRegex.FindStringSubmatch(file.Name())
+			if len(submatch) == 2 {
+				timestamp, err := time.Parse(time.RFC3339, submatch[1])
+				if err == nil {
+					backupTimes = append(backupTimes, timestamp)
 				}
-			} else {
-				log.Debug(ctx, "Pruning backup", "time", item)
-				toPrune = append(toPrune, item)
 			}
 		}
+	}
 
-		startingIdx += idx + 1
-		if startingIdx >= len(times) {
-			break
+	if len(backupTimes) <= conf.Server.Backup.Count {
+		return 0, nil
+	}
+
+	slices.SortFunc(backupTimes, func(a, b time.Time) int {
+		return b.Compare(a)
+	})
+
+	pruneCount := 0
+
+	var errs []error
+
+	for _, timeToPrune := range backupTimes[conf.Server.Backup.Count:] {
+		log.Debug(ctx, "Pruning backup", "time", timeToPrune)
+		path := backupPath(timeToPrune)
+		err = os.Remove(path)
+
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			pruneCount++
 		}
 	}
 
-	if startingIdx < len(times) {
-		toPrune = append(toPrune, times[startingIdx:]...)
+	if len(errs) > 0 {
+		err = errors.Join(errs...)
+		log.Error(ctx, "Failed to delete one or more files", "errors", err)
 	}
 
-	return toPrune
+	return pruneCount, err
 }

@@ -16,9 +16,10 @@ import (
 
 var _ = Describe("PlayQueueRepository", func() {
 	var repo model.PlayQueueRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx = log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlayQueueRepository(ctx, NewDBXBuilder(db.Db()))
 	})
@@ -50,6 +51,37 @@ var _ = Describe("PlayQueueRepository", func() {
 
 			AssertPlayQueue(another, actual)
 			Expect(countPlayQueues(repo, "userid")).To(Equal(1))
+		})
+
+		It("does not return tracks if they don't exist in the DB", func() {
+			// Add a new song to the DB
+			newSong := songRadioactivity
+			newSong.ID = "temp-track"
+			mfRepo := NewMediaFileRepository(ctx, NewDBXBuilder(db.Db()))
+
+			Expect(mfRepo.Put(&newSong)).To(Succeed())
+
+			// Create a playqueue with the new song
+			pq := aPlayQueue("userid", newSong.ID, 0, newSong, songAntenna)
+			Expect(repo.Store(pq)).To(Succeed())
+
+			// Retrieve the playqueue
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+
+			// The playqueue should contain both tracks
+			AssertPlayQueue(pq, actual)
+
+			// Delete the new song
+			Expect(mfRepo.Delete("temp-track")).To(Succeed())
+
+			// Retrieve the playqueue
+			actual, err = repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+
+			// The playqueue should not contain the deleted track
+			Expect(actual.Items).To(HaveLen(1))
+			Expect(actual.Items[0].ID).To(Equal(songAntenna.ID))
 		})
 	})
 })

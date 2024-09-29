@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -16,10 +15,6 @@ var _ = Describe("SQLStore", func() {
 	BeforeEach(func() {
 		ds = New(db.Db())
 		ctx = context.Background()
-		log.SetLevel(log.LevelFatal)
-	})
-	AfterEach(func() {
-		log.SetLevel(log.LevelError)
 	})
 	Describe("WithTx", func() {
 		Context("When block returns nil", func() {

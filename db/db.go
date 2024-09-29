@@ -12,7 +12,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
@@ -34,6 +33,7 @@ type DB interface {
 	Close()
 
 	Backup(ctx context.Context) error
+	Prune(ctx context.Context) (int, error)
 	Restore(ctx context.Context, path string) error
 }
 
@@ -60,8 +60,12 @@ func (d *db) Close() {
 }
 
 func (d *db) Backup(ctx context.Context) error {
-	destPath := backupPath(gg.P(time.Now()))
+	destPath := backupPath(time.Now())
 	return d.backupOrRestore(ctx, true, destPath)
+}
+
+func (d *db) Prune(ctx context.Context) (int, error) {
+	return prune(ctx)
 }
 
 func (d *db) Restore(ctx context.Context, path string) error {
