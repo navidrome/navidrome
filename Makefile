@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION=1.22.3-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION ?= 1.23.0-1 ## https://github.com/navidrome/ci-goreleaser
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -35,7 +35,7 @@ test: ##@Development Run Go tests
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
-	@(cd ./ui && npm test -- --watchAll=false)
+	@(cd ./ui && npm run test:ci)
 .PHONY: testall
 
 lint: ##@Development Lint Go code

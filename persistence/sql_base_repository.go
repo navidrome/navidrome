@@ -19,11 +19,25 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
+// sqlRepository is the base repository for all SQL repositories. It provides common functions to interact with the DB.
+// When creating a new repository using this base, you must:
+//
+//   - Embed this struct.
+//   - Set ctx and db fields. ctx should be the context passed to the constructor method, usually obtained from the request
+//   - Call registerModel with the model instance and any possible filters.
+//   - If the model has a different table name than the default (lowercase of the model name), it should be set manually
+//     using the tableName field.
+//   - Sort mappings should be set in the sortMappings field. If the sort field is not in the map, it will be used as is.
+//
+// All fields in filters and sortMappings must be in snake_case. Only sorts and filters based on real field names or
+// defined in the mappings will be allowed.
 type sqlRepository struct {
-	ctx          context.Context
-	tableName    string
-	db           dbx.Builder
-	sortMappings map[string]string
+	ctx                context.Context
+	tableName          string
+	db                 dbx.Builder
+	sortMappings       map[string]string
+	filterMappings     map[string]filterFunc
+	isFieldWhiteListed fieldWhiteListedFunc
 }
 
 const invalidUserId = "-1"
@@ -42,6 +56,16 @@ func loggedUser(ctx context.Context) *model.User {
 	} else {
 		return &user
 	}
+}
+
+func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
+	if r.tableName == "" {
+		r.tableName = strings.TrimPrefix(reflect.TypeOf(instance).String(), "*model.")
+		r.tableName = toSnakeCase(r.tableName)
+	}
+	r.tableName = strings.ToLower(r.tableName)
+	r.isFieldWhiteListed = registerModelWhiteList(instance)
+	r.filterMappings = filters
 }
 
 func (r sqlRepository) getTableName() string {
@@ -139,23 +163,21 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
-func (r sqlRepository) seededRandomSort() string {
-	u, _ := request.UserFrom(r.ctx)
-	return fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.tableName+u.ID, r.tableName)
+func (r sqlRepository) seedKey() string {
+	return r.tableName + userId(r.ctx)
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) == 0 || options[0].Sort != "random" {
 		return
 	}
-
+	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
-		hasher.SetSeed(r.tableName+userId(r.ctx), options[0].Seed)
+		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return
 	}
-
 	if options[0].Offset == 0 {
-		hasher.Reseed(r.tableName + userId(r.ctx))
+		hasher.Reseed(r.seedKey())
 	}
 }
 

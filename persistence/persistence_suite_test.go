@@ -23,7 +23,7 @@ func TestPersistence(t *testing.T) {
 	//conf.Server.DbPath = "./test-123.db"
 	conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
 	defer db.Init()()
-	log.SetLevel(log.LevelError)
+	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Persistence Suite")
 }
@@ -35,8 +35,8 @@ var (
 )
 
 var (
-	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", AlbumCount: 1, FullText: " kraftwerk"}
-	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", AlbumCount: 2, FullText: " beatles the"}
+	artistKraftwerk = model.Artist{ID: "2", Name: "Kraftwerk", OrderArtistName: "kraftwerk", AlbumCount: 1, FullText: " kraftwerk"}
+	artistBeatles   = model.Artist{ID: "3", Name: "The Beatles", OrderArtistName: "beatles", AlbumCount: 2, FullText: " beatles the"}
 	testArtists     = model.Artists{
 		artistKraftwerk,
 		artistBeatles,

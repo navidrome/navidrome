@@ -1,4 +1,4 @@
-module.exports = `
+const stylesheet = `
 
 .react-jinke-music-player-main svg:active, .react-jinke-music-player-main svg:hover {
     color: #7171d5
@@ -30,5 +30,6 @@ module.exports = `
 .audio-lists-panel-content .audio-item:active .group:not([class=".player-delete"]) svg, .audio-lists-panel-content .audio-item:hover .group:not([class=".player-delete"]) svg {
     color: #5f5fc4
 }
-
 `
+
+export default stylesheet

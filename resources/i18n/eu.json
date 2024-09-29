@@ -1,0 +1,466 @@
+
+{
+    "languageName": "Euskara",
+    "resources": {
+        "song": {
+            "name": "Abestia |||| Abestiak",
+            "fields": {
+                "albumArtist": "Albumaren artista",
+                "duration": "Iraupena",
+                "trackNumber": "#",
+                "playCount": "Erreprodukzioak",
+                "title": "Titulua",
+                "artist": "Artista",
+                "album": "Albuma",
+                "path": "Fitxategiaren bidea",
+                "genre": "Generoa",
+                "compilation": "Konpilazioa",
+                "year": "Urtea",
+                "size": "Fitxategiaren tamaina",
+                "updatedAt": "Eguneratze-data:",
+                "bitRate": "Bit tasa",
+                "channels": "Kanalak",
+                "discSubtitle": "Diskoaren azpititulua",
+                "starred": "Gogokoa",
+                "comment": "Iruzkina",
+                "rating": "Balorazioa",
+                "quality": "Kalitatea",
+                "bpm": "BPM",
+                "playDate": "Azkenekoz erreproduzitua:",
+                "createdAt": "Gehitu zen data:"
+            },
+            "actions": {
+                "addToQueue": "Erreproduzitu ondoren",
+                "playNow": "Erreproduzitu orain",
+                "addToPlaylist": "Gehitu erreprodukzio-zerrendara",
+                "shuffleAll": "Erreprodukzio aleatorioa",
+                "download": "Deskargatu",
+                "playNext": "Hurrengoa",
+                "info": "Lortu informazioa"
+            }
+        },
+        "album": {
+            "name": "Albuma |||| Albumak",
+            "fields": {
+                "albumArtist": "Albumaren artista",
+                "artist": "Artista",
+                "duration": "Iraupena",
+                "songCount": "abesti",
+                "playCount": "Erreprodukzioak",
+                "size": "Fitxategiaren tamaina",
+                "name": "Izena",
+                "genre": "Generoa",
+                "compilation": "Konpilazioa",
+                "year": "Urtea",
+                "originalDate": "Jatorrizkoa",
+                "releaseDate": "Argitaratze-data:",
+                "releases": "Argitaratzea |||| Argitaratzeak",
+                "released": "Argitaratua",
+                "updatedAt": "Aktualizatze-data:",
+                "comment": "Iruzkina",
+                "rating": "Balorazioa",
+                "createdAt": "Gehitu zen data:"
+            },
+            "actions": {
+                "playAll": "Erreproduzitu",
+                "playNext": "Erreproduzitu segidan",
+                "addToQueue": "Erreproduzitu amaieran",
+                "share": "Partekatu",
+                "shuffle": "Aletorioa",
+                "addToPlaylist": "Gehitu zerrendara",
+                "download": "Deskargatu",
+                "info": "Lortu informazioa"
+            },
+            "lists": {
+                "all": "Guztiak",
+                "random": "Aleatorioa",
+                "recentlyAdded": "Berriki gehitutakoak",
+                "recentlyPlayed": "Berriki entzundakoak",
+                "mostPlayed": "Gehien entzundakoak",
+                "starred": "Gogokoak",
+                "topRated": "Hobekien baloratutakoak"
+            }
+        },
+        "artist": {
+            "name": "Artista |||| Artistak",
+            "fields": {
+                "name": "Izena",
+                "albumCount": "Album kopurua",
+                "songCount": "Abesti kopurua",
+                "size": "Tamaina",
+                "playCount": "Erreprodukzio kopurua",
+                "rating": "Balorazioa",
+                "genre": "Generoa"
+            }
+        },
+        "user": {
+            "name": "Erabiltzailea |||| Erabiltzaileak",
+            "fields": {
+                "userName": "Erabiltzailearen izena",
+                "isAdmin": "Administratzailea da",
+                "lastLoginAt": "Azken sartze-data:",
+                "updatedAt": "Eguneratze-data:",
+                "name": "Izena",
+                "password": "Pasahitza",
+                "createdAt": "Sortze-data:",
+                "changePassword": "Pasahitza aldatu?",
+                "currentPassword": "Uneko pasahitza",
+                "newPassword": "Pasahitz berria",
+                "token": "Tokena"
+            },
+            "helperTexts": {
+                "name": "Aldaketak saioa hasten duzun hurrengoan islatuko dira"
+            },
+            "notifications": {
+                "created": "Erabiltzailea sortu da",
+                "updated": "Erabiltzailea eguneratu da",
+                "deleted": "Erabiltzailea ezabatu da"
+            },
+            "message": {
+                "listenBrainzToken": "Idatzi zure ListenBrainz erabiltzailearen tokena",
+                "clickHereForToken": "Egin klik hemen tokena lortzeko"
+            }
+        },
+        "player": {
+            "name": "Erreproduktorea |||| Erreproduktoreak",
+            "fields": {
+                "name": "Izena",
+                "transcodingId": "Transkodifikazioa",
+                "maxBitRate": "Gehienezko bit tasa",
+                "client": "Bezeroa",
+                "userName": "Erabiltzailea",
+                "lastSeen": "Azken konexioa",
+                "reportRealPath": "Erakutsi bide absolutua",
+                "scrobbleEnabled": "Bidali erabiltzailearen ohiturak hirugarrenen zerbitzuetara"
+            }
+        },
+        "transcoding": {
+            "name": "Transkodeketa |||| Transkodeketak",
+            "fields": {
+                "name": "Izena",
+                "targetFormat": "Helburuko formatua",
+                "defaultBitRate": "Bit tasa, defektuz",
+                "command": "Komandoa"
+            }
+        },
+        "playlist": {
+            "name": "Zerrenda |||| Zerrendak",
+            "fields": {
+                "name": "Izena",
+                "duration": "Iraupena",
+                "ownerName": "Jabea",
+                "public": "Publikoa",
+                "updatedAt": "Eguneratze-data:",
+                "createdAt": "Sortze-data:",
+                "songCount": "abesti",
+                "comment": "Iruzkina",
+                "sync": "Automatikoki inportatuak",
+                "path": "Inportatze-data:"
+            },
+            "actions": {
+                "selectPlaylist": "Hautatu zerrenda:",
+                "addNewPlaylist": "Sortu \"%{name}\"",
+                "export": "Esportatu",
+                "makePublic": "Egin publikoa",
+                "makePrivate": "Egin pribatua"
+            },
+            "message": {
+                "duplicate_song": "Hautatutako abesti batzuk lehendik ere daude zerrendan",
+                "song_exist": "Bikoiztutakoak gehitzen ari dira erreprodukzio-zerrendara. Ziur gehitu nahi dituzula?"
+            }
+        },
+        "radio": {
+            "name": "Irratia |||| Irratiak",
+            "fields": {
+                "name": "Izena",
+                "streamUrl": "Jarioaren URLa",
+                "homePageUrl": "Web orriaren URLa",
+                "updatedAt": "Eguneratze-data:",
+                "createdAt": "Sortze-data:"
+            },
+            "actions": {
+                "playNow": "Erreproduzitu orain"
+            }
+        },
+        "share": {
+            "name": "Partekatu",
+            "fields": {
+                "username": "Partekatzailea:",
+                "url": "URLa",
+                "description": "Deskribapena",
+                "downloadable": "Deskargatzea ahalbidetu?",
+                "contents": "Edukia",
+                "expiresAt": "Iraungitze-data:",
+                "lastVisitedAt": "Azkenekoz bisitatu zen:",
+                "visitCount": "Bisita kopurua",
+                "format": "Formatua",
+                "maxBitRate": "Gehienezko bit tasa",
+                "updatedAt": "Eguneratze-data:",
+                "createdAt": "Sortze-data:"
+            },
+            "notifications": {
+            },
+            "actions": {
+            }
+        }
+    },
+    "ra": {
+        "auth": {
+            "welcome1": "Eskerrik asko Navidrome instalatzeagatik!",
+            "welcome2": "Lehenik eta behin, sortu administratzaile kontua",
+            "confirmPassword": "Baieztatu pasahitza",
+            "buttonCreateAdmin": "Sortu administratzailea",
+            "auth_check_error": "Hasi saioa aurrera egiteko",
+            "user_menu": "Profila",
+            "username": "Erabiltzailea",
+            "password": "Pasahitza",
+            "sign_in": "Sartu",
+            "sign_in_error": "Autentifikazioak huts egin du, saiatu berriro",
+            "logout": "Itxi saioa"
+        },
+        "validation": {
+            "invalidChars": "Erabili hizkiak eta zenbakiak bakarrik",
+            "passwordDoesNotMatch": "Pasahitzak ez datoz bat",
+            "required": "Beharrezkoa",
+            "minLength": "Gutxienez %{min} karaktere izan behar ditu",
+            "maxLength": "Gehienez %{max} karaktere izan ditzake",
+            "minValue": "Gutxienez %{min} izan behar da",
+            "maxValue": "Gehienez %{max} izan daiteke",
+            "number": "Zenbakia izan behar da",
+            "email": "Baliozko ePosta helbidea izan behar da",
+            "oneOf": "Hauetako bat izan behar da: %{options}",
+            "regex": "Formatu zehatzarekin bat etorri behar da (regexp): %{pattern}",
+            "unique": "Bakarra izan behar da",
+            "url": "Baliozko URLa izan behar da"
+        },
+        "action": {
+            "add_filter": "Gehitu iragazkia",
+            "add": "Gehitu",
+            "back": "Itzuli",
+            "bulk_actions": "elementu 1 hautatuta |||| %{smart_count} elementu hautatuta",
+            "cancel": "Utzi",
+            "clear_input_value": "Garbitu balioa",
+            "clone": "Bikoiztu",
+            "confirm": "Baieztatu",
+            "create": "Sortu",
+            "delete": "Ezabatu",
+            "edit": "Editatu",
+            "export": "Esportatu",
+            "list": "Zerrenda",
+            "refresh": "Freskatu",
+            "remove_filter": "Ezabatu iragazkia",
+            "remove": "Ezabatu",
+            "save": "Gorde",
+            "search": "Bilatu",
+            "show": "Erakutsi",
+            "sort": "Ordenatu",
+            "undo": "Desegin",
+            "expand": "Hedatu",
+            "close": "Itxi",
+            "open_menu": "Ireki menua",
+            "close_menu": "Itxi menua",
+            "unselect": "Utzi hautatzeari",
+            "skip": "Utzi alde batera",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
+            "share": "Partekatu",
+            "download": "Deskargatu"
+        },
+        "boolean": {
+            "true": "Bai",
+            "false": "Ez"
+        },
+        "page": {
+            "create": "Sortu %{name}",
+            "dashboard": "Mahaigaina",
+            "edit": "%{name} #%{id}",
+            "error": "Zerbaitek huts egin du",
+            "list": "%{name}",
+            "loading": "Kargatzen",
+            "not_found": "Ez da aurkitu",
+            "show": "%{name} #%{id}",
+            "empty": "Oraindik ez dago %{name}(r)ik.",
+            "invite": "Sortu nahi al duzu?"
+        },
+        "input": {
+            "file": {
+                "upload_several": "Jaregin edo hautatu igo nahi dituzun fitxategiak.",
+                "upload_single": "AJaregin edo hautatu igo nahi duzun fitxategia."
+            },
+            "image": {
+                "upload_several": "Jaregin edo hautatu igo nahi dituzun irudiak.",
+                "upload_single": "Jaregin edo hautatu igo nahi duzun irudia."
+            },
+            "references": {
+                "all_missing": "Ezin dira erreferentziazko datuak aurkitu.",
+                "many_missing": "Erreferentzietako bat gutxieenez ez dago eskuragai.",
+                "single_missing": "Ez dirudi erreferentzia eskuragai dagoenik."
+            },
+            "password": {
+                "toggle_visible": "Ezkutatu pasahitza",
+                "toggle_hidden": "Erakutsi pasahitza"
+            }
+        },
+        "message": {
+            "about": "Honi buruz",
+            "are_you_sure": "Ziur zaude?",
+            "bulk_delete_content": "Ziur %{name} ezabatu nahi duzula? |||| Ziur %{smart_count} hauek ezabatu nahi dituzula?",
+            "bulk_delete_title": "Ezabatu %{name} |||| Ezabatu %{smart_count} %{name}",
+            "delete_content": "Ziur elementu hau ezabatu nahi duzula?",
+            "delete_title": "Ezabatu %{name} #%{id}",
+            "details": "Xehetasunak",
+            "error": "Bezeroan errorea gertatu da eta eskaera ezin izan da gauzatu",
+            "invalid_form": "Formularioa ez da baliozkoa. Egiaztatu errorerik ez dagoela",
+            "loading": "Orria kargatzen ari da, itxaron",
+            "no": "Ez",
+            "not_found": "URLa ez da zuzena edo jarraitutako esteka akastuna da.",
+            "yes": "Bai",
+            "unsaved_changes": "Ez dira aldaketa batzuk gorde. Ziur muzin egin nahi diezula?"
+        },
+        "navigation": {
+            "no_results": "Ez da emaitzarik aurkitu",
+            "no_more_results": "%{page} orrialde-zenbakia mugetatik kanpo dago. Saiatu aurreko orrialdearekin.",
+            "page_out_of_boundaries": "%{page} orrialde-zenbakia mugetatik kanpo dago",
+            "page_out_from_end": "Ezin zara azken orrialdea baino haratago joan",
+            "page_out_from_begin": "Ezin zara lehenengo orrialdea baino aurrerago joan",
+            "page_range_info": "%{offsetBegin}-%{offsetEnd}, %{total} guztira",
+            "page_rows_per_page": "Errenkadak orrialdeko:",
+            "next": "Hurrengoa",
+            "prev": "Aurrekoa",
+            "skip_nav": "Joan edukira"
+        },
+        "notification": {
+            "updated": "Elementu bat eguneratu da |||| %{smart_count} elementu eguneratu dira",
+            "created": "Elementua sortu da",
+            "deleted": "Elementu bat ezabatu da |||| %{smart_count} elementu ezabatu dira.",
+            "bad_item": "Elementu okerra",
+            "item_doesnt_exist": "Elementua ez dago",
+            "http_error": "Errorea zerbitzariarekin komunikatzerakoan",
+            "data_provider_error": "Errorea datuen hornitzailean. Berrikusi kontsola xehetasun gehiagorako.",
+            "i18n_error": "Ezin izan dira zehaztutako hizkuntzaren itzulpenak kargatu",
+            "canceled": "Ekintza bertan behera utzi da",
+            "logged_out": "Saioa amaitu da, konektatu berriro.",
+            "new_version": "Bertsio berria eskuragai! Freskatu leihoa."
+        },
+        "toggleFieldsMenu": {
+            "columnsToDisplay": "Erakusteko zutabeak",
+            "layout": "Antolaketa",
+            "grid": "Sareta",
+            "table": "Taula"
+        }
+    },
+    "message": {
+        "note": "OHARRA",
+        "transcodingDisabled": "Segurtasun arrazoiak direla-eta, transkodeketaren ezarpenak web-interfazearen bidez aldatzea ezgaituta dago. Transkodeketa-aukerak aldatu (editatu edo gehitu) nahi badituzu, berrabiarazi zerbitzaria konfigurazio-aukeraren %{config}-arekin.",
+        "transcodingEnabled": "Navidrome %{config}-ekin martxan dago eta, beraz, web-interfazeko transkodeketa-ataletik sistema-komandoak exekuta daitezke. Segurtasun arrazoiak tarteko, ezgaitzea gomendatzen dugu, eta transkodeketa-aukerak konfiguratzen ari zarenean bakarrik gaitzea.",
+        "songsAddedToPlaylist": "Abesti bat zerrendara gehitu da |||| %{smart_count} abesti zerrendara gehitu dira",
+        "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
+        "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
+        "delete_user_content": "Ziur zaide erabiltzaile hau eta bere datu guztiak (zerrendak eta hobespenak barne) ezabatu nahi dituzula?",
+        "notifications_blocked": "Nabigatzaileak jakinarazpenak blokeatzen ditu",
+        "notifications_not_available": "Nabigatzaile hau ez da jakinarazpenekin bateragarria edo Navidrome ez da HTTPS erabiltzen ari",
+        "lastfmLinkSuccess": "Last.fm konektatuta dago eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea gaituta dago",
+        "lastfmLinkFailure": "Ezin izan da Last.fm-rekin konektatu",
+        "lastfmUnlinkSuccess": "Last.fm deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea ezgaitu da",
+        "lastfmUnlinkFailure": "Ezin izan da Last.fm deskonektatu",
+        "openIn": {
+            "lastfm": "Ikusi Last.fm-n",
+            "musicbrainz": "Ikusi MusicBrainz-en"
+        },
+        "lastfmLink": "Irakurri gehiago…",
+        "listenBrainzLinkSuccess": "Ondo konektatu da ListenBrainz-ekin eta %{user} erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea aktibatu da",
+        "listenBrainzLinkFailure": "Ezin izan da ListenBrainz-ekin konektatu: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
+        "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
+        "downloadOriginalFormat": "Deskargatu jatorrizko formatua",
+        "shareOriginalFormat": "Partekatu jatorrizko formatua",
+        "shareDialogTitle": "Partekatu '%{name}' %{resource}",
+        "shareBatchDialogTitle": "Partekatu %{resource} bat |||| Partekatu %{smart_count} %{resource}",
+        "shareSuccess": "URLa arbelera kopiatu da: %{url}",
+        "shareFailure": "Errorea %{url} URLa arbelera kopiatzean",
+        "downloadDialogTitle": "Deskargatu '%{name}' %{resource}, (%{size})",
+        "shareCopyToClipboard": "Kopiatu arbelera: Ktrl + C, Sartu tekla"
+    },
+    "menu": {
+        "library": "Liburutegia",
+        "settings": "Ezarpenak",
+        "version": "Bertsioa",
+        "theme": "Itxura",
+        "personal": {
+            "name": "Pertsonala",
+            "options": {
+                "theme": "Itxura",
+                "language": "Hizkuntza",
+                "defaultView": "Bista, defektuz",
+                "desktop_notifications": "Mahaigaineko jakinarazpenak",
+                "lastfmScrobbling": "Bidali Last.fm-ra erabiltzailearen ohiturak",
+                "listenBrainzScrobbling": "Bidali ListenBrainz-era erabiltzailearen ohiturak",
+                "replaygain": "ReplayGain modua",
+                "preAmp": "ReplayGain PreAmp (dB)",
+                "gain": {
+                    "none": "Bat ere ez",
+                    "album": "Albuma",
+                    "track": "Pista"
+                }
+            }
+        },
+        "albumList": "Albumak",
+        "playlists": "Zerrendak",
+        "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak",
+        "about": "Honi buruz"
+    },
+    "player": {
+        "playListsText": "Erreprodukzio-zerrenda",
+        "openText": "Ireki",
+        "closeText": "Itxi",
+        "notContentText": "Ez dago musikarik",
+        "clickToPlayText": "Egin klik erreproduzitzeko",
+        "clickToPauseText": "Egin klik eteteko",
+        "nextTrackText": "Hurrengo pista",
+        "previousTrackText": "Aurreko pista",
+        "reloadText": "Freskatu",
+        "volumeText": "Bolumena",
+        "toggleLyricText": "Erakutsi letrak",
+        "toggleMiniModeText": "Ikonotu",
+        "destroyText": "Suntsitu",
+        "downloadText": "Deskargatu",
+        "removeAudioListsText": "Ezabatu audio-zerrendak",
+        "clickToDeleteText": "Egin klik %{name} ezabatzeko",
+        "emptyLyricText": "Ez dago letrarik",
+        "playModeText": {
+            "order": "Ordenean",
+            "orderLoop": "Errepikatu",
+            "singleLoop": "Errepikatu bakarra",
+            "shufflePlay": "Aleatorioa"
+        }
+        
+    },
+    "about": {
+        "links": {
+            "homepage": "Hasierako orria",
+            "source": "Iturburu kodea",
+            "featureRequests": "Eskatu ezaugarria"
+        }
+    },
+    "activity": {
+        "title": "Ekintzak",
+        "totalScanned": "Arakatutako karpeta guztiak",
+        "quickScan": "Arakatze azkarra",
+        "fullScan": "Arakatze sakona",
+        "serverUptime": "Zerbitzariak piztuta daraman denbora",
+        "serverDown": "LINEAZ KANPO"
+    },
+    "help": {
+        "title": "Navidromeren laster-teklak",
+        "hotkeys": {
+            "show_help": "Erakutsi laguntza",
+            "toggle_menu": "Alboko barra bai / ez",
+            "toggle_play": "Erreproduzitu / Eten",
+            "prev_song": "Aurreko abestia",
+            "next_song": "Hurrengo abestia",
+            "vol_up": "Igo bolumena",
+            "vol_down": "Jaitsi bolumena",
+            "toggle_love": "Abestia gogoko bai / ez",
+            "current_song": "Uneko abestia"
+        }
+    }
+}

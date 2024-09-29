@@ -17,74 +17,77 @@ import (
 )
 
 type configOptions struct {
-	ConfigFile                   string
-	Address                      string
-	Port                         int
-	UnixSocketPerm               string
-	MusicFolder                  string
-	DataFolder                   string
-	CacheFolder                  string
-	DbPath                       string
-	LogLevel                     string
-	ScanInterval                 time.Duration
-	ScanSchedule                 string
-	SessionTimeout               time.Duration
-	BaseURL                      string
-	BasePath                     string
-	BaseHost                     string
-	BaseScheme                   string
-	TLSCert                      string
-	TLSKey                       string
-	UILoginBackgroundURL         string
-	UIWelcomeMessage             string
-	MaxSidebarPlaylists          int
-	EnableTranscodingConfig      bool
-	EnableDownloads              bool
-	EnableExternalServices       bool
-	EnableMediaFileCoverArt      bool
-	TranscodingCacheSize         string
-	ImageCacheSize               string
-	AlbumPlayCountMode           string
-	EnableArtworkPrecache        bool
-	AutoImportPlaylists          bool
-	PlaylistsPath                string
-	AutoTranscodeDownload        bool
-	DefaultDownsamplingFormat    string
-	SearchFullString             bool
-	RecentlyAddedByModTime       bool
-	PreferSortTags               bool
-	IgnoredArticles              string
-	IndexGroups                  string
-	SubsonicArtistParticipations bool
-	FFmpegPath                   string
-	MPVPath                      string
-	MPVCmdTemplate               string
-	CoverArtPriority             string
-	CoverJpegQuality             int
-	ArtistArtPriority            string
-	EnableGravatar               bool
-	EnableFavourites             bool
-	EnableStarRating             bool
-	EnableUserEditing            bool
-	EnableSharing                bool
-	DefaultDownloadableShare     bool
-	DefaultTheme                 string
-	DefaultLanguage              string
-	DefaultUIVolume              int
-	EnableReplayGain             bool
-	EnableCoverAnimation         bool
-	GATrackingID                 string
-	EnableLogRedacting           bool
-	AuthRequestLimit             int
-	AuthWindowLength             time.Duration
-	PasswordEncryptionKey        string
-	ReverseProxyUserHeader       string
-	ReverseProxyWhitelist        string
-	HTTPSecurityHeaders          secureOptions
-	Prometheus                   prometheusOptions
-	Scanner                      scannerOptions
-	Jukebox                      jukeboxOptions
-	Backup                       backupOptions
+	ConfigFile                      string
+	Address                         string
+	Port                            int
+	UnixSocketPerm                  string
+	MusicFolder                     string
+	DataFolder                      string
+	CacheFolder                     string
+	DbPath                          string
+	LogLevel                        string
+	ScanInterval                    time.Duration
+	ScanSchedule                    string
+	SessionTimeout                  time.Duration
+	BaseURL                         string
+	BasePath                        string
+	BaseHost                        string
+	BaseScheme                      string
+	TLSCert                         string
+	TLSKey                          string
+	UILoginBackgroundURL            string
+	UIWelcomeMessage                string
+	MaxSidebarPlaylists             int
+	EnableTranscodingConfig         bool
+	EnableDownloads                 bool
+	EnableExternalServices          bool
+	EnableMediaFileCoverArt         bool
+	TranscodingCacheSize            string
+	ImageCacheSize                  string
+	AlbumPlayCountMode              string
+	EnableArtworkPrecache           bool
+	AutoImportPlaylists             bool
+	DefaultPlaylistPublicVisibility bool
+	PlaylistsPath                   string
+	SmartPlaylistRefreshDelay       time.Duration
+	AutoTranscodeDownload           bool
+	DefaultDownsamplingFormat       string
+	SearchFullString                bool
+	RecentlyAddedByModTime          bool
+	PreferSortTags                  bool
+	IgnoredArticles                 string
+	IndexGroups                     string
+	SubsonicArtistParticipations    bool
+	FFmpegPath                      string
+	MPVPath                         string
+	MPVCmdTemplate                  string
+	CoverArtPriority                string
+	CoverJpegQuality                int
+	ArtistArtPriority               string
+	EnableGravatar                  bool
+	EnableFavourites                bool
+	EnableStarRating                bool
+	EnableUserEditing               bool
+	EnableSharing                   bool
+	ShareURL                        string
+	DefaultDownloadableShare        bool
+	DefaultTheme                    string
+	DefaultLanguage                 string
+	DefaultUIVolume                 int
+	EnableReplayGain                bool
+	EnableCoverAnimation            bool
+	GATrackingID                    string
+	EnableLogRedacting              bool
+	AuthRequestLimit                int
+	AuthWindowLength                time.Duration
+	PasswordEncryptionKey           string
+	ReverseProxyUserHeader          string
+	ReverseProxyWhitelist           string
+	HTTPSecurityHeaders             secureOptions
+	Prometheus                      prometheusOptions
+	Scanner                         scannerOptions
+	Jukebox                         jukeboxOptions
+	Backup                          backupOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -344,7 +347,9 @@ func init() {
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
+	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
+	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablemediafilecoverart", true)
@@ -419,6 +424,7 @@ func init() {
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
