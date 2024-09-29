@@ -26,20 +26,22 @@ import (
 )
 
 type TagScanner struct {
-	lib         model.Library
+	// Dependencies
 	ds          model.DataStore
-	plsSync     *playlistImporter
-	cnt         *counters
-	mapper      *MediaFileMapper
+	playlists   core.Playlists
 	cacheWarmer artwork.CacheWarmer
+
+	// Internal state
+	lib    model.Library
+	cnt    *counters
+	mapper *MediaFileMapper
 }
 
-func NewTagScanner(lib model.Library, ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
+func NewTagScanner(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
 	s := &TagScanner{
-		lib:         lib,
-		plsSync:     newPlaylistImporter(ds, playlists, cacheWarmer, lib.Path),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
+		playlists:   playlists,
 	}
 	metadata.LogExtractors()
 
@@ -78,9 +80,12 @@ const (
 // - If the playlist is not in the DB, import it, setting sync = true
 // - If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
-func (s *TagScanner) Scan(ctx context.Context, fullScan bool, progress chan uint32) (int64, error) {
+func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool, progress chan uint32) (int64, error) {
 	ctx = auth.WithAdminUser(ctx, s.ds)
 	start := time.Now()
+
+	// Update internal copy of Library
+	s.lib = lib
 
 	// Special case: if LastScanAt is zero, re-import all files
 	fullScan = fullScan || s.lib.LastScanAt.IsZero()
@@ -114,7 +119,7 @@ func (s *TagScanner) Scan(ctx context.Context, fullScan bool, progress chan uint
 	g, walkCtx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		for folderStats := range pl.ReadOrDone(walkCtx, foldersFound) {
-			progress <- folderStats.AudioFilesCount
+			updateProgress(progress, folderStats.AudioFilesCount)
 			allFSDirs[folderStats.Path] = folderStats
 
 			if fullScan || s.folderHasChanged(folderStats, allDBDirs, s.lib.LastScanAt) || folderStats.ExternalTagsUpdatedAt.After(s.lib.LastScanAt) {
@@ -165,7 +170,8 @@ func (s *TagScanner) Scan(ctx context.Context, fullScan bool, progress chan uint
 					log.Warn("Playlists will not be imported, as there are no admin users yet, "+
 						"Please create an admin user first, and then update the playlists for them to be imported", "dir", dir)
 				} else {
-					s.cnt.playlists = s.plsSync.processPlaylists(ctx, dir)
+					plsSync := newPlaylistImporter(s.ds, s.playlists, s.cacheWarmer, lib.Path)
+					s.cnt.playlists = plsSync.processPlaylists(ctx, dir)
 				}
 			}
 		}
@@ -178,6 +184,13 @@ func (s *TagScanner) Scan(ctx context.Context, fullScan bool, progress chan uint
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 
 	return s.cnt.total(), err
+}
+
+func updateProgress(progress chan uint32, count uint32) {
+	select {
+	case progress <- count:
+	default: // It is ok to miss a count update
+	}
 }
 
 func isDirEmpty(ctx context.Context, dir string) (bool, error) {

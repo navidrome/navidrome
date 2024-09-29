@@ -1,3 +1,5 @@
+import stylesheet from './catppuccinMacchiato.css.js'
+
 export default {
   themeName: 'Catppuccin Macchiato',
   palette: {
@@ -99,6 +101,6 @@ export default {
   },
   player: {
     theme: 'dark',
-    stylesheet: require('./catppuccinMacchiato.css.js'),
+    stylesheet,
   },
 }

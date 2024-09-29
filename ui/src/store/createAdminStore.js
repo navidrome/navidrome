@@ -9,7 +9,6 @@ import createSagaMiddleware from 'redux-saga'
 import { all, fork } from 'redux-saga/effects'
 import { adminReducer, adminSaga, USER_LOGOUT } from 'react-admin'
 import throttle from 'lodash.throttle'
-import pick from 'lodash.pick'
 import { loadState, saveState } from './persistState'
 
 const createAdminStore = ({
@@ -58,7 +57,11 @@ const createAdminStore = ({
       const state = store.getState()
       saveState({
         theme: state.theme,
-        player: pick(state.player, ['queue', 'volume', 'savedPlayIndex']),
+        player: (({ queue, volume, savedPlayIndex }) => ({
+          queue,
+          volume,
+          savedPlayIndex,
+        }))(state.player),
         albumView: state.albumView,
         settings: state.settings,
       })
