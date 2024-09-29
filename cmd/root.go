@@ -37,7 +37,7 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 			preRun()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			runNavidrome()
+			runNavidrome(cmd.Context())
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			postRun()
@@ -69,10 +69,10 @@ func postRun() {
 // runNavidrome is the main entry point for the Navidrome server. It starts all the services and blocks.
 // If any of the services returns an error, it will log it and exit. If the process receives a signal to exit,
 // it will cancel the context and exit gracefully.
-func runNavidrome() {
+func runNavidrome(ctx context.Context) {
 	defer db.Init()()
 
-	ctx, cancel := mainContext()
+	ctx, cancel := mainContext(ctx)
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -88,8 +88,8 @@ func runNavidrome() {
 }
 
 // mainContext returns a context that is cancelled when the process receives a signal to exit.
-func mainContext() (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(context.Background(),
+func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(ctx,
 		os.Interrupt,
 		syscall.SIGHUP,
 		syscall.SIGTERM,
