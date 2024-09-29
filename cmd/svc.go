@@ -84,7 +84,7 @@ func svcInstance() service.Service {
 		}
 		arguments := []string{"service", "execute"}
 		if conf.Server.ConfigFile != "" {
-			arguments = append([]string{"-c", conf.Server.ConfigFile})
+			arguments = append(arguments, "-c", conf.Server.ConfigFile)
 		}
 		svcConfig.Arguments = arguments
 
