@@ -154,7 +154,6 @@ type jukeboxOptions struct {
 }
 
 type backupOptions struct {
-	Bypass   bool
 	Count    int
 	Path     string
 	Schedule string

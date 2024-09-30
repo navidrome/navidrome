@@ -73,7 +73,6 @@ var (
 )
 
 func runBackup() {
-	conf.Server.Backup.Bypass = true
 	if backupDir != "" {
 		conf.Server.Backup.Path = backupDir
 	}
@@ -151,8 +150,6 @@ func runPrune() {
 }
 
 func runRestore() {
-	conf.Server.Backup.Bypass = true
-
 	idx := strings.LastIndex(conf.Server.DbPath, "?")
 	var path string
 

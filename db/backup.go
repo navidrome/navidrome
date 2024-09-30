@@ -95,10 +95,6 @@ func (d *db) backupOrRestore(ctx context.Context, isBackup bool, path string) er
 		})
 	})
 
-	if err == nil && !conf.Server.Backup.Bypass && conf.Server.Backup.Count != 0 {
-		_, err = prune(ctx)
-	}
-
 	return err
 }
 
