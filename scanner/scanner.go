@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
@@ -119,7 +120,7 @@ func (s *scanner) startProgressTracker(library string) (chan uint32, context.Can
 	// Must be a new context (not the one passed to the scan method) to allow broadcasting the scan status to all clients
 	ctx, cancel := context.WithCancel(context.Background())
 	progress := make(chan uint32, 1000)
-	limiter := rate.Sometimes{Every: 10}
+	limiter := rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate}
 	go func() {
 		s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 		defer func() {
