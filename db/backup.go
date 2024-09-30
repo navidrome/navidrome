@@ -23,10 +23,12 @@ const (
 
 var backupRegex = regexp.MustCompile(backupRegexString)
 
+const backupSuffixLayout = "2006.01.02_15.04.05"
+
 func backupPath(t time.Time) string {
 	return filepath.Join(
 		conf.Server.Backup.Path,
-		fmt.Sprintf("%s_%s.db", backupPrefix, t.Format(time.RFC3339)),
+		fmt.Sprintf("%s_%s.db", backupPrefix, t.Format(backupSuffixLayout)),
 	)
 }
 
@@ -110,7 +112,7 @@ func prune(ctx context.Context) (int, error) {
 		if !file.IsDir() {
 			submatch := backupRegex.FindStringSubmatch(file.Name())
 			if len(submatch) == 2 {
-				timestamp, err := time.Parse(time.RFC3339, submatch[1])
+				timestamp, err := time.Parse(backupSuffixLayout, submatch[1])
 				if err == nil {
 					backupTimes = append(backupTimes, timestamp)
 				}
@@ -127,14 +129,12 @@ func prune(ctx context.Context) (int, error) {
 	})
 
 	pruneCount := 0
-
 	var errs []error
 
 	for _, timeToPrune := range backupTimes[conf.Server.Backup.Count:] {
 		log.Debug(ctx, "Pruning backup", "time", timeToPrune)
 		path := backupPath(timeToPrune)
 		err = os.Remove(path)
-
 		if err != nil {
 			errs = append(errs, err)
 		} else {

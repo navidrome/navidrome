@@ -174,17 +174,17 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 			elapsed := time.Since(start)
 			if err != nil {
 				log.Error(ctx, "Error backing up database", "elapsed", elapsed, err)
-			} else {
-				log.Info(ctx, "Backup complete", "elapsed", elapsed)
-				count, err := database.Prune(ctx)
+				return
+			}
+			log.Info(ctx, "Backup complete", "elapsed", elapsed)
 
-				if err != nil {
-					log.Error(ctx, "Error pruning database", "error", err)
-				} else if count > 0 {
-					log.Info(ctx, "Successfully pruned old files", "count", count)
-				} else {
-					log.Info(ctx, "No backups pruned")
-				}
+			count, err := database.Prune(ctx)
+			if err != nil {
+				log.Error(ctx, "Error pruning database", "error", err)
+			} else if count > 0 {
+				log.Info(ctx, "Successfully pruned old files", "count", count)
+			} else {
+				log.Info(ctx, "No backups pruned")
 			}
 		})
 

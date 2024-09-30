@@ -17,53 +17,51 @@ func shortTime(year int, month time.Month, day, hour, minute int) time.Time {
 }
 
 var _ = Describe("database backups", func() {
-	Context("prune", func() {
+	When("there are a few backup files", func() {
 		var ctx context.Context
-		var timesDecreasingChronologically []time.Time
 		var timesShuffled []time.Time
 
+		timesDecreasingChronologically := []time.Time{
+			shortTime(2024, 11, 6, 5, 11),
+			shortTime(2024, 11, 6, 5, 8),
+			shortTime(2024, 11, 6, 4, 32),
+			shortTime(2024, 11, 6, 2, 4),
+			shortTime(2024, 11, 6, 1, 52),
+
+			shortTime(2024, 11, 5, 23, 0),
+			shortTime(2024, 11, 5, 6, 4),
+			shortTime(2024, 11, 4, 2, 4),
+			shortTime(2024, 11, 3, 8, 5),
+			shortTime(2024, 11, 2, 5, 24),
+			shortTime(2024, 11, 1, 5, 24),
+
+			shortTime(2024, 10, 31, 5, 9),
+			shortTime(2024, 10, 30, 5, 9),
+			shortTime(2024, 10, 23, 14, 3),
+			shortTime(2024, 10, 22, 3, 6),
+			shortTime(2024, 10, 11, 14, 3),
+
+			shortTime(2024, 9, 21, 19, 5),
+			shortTime(2024, 9, 3, 8, 5),
+
+			shortTime(2024, 7, 5, 1, 1),
+
+			shortTime(2023, 8, 2, 19, 5),
+
+			shortTime(2021, 8, 2, 19, 5),
+			shortTime(2020, 8, 2, 19, 5),
+		}
+
 		BeforeEach(func() {
-			name, err := os.MkdirTemp("", "navidrome_backup")
-			if err != nil {
-				panic(err)
-			}
+			DeferCleanup(configtest.SetupConfig())
+
+			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
+			Expect(err).ToNot(HaveOccurred())
+			conf.Server.Backup.Path = tempFolder
 
 			DeferCleanup(func() {
-				configtest.SetupConfig()
-				os.RemoveAll(name)
+				_ = os.RemoveAll(tempFolder)
 			})
-
-			conf.Server.Backup.Path = name
-			timesDecreasingChronologically = []time.Time{
-				shortTime(2024, 11, 6, 5, 11),
-				shortTime(2024, 11, 6, 5, 8),
-				shortTime(2024, 11, 6, 4, 32),
-				shortTime(2024, 11, 6, 2, 4),
-				shortTime(2024, 11, 6, 1, 52),
-
-				shortTime(2024, 11, 5, 23, 0),
-				shortTime(2024, 11, 5, 6, 4),
-				shortTime(2024, 11, 4, 2, 4),
-				shortTime(2024, 11, 3, 8, 5),
-				shortTime(2024, 11, 2, 5, 24),
-				shortTime(2024, 11, 1, 5, 24),
-
-				shortTime(2024, 10, 31, 5, 9),
-				shortTime(2024, 10, 30, 5, 9),
-				shortTime(2024, 10, 23, 14, 3),
-				shortTime(2024, 10, 22, 3, 6),
-				shortTime(2024, 10, 11, 14, 3),
-
-				shortTime(2024, 9, 21, 19, 5),
-				shortTime(2024, 9, 3, 8, 5),
-
-				shortTime(2024, 7, 5, 1, 1),
-
-				shortTime(2023, 8, 2, 19, 5),
-
-				shortTime(2021, 8, 2, 19, 5),
-				shortTime(2020, 8, 2, 19, 5),
-			}
 
 			timesShuffled = make([]time.Time, len(timesDecreasingChronologically))
 			copy(timesShuffled, timesDecreasingChronologically)
@@ -75,13 +73,13 @@ var _ = Describe("database backups", func() {
 				path := backupPath(time)
 				file, err := os.Create(path)
 				Expect(err).To(BeNil())
-				file.Close()
+				_ = file.Close()
 			}
 
 			ctx = context.Background()
 		})
 
-		DescribeTable("", func(count int) {
+		DescribeTable("prune", func(count, expected int) {
 			conf.Server.Backup.Count = count
 			pruneCount, err := prune(ctx)
 			Expect(err).To(BeNil())
@@ -95,15 +93,11 @@ var _ = Describe("database backups", func() {
 				}
 			}
 
-			if count >= len(timesDecreasingChronologically) {
-				Expect(pruneCount).To(BeZero())
-			} else {
-				Expect(pruneCount).To(Equal(len(timesDecreasingChronologically) - count))
-			}
+			Expect(len(timesDecreasingChronologically) - pruneCount).To(Equal(expected))
 		},
-			Entry("handle 5 backups", 5),
-			Entry("delete all files", 0),
-			Entry("preserve all files when at length", len(timesDecreasingChronologically)),
-			Entry("preserve al files when greater than count", 10000))
+			Entry("preserve latest 5 backups", 5, 5),
+			Entry("delete all files", 0, 0),
+			Entry("preserve all files when at length", len(timesDecreasingChronologically), len(timesDecreasingChronologically)),
+			Entry("preserve all files when less than count", 10000, len(timesDecreasingChronologically)))
 	})
 })
