@@ -71,7 +71,7 @@
     "prettier": "^3.3.3",
     "ra-test": "^3.19.12",
     "typescript": "^5.1.6",
-    "vite": "^5.3.5",
+    "vite": "^5.4.8",
     "vite-plugin-pwa": "^0.20.5",
     "vitest": "^2.1.1"
   }
