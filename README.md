@@ -56,6 +56,15 @@ A share of the revenue helps fund the development of Navidrome at no additional 
  - **Transcoding** on the fly. Can be set per user/player. **Opus encoding is supported**
  - Translated to **various languages**
 
+## Translations
+
+Navidrome uses [POEditor](https://poeditor.com/) for translations, and we are always looking 
+for [more contributors](https://www.navidrome.org/docs/developers/translations/)
+
+<a href="https://poeditor.com/"> 
+<img height="32" src="https://github.com/user-attachments/assets/c19b1d2b-01e1-4682-a007-12356c42147c">
+</a>
+
 ## Documentation
 All documentation can be found in the project's website: https://www.navidrome.org/docs. 
 Here are some useful direct links:
