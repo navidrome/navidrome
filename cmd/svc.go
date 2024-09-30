@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/kardianos/service"
 	"github.com/navidrome/navidrome/conf"
@@ -42,17 +43,28 @@ var svcCmd = &cobra.Command{
 type svcControl struct {
 	ctx    context.Context
 	cancel context.CancelFunc
+	done   chan struct{}
 }
 
 func (p *svcControl) Start(service.Service) error {
+	p.done = make(chan struct{})
 	p.ctx, p.cancel = context.WithCancel(context.Background())
-	go runNavidrome(p.ctx)
+	go func() {
+		runNavidrome(p.ctx)
+		close(p.done)
+	}()
 	return nil
 }
 
 func (p *svcControl) Stop(service.Service) error {
 	log.Info("Stopping service")
 	p.cancel()
+	select {
+	case <-p.done:
+		log.Info("Service stopped gracefully")
+	case <-time.After(10 * time.Second):
+		log.Error("Service did not stop in time. Killing it.")
+	}
 	return nil
 }
 
@@ -105,6 +117,7 @@ func buildInstallCmd() *cobra.Command {
 		println("  working directory: " + executablePath())
 		println("  music folder:      " + conf.Server.MusicFolder)
 		println("  data folder:       " + conf.Server.DataFolder)
+		println("  logs folder:       " + conf.Server.DataFolder)
 		if cfgFile != "" {
 			conf.Server.ConfigFile, err = filepath.Abs(cfgFile)
 			if err != nil {
