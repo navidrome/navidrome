@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import { VitePWA } from 'vite-plugin-pwa'
-import eslintPlugin from '@nabla/vite-plugin-eslint'
 
 const frontendPort = parseInt(process.env.PORT) || 4533
 const backendPort = frontendPort + 100
@@ -10,7 +9,6 @@ const backendPort = frontendPort + 100
 export default defineConfig({
   plugins: [
     react(),
-    eslintPlugin({ formatter: 'stylish' }),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: manifest(),
@@ -37,6 +35,7 @@ export default defineConfig({
     setupFiles: './src/setupTests.js',
     css: true,
     reporters: ['verbose'],
+    // reporters: ['default', 'hanging-process'],
     coverage: {
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*'],
