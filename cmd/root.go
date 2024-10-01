@@ -79,6 +79,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(schedulePeriodicBackup(ctx))
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -150,6 +151,42 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		}
 		log.Debug("Finished initial scan")
 		return nil
+	}
+}
+
+func schedulePeriodicBackup(ctx context.Context) func() error {
+	return func() error {
+		schedule := conf.Server.Backup.Schedule
+		if schedule == "" {
+			log.Warn("Periodic backup is DISABLED")
+			return nil
+		}
+
+		database := db.Db()
+		schedulerInstance := scheduler.GetInstance()
+
+		log.Info("Scheduling periodic backup", "schedule", schedule)
+		err := schedulerInstance.Add(schedule, func() {
+			start := time.Now()
+			path, err := database.Backup(ctx)
+			elapsed := time.Since(start)
+			if err != nil {
+				log.Error(ctx, "Error backing up database", "elapsed", elapsed, err)
+				return
+			}
+			log.Info(ctx, "Backup complete", "elapsed", elapsed, "path", path)
+
+			count, err := database.Prune(ctx)
+			if err != nil {
+				log.Error(ctx, "Error pruning database", "error", err)
+			} else if count > 0 {
+				log.Info(ctx, "Successfully pruned old files", "count", count)
+			} else {
+				log.Info(ctx, "No backups pruned")
+			}
+		})
+
+		return err
 	}
 }
 

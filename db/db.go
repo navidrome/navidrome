@@ -1,10 +1,12 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
@@ -29,6 +31,10 @@ type DB interface {
 	ReadDB() *sql.DB
 	WriteDB() *sql.DB
 	Close()
+
+	Backup(ctx context.Context) (string, error)
+	Prune(ctx context.Context) (int, error)
+	Restore(ctx context.Context, path string) error
 }
 
 type db struct {
@@ -51,6 +57,24 @@ func (d *db) Close() {
 	if err := d.writeDB.Close(); err != nil {
 		log.Error("Error closing write DB", err)
 	}
+}
+
+func (d *db) Backup(ctx context.Context) (string, error) {
+	destPath := backupPath(time.Now())
+	err := d.backupOrRestore(ctx, true, destPath)
+	if err != nil {
+		return "", err
+	}
+
+	return destPath, nil
+}
+
+func (d *db) Prune(ctx context.Context) (int, error) {
+	return prune(ctx)
+}
+
+func (d *db) Restore(ctx context.Context, path string) error {
+	return d.backupOrRestore(ctx, false, path)
 }
 
 func Db() DB {
