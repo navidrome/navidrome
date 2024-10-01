@@ -98,6 +98,7 @@
                 "userName": "Usuário",
                 "isAdmin": "Admin?",
                 "lastLoginAt": "Últ. Login",
+                "lastAccessAt": "Últ. Acesso",
                 "updatedAt": "Últ. Atualização",
                 "name": "Nome",
                 "password": "Senha",

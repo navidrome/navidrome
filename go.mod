@@ -2,7 +2,7 @@ module github.com/navidrome/navidrome
 
 go 1.23
 
-toolchain go1.23.1
+toolchain go1.23.2
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -27,6 +27,7 @@ require (
 	github.com/google/wire v0.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/jellydator/ttlcache/v3 v3.3.0
+	github.com/kardianos/service v1.2.2
 	github.com/kr/pretty v0.3.1
 	github.com/lestrrat-go/jwx/v2 v2.1.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
