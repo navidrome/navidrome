@@ -73,7 +73,7 @@ var _ = Describe("database backups", func() {
 			for _, time := range timesShuffled {
 				path := backupPath(time)
 				file, err := os.Create(path)
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 				_ = file.Close()
 			}
 
@@ -83,7 +83,7 @@ var _ = Describe("database backups", func() {
 		DescribeTable("prune", func(count, expected int) {
 			conf.Server.Backup.Count = count
 			pruneCount, err := prune(ctx)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			for idx, time := range timesDecreasingChronologically {
 				_, err := os.Stat(backupPath(time))
 				shouldExist := idx < conf.Server.Backup.Count
@@ -102,7 +102,7 @@ var _ = Describe("database backups", func() {
 			Entry("preserve all files when less than count", 10000, len(timesDecreasingChronologically)))
 	})
 
-	Context("backup and restore", Ordered, func() {
+	Describe("backup and restore", Ordered, func() {
 		var ctx context.Context
 
 		BeforeAll(func() {
@@ -110,9 +110,7 @@ var _ = Describe("database backups", func() {
 			DeferCleanup(configtest.SetupConfig())
 
 			conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
-
-			close := Init()
-			DeferCleanup(close)
+			DeferCleanup(Init())
 		})
 
 		BeforeEach(func() {
@@ -127,16 +125,16 @@ var _ = Describe("database backups", func() {
 
 		It("successfully backups the database", func() {
 			path, err := Db().Backup(ctx)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			backup, err := sql.Open(Driver, path)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(isSchemaEmpty(backup)).To(BeFalse())
 		})
 
 		It("successfully restores the database", func() {
 			path, err := Db().Backup(ctx)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 
 			// https://stackoverflow.com/questions/525512/drop-all-tables-command
 			_, err = Db().WriteDB().ExecContext(ctx, `
@@ -144,13 +142,11 @@ PRAGMA writable_schema = 1;
 DELETE FROM sqlite_master WHERE type in ('table', 'index', 'trigger');
 PRAGMA writable_schema = 0;
 			`)
-			Expect(err).To(BeNil())
-
+			Expect(err).ToNot(HaveOccurred())
 			Expect(isSchemaEmpty(Db().WriteDB())).To(BeTrue())
 
 			err = Db().Restore(ctx, path)
-			Expect(err).To(BeNil())
-
+			Expect(err).ToNot(HaveOccurred())
 			Expect(isSchemaEmpty(Db().WriteDB())).To(BeFalse())
 		})
 	})
