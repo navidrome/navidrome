@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
@@ -71,7 +72,8 @@ func (api *Router) routes() http.Handler {
 	r.Use(postFormToQueryParams)
 	r.Use(checkRequiredParameters)
 	r.Use(authenticate(api.ds))
-	// TODO Validate version
+	r.Use(server.UpdateLastAccessMiddleware(api.ds))
+	// TODO Validate API version?
 
 	// Subsonic endpoints, grouped by controller
 	r.Group(func(r chi.Router) {

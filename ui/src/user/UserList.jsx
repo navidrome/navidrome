@@ -41,6 +41,7 @@ const UserList = (props) => {
           <TextField source="name" />
           <BooleanField source="isAdmin" />
           <DateField source="lastLoginAt" sortByOrder={'DESC'} />
+          <DateField source="lastAccessAt" sortByOrder={'DESC'} />
           <DateField source="updatedAt" sortByOrder={'DESC'} />
         </Datagrid>
       )}

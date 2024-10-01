@@ -1,16 +1,21 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -324,6 +329,80 @@ var _ = Describe("middlewares", func() {
 				Expect(queryValues.Get(":key")).To(Equal("test"))
 				Expect(queryValues.Get(":value")).To(Equal("value"))
 				Expect(queryValues.Get("key")).To(Equal("other_value"))
+			})
+		})
+	})
+
+	Describe("UpdateLastAccessMiddleware", func() {
+		var (
+			middleware     func(next http.Handler) http.Handler
+			req            *http.Request
+			ctx            context.Context
+			ds             *tests.MockDataStore
+			id             string
+			lastAccessTime time.Time
+		)
+
+		callMiddleware := func(req *http.Request) {
+			middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})).ServeHTTP(nil, req)
+		}
+
+		BeforeEach(func() {
+			id = uuid.NewString()
+			ds = &tests.MockDataStore{}
+			lastAccessTime = time.Now()
+			Expect(ds.User(ctx).Put(&model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
+				To(Succeed())
+
+			middleware = UpdateLastAccessMiddleware(ds)
+			ctx = request.WithUser(
+				context.Background(),
+				model.User{ID: id, UserName: "johndoe"},
+			)
+			req, _ = http.NewRequest(http.MethodGet, "/", nil)
+			req = req.WithContext(ctx)
+		})
+
+		Context("when the request has a user", func() {
+			It("does calls the next handler", func() {
+				called := false
+				middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					called = true
+				})).ServeHTTP(nil, req)
+				Expect(called).To(BeTrue())
+			})
+
+			It("updates the last access time", func() {
+				time.Sleep(3 * time.Millisecond)
+
+				callMiddleware(req)
+
+				user, _ := ds.MockedUser.FindByUsername("johndoe")
+				Expect(*user.LastAccessAt).To(BeTemporally(">", lastAccessTime, time.Second))
+			})
+
+			It("skip fast successive requests", func() {
+				// First request
+				callMiddleware(req)
+				user, _ := ds.MockedUser.FindByUsername("johndoe")
+				lastAccessTime = *user.LastAccessAt // Store the last access time
+
+				// Second request
+				time.Sleep(3 * time.Millisecond)
+				callMiddleware(req)
+
+				// The second request should not have changed the last access time
+				user, _ = ds.MockedUser.FindByUsername("johndoe")
+				Expect(user.LastAccessAt).To(Equal(&lastAccessTime))
+			})
+		})
+		Context("when the request has no user", func() {
+			It("does not update the last access time", func() {
+				req = req.WithContext(context.Background())
+				callMiddleware(req)
+
+				usr, _ := ds.MockedUser.FindByUsername("johndoe")
+				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})
 	})

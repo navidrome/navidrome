@@ -3,8 +3,10 @@ package tests
 import (
 	"encoding/base64"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 func CreateMockUserRepo() *MockedUserRepo {
@@ -54,5 +56,21 @@ func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.Use
 }
 
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
+	for _, usr := range u.Data {
+		if usr.ID == id {
+			usr.LastLoginAt = gg.P(time.Now())
+			return nil
+		}
+	}
+	return u.Error
+}
+
+func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
+	for _, usr := range u.Data {
+		if usr.ID == id {
+			usr.LastAccessAt = gg.P(time.Now())
+			return nil
+		}
+	}
 	return u.Error
 }

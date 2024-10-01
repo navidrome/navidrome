@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,8 +19,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/unrolled/secure"
+	"golang.org/x/time/rate"
 )
 
 func requestLogger(next http.Handler) http.Handler {
@@ -297,4 +300,43 @@ func URLParamsMiddleware(next http.Handler) http.Handler {
 		// Call the next handler in the chain with the modified request and response.
 		next.ServeHTTP(w, r)
 	})
+}
+
+var userAccessLimiter idLimiterMap
+
+func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			usr, ok := request.UserFrom(ctx)
+			if ok {
+				userAccessLimiter.Do(usr.ID, func() {
+					start := time.Now()
+					ctx, cancel := context.WithTimeout(ctx, time.Second)
+					defer cancel()
+
+					err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
+					if err != nil {
+						log.Warn(ctx, "Could not update user's lastAccessAt", "username", usr.UserName,
+							"elapsed", time.Since(start), err)
+					} else {
+						log.Trace(ctx, "Update user's lastAccessAt", "username", usr.UserName,
+							"elapsed", time.Since(start))
+					}
+				})
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// idLimiterMap is a thread-safe map that stores rate.Sometimes limiters for each user ID.
+// Used to make the map type and thread safe.
+type idLimiterMap struct {
+	sm sync.Map
+}
+
+func (m *idLimiterMap) Do(id string, f func()) {
+	limiter, _ := m.sm.LoadOrStore(id, &rate.Sometimes{Interval: 2 * time.Second})
+	limiter.(*rate.Sometimes).Do(f)
 }

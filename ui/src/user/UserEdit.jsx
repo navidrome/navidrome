@@ -140,7 +140,7 @@ const UserEdit = (props) => {
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
         <DateField variant="body1" source="lastLoginAt" showTime />
-        {/*<DateField source="lastAccessAt" showTime />*/}
+        <DateField variant="body1" source="lastAccessAt" showTime />
         <DateField variant="body1" source="updatedAt" showTime />
         <DateField variant="body1" source="createdAt" showTime />
       </SimpleForm>
