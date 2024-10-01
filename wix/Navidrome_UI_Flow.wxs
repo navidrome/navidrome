@@ -1,0 +1,41 @@
+﻿<Fragment>
+    <UI Id="Navidrome_UI_Flow">
+        <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+        <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="12" />
+        <TextStyle Id="WixUI_Font_Title" FaceName="Tahoma" Size="9" Bold="yes" />
+
+        <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+        <Property Id="WixUI_Mode" Value="Minimal" />
+
+        <DialogRef Id="ErrorDlg" />
+        <DialogRef Id="FatalError" />
+        <DialogRef Id="FilesInUse" />
+        <DialogRef Id="MsiRMFilesInUse" />
+        <DialogRef Id="PrepareDlg" />
+        <DialogRef Id="ProgressDlg" />
+        <DialogRef Id="ResumeDlg" />
+        <DialogRef Id="UserExit" />
+        <DialogRef Id="WelcomeDlg" />
+
+        <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999" />
+
+        <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="MaintenanceTypeDlg" />
+
+        <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="MaintenanceTypeDlg" />
+
+        <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg" />
+        <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg" />
+        <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg" />
+
+        <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Condition="Installed AND PATCH" />
+        <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="2" Condition="Installed AND PATCH" />
+
+        <InstallUISequence>
+            <Show Dialog="WelcomeDlg" Before="ProgressDlg" Condition="Installed AND PATCH" />
+        </InstallUISequence>
+
+        <Property Id="ARPNOMODIFY" Value="1" />
+    </UI>
+
+    <UIRef Id="WixUI_Common" />
+</Fragment>
