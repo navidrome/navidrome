@@ -23,15 +23,15 @@ var (
 func init() {
 	rootCmd.AddCommand(backupRoot)
 
-	backupCmd.Flags().StringVarP(&backupDir, "backup-dir", "b", "", "directory to manually make backup")
+	backupCmd.Flags().StringVarP(&backupDir, "backup-dir", "d", "", "directory to manually make backup")
 	backupRoot.AddCommand(backupCmd)
 
-	pruneCmd.Flags().StringVarP(&backupDir, "backup-directory", "b", "", "directory holding Navidrome backups")
-	pruneCmd.Flags().IntVarP(&backupCount, "keep-count", "k", -1, "specify the number of backups to keep. 0 preserve no backups, and negative values mean to use the default from configuration")
+	pruneCmd.Flags().StringVarP(&backupDir, "backup-dir", "d", "", "directory holding Navidrome backups")
+	pruneCmd.Flags().IntVarP(&backupCount, "keep-count", "k", -1, "specify the number of backups to keep. 0 remove ALL backups, and negative values mean to use the default from configuration")
 	pruneCmd.Flags().BoolVarP(&force, "force", "f", false, "bypass warning when backup count is zero")
 	backupRoot.AddCommand(pruneCmd)
 
-	restoreCommand.Flags().StringVarP(&restorePath, "backup-path", "b", "", "path of backup database restore")
+	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "path of backup database to restore")
 	restoreCommand.Flags().BoolVarP(&force, "force", "f", false, "bypass restore warning")
 	_ = restoreCommand.MarkFlagRequired("backup-path")
 	backupRoot.AddCommand(restoreCommand)
@@ -39,17 +39,18 @@ func init() {
 
 var (
 	backupRoot = &cobra.Command{
-		Use:   "backup",
-		Short: "Backup/restore/prune database",
-		Long:  "Backup/restore/prune database",
+		Use:     "backup",
+		Aliases: []string{"bkp"},
+		Short:   "Create, restore and prune database backups",
+		Long:    "Create, restore and prune database backups",
 	}
 
 	backupCmd = &cobra.Command{
-		Use:   "backup",
-		Short: "Backup database",
+		Use:   "create",
+		Short: "Create a backup database",
 		Long:  "Manually backup Navidrome database. This will ignore BackupCount",
 		Run: func(cmd *cobra.Command, _ []string) {
-			runBackup()
+			runBackup(cmd.Context())
 		},
 	}
 
@@ -58,7 +59,7 @@ var (
 		Short: "Prune database backups",
 		Long:  "Manually prune database backups according to backup rules",
 		Run: func(cmd *cobra.Command, _ []string) {
-			runPrune()
+			runPrune(cmd.Context())
 		},
 	}
 
@@ -67,12 +68,12 @@ var (
 		Short: "Restore Navidrome database",
 		Long:  "Restore Navidrome database from a backup. This must be done offline",
 		Run: func(cmd *cobra.Command, _ []string) {
-			runRestore()
+			runRestore(cmd.Context())
 		},
 	}
 )
 
-func runBackup() {
+func runBackup(ctx context.Context) {
 	if backupDir != "" {
 		conf.Server.Backup.Path = backupDir
 	}
@@ -93,7 +94,7 @@ func runBackup() {
 
 	database := db.Db()
 	start := time.Now()
-	err := database.Backup(context.Background())
+	err := database.Backup(ctx)
 	if err != nil {
 		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
 	}
@@ -102,7 +103,7 @@ func runBackup() {
 	log.Info("Backup complete", "elapsed", elapsed)
 }
 
-func runPrune() {
+func runPrune(ctx context.Context) {
 	if backupDir != "" {
 		conf.Server.Backup.Path = backupDir
 	}
@@ -139,7 +140,7 @@ func runPrune() {
 
 	database := db.Db()
 	start := time.Now()
-	count, err := database.Prune(context.Background())
+	count, err := database.Prune(ctx)
 	if err != nil {
 		log.Fatal("Error pruning up database", "backup path", conf.Server.BasePath, err)
 	}
@@ -149,7 +150,7 @@ func runPrune() {
 	log.Info("Prune complete", "elapsed", elapsed, "successfully pruned", count)
 }
 
-func runRestore() {
+func runRestore(ctx context.Context) {
 	idx := strings.LastIndex(conf.Server.DbPath, "?")
 	var path string
 
@@ -178,7 +179,7 @@ func runRestore() {
 
 	database := db.Db()
 	start := time.Now()
-	err := database.Restore(context.Background(), restorePath)
+	err := database.Restore(ctx, restorePath)
 	if err != nil {
 		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
 	}
