@@ -2,7 +2,7 @@ module github.com/navidrome/navidrome
 
 go 1.23
 
-toolchain go1.23.1
+toolchain go1.23.2
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
