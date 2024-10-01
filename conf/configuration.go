@@ -87,6 +87,7 @@ type configOptions struct {
 	Prometheus                      prometheusOptions
 	Scanner                         scannerOptions
 	Jukebox                         jukeboxOptions
+	Backup                          backupOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -153,6 +154,12 @@ type jukeboxOptions struct {
 	AdminOnly bool
 }
 
+type backupOptions struct {
+	Count    int
+	Path     string
+	Schedule string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -194,12 +201,24 @@ func Load() {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 
+	if Server.Backup.Path != "" {
+		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", "path", Server.Backup.Path, err)
+			os.Exit(1)
+		}
+	}
+
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
 	if err := validateScanSchedule(); err != nil {
+		os.Exit(1)
+	}
+
+	if err := validateBackupSchedule(); err != nil {
 		os.Exit(1)
 	}
 
@@ -264,15 +283,35 @@ func validateScanSchedule() error {
 		Server.ScanSchedule = ""
 		return nil
 	}
-	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
-		Server.ScanSchedule = "@every " + Server.ScanSchedule
+	var err error
+	Server.ScanSchedule, err = validateSchedule(Server.ScanSchedule, "ScanSchedule")
+	return err
+}
+
+func validateBackupSchedule() error {
+	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
+		Server.Backup.Schedule = ""
+		return nil
+	}
+
+	var err error
+	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "BackupSchedule")
+
+	return err
+}
+
+func validateSchedule(schedule, field string) (string, error) {
+	if _, err := time.ParseDuration(schedule); err == nil {
+		schedule = "@every " + schedule
 	}
 	c := cron.New()
-	_, err := c.AddFunc(Server.ScanSchedule, func() {})
+	id, err := c.AddFunc(schedule, func() {})
 	if err != nil {
-		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
+		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", field, err)
+	} else {
+		c.Remove(id)
 	}
-	return err
+	return schedule, err
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
@@ -364,6 +403,10 @@ func init() {
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
 
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
+
+	viper.SetDefault("backup.path", "")
+	viper.SetDefault("backup.schedule", "")
+	viper.SetDefault("backup.count", 0)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
