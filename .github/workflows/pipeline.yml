@@ -39,7 +39,6 @@ jobs:
             echo 'To fix this check, run "make format" and commit the changes'
             exit 1
           fi
-
   go:
     name: Test Go code
     runs-on: ubuntu-latest
@@ -154,6 +153,51 @@ jobs:
             dist
             !dist/*.tar.gz
             !dist/*.zip
+          retention-days: 7
+
+  msi:
+    name: Build and publish MSI files
+    needs: [binaries]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist
+
+      - name: Build MSI
+        run: |
+          sudo apt-get install -y wixl jq
+          
+          NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
+
+          mkdir -p $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
+
+          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
+
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
+
+          # workaround for wixl WixVariable not working to override bmp locations
+          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
+          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
+
+          cd $GITHUB_WORKSPACE/wix/386
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
+
+          cd $GITHUB_WORKSPACE/wix/amd64
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
+          
+          ls -la $GITHUB_WORKSPACE/wix/*.msi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers
+          path: wix/*.msi
           retention-days: 7
 
   docker:
