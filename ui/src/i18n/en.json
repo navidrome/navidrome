@@ -97,7 +97,8 @@
       "fields": {
         "userName": "Username",
         "isAdmin": "Is Admin",
-        "lastLoginAt": "Last Login At",
+        "lastLoginAt": "Last Login",
+        "lastAccessAt": "Last Access",
         "updatedAt": "Updated at",
         "name": "Name",
         "password": "Password",
