@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"math/rand"
 	"os"
 	"time"
@@ -99,5 +100,58 @@ var _ = Describe("database backups", func() {
 			Entry("delete all files", 0, 0),
 			Entry("preserve all files when at length", len(timesDecreasingChronologically), len(timesDecreasingChronologically)),
 			Entry("preserve all files when less than count", 10000, len(timesDecreasingChronologically)))
+	})
+
+	Context("backup and restore", Ordered, func() {
+		var ctx context.Context
+
+		BeforeAll(func() {
+			ctx = context.Background()
+			DeferCleanup(configtest.SetupConfig())
+
+			conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
+
+			close := Init()
+			DeferCleanup(close)
+		})
+
+		BeforeEach(func() {
+			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
+			Expect(err).ToNot(HaveOccurred())
+			conf.Server.Backup.Path = tempFolder
+
+			DeferCleanup(func() {
+				_ = os.RemoveAll(tempFolder)
+			})
+		})
+
+		It("successfully backups the database", func() {
+			path, err := Db().Backup(ctx)
+			Expect(err).To(BeNil())
+
+			backup, err := sql.Open(Driver, path)
+			Expect(err).To(BeNil())
+			Expect(isSchemaEmpty(backup)).To(BeFalse())
+		})
+
+		It("successfully restores the database", func() {
+			path, err := Db().Backup(ctx)
+			Expect(err).To(BeNil())
+
+			// https://stackoverflow.com/questions/525512/drop-all-tables-command
+			_, err = Db().WriteDB().ExecContext(ctx, `
+PRAGMA writable_schema = 1;
+DELETE FROM sqlite_master WHERE type in ('table', 'index', 'trigger');
+PRAGMA writable_schema = 0;
+			`)
+			Expect(err).To(BeNil())
+
+			Expect(isSchemaEmpty(Db().WriteDB())).To(BeTrue())
+
+			err = Db().Restore(ctx, path)
+			Expect(err).To(BeNil())
+
+			Expect(isSchemaEmpty(Db().WriteDB())).To(BeFalse())
+		})
 	})
 })

@@ -32,7 +32,7 @@ type DB interface {
 	WriteDB() *sql.DB
 	Close()
 
-	Backup(ctx context.Context) error
+	Backup(ctx context.Context) (string, error)
 	Prune(ctx context.Context) (int, error)
 	Restore(ctx context.Context, path string) error
 }
@@ -59,9 +59,14 @@ func (d *db) Close() {
 	}
 }
 
-func (d *db) Backup(ctx context.Context) error {
+func (d *db) Backup(ctx context.Context) (string, error) {
 	destPath := backupPath(time.Now())
-	return d.backupOrRestore(ctx, true, destPath)
+	err := d.backupOrRestore(ctx, true, destPath)
+	if err != nil {
+		return "", err
+	}
+
+	return destPath, nil
 }
 
 func (d *db) Prune(ctx context.Context) (int, error) {

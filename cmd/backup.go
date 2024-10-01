@@ -94,13 +94,13 @@ func runBackup(ctx context.Context) {
 
 	database := db.Db()
 	start := time.Now()
-	err := database.Backup(ctx)
+	path, err := database.Backup(ctx)
 	if err != nil {
 		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
 	}
 
 	elapsed := time.Since(start)
-	log.Info("Backup complete", "elapsed", elapsed)
+	log.Info("Backup complete", "elapsed", elapsed, "path", path)
 }
 
 func runPrune(ctx context.Context) {

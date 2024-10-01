@@ -170,13 +170,13 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 		log.Info("Scheduling periodic backup", "schedule", schedule)
 		err := schedulerInstance.Add(schedule, func() {
 			start := time.Now()
-			err := database.Backup(ctx)
+			path, err := database.Backup(ctx)
 			elapsed := time.Since(start)
 			if err != nil {
 				log.Error(ctx, "Error backing up database", "elapsed", elapsed, err)
 				return
 			}
-			log.Info(ctx, "Backup complete", "elapsed", elapsed)
+			log.Info(ctx, "Backup complete", "elapsed", elapsed, "path", path)
 
 			count, err := database.Prune(ctx)
 			if err != nil {
