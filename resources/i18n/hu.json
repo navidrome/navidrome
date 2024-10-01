@@ -98,6 +98,7 @@
                 "userName": "Felhasználónév",
                 "isAdmin": "Admin",
                 "lastLoginAt": "Utolsó belépés",
+                "lastAccessAt": "Utolsó elérés",
                 "updatedAt": "Legutóbb frissítve",
                 "name": "Név",
                 "password": "Jelszó",
