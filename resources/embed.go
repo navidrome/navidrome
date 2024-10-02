@@ -2,31 +2,21 @@ package resources
 
 import (
 	"embed"
-	"io"
 	"io/fs"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/merge"
 )
 
-var (
-	//go:embed *
-	fsys embed.FS
-)
+//go:embed *
+var embedFS embed.FS
 
-func FS() fs.FS {
-	return utils.MergeFS{
-		Base:    fsys,
+var FS = sync.OnceValue(func() fs.FS {
+	return merge.FS{
+		Base:    embedFS,
 		Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
 	}
-}
-
-func Asset(path string) ([]byte, error) {
-	f, err := FS().Open(path)
-	if err != nil {
-		return nil, err
-	}
-	return io.ReadAll(f)
-}
+})

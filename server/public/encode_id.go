@@ -12,17 +12,17 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server"
+	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 func ImageURL(r *http.Request, artID model.ArtworkID, size int) string {
-	link := encodeArtworkID(artID)
-	uri := path.Join(consts.URLPathPublicImages, link)
+	token := encodeArtworkID(artID)
+	uri := path.Join(consts.URLPathPublicImages, token)
 	params := url.Values{}
 	if size > 0 {
 		params.Add("size", strconv.Itoa(size))
 	}
-	return server.AbsoluteURL(r, uri, params)
+	return publicURL(r, uri, params)
 }
 
 func encodeArtworkID(artID model.ArtworkID) string {
@@ -66,6 +66,6 @@ func encodeMediafileShare(s model.Share, id string) string {
 	if s.MaxBitRate != 0 {
 		claims["b"] = s.MaxBitRate
 	}
-	token, _ := auth.CreateExpiringPublicToken(s.ExpiresAt, claims)
+	token, _ := auth.CreateExpiringPublicToken(V(s.ExpiresAt), claims)
 	return token
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
@@ -31,7 +31,8 @@ func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetPlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 	pls, err := api.ds.Playlist(ctx).GetWithTracks(id, true)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, err.Error(), "id", id)
-		return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+		return nil, newError(responses.ErrorDataNotFound, "playlist not found")
 	}
 	if err != nil {
 		log.Error(ctx, err)
@@ -84,9 +85,10 @@ func (api *Router) create(ctx context.Context, playlistId, name string, ids []st
 
 func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	songIds := utils.ParamStrings(r, "songId")
-	playlistId := utils.ParamString(r, "playlistId")
-	name := utils.ParamString(r, "name")
+	p := req.Params(r)
+	songIds, _ := p.Strings("songId")
+	playlistId, _ := p.String("playlistId")
+	name, _ := p.String("name")
 	if playlistId == "" && name == "" {
 		return nil, errors.New("required parameter name is missing")
 	}
@@ -99,7 +101,8 @@ func (api *Router) CreatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 }
 
 func (api *Router) DeletePlaylist(r *http.Request) (*responses.Subsonic, error) {
-	id, err := requiredParamString(r, "id")
+	p := req.Params(r)
+	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
@@ -115,23 +118,23 @@ func (api *Router) DeletePlaylist(r *http.Request) (*responses.Subsonic, error) 
 }
 
 func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) {
-	playlistId, err := requiredParamString(r, "playlistId")
+	p := req.Params(r)
+	playlistId, err := p.String("playlistId")
 	if err != nil {
 		return nil, err
 	}
-	songsToAdd := utils.ParamStrings(r, "songIdToAdd")
-	songIndexesToRemove := utils.ParamInts(r, "songIndexToRemove")
+	songsToAdd, _ := p.Strings("songIdToAdd")
+	songIndexesToRemove, _ := p.Ints("songIndexToRemove")
 	var plsName *string
-	if s, ok := r.URL.Query()["name"]; ok {
-		plsName = &s[0]
+	if s, err := p.String("name"); err == nil {
+		plsName = &s
 	}
 	var comment *string
-	if c, ok := r.URL.Query()["comment"]; ok {
-		comment = &c[0]
+	if s, err := p.String("comment"); err == nil {
+		comment = &s
 	}
 	var public *bool
-	if _, ok := r.URL.Query()["public"]; ok {
-		p := utils.ParamBool(r, "public", false)
+	if p, err := p.Bool("public"); err == nil {
 		public = &p
 	}
 
@@ -147,7 +150,7 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 		return nil, newError(responses.ErrorAuthorizationFail)
 	}
 	if err != nil {
-		log.Error(r, err)
+		log.Error(r, "Error updating playlist", "id", playlistId, err)
 		return nil, err
 	}
 	return newResponse(), nil

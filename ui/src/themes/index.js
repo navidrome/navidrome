@@ -8,6 +8,8 @@ import MonokaiTheme from './monokai'
 import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
 import GruvboxDarkTheme from './gruvboxDark'
+import CatppuccinMacchiatoTheme from './catppuccinMacchiato'
+import NuclearTheme from './nuclear'
 
 export default {
   // Classic default themes
@@ -15,6 +17,7 @@ export default {
   DarkTheme,
 
   // New themes should be added here, in alphabetic order
+  CatppuccinMacchiatoTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
   GreenTheme,
@@ -22,5 +25,6 @@ export default {
   LigeraTheme,
   MonokaiTheme,
   NordTheme,
+  NuclearTheme,
   SpotifyTheme,
 }

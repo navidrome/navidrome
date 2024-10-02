@@ -40,7 +40,9 @@ func (api *Router) GetUsers(r *http.Request) (*responses.Subsonic, error) {
 	user.ScrobblingEnabled = true
 	user.DownloadRole = conf.Server.EnableDownloads
 	user.ShareRole = conf.Server.EnableSharing
-	user.JukeboxRole = conf.Server.Jukebox.Enabled
+	if conf.Server.Jukebox.Enabled {
+		user.JukeboxRole = !conf.Server.Jukebox.AdminOnly || loggedUser.IsAdmin
+	}
 	response := newResponse()
 	response.Users = &responses.Users{User: []responses.User{user}}
 	return response, nil

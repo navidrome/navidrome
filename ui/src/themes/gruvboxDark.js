@@ -1,3 +1,5 @@
+import stylesheet from './gruvboxDark.css.js'
+
 export default {
   themeName: 'Gruvbox Dark',
   palette: {
@@ -99,6 +101,6 @@ export default {
   },
   player: {
     theme: 'dark',
-    stylesheet: require('./gruvboxDark.css.js'),
+    stylesheet,
   },
 }

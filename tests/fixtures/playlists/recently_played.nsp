@@ -1,0 +1,14 @@
+/*
+  Top Level Comment
+*/
+{
+  "name": "Recently Played",
+  "comment": "Recently played tracks",
+  "all": [
+    // This is an inline comment
+    {"inTheLast": {"lastPlayed": 30}}
+  ],
+  "sort": "lastPlayed",
+  "order": "desc",
+  "limit": 100
+}

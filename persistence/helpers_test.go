@@ -23,7 +23,21 @@ var _ = Describe("Helpers", func() {
 			Expect(toSnakeCase("snake_case")).To(Equal("snake_case"))
 		})
 	})
-	Describe("toSqlArgs", func() {
+	Describe("toCamelCase", func() {
+		It("converts snake_case", func() {
+			Expect(toCamelCase("snake_case")).To(Equal("snakeCase"))
+		})
+		It("converts PascalCase", func() {
+			Expect(toCamelCase("PascalCase")).To(Equal("PascalCase"))
+		})
+		It("converts camelCase", func() {
+			Expect(toCamelCase("camelCase")).To(Equal("camelCase"))
+		})
+		It("converts ALLCAPS", func() {
+			Expect(toCamelCase("ALLCAPS")).To(Equal("ALLCAPS"))
+		})
+	})
+	Describe("toSQLArgs", func() {
 		type Embed struct{}
 		type Model struct {
 			Embed     `structs:"-"`
@@ -37,13 +51,16 @@ var _ = Describe("Helpers", func() {
 		It("returns a map with snake_case keys", func() {
 			now := time.Now()
 			m := &Model{ID: "123", AlbumId: "456", CreatedAt: now, UpdatedAt: &now, PlayCount: 2}
-			args, err := toSqlArgs(m)
+			args, err := toSQLArgs(m)
 			Expect(err).To(BeNil())
-			Expect(args).To(HaveKeyWithValue("id", "123"))
-			Expect(args).To(HaveKeyWithValue("album_id", "456"))
-			Expect(args).To(HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)))
-			Expect(args).To(HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)))
-			Expect(args).ToNot(HaveKey("Embed"))
+			Expect(args).To(SatisfyAll(
+				HaveKeyWithValue("id", "123"),
+				HaveKeyWithValue("album_id", "456"),
+				HaveKeyWithValue("play_count", 2),
+				HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)),
+				HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)),
+				Not(HaveKey("Embed")),
+			))
 		})
 	})
 

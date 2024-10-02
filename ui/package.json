@@ -1,20 +1,31 @@
 {
-  "name": "navidrome-ui",
-  "version": "0.1.0",
+  "name": "ui",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "test": "vitest",
+    "test:ci": "vitest --watch=false",
+    "test:coverage": "vitest run --coverage --watch=false",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",
+    "prettier": "prettier --write ./src",
+    "check-formatting": "prettier -c ./src"
+  },
   "dependencies": {
     "@material-ui/core": "^4.11.4",
-    "@material-ui/icons": "^4.11.2",
+    "@material-ui/icons": "^4.11.3",
     "@material-ui/lab": "^4.0.0-alpha.58",
     "@material-ui/styles": "^4.11.5",
     "blueimp-md5": "^2.19.0",
-    "clsx": "^1.1.1",
-    "connected-react-router": "^6.9.1",
-    "deepmerge": "^4.2.2",
+    "clsx": "^2.1.1",
+    "connected-react-router": "^6.9.3",
+    "deepmerge": "^4.3.1",
     "history": "^4.10.1",
     "inflection": "^1.13.1",
-    "jwt-decode": "^3.1.2",
-    "lodash.pick": "^4.4.0",
+    "jwt-decode": "^4.0.0",
     "lodash.throttle": "^4.1.1",
     "navidrome-music-player": "4.25.1",
     "prop-types": "^15.7.2",
@@ -28,64 +39,40 @@
     "react-drag-listview": "^0.1.8",
     "react-ga": "^3.3.1",
     "react-hotkeys": "^2.0.0",
-    "react-icons": "^4.4.0",
+    "react-icons": "^5.3.0",
     "react-image-lightbox": "^5.1.4",
     "react-measure": "^2.5.2",
     "react-redux": "^7.2.9",
     "react-router-dom": "^5.3.4",
     "redux": "^4.2.0",
     "redux-saga": "^1.1.3",
-    "uuid": "^8.3.2"
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^12.1.5",
     "@testing-library/react-hooks": "^7.0.2",
-    "@testing-library/user-event": "^13.5.0",
-    "css-mediaquery": "^0.1.2",
-    "prettier": "2.8.2",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.7.4",
+    "@types/react": "^17.0.2",
+    "@types/react-dom": "^17.0.2",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "@vitejs/plugin-react-swc": "^3.7.1",
+    "@vitest/coverage-v8": "^2.1.1",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "happy-dom": "^15.7.4",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.3.3",
     "ra-test": "^3.19.12",
-    "react-scripts": "5.0.1",
-    "workbox-cli": "^6.3.0"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "lint": "eslint --max-warnings 0 src/*.js src/**/*.js",
-    "prettier": "prettier --write src/*.js src/**/*.js",
-    "check-formatting": "prettier -c src/*.js src/**/*.js",
-    "update-workbox": "bin/update-workbox.sh"
-  },
-  "homepage": ".",
-  "proxy": "http://localhost:4633/",
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ],
-    "overrides": [
-      {
-        "files": [
-          "src/**/index.js",
-          "src/themes/*.js"
-        ],
-        "rules": {
-          "import/no-anonymous-default-export": "off"
-        }
-      }
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "typescript": "^5.1.6",
+    "vite": "^5.4.8",
+    "vite-plugin-pwa": "^0.20.5",
+    "vitest": "^2.1.1"
   }
 }

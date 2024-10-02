@@ -9,7 +9,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils"
+	. "github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
@@ -34,8 +35,8 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 		Description: share.Description,
 		Username:    share.Username,
 		Created:     share.CreatedAt,
-		Expires:     &share.ExpiresAt,
-		LastVisited: share.LastVisitedAt,
+		Expires:     share.ExpiresAt,
+		LastVisited: V(share.LastVisitedAt),
 		VisitCount:  int32(share.VisitCount),
 	}
 	if resp.Description == "" {
@@ -50,18 +51,19 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 }
 
 func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
-	ids := utils.ParamStrings(r, "id")
-	if len(ids) == 0 {
-		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	p := req.Params(r)
+	ids, err := p.Strings("id")
+	if err != nil {
+		return nil, err
 	}
 
-	description := utils.ParamString(r, "description")
-	expires := utils.ParamTime(r, "expires", time.Time{})
+	description, _ := p.String("description")
+	expires := p.TimeOr("expires", time.Time{})
 
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
 		Description: description,
-		ExpiresAt:   expires,
+		ExpiresAt:   &expires,
 		ResourceIDs: strings.Join(ids, ","),
 	}
 
@@ -81,22 +83,23 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
-	id := utils.ParamString(r, "id")
-	if id == "" {
-		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	p := req.Params(r)
+	id, err := p.String("id")
+	if err != nil {
+		return nil, err
 	}
 
-	description := utils.ParamString(r, "description")
-	expires := utils.ParamTime(r, "expires", time.Time{})
+	description, _ := p.String("description")
+	expires := p.TimeOr("expires", time.Time{})
 
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
 		ID:          id,
 		Description: description,
-		ExpiresAt:   expires,
+		ExpiresAt:   &expires,
 	}
 
-	err := repo.(rest.Persistable).Update(id, share)
+	err = repo.(rest.Persistable).Update(id, share)
 	if err != nil {
 		return nil, err
 	}
@@ -105,13 +108,14 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) DeleteShare(r *http.Request) (*responses.Subsonic, error) {
-	id := utils.ParamString(r, "id")
-	if id == "" {
-		return nil, newError(responses.ErrorMissingParameter, "Required id parameter is missing")
+	p := req.Params(r)
+	id, err := p.String("id")
+	if err != nil {
+		return nil, err
 	}
 
 	repo := api.share.NewRepository(r.Context())
-	err := repo.(rest.Persistable).Delete(id)
+	err = repo.(rest.Persistable).Delete(id)
 	if err != nil {
 		return nil, err
 	}

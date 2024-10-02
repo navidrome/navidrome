@@ -1,7 +1,10 @@
 import { CHANGE_GAIN, CHANGE_PREAMP } from '../actions'
 
+const GAIN_KEY = 'gainMode'
+const PREAMP_KEY = 'preAmp'
+
 const getPreAmp = () => {
-  const storage = localStorage.getItem('preamp')
+  const storage = localStorage.getItem(PREAMP_KEY)
 
   if (storage === null) {
     return 0
@@ -12,17 +15,17 @@ const getPreAmp = () => {
 }
 
 const initialState = {
-  gainMode: localStorage.getItem('gainMode') || 'none',
+  gainMode: localStorage.getItem(GAIN_KEY) || 'none',
   preAmp: getPreAmp(),
 }
 
 export const replayGainReducer = (
   previousState = initialState,
-  { type, payload }
+  { type, payload },
 ) => {
   switch (type) {
     case CHANGE_GAIN: {
-      localStorage.setItem('gainMode', payload)
+      localStorage.setItem(GAIN_KEY, payload)
       return {
         ...previousState,
         gainMode: payload,
@@ -33,7 +36,7 @@ export const replayGainReducer = (
       if (isNaN(value)) {
         return previousState
       }
-      localStorage.setItem('preAmp', payload)
+      localStorage.setItem(PREAMP_KEY, payload)
       return {
         ...previousState,
         preAmp: value,

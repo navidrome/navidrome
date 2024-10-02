@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -19,25 +20,29 @@ import (
 	"github.com/navidrome/navidrome/scanner/metadata"
 	_ "github.com/navidrome/navidrome/scanner/metadata/ffmpeg"
 	_ "github.com/navidrome/navidrome/scanner/metadata/taglib"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/pl"
+	"golang.org/x/sync/errgroup"
 )
 
 type TagScanner struct {
-	rootFolder  string
+	// Dependencies
 	ds          model.DataStore
-	plsSync     *playlistImporter
-	cnt         *counters
-	mapper      *mediaFileMapper
+	playlists   core.Playlists
 	cacheWarmer artwork.CacheWarmer
+
+	// Internal state
+	lib    model.Library
+	cnt    *counters
+	mapper *MediaFileMapper
 }
 
-func NewTagScanner(rootFolder string, ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
+func NewTagScanner(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer) FolderScanner {
 	s := &TagScanner{
-		rootFolder:  rootFolder,
-		plsSync:     newPlaylistImporter(ds, playlists, cacheWarmer, rootFolder),
 		ds:          ds,
 		cacheWarmer: cacheWarmer,
+		playlists:   playlists,
 	}
+	metadata.LogExtractors()
 
 	return s
 }
@@ -74,21 +79,23 @@ const (
 // - If the playlist is not in the DB, import it, setting sync = true
 // - If the playlist is in the DB and sync == true, import it, or else skip it
 // Delete all empty albums, delete all empty artists, clean-up playlists
-func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, progress chan uint32) (int64, error) {
+func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool, progress chan uint32) (int64, error) {
 	ctx = auth.WithAdminUser(ctx, s.ds)
 	start := time.Now()
 
-	// Special case: if lastModifiedSince is zero, re-import all files
-	fullScan := lastModifiedSince.IsZero()
-	rootFS := os.DirFS(s.rootFolder)
+	// Update internal copy of Library
+	s.lib = lib
+
+	// Special case: if LastScanAt is zero, re-import all files
+	fullScan = fullScan || s.lib.LastScanAt.IsZero()
 
 	// If the media folder is empty (no music and no subfolders), abort to avoid deleting all data from DB
-	empty, err := isDirEmpty(ctx, rootFS, ".")
+	empty, err := isDirEmpty(ctx, s.lib.Path)
 	if err != nil {
 		return 0, err
 	}
 	if empty && !fullScan {
-		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.rootFolder)
+		log.Error(ctx, "Media Folder is empty. Aborting scan.", "folder", s.lib.Path)
 		return 0, nil
 	}
 
@@ -101,38 +108,46 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 	var changedDirs []string
 	s.cnt = &counters{}
 	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
-	s.mapper = newMediaFileMapper(s.rootFolder, genres)
-	refresher := newRefresher(s.ds, s.cacheWarmer, allFSDirs)
+	s.mapper = NewMediaFileMapper(s.lib.Path, genres)
+	refresher := newRefresher(s.ds, s.cacheWarmer, s.lib, allFSDirs)
 
-	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.rootFolder)
-	foldersFound, walkerError := walkDirTree(ctx, rootFS, s.rootFolder)
+	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.lib.Path)
+	foldersFound, walkerError := walkDirTree(ctx, s.lib.Path)
 
-	for {
-		folderStats, more := <-foldersFound
-		if !more {
-			break
-		}
-		progress <- folderStats.AudioFilesCount
-		allFSDirs[folderStats.Path] = folderStats
+	// Process each folder found in the music folder
+	g, walkCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		for folderStats := range pl.ReadOrDone(walkCtx, foldersFound) {
+			updateProgress(progress, folderStats.AudioFilesCount)
+			allFSDirs[folderStats.Path] = folderStats
 
-		if s.folderHasChanged(folderStats, allDBDirs, lastModifiedSince) {
-			changedDirs = append(changedDirs, folderStats.Path)
-			log.Debug("Processing changed folder", "dir", folderStats.Path)
-			err := s.processChangedDir(ctx, refresher, fullScan, folderStats.Path)
-			if err != nil {
-				log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
+			if s.folderHasChanged(folderStats, allDBDirs, s.lib.LastScanAt) || fullScan {
+				changedDirs = append(changedDirs, folderStats.Path)
+				log.Debug("Processing changed folder", "dir", folderStats.Path)
+				err := s.processChangedDir(walkCtx, refresher, fullScan, folderStats.Path)
+				if err != nil {
+					log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
+				}
 			}
 		}
-	}
-
-	if err := <-walkerError; err != nil {
-		log.Error("Scan was interrupted by error. See errors above", err)
+		return nil
+	})
+	// Check for errors in the walker
+	g.Go(func() error {
+		for err := range walkerError {
+			log.Error("Scan was interrupted by error. See errors above", err)
+			return err
+		}
+		return nil
+	})
+	// Wait for all goroutines to finish, and check if an error occurred
+	if err := g.Wait(); err != nil {
 		return 0, err
 	}
 
 	deletedDirs := s.getDeletedDirs(ctx, allFSDirs, allDBDirs)
 	if len(deletedDirs)+len(changedDirs) == 0 {
-		log.Debug(ctx, "No changes found in Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start))
+		log.Debug(ctx, "No changes found in Music Folder", "folder", s.lib.Path, "elapsed", time.Since(start))
 		return 0, nil
 	}
 
@@ -154,7 +169,8 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 					log.Warn("Playlists will not be imported, as there are no admin users yet, "+
 						"Please create an admin user first, and then update the playlists for them to be imported", "dir", dir)
 				} else {
-					s.cnt.playlists = s.plsSync.processPlaylists(ctx, dir)
+					plsSync := newPlaylistImporter(s.ds, s.playlists, s.cacheWarmer, lib.Path)
+					s.cnt.playlists = plsSync.processPlaylists(ctx, dir)
 				}
 			}
 		}
@@ -162,15 +178,22 @@ func (s *TagScanner) Scan(ctx context.Context, lastModifiedSince time.Time, prog
 		log.Debug("Playlist auto-import is disabled")
 	}
 
-	err = s.ds.GC(log.NewContext(ctx), s.rootFolder)
-	log.Info("Finished processing Music Folder", "folder", s.rootFolder, "elapsed", time.Since(start),
+	err = s.ds.GC(log.NewContext(ctx), s.lib.Path)
+	log.Info("Finished processing Music Folder", "folder", s.lib.Path, "elapsed", time.Since(start),
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 
 	return s.cnt.total(), err
 }
 
-func isDirEmpty(ctx context.Context, rootFS fs.FS, dir string) (bool, error) {
-	children, stats, err := loadDir(ctx, rootFS, dir)
+func updateProgress(progress chan uint32, count uint32) {
+	select {
+	case progress <- count:
+	default: // It is ok to miss a count update
+	}
+}
+
+func isDirEmpty(ctx context.Context, dir string) (bool, error) {
+	children, stats, err := loadDir(ctx, dir)
 	if err != nil {
 		return false, err
 	}
@@ -179,10 +202,10 @@ func isDirEmpty(ctx context.Context, rootFS fs.FS, dir string) (bool, error) {
 
 func (s *TagScanner) getDBDirTree(ctx context.Context) (map[string]struct{}, error) {
 	start := time.Now()
-	log.Trace(ctx, "Loading directory tree from database", "folder", s.rootFolder)
+	log.Trace(ctx, "Loading directory tree from database", "folder", s.lib.Path)
 
 	repo := s.ds.MediaFile(ctx)
-	dirs, err := repo.FindPathsRecursively(s.rootFolder)
+	dirs, err := repo.FindPathsRecursively(s.lib.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -348,12 +371,11 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	currentTracks map[string]model.MediaFile,
 	filesToUpdate []string,
 ) (int, error) {
-	numUpdatedTracks := 0
-
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
+
+	numUpdatedTracks := 0
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
-	chunks := utils.BreakUpStringSlice(filesToUpdate, filesBatchSize)
-	for _, chunk := range chunks {
+	for chunk := range slices.Chunk(filesToUpdate, filesBatchSize) {
 		// Load tracks Metadata from the folder
 		newTracks, err := s.loadTracks(chunk)
 		if err != nil {
@@ -368,6 +390,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 			if t, ok := currentTracks[n.Path]; ok {
 				n.Annotations = t.Annotations
 			}
+			n.LibraryID = s.lib.ID
 			err := s.ds.MediaFile(ctx).Put(&n)
 			if err != nil {
 				return 0, err
@@ -387,7 +410,7 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
-		mf := s.mapper.toMediaFile(md)
+		mf := s.mapper.ToMediaFile(md)
 		mfs = append(mfs, mf)
 	}
 	return mfs, nil

@@ -7,28 +7,27 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
-type mediaFileMapper struct {
+type MediaFileMapper struct {
 	rootFolder string
 	genres     model.GenreRepository
 }
 
-func newMediaFileMapper(rootFolder string, genres model.GenreRepository) *mediaFileMapper {
-	return &mediaFileMapper{
+func NewMediaFileMapper(rootFolder string, genres model.GenreRepository) *MediaFileMapper {
+	return &MediaFileMapper{
 		rootFolder: rootFolder,
 		genres:     genres,
 	}
 }
 
 // TODO Move most of these mapping functions to setters in the model.MediaFile
-func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
+func (s MediaFileMapper) ToMediaFile(md metadata.Tags) model.MediaFile {
 	mf := &model.MediaFile{}
 	mf.ID = s.trackID(md)
 	mf.Year, mf.Date, mf.OriginalYear, mf.OriginalDate, mf.ReleaseYear, mf.ReleaseDate = s.mapDates(md)
@@ -47,6 +46,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.DiscSubtitle = md.DiscSubtitle()
 	mf.Duration = md.Duration()
 	mf.BitRate = md.BitRate()
+	mf.SampleRate = md.SampleRate()
 	mf.Channels = md.Channels()
 	mf.Path = md.FilePath()
 	mf.Suffix = md.Suffix()
@@ -56,10 +56,10 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.SortAlbumName = md.SortAlbum()
 	mf.SortArtistName = md.SortArtist()
 	mf.SortAlbumArtistName = md.SortAlbumArtist()
-	mf.OrderTitle = strings.TrimSpace(sanitize.Accents(mf.Title))
-	mf.OrderAlbumName = sanitizeFieldForSorting(mf.Album)
-	mf.OrderArtistName = sanitizeFieldForSorting(mf.Artist)
-	mf.OrderAlbumArtistName = sanitizeFieldForSorting(mf.AlbumArtist)
+	mf.OrderTitle = str.SanitizeFieldForSorting(mf.Title)
+	mf.OrderAlbumName = str.SanitizeFieldForSortingNoArticle(mf.Album)
+	mf.OrderArtistName = str.SanitizeFieldForSortingNoArticle(mf.Artist)
+	mf.OrderAlbumArtistName = str.SanitizeFieldForSortingNoArticle(mf.AlbumArtist)
 	mf.CatalogNum = md.CatalogNum()
 	mf.MbzRecordingID = md.MbzRecordingID()
 	mf.MbzReleaseTrackID = md.MbzReleaseTrackID()
@@ -68,12 +68,12 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	mf.MbzAlbumArtistID = md.MbzAlbumArtistID()
 	mf.MbzAlbumType = md.MbzAlbumType()
 	mf.MbzAlbumComment = md.MbzAlbumComment()
-	mf.RGAlbumGain = md.RGAlbumGain()
-	mf.RGAlbumPeak = md.RGAlbumPeak()
-	mf.RGTrackGain = md.RGTrackGain()
-	mf.RGTrackPeak = md.RGTrackPeak()
-	mf.Comment = utils.SanitizeText(md.Comment())
-	mf.Lyrics = utils.SanitizeText(md.Lyrics())
+	mf.RgAlbumGain = md.RGAlbumGain()
+	mf.RgAlbumPeak = md.RGAlbumPeak()
+	mf.RgTrackGain = md.RGTrackGain()
+	mf.RgTrackPeak = md.RGTrackPeak()
+	mf.Comment = str.SanitizeText(md.Comment())
+	mf.Lyrics = md.Lyrics()
 	mf.Bpm = md.Bpm()
 	mf.CreatedAt = md.BirthTime()
 	mf.UpdatedAt = md.ModificationTime()
@@ -81,12 +81,7 @@ func (s mediaFileMapper) toMediaFile(md metadata.Tags) model.MediaFile {
 	return *mf
 }
 
-func sanitizeFieldForSorting(originalValue string) string {
-	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return utils.NoArticle(v)
-}
-
-func (s mediaFileMapper) mapTrackTitle(md metadata.Tags) string {
+func (s MediaFileMapper) mapTrackTitle(md metadata.Tags) string {
 	if md.Title() == "" {
 		s := strings.TrimPrefix(md.FilePath(), s.rootFolder+string(os.PathSeparator))
 		e := filepath.Ext(s)
@@ -95,7 +90,7 @@ func (s mediaFileMapper) mapTrackTitle(md metadata.Tags) string {
 	return md.Title()
 }
 
-func (s mediaFileMapper) mapAlbumArtistName(md metadata.Tags) string {
+func (s MediaFileMapper) mapAlbumArtistName(md metadata.Tags) string {
 	switch {
 	case md.AlbumArtist() != "":
 		return md.AlbumArtist()
@@ -108,14 +103,14 @@ func (s mediaFileMapper) mapAlbumArtistName(md metadata.Tags) string {
 	}
 }
 
-func (s mediaFileMapper) mapArtistName(md metadata.Tags) string {
+func (s MediaFileMapper) mapArtistName(md metadata.Tags) string {
 	if md.Artist() != "" {
 		return md.Artist()
 	}
 	return consts.UnknownArtist
 }
 
-func (s mediaFileMapper) mapAlbumName(md metadata.Tags) string {
+func (s MediaFileMapper) mapAlbumName(md metadata.Tags) string {
 	name := md.Album()
 	if name == "" {
 		return consts.UnknownAlbum
@@ -123,11 +118,11 @@ func (s mediaFileMapper) mapAlbumName(md metadata.Tags) string {
 	return name
 }
 
-func (s mediaFileMapper) trackID(md metadata.Tags) string {
+func (s MediaFileMapper) trackID(md metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(md.FilePath())))
 }
 
-func (s mediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {
+func (s MediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {
 	albumPath := strings.ToLower(fmt.Sprintf("%s\\%s", s.mapAlbumArtistName(md), s.mapAlbumName(md)))
 	if !conf.Server.Scanner.GroupAlbumReleases {
 		if len(releaseDate) != 0 {
@@ -137,15 +132,15 @@ func (s mediaFileMapper) albumID(md metadata.Tags, releaseDate string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(albumPath)))
 }
 
-func (s mediaFileMapper) artistID(md metadata.Tags) string {
+func (s MediaFileMapper) artistID(md metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapArtistName(md)))))
 }
 
-func (s mediaFileMapper) albumArtistID(md metadata.Tags) string {
+func (s MediaFileMapper) albumArtistID(md metadata.Tags) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(s.mapAlbumArtistName(md)))))
 }
 
-func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
+func (s MediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	var result model.Genres
 	unique := map[string]struct{}{}
 	var all []string
@@ -174,10 +169,13 @@ func (s mediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	return result[0].Name, result
 }
 
-func (s mediaFileMapper) mapDates(md metadata.Tags) (int, string, int, string, int, string) {
-	year, date := md.Date()
-	originalYear, originalDate := md.OriginalDate()
-	releaseYear, releaseDate := md.ReleaseDate()
+func (s MediaFileMapper) mapDates(md metadata.Tags) (year int, date string,
+	originalYear int, originalDate string,
+	releaseYear int, releaseDate string) {
+	// Start with defaults
+	year, date = md.Date()
+	originalYear, originalDate = md.OriginalDate()
+	releaseYear, releaseDate = md.ReleaseDate()
 
 	// MusicBrainz Picard writes the Release Date of an album to the Date tag, and leaves the Release Date tag empty
 	taggedLikePicard := (originalYear != 0) &&

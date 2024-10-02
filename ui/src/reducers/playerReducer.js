@@ -9,6 +9,7 @@ import {
   PLAYER_SET_TRACK,
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
+  PLAYER_SET_MODE,
 } from '../actions'
 import config from '../config'
 
@@ -20,8 +21,14 @@ const initialState = {
   savedPlayIndex: 0,
 }
 
-const timestampRegex =
-  /(\[([0-9]{1,2}:)?([0-9]{1,2}:)([0-9]{1,2})(\.[0-9]{1,2})?\])/g
+const pad = (value) => {
+  const str = value.toString()
+  if (str.length === 1) {
+    return `0${str}`
+  } else {
+    return str
+  }
+}
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
@@ -40,12 +47,33 @@ const mapToAudioLists = (item) => {
   }
 
   const { lyrics } = item
+  let lyricText = ''
+
+  if (lyrics) {
+    const structured = JSON.parse(lyrics)
+    for (const structuredLyric of structured) {
+      if (structuredLyric.synced) {
+        for (const line of structuredLyric.line) {
+          let time = Math.floor(line.start / 10)
+          const ms = time % 100
+          time = Math.floor(time / 100)
+          const sec = time % 60
+          time = Math.floor(time / 60)
+          const min = time % 60
+
+          ms.toString()
+          lyricText += `[${pad(min)}:${pad(sec)}.${pad(ms)}] ${line.value}\n`
+        }
+      }
+    }
+  }
+
   return {
     trackId,
     uuid: uuidv4(),
     song: item,
     name: item.title,
-    lyric: timestampRegex.test(lyrics) ? lyrics : '',
+    lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
     musicSrc: subsonic.streamUrl(trackId),
@@ -55,7 +83,7 @@ const mapToAudioLists = (item) => {
         updatedAt: item.updatedAt,
         album: item.album,
       },
-      300
+      300,
     ),
   }
 }
@@ -140,7 +168,7 @@ const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
 const reduceCurrent = (state, { data }) => {
   const current = data.ended ? {} : data
   const savedPlayIndex = state.queue.findIndex(
-    (item) => item.uuid === current.uuid
+    (item) => item.uuid === current.uuid,
   )
   return {
     ...state,
@@ -148,6 +176,13 @@ const reduceCurrent = (state, { data }) => {
     playIndex: undefined,
     savedPlayIndex,
     volume: data.volume,
+  }
+}
+
+const reduceMode = (state, { data: { mode } }) => {
+  return {
+    ...state,
+    mode,
   }
 }
 
@@ -170,6 +205,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceSyncQueue(previousState, payload)
     case PLAYER_CURRENT:
       return reduceCurrent(previousState, payload)
+    case PLAYER_SET_MODE:
+      return reduceMode(previousState, payload)
     default:
       return previousState
   }

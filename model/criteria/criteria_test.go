@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -65,7 +66,7 @@ var _ = Describe("Criteria", func() {
 		sql, args, err := goObj.ToSql()
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		gomega.Expect(sql).To(gomega.Equal("(media_file.title LIKE ? AND media_file.title NOT LIKE ? AND (media_file.artist <> ? OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) AND COALESCE(genre.name, '') <> ?))"))
-		gomega.Expect(args).To(gomega.ConsistOf("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "test"))
+		gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "test"))
 	})
 
 	It("marshals to JSON", func() {
@@ -89,4 +90,94 @@ var _ = Describe("Criteria", func() {
 		gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
 	})
 
+	It("extracts all child smart playlist IDs from All expression criteria", func() {
+		topLevelInPlaylistID := uuid.NewString()
+		topLevelNotInPlaylistID := uuid.NewString()
+
+		nestedAnyInPlaylistID := uuid.NewString()
+		nestedAnyNotInPlaylistID := uuid.NewString()
+
+		nestedAllInPlaylistID := uuid.NewString()
+		nestedAllNotInPlaylistID := uuid.NewString()
+
+		goObj := Criteria{
+			Expression: All{
+				InPlaylist{"id": topLevelInPlaylistID},
+				NotInPlaylist{"id": topLevelNotInPlaylistID},
+				Any{
+					InPlaylist{"id": nestedAnyInPlaylistID},
+					NotInPlaylist{"id": nestedAnyNotInPlaylistID},
+				},
+				All{
+					InPlaylist{"id": nestedAllInPlaylistID},
+					NotInPlaylist{"id": nestedAllNotInPlaylistID},
+				},
+			},
+		}
+
+		ids := goObj.ChildPlaylistIds()
+
+		gomega.Expect(ids).To(gomega.ConsistOf(topLevelInPlaylistID, topLevelNotInPlaylistID, nestedAnyInPlaylistID, nestedAnyNotInPlaylistID, nestedAllInPlaylistID, nestedAllNotInPlaylistID))
+	})
+
+	It("extracts all child smart playlist IDs from Any expression criteria", func() {
+		topLevelInPlaylistID := uuid.NewString()
+		topLevelNotInPlaylistID := uuid.NewString()
+
+		nestedAnyInPlaylistID := uuid.NewString()
+		nestedAnyNotInPlaylistID := uuid.NewString()
+
+		nestedAllInPlaylistID := uuid.NewString()
+		nestedAllNotInPlaylistID := uuid.NewString()
+
+		goObj := Criteria{
+			Expression: Any{
+				InPlaylist{"id": topLevelInPlaylistID},
+				NotInPlaylist{"id": topLevelNotInPlaylistID},
+				Any{
+					InPlaylist{"id": nestedAnyInPlaylistID},
+					NotInPlaylist{"id": nestedAnyNotInPlaylistID},
+				},
+				All{
+					InPlaylist{"id": nestedAllInPlaylistID},
+					NotInPlaylist{"id": nestedAllNotInPlaylistID},
+				},
+			},
+		}
+
+		ids := goObj.ChildPlaylistIds()
+
+		gomega.Expect(ids).To(gomega.ConsistOf(topLevelInPlaylistID, topLevelNotInPlaylistID, nestedAnyInPlaylistID, nestedAnyNotInPlaylistID, nestedAllInPlaylistID, nestedAllNotInPlaylistID))
+	})
+
+	It("extracts child smart playlist IDs from deeply nested expression", func() {
+		nestedAnyInPlaylistID := uuid.NewString()
+		nestedAnyNotInPlaylistID := uuid.NewString()
+
+		nestedAllInPlaylistID := uuid.NewString()
+		nestedAllNotInPlaylistID := uuid.NewString()
+
+		goObj := Criteria{
+			Expression: Any{
+				Any{
+					All{
+						Any{
+							InPlaylist{"id": nestedAnyInPlaylistID},
+							NotInPlaylist{"id": nestedAnyNotInPlaylistID},
+							Any{
+								All{
+									InPlaylist{"id": nestedAllInPlaylistID},
+									NotInPlaylist{"id": nestedAllNotInPlaylistID},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		ids := goObj.ChildPlaylistIds()
+
+		gomega.Expect(ids).To(gomega.ConsistOf(nestedAnyInPlaylistID, nestedAnyNotInPlaylistID, nestedAllInPlaylistID, nestedAllNotInPlaylistID))
+	})
 })

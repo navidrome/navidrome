@@ -14,7 +14,7 @@ const useCurrentTheme = () => {
     const themeName =
       Object.keys(themes).find((t) => t === state.theme) ||
       Object.keys(themes).find(
-        (t) => themes[t].themeName === config.defaultTheme
+        (t) => themes[t].themeName === config.defaultTheme,
       ) ||
       'DarkTheme'
     return themes[themeName]

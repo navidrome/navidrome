@@ -6,11 +6,12 @@ package mpv
 // https://mpv.io/manual/master/#properties
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 
-	"github.com/DexterLB/mpvipc"
+	"github.com/dexterlb/mpvipc"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -24,26 +25,26 @@ type MpvTrack struct {
 	CloseCalled   bool
 }
 
-func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
-	log.Debug("loading track", "trackname", mf.Path, "mediatype", mf.ContentType())
+func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
+	log.Debug("Loading track", "trackPath", mf.Path, "mediaType", mf.ContentType())
 
 	if _, err := mpvCommand(); err != nil {
 		return nil, err
 	}
 
-	tmpSocketName := TempFileName("mpv-ctrl-", ".socket")
+	tmpSocketName := socketName("mpv-ctrl-", ".socket")
 
-	args := createMPVCommand(mpvComdTemplate, deviceName, mf.Path, tmpSocketName)
-	exe, err := start(args)
+	args := createMPVCommand(deviceName, mf.Path, tmpSocketName)
+	exe, err := start(ctx, args)
 	if err != nil {
-		log.Error("error starting mpv process", "error", err)
+		log.Error("Error starting mpv process", err)
 		return nil, err
 	}
 
 	// wait for socket to show up
-	err = waitForFile(tmpSocketName, 3*time.Second, 100*time.Millisecond)
+	err = waitForSocket(tmpSocketName, 3*time.Second, 100*time.Millisecond)
 	if err != nil {
-		log.Error("error or timeout waiting for control socket", "socketname", tmpSocketName, "error", err)
+		log.Error("Error or timeout waiting for control socket", "socketname", tmpSocketName, err)
 		return nil, err
 	}
 
@@ -51,7 +52,7 @@ func NewTrack(playbackDoneChannel chan bool, deviceName string, mf model.MediaFi
 	err = conn.Open()
 
 	if err != nil {
-		log.Error("error opening new connection", "error", err)
+		log.Error("Error opening new connection", err)
 		return nil, err
 	}
 
@@ -77,62 +78,57 @@ func (t *MpvTrack) SetVolume(value float32) {
 	// mpv's volume as described in the --volume parameter:
 	// Set the startup volume. 0 means silence, 100 means no volume reduction or amplification.
 	//  Negative values can be passed for compatibility, but are treated as 0.
-	log.Debug("request for gain", "gain", value)
+	log.Debug("Setting volume", "volume", value, "track", t)
 	vol := int(value * 100)
 
 	err := t.Conn.Set("volume", vol)
 	if err != nil {
-		log.Error(err)
+		log.Error("Error setting volume", "volume", value, "track", t, err)
 	}
-	log.Debug("set volume", "volume", vol)
 }
 
 func (t *MpvTrack) Unpause() {
+	log.Debug("Unpausing track", "track", t)
 	err := t.Conn.Set("pause", false)
 	if err != nil {
-		log.Error(err)
+		log.Error("Error unpausing track", "track", t, err)
 	}
-	log.Info("unpaused track")
 }
 
 func (t *MpvTrack) Pause() {
+	log.Debug("Pausing track", "track", t)
 	err := t.Conn.Set("pause", true)
 	if err != nil {
-		log.Error(err)
+		log.Error("Error pausing track", "track", t, err)
 	}
-	log.Info("paused track")
 }
 
 func (t *MpvTrack) Close() {
-	log.Debug("closing resources")
+	log.Debug("Closing resources", "track", t)
 	t.CloseCalled = true
 	// trying to shutdown mpv process using socket
-	if t.isSocketfilePresent() {
+	if t.isSocketFilePresent() {
 		log.Debug("sending shutdown command")
 		_, err := t.Conn.Call("quit")
 		if err != nil {
-			log.Error("error sending quit command to mpv-ipc socket", "error", err)
+			log.Warn("Error sending quit command to mpv-ipc socket", err)
 
 			if t.Exe != nil {
 				log.Debug("cancelling executor")
 				err = t.Exe.Cancel()
 				if err != nil {
-					log.Error("error canceling executor")
+					log.Warn("Error canceling executor", err)
 				}
 			}
 		}
 	}
 
-	if t.isSocketfilePresent() {
-		log.Debug("Removing socketfile", "socketfile", t.IPCSocketName)
-		err := os.Remove(t.IPCSocketName)
-		if err != nil {
-			log.Error("error cleaning up socketfile: ", t.IPCSocketName)
-		}
+	if t.isSocketFilePresent() {
+		removeSocket(t.IPCSocketName)
 	}
 }
 
-func (t *MpvTrack) isSocketfilePresent() bool {
+func (t *MpvTrack) isSocketFilePresent() bool {
 	if len(t.IPCSocketName) < 1 {
 		return false
 	}
@@ -141,69 +137,70 @@ func (t *MpvTrack) isSocketfilePresent() bool {
 	return err == nil && fileInfo != nil && !fileInfo.IsDir()
 }
 
-// Position returns the playback position in seconds
-// every now and then the mpv IPC interface returns "mpv error: property unavailable"
+// Position returns the playback position in seconds.
+// Every now and then the mpv IPC interface returns "mpv error: property unavailable"
 // in this case we have to retry
 func (t *MpvTrack) Position() int {
 	retryCount := 0
 	for {
 		position, err := t.Conn.Get("time-pos")
 		if err != nil && err.Error() == "mpv error: property unavailable" {
-			log.Debug("got the mpv error: property unavailable error, retry ...")
 			retryCount += 1
+			log.Debug("Got mpv error, retrying...", "retries", retryCount, err)
 			if retryCount > 5 {
 				return 0
 			}
-			break
+			time.Sleep(time.Duration(retryCount) * time.Millisecond)
+			continue
 		}
 
 		if err != nil {
-			log.Error("error getting position in track", "error", err)
+			log.Error("Error getting position in track", "track", t, err)
 			return 0
 		}
 
 		pos, ok := position.(float64)
 		if !ok {
-			log.Error("could not cast position from mpv into float64")
+			log.Error("Could not cast position from mpv into float64", "position", position, "track", t)
 			return 0
 		} else {
 			return int(pos)
 		}
 	}
-	return 0
 }
 
 func (t *MpvTrack) SetPosition(offset int) error {
+	log.Debug("Setting position", "offset", offset, "track", t)
 	pos := t.Position()
 	if pos == offset {
-		log.Debug("no position difference, skipping operation")
+		log.Debug("No position difference, skipping operation", "track", t)
 		return nil
 	}
 	err := t.Conn.Set("time-pos", float64(offset))
 	if err != nil {
-		log.Error("could not set the position in track", "offset", offset, "error", err)
+		log.Error("Could not set the position in track", "track", t, "offset", offset, err)
 		return err
 	}
-	log.Info("set position", "offset", offset)
 	return nil
 }
 
 func (t *MpvTrack) IsPlaying() bool {
+	log.Debug("Checking if track is playing", "track", t)
 	pausing, err := t.Conn.Get("pause")
 	if err != nil {
-		log.Error("problem getting paused status", "error", err)
+		log.Error("Problem getting paused status", "track", t, err)
 		return false
 	}
 
 	pause, ok := pausing.(bool)
 	if !ok {
-		log.Error("could not cast pausing to boolean")
+		log.Error("Could not cast pausing to boolean", "track", t, "value", pausing)
 		return false
 	}
 	return !pause
 }
 
-func waitForFile(path string, timeout time.Duration, pause time.Duration) error {
+func waitForSocket(path string, timeout time.Duration, pause time.Duration) error {
 	start := time.Now()
 	end := start.Add(timeout)
 	var retries int = 0
@@ -211,7 +208,7 @@ func waitForFile(path string, timeout time.Duration, pause time.Duration) error 
 	for {
 		fileInfo, err := os.Stat(path)
 		if err == nil && fileInfo != nil && !fileInfo.IsDir() {
-			log.Debug("file found", "retries", retries, "waittime", time.Since(start).Microseconds())
+			log.Debug("Socket found", "retries", retries, "waitTime", time.Since(start))
 			return nil
 		}
 		if time.Now().After(end) {

@@ -12,74 +12,82 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/number"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
 
 type configOptions struct {
-	ConfigFile                   string
-	Address                      string
-	Port                         int
-	MusicFolder                  string
-	DataFolder                   string
-	CacheFolder                  string
-	DbPath                       string
-	LogLevel                     string
-	ScanInterval                 time.Duration
-	ScanSchedule                 string
-	SessionTimeout               time.Duration
-	BaseURL                      string
-	BasePath                     string
-	BaseHost                     string
-	BaseScheme                   string
-	TLSCert                      string
-	TLSKey                       string
-	UILoginBackgroundURL         string
-	UIWelcomeMessage             string
-	MaxSidebarPlaylists          int
-	EnableTranscodingConfig      bool
-	EnableDownloads              bool
-	EnableExternalServices       bool
-	EnableMediaFileCoverArt      bool
-	TranscodingCacheSize         string
-	ImageCacheSize               string
-	EnableArtworkPrecache        bool
-	AutoImportPlaylists          bool
-	PlaylistsPath                string
-	AutoTranscodeDownload        bool
-	DefaultDownsamplingFormat    string
-	SearchFullString             bool
-	RecentlyAddedByModTime       bool
-	IgnoredArticles              string
-	IndexGroups                  string
-	SubsonicArtistParticipations bool
-	FFmpegPath                   string
-	MPVPath                      string
-	CoverArtPriority             string
-	CoverJpegQuality             int
-	ArtistArtPriority            string
-	EnableGravatar               bool
-	EnableFavourites             bool
-	EnableStarRating             bool
-	EnableUserEditing            bool
-	EnableSharing                bool
-	DefaultDownloadableShare     bool
-	DefaultTheme                 string
-	DefaultLanguage              string
-	DefaultUIVolume              int
-	EnableReplayGain             bool
-	EnableCoverAnimation         bool
-	GATrackingID                 string
-	EnableLogRedacting           bool
-	AuthRequestLimit             int
-	AuthWindowLength             time.Duration
-	PasswordEncryptionKey        string
-	ReverseProxyUserHeader       string
-	ReverseProxyWhitelist        string
-	Prometheus                   prometheusOptions
-	Scanner                      scannerOptions
-	Jukebox                      jukeboxOptions
+	ConfigFile                      string
+	Address                         string
+	Port                            int
+	UnixSocketPerm                  string
+	MusicFolder                     string
+	DataFolder                      string
+	CacheFolder                     string
+	DbPath                          string
+	LogLevel                        string
+	ScanInterval                    time.Duration
+	ScanSchedule                    string
+	SessionTimeout                  time.Duration
+	BaseURL                         string
+	BasePath                        string
+	BaseHost                        string
+	BaseScheme                      string
+	TLSCert                         string
+	TLSKey                          string
+	UILoginBackgroundURL            string
+	UIWelcomeMessage                string
+	MaxSidebarPlaylists             int
+	EnableTranscodingConfig         bool
+	EnableDownloads                 bool
+	EnableExternalServices          bool
+	EnableMediaFileCoverArt         bool
+	TranscodingCacheSize            string
+	ImageCacheSize                  string
+	AlbumPlayCountMode              string
+	EnableArtworkPrecache           bool
+	AutoImportPlaylists             bool
+	DefaultPlaylistPublicVisibility bool
+	PlaylistsPath                   string
+	SmartPlaylistRefreshDelay       time.Duration
+	AutoTranscodeDownload           bool
+	DefaultDownsamplingFormat       string
+	SearchFullString                bool
+	RecentlyAddedByModTime          bool
+	PreferSortTags                  bool
+	IgnoredArticles                 string
+	IndexGroups                     string
+	SubsonicArtistParticipations    bool
+	FFmpegPath                      string
+	MPVPath                         string
+	MPVCmdTemplate                  string
+	CoverArtPriority                string
+	CoverJpegQuality                int
+	ArtistArtPriority               string
+	EnableGravatar                  bool
+	EnableFavourites                bool
+	EnableStarRating                bool
+	EnableUserEditing               bool
+	EnableSharing                   bool
+	ShareURL                        string
+	DefaultDownloadableShare        bool
+	DefaultTheme                    string
+	DefaultLanguage                 string
+	DefaultUIVolume                 int
+	EnableReplayGain                bool
+	EnableCoverAnimation            bool
+	GATrackingID                    string
+	EnableLogRedacting              bool
+	AuthRequestLimit                int
+	AuthWindowLength                time.Duration
+	PasswordEncryptionKey           string
+	ReverseProxyUserHeader          string
+	ReverseProxyWhitelist           string
+	HTTPSecurityHeaders             secureOptions
+	Prometheus                      prometheusOptions
+	Scanner                         scannerOptions
+	Jukebox                         jukeboxOptions
+	Backup                          backupOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -93,9 +101,11 @@ type configOptions struct {
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
 	DevActivityPanel                 bool
+	DevActivityPanelUpdateRate       time.Duration
 	DevSidebarPlaylists              bool
 	DevEnableBufferedScrobble        bool
 	DevShowArtistPage                bool
+	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
 	DevArtworkThrottleBacklogTimeout time.Duration
@@ -126,6 +136,10 @@ type listenBrainzOptions struct {
 	BaseURL string
 }
 
+type secureOptions struct {
+	CustomFrameOptionsValue string
+}
+
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
@@ -134,9 +148,16 @@ type prometheusOptions struct {
 type AudioDeviceDefinition []string
 
 type jukeboxOptions struct {
-	Enabled bool
-	Devices []AudioDeviceDefinition
-	Default string
+	Enabled   bool
+	Devices   []AudioDeviceDefinition
+	Default   string
+	AdminOnly bool
+}
+
+type backupOptions struct {
+	Count    int
+	Path     string
+	Schedule string
 }
 
 var (
@@ -180,12 +201,24 @@ func Load() {
 		Server.DbPath = filepath.Join(Server.DataFolder, consts.DefaultDbPath)
 	}
 
+	if Server.Backup.Path != "" {
+		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", "path", Server.Backup.Path, err)
+			os.Exit(1)
+		}
+	}
+
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
 	if err := validateScanSchedule(); err != nil {
+		os.Exit(1)
+	}
+
+	if err := validateBackupSchedule(); err != nil {
 		os.Exit(1)
 	}
 
@@ -203,7 +236,7 @@ func Load() {
 	}
 
 	// Print current configuration if log level is Debug
-	if log.CurrentLevel() >= log.LevelDebug {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
@@ -250,15 +283,35 @@ func validateScanSchedule() error {
 		Server.ScanSchedule = ""
 		return nil
 	}
-	if _, err := time.ParseDuration(Server.ScanSchedule); err == nil {
-		Server.ScanSchedule = "@every " + Server.ScanSchedule
+	var err error
+	Server.ScanSchedule, err = validateSchedule(Server.ScanSchedule, "ScanSchedule")
+	return err
+}
+
+func validateBackupSchedule() error {
+	if Server.Backup.Path == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
+		Server.Backup.Schedule = ""
+		return nil
+	}
+
+	var err error
+	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "BackupSchedule")
+
+	return err
+}
+
+func validateSchedule(schedule, field string) (string, error) {
+	if _, err := time.ParseDuration(schedule); err == nil {
+		schedule = "@every " + schedule
 	}
 	c := cron.New()
-	_, err := c.AddFunc(Server.ScanSchedule, func() {})
+	id, err := c.AddFunc(schedule, func() {})
 	if err != nil {
-		log.Error("Invalid ScanSchedule. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", "schedule", Server.ScanSchedule, err)
+		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", field, err)
+	} else {
+		c.Remove(id)
 	}
-	return err
+	return schedule, err
 }
 
 // AddHook is used to register initialization code that should run as soon as the config is loaded
@@ -273,6 +326,7 @@ func init() {
 	viper.SetDefault("loglevel", "info")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
+	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", -1)
 	viper.SetDefault("scanschedule", "@every 1m")
@@ -285,9 +339,12 @@ func init() {
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
+	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
+	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
+	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablemediafilecoverart", true)
@@ -295,10 +352,13 @@ func init() {
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("recentlyaddedbymodtime", false)
+	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("subsonicartistparticipations", false)
 	viper.SetDefault("ffmpegpath", "")
+	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
+
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
@@ -326,6 +386,7 @@ func init() {
 	viper.SetDefault("jukebox.enabled", false)
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
+	viper.SetDefault("jukebox.adminonly", true)
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
@@ -334,12 +395,18 @@ func init() {
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
-	viper.SetDefault("lastfm.apikey", consts.LastFMAPIKey)
-	viper.SetDefault("lastfm.secret", consts.LastFMAPISecret)
+	viper.SetDefault("lastfm.apikey", "")
+	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
+
+	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
+
+	viper.SetDefault("backup.path", "")
+	viper.SetDefault("backup.schedule", "")
+	viper.SetDefault("backup.count", 0)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
@@ -347,12 +414,15 @@ func init() {
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
+	viper.SetDefault("devactivitypanelupdaterate", 300*time.Millisecond)
 	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
-	viper.SetDefault("devartworkmaxrequests", number.Max(2, runtime.NumCPU()/3))
+	viper.SetDefault("devoffsetoptimize", 50000)
+	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)

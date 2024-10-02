@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -223,7 +224,7 @@ var _ = Describe("serveIndex", func() {
 		serveIndex(ds, fs, nil)(w, r)
 
 		config := extractAppConfig(w.Body.String())
-		expected := strings.ToUpper(strings.Join(consts.LosslessFormats, ","))
+		expected := strings.ToUpper(strings.Join(mime.LosslessFormats, ","))
 		Expect(config).To(HaveKeyWithValue("losslessFormats", expected))
 	})
 
@@ -281,6 +282,8 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	It("sets the lastFMEnabled", func() {
+		conf.Server.LastFM.Enabled = true
+
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
@@ -288,17 +291,6 @@ var _ = Describe("serveIndex", func() {
 
 		config := extractAppConfig(w.Body.String())
 		Expect(config).To(HaveKeyWithValue("lastFMEnabled", true))
-	})
-
-	It("sets the lastFMApiKey", func() {
-		conf.Server.LastFM.ApiKey = "APIKEY-123"
-		r := httptest.NewRequest("GET", "/index.html", nil)
-		w := httptest.NewRecorder()
-
-		serveIndex(ds, fs, nil)(w, r)
-
-		config := extractAppConfig(w.Body.String())
-		Expect(config).To(HaveKeyWithValue("lastFMApiKey", "APIKEY-123"))
 	})
 
 	It("sets the devShowArtistPage", func() {

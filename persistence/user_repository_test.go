@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/deluan/rest"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -19,7 +19,7 @@ var _ = Describe("UserRepository", func() {
 	var repo model.UserRepository
 
 	BeforeEach(func() {
-		repo = NewUserRepository(log.NewContext(context.TODO()), orm.NewOrm())
+		repo = NewUserRepository(log.NewContext(context.TODO()), NewDBXBuilder(db.Db()))
 	})
 
 	Describe("Put/Get/FindByUsername", func() {

@@ -1,0 +1,12 @@
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+  <lyricsList>
+    <structuredLyrics displayArtist="Rick Astley" displayTitle="Never Gonna Give You Up" lang="eng" offset="100" synced="true">
+      <line start="18800">We&#39;re no strangers to love</line>
+      <line start="22801">You know the rules and so do I</line>
+    </structuredLyrics>
+    <structuredLyrics displayArtist="Rick Astley" displayTitle="Never Gonna Give You Up" lang="xxx" offset="100" synced="false">
+      <line>We&#39;re no strangers to love</line>
+      <line>You know the rules and so do I</line>
+    </structuredLyrics>
+  </lyricsList>
+</subsonic-response>

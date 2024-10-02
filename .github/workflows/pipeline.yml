@@ -1,4 +1,4 @@
-name: 'Pipeline: Test, Lint, Build'
+name: "Pipeline: Test, Lint, Build"
 on:
   push:
     branches:
@@ -8,30 +8,27 @@ on:
   pull_request:
     branches:
       - master
+
 jobs:
   go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
+    container: deluan/ci-goreleaser:1.23.0-1
     steps:
-      - name: Install taglib
-        run: sudo apt-get install libtag1-dev
+      - uses: actions/checkout@v4
 
-      - name: Set up Go 1.21
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.21.x
-
-      - uses: actions/checkout@v3
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          problem-matchers: true
           args: --timeout 2m
 
       - name: Install goimports
-        run: go install golang.org/x/tools/cmd/goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
 
       - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
       - run: go mod tidy
@@ -42,25 +39,16 @@ jobs:
             echo 'To fix this check, run "make format" and commit the changes'
             exit 1
           fi
-
   go:
-    name: Test with Go ${{ matrix.go_version }}
+    name: Test Go code
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go_version: [1.21.x,1.20.x]
+    container: deluan/ci-goreleaser:1.23.0-1
     steps:
-      - name: Install taglib
-        run: sudo apt-get install libtag1-dev
-
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Go ${{ matrix.go_version }}
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go_version }}
-          cache: true
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
       - name: Download dependencies
         if: steps.cache-go.outputs.cache-hit != 'true'
@@ -75,14 +63,14 @@ jobs:
     name: Build JS bundle
     runs-on: ubuntu-latest
     env:
-      NODE_OPTIONS: '--max_old_space_size=4096'
+      NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
       - name: npm install dependencies
         run: |
@@ -104,57 +92,112 @@ jobs:
           cd ui
           npm run build
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: js-bundle
           path: ui/build
           retention-days: 7
 
-  binaries:
-    name: Build binaries
-    needs: [js, go, go-lint]
+  i18n-lint:
+    name: Lint i18n files
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -e
+          for file in resources/i18n/*.json; do
+            echo "Validating $file"
+            if ! jq empty "$file" 2>error.log; then
+              error_message=$(cat error.log)
+              line_number=$(echo "$error_message" | grep -oP 'line \K[0-9]+')
+              echo "::error file=$file,line=$line_number::$error_message"
+              exit 1
+            fi
+          done
+
+  binaries:
+    name: Build binaries
+    needs: [js, go, go-lint, i18n-lint]
+    runs-on: ubuntu-latest
+    container: deluan/ci-goreleaser:1.23.0-1
+    steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v3
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
+
+      - uses: actions/download-artifact@v4
         with:
           name: js-bundle
           path: ui/build
 
-      - name: Config /github/workspace folder as trusted
-        uses: docker://deluan/ci-goreleaser:1.21.0-1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: /bin/bash -c "git config --global --add safe.directory /github/workspace;  git describe --dirty --always --tags"
-
       - name: Run GoReleaser - SNAPSHOT
         if: startsWith(github.ref, 'refs/tags/') != true
-        uses: docker://deluan/ci-goreleaser:1.21.0-1
+        run: goreleaser release --clean --skip=publish --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: goreleaser release --rm-dist --skip-publish --snapshot
 
       - name: Run GoReleaser - RELEASE
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker://deluan/ci-goreleaser:1.21.0-1
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: goreleaser release --rm-dist
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: binaries
           path: |
             dist
             !dist/*.tar.gz
             !dist/*.zip
+          retention-days: 7
+
+  msi:
+    name: Build and publish MSI files
+    needs: [binaries]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: dist
+
+      - name: Build MSI
+        run: |
+          sudo apt-get install -y wixl jq
+          
+          NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
+
+          mkdir -p $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
+
+          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
+
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
+
+          # workaround for wixl WixVariable not working to override bmp locations
+          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
+          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
+
+          cd $GITHUB_WORKSPACE/wix/386
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
+
+          cd $GITHUB_WORKSPACE/wix/amd64
+          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
+          
+          ls -la $GITHUB_WORKSPACE/wix/*.msi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers
+          path: wix/*.msi
           retention-days: 7
 
   docker:
@@ -166,18 +209,18 @@ jobs:
     steps:
       - name: Set up QEMU
         id: qemu
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
         if: env.DOCKER_IMAGE != ''
 
       - name: Set up Docker Buildx
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         if: env.DOCKER_IMAGE != ''
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         if: env.DOCKER_IMAGE != ''
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         if: env.DOCKER_IMAGE != ''
         with:
           name: binaries
@@ -185,14 +228,14 @@ jobs:
 
       - name: Login to Docker Hub
         if: env.DOCKER_IMAGE != ''
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Login to GitHub Container Registry
         if: env.DOCKER_IMAGE != ''
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -201,12 +244,12 @@ jobs:
       - name: Extract metadata for Docker
         if: env.DOCKER_IMAGE != ''
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           labels: |
             maintainer=deluan
           images: |
-            name=${{secrets.DOCKER_IMAGE}},enable=${{env.GITHUB_REF_TYPE == 'tag' || github.ref == format('refs/heads/{0}', 'master')}}
+            name=${{secrets.DOCKER_IMAGE}}
             name=ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=pr
@@ -215,7 +258,7 @@ jobs:
 
       - name: Build and Push
         if: env.DOCKER_IMAGE != ''
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: .github/workflows/pipeline.dockerfile

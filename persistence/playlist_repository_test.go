@@ -2,10 +2,13 @@ package persistence
 
 import (
 	"context"
+	"time"
 
-	"github.com/beego/beego/v2/client/orm"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,7 +20,7 @@ var _ = Describe("PlaylistRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, orm.NewOrm())
+		repo = NewPlaylistRepository(ctx, NewDBXBuilder(db.Db()))
 	})
 
 	Describe("Count", func() {
@@ -56,7 +59,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 		It("returns all tracks", func() {
 			pls, err := repo.GetWithTracks(plsBest.ID, true)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal(plsBest.Name))
 			Expect(pls.Tracks).To(HaveLen(2))
 			Expect(pls.Tracks[0].ID).To(Equal("1"))
@@ -107,6 +110,98 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(err).To(BeNil())
 			Expect(all[0].ID).To(Equal(plsBest.ID))
 			Expect(all[1].ID).To(Equal(plsCool.ID))
+		})
+	})
+
+	Context("Smart Playlists", func() {
+		var rules *criteria.Criteria
+		BeforeEach(func() {
+			rules = &criteria.Criteria{
+				Expression: criteria.All{
+					criteria.Contains{"title": "love"},
+				},
+			}
+		})
+		Context("valid rules", func() {
+			Specify("Put/Get", func() {
+				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(Succeed())
+
+				savedPls, err := repo.Get(newPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(savedPls.Rules).To(Equal(rules))
+			})
+		})
+
+		Context("invalid rules", func() {
+			It("fails to Put it in the DB", func() {
+				rules = &criteria.Criteria{
+					// This is invalid because "contains" cannot have multiple fields
+					Expression: criteria.All{
+						criteria.Contains{"genre": "Hardcore", "filetype": "mp3"},
+					},
+				}
+				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(MatchError(ContainSubstring("invalid criteria expression")))
+			})
+		})
+
+		Context("child smart playlists", func() {
+			When("refresh day has expired", func() {
+				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+
+					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					_, err = repo.GetWithTracks(parentPls.ID, true)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Check that the nested playlist was refreshed by parent get by verifying evaluatedAt is updated since first nestedPls get
+					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally(">", *nestedPlsRead.EvaluatedAt))
+				})
+			})
+
+			When("refresh day has not expired", func() {
+				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
+					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+
+					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Rules: rules}
+					Expect(repo.Put(&nestedPls)).To(Succeed())
+
+					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+						Expression: criteria.All{
+							criteria.InPlaylist{"id": nestedPls.ID},
+						},
+					}}
+					Expect(repo.Put(&parentPls)).To(Succeed())
+
+					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					_, err = repo.GetWithTracks(parentPls.ID, true)
+					Expect(err).ToNot(HaveOccurred())
+
+					// Check that the nested playlist was not refreshed by parent get by verifying evaluatedAt is not updated since first nestedPls get
+					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
+				})
+			})
 		})
 	})
 })

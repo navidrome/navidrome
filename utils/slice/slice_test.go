@@ -1,15 +1,19 @@
 package slice_test
 
 import (
+	"os"
+	"slices"
 	"strconv"
 	"testing"
 
+	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func TestSlice(t *testing.T) {
+	tests.Init(t, false)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Slice Suite")
 }
@@ -60,13 +64,57 @@ var _ = Describe("Slice Utils", func() {
 
 	Describe("Move", func() {
 		It("moves item to end of slice", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 0, 2)).To(ConsistOf("2", "3", "1"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 0, 2)).To(HaveExactElements("2", "3", "1"))
 		})
 		It("moves item to beginning of slice", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 2, 0)).To(ConsistOf("3", "1", "2"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 2, 0)).To(HaveExactElements("3", "1", "2"))
 		})
 		It("keeps item in same position if srcIndex == dstIndex", func() {
-			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(ConsistOf("1", "2", "3"))
+			Expect(slice.Move([]string{"1", "2", "3"}, 1, 1)).To(HaveExactElements("1", "2", "3"))
+		})
+	})
+
+	DescribeTable("LinesFrom",
+		func(path string, expected int) {
+			count := 0
+			file, _ := os.Open(path)
+			defer file.Close()
+			for _ = range slice.LinesFrom(file) {
+				count++
+			}
+			Expect(count).To(Equal(expected))
+		},
+		Entry("returns empty slice for an empty input", "tests/fixtures/empty.txt", 0),
+		Entry("returns the lines of a file", "tests/fixtures/playlists/pls1.m3u", 3),
+		Entry("returns empty if file does not exist", "tests/fixtures/NON-EXISTENT", 0),
+	)
+
+	DescribeTable("CollectChunks",
+		func(input []int, n int, expected [][]int) {
+			var result [][]int
+			for chunks := range slice.CollectChunks(slices.Values(input), n) {
+				result = append(result, chunks)
+			}
+			Expect(result).To(Equal(expected))
+		},
+		Entry("returns empty slice (nil) for an empty input", []int{}, 1, nil),
+		Entry("returns the slice in one chunk if len < chunkSize", []int{1, 2, 3}, 10, [][]int{{1, 2, 3}}),
+		Entry("breaks up the slice if len > chunkSize", []int{1, 2, 3, 4, 5}, 3, [][]int{{1, 2, 3}, {4, 5}}),
+	)
+
+	Describe("SeqFunc", func() {
+		It("returns empty slice for an empty input", func() {
+			it := slice.SeqFunc([]int{}, func(v int) int { return v })
+
+			result := slices.Collect(it)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns a new slice with mapped elements", func() {
+			it := slice.SeqFunc([]int{1, 2, 3, 4}, func(v int) string { return strconv.Itoa(v * 2) })
+
+			result := slices.Collect(it)
+			Expect(result).To(ConsistOf("2", "4", "6", "8"))
 		})
 	})
 })

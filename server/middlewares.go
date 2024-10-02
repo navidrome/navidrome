@@ -1,24 +1,28 @@
 package server
 
 import (
+	"cmp"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/navidrome/navidrome/conf"
-	. "github.com/navidrome/navidrome/utils/gg"
-
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/unrolled/secure"
+	"golang.org/x/time/rate"
 )
 
 func requestLogger(next http.Handler) http.Handler {
@@ -42,7 +46,10 @@ func requestLogger(next http.Handler) http.Handler {
 			"httpStatus", ww.Status(),
 			"responseSize", ww.BytesWritten(),
 		}
-		if log.CurrentLevel() >= log.LevelDebug {
+		if log.IsGreaterOrEqualTo(log.LevelTrace) {
+			headers, _ := json.Marshal(r.Header)
+			logArgs = append(logArgs, "header", string(headers))
+		} else if log.IsGreaterOrEqualTo(log.LevelDebug) {
 			logArgs = append(logArgs, "userAgent", r.UserAgent())
 		}
 
@@ -70,7 +77,7 @@ func robotsTXT(fs fs.FS) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasSuffix(r.URL.Path, "/robots.txt") {
 				r.URL.Path = "/robots.txt"
-				http.FileServer(http.FS(fs)).ServeHTTP(w, r)
+				http.FileServerFS(fs).ServeHTTP(w, r)
 			} else {
 				next.ServeHTTP(w, r)
 			}
@@ -97,10 +104,11 @@ func corsHandler() func(http.Handler) http.Handler {
 
 func secureMiddleware() func(http.Handler) http.Handler {
 	sec := secure.New(secure.Options{
-		ContentTypeNosniff: true,
-		FrameDeny:          true,
-		ReferrerPolicy:     "same-origin",
-		PermissionsPolicy:  "autoplay=(), camera=(), microphone=(), usb=()",
+		ContentTypeNosniff:      true,
+		FrameDeny:               true,
+		ReferrerPolicy:          "same-origin",
+		PermissionsPolicy:       "autoplay=(), camera=(), microphone=(), usb=()",
+		CustomFrameOptionsValue: conf.Server.HTTPSecurityHeaders.CustomFrameOptionsValue,
 		//ContentSecurityPolicy: "script-src 'self' 'unsafe-inline'",
 	})
 	return sec.Handler
@@ -116,6 +124,7 @@ func compressMiddleware() func(http.Handler) http.Handler {
 		"text/plain",
 		"text/css",
 		"text/javascript",
+		"text/event-stream",
 	)
 }
 
@@ -135,7 +144,7 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 				HttpOnly: true,
 				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
-				Path:     If(conf.Server.BasePath, "/"),
+				Path:     cmp.Or(conf.Server.BasePath, "/"),
 			}
 			http.SetCookie(w, c)
 		} else {
@@ -157,6 +166,37 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// realIPMiddleware applies middleware.RealIP, and additionally saves the request's original RemoteAddr to the request's
+// context if navidrome is behind a trusted reverse proxy.
+func realIPMiddleware(next http.Handler) http.Handler {
+	if conf.Server.ReverseProxyWhitelist != "" {
+		return chi.Chain(
+			reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr }),
+			middleware.RealIP,
+		).Handler(next)
+	}
+
+	// The middleware is applied without a trusted reverse proxy to support other use-cases such as multiple clients
+	// behind a caching proxy. In this case, navidrome only uses the request's RemoteAddr for logging, so the security
+	// impact of reading the headers from untrusted sources is limited.
+	return middleware.RealIP(next)
+}
+
+// reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
+// can only be set once.
+func reqToCtx(key any, fn func(req *http.Request) any) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Context().Value(key) == nil {
+				ctx := context.WithValue(r.Context(), key, fn(r))
+				r = r.WithContext(ctx)
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // serverAddressMiddleware is a middleware function that modifies the request object
 // to reflect the address of the server handling the request, as determined by the
 // presence of X-Forwarded-* headers or the scheme and host of the request URL.
@@ -175,7 +215,7 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	}
 
-	// Return the new handler function as an http.Handler object.
+	// Return the new handler function as a http.Handler object.
 	return http.HandlerFunc(fn)
 }
 
@@ -210,15 +250,15 @@ func serverAddress(r *http.Request) (scheme, host string) {
 		}
 		xfh = xfh[:i]
 	}
-	host = FirstOr(r.Host, xfh)
+	host = cmp.Or(xfh, r.Host)
 
 	// Determine the protocol and scheme of the request based on the presence of
 	// X-Forwarded-* headers or the scheme of the request URL.
-	scheme = FirstOr(
-		protocol,
+	scheme = cmp.Or(
 		r.Header.Get(xForwardedProto),
 		r.Header.Get(xForwardedScheme),
 		r.URL.Scheme,
+		protocol,
 	)
 
 	// If the request host has changed due to the X-Forwarded-Host header, log a trace
@@ -260,4 +300,43 @@ func URLParamsMiddleware(next http.Handler) http.Handler {
 		// Call the next handler in the chain with the modified request and response.
 		next.ServeHTTP(w, r)
 	})
+}
+
+var userAccessLimiter idLimiterMap
+
+func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			usr, ok := request.UserFrom(ctx)
+			if ok {
+				userAccessLimiter.Do(usr.ID, func() {
+					start := time.Now()
+					ctx, cancel := context.WithTimeout(ctx, time.Second)
+					defer cancel()
+
+					err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
+					if err != nil {
+						log.Warn(ctx, "Could not update user's lastAccessAt", "username", usr.UserName,
+							"elapsed", time.Since(start), err)
+					} else {
+						log.Trace(ctx, "Update user's lastAccessAt", "username", usr.UserName,
+							"elapsed", time.Since(start))
+					}
+				})
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// idLimiterMap is a thread-safe map that stores rate.Sometimes limiters for each user ID.
+// Used to make the map type and thread safe.
+type idLimiterMap struct {
+	sm sync.Map
+}
+
+func (m *idLimiterMap) Do(id string, f func()) {
+	limiter, _ := m.sm.LoadOrStore(id, &rate.Sometimes{Interval: 2 * time.Second})
+	limiter.(*rate.Sometimes).Do(f)
 }

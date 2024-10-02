@@ -1,17 +1,14 @@
-run:
-  go: "1.20"
-
 linters:
   enable:
     - asasalint
     - asciicheck
     - bidichk
     - bodyclose
+    - copyloopvar
     - dogsled
     - durationcheck
     - errcheck
     - errorlint
-    - exportloopref
     - gocyclo
     - goprintffuncname
     - gosec
@@ -28,8 +25,13 @@ linters:
     - unused
     - whitespace
 
-issues:
-  exclude-rules:
-    - linters:
-        - gosec
-      text: "(G501|G401|G505):"
+linters-settings:
+  govet:
+    enable:
+      - nilness
+  gosec:
+    excludes:
+      - G501
+      - G401
+      - G505
+      - G115 # Can't check context, where the warning is clearly a false positive. See discussion in https://github.com/securego/gosec/pull/1149

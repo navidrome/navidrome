@@ -1,14 +1,18 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
+	"runtime"
+	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
-	_ "github.com/navidrome/navidrome/db/migration"
+	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
@@ -18,34 +22,104 @@ var (
 	Path   string
 )
 
-//go:embed migration/*.sql
+//go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-const migrationsFolder = "migration"
+const migrationsFolder = "migrations"
 
-func Db() *sql.DB {
-	return singleton.GetInstance(func() *sql.DB {
+type DB interface {
+	ReadDB() *sql.DB
+	WriteDB() *sql.DB
+	Close()
+
+	Backup(ctx context.Context) (string, error)
+	Prune(ctx context.Context) (int, error)
+	Restore(ctx context.Context, path string) error
+}
+
+type db struct {
+	readDB  *sql.DB
+	writeDB *sql.DB
+}
+
+func (d *db) ReadDB() *sql.DB {
+	return d.readDB
+}
+
+func (d *db) WriteDB() *sql.DB {
+	return d.writeDB
+}
+
+func (d *db) Close() {
+	if err := d.readDB.Close(); err != nil {
+		log.Error("Error closing read DB", err)
+	}
+	if err := d.writeDB.Close(); err != nil {
+		log.Error("Error closing write DB", err)
+	}
+}
+
+func (d *db) Backup(ctx context.Context) (string, error) {
+	destPath := backupPath(time.Now())
+	err := d.backupOrRestore(ctx, true, destPath)
+	if err != nil {
+		return "", err
+	}
+
+	return destPath, nil
+}
+
+func (d *db) Prune(ctx context.Context) (int, error) {
+	return prune(ctx)
+}
+
+func (d *db) Restore(ctx context.Context, path string) error {
+	return d.backupOrRestore(ctx, false, path)
+}
+
+func Db() DB {
+	return singleton.GetInstance(func() *db {
+		sql.Register(Driver+"_custom", &sqlite3.SQLiteDriver{
+			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
+			},
+		})
+
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
 			conf.Server.DbPath = Path
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
-		instance, err := sql.Open(Driver, Path)
+
+		// Create a read database connection
+		rdb, err := sql.Open(Driver+"_custom", Path)
 		if err != nil {
-			panic(err)
+			log.Fatal("Error opening read database", err)
 		}
-		return instance
+		rdb.SetMaxOpenConns(max(4, runtime.NumCPU()))
+
+		// Create a write database connection
+		wdb, err := sql.Open(Driver+"_custom", Path)
+		if err != nil {
+			log.Fatal("Error opening write database", err)
+		}
+		wdb.SetMaxOpenConns(1)
+
+		return &db{
+			readDB:  rdb,
+			writeDB: wdb,
+		}
 	})
 }
 
-func Close() error {
+func Close() {
 	log.Info("Closing Database")
-	return Db().Close()
+	Db().Close()
 }
 
-func Init() {
-	db := Db()
+func Init() func() {
+	db := Db().WriteDB()
 
 	// Disable foreign_keys to allow re-creating tables in migrations
 	_, err := db.Exec("PRAGMA foreign_keys=off")
@@ -60,17 +134,46 @@ func Init() {
 	}
 
 	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
-	goose.SetLogger(gooseLogger)
 	goose.SetBaseFS(embedMigrations)
 
 	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
+	if !isSchemaEmpty(db) && hasPendingMigrations(db, migrationsFolder) {
+		log.Info("Upgrading DB Schema to latest version")
+	}
+	goose.SetLogger(gooseLogger)
 	err = goose.Up(db, migrationsFolder)
 	if err != nil {
 		log.Fatal("Failed to apply new migrations", err)
 	}
+
+	return Close
+}
+
+type statusLogger struct{ numPending int }
+
+func (*statusLogger) Fatalf(format string, v ...interface{}) { log.Fatal(fmt.Sprintf(format, v...)) }
+func (l *statusLogger) Printf(format string, v ...interface{}) {
+	if len(v) < 1 {
+		return
+	}
+	if v0, ok := v[0].(string); !ok {
+		return
+	} else if v0 == "Pending" {
+		l.numPending++
+	}
+}
+
+func hasPendingMigrations(db *sql.DB, folder string) bool {
+	l := &statusLogger{}
+	goose.SetLogger(l)
+	err := goose.Status(db, folder)
+	if err != nil {
+		log.Fatal("Failed to check for pending migrations", err)
+	}
+	return l.numPending > 0
 }
 
 func isSchemaEmpty(db *sql.DB) bool {

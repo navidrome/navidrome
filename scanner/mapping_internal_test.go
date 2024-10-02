@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/scanner/metadata"
 	"github.com/navidrome/navidrome/tests"
@@ -12,11 +11,11 @@ import (
 )
 
 var _ = Describe("mapping", func() {
-	Describe("mediaFileMapper", func() {
-		var mapper *mediaFileMapper
+	Describe("MediaFileMapper", func() {
+		var mapper *MediaFileMapper
 		Describe("mapTrackTitle", func() {
 			BeforeEach(func() {
-				mapper = newMediaFileMapper("/music", nil)
+				mapper = NewMediaFileMapper("/music", nil)
 			})
 			It("returns the Title when it is available", func() {
 				md := metadata.NewTag("/music/artist/album01/Song.mp3", nil, metadata.ParsedTags{"title": []string{"This is not a love song"}})
@@ -37,7 +36,7 @@ var _ = Describe("mapping", func() {
 				ds := &tests.MockDataStore{}
 				gr = ds.Genre(ctx)
 				gr = newCachedGenreRepository(ctx, gr)
-				mapper = newMediaFileMapper("/", gr)
+				mapper = NewMediaFileMapper("/", gr)
 			})
 
 			It("returns empty if no genres are available", func() {
@@ -79,7 +78,7 @@ var _ = Describe("mapping", func() {
 		Describe("mapDates", func() {
 			var md metadata.Tags
 			BeforeEach(func() {
-				mapper = newMediaFileMapper("/", nil)
+				mapper = NewMediaFileMapper("/", nil)
 			})
 			Context("when all date fields are provided", func() {
 				BeforeEach(func() {
@@ -159,21 +158,6 @@ var _ = Describe("mapping", func() {
 					Expect(releaseDate).To(BeEmpty())
 				})
 			})
-		})
-	})
-
-	Describe("sanitizeFieldForSorting", func() {
-		BeforeEach(func() {
-			conf.Server.IgnoredArticles = "The O"
-		})
-		It("sanitize accents", func() {
-			Expect(sanitizeFieldForSorting("Céu")).To(Equal("Ceu"))
-		})
-		It("removes articles", func() {
-			Expect(sanitizeFieldForSorting("The Beatles")).To(Equal("Beatles"))
-		})
-		It("removes accented articles", func() {
-			Expect(sanitizeFieldForSorting("Õ Blésq Blom")).To(Equal("Blesq Blom"))
 		})
 	})
 })

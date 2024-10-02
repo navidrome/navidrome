@@ -1,5 +1,12 @@
 package slice
 
+import (
+	"bufio"
+	"bytes"
+	"io"
+	"iter"
+)
+
 func Map[T any, R any](t []T, mapFunc func(T) R) []R {
 	r := make([]R, len(t))
 	for i, e := range t {
@@ -53,4 +60,71 @@ func Remove[T any](slice []T, index int) []T {
 func Move[T any](slice []T, srcIndex int, dstIndex int) []T {
 	value := slice[srcIndex]
 	return Insert(Remove(slice, srcIndex), value, dstIndex)
+}
+
+// LinesFrom returns a Seq that reads lines from the given reader
+func LinesFrom(reader io.Reader) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		scanner := bufio.NewScanner(reader)
+		scanner.Split(scanLines)
+		for scanner.Scan() {
+			if !yield(scanner.Text()) {
+				return
+			}
+		}
+	}
+}
+
+// From https://stackoverflow.com/a/41433698
+func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexAny(data, "\r\n"); i >= 0 {
+		if data[i] == '\n' {
+			// We have a line terminated by single newline.
+			return i + 1, data[0:i], nil
+		}
+		advance = i + 1
+		if len(data) > i+1 && data[i+1] == '\n' {
+			advance += 1
+		}
+		return advance, data[0:i], nil
+	}
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	if atEOF {
+		return len(data), data, nil
+	}
+	// Request more data.
+	return 0, nil, nil
+}
+
+// CollectChunks collects chunks of n elements from the input sequence and return a Seq of chunks
+func CollectChunks[T any](it iter.Seq[T], n int) iter.Seq[[]T] {
+	return func(yield func([]T) bool) {
+		s := make([]T, 0, n)
+		for x := range it {
+			s = append(s, x)
+			if len(s) >= n {
+				if !yield(s) {
+					return
+				}
+				s = make([]T, 0, n)
+			}
+		}
+		if len(s) > 0 {
+			yield(s)
+		}
+	}
+}
+
+// SeqFunc returns a Seq that iterates over the slice with the given mapping function
+func SeqFunc[I, O any](s []I, f func(I) O) iter.Seq[O] {
+	return func(yield func(O) bool) {
+		for _, x := range s {
+			if !yield(f(x)) {
+				return
+			}
+		}
+	}
 }

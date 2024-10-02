@@ -13,26 +13,19 @@ func TestNumber(t *testing.T) {
 	RunSpecs(t, "Number Suite")
 }
 
-var _ = Describe("Min", func() {
-	It("returns zero value if no arguments are passed", func() {
-		Expect(number.Min[int]()).To(BeZero())
-	})
-	It("returns the smallest int", func() {
-		Expect(number.Min(1, 2)).To(Equal(1))
-	})
-	It("returns the smallest float", func() {
-		Expect(number.Min(-4.1, -4.2, -4.0)).To(Equal(-4.2))
-	})
-})
-
-var _ = Describe("Max", func() {
-	It("returns zero value if no arguments are passed", func() {
-		Expect(number.Max[int]()).To(BeZero())
-	})
-	It("returns the biggest int", func() {
-		Expect(number.Max(1, 2)).To(Equal(2))
-	})
-	It("returns the biggest float", func() {
-		Expect(number.Max(-4.1, -4.2, -4.0)).To(Equal(-4.0))
+var _ = Describe("number package", func() {
+	Describe("ParseInt", func() {
+		It("should parse a string into an int", func() {
+			Expect(number.ParseInt[int64]("123")).To(Equal(int64(123)))
+		})
+		It("should parse a string into an int32", func() {
+			Expect(number.ParseInt[int32]("123")).To(Equal(int32(123)))
+		})
+		It("should parse a string into an int64", func() {
+			Expect(number.ParseInt[int]("123")).To(Equal(123))
+		})
+		It("should parse a string into an uint", func() {
+			Expect(number.ParseInt[uint]("123")).To(Equal(uint(123)))
+		})
 	})
 })

@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/cache"
 )
 
 const (
@@ -47,7 +47,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
-	chc := utils.NewCachedHTTPClient(hc, consts.DefaultHttpClientTimeOut)
+	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
 	l.client = newClient(l.apiKey, l.secret, l.lang, chc)
 	return l
 }
@@ -311,12 +311,14 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 func init() {
 	conf.AddHook(func() {
 		if conf.Server.LastFM.Enabled {
-			agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
-				return lastFMConstructor(ds)
-			})
-			scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-				return lastFMConstructor(ds)
-			})
+			if conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != "" {
+				agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
+					return lastFMConstructor(ds)
+				})
+				scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
+					return lastFMConstructor(ds)
+				})
+			}
 		}
 	})
 }

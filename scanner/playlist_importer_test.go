@@ -59,7 +59,7 @@ var _ = Describe("playlistImporter", func() {
 			conf.Server.PlaylistsPath = "."
 			ps = newPlaylistImporter(ds, pls, cw, "tests/fixtures/playlists")
 
-			Expect(ps.processPlaylists(ctx, "tests/fixtures/playlists")).To(Equal(int64(5)))
+			Expect(ps.processPlaylists(ctx, "tests/fixtures/playlists")).To(Equal(int64(6)))
 			Expect(ps.processPlaylists(ctx, "tests/fixtures/playlists/subfolder1")).To(Equal(int64(0)))
 		})
 
@@ -75,6 +75,15 @@ func (r *mockedMediaFile) FindByPath(s string) (*model.MediaFile, error) {
 		ID:   "123",
 		Path: s,
 	}, nil
+}
+
+func (r *mockedMediaFile) FindByPaths(paths []string) (model.MediaFiles, error) {
+	var mfs model.MediaFiles
+	for _, path := range paths {
+		mf, _ := r.FindByPath(path)
+		mfs = append(mfs, *mf)
+	}
+	return mfs, nil
 }
 
 type mockedPlaylist struct {

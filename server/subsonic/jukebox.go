@@ -1,13 +1,14 @@
 package subsonic
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 const (
@@ -27,18 +28,26 @@ const (
 func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	user := getUser(ctx)
+	p := req.Params(r)
 
-	actionString, err := requiredParamString(r, "action")
+	if !conf.Server.Jukebox.Enabled {
+		return nil, newError(responses.ErrorGeneric, "Jukebox is disabled")
+	}
+
+	if conf.Server.Jukebox.AdminOnly && !user.IsAdmin {
+		return nil, newError(responses.ErrorAuthorizationFail, "Jukebox is admin only")
+	}
+
+	actionString, err := p.String("action")
 	if err != nil {
 		return nil, err
 	}
 
-	pbServer := playback.GetInstance()
-	pb, err := pbServer.GetDeviceForUser(user.UserName)
+	pb, err := api.playback.GetDeviceForUser(user.UserName)
 	if err != nil {
 		return nil, err
 	}
-	log.Debug(fmt.Sprintf("processing action: %s", actionString))
+	log.Info(ctx, "JukeboxControl request received", "action", actionString)
 
 	switch actionString {
 	case ActionGet:
@@ -58,42 +67,26 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionStatus:
 		return createResponse(pb.Status(ctx))
 	case ActionSet:
-		ids, err := requiredParamStrings(r, "id")
-		if err != nil {
-			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
-		}
-		status, err := pb.Set(ctx, ids)
-		if err != nil {
-			return nil, err
-		}
-		return statusResponse(status), nil
+		ids, _ := p.Strings("id")
+		return createResponse(pb.Set(ctx, ids))
 	case ActionStart:
 		return createResponse(pb.Start(ctx))
 	case ActionStop:
 		return createResponse(pb.Stop(ctx))
 	case ActionSkip:
-		index, err := requiredParamInt(r, "index")
+		index, err := p.Int("index")
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter index, err: %s", err)
 		}
-
-		offset, err := requiredParamInt(r, "offset")
-		if err != nil {
-			offset = 0
-		}
-
+		offset := p.IntOr("offset", 0)
 		return createResponse(pb.Skip(ctx, index, offset))
 	case ActionAdd:
-		ids, err := requiredParamStrings(r, "id")
-		if err != nil {
-			return nil, newError(responses.ErrorMissingParameter, "missing parameter id, err: %s", err)
-		}
-
+		ids, _ := p.Strings("id")
 		return createResponse(pb.Add(ctx, ids))
 	case ActionClear:
 		return createResponse(pb.Clear(ctx))
 	case ActionRemove:
-		index, err := requiredParamInt(r, "index")
+		index, err := p.Int("index")
 		if err != nil {
 			return nil, err
 		}
@@ -102,14 +95,14 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 	case ActionShuffle:
 		return createResponse(pb.Shuffle(ctx))
 	case ActionSetGain:
-		gainStr, err := requiredParamString(r, "gain")
+		gainStr, err := p.String("gain")
 		if err != nil {
 			return nil, newError(responses.ErrorMissingParameter, "missing parameter gain, err: %s", err)
 		}
 
 		gain, err := strconv.ParseFloat(gainStr, 32)
 		if err != nil {
-			return nil, newError(responses.ErrorMissingParameter, "error parsing gain integer value, err: %s", err)
+			return nil, newError(responses.ErrorMissingParameter, "error parsing gain float value, err: %s", err)
 		}
 
 		return createResponse(pb.SetGain(ctx, float32(gain)))

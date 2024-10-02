@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -77,6 +78,9 @@ func buildAuthPayload(user *model.User) map[string]interface{} {
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
+	if conf.Server.LastFM.Enabled {
+		payload["lastFMApiKey"] = conf.Server.LastFM.ApiKey
+	}
 
 	bytes := make([]byte, 3)
 	_, err := rand.Read(bytes)
@@ -143,7 +147,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		Email:       "",
 		NewPassword: password,
 		IsAdmin:     true,
-		LastLoginAt: now,
+		LastLoginAt: &now,
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
@@ -196,8 +200,13 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 	if conf.Server.ReverseProxyWhitelist == "" {
 		return ""
 	}
-	if !validateIPAgainstList(r.RemoteAddr, conf.Server.ReverseProxyWhitelist) {
-		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "ip", r.RemoteAddr)
+	reverseProxyIp, ok := request.ReverseProxyIpFrom(r.Context())
+	if !ok {
+		log.Error("ReverseProxyWhitelist enabled but no proxy IP found in request context. Please report this error.")
+		return ""
+	}
+	if !validateIPAgainstList(reverseProxyIp, conf.Server.ReverseProxyWhitelist) {
+		log.Warn(r.Context(), "IP is not whitelisted for reverse proxy login", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
 	username := r.Header.Get(conf.Server.ReverseProxyUserHeader)
@@ -320,6 +329,14 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 		return false
 	}
 
+	cidrs := strings.Split(comaSeparatedList, ",")
+
+	// Per https://github.com/golang/go/issues/49825, the remote address
+	// on a unix socket is '@'
+	if ip == "@" && strings.HasPrefix(conf.Server.Address, "unix:") {
+		return slices.Contains(cidrs, "@")
+	}
+
 	if net.ParseIP(ip) == nil {
 		ip, _, _ = net.SplitHostPort(ip)
 	}
@@ -328,7 +345,6 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 		return false
 	}
 
-	cidrs := strings.Split(comaSeparatedList, ",")
 	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
 
 	if err != nil {

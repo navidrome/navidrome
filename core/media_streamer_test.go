@@ -39,34 +39,34 @@ var _ = Describe("MediaStreamer", func() {
 
 	Context("NewStream", func() {
 		It("returns a seekable stream if format is 'raw'", func() {
-			s, err := streamer.NewStream(ctx, "123", "raw", 0)
+			s, err := streamer.NewStream(ctx, "123", "raw", 0, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
 		It("returns a seekable stream if maxBitRate is 0", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 0)
+			s, err := streamer.NewStream(ctx, "123", "mp3", 0, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
 		It("returns a seekable stream if maxBitRate is higher than file bitRate", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 320)
+			s, err := streamer.NewStream(ctx, "123", "mp3", 320, 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(s.Seekable()).To(BeTrue())
 		})
 		It("returns a NON seekable stream if transcode is required", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 64)
+			s, err := streamer.NewStream(ctx, "123", "mp3", 64, 0)
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeFalse())
 			Expect(s.Duration()).To(Equal(float32(257.0)))
 		})
 		It("returns a seekable stream if the file is complete in the cache", func() {
-			s, err := streamer.NewStream(ctx, "123", "mp3", 32)
+			s, err := streamer.NewStream(ctx, "123", "mp3", 32, 0)
 			Expect(err).To(BeNil())
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
 			Eventually(func() bool { return ffmpeg.IsClosed() }, "3s").Should(BeTrue())
 
-			s, err = streamer.NewStream(ctx, "123", "mp3", 32)
+			s, err = streamer.NewStream(ctx, "123", "mp3", 32, 0)
 			Expect(err).To(BeNil())
 			Expect(s.Seekable()).To(BeTrue())
 		})

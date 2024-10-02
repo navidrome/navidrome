@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
@@ -22,14 +22,16 @@ type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.Handler
 func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	// Add a middleware to capture the playlistId
 	wrapper := func(handler restHandler) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
 			constructor := func(ctx context.Context) rest.Repository {
 				plsRepo := ds.Playlist(ctx)
-				plsId := chi.URLParam(req, "playlistId")
-				return plsRepo.Tracks(plsId, true)
+				plsId := chi.URLParam(r, "playlistId")
+				p := req.Params(r)
+				start := p.Int64Or("_start", 0)
+				return plsRepo.Tracks(plsId, start == 0)
 			}
 
-			handler(constructor).ServeHTTP(res, req)
+			handler(constructor).ServeHTTP(w, r)
 		}
 	}
 
@@ -95,8 +97,9 @@ func handleExportPlaylist(ds model.DataStore) http.HandlerFunc {
 
 func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		playlistId := utils.ParamString(r, ":playlistId")
-		ids := r.URL.Query()["id"]
+		p := req.Params(r)
+		playlistId, _ := p.String(":playlistId")
+		ids, _ := p.Strings("id")
 		err := ds.WithTx(func(tx model.DataStore) error {
 			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId, true)
 			return tracksRepo.Delete(ids...)
@@ -139,7 +142,8 @@ func addToPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		playlistId := utils.ParamString(r, ":playlistId")
+		p := req.Params(r)
+		playlistId, _ := p.String(":playlistId")
 		var payload addTracksPayload
 		err := json.NewDecoder(r.Body).Decode(&payload)
 		if err != nil {
@@ -183,8 +187,9 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		playlistId := utils.ParamString(r, ":playlistId")
-		id := utils.ParamInt(r, ":id", 0)
+		p := req.Params(r)
+		playlistId, _ := p.String(":playlistId")
+		id := p.IntOr(":id", 0)
 		if id == 0 {
 			http.Error(w, "invalid id", http.StatusBadRequest)
 			return

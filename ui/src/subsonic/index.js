@@ -2,10 +2,17 @@ import { baseUrl } from '../utils'
 import { httpClient } from '../dataProvider'
 
 const url = (command, id, options) => {
+  const username = localStorage.getItem('username')
+  const token = localStorage.getItem('subsonic-token')
+  const salt = localStorage.getItem('subsonic-salt')
+  if (!username || !token || !salt) {
+    return ''
+  }
+
   const params = new URLSearchParams()
-  params.append('u', localStorage.getItem('username'))
-  params.append('t', localStorage.getItem('subsonic-token'))
-  params.append('s', localStorage.getItem('subsonic-salt'))
+  params.append('u', username)
+  params.append('t', token)
+  params.append('s', salt)
   params.append('f', 'json')
   params.append('v', '1.8.0')
   params.append('c', 'NavidromeUI')
@@ -27,7 +34,7 @@ const scrobble = (id, time, submission = true) =>
     url('scrobble', id, {
       ...(submission && time && { time }),
       submission,
-    })
+    }),
   )
 
 const nowPlaying = (id) => scrobble(id, null, false)
@@ -45,10 +52,11 @@ const startScan = (options) => httpClient(url('startScan', null, options))
 
 const getScanStatus = () => httpClient(url('getScanStatus'))
 
-const getCoverArtUrl = (record, size) => {
+const getCoverArtUrl = (record, size, square) => {
   const options = {
     ...(record.updatedAt && { _: record.updatedAt }),
     ...(size && { size }),
+    ...(square && { square }),
   }
 
   // TODO Move this logic to server. `song` and `album` should have a CoverArtID
@@ -74,7 +82,7 @@ const streamUrl = (id, options) => {
     url('stream', id, {
       ts: true,
       ...options,
-    })
+    }),
   )
 }
 

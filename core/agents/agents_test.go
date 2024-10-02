@@ -60,7 +60,7 @@ var _ = Describe("Agents", func() {
 		Describe("GetArtistMBID", func() {
 			It("returns on first match", func() {
 				Expect(ag.GetArtistMBID(ctx, "123", "test")).To(Equal("mbid"))
-				Expect(mock.Args).To(ConsistOf("123", "test"))
+				Expect(mock.Args).To(HaveExactElements("123", "test"))
 			})
 			It("returns empty if artist is Various Artists", func() {
 				mbid, err := ag.GetArtistMBID(ctx, consts.VariousArtistsID, consts.VariousArtists)
@@ -78,7 +78,7 @@ var _ = Describe("Agents", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistMBID(ctx, "123", "test")
 				Expect(err).To(MatchError(ErrNotFound))
-				Expect(mock.Args).To(ConsistOf("123", "test"))
+				Expect(mock.Args).To(HaveExactElements("123", "test"))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
@@ -91,7 +91,7 @@ var _ = Describe("Agents", func() {
 		Describe("GetArtistURL", func() {
 			It("returns on first match", func() {
 				Expect(ag.GetArtistURL(ctx, "123", "test", "mb123")).To(Equal("url"))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123"))
 			})
 			It("returns empty if artist is Various Artists", func() {
 				url, err := ag.GetArtistURL(ctx, consts.VariousArtistsID, consts.VariousArtists, "")
@@ -109,7 +109,7 @@ var _ = Describe("Agents", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistURL(ctx, "123", "test", "mb123")
 				Expect(err).To(MatchError(ErrNotFound))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123"))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
@@ -122,7 +122,7 @@ var _ = Describe("Agents", func() {
 		Describe("GetArtistBiography", func() {
 			It("returns on first match", func() {
 				Expect(ag.GetArtistBiography(ctx, "123", "test", "mb123")).To(Equal("bio"))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123"))
 			})
 			It("returns empty if artist is Various Artists", func() {
 				bio, err := ag.GetArtistBiography(ctx, consts.VariousArtistsID, consts.VariousArtists, "")
@@ -140,7 +140,7 @@ var _ = Describe("Agents", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistBiography(ctx, "123", "test", "mb123")
 				Expect(err).To(MatchError(ErrNotFound))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123"))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
@@ -156,13 +156,13 @@ var _ = Describe("Agents", func() {
 					URL:  "imageUrl",
 					Size: 100,
 				}}))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123"))
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistImages(ctx, "123", "test", "mb123")
 				Expect(err).To(MatchError("not found"))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123"))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123"))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
@@ -178,13 +178,13 @@ var _ = Describe("Agents", func() {
 					Name: "Joe Dohn",
 					MBID: "mbid321",
 				}}))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123", 1))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 1))
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetSimilarArtists(ctx, "123", "test", "mb123", 1)
 				Expect(err).To(MatchError(ErrNotFound))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123", 1))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 1))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
@@ -200,13 +200,13 @@ var _ = Describe("Agents", func() {
 					Name: "A Song",
 					MBID: "mbid444",
 				}}))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123", 2))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
-				Expect(mock.Args).To(ConsistOf("123", "test", "mb123", 2))
+				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 2))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()
@@ -236,13 +236,13 @@ var _ = Describe("Agents", func() {
 						},
 					},
 				}))
-				Expect(mock.Args).To(ConsistOf("album", "artist", "mbid"))
+				Expect(mock.Args).To(HaveExactElements("album", "artist", "mbid"))
 			})
 			It("skips the agent if it returns an error", func() {
 				mock.Err = errors.New("error")
 				_, err := ag.GetAlbumInfo(ctx, "album", "artist", "mbid")
 				Expect(err).To(MatchError(ErrNotFound))
-				Expect(mock.Args).To(ConsistOf("album", "artist", "mbid"))
+				Expect(mock.Args).To(HaveExactElements("album", "artist", "mbid"))
 			})
 			It("interrupts if the context is canceled", func() {
 				cancel()

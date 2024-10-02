@@ -19,15 +19,15 @@ func TestSingleton(t *testing.T) {
 
 var _ = Describe("GetInstance", func() {
 	type T struct{ id string }
-	var numInstances int
+	var numInstancesCreated int
 	constructor := func() *T {
-		numInstances++
+		numInstancesCreated++
 		return &T{id: uuid.NewString()}
 	}
 
 	It("calls the constructor to create a new instance", func() {
 		instance := singleton.GetInstance(constructor)
-		Expect(numInstances).To(Equal(1))
+		Expect(numInstancesCreated).To(Equal(1))
 		Expect(instance).To(BeAssignableToTypeOf(&T{}))
 	})
 
@@ -36,49 +36,68 @@ var _ = Describe("GetInstance", func() {
 		newInstance := singleton.GetInstance(constructor)
 
 		Expect(newInstance.id).To(Equal(instance.id))
-		Expect(numInstances).To(Equal(1))
+		Expect(numInstancesCreated).To(Equal(1))
 	})
 
 	It("makes a distinction between a type and its pointer", func() {
 		instance := singleton.GetInstance(constructor)
 		newInstance := singleton.GetInstance(func() T {
-			numInstances++
+			numInstancesCreated++
 			return T{id: uuid.NewString()}
 		})
 
 		Expect(instance).To(BeAssignableToTypeOf(&T{}))
 		Expect(newInstance).To(BeAssignableToTypeOf(T{}))
 		Expect(newInstance.id).ToNot(Equal(instance.id))
-		Expect(numInstances).To(Equal(2))
+		Expect(numInstancesCreated).To(Equal(2))
 	})
 
 	It("only calls the constructor once when called concurrently", func() {
-		const maxCalls = 8000
-		var numCalls int32
+		// This test creates 80000 goroutines that call GetInstance concurrently. If the constructor is called more than once, the test will fail.
+		const numCallsToDo = 80000
+		var numCallsDone atomic.Uint32
+
+		// This WaitGroup is used to make sure all goroutines are ready before the test starts
+		prepare := sync.WaitGroup{}
+		prepare.Add(numCallsToDo)
+
+		// This WaitGroup is used to synchronize the start of all goroutines as simultaneous as possible
 		start := sync.WaitGroup{}
 		start.Add(1)
-		prepare := sync.WaitGroup{}
-		prepare.Add(maxCalls)
+
+		// This WaitGroup is used to wait for all goroutines to be done
 		done := sync.WaitGroup{}
-		done.Add(maxCalls)
-		numInstances = 0
-		for i := 0; i < maxCalls; i++ {
+		done.Add(numCallsToDo)
+
+		numInstancesCreated = 0
+		for i := 0; i < numCallsToDo; i++ {
 			go func() {
+				// This is needed to make sure the test does not hang if it fails
+				defer GinkgoRecover()
+
+				// Wait for all goroutines to be ready
 				start.Wait()
-				singleton.GetInstance(func() struct{ I int } {
-					numInstances++
-					return struct{ I int }{I: 1}
+				instance := singleton.GetInstance(func() struct{ I int } {
+					numInstancesCreated++
+					return struct{ I int }{I: numInstancesCreated}
 				})
-				atomic.AddInt32(&numCalls, 1)
+				// Increment the number of calls done
+				numCallsDone.Add(1)
+
+				// Flag the main WaitGroup that this goroutine is done
 				done.Done()
+
+				// Make sure the instance we get is always the same one
+				Expect(instance.I).To(Equal(1))
 			}()
+			// Flag that this goroutine is ready to start
 			prepare.Done()
 		}
-		prepare.Wait()
-		start.Done()
-		done.Wait()
+		prepare.Wait() // Wait for all goroutines to be ready
+		start.Done()   // Start all goroutines
+		done.Wait()    // Wait for all goroutines to be done
 
-		Expect(numCalls).To(Equal(int32(maxCalls)))
-		Expect(numInstances).To(Equal(1))
+		Expect(numCallsDone.Load()).To(Equal(uint32(numCallsToDo)))
+		Expect(numInstancesCreated).To(Equal(1))
 	})
 })

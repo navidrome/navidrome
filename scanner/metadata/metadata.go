@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -15,17 +16,25 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 type Extractor interface {
 	Parse(files ...string) (map[string]ParsedTags, error)
 	CustomMappings() ParsedTags
+	Version() string
 }
 
 var extractors = map[string]Extractor{}
 
 func RegisterExtractor(id string, parser Extractor) {
 	extractors[id] = parser
+}
+
+func LogExtractors() {
+	for id, p := range extractors {
+		log.Debug("Registered metadata extractor", "id", id, "version", p.Version())
+	}
 }
 
 func Extract(files ...string) (map[string]Tags, error) {
@@ -57,11 +66,37 @@ func Extract(files ...string) (map[string]Tags, error) {
 }
 
 func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
+	for t, values := range tags {
+		values = removeDuplicatesAndEmpty(values)
+		if len(values) == 0 {
+			delete(tags, t)
+			continue
+		}
+		tags[t] = values
+	}
 	return Tags{
 		filePath: filePath,
 		fileInfo: fileInfo,
-		tags:     tags,
+		Tags:     tags,
 	}
+}
+
+func removeDuplicatesAndEmpty(values []string) []string {
+	encountered := map[string]struct{}{}
+	empty := true
+	var result []string
+	for _, v := range values {
+		if _, ok := encountered[v]; ok {
+			continue
+		}
+		encountered[v] = struct{}{}
+		empty = empty && v == ""
+		result = append(result, v)
+	}
+	if empty {
+		return nil
+	}
+	return result
 }
 
 type ParsedTags map[string][]string
@@ -84,7 +119,7 @@ func (p ParsedTags) Map(customMappings ParsedTags) ParsedTags {
 type Tags struct {
 	filePath string
 	fileInfo os.FileInfo
-	tags     ParsedTags
+	Tags     ParsedTags
 }
 
 // Common tags
@@ -95,21 +130,18 @@ func (t Tags) Artist() string { return t.getFirstTagValue("artist", "sort_artist
 func (t Tags) AlbumArtist() string {
 	return t.getFirstTagValue("album_artist", "album artist", "albumartist")
 }
-func (t Tags) SortTitle() string           { return t.getSortTag("", "title", "name") }
-func (t Tags) SortAlbum() string           { return t.getSortTag("", "album") }
-func (t Tags) SortArtist() string          { return t.getSortTag("", "artist") }
+func (t Tags) SortTitle() string           { return t.getSortTag("tsot", "title", "name") }
+func (t Tags) SortAlbum() string           { return t.getSortTag("tsoa", "album") }
+func (t Tags) SortArtist() string          { return t.getSortTag("tsop", "artist") }
 func (t Tags) SortAlbumArtist() string     { return t.getSortTag("tso2", "albumartist", "album_artist") }
 func (t Tags) Genres() []string            { return t.getAllTagValues("genre") }
 func (t Tags) Date() (int, string)         { return t.getDate("date") }
 func (t Tags) OriginalDate() (int, string) { return t.getDate("originaldate") }
 func (t Tags) ReleaseDate() (int, string)  { return t.getDate("releasedate") }
 func (t Tags) Comment() string             { return t.getFirstTagValue("comment") }
-func (t Tags) Lyrics() string {
-	return t.getFirstTagValue("lyrics", "lyrics-eng", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
-}
-func (t Tags) Compilation() bool       { return t.getBool("tcmp", "compilation") }
-func (t Tags) TrackNumber() (int, int) { return t.getTuple("track", "tracknumber") }
-func (t Tags) DiscNumber() (int, int)  { return t.getTuple("disc", "discnumber") }
+func (t Tags) Compilation() bool           { return t.getBool("tcmp", "compilation", "wm/iscompilation") }
+func (t Tags) TrackNumber() (int, int)     { return t.getTuple("track", "tracknumber") }
+func (t Tags) DiscNumber() (int, int)      { return t.getTuple("disc", "discnumber") }
 func (t Tags) DiscSubtitle() string {
 	return t.getFirstTagValue("tsst", "discsubtitle", "setsubtitle")
 }
@@ -140,9 +172,21 @@ func (t Tags) MbzAlbumComment() string {
 	return t.getFirstTagValue("musicbrainz_albumcomment", "musicbrainz album comment")
 }
 
+// Gain Properties
+
+func (t Tags) RGAlbumGain() float64 {
+	return t.getGainValue("replaygain_album_gain", "r128_album_gain")
+}
+func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
+func (t Tags) RGTrackGain() float64 {
+	return t.getGainValue("replaygain_track_gain", "r128_track_gain")
+}
+func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
+
 // File properties
 
 func (t Tags) Duration() float32           { return float32(t.getFloat("duration")) }
+func (t Tags) SampleRate() int             { return t.getInt("samplerate") }
 func (t Tags) BitRate() int                { return t.getInt("bitrate") }
 func (t Tags) Channels() int               { return t.getInt("channels") }
 func (t Tags) ModificationTime() time.Time { return t.fileInfo.ModTime() }
@@ -156,34 +200,83 @@ func (t Tags) BirthTime() time.Time {
 	return time.Now()
 }
 
-// Replaygain Properties
-func (t Tags) RGAlbumGain() float64 { return t.getGainValue("replaygain_album_gain") }
-func (t Tags) RGAlbumPeak() float64 { return t.getPeakValue("replaygain_album_peak") }
-func (t Tags) RGTrackGain() float64 { return t.getGainValue("replaygain_track_gain") }
-func (t Tags) RGTrackPeak() float64 { return t.getPeakValue("replaygain_track_peak") }
+func (t Tags) Lyrics() string {
+	lyricList := model.LyricList{}
+	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
-func (t Tags) getGainValue(tagName string) float64 {
-	// Gain is in the form [-]a.bb dB
-	var tag = t.getFirstTagValue(tagName)
+	for _, value := range basicLyrics {
+		lyrics, err := model.ToLyrics("xxx", value)
+		if err != nil {
+			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+			continue
+		}
 
-	if tag == "" {
-		return 0
+		lyricList = append(lyricList, *lyrics)
 	}
 
-	tag = strings.TrimSpace(strings.Replace(tag, "dB", "", 1))
+	for tag, value := range t.Tags {
+		if strings.HasPrefix(tag, "lyrics-") {
+			language := strings.TrimSpace(strings.TrimPrefix(tag, "lyrics-"))
 
-	var value, err = strconv.ParseFloat(tag, 64)
+			if language == "" {
+				language = "xxx"
+			}
+
+			for _, text := range value {
+				lyrics, err := model.ToLyrics(language, text)
+				if err != nil {
+					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+					continue
+				}
+
+				lyricList = append(lyricList, *lyrics)
+			}
+		}
+	}
+
+	res, err := json.Marshal(lyricList)
 	if err != nil {
-		return 0
+		log.Warn("Unexpected error occurred when serializing lyrics", "file", t.filePath, "error", err)
+		return ""
 	}
-	return value
+	return string(res)
+}
+
+func (t Tags) getGainValue(rgTagName, r128TagName string) float64 {
+	// Check for ReplayGain first
+	// ReplayGain is in the form [-]a.bb dB and normalized to -18dB
+	var tag = t.getFirstTagValue(rgTagName)
+	if tag != "" {
+		tag = strings.TrimSpace(strings.Replace(tag, "dB", "", 1))
+		var value, err = strconv.ParseFloat(tag, 64)
+		if err != nil || value == math.Inf(-1) || value == math.Inf(1) {
+			return 0
+		}
+		return value
+	}
+
+	// If ReplayGain is not found, check for R128 gain
+	// R128 gain is a Q7.8 fixed point number normalized to -23dB
+	tag = t.getFirstTagValue(r128TagName)
+	if tag != "" {
+		var iValue, err = strconv.Atoi(tag)
+		if err != nil {
+			return 0
+		}
+		// Convert Q7.8 to float
+		var value = float64(iValue) / 256.0
+		// Adding 5 dB to normalize with ReplayGain level
+		return value + 5
+	}
+
+	return 0
 }
 
 func (t Tags) getPeakValue(tagName string) float64 {
 	var tag = t.getFirstTagValue(tagName)
 	var value, err = strconv.ParseFloat(tag, 64)
-	if err != nil {
-		// A default of 1 for peak value resulds in no changes
+	if err != nil || value == math.Inf(-1) || value == math.Inf(1) {
+		// A default of 1 for peak value results in no changes
 		return 1
 	}
 	return value
@@ -191,7 +284,7 @@ func (t Tags) getPeakValue(tagName string) float64 {
 
 func (t Tags) getTags(tagNames ...string) []string {
 	for _, tag := range tagNames {
-		if v, ok := t.tags[tag]; ok {
+		if v, ok := t.Tags[tag]; ok {
 			return v
 		}
 	}
@@ -209,7 +302,7 @@ func (t Tags) getFirstTagValue(tagNames ...string) string {
 func (t Tags) getAllTagValues(tagNames ...string) []string {
 	var values []string
 	for _, tag := range tagNames {
-		if v, ok := t.tags[tag]; ok {
+		if v, ok := t.Tags[tag]; ok {
 			values = append(values, v...)
 		}
 	}

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -16,11 +16,12 @@ import (
 
 var _ = Describe("PlayQueueRepository", func() {
 	var repo model.PlayQueueRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "user1", UserName: "user1", IsAdmin: true})
-		repo = NewPlayQueueRepository(ctx, orm.NewOrm())
+		ctx = log.NewContext(context.TODO())
+		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		repo = NewPlayQueueRepository(ctx, NewDBXBuilder(db.Db()))
 	})
 
 	Describe("PlayQueues", func() {
@@ -32,24 +33,55 @@ var _ = Describe("PlayQueueRepository", func() {
 		It("stores and retrieves the playqueue for the user", func() {
 			By("Storing a playqueue for the user")
 
-			expected := aPlayQueue("user1", songDayInALife.ID, 123, songComeTogether, songDayInALife)
-			Expect(repo.Store(expected)).To(BeNil())
+			expected := aPlayQueue("userid", songDayInALife.ID, 123, songComeTogether, songDayInALife)
+			Expect(repo.Store(expected)).To(Succeed())
 
-			actual, err := repo.Retrieve("user1")
-			Expect(err).To(BeNil())
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
 
 			AssertPlayQueue(expected, actual)
 
 			By("Storing a new playqueue for the same user")
 
-			another := aPlayQueue("user1", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
-			Expect(repo.Store(another)).To(BeNil())
+			another := aPlayQueue("userid", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
+			Expect(repo.Store(another)).To(Succeed())
 
-			actual, err = repo.Retrieve("user1")
-			Expect(err).To(BeNil())
+			actual, err = repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
 
 			AssertPlayQueue(another, actual)
-			Expect(countPlayQueues(repo, "user1")).To(Equal(1))
+			Expect(countPlayQueues(repo, "userid")).To(Equal(1))
+		})
+
+		It("does not return tracks if they don't exist in the DB", func() {
+			// Add a new song to the DB
+			newSong := songRadioactivity
+			newSong.ID = "temp-track"
+			mfRepo := NewMediaFileRepository(ctx, NewDBXBuilder(db.Db()))
+
+			Expect(mfRepo.Put(&newSong)).To(Succeed())
+
+			// Create a playqueue with the new song
+			pq := aPlayQueue("userid", newSong.ID, 0, newSong, songAntenna)
+			Expect(repo.Store(pq)).To(Succeed())
+
+			// Retrieve the playqueue
+			actual, err := repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+
+			// The playqueue should contain both tracks
+			AssertPlayQueue(pq, actual)
+
+			// Delete the new song
+			Expect(mfRepo.Delete("temp-track")).To(Succeed())
+
+			// Retrieve the playqueue
+			actual, err = repo.Retrieve("userid")
+			Expect(err).ToNot(HaveOccurred())
+
+			// The playqueue should not contain the deleted track
+			Expect(actual.Items).To(HaveLen(1))
+			Expect(actual.Items[0].ID).To(Equal(songAntenna.ID))
 		})
 	})
 })
