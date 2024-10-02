@@ -7,12 +7,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"golang.org/x/time/rate"
 )
 
 type Scanner interface {
@@ -35,7 +37,7 @@ var (
 
 type FolderScanner interface {
 	// Scan process finds any changes after `lastModifiedSince` and returns the number of changes found
-	Scan(ctx context.Context, fullRescan bool, progress chan uint32) (int64, error)
+	Scan(ctx context.Context, lib model.Library, fullRescan bool, progress chan uint32) (int64, error)
 }
 
 var isScanning sync.Mutex
@@ -98,7 +100,7 @@ func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) e
 	progress, cancel := s.startProgressTracker(library)
 	defer cancel()
 
-	changeCount, err := folderScanner.Scan(ctx, fullRescan, progress)
+	changeCount, err := folderScanner.Scan(ctx, lib, fullRescan, progress)
 	if err != nil {
 		log.Error("Error scanning Library", "folder", library, err)
 	}
@@ -117,7 +119,8 @@ func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) e
 func (s *scanner) startProgressTracker(library string) (chan uint32, context.CancelFunc) {
 	// Must be a new context (not the one passed to the scan method) to allow broadcasting the scan status to all clients
 	ctx, cancel := context.WithCancel(context.Background())
-	progress := make(chan uint32, 100)
+	progress := make(chan uint32, 1000)
+	limiter := rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate}
 	go func() {
 		s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 		defer func() {
@@ -138,10 +141,12 @@ func (s *scanner) startProgressTracker(library string) (chan uint32, context.Can
 					continue
 				}
 				totalFolders, totalFiles := s.incStatusCounter(library, count)
-				s.broker.SendMessage(ctx, &events.ScanStatus{
-					Scanning:    true,
-					Count:       int64(totalFiles),
-					FolderCount: int64(totalFolders),
+				limiter.Do(func() {
+					s.broker.SendMessage(ctx, &events.ScanStatus{
+						Scanning:    true,
+						Count:       int64(totalFiles),
+						FolderCount: int64(totalFolders),
+					})
 				})
 			}
 		}
@@ -241,7 +246,7 @@ func (s *scanner) loadFolders() {
 	libs, _ := s.ds.Library(ctx).GetAll()
 	for _, lib := range libs {
 		log.Info("Configuring Media Folder", "name", lib.Name, "path", lib.Path)
-		s.folders[lib.Path] = s.newScanner(lib)
+		s.folders[lib.Path] = s.newScanner()
 		s.libs[lib.Path] = lib
 		s.status[lib.Path] = &scanStatus{
 			active:      false,
@@ -252,6 +257,6 @@ func (s *scanner) loadFolders() {
 	}
 }
 
-func (s *scanner) newScanner(f model.Library) FolderScanner {
-	return NewTagScanner(f, s.ds, s.pls, s.cacheWarmer)
+func (s *scanner) newScanner() FolderScanner {
+	return NewTagScanner(s.ds, s.pls, s.cacheWarmer)
 }

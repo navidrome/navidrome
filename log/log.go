@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type Level uint8
+type Level uint32
 
 type LevelFunc = func(ctx interface{}, msg interface{}, keyValuePairs ...interface{})
 

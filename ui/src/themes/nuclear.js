@@ -1,3 +1,5 @@
+import stylesheet from './nuclear.css.js'
+
 const nukeCol = {
   primary: '#1d2021',
   secondary: '#282828',
@@ -5,7 +7,7 @@ const nukeCol = {
   text: '#ebdbb2',
   textAlt: '#bdae93',
   icon: '#b8bb26',
-  link: '#c22817',
+  link: '#c44129',
   border: '#a89984',
 }
 
@@ -181,12 +183,10 @@ export default {
       systemNameLink: {
         color: nukeCol['text'],
       },
-      icon: {},
       card: {
         minWidth: 300,
-        backgroundColor: nukeCol['text'],
+        backgroundColor: nukeCol['secondary'],
       },
-      avatar: {},
       button: {
         boxShadow: '3px 3px 5px #000000a3',
       },
@@ -200,6 +200,6 @@ export default {
   },
   player: {
     theme: 'dark',
-    stylesheet: require('./nuclear.css.js'),
+    stylesheet,
   },
 }

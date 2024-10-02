@@ -119,14 +119,6 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				return
 			}
 
-			// TODO: Find a way to update LastAccessAt without causing too much retention in the DB
-			//go func() {
-			//	err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
-			//	if err != nil {
-			//		log.Error(ctx, "Could not update user's lastAccessAt", "user", usr.UserName)
-			//	}
-			//}()
-
 			ctx = request.WithUser(ctx, *usr)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

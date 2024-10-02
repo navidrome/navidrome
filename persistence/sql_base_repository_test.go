@@ -1,18 +1,30 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/hasher"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("sqlRepository", func() {
-	r := sqlRepository{}
+	var r sqlRepository
+	BeforeEach(func() {
+		r.ctx = request.WithUser(context.Background(), model.User{ID: "user-id"})
+		r.tableName = "table"
+	})
+
 	Describe("applyOptions", func() {
 		var sq squirrel.SelectBuilder
 		BeforeEach(func() {
 			sq = squirrel.Select("*").From("test")
+			r.sortMappings = map[string]string{
+				"name": "title",
+			}
 		})
 		It("does not add any clauses when options is empty", func() {
 			sq = r.applyOptions(sq, model.QueryOptions{})
@@ -27,17 +39,11 @@ var _ = Describe("sqlRepository", func() {
 				Offset: 2,
 			})
 			sql, _, _ := sq.ToSql()
-			Expect(sql).To(Equal("SELECT * FROM test ORDER BY name desc LIMIT 1 OFFSET 2"))
+			Expect(sql).To(Equal("SELECT * FROM test ORDER BY title desc LIMIT 1 OFFSET 2"))
 		})
 	})
 
 	Describe("toSQL", func() {
-		var r sqlRepository
-
-		BeforeEach(func() {
-			r = sqlRepository{}
-		})
-
 		It("returns error for invalid SQL", func() {
 			sq := squirrel.Select("*").From("test").Where(1)
 			_, _, err := r.toSQL(sq)
@@ -70,40 +76,61 @@ var _ = Describe("sqlRepository", func() {
 		})
 	})
 
-	Describe("sortMapping", func() {
+	Describe("sanitizeSort", func() {
 		BeforeEach(func() {
+			r.registerModel(&struct {
+				Field string `structs:"field"`
+			}{}, nil)
 			r.sortMappings = map[string]string{
-				"sort1":      "mappedSort1",
-				"sortTwo":    "mappedSort2",
-				"sort_three": "mappedSort3",
+				"sort1": "mappedSort1",
 			}
 		})
 
-		It("returns the mapped value when sort key exists", func() {
-			Expect(r.sortMapping("sort1")).To(Equal("mappedSort1"))
-		})
+		When("sanitizing sort", func() {
+			It("returns empty if the sort key is not found in the model nor in the mappings", func() {
+				sort, _ := r.sanitizeSort("unknown", "")
+				Expect(sort).To(BeEmpty())
+			})
 
-		Context("when sort key does not exist", func() {
-			It("returns the original sort key, snake cased", func() {
-				Expect(r.sortMapping("NotFoundSort")).To(Equal("not_found_sort"))
+			It("returns the mapped value when sort key exists", func() {
+				sort, _ := r.sanitizeSort("sort1", "")
+				Expect(sort).To(Equal("mappedSort1"))
+			})
+
+			It("is case insensitive", func() {
+				sort, _ := r.sanitizeSort("Sort1", "")
+				Expect(sort).To(Equal("mappedSort1"))
+			})
+
+			It("returns the field if it is a valid field", func() {
+				sort, _ := r.sanitizeSort("field", "")
+				Expect(sort).To(Equal("field"))
+			})
+
+			It("is case insensitive for fields", func() {
+				sort, _ := r.sanitizeSort("FIELD", "")
+				Expect(sort).To(Equal("field"))
 			})
 		})
+		When("sanitizing order", func() {
+			It("returns 'asc' if order is empty", func() {
+				_, order := r.sanitizeSort("", "")
+				Expect(order).To(Equal(""))
+			})
 
-		Context("when sort key is camel cased", func() {
-			It("returns the mapped value when camel case sort key exists", func() {
-				Expect(r.sortMapping("sortTwo")).To(Equal("mappedSort2"))
+			It("returns 'asc' if order is 'asc'", func() {
+				_, order := r.sanitizeSort("", "ASC")
+				Expect(order).To(Equal("asc"))
 			})
-			It("returns the mapped value when passing a snake case key", func() {
-				Expect(r.sortMapping("sort_two")).To(Equal("mappedSort2"))
-			})
-		})
 
-		Context("when sort key is snake cased", func() {
-			It("returns the mapped value when snake case sort key exists", func() {
-				Expect(r.sortMapping("sort_three")).To(Equal("mappedSort3"))
+			It("returns 'desc' if order is 'desc'", func() {
+				_, order := r.sanitizeSort("", "desc")
+				Expect(order).To(Equal("desc"))
 			})
-			It("returns the mapped value when passing a camel case key", func() {
-				Expect(r.sortMapping("sortThree")).To(Equal("mappedSort3"))
+
+			It("returns 'asc' if order is unknown", func() {
+				_, order := r.sanitizeSort("", "something")
+				Expect(order).To(Equal("asc"))
 			})
 		})
 	})
@@ -150,6 +177,38 @@ var _ = Describe("sqlRepository", func() {
 				sql := r.buildSortOrder("name desc, coalesce(nullif(release_date, ''), nullif(original_date, '')), status asc", "desc")
 				Expect(sql).To(Equal("name asc, coalesce(nullif(release_date, ''), nullif(original_date, '')) desc, status desc"))
 			})
+		})
+	})
+
+	Describe("resetSeededRandom", func() {
+		var id string
+		BeforeEach(func() {
+			id = r.seedKey()
+			hasher.SetSeed(id, "")
+		})
+		It("does not reset seed if sort is not random", func() {
+			var options []model.QueryOptions
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(BeEmpty())
+		})
+		It("resets seed if sort is random", func() {
+			options := []model.QueryOptions{{Sort: "random"}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).NotTo(BeEmpty())
+		})
+		It("resets seed if sort is random and seed is provided", func() {
+			options := []model.QueryOptions{{Sort: "random", Seed: "seed"}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
+		})
+		It("keeps seed when paginating", func() {
+			options := []model.QueryOptions{{Sort: "random", Seed: "seed", Offset: 0}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
+
+			options = []model.QueryOptions{{Sort: "random", Offset: 1}}
+			r.resetSeededRandom(options)
+			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 	})
 })

@@ -34,7 +34,7 @@ var _ = Describe("walk_dir_tree", func() {
 			Expect(collected[baseDir]).To(MatchFields(IgnoreExtras, Fields{
 				"Images":          BeEmpty(),
 				"HasPlaylist":     BeFalse(),
-				"AudioFilesCount": BeNumerically("==", 13),
+				"AudioFilesCount": BeNumerically("==", 12),
 			}))
 			Expect(collected[filepath.Join(baseDir, "artist", "an-album")]).To(MatchFields(IgnoreExtras, Fields{
 				"Images":          ConsistOf("cover.jpg", "front.png", "artist.png"),
@@ -82,9 +82,13 @@ var _ = Describe("walk_dir_tree", func() {
 			dirEntry := getDirEntry(baseDir, "...unhidden_folder")
 			Expect(isDirIgnored(baseDir, dirEntry)).To(BeFalse())
 		})
-		It("returns false when folder name is $Recycle.Bin", func() {
+		It("returns true when folder name is $Recycle.Bin", func() {
 			dirEntry := getDirEntry(baseDir, "$Recycle.Bin")
-			Expect(isDirIgnored(baseDir, dirEntry)).To(BeFalse())
+			Expect(isDirIgnored(baseDir, dirEntry)).To(BeTrue())
+		})
+		It("returns true when folder name is #snapshot", func() {
+			dirEntry := getDirEntry(baseDir, "#snapshot")
+			Expect(isDirIgnored(baseDir, dirEntry)).To(BeTrue())
 		})
 	})
 

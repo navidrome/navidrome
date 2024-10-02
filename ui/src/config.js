@@ -22,6 +22,7 @@ const defaultConfig = {
   defaultUIVolume: 100,
   enableUserEditing: true,
   enableSharing: true,
+  shareURL: '',
   defaultDownloadableShare: true,
   devSidebarPlaylists: true,
   lastFMEnabled: true,

@@ -11,7 +11,8 @@ import (
 	"github.com/navidrome/navidrome/conf"
 )
 
-var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[\\(\\{\\]\\)\\}]")
+var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[({\\])}]")
+var slashRemover = strings.NewReplacer("\\", " ", "/", " ")
 
 func SanitizeStrings(text ...string) string {
 	sanitizedText := strings.Builder{}
@@ -25,6 +26,7 @@ func SanitizeStrings(text ...string) string {
 	var fullText []string
 	for w := range words {
 		w = quotesRegex.ReplaceAllString(w, "")
+		w = slashRemover.Replace(w)
 		if w != "" {
 			fullText = append(fullText, w)
 		}
