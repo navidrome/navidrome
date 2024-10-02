@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -13,7 +14,6 @@ import (
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
-	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
 
@@ -77,41 +77,39 @@ func (d *db) Restore(ctx context.Context, path string) error {
 	return d.backupOrRestore(ctx, false, path)
 }
 
-func Db() DB {
-	return singleton.GetInstance(func() *db {
-		sql.Register(Driver+"_custom", &sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
-			},
-		})
-
-		Path = conf.Server.DbPath
-		if Path == ":memory:" {
-			Path = "file::memory:?cache=shared&_journal_mode=WAL&_foreign_keys=on"
-			conf.Server.DbPath = Path
-		}
-		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
-
-		// Create a read database connection
-		rdb, err := sql.Open(Driver+"_custom", Path)
-		if err != nil {
-			log.Fatal("Error opening read database", err)
-		}
-		rdb.SetMaxOpenConns(max(4, runtime.NumCPU()))
-
-		// Create a write database connection
-		wdb, err := sql.Open(Driver+"_custom", Path)
-		if err != nil {
-			log.Fatal("Error opening write database", err)
-		}
-		wdb.SetMaxOpenConns(1)
-
-		return &db{
-			readDB:  rdb,
-			writeDB: wdb,
-		}
+var Db = sync.OnceValue(func() DB {
+	sql.Register(Driver+"_custom", &sqlite3.SQLiteDriver{
+		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+			return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
+		},
 	})
-}
+
+	Path = conf.Server.DbPath
+	if Path == ":memory:" {
+		Path = "file::memory:?cache=shared&_journal_mode=WAL&_foreign_keys=on"
+		conf.Server.DbPath = Path
+	}
+	log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
+
+	// Create a read database connection
+	rdb, err := sql.Open(Driver+"_custom", Path)
+	if err != nil {
+		log.Fatal("Error opening read database", err)
+	}
+	rdb.SetMaxOpenConns(max(4, runtime.NumCPU()))
+
+	// Create a write database connection
+	wdb, err := sql.Open(Driver+"_custom", Path)
+	if err != nil {
+		log.Fatal("Error opening write database", err)
+	}
+	wdb.SetMaxOpenConns(1)
+
+	return &db{
+		readDB:  rdb,
+		writeDB: wdb,
+	}
+})
 
 func Close() {
 	log.Info("Closing Database")
@@ -133,14 +131,14 @@ func Init() func() {
 		log.Error("Error disabling foreign_keys", err)
 	}
 
-	gooseLogger := &logAdapter{silent: IsSchemaEmpty(db)}
+	gooseLogger := &logAdapter{silent: isSchemaEmpty(db)}
 	goose.SetBaseFS(embedMigrations)
 
 	err = goose.SetDialect(Driver)
 	if err != nil {
 		log.Fatal("Invalid DB driver", "driver", Driver, err)
 	}
-	if !IsSchemaEmpty(db) && hasPendingMigrations(db, migrationsFolder) {
+	if !isSchemaEmpty(db) && hasPendingMigrations(db, migrationsFolder) {
 		log.Info("Upgrading DB Schema to latest version")
 	}
 	goose.SetLogger(gooseLogger)
@@ -176,7 +174,7 @@ func hasPendingMigrations(db *sql.DB, folder string) bool {
 	return l.numPending > 0
 }
 
-func IsSchemaEmpty(db *sql.DB) bool {
+func isSchemaEmpty(db *sql.DB) bool {
 	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
 	if err != nil {
 		log.Fatal("Database could not be opened!", err)
