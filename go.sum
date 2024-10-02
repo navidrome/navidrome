@@ -24,10 +24,10 @@ github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf h1:tb246l2Zmpt/GpF9EcH
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf/go.mod h1:tSgDythFsl0QgS/PFWfIZqcJKnkADWneY80jaVRlqK8=
 github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1 h1:mGvOb3zxl4vCLv+dbf7JA6CAaM2UH/AGP1KX4DsJmTI=
 github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1/go.mod h1:ZNCLJfehvEf34B7BbLKjgpsL9lyW7q938w/GY1XgV4E=
+github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d h1:x/R3+oPEjnisl1zBx2f2v7Gf6f11l0N0JoD6BkwcJyA=
+github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d/go.mod h1:apkPC/CR3s48O2D7Y++n1XWEpgPNNCjXYga3PPbJe2E=
 github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933 h1:r4hxcT6GBIA/j8Ox4OXI5MNgMKfR+9plcAWYi1OnmOg=
 github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933/go.mod h1:RkQWLNITKkXHLP7LXxZSgEq+uFWU25M5qW7qfEhL9Wc=
-github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 h1:OtSeLS5y0Uy01jaKK4mA/WVIYtpzVm63vLVAPzJXigg=
-github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8/go.mod h1:apkPC/CR3s48O2D7Y++n1XWEpgPNNCjXYga3PPbJe2E=
 github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=
 github.com/disintegration/imaging v1.6.2/go.mod h1:44/5580QXChDfwIclfc/PCwrr44amcmDAg8hxG0Ewe4=
 github.com/djherbis/atime v1.1.0 h1:rgwVbP/5by8BvvjBNrbh64Qz33idKT3pSnMSJsxhi0g=
