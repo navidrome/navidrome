@@ -50,6 +50,11 @@ func (p *svcControl) Start(service.Service) error {
 	p.done = make(chan struct{})
 	p.ctx, p.cancel = context.WithCancel(context.Background())
 	go func() {
+		logger, err := svcInstance().SystemLogger(nil)
+		if err != nil {
+			log.Fatal("could not obtain a logger", err)
+		}
+		log.SetOutputLogger(logger)
 		runNavidrome(p.ctx)
 		close(p.done)
 	}()
