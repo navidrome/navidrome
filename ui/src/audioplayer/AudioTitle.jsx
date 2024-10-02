@@ -19,7 +19,7 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
       item: { ids: [song?.id] },
       options: { dropEffect: 'copy' },
     }),
-    [song]
+    [song],
   )
 
   if (!song) {
