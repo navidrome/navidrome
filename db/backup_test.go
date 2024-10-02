@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	. "github.com/navidrome/navidrome/db"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -71,7 +72,7 @@ var _ = Describe("database backups", func() {
 			})
 
 			for _, time := range timesShuffled {
-				path := backupPath(time)
+				path := BackupPath(time)
 				file, err := os.Create(path)
 				Expect(err).ToNot(HaveOccurred())
 				_ = file.Close()
@@ -82,10 +83,10 @@ var _ = Describe("database backups", func() {
 
 		DescribeTable("prune", func(count, expected int) {
 			conf.Server.Backup.Count = count
-			pruneCount, err := prune(ctx)
+			pruneCount, err := Prune(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			for idx, time := range timesDecreasingChronologically {
-				_, err := os.Stat(backupPath(time))
+				_, err := os.Stat(BackupPath(time))
 				shouldExist := idx < conf.Server.Backup.Count
 				if shouldExist {
 					Expect(err).ToNot(HaveOccurred())
@@ -129,7 +130,7 @@ var _ = Describe("database backups", func() {
 
 			backup, err := sql.Open(Driver, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(backup)).To(BeFalse())
+			Expect(IsSchemaEmpty(backup)).To(BeFalse())
 		})
 
 		It("successfully restores the database", func() {
@@ -143,11 +144,11 @@ DELETE FROM sqlite_master WHERE type in ('table', 'index', 'trigger');
 PRAGMA writable_schema = 0;
 			`)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(Db().WriteDB())).To(BeTrue())
+			Expect(IsSchemaEmpty(Db().WriteDB())).To(BeTrue())
 
 			err = Db().Restore(ctx, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(Db().WriteDB())).To(BeFalse())
+			Expect(IsSchemaEmpty(Db().WriteDB())).To(BeFalse())
 		})
 	})
 })
