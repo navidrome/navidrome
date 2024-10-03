@@ -81,7 +81,6 @@ ConditionFileIsExecutable={{.Path|cmdEscape}}
 StartLimitInterval=5
 StartLimitBurst=10
 ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
-ExecStop=
 {{if .WorkingDirectory}}WorkingDirectory={{.WorkingDirectory|cmdEscape}}{{end}}
 {{if .UserName}}User={{.UserName}}{{end}}
 {{if .Restart}}Restart={{.Restart}}{{end}}
