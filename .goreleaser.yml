@@ -170,13 +170,6 @@ nfpms:
           - "(ffmpeg or ffmpeg-free)"
 
     contents:
-      - src: contrib/navidrome.service
-        dst: /lib/systemd/system/navidrome.service
-        file_info:
-          mode: 0644
-          owner: navidrome
-          group: navidrome
-
       - src: contrib/navidrome.toml
         dst: /etc/navidrome/navidrome.toml
         type: "config|noreplace"
@@ -199,6 +192,7 @@ nfpms:
 
     scripts:
       preinstall: "contrib/preinstall.sh"
+      postinstall: "contrib/postinstall.sh"
 
 changelog:
   sort: asc
