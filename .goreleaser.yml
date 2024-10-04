@@ -170,7 +170,7 @@ nfpms:
           - "(ffmpeg or ffmpeg-free)"
 
     contents:
-      - src: contrib/navidrome.toml
+      - src: packaging/linux/navidrome.toml
         dst: /etc/navidrome/navidrome.toml
         type: "config|noreplace"
         file_info:
