@@ -191,9 +191,9 @@ nfpms:
           group: navidrome
 
     scripts:
-      preinstall: "contrib/preinstall.sh"
-      postinstall: "contrib/postinstall.sh"
-      postremove: "contrib/postremove.sh"
+      preinstall: "packaging/linux/preinstall.sh"
+      postinstall: "packaging/linux/postinstall.sh"
+      postremove: "packaging/linux/postremove.sh"
 
 changelog:
   sort: asc
