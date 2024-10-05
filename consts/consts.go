@@ -13,6 +13,7 @@ const (
 
 	DefaultDbPath       = "navidrome.db?cache=shared&_cache_size=1000000000&_busy_timeout=5000&_journal_mode=WAL&_synchronous=NORMAL&_foreign_keys=on&_txlock=immediate"
 	InitialSetupFlagKey = "InitialSetup"
+	InsightsID          = "InsightsID"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"

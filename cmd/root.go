@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -11,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -98,6 +99,9 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 
 // startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
+	i := CreateInsights()
+	r := i.Collect(ctx)
+	fmt.Printf("\n\nInsights: %s\n\n", r)
 	return func() error {
 		a := CreateServer(conf.Server.MusicFolder)
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
@@ -111,7 +115,7 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Prometheus.Enabled {
 			// blocking call because takes <1ms but useful if fails
-			core.WriteInitialMetrics()
+			metrics.WriteInitialMetrics()
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 		}
 		if conf.Server.DevEnableProfiler {
