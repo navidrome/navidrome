@@ -121,6 +121,11 @@ docker: buildjs ##@Build Build Docker linux/amd64 image (tagged as `deluan/navid
 	docker build . --platform linux/amd64 -t deluan/navidrome:develop -f .github/workflows/pipeline.dockerfile
 .PHONY: docker
 
+msi: ##@Cross_Compilation Build MSI installer for Windows 64 bits
+	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f wix/msitools.dockerfile .
+	docker run -it --rm -v $(PWD):/workspace navidrome-msi-builder wix/build_msi.sh /workspace amd64
+.PHONY: msi
+
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music
 	( cd music; \
