@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
@@ -96,6 +97,13 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	dataStore := persistence.New(dbDB)
 	router := listenbrainz.NewRouter(dataStore)
 	return router
+}
+
+func CreateInsights() metrics.Insights {
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
+	insights := metrics.NewInsights(dataStore)
+	return insights
 }
 
 func GetScanner() scanner.Scanner {
