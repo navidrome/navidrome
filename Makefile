@@ -9,7 +9,7 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
-CI_RELEASER_VERSION ?= 1.23.0-1 ## https://github.com/navidrome/ci-goreleaser
+CI_RELEASER_VERSION ?= 1.23.2-1 ## https://github.com/navidrome/ci-goreleaser
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
