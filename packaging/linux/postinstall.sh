@@ -15,42 +15,9 @@ fi
 
 postinstall_flag="/var/lib/navidrome/.installed"
 
-# Adapted from https://github.com/kardianos/service/blob/becf2eb62b83ed01f5e782cb8da7bb739ded2bb5/service_systemd_linux.go#L22
-is_systemd() {
-    if [ -e /run/systemd/system ]; then
-        return 0
-    elif type systemctl > /dev/null 2>&1; then
-        return 0
-    elif [ "$(cat /proc/1/comm)" = "systemd" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Adapted from https://github.com/kardianos/service/blob/becf2eb62b83ed01f5e782cb8da7bb739ded2bb5/service_openrc_linux.go#L16
-is_openrc() {
-    if type openrc-init > /dev/null 2>&1; then
-        return 0
-    elif expr "$(cat /proc/1/comm)" : "::sysinit:.*openrc.*sysinit" > /dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
-
 if [ ! -f "$postinstall_flag" ]; then
     navidrome service install --user navidrome --working-directory /var/lib/navidrome --configfile /etc/navidrome/navidrome.toml
     touch "$postinstall_flag"
-
-    if is_systemd; then
-        # Generally good to run after adding a new service file
-        systemctl daemon-reload ||:
-    elif is_openrc; then
-        printf "openrc init\n"
-    else
-        printf "systemv init\n" 
-    fi
 fi
 
 
