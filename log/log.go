@@ -15,6 +15,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	defaultLogger.Level = logrus.TraceLevel
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return
+	}
+	rootPath = strings.TrimSuffix(file, "log/log.go")
+}
+
 type Level uint32
 
 type LevelFunc = func(ctx interface{}, msg interface{}, keyValuePairs ...interface{})
@@ -304,14 +313,31 @@ func createNewLogger() *logrus.Entry {
 	//logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true})
 	//l.Formatter = &logrus.TextFormatter{ForceColors: true, DisableTimestamp: false, FullTimestamp: true}
 	logger := logrus.NewEntry(defaultLogger)
+	if outputLogger != nil {
+		logger.Logger.SetOutput(outputLogger)
+	}
 	return logger
 }
 
-func init() {
-	defaultLogger.Level = logrus.TraceLevel
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return
+func SetOutputLogger(logger Logger) {
+	if logger == nil {
+		outputLogger = nil
+	} else {
+		outputLogger = &loggerWriter{logger}
 	}
-	rootPath = strings.TrimSuffix(file, "log/log.go")
+}
+
+type Logger interface {
+	Info(v ...interface{}) error
+}
+
+var outputLogger *loggerWriter
+
+type loggerWriter struct {
+	Logger
+}
+
+func (l *loggerWriter) Write(p []byte) (n int, err error) {
+	err = l.Logger.Info(string(p))
+	return len(p), err
 }
