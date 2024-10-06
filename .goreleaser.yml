@@ -142,6 +142,60 @@ release:
     * Read installation instructions on our [website](https://www.navidrome.org/docs/installation/).
     * Reach out on [Discord](https://discord.gg/xh7j7yF), [Reddit](https://www.reddit.com/r/navidrome/) and [Twitter](https://twitter.com/navidrome)!
 
+nfpms:
+  - id: navidrome
+    package_name: navidrome
+
+    homepage: https://navidrome.org
+    description: |-
+      🎧☁ Modern Music Server and Streamer compatible with Subsonic/Airsonic
+
+    maintainer: Deluan Quintão <deluan at navidrome.org>
+
+    license: GPL-3.0
+    formats:
+      - archlinux
+      - apk
+      - deb
+      - rpm
+
+    dependencies:
+      - ffmpeg
+
+    suggests:
+      - mpv
+
+    overrides:
+      rpm:
+        dependencies:
+          - "(ffmpeg or ffmpeg-free)"
+
+    contents:
+      - src: packaging/linux/navidrome.toml
+        dst: /etc/navidrome/navidrome.toml
+        type: "config|noreplace"
+        file_info:
+          mode: 0644
+          owner: navidrome
+          group: navidrome
+
+      - dst: /var/lib/navidrome
+        type: dir
+        file_info:
+          owner: navidrome
+          group: navidrome
+
+      - dst: /opt/navidrome/music
+        type: dir
+        file_info:
+          owner: navidrome
+          group: navidrome
+
+    scripts:
+      preinstall: "packaging/linux/preinstall.sh"
+      postinstall: "packaging/linux/postinstall.sh"
+      postremove: "packaging/linux/postremove.sh"
+
 changelog:
   sort: asc
   use: github
