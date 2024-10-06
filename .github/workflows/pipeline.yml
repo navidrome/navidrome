@@ -13,7 +13,7 @@ jobs:
   go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
-    container: deluan/ci-goreleaser:1.23.0-1
+    container: deluan/ci-goreleaser:1.23.2-1
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +42,7 @@ jobs:
   go:
     name: Test Go code
     runs-on: ubuntu-latest
-    container: deluan/ci-goreleaser:1.23.0-1
+    container: deluan/ci-goreleaser:1.23.2-1
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
@@ -119,7 +119,7 @@ jobs:
     name: Build binaries
     needs: [js, go, go-lint, i18n-lint]
     runs-on: ubuntu-latest
-    container: deluan/ci-goreleaser:1.23.0-1
+    container: deluan/ci-goreleaser:1.23.2-1
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
