@@ -2,10 +2,13 @@ package model
 
 import (
 	"cmp"
+	"math"
+	"reflect"
 	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/exp/maps"
 )
 
 type Album struct {
@@ -19,7 +22,6 @@ type Album struct {
 	Artist                string     `structs:"artist" json:"artist"`
 	AlbumArtistID         string     `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
-	AllArtistIDs          string     `structs:"all_artist_ids" json:"allArtistIds"`
 	MaxYear               int        `structs:"max_year" json:"maxYear"`
 	MinYear               int        `structs:"min_year" json:"minYear"`
 	Date                  string     `structs:"date" json:"date,omitempty"`
@@ -36,7 +38,6 @@ type Album struct {
 	Genre                 string     `structs:"genre" json:"genre"`
 	Genres                Genres     `structs:"-" json:"genres"`
 	Discs                 Discs      `structs:"discs" json:"discs,omitempty"`
-	FullText              string     `structs:"full_text" json:"-"`
 	SortAlbumName         string     `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortArtistName        string     `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
 	SortAlbumArtistName   string     `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
@@ -47,6 +48,7 @@ type Album struct {
 	MbzAlbumArtistID      string     `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
 	MbzAlbumType          string     `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment       string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	MbzReleaseGroupID     string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
 	ImageFiles            string     `structs:"image_files" json:"imageFiles,omitempty"`
 	Paths                 string     `structs:"paths" json:"paths,omitempty"`
 	Description           string     `structs:"description" json:"description,omitempty"`
@@ -55,22 +57,86 @@ type Album struct {
 	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty"`
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
-	CreatedAt             time.Time  `structs:"created_at" json:"createdAt"`
-	UpdatedAt             time.Time  `structs:"updated_at" json:"updatedAt"`
+
+	Tags           Tags           `structs:"tags" json:"-"`                        // All tags for this album
+	Participations Participations `structs:"participations" json:"participations"` // All artists that participated in this album
+
+	ImportedAt time.Time `structs:"imported_at" json:"importedAt"` // When this album was imported/updated
+	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`   // Oldest CreatedAt for all songs in this album
+	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`   // Newest UpdatedAt for all songs in this album
 }
 
 func (a Album) CoverArtID() ArtworkID {
 	return artworkIDFromAlbum(a)
 }
 
+// Equals compares two Album structs, ignoring calculated fields
+func (a Album) Equals(other Album) bool {
+	// Normalize float32 values to avoid false negatives
+	a.Duration = float32(math.Floor(float64(a.Duration)))
+	other.Duration = float32(math.Floor(float64(other.Duration)))
+
+	// Clear some tags that should not be compared
+	a.ImportedAt = time.Time{}
+	other.ImportedAt = time.Time{}
+	a.Annotations = Annotations{}
+	other.Annotations = Annotations{}
+	a.Genre = ""
+	other.Genre = ""
+	a.Genres = nil
+	other.Genres = nil
+
+	// Clear external metadata
+	a.ExternalInfoUpdatedAt = nil
+	other.ExternalInfoUpdatedAt = nil
+	a.ExternalUrl = ""
+	other.ExternalUrl = ""
+	a.Description = ""
+	other.Description = ""
+	a.SmallImageUrl = ""
+	other.SmallImageUrl = ""
+	a.MediumImageUrl = ""
+	other.MediumImageUrl = ""
+	a.LargeImageUrl = ""
+	other.LargeImageUrl = ""
+
+	// Participations and Tags are cloned, to avoid mutating the original structs
+	a.Participations = maps.Clone(a.Participations)
+	a.Participations.Sort()
+	other.Participations = maps.Clone(other.Participations)
+	other.Participations.Sort()
+	a.Tags = maps.Clone(a.Tags)
+	a.Tags.Sort()
+	other.Tags = maps.Clone(other.Tags)
+	other.Tags.Sort()
+
+	return reflect.DeepEqual(a, other)
+}
+
+// This is the list of tags that are not "first-class citizens" on the Album struct, but are
+// still stored in the database.
+var albumLevelTags = []TagName{
+	TagGenre,
+	TagMood,
+	TagGrouping,
+	TagRecordLabel,
+	TagReleaseType,
+	TagMedia,
+	TagCatalogNumber,
+}
+
+func (a Album) AddTags(tags Tags) {
+	for _, t := range albumLevelTags {
+		for _, v := range tags.Values(t) {
+			a.Tags.Add(t, v)
+		}
+	}
+}
+
 type Discs map[int]string
 
-// Add adds a disc to the Discs map. If the map is nil, it is initialized.
-func (d *Discs) Add(discNumber int, discSubtitle string) {
-	if *d == nil {
-		*d = Discs{}
-	}
-	(*d)[discNumber] = discSubtitle
+func (d Discs) Add(discNumber int, discSubtitle string) {
+	d[discNumber] = discSubtitle
 }
 
 type DiscID struct {
@@ -81,6 +147,7 @@ type DiscID struct {
 
 type Albums []Album
 
+// TODO Remove
 // ToAlbumArtist creates an Artist object based on the attributes of this Albums collection.
 // It assumes all albums have the same AlbumArtist, or else results are unpredictable.
 func (als Albums) ToAlbumArtist() Artist {
@@ -110,7 +177,8 @@ type AlbumRepository interface {
 	Put(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
-	GetAllWithoutGenres(...QueryOptions) (Albums, error)
+	Touch(ids ...string) error
+	GetTouchedAlbums(libID int) (Albums, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }

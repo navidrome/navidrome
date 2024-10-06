@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -12,10 +11,8 @@ import (
 )
 
 func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
-	// TODO handle multiple libraries
 	ctx := r.Context()
-	mediaFolder := conf.Server.MusicFolder
-	status, err := api.scanner.Status(mediaFolder)
+	status, err := api.scanner.Status(ctx)
 	if err != nil {
 		log.Error(ctx, "Error retrieving Scanner status", err)
 		return nil, newError(responses.ErrorGeneric, "Internal Error")

@@ -7,10 +7,13 @@ import (
 )
 
 type MockDataStore struct {
+	MockedLibrary        model.LibraryRepository
+	MockedFolder         model.FolderRepository
 	MockedGenre          model.GenreRepository
 	MockedAlbum          model.AlbumRepository
 	MockedArtist         model.ArtistRepository
 	MockedMediaFile      model.MediaFileRepository
+	MockedTag            model.TagRepository
 	MockedUser           model.UserRepository
 	MockedProperty       model.PropertyRepository
 	MockedPlayer         model.PlayerRepository
@@ -20,6 +23,27 @@ type MockDataStore struct {
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
 	MockedRadioBuffer    model.RadioRepository
+}
+
+func (db *MockDataStore) Library(context.Context) model.LibraryRepository {
+	if db.MockedLibrary == nil {
+		db.MockedLibrary = &MockLibraryRepo{}
+	}
+	return db.MockedLibrary
+}
+
+func (db *MockDataStore) Folder(context.Context) model.FolderRepository {
+	if db.MockedFolder != nil {
+		return db.MockedFolder
+	}
+	return struct{ model.FolderRepository }{}
+}
+
+func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
+	if db.MockedTag != nil {
+		return db.MockedTag
+	}
+	return struct{ model.TagRepository }{}
 }
 
 func (db *MockDataStore) Album(context.Context) model.AlbumRepository {
@@ -41,10 +65,6 @@ func (db *MockDataStore) MediaFile(context.Context) model.MediaFileRepository {
 		db.MockedMediaFile = CreateMockMediaFileRepo()
 	}
 	return db.MockedMediaFile
-}
-
-func (db *MockDataStore) Library(context.Context) model.LibraryRepository {
-	return struct{ model.LibraryRepository }{}
 }
 
 func (db *MockDataStore) Genre(context.Context) model.GenreRepository {
@@ -121,7 +141,7 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 	return db.MockedRadioBuffer
 }
 
-func (db *MockDataStore) WithTx(block func(db model.DataStore) error) error {
+func (db *MockDataStore) WithTx(block func(model.DataStore) error) error {
 	return block(db)
 }
 

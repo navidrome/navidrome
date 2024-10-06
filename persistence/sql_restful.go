@@ -103,8 +103,8 @@ func booleanFilter(field string, value any) Sqlizer {
 	return Eq{field: strings.ToLower(v) == "true"}
 }
 
-func fullTextFilter(_ string, value any) Sqlizer {
-	return fullTextExpr(value.(string))
+func fullTextFilter(tableName string) func(string, any) Sqlizer {
+	return func(field string, value any) Sqlizer { return fullTextExpr(tableName, value.(string)) }
 }
 
 func substringFilter(field string, value any) Sqlizer {
@@ -117,9 +117,7 @@ func substringFilter(field string, value any) Sqlizer {
 }
 
 func idFilter(tableName string) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer {
-		return Eq{tableName + ".id": value}
-	}
+	return func(field string, value any) Sqlizer { return Eq{tableName + ".id": value} }
 }
 
 func invalidFilter(ctx context.Context) func(string, any) Sqlizer {
