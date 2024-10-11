@@ -99,6 +99,10 @@ debug-build: check_go_env buildjs ##@Build Build the project (with remote debug 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
 .PHONY: buildjs
 
+docker-buildjs: ##@Build Build only frontend using Docker
+	docker build --output "./ui" --target ui-bundle .
+.PHONY: docker-buildjs
+
 ui/build/index.html: $(UI_SRC_FILES)
 	@(cd ./ui && npm run build)
 
@@ -106,7 +110,7 @@ list-platforms: ##@Cross_Compilation List supported platforms
 	@echo "Supported platforms:"
 	@echo "$(SUPPORTED_PLATFORMS)" | tr ',' '\n' | sort | sed 's/^/    /'
 	@echo "\nUsage: make PLATFORMS=\"linux/amd64\" docker-build"
-	@echo "       make IMAGE_PLATFORMS=\"linux/amd64\" docker"
+	@echo "       make IMAGE_PLATFORMS=\"linux/amd64\" docker-image"
 .PHONY: list-platforms
 
 docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make list-platforms`)
@@ -118,7 +122,7 @@ docker-build: ##@Cross_Compilation Cross-compile for any supported platform (che
 		--output "./dist" --target binary .
 .PHONY: docker-build
 
-docker: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:develop`, override with DOCKER_TAG var. Use IMAGE_PLATFORMS to specify target platforms
+docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:develop`, override with DOCKER_TAG var. Use IMAGE_PLATFORMS to specify target platforms
 	@echo $(IMAGE_PLATFORMS) | grep -q "windows" && echo "ERROR: Windows is not supported for Docker builds" && exit 1 || true
 	@echo $(IMAGE_PLATFORMS) | grep -q "darwin" && echo "ERROR: macOS is not supported for Docker builds" && exit 1 || true
 	docker build \
@@ -127,7 +131,7 @@ docker: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:dev
 		--build-arg GIT_SHA=${GIT_SHA} \
 		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
-.PHONY: docker
+.PHONY: docker-image
 
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music
