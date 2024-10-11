@@ -10,7 +10,23 @@ RUN --mount=type=bind,source=docker,target=/tmp \
     echo $PLATFORM && cp -R /tmp/taglib/${PLATFORM} /taglib
 
 #####################################################
-### Build Navidrome
+### Build Navidrome UI
+FROM --platform=$BUILDPLATFORM node:20-alpine3.20 AS ui
+WORKDIR /app
+
+# Install dependencies
+COPY ui/package.json ui/package-lock.json ./
+RUN npm ci
+
+# Build UI \
+COPY ui/ ./
+RUN npm run build -- --outDir=/build
+
+FROM scratch AS ui-bundle
+COPY --from=ui /build /build
+
+#####################################################
+### Build Navidrome binary
 FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS base
 RUN apt-get update && apt-get install -y clang lld git
 COPY --from=xx / /
@@ -31,6 +47,7 @@ RUN --mount=type=bind,source=. \
     go mod download
 
 RUN --mount=type=bind,source=. \
+    --mount=from=ui,source=/build,target=./ui/build,ro \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
