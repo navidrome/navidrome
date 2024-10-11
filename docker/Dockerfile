@@ -14,11 +14,11 @@ RUN --mount=type=bind,source=docker,target=/tmp \
 FROM --platform=$BUILDPLATFORM node:20-alpine3.20 AS ui
 WORKDIR /app
 
-# Install dependencies
+# Install node dependencies
 COPY ui/package.json ui/package-lock.json ./
 RUN npm ci
 
-# Build UI \
+# Build bundle
 COPY ui/ ./
 RUN npm run build -- --outDir=/build
 
@@ -28,13 +28,11 @@ COPY --from=ui /build /build
 #####################################################
 ### Build Navidrome binary
 FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS base
-RUN apt-get update && apt-get install -y clang lld git
+RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
 
 FROM --platform=$BUILDPLATFORM base AS build
-ENV CGO_ENABLED=1
-ENV PKG_CONFIG_PATH=/taglib/lib/pkgconfig
 
 # Install build dependencies for the target platform
 ARG TARGETPLATFORM
@@ -51,11 +49,25 @@ RUN --mount=type=bind,source=. \
     --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
-    --mount=from=taglib-build,target=/taglib,src=/taglib,ro \
-    xx-go --wrap && \
-    LD_EXTRA="$([ "$(xx-info os)" = "darwin" ] || echo "-extldflags '-static -latomic'")" && \
-    cat $(go env GOENV) && echo $LD_EXTRA && \
+    --mount=from=taglib-build,target=/taglib,src=/taglib,ro <<EOT
+
+
+    # Setup CGO cross-compilation environment
+    xx-go --wrap
+    export CGO_ENABLED=1
+    export PKG_CONFIG_PATH=/taglib/lib/pkgconfig
+    cat $(go env GOENV)
+
+    # Only Darwin (macOS) requires clang (default), Windows requires gcc, everything else can use any compiler.
+    # So let's use gcc for everything except Darwin.
+    if [ "$(xx-info os)" != "darwin" ]; then
+        export CC=$(xx-info)-gcc
+        export CXX=$(xx-info)-g++
+        export LD_EXTRA="-extldflags '-static -latomic'"
+    fi
+
     go build -ldflags="${LD_EXTRA} -w -s" -o /out/navidrome .
+EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked
 RUN xx-verify --static /out/navidrome
