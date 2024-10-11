@@ -1,5 +1,5 @@
 FROM --platform=$BUILDPLATFORM crazymax/osxcross:11.3-debian AS osxcross
-FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
+FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
 
 #####################################################
 ### Get TagLib
@@ -11,33 +11,38 @@ RUN --mount=type=bind,source=docker,target=/tmp \
 
 #####################################################
 ### Build Navidrome
-FROM --platform=$BUILDPLATFORM golang:bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS base
 RUN apt-get update && apt-get install -y clang lld git
 COPY --from=xx / /
-#ENV GO111MODULE=auto
-ENV CGO_ENABLED=1
 WORKDIR /workspace
 
-COPY --from=taglib-build /taglib /taglib
+FROM --platform=$BUILDPLATFORM base AS build
+ENV CGO_ENABLED=1
 ENV PKG_CONFIG_PATH=/taglib/lib/pkgconfig
 
+# Install build dependencies for the target platform
 ARG TARGETPLATFORM
 RUN xx-apt install -y binutils gcc g++ libc6-dev zlib1g-dev
+RUN xx-verify --setup
+RUN xx-go --wrap
 
 RUN --mount=type=bind,source=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
-    xx-go mod download
+    go mod download
 
 RUN --mount=type=bind,source=. \
-    --mount=from=osxcross,target=/osxcross,src=/osxcross,rw \
+    --mount=from=osxcross,target=/osxcross,src=/osxcross,ro \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
+    --mount=from=taglib-build,target=/taglib,src=/taglib,ro \
     mkdir -p /xx-sdk && \
     ln -s /osxcross/SDK/MacOSX11* /xx-sdk/MacOSX11.1.sdk && \
-    STATIC="$([ "$(xx-info os)" = "darwin" ] || echo "-static")" && echo ${STATIC} && \
-    xx-go build -ldflags="-extldflags '-lz ${STATIC}' -w -s" -o /out/navidrome .
+    LD_EXTRA="$([ "$(xx-info os)" = "darwin" ] || echo "-extldflags '-static -latomic'")" && \
+    cat $(go env GOENV) && echo $LD_EXTRA && \
+    go build -ldflags="${LD_EXTRA} -w -s" -o /out/navidrome .
 
+# Verify if the binary was built for the correct platform and it is statically linked
 RUN xx-verify --static /out/navidrome
 
 FROM scratch AS binary
@@ -51,9 +56,7 @@ LABEL maintainer="deluan@navidrome.org"
 # Install ffmpeg and mpv
 RUN apk add -U --no-cache ffmpeg mpv
 
-# Show ffmpeg build info, for troubleshooting purposes
-RUN ffmpeg -buildconf
-
+# Copy navidrome binary
 COPY --from=build /out/navidrome /app/
 
 VOLUME ["/data", "/music"]

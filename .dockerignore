@@ -6,5 +6,6 @@ data
 *.db
 testDB
 navidrome
-navidrome.db
 navidrome.toml
+tmp
+dist
