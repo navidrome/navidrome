@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM crazymax/osxcross:11.3-debian AS osxcross
+FROM --platform=$BUILDPLATFORM crazymax/osxcross:14.5-debian AS osxcross
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
 
 #####################################################
@@ -24,7 +24,6 @@ ENV PKG_CONFIG_PATH=/taglib/lib/pkgconfig
 ARG TARGETPLATFORM
 RUN xx-apt install -y binutils gcc g++ libc6-dev zlib1g-dev
 RUN xx-verify --setup
-RUN xx-go --wrap
 
 RUN --mount=type=bind,source=. \
     --mount=type=cache,target=/root/.cache \
@@ -32,12 +31,11 @@ RUN --mount=type=bind,source=. \
     go mod download
 
 RUN --mount=type=bind,source=. \
-    --mount=from=osxcross,target=/osxcross,src=/osxcross,ro \
+    --mount=from=osxcross,src=/osxcross/SDK,target=/xx-sdk,ro \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=from=taglib-build,target=/taglib,src=/taglib,ro \
-    mkdir -p /xx-sdk && \
-    ln -s /osxcross/SDK/MacOSX11* /xx-sdk/MacOSX11.1.sdk && \
+    xx-go --wrap && \
     LD_EXTRA="$([ "$(xx-info os)" = "darwin" ] || echo "-extldflags '-static -latomic'")" && \
     cat $(go env GOENV) && echo $LD_EXTRA && \
     go build -ldflags="${LD_EXTRA} -w -s" -o /out/navidrome .
