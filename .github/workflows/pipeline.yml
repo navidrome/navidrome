@@ -115,153 +115,208 @@ jobs:
             fi
           done
 
-  binaries:
-    name: Build binaries
+  build:
+    name: Build binaries and Docker images
     needs: [js, go, go-lint, i18n-lint]
+    strategy:
+      matrix:
+        platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
     runs-on: ubuntu-latest
-    container: deluan/ci-goreleaser:1.23.2-1
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Config workspace folder as trusted
-        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: js-bundle
-          path: ui/build
-
-      - name: Run GoReleaser - SNAPSHOT
-        if: startsWith(github.ref, 'refs/tags/') != true
-        run: goreleaser release --clean --skip=publish --snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Run GoReleaser - RELEASE
-        if: startsWith(github.ref, 'refs/tags/')
-        run: goreleaser release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: binaries
-          path: |
-            dist
-            !dist/*.tar.gz
-            !dist/*.zip
-          retention-days: 7
-
-  msi:
-    name: Build and publish MSI files
-    needs: [binaries]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: binaries
-          path: dist
-
-      - name: Build MSI
-        run: |
-          sudo apt-get install -y wixl jq
-          
-          NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
-
-          mkdir -p $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
-
-          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
-
-          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
-
-          # workaround for wixl WixVariable not working to override bmp locations
-          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
-          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
-
-          cd $GITHUB_WORKSPACE/wix/386
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
-
-          cd $GITHUB_WORKSPACE/wix/amd64
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
-          
-          ls -la $GITHUB_WORKSPACE/wix/*.msi
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: installers
-          path: wix/*.msi
-          retention-days: 7
-
-  docker:
-    name: Build and publish Docker images
-    needs: [binaries]
-    runs-on: ubuntu-latest
-    env:
-      DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
       - name: Set up QEMU
         id: qemu
         uses: docker/setup-qemu-action@v3
-        if: env.DOCKER_IMAGE != ''
 
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
-        if: env.DOCKER_IMAGE != ''
 
       - uses: actions/checkout@v4
-        if: env.DOCKER_IMAGE != ''
 
-      - uses: actions/download-artifact@v4
-        if: env.DOCKER_IMAGE != ''
-        with:
-          name: binaries
-          path: dist
+      - name: Set DOCKER_BUILD_SUMMARY
+        run: |
+          if [[ ${{ github.ref }} == refs/tags/v* ]]; then
+            echo "DOCKER_BUILD_SUMMARY=false" >> $GITHUB_ENV
+          else
+            echo "DOCKER_BUILD_SUMMARY=true" >> $GITHUB_ENV
+          fi
 
-      - name: Login to Docker Hub
-        if: env.DOCKER_IMAGE != ''
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Get Git Version
+        run: |
+          echo "GIT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT" >> $GITHUB_ENV
 
-      - name: Login to GitHub Container Registry
-        if: env.DOCKER_IMAGE != ''
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for Docker
-        if: env.DOCKER_IMAGE != ''
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          labels: |
-            maintainer=deluan
-          images: |
-            name=${{secrets.DOCKER_IMAGE}}
-            name=ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=raw,value=develop,enable={{is_default_branch}}
-
-      - name: Build and Push
-        if: env.DOCKER_IMAGE != ''
-        uses: docker/build-push-action@v5
+      - name: Build
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: .github/workflows/pipeline.dockerfile
-          platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          outputs: |
+            type=local,dest=./dist
+          target: binary
+          build-args: |
+            GIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}"
+            GIT_TAG=${{ env.GIT_TAG }}
+
+      - name: Sanitize platform name
+        id: set-platform
+        run: |
+          PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '-')
+          echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: navidrome-${{ env.PLATFORM }}
+          path: ./dist
+          retention-days: 7
+
+#  binaries:
+#    name: Build binaries
+#    needs: [js, go, go-lint, i18n-lint]
+#    runs-on: ubuntu-latest
+#    container: deluan/ci-goreleaser:1.23.2-1
+#    steps:
+#      - name: Checkout Code
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Config workspace folder as trusted
+#        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
+#
+#      - uses: actions/download-artifact@v4
+#        with:
+#          name: js-bundle
+#          path: ui/build
+#
+#      - name: Run GoReleaser - SNAPSHOT
+#        if: startsWith(github.ref, 'refs/tags/') != true
+#        run: goreleaser release --clean --skip=publish --snapshot
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Run GoReleaser - RELEASE
+#        if: startsWith(github.ref, 'refs/tags/')
+#        run: goreleaser release --clean
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - uses: actions/upload-artifact@v4
+#        with:
+#          name: binaries
+#          path: |
+#            dist
+#            !dist/*.tar.gz
+#            !dist/*.zip
+#          retention-days: 7
+#
+#  msi:
+#    name: Build and publish MSI files
+#    needs: [binaries]
+#    runs-on: ubuntu-24.04
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - uses: actions/download-artifact@v4
+#        with:
+#          name: binaries
+#          path: dist
+#
+#      - name: Build MSI
+#        run: |
+#          sudo apt-get install -y wixl jq
+#
+#          NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
+#
+#          mkdir -p $GITHUB_WORKSPACE/wix/386
+#          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
+#          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
+#
+#          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
+#
+#          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
+#          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
+#
+#          # workaround for wixl WixVariable not working to override bmp locations
+#          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
+#          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
+#
+#          cd $GITHUB_WORKSPACE/wix/386
+#          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
+#
+#          cd $GITHUB_WORKSPACE/wix/amd64
+#          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
+#
+#          ls -la $GITHUB_WORKSPACE/wix/*.msi
+#
+#      - uses: actions/upload-artifact@v4
+#        with:
+#          name: installers
+#          path: wix/*.msi
+#          retention-days: 7
+#
+#  docker:
+#    name: Build and publish Docker images
+#    needs: [binaries]
+#    runs-on: ubuntu-latest
+#    env:
+#      DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
+#    steps:
+#      - name: Set up QEMU
+#        id: qemu
+#        uses: docker/setup-qemu-action@v3
+#        if: env.DOCKER_IMAGE != ''
+#
+#      - name: Set up Docker Buildx
+#        id: buildx
+#        uses: docker/setup-buildx-action@v3
+#        if: env.DOCKER_IMAGE != ''
+#
+#      - uses: actions/checkout@v4
+#        if: env.DOCKER_IMAGE != ''
+#
+#      - uses: actions/download-artifact@v4
+#        if: env.DOCKER_IMAGE != ''
+#        with:
+#          name: binaries
+#          path: dist
+#
+#      - name: Login to Docker Hub
+#        if: env.DOCKER_IMAGE != ''
+#        uses: docker/login-action@v3
+#        with:
+#          username: ${{ secrets.DOCKER_USERNAME }}
+#          password: ${{ secrets.DOCKER_PASSWORD }}
+#
+#      - name: Login to GitHub Container Registry
+#        if: env.DOCKER_IMAGE != ''
+#        uses: docker/login-action@v3
+#        with:
+#          registry: ghcr.io
+#          username: ${{ github.actor }}
+#          password: ${{ secrets.GITHUB_TOKEN }}
+#
+#      - name: Extract metadata for Docker
+#        if: env.DOCKER_IMAGE != ''
+#        id: meta
+#        uses: docker/metadata-action@v5
+#        with:
+#          labels: |
+#            maintainer=deluan
+#          images: |
+#            name=${{secrets.DOCKER_IMAGE}}
+#            name=ghcr.io/${{ github.repository }}
+#          tags: |
+#            type=ref,event=pr
+#            type=semver,pattern={{version}}
+#            type=raw,value=develop,enable={{is_default_branch}}
+#
+#      - name: Build and Push
+#        if: env.DOCKER_IMAGE != ''
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: .
+#          file: .github/workflows/pipeline.dockerfile
+#          platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
+#          push: true
+#          tags: ${{ steps.meta.outputs.tags }}
