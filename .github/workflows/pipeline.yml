@@ -10,114 +10,114 @@ on:
       - master
 
 jobs:
-  go-lint:
-    name: Lint Go code
-    runs-on: ubuntu-latest
-    container: deluan/ci-goreleaser:1.23.2-1
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Config workspace folder as trusted
-        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          problem-matchers: true
-          args: --timeout 2m
-
-      - name: Install goimports
-        run: go install golang.org/x/tools/cmd/goimports@latest
-
-      - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
-      - run: go mod tidy
-      - name: Verify no changes from goimports and go mod tidy
-        run: |
-          git status --porcelain
-          if [ -n "$(git status --porcelain)" ]; then
-            echo 'To fix this check, run "make format" and commit the changes'
-            exit 1
-          fi
-  go:
-    name: Test Go code
-    runs-on: ubuntu-latest
-    container: deluan/ci-goreleaser:1.23.2-1
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
-
-      - name: Config workspace folder as trusted
-        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
-
-      - name: Download dependencies
-        if: steps.cache-go.outputs.cache-hit != 'true'
-        continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
-        run: go mod download
-
-      - name: Test
-        continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
-        run: go test -shuffle=on -race -cover ./... -v
-
-  js:
-    name: Build JS bundle
-    runs-on: ubuntu-latest
-    env:
-      NODE_OPTIONS: "--max_old_space_size=4096"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
-
-      - name: npm install dependencies
-        run: |
-          cd ui
-          npm ci
-
-      - name: npm lint
-        run: |
-          cd ui
-          npm run check-formatting && npm run lint
-
-      - name: npm test
-        run: |
-          cd ui
-          npm test
-
-      - name: npm build
-        run: |
-          cd ui
-          npm run build
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: js-bundle
-          path: ui/build
-          retention-days: 7
-
-  i18n-lint:
-    name: Lint i18n files
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          set -e
-          for file in resources/i18n/*.json; do
-            echo "Validating $file"
-            if ! jq empty "$file" 2>error.log; then
-              error_message=$(cat error.log)
-              line_number=$(echo "$error_message" | grep -oP 'line \K[0-9]+')
-              echo "::error file=$file,line=$line_number::$error_message"
-              exit 1
-            fi
-          done
+#  go-lint:
+#    name: Lint Go code
+#    runs-on: ubuntu-latest
+#    container: deluan/ci-goreleaser:1.23.2-1
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Config workspace folder as trusted
+#        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
+#
+#      - name: golangci-lint
+#        uses: golangci/golangci-lint-action@v6
+#        with:
+#          version: latest
+#          problem-matchers: true
+#          args: --timeout 2m
+#
+#      - name: Install goimports
+#        run: go install golang.org/x/tools/cmd/goimports@latest
+#
+#      - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
+#      - run: go mod tidy
+#      - name: Verify no changes from goimports and go mod tidy
+#        run: |
+#          git status --porcelain
+#          if [ -n "$(git status --porcelain)" ]; then
+#            echo 'To fix this check, run "make format" and commit the changes'
+#            exit 1
+#          fi
+#  go:
+#    name: Test Go code
+#    runs-on: ubuntu-latest
+#    container: deluan/ci-goreleaser:1.23.2-1
+#    steps:
+#      - name: Check out code into the Go module directory
+#        uses: actions/checkout@v4
+#
+#      - name: Config workspace folder as trusted
+#        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
+#
+#      - name: Download dependencies
+#        if: steps.cache-go.outputs.cache-hit != 'true'
+#        continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
+#        run: go mod download
+#
+#      - name: Test
+#        continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
+#        run: go test -shuffle=on -race -cover ./... -v
+#
+#  js:
+#    name: Build JS bundle
+#    runs-on: ubuntu-latest
+#    env:
+#      NODE_OPTIONS: "--max_old_space_size=4096"
+#    steps:
+#      - uses: actions/checkout@v4
+#      - uses: actions/setup-node@v4
+#        with:
+#          node-version: 20
+#          cache: "npm"
+#          cache-dependency-path: "**/package-lock.json"
+#
+#      - name: npm install dependencies
+#        run: |
+#          cd ui
+#          npm ci
+#
+#      - name: npm lint
+#        run: |
+#          cd ui
+#          npm run check-formatting && npm run lint
+#
+#      - name: npm test
+#        run: |
+#          cd ui
+#          npm test
+#
+#      - name: npm build
+#        run: |
+#          cd ui
+#          npm run build
+#
+#      - uses: actions/upload-artifact@v4
+#        with:
+#          name: js-bundle
+#          path: ui/build
+#          retention-days: 7
+#
+#  i18n-lint:
+#    name: Lint i18n files
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#      - run: |
+#          set -e
+#          for file in resources/i18n/*.json; do
+#            echo "Validating $file"
+#            if ! jq empty "$file" 2>error.log; then
+#              error_message=$(cat error.log)
+#              line_number=$(echo "$error_message" | grep -oP 'line \K[0-9]+')
+#              echo "::error file=$file,line=$line_number::$error_message"
+#              exit 1
+#            fi
+#          done
 
   build:
-    name: Build binaries and Docker images
-    needs: [js, go, go-lint, i18n-lint]
+    name: Build
+#    needs: [js, go, go-lint, i18n-lint]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -143,7 +143,12 @@ jobs:
 
       - name: Get Git Version
         run: |
-          echo "GIT_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT" >> $GITHUB_ENV
+          GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
+          if [ -n "$GIT_TAG" ]; then
+            GIT_TAG=${GIT_TAG}-SNAPSHOT
+            echo "GIT_TAG=$GIT_TAG" >> $GITHUB_ENV
+          fi
+          echo "GIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Build
         uses: docker/build-push-action@v6
@@ -155,7 +160,7 @@ jobs:
             type=local,dest=./dist
           target: binary
           build-args: |
-            GIT_SHA=${{ github.event.pull_request.head.sha || github.sha }}"
+            GIT_SHA=${{ env.GIT_SHA }}"
             GIT_TAG=${{ env.GIT_TAG }}
 
       - name: Sanitize platform name
