@@ -8,4 +8,5 @@ testDB
 navidrome
 navidrome.toml
 tmp
+!tmp/taglib
 dist

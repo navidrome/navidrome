@@ -5,7 +5,7 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM alpine AS taglib-build
 ARG TARGETPLATFORM
-RUN --mount=type=bind,source=docker,target=/tmp \
+RUN --mount=type=bind,source=tmp,target=/tmp \
     PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '_') && \
     echo $PLATFORM && cp -R /tmp/taglib/${PLATFORM} /taglib
 
@@ -65,12 +65,15 @@ RUN --mount=type=bind,source=. \
         export CXX=$(xx-info)-g++
         export LD_EXTRA="-extldflags '-static -latomic'"
     fi
+    if [ "$(xx-info os)" = "windows" ]; then
+        export EXT=".exe"
+    fi
 
-    go build -ldflags="${LD_EXTRA} -w -s" -o /out/navidrome .
+    go build -ldflags="${LD_EXTRA} -w -s" -o /out/navidrome${EXT} .
 EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked
-RUN xx-verify --static /out/navidrome
+RUN xx-verify --static /out/navidrome*
 
 FROM scratch AS binary
 COPY --from=build /out /

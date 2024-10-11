@@ -9,6 +9,11 @@ GIT_SHA=source_archive
 GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
 endif
 
+SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,darwin/amd64,darwin/arm64,windows/amd64,windows/386
+IMAGE_PLATFORMS = $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "linux" | tr '\n' ',' | sed 's/,$$//')
+PLATFORMS ?= $(SUPPORTED_PLATFORMS)
+DOCKER_TAG ?= deluan/navidrome:develop
+
 CI_RELEASER_VERSION ?= 1.23.2-1 ## https://github.com/navidrome/ci-goreleaser
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -97,28 +102,43 @@ buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
 ui/build/index.html: $(UI_SRC_FILES)
 	@(cd ./ui && npm run build)
 
-all: buildjs ##@Cross_Compilation Build binaries for all supported platforms.
-	@echo "Building binaries for all platforms using builder ${CI_RELEASER_VERSION}"
-	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser release --clean --skip=publish --snapshot
-.PHONY: all
+#all: buildjs ##@Cross_Compilation Build binaries for all supported platforms.
+#	@echo "Building binaries for all platforms using builder ${CI_RELEASER_VERSION}"
+#	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
+# 		goreleaser release --clean --skip=publish --snapshot
+#.PHONY: all
+#
+#single: buildjs ##@Cross_Compilation Build binaries for a single supported platforms.
+#	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
+#		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
+#		echo "Options:"; \
+#		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
+#		exit 1; \
+#	fi
+#	@echo "Building binaries for ${GOOS}/${GOARCH} using builder ${CI_RELEASER_VERSION}"
+#	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
+# 		goreleaser build --clean --snapshot -p 2 --single-target --id navidrome_${GOOS}_${GOARCH}
+#.PHONY: single
 
-single: buildjs ##@Cross_Compilation Build binaries for a single supported platforms.
-	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
-		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
-		echo "Options:"; \
-		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
-		exit 1; \
-	fi
-	@echo "Building binaries for ${GOOS}/${GOARCH} using builder ${CI_RELEASER_VERSION}"
-	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
- 		goreleaser build --clean --snapshot -p 2 --single-target --id navidrome_${GOOS}_${GOARCH}
-.PHONY: single
+list-platforms: ##@Cross_Compilation List supported platforms
+	@echo "Supported platforms:"
+	@echo "$(SUPPORTED_PLATFORMS)" | tr ',' '\n' | sort | sed 's/^/    /'
+	@echo "\nUsage: make PLATFORMS=\"linux/amd64\" docker-build"
+	@echo "       make IMAGE_PLATFORMS=\"linux/amd64\" docker"
+.PHONY: list-platforms
 
-docker: buildjs ##@Build Build Docker linux/amd64 image (tagged as `deluan/navidrome:develop`)
-	GOOS=linux GOARCH=amd64 make single
-	@echo "Building Docker image"
-	docker build . --platform linux/amd64 -t deluan/navidrome:develop -f .github/workflows/pipeline.dockerfile
+docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make list-platforms`)
+	docker build \
+		--platform $(PLATFORMS) \
+		--output "./dist" --target binary .
+.PHONY: docker-build
+
+docker: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:develop`, override with DOCKER_TAG var. Use IMAGE_PLATFORMS to specify target platforms
+	@echo $(IMAGE_PLATFORMS) | grep -q "windows" && echo "ERROR: Windows is not supported for Docker builds" && exit 1 || true
+	@echo $(IMAGE_PLATFORMS) | grep -q "darwin" && echo "ERROR: macOS is not supported for Docker builds" && exit 1 || true
+	docker build \
+		--platform $(IMAGE_PLATFORMS) \
+		--tag $(DOCKER_TAG) .
 .PHONY: docker
 
 get-music: ##@Development Download some free music from Navidrome's demo instance
