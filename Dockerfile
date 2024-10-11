@@ -36,6 +36,9 @@ FROM --platform=$BUILDPLATFORM base AS build
 
 # Install build dependencies for the target platform
 ARG TARGETPLATFORM
+ARG GIT_SHA
+ARG GIT_TAG
+
 RUN xx-apt install -y binutils gcc g++ libc6-dev zlib1g-dev
 RUN xx-verify --setup
 
@@ -69,7 +72,10 @@ RUN --mount=type=bind,source=. \
         export EXT=".exe"
     fi
 
-    go build -ldflags="${LD_EXTRA} -w -s" -o /out/navidrome${EXT} .
+    go build -tags=netgo -ldflags="${LD_EXTRA} -w -s \
+        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -o /out/navidrome${EXT} .
 EOT
 
 # Verify if the binary was built for the correct platform and it is statically linked

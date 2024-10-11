@@ -3,10 +3,10 @@ NODE_VERSION=$(shell cat .nvmrc)
 
 ifneq ("$(wildcard .git/HEAD)","")
 GIT_SHA=$(shell git rev-parse --short HEAD)
-GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)
+GIT_TAG=$(shell git describe --tags `git rev-list --tags --max-count=1`)-SNAPSHOT
 else
 GIT_SHA=source_archive
-GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))
+GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))-SNAPSHOT
 endif
 
 SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,darwin/amd64,darwin/arm64,windows/amd64,windows/386
@@ -86,14 +86,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 .PHONY: setup-git
 
 build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
+	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
 .PHONY: build
 
 buildall: deprecated build
 .PHONY: buildall
 
 debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
-	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)-SNAPSHOT" -tags=netgo
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=netgo
 .PHONY: debug-build
 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
@@ -101,24 +101,6 @@ buildjs: check_node_env ui/build/index.html ##@Build Build only frontend
 
 ui/build/index.html: $(UI_SRC_FILES)
 	@(cd ./ui && npm run build)
-
-#all: buildjs ##@Cross_Compilation Build binaries for all supported platforms.
-#	@echo "Building binaries for all platforms using builder ${CI_RELEASER_VERSION}"
-#	docker run -t -v $(PWD):/workspace -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
-# 		goreleaser release --clean --skip=publish --snapshot
-#.PHONY: all
-#
-#single: buildjs ##@Cross_Compilation Build binaries for a single supported platforms.
-#	@if [ -z "${GOOS}" -o -z "${GOARCH}" ]; then \
-#		echo "Usage: GOOS=<os> GOARCH=<arch> make single"; \
-#		echo "Options:"; \
-#		grep -- "- id: navidrome_" .goreleaser.yml | sed 's/- id: navidrome_//g'; \
-#		exit 1; \
-#	fi
-#	@echo "Building binaries for ${GOOS}/${GOARCH} using builder ${CI_RELEASER_VERSION}"
-#	docker run -t -v $(PWD):/workspace -e GOOS -e GOARCH -w /workspace deluan/ci-goreleaser:$(CI_RELEASER_VERSION) \
-# 		goreleaser build --clean --snapshot -p 2 --single-target --id navidrome_${GOOS}_${GOARCH}
-#.PHONY: single
 
 list-platforms: ##@Cross_Compilation List supported platforms
 	@echo "Supported platforms:"
@@ -130,6 +112,8 @@ list-platforms: ##@Cross_Compilation List supported platforms
 docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make list-platforms`)
 	docker build \
 		--platform $(PLATFORMS) \
+		--build-arg GIT_TAG=${GIT_TAG} \
+		--build-arg GIT_SHA=${GIT_SHA} \
 		--output "./dist" --target binary .
 .PHONY: docker-build
 
@@ -138,6 +122,8 @@ docker: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:dev
 	@echo $(IMAGE_PLATFORMS) | grep -q "darwin" && echo "ERROR: macOS is not supported for Docker builds" && exit 1 || true
 	docker build \
 		--platform $(IMAGE_PLATFORMS) \
+		--build-arg GIT_TAG=${GIT_TAG} \
+		--build-arg GIT_SHA=${GIT_SHA} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker
 
