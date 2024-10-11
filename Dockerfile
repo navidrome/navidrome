@@ -5,9 +5,15 @@ FROM --platform=$BUILDPLATFORM tonistiigi/xx:1.5.0 AS xx
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM alpine AS taglib-build
 ARG TARGETPLATFORM
-RUN --mount=type=bind,source=tmp,target=/tmp \
-    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '_') && \
-    echo $PLATFORM && cp -R /tmp/taglib/${PLATFORM} /taglib
+ARG CROSS_TAGLIB_VERSION=2.0.2-1
+ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
+
+RUN PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-') \
+    FILE=taglib-${PLATFORM}.tar.gz && \
+    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE} && \
+    wget ${DOWNLOAD_URL}; \
+    mkdir /taglib && \
+    tar -xzf ${FILE} -C /taglib
 
 #####################################################
 ### Build Navidrome UI

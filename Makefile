@@ -10,11 +10,11 @@ GIT_TAG=$(patsubst navidrome-%,v%,$(notdir $(PWD)))-SNAPSHOT
 endif
 
 SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,darwin/amd64,darwin/arm64,windows/amd64,windows/386
-IMAGE_PLATFORMS = $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "linux" | tr '\n' ',' | sed 's/,$$//')
+IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "linux" | tr '\n' ',' | sed 's/,$$//')
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
-CI_RELEASER_VERSION ?= 1.23.2-1 ## https://github.com/navidrome/ci-goreleaser
+CROSS_TAGLIB_VERSION ?= 2.0.2-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -114,6 +114,7 @@ docker-build: ##@Cross_Compilation Cross-compile for any supported platform (che
 		--platform $(PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
+		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--output "./dist" --target binary .
 .PHONY: docker-build
 
@@ -124,6 +125,7 @@ docker: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:dev
 		--platform $(IMAGE_PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
+		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker
 
