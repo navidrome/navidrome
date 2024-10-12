@@ -26,6 +26,7 @@ type configOptions struct {
 	CacheFolder                     string
 	DbPath                          string
 	LogLevel                        string
+	LogFile                         string
 	ScanInterval                    time.Duration
 	ScanSchedule                    string
 	SessionTimeout                  time.Duration
@@ -209,6 +210,16 @@ func Load() {
 		}
 	}
 
+	out := os.Stderr
+	if Server.LogFile != "" {
+		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Error opening log file %s: %s\n", Server.LogFile, err.Error())
+			os.Exit(1)
+		}
+		log.SetOutput(out)
+	}
+
 	log.SetLevelString(Server.LogLevel)
 	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
@@ -241,7 +252,7 @@ func Load() {
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
-		_, _ = fmt.Fprintln(os.Stderr, prettyConf)
+		_, _ = fmt.Fprintln(out, prettyConf)
 	}
 
 	if !Server.EnableExternalServices {
@@ -324,6 +335,7 @@ func init() {
 	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
 	viper.SetDefault("loglevel", "info")
+	viper.SetDefault("logfile", "")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")
