@@ -6,7 +6,5 @@ data
 *.db
 testDB
 navidrome
+navidrome.db
 navidrome.toml
-tmp
-!tmp/taglib
-dist
