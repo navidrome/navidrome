@@ -1,0 +1,23 @@
+name: 'Download TagLib'
+description: 'Downloads and extracts the TagLib library, adding it to PKG_CONFIG_PATH'
+inputs:
+  version:
+    description: 'Version of TagLib to download'
+    required: true
+  platform:
+    description: 'Platform to download TagLib for'
+    default: 'linux-amd64'
+runs:
+  using: 'composite'
+  steps:
+    - name: Download TagLib
+      shell: bash
+      run: |
+        mkdir -p /tmp/taglib
+        cd /tmp
+        FILE=taglib-${{ inputs.platform }}.tar.gz
+        wget https://github.com/navidrome/cross-taglib/releases/download/v${{ inputs.version }}/${FILE}
+        tar -xzf ${FILE} -C taglib
+        PKG_CONFIG_PREFIX=/tmp/taglib
+        echo "PKG_CONFIG_PREFIX=${PKG_CONFIG_PREFIX}" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:${PKG_CONFIG_PREFIX}/lib/pkgconfig" >> $GITHUB_ENV

@@ -1,0 +1,88 @@
+# GoReleaser config
+project_name: navidrome
+version: 2
+
+builds:
+  - id: navidrome
+    # Instead of compiling the binary with goreleaser, we just copy it from `binaries` folder
+    # This is because we need to compile the binaries with our Dockerfile, and to avoid having to
+    # compile it twice, we just copy the docker build output.env. The xxgo script handles this for us
+    gobinary: "./release/xxgo"
+
+    # All available targets compiled by the Dockerfile
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_386
+      - linux_amd64
+      - linux_arm_v5
+      - linux_arm_v6
+      - linux_arm_v7
+      - linux_arm64
+      - windows_386
+      - windows_amd64
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "{{ .ProjectName }}_checksums.txt"
+
+snapshot:
+  version_template: "{{ .Tag }}-SNAPSHOT"
+
+release:
+  draft: true
+  mode: append
+  footer: |
+    **Full Changelog**: https://github.com/navidrome/navidrome/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    ## Helping out
+
+    This release is only possible thanks to the support of some **awesome people**!
+
+    Want to be one of them?
+    You can [sponsor](https://github.com/sponsors/deluan), pay me a [Ko-fi](https://ko-fi.com/deluan) or [contribute with code](https://www.navidrome.org/docs/developers/).
+
+    ## Where to go next?
+
+    * Read installation instructions on our [website](https://www.navidrome.org/docs/installation/).
+    * Reach out on [Discord](https://discord.gg/xh7j7yF), [Reddit](https://www.reddit.com/r/navidrome/) and [Twitter](https://twitter.com/navidrome)!
+
+  # Add the MSI installers to the release
+  extra_files:
+    - glob: binaries/navidrome_386.msi
+      name_template: navidrome_{{.Version}}_windows_386_installer.msi
+    - glob: binaries/navidrome_amd64.msi
+      name_template: navidrome_{{.Version}}_windows_amd64_installer.msi
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^test:"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: "New Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 100
+    - title: "Security updates"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 150
+    - title: "Bug fixes"
+      regexp: '^.*?(fix|refactor)(\(.+\))??!?:.+$'
+      order: 200
+    - title: "Documentation updates"
+      regexp: ^.*?docs?(\(.+\))??!?:.+$
+      order: 400
+    - title: "Build process updates"
+      regexp: ^.*?(build|ci)(\(.+\))??!?:.+$
+      order: 400
+    - title: Other work
+      order: 9999
