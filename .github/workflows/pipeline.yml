@@ -131,6 +131,9 @@ jobs:
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
