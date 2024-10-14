@@ -15,7 +15,7 @@ env:
 
 jobs:
   git-version:
-    name: Get Git Version
+    name: Get Version Info
     runs-on: ubuntu-latest
     outputs:
         git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Get Git Version
+      - name: Get Git SHA and last Tag
         id: git-version
         run: |
           GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
@@ -40,6 +40,9 @@ jobs:
             GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
           fi
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
+          
+          echo "GIT_TAG=$GIT_TAG"
+          echo "GIT_SHA=$GIT_SHA"
           
           echo "git describe (dirty): $(git describe --dirty --always --tags)"
           echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
@@ -305,7 +308,7 @@ jobs:
         run: |
           sudo apt-get install -y wixl jq
 
-          NAVIDROME_BUILD_VERSION="$(echo $GIT_TAG | sed -e 's/^v//').1"
+          NAVIDROME_BUILD_VERSION=$(echo $GIT_TAG | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/')
           echo $NAVIDROME_BUILD_VERSION
 
           mkdir -p $GITHUB_WORKSPACE/wix/386
