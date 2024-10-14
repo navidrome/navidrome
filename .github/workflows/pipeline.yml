@@ -18,8 +18,8 @@ jobs:
     name: Get Version Info
     runs-on: ubuntu-latest
     outputs:
-        git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
-        git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
+      git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
+      git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,7 +48,6 @@ jobs:
           echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
           echo "git tag -l: $(git tag -l)"
-      
 
   go-lint:
     name: Lint Go code
@@ -235,7 +234,7 @@ jobs:
           retention-days: 1
 
   check-push-enabled:
-    name: Check if Docker push is enabled
+    name: Check Docker push
     runs-on: ubuntu-latest
     outputs:
       is_enabled: ${{ steps.check.outputs.is_enabled }}
