@@ -9,56 +9,16 @@ on:
     branches:
       - master
 
-env:
-  CROSS_TAGLIB_VERSION: "2.0.2-1"
-  IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
-
 jobs:
-  git-version:
-    name: Get Version Info
-    runs-on: ubuntu-latest
-    outputs:
-      git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
-      git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Get Git SHA and last Tag
-        id: git-version
-        run: |
-          GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
-          if [ -n "$GIT_TAG" ]; then
-            GIT_TAG=${GIT_TAG}-SNAPSHOT
-            echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
-          fi
-          GIT_SHA=$(git rev-parse --short HEAD)
-          PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          if [[ $PR_NUM != "null" ]]; then
-            GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
-          fi
-          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
-          
-          echo "GIT_TAG=$GIT_TAG"
-          echo "GIT_SHA=$GIT_SHA"
-          
-          echo "git describe (dirty): $(git describe --dirty --always --tags)"
-          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
-          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
-          echo "git tag -l: $(git tag -l)"
-
   go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
+    container: deluan/ci-goreleaser:1.23.2-1
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
-        with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
@@ -67,8 +27,10 @@ jobs:
           problem-matchers: true
           args: --timeout 2m
 
-      - name: Run go goimports
-        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$'`
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
+
+      - run: goimports -w `find . -name '*.go' | grep -v '_gen.go$'`
       - run: go mod tidy
       - name: Verify no changes from goimports and go mod tidy
         run: |
@@ -77,29 +39,28 @@ jobs:
             echo 'To fix this check, run "make format" and commit the changes'
             exit 1
           fi
-
   go:
     name: Test Go code
     runs-on: ubuntu-latest
+    container: deluan/ci-goreleaser:1.23.2-1
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Download TagLib
-        uses: ./.github/actions/download-taglib
-        with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
       - name: Download dependencies
+        if: steps.cache-go.outputs.cache-hit != 'true'
+        continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
         run: go mod download
 
       - name: Test
-        run: |
-          pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -race -cover ./... -v
+        continue-on-error: ${{contains(matrix.go_version, 'beta') || contains(matrix.go_version, 'rc')}}
+        run: go test -shuffle=on -race -cover ./... -v
 
   js:
-    name: Test JS code
+    name: Build JS bundle
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
@@ -131,6 +92,12 @@ jobs:
           cd ui
           npm run build
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: js-bundle
+          path: ui/build
+          retention-days: 7
+
   i18n-lint:
     name: Lint i18n files
     runs-on: ubuntu-latest
@@ -148,180 +115,63 @@ jobs:
             fi
           done
 
-  build:
-    name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version]
-    strategy:
-      matrix:
-        platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
+  binaries:
+    name: Build binaries
+    needs: [js, go, go-lint, i18n-lint]
     runs-on: ubuntu-latest
-    env:
-      IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
-      IS_DOCKER_PUSH_CONFIGURED: ${{ vars.DOCKER_HUB_REPO != '' && 'true' || 'false' }}
-      DOCKER_BUILD_SUMMARY: false
-      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
-      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
+    container: deluan/ci-goreleaser:1.23.2-1
     steps:
-      - name: Sanitize platform name
-        id: set-platform
-        run: |
-          PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
-          echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
-
-      - uses: actions/checkout@v4
-
-      - name: Prepare Docker Buildx
-        uses: ./.github/actions/prepare-docker
-        id: docker
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
-          hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+          fetch-depth: 0
 
-      - name: Build Binaries
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          platforms: ${{ matrix.platform }}
-          outputs: |
-            type=local,dest=./output/${{ env.PLATFORM }}
-          target: binary
-          build-args: |
-            GIT_SHA=${{ env.GIT_SHA }}
-            GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
+      - name: Config workspace folder as trusted
+        run: git config --global --add safe.directory $GITHUB_WORKSPACE;  git describe --dirty --always --tags
 
-      - name: Upload Binaries
-        uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: navidrome-${{ env.PLATFORM }}
-          path: ./output
+          name: js-bundle
+          path: ui/build
+
+      - name: Run GoReleaser - SNAPSHOT
+        if: startsWith(github.ref, 'refs/tags/') != true
+        run: goreleaser release --clean --skip=publish --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GoReleaser - RELEASE
+        if: startsWith(github.ref, 'refs/tags/')
+        run: goreleaser release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            dist
+            !dist/*.tar.gz
+            !dist/*.zip
           retention-days: 7
 
-      - name: Build and push image by digest
-        id: push-image
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          platforms: ${{ matrix.platform }}
-          labels: ${{ steps.docker.outputs.labels }}
-          build-args: |
-            GIT_SHA=${{ env.GIT_SHA }}
-            GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
-          outputs: |
-            type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
-            type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
-
-      - name: Export digest
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
-        run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.push-image.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"          
-
-      - name: Upload digest
-        uses: actions/upload-artifact@v4
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
-        with:
-          name: digests-${{ env.PLATFORM }}
-          path: /tmp/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  check-push-enabled:
-    name: Check Docker push
-    runs-on: ubuntu-latest
-    outputs:
-      is_enabled: ${{ steps.check.outputs.is_enabled }}
-    steps:
-      - name: Check if Docker push is configured
-        id: check
-        run: echo "is_enabled=${{ vars.DOCKER_HUB_REPO != '' }}" >> $GITHUB_OUTPUT
-
-  push-manifest:
-    name: Push Docker manifest
-    runs-on: ubuntu-latest
-    needs: [build, check-push-enabled]
-    if: needs.check-push-enabled.outputs.is_enabled == 'true'
-    env:
-      REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download digests
-        uses: actions/download-artifact@v4
-        with:
-          path: /tmp/digests
-          pattern: digests-*
-          merge-multiple: true
-
-      - name: Prepare Docker Buildx
-        uses: ./.github/actions/prepare-docker
-        id: docker
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
-          hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-      - name: Create manifest list and push to ghcr.io
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)          
-
-      - name: Create manifest list and push to Docker Hub
-        working-directory: /tmp/digests
-        if: vars.DOCKER_HUB_REPO != ''
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ vars.DOCKER_HUB_USERNAME }}@sha256:%s ' *)          
-
-      - name: Inspect image in ghcr.io
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
-
-      - name: Inspect image in Docker Hub
-        if: vars.DOCKER_HUB_REPO != ''
-        run: |
-          docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
-
-      - name: Delete unnecessary digest artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
-            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
-          done
-
-
   msi:
-    name: Build Windows Installers
-    needs: [build, git-version]
+    name: Build and publish MSI files
+    needs: [binaries]
     runs-on: ubuntu-24.04
-    env:
-      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
-      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
         with:
-          path: ./binaries
-          pattern: navidrome-windows*
-          merge-multiple: true
+          name: binaries
+          path: dist
 
-      - name: Build MSI files
+      - name: Build MSI
         run: |
           sudo apt-get install -y wixl jq
-
-          NAVIDROME_BUILD_VERSION=$(echo $GIT_TAG | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/')
-          echo $NAVIDROME_BUILD_VERSION
+          
+          NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
 
           mkdir -p $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
@@ -329,8 +179,8 @@ jobs:
 
           cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
 
-          cp $GITHUB_WORKSPACE/binaries/windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/binaries/windows_amd64/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_386_windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
+          cp $GITHUB_WORKSPACE/dist/navidrome_windows_amd64_windows_amd64_v1/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
 
           # workaround for wixl WixVariable not working to override bmp locations
           sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
@@ -341,39 +191,77 @@ jobs:
 
           cd $GITHUB_WORKSPACE/wix/amd64
           wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
-
+          
           ls -la $GITHUB_WORKSPACE/wix/*.msi
 
-      - name: Upload MSI files
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: navidrome-windows-installers
+          name: installers
           path: wix/*.msi
           retention-days: 7
 
-  release:
-    name: Release
-    needs: [build, msi, push-manifest]
+  docker:
+    name: Build and publish Docker images
+    needs: [binaries]
     runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: ${{secrets.DOCKER_IMAGE}}
     steps:
+      - name: Set up QEMU
+        id: qemu
+        uses: docker/setup-qemu-action@v3
+        if: env.DOCKER_IMAGE != ''
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        if: env.DOCKER_IMAGE != ''
+
       - uses: actions/checkout@v4
+        if: env.DOCKER_IMAGE != ''
 
       - uses: actions/download-artifact@v4
+        if: env.DOCKER_IMAGE != ''
         with:
-          path: ./binaries
-          pattern: navidrome-*
-          merge-multiple: true
+          name: binaries
+          path: dist
 
-      - run: ls -lR ./binaries
-
-      - name: Set RELEASE_FLAGS for snapshot releases
-        if: env.IS_RELEASE == 'false'
-        run: echo 'RELEASE_FLAGS=--skip=publish --snapshot' >> $GITHUB_ENV
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+      - name: Login to Docker Hub
+        if: env.DOCKER_IMAGE != ''
+        uses: docker/login-action@v3
         with:
-          version: '~> v2'
-          args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        if: env.DOCKER_IMAGE != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        if: env.DOCKER_IMAGE != ''
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          labels: |
+            maintainer=deluan
+          images: |
+            name=${{secrets.DOCKER_IMAGE}}
+            name=ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=raw,value=develop,enable={{is_default_branch}}
+
+      - name: Build and Push
+        if: env.DOCKER_IMAGE != ''
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .github/workflows/pipeline.dockerfile
+          platforms: linux/amd64,linux/386,linux/arm/v6,linux/arm/v7,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
