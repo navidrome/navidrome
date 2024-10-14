@@ -17,7 +17,7 @@ RUN PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-') \
 
 #####################################################
 ### Build Navidrome UI
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:20-alpine3.20 AS ui
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine3.20 AS ui
 WORKDIR /app
 
 # Install node dependencies

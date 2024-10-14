@@ -55,10 +55,6 @@ jobs:
         with:
           version: ${{ env.CROSS_TAGLIB_VERSION }}
 
-      - run: |
-          ./.github/workflows/git-tags.sh
-          git tag -l
-
       - name: Download dependencies
         run: go mod download
 
@@ -122,7 +118,6 @@ jobs:
     needs: [js, go, go-lint, i18n-lint]
     strategy:
       matrix:
-#        platform: [ linux/amd64, windows/amd64, windows/386 ] #, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
     runs-on: ubuntu-latest
     env:
@@ -153,11 +148,16 @@ jobs:
             GIT_TAG=${GIT_TAG}-SNAPSHOT
             echo "GIT_TAG=$GIT_TAG" >> $GITHUB_ENV
           fi
-          echo "GIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          git describe --dirty --always --tags
-          git tag --sort=-committerdate | head -n 1
-          echo "list:"
-          git tag -l
+          GIT_SHA=$(git rev-parse --short HEAD)
+          PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          if [[ $PR_NUM != "null" ]]; then
+            GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
+          fi
+          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
+          echo "git describe (dirty): $(git describe --dirty --always --tags)"
+          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
+          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
+          echo "git tag -l: $(git tag -l)"
 
       - name: Build Binaries
         uses: docker/build-push-action@v6
@@ -172,10 +172,6 @@ jobs:
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
-
-      #      - run: |
-      #          mkdir -p ./output/${{ env.PLATFORM }}
-      #          echo ${{ env.PLATFORM }} > ./output/${{ env.PLATFORM }}/navidrome
 
       - name: Upload Binaries
         uses: actions/upload-artifact@v4
