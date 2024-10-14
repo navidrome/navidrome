@@ -30,6 +30,12 @@ outputs:
   version:
     description: 'Docker image version'
     value: ${{ steps.meta.outputs.version }}
+  hub_repository:
+    description: 'Docker Hub repository'
+    value: ${{ env.DOCKER_HUB_REPO }}
+  hub_enabled:
+    description: 'Is Docker Hub enabled'
+    value: ${{ env.DOCKER_HUB_ENABLED }}
 
 runs:
   using: 'composite'

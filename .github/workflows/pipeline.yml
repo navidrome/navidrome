@@ -12,6 +12,7 @@ on:
 env:
   CROSS_TAGLIB_VERSION: "2.0.2-1"
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
+  IS_DOCKER_PUSH_CONFIGURED: ${{ vars.DOCKER_HUB_REPO != '' && 'true' || 'false' }}
 
 jobs:
   git-version:
@@ -202,7 +203,7 @@ jobs:
 
       - name: Build and push image by digest
         id: push-image
-        if: env.IS_LINUX == 'true'
+        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -213,10 +214,12 @@ jobs:
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
-          outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+          outputs: |
+            type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
+            type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
-        if: env.IS_LINUX == 'true'
+        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.push-image.outputs.digest }}"
@@ -224,7 +227,7 @@ jobs:
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
-        if: env.IS_LINUX == 'true'
+        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
         with:
           name: digests-${{ env.PLATFORM }}
           path: /tmp/digests/*
@@ -234,6 +237,7 @@ jobs:
   push-manifest:
     name: Push Docker manifest
     runs-on: ubuntu-latest
+    if: env.IS_DOCKER_PUSH_CONFIGURED == 'true'
     needs:
       - build
     env:
