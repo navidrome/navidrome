@@ -14,6 +14,39 @@ env:
   IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/') && 'true' || 'false' }}
 
 jobs:
+  git-version:
+    name: Get Git Version
+    runs-on: ubuntu-latest
+    outputs:
+        git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
+        git_sha: ${{ steps.git-version.outputs.GIT_SHA }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Get Git Version
+        id: git-version
+        run: |
+          GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
+          if [ -n "$GIT_TAG" ]; then
+            GIT_TAG=${GIT_TAG}-SNAPSHOT
+            echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
+          fi
+          GIT_SHA=$(git rev-parse --short HEAD)
+          PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          if [[ $PR_NUM != "null" ]]; then
+            GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
+          fi
+          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
+          
+          echo "git describe (dirty): $(git describe --dirty --always --tags)"
+          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
+          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
+          echo "git tag -l: $(git tag -l)"
+      
+
   go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
@@ -115,7 +148,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint]
+    needs: [js, go, go-lint, i18n-lint, git-version]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -123,6 +156,8 @@ jobs:
     env:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
       DOCKER_BUILD_SUMMARY: false
+      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
+      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
     steps:
       - name: Sanitize platform name
         id: set-platform
@@ -131,9 +166,6 @@ jobs:
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
@@ -143,24 +175,6 @@ jobs:
           hub_repository: ${{ vars.DOCKER_HUB_REPO }}
           hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-      - name: Get Git Version
-        run: |
-          GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
-          if [ -n "$GIT_TAG" ]; then
-            GIT_TAG=${GIT_TAG}-SNAPSHOT
-            echo "GIT_TAG=$GIT_TAG" >> $GITHUB_ENV
-          fi
-          GIT_SHA=$(git rev-parse --short HEAD)
-          PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
-          if [[ $PR_NUM != "null" ]]; then
-            GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
-          fi
-          echo "GIT_SHA=$GIT_SHA" >> $GITHUB_ENV
-          echo "git describe (dirty): $(git describe --dirty --always --tags)"
-          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
-          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
-          echo "git tag -l: $(git tag -l)"
 
       - name: Build Binaries
         uses: docker/build-push-action@v6
@@ -273,8 +287,11 @@ jobs:
 
   msi:
     name: Build Windows Installers
-    needs: [build]
+    needs: [build, git-version]
     runs-on: ubuntu-24.04
+    env:
+      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
+      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -288,9 +305,8 @@ jobs:
         run: |
           sudo apt-get install -y wixl jq
 
-          # TODO: get version
-          # NAVIDROME_BUILD_VERSION=$(jq -r '.version' < $GITHUB_WORKSPACE/dist/metadata.json | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/' )
-          NAVIDROME_BUILD_VERSION=0.0.0.1
+          NAVIDROME_BUILD_VERSION="$(echo $GIT_TAG | sed -e 's/^v//').1"
+          echo $NAVIDROME_BUILD_VERSION
 
           mkdir -p $GITHUB_WORKSPACE/wix/386
           cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
