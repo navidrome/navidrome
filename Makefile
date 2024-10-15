@@ -14,6 +14,7 @@ IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "lin
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
+# Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
 CROSS_TAGLIB_VERSION ?= 2.0.2-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -106,14 +107,14 @@ docker-buildjs: ##@Build Build only frontend using Docker
 ui/build/index.html: $(UI_SRC_FILES)
 	@(cd ./ui && npm run build)
 
-list-platforms: ##@Cross_Compilation List supported platforms
+docker-platforms: ##@Cross_Compilation List supported platforms
 	@echo "Supported platforms:"
 	@echo "$(SUPPORTED_PLATFORMS)" | tr ',' '\n' | sort | sed 's/^/    /'
 	@echo "\nUsage: make PLATFORMS=\"linux/amd64\" docker-build"
 	@echo "       make IMAGE_PLATFORMS=\"linux/amd64\" docker-image"
-.PHONY: list-platforms
+.PHONY: docker-platforms
 
-docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make list-platforms`)
+docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make docker-platforms`)
 	docker build \
 		--platform $(PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \

@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcross
 
-#####################################################
-### Build xx
+########################################################################################################################
+### Build xx (orignal image: tonistiigi/xx)
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS xx-build
 
 ENV XX_VERSION=1.5.0
@@ -23,7 +23,7 @@ RUN cd /out && \
 FROM scratch AS xx
 COPY --from=xx-build /out/ /usr/bin/
 
-#####################################################
+########################################################################################################################
 ### Get TagLib
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS taglib-build
 ARG TARGETPLATFORM
@@ -37,7 +37,7 @@ RUN PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-') \
     mkdir /taglib && \
     tar -xzf ${FILE} -C /taglib
 
-#####################################################
+########################################################################################################################
 ### Build Navidrome UI
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine3.20 AS ui
 WORKDIR /app
@@ -53,7 +53,7 @@ RUN npm run build -- --outDir=/build
 FROM scratch AS ui-bundle
 COPY --from=ui /build /build
 
-#####################################################
+########################################################################################################################
 ### Build Navidrome binary
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.23-bookworm AS base
 RUN apt-get update && apt-get install -y clang lld
@@ -112,7 +112,7 @@ RUN xx-verify --static /out/navidrome*
 FROM scratch AS binary
 COPY --from=build /out /
 
-#####################################################
+########################################################################################################################
 ### Build Final Image
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS final
 LABEL maintainer="deluan@navidrome.org"

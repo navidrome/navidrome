@@ -15,7 +15,7 @@ env:
 
 jobs:
   git-version:
-    name: Get Version Info
+    name: Get version info
     runs-on: ubuntu-latest
     outputs:
       git_tag: ${{ steps.git-version.outputs.GIT_TAG }}
@@ -26,7 +26,13 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Get Git SHA and last Tag
+      - run: |
+          echo "git describe (dirty): $(git describe --dirty --always --tags)"
+          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
+          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
+          git tag -l
+
+      - name: Determine git current SHA and latest tag
         id: git-version
         run: |
           GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
@@ -43,11 +49,6 @@ jobs:
           
           echo "GIT_TAG=$GIT_TAG"
           echo "GIT_SHA=$GIT_SHA"
-          
-          echo "git describe (dirty): $(git describe --dirty --always --tags)"
-          echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
-          echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
-          echo "git tag -l: $(git tag -l)"
 
   go-lint:
     name: Lint Go code
@@ -200,6 +201,7 @@ jobs:
           path: ./output
           retention-days: 7
 
+      # https://www.perplexity.ai/search/can-i-have-multiple-push-to-di-4P3ToaZFQtmVROuhaZMllQ
       - name: Build and push image by digest
         id: push-image
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
@@ -234,7 +236,7 @@ jobs:
           retention-days: 1
 
   check-push-enabled:
-    name: Check Docker push
+    name: Check Docker configuration
     runs-on: ubuntu-latest
     outputs:
       is_enabled: ${{ steps.check.outputs.is_enabled }}
@@ -280,7 +282,7 @@ jobs:
         if: vars.DOCKER_HUB_REPO != ''
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ vars.DOCKER_HUB_USERNAME }}@sha256:%s ' *)          
+            $(printf '${{ vars.DOCKER_HUB_REPO }}@sha256:%s ' *)          
 
       - name: Inspect image in ghcr.io
         run: |
