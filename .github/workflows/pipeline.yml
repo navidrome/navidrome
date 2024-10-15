@@ -154,16 +154,26 @@ jobs:
             fi
           done
 
+  check-push-enabled:
+    name: Check Docker configuration
+    runs-on: ubuntu-latest
+    outputs:
+      is_enabled: ${{ steps.check.outputs.is_enabled }}
+    steps:
+      - name: Check if Docker push is configured
+        id: check
+        run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
+
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version]
+    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
     runs-on: ubuntu-latest
     env:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
-      IS_DOCKER_PUSH_CONFIGURED: ${{ vars.DOCKER_HUB_REPO != '' && 'true' || 'false' }}
+      IS_DOCKER_PUSH_CONFIGURED: ${{ needs.check-push-enabled.outputs.is_enabled == 'true' }}
       DOCKER_BUILD_SUMMARY: false
       GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
       GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
@@ -239,16 +249,6 @@ jobs:
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
-
-  check-push-enabled:
-    name: Check Docker configuration
-    runs-on: ubuntu-latest
-    outputs:
-      is_enabled: ${{ steps.check.outputs.is_enabled }}
-    steps:
-      - name: Check if Docker push is configured
-        id: check
-        run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
 
   push-manifest:
     name: Push Docker manifest
