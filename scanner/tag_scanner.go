@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"github.com/navidrome/navidrome/scanner/metadata/external"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -121,10 +122,10 @@ func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool,
 			updateProgress(progress, folderStats.AudioFilesCount)
 			allFSDirs[folderStats.Path] = folderStats
 
-			if s.folderHasChanged(folderStats, allDBDirs, s.lib.LastScanAt) || fullScan {
+			if fullScan || s.folderHasChanged(folderStats, allDBDirs, s.lib.LastScanAt) || folderStats.ExternalTagsUpdatedAt.After(s.lib.LastScanAt) {
 				changedDirs = append(changedDirs, folderStats.Path)
 				log.Debug("Processing changed folder", "dir", folderStats.Path)
-				err := s.processChangedDir(walkCtx, refresher, fullScan, folderStats.Path)
+				err := s.processChangedDir(walkCtx, refresher, fullScan, folderStats)
 				if err != nil {
 					log.Error("Error updating folder in the DB", "dir", folderStats.Path, err)
 				}
@@ -193,7 +194,7 @@ func updateProgress(progress chan uint32, count uint32) {
 }
 
 func isDirEmpty(ctx context.Context, dir string) (bool, error) {
-	children, stats, err := loadDir(ctx, dir)
+	children, stats, err := loadDir(ctx, dir, externalTagsStats{})
 	if err != nil {
 		return false, err
 	}
@@ -263,12 +264,12 @@ func (s *TagScanner) processDeletedDir(ctx context.Context, refresher *refresher
 	return err
 }
 
-func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher, fullScan bool, dir string) error {
+func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher, fullScan bool, stats dirStats) error {
 	start := time.Now()
 
 	// Load folder's current tracks from DB into a map
 	currentTracks := map[string]model.MediaFile{}
-	ct, err := s.ds.MediaFile(ctx).FindAllByPath(dir)
+	ct, err := s.ds.MediaFile(ctx).FindAllByPath(stats.Path)
 	if err != nil {
 		return err
 	}
@@ -277,7 +278,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 	}
 
 	// Load track list from the folder
-	files, err := loadAllAudioFiles(dir)
+	files, err := loadAllAudioFiles(stats.Path)
 	if err != nil {
 		return err
 	}
@@ -293,7 +294,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 	}
 
 	// If track from folder is newer than the one in DB, select for update/insert in DB
-	log.Trace(ctx, "Processing changed folder", "dir", dir, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
+	log.Trace(ctx, "Processing changed folder", "dir", stats.Path, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
 	var filesToUpdate []string
 	for filePath, entry := range files {
 		c, inDB := currentTracks[filePath]
@@ -306,7 +307,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 				log.Error("Could not stat file", "filePath", filePath, err)
 				continue
 			}
-			if info.ModTime().After(c.UpdatedAt) {
+			if info.ModTime().After(c.UpdatedAt) || stats.ExternalTagsUpdatedAt.After(c.UpdatedAt) {
 				filesToUpdate = append(filesToUpdate, filePath)
 				s.cnt.updated++
 			}
@@ -324,21 +325,22 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 	numPurgedTracks := 0
 
 	if len(filesToUpdate) > 0 {
-		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, dir, currentTracks, filesToUpdate)
+		externalTags := external.ReadTagsFiles(stats.ExternalTagsPaths)
+		numUpdatedTracks, err = s.addOrUpdateTracksInDB(ctx, refresher, stats.Path, currentTracks, filesToUpdate, externalTags)
 		if err != nil {
 			return err
 		}
 	}
 
 	if len(orphanTracks) > 0 {
-		numPurgedTracks, err = s.deleteOrphanSongs(ctx, refresher, dir, orphanTracks)
+		numPurgedTracks, err = s.deleteOrphanSongs(ctx, refresher, stats.Path, orphanTracks)
 		if err != nil {
 			return err
 		}
 	}
 
 	err = refresher.flush(ctx)
-	log.Info(ctx, "Finished processing changed folder", "dir", dir, "updated", numUpdatedTracks,
+	log.Info(ctx, "Finished processing changed folder", "dir", stats.Path, "updated", numUpdatedTracks,
 		"deleted", numPurgedTracks, "elapsed", time.Since(start))
 	return err
 }
@@ -370,6 +372,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	dir string,
 	currentTracks map[string]model.MediaFile,
 	filesToUpdate []string,
+	externalTags []external.Tags,
 ) (int, error) {
 	log.Trace(ctx, "Updating mediaFiles in DB", "dir", dir, "numFiles", len(filesToUpdate))
 
@@ -377,7 +380,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	// Break the file list in chunks to avoid calling ffmpeg with too many parameters
 	for chunk := range slices.Chunk(filesToUpdate, filesBatchSize) {
 		// Load tracks Metadata from the folder
-		newTracks, err := s.loadTracks(chunk)
+		newTracks, err := s.loadTracks(chunk, externalTags)
 		if err != nil {
 			return 0, err
 		}
@@ -402,7 +405,7 @@ func (s *TagScanner) addOrUpdateTracksInDB(
 	return numUpdatedTracks, nil
 }
 
-func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
+func (s *TagScanner) loadTracks(filePaths []string, externalTags []external.Tags) (model.MediaFiles, error) {
 	mds, err := metadata.Extract(filePaths...)
 	if err != nil {
 		return nil, err
@@ -410,6 +413,9 @@ func (s *TagScanner) loadTracks(filePaths []string) (model.MediaFiles, error) {
 
 	var mfs model.MediaFiles
 	for _, md := range mds {
+		if len(externalTags) > 0 {
+			md.Tags = external.PatchTags(md.FilePath(), md.Tags, externalTags)
+		}
 		mf := s.mapper.ToMediaFile(md)
 		mfs = append(mfs, mf)
 	}

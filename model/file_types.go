@@ -28,3 +28,7 @@ func IsValidPlaylist(filePath string) bool {
 	extension := strings.ToLower(filepath.Ext(filePath))
 	return extension == ".m3u" || extension == ".m3u8" || extension == ".nsp"
 }
+
+func IsTagsFile(filePath string) bool {
+	return filepath.Base(filePath) == "tags.yml"
+}
