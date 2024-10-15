@@ -248,7 +248,7 @@ jobs:
     steps:
       - name: Check if Docker push is configured
         id: check
-        run: echo "is_enabled=${{ vars.DOCKER_HUB_REPO != '' }}" >> $GITHUB_OUTPUT
+        run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
 
   push-manifest:
     name: Push Docker manifest
