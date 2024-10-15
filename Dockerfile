@@ -4,12 +4,13 @@ FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcros
 ### Build xx (orignal image: tonistiigi/xx)
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/alpine:3.20 AS xx-build
 
-ENV XX_VERSION=1.5.0
+# v1.5.0
+ENV XX_VERSION=b4e4c451c778822e6742bfc9d9a91d7c7d885c8a
 
 RUN apk add -U --no-cache git
 RUN git clone https://github.com/tonistiigi/xx && \
     cd xx && \
-    git checkout v${XX_VERSION} && \
+    git checkout ${XX_VERSION} && \
     mkdir -p /out && \
     cp src/xx-* /out/
 
