@@ -30,12 +30,32 @@ ARG TARGETPLATFORM
 ARG CROSS_TAGLIB_VERSION=2.0.2-1
 ENV CROSS_TAGLIB_RELEASES_URL=https://github.com/navidrome/cross-taglib/releases/download/v${CROSS_TAGLIB_VERSION}/
 
-RUN PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-') \
-    FILE=taglib-${PLATFORM}.tar.gz && \
-    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE} && \
-    wget ${DOWNLOAD_URL}; \
-    mkdir /taglib && \
+RUN <<EOT
+    # Store all checksums statically here, to validate the downloaded files.
+    # Update this list when setting CROSS_TAGLIB_VERSION
+    CROSS_TAGLIB_CHECKSUMS="
+0ef8bd9076dea3f26413a4e46765c4ff083e2a6ad0ad046c8a568fe1d7958362  taglib-darwin-amd64.tar.gz
+824c795ea4054a172137241eed99f42b073d8e7fb3f3ac497138ce351f1b46df  taglib-darwin-arm64.tar.gz
+3a623a2376832ed42f21209d78ef1d7806ffd48de05fc7329adfc09eba8ecbe7  taglib-linux-386.tar.gz
+1d7998f44663a615bf0e0ab005c4992128fa83f8111e616cbb1b46ef9ea2ce75  taglib-linux-amd64.tar.gz
+10e5fa8057fe1da53be945d2682516dd45b8530dadc9d53b65b2b26676ae5863  taglib-linux-arm-v5.tar.gz
+1115832ff6de62d2a0fe46828797210d56f84ec7918d169993710cb4981107c9  taglib-linux-arm-v6.tar.gz
+50543937b90dbd45d82afcbebc1363c8b08ed4dba6a209a0f7186f8447ded3c9  taglib-linux-arm-v7.tar.gz
+41642093505316f9abf41551f00ba4cf6521f0a84219776a6ad5da240b5d4c98  taglib-linux-arm64.tar.gz
+5e5fec3e6277e5073866018e44523a334cac46f3013c2d5923f8fdf20f291cfa  taglib-windows-386.tar.gz
+45756d7db17a63d795af5738e7e1b51f4de4f51bb659e5dfd29661a8ca2f95b6  taglib-windows-amd64.tar.gz
+"
+    PLATFORM=$(echo ${TARGETPLATFORM} | tr '/' '-')
+    FILE=taglib-${PLATFORM}.tar.gz
+    CHECKSUM=$(echo "${CROSS_TAGLIB_CHECKSUMS}" | grep "${FILE}" | awk '{print $1}')
+
+    DOWNLOAD_URL=${CROSS_TAGLIB_RELEASES_URL}${FILE}
+    wget ${DOWNLOAD_URL}
+    echo "${CHECKSUM} ${FILE}" | sha256sum -c - || exit 1;
+
+    mkdir /taglib
     tar -xzf ${FILE} -C /taglib
+EOT
 
 ########################################################################################################################
 ### Build Navidrome UI
@@ -81,7 +101,6 @@ RUN --mount=type=bind,source=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=from=taglib-build,target=/taglib,src=/taglib,ro <<EOT
-
 
     # Setup CGO cross-compilation environment
     xx-go --wrap
