@@ -1,0 +1,84 @@
+name: 'Prepare Docker Buildx environment'
+description: 'Downloads and extracts the TagLib library, adding it to PKG_CONFIG_PATH'
+inputs:
+  github_token:
+    description: 'GitHub token'
+    required: true
+    default: ''
+  hub_repository:
+    description: 'Docker Hub repository to push images to'
+    required: false
+    default: ''
+  hub_username:
+    description: 'Docker Hub username'
+    required: false
+    default: ''
+  hub_password:
+    description: 'Docker Hub password'
+    required: false
+    default: ''
+outputs:
+  tags:
+    description: 'Docker image tags'
+    value: ${{ steps.meta.outputs.tags }}
+  labels:
+    description: 'Docker image labels'
+    value: ${{ steps.meta.outputs.labels }}
+  annotations:
+    description: 'Docker image annotations'
+    value: ${{ steps.meta.outputs.annotations }}
+  version:
+    description: 'Docker image version'
+    value: ${{ steps.meta.outputs.version }}
+  hub_repository:
+    description: 'Docker Hub repository'
+    value: ${{ env.DOCKER_HUB_REPO }}
+  hub_enabled:
+    description: 'Is Docker Hub enabled'
+    value: ${{ env.DOCKER_HUB_ENABLED }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Docker Hub configuration
+      shell: bash
+      run: |
+        if [ -z "${{inputs.hub_repository}}" ]; then
+          echo "DOCKER_HUB_REPO=none" >> $GITHUB_ENV
+          echo "DOCKER_HUB_ENABLED=false" >> $GITHUB_ENV
+        else
+          echo "DOCKER_HUB_REPO=${{inputs.hub_repository}}" >> $GITHUB_ENV
+          echo "DOCKER_HUB_ENABLED=true" >> $GITHUB_ENV
+        fi
+
+    - name: Login to Docker Hub
+      if: inputs.hub_username != '' && inputs.hub_password != ''
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.hub_username }}
+        password: ${{ inputs.hub_password }}
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github_token }}
+
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Extract metadata for Docker image
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        labels: |
+          maintainer=deluan@navidrome.org
+        images: |
+          name=${{env.DOCKER_HUB_REPO}},enable=${{env.DOCKER_HUB_ENABLED}}
+          name=ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=raw,value=develop,enable={{is_default_branch}}
