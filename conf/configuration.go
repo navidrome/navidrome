@@ -181,6 +181,13 @@ func Load() {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
+	cfgFile := viper.ConfigFileUsed()
+	if filepath.Ext(cfgFile) == ".ini" {
+		var iniConfig struct{ Default configOptions }
+		err = viper.Unmarshal(&iniConfig)
+		Server = &iniConfig.Default
+	}
+
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
