@@ -186,7 +186,7 @@ func Load() {
 
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", err)
 		os.Exit(1)
 	}
 
@@ -195,7 +195,7 @@ func Load() {
 	}
 	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", "path", Server.CacheFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
 		os.Exit(1)
 	}
 
@@ -207,7 +207,7 @@ func Load() {
 	if Server.Backup.Path != "" {
 		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", "path", Server.Backup.Path, err)
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", err)
 			os.Exit(1)
 		}
 	}
@@ -228,7 +228,7 @@ func Load() {
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Invalid BaseURL %s: %s\n", Server.BaseURL, err.Error())
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Invalid BaseURL:", err)
 			os.Exit(1)
 		}
 		Server.BasePath = u.Path
