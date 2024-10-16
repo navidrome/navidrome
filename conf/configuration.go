@@ -176,16 +176,12 @@ func LoadFromFile(confFile string) {
 }
 
 func Load() {
+	parseIniFileConfiguration()
+
 	err := viper.Unmarshal(&Server)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
 		os.Exit(1)
-	}
-	cfgFile := viper.ConfigFileUsed()
-	if filepath.Ext(cfgFile) == ".ini" {
-		var iniConfig struct{ Default configOptions }
-		err = viper.Unmarshal(&iniConfig)
-		Server = &iniConfig.Default
 	}
 
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
@@ -258,6 +254,30 @@ func Load() {
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+// parseIniFileConfiguration is used to parse the config file when it is in INI format. For INI files, it would
+// require a nested structure, so we need to merge the nested [default] section into the root level.
+func parseIniFileConfiguration() {
+	cfgFile := viper.ConfigFileUsed()
+	if filepath.Ext(cfgFile) == ".ini" {
+		var iniConfig map[string]interface{}
+		err := viper.Unmarshal(&iniConfig)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
+			os.Exit(1)
+		}
+		cfg, ok := iniConfig["default"].(map[string]any)
+		if !ok {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config: missing [default] section:", iniConfig)
+			os.Exit(1)
+		}
+		err = viper.MergeConfigMap(cfg)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
+			os.Exit(1)
+		}
 	}
 }
 
