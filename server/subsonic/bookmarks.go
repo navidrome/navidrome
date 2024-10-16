@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -73,8 +74,11 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 	repo := api.ds.PlayQueue(r.Context())
 	pq, err := repo.Retrieve(user.ID)
-	if err != nil {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
+	}
+	if pq == nil || len(pq.Items) == 0 {
+		return newResponse(), nil
 	}
 
 	response := newResponse()
@@ -91,11 +95,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
-	ids, err := p.Strings("id")
-	if err != nil {
-		return nil, err
-	}
-
+	ids, _ := p.Strings("id")
 	current, _ := p.String("current")
 	position := p.Int64Or("position", 0)
 
@@ -118,7 +118,7 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	repo := api.ds.PlayQueue(r.Context())
-	err = repo.Store(pq)
+	err := repo.Store(pq)
 	if err != nil {
 		return nil, err
 	}
