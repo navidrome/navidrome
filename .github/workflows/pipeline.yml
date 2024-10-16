@@ -173,6 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
+      IS_ARMV5: ${{ matrix.platform == 'linux/arm/v5' && 'true' || 'false' }}
       IS_DOCKER_PUSH_CONFIGURED: ${{ needs.check-push-enabled.outputs.is_enabled == 'true' }}
       DOCKER_BUILD_SUMMARY: false
       GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
@@ -219,7 +220,7 @@ jobs:
       # https://www.perplexity.ai/search/can-i-have-multiple-push-to-di-4P3ToaZFQtmVROuhaZMllQ
       - name: Build and push image by digest
         id: push-image
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
+        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -235,7 +236,7 @@ jobs:
             type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
+        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.push-image.outputs.digest }}"
@@ -243,7 +244,7 @@ jobs:
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true'
+        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         with:
           name: digests-${{ env.PLATFORM }}
           path: /tmp/digests/*
