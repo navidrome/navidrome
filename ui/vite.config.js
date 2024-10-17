@@ -13,7 +13,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: manifest(),
       workbox: {
-        // Workbox options
+        navigateFallbackDenylist: [/^\/share.*/],
       },
     }),
   ],
