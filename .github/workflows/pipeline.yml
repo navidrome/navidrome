@@ -164,9 +164,21 @@ jobs:
         id: check
         run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
 
+  lower-repo-name:
+    name: Get Github Repo Lowercase Name
+    runs-on: ubuntu-latest
+    outputs:
+      lowercase_repo: ${{ steps.lowercase_name.outputs.REPO_LOWER }}
+    steps:
+      - name: Get Lowercase Name
+        id: lowercase_name
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_OUTPUT
+
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled, lower-repo-name]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -178,6 +190,7 @@ jobs:
       DOCKER_BUILD_SUMMARY: false
       GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
       GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
+      REPO_LOWER: ${{ needs.lower-repo-name.outputs.lowercase_repo }}
     steps:
       - name: Sanitize platform name
         id: set-platform
@@ -233,7 +246,7 @@ jobs:
             CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
-            type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+            type=image,name=ghcr.io/${{ env.REPO_LOWER }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
@@ -254,10 +267,11 @@ jobs:
   push-manifest:
     name: Push Docker manifest
     runs-on: ubuntu-latest
-    needs: [build, check-push-enabled]
+    needs: [build, check-push-enabled, lower-repo-name]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
     env:
-      REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+      REGISTRY_IMAGE: ghcr.io/${{ needs.lower-repo-name.outputs.lowercase_repo }}
+      REPO_LOWER: ${{ needs.lower-repo-name.outputs.lowercase_repo }}
     steps:
       - uses: actions/checkout@v4
 
@@ -303,8 +317,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
-            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
+          for artifact in $(gh api repos/${{ env.REPO_LOWER }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
+            gh api --method DELETE repos/${{ env.REPO_LOWER }}/actions/artifacts/$artifact
           done
 
 
