@@ -330,8 +330,8 @@ jobs:
         env:
           GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
         run: |
-          wix/build_msi.sh ${GITHUB_WORKSPACE} 386
-          wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
+          sudo GIT_TAG=$GIT_TAG wix/build_msi.sh ${GITHUB_WORKSPACE} 386
+          sudo GIT_TAG=$GIT_TAG wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
 
       - name: Upload MSI files
         uses: actions/upload-artifact@v4
