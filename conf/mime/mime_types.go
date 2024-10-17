@@ -21,6 +21,7 @@ func initMimeTypes() {
 	// In some circumstances, Windows sets JS mime-type to `text/plain`!
 	_ = mime.AddExtensionType(".js", "text/javascript")
 	_ = mime.AddExtensionType(".css", "text/css")
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
 
 	f, err := resources.FS().Open("mime_types.yaml")
 	if err != nil {

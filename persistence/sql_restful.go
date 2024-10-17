@@ -29,7 +29,9 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 		// Look for a custom filter function
 		f = strings.ToLower(f)
 		if ff, ok := r.filterMappings[f]; ok {
-			filters = append(filters, ff(f, v))
+			if filter := ff(f, v); filter != nil {
+				filters = append(filters, filter)
+			}
 			continue
 		}
 		// Ignore invalid filters (not based on a field or filter function)

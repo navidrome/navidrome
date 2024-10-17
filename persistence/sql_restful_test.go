@@ -23,6 +23,24 @@ var _ = Describe("sqlRestful", func() {
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeNil())
 		})
 
+		It(`returns nil if tries a filter with fullTextExpr("'")`, func() {
+			r.filterMappings = map[string]filterFunc{
+				"name": fullTextFilter,
+			}
+			options.Filters = map[string]interface{}{"name": "'"}
+			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
+		})
+
+		It("does not add nill filters", func() {
+			r.filterMappings = map[string]filterFunc{
+				"name": func(string, any) squirrel.Sqlizer {
+					return nil
+				},
+			}
+			options.Filters = map[string]interface{}{"name": "joe"}
+			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())
+		})
+
 		It("returns a '=' condition for 'id' filter", func() {
 			options.Filters = map[string]interface{}{"id": "123"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(Equal(squirrel.And{squirrel.Eq{"id": "123"}}))

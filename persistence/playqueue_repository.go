@@ -42,6 +42,9 @@ func (r *playQueueRepository) Store(q *model.PlayQueue) error {
 		log.Error(r.ctx, "Error deleting previous playqueue", "user", u.UserName, err)
 		return err
 	}
+	if len(q.Items) == 0 {
+		return nil
+	}
 	pq := r.fromModel(q)
 	if pq.ID == "" {
 		pq.CreatedAt = time.Now()
