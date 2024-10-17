@@ -138,7 +138,8 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 msi: ##@Cross_Compilation Build MSI installer for Windows 64 bits
 	make docker-build PLATFORMS=windows/amd64
 	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f wix/msitools.dockerfile .
-	docker run -it --rm -v $(PWD):/workspace -e GIT_TAG=${GIT_TAG} navidrome-msi-builder wix/build_msi.sh /workspace amd64
+	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries -e GIT_TAG=${GIT_TAG} \
+		navidrome-msi-builder wix/build_msi.sh /workspace amd64
 .PHONY: msi
 
 get-music: ##@Development Download some free music from Navidrome's demo instance
@@ -155,6 +156,11 @@ get-music: ##@Development Download some free music from Navidrome's demo instanc
 
 ##########################################
 #### Miscellaneous
+
+clean:
+	@rm -rf ./binaries ./dist ./ui/build/*
+	@touch ./ui/build/.gitkeep
+.PHONY: clean
 
 release:
 	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi
