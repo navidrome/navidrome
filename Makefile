@@ -135,12 +135,14 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 		--tag $(DOCKER_TAG) .
 .PHONY: docker-image
 
-msi: ##@Cross_Compilation Build MSI installer for Windows 64 bits
-	make docker-build PLATFORMS=windows/amd64
-	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f wix/msitools.dockerfile .
+docker-msi: ##@Cross_Compilation Build MSI installer for Windows
+	make docker-build PLATFORMS=windows/386,windows/amd64
+	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f release/wix/msitools.dockerfile .
+	@rm -rf binaries/msi
 	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries -e GIT_TAG=${GIT_TAG} \
-		navidrome-msi-builder wix/build_msi.sh /workspace amd64
-.PHONY: msi
+		navidrome-msi-builder sh -c "release/wix/build_msi.sh /workspace 386 && release/wix/build_msi.sh /workspace amd64"
+	@du -h binaries/msi/*.msi
+.PHONY: docker-msi
 
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music

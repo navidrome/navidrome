@@ -12,7 +12,6 @@ WORKSPACE=$1
 ARCH=$2
 NAVIDROME_BUILD_VERSION=$(echo "$GIT_TAG" | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/')
 
-echo
 echo "Building MSI package for $ARCH, version $NAVIDROME_BUILD_VERSION"
 
 MSI_OUTPUT_DIR=$WORKSPACE/binaries/msi
@@ -37,12 +36,11 @@ cp "$WORKSPACE"/LICENSE "$WORKSPACE"/README.md "$MSI_OUTPUT_DIR"
 cp "$BINARY" "$MSI_OUTPUT_DIR"
 
 # workaround for wixl WixVariable not working to override bmp locations
-cp "$WORKSPACE"/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
-cp "$WORKSPACE"/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
+cp "$WORKSPACE"/release/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
+cp "$WORKSPACE"/release/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
 
 cd "$MSI_OUTPUT_DIR"
 rm -f "$MSI_OUTPUT_DIR"/navidrome_"${ARCH}".msi
-wixl "$WORKSPACE"/wix/navidrome.wxs -D Version="$NAVIDROME_BUILD_VERSION" -D Platform=$PLATFORM --arch $PLATFORM \
+wixl "$WORKSPACE"/release/wix/navidrome.wxs -D Version="$NAVIDROME_BUILD_VERSION" -D Platform=$PLATFORM --arch $PLATFORM \
     --ext ui --output "$MSI_OUTPUT_DIR"/navidrome_"${ARCH}".msi
-du -h "$MSI_OUTPUT_DIR"/*.msi
 
