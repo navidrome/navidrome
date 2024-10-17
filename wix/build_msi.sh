@@ -41,7 +41,7 @@ cp "$WORKSPACE"/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
 cp "$WORKSPACE"/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
 
 cd "$MSI_OUTPUT_DIR"
-rm -f "$MSI_OUTPUT_DIR"/*.msi
+rm -f "$MSI_OUTPUT_DIR"/navidrome_"${ARCH}".msi
 wixl "$WORKSPACE"/wix/navidrome.wxs -D Version="$NAVIDROME_BUILD_VERSION" -D Platform=$PLATFORM --arch $PLATFORM \
     --ext ui --output "$MSI_OUTPUT_DIR"/navidrome_"${ARCH}".msi
 du -h "$MSI_OUTPUT_DIR"/*.msi
