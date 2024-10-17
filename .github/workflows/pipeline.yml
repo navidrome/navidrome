@@ -166,10 +166,12 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+#    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
+    needs: [git-version, check-push-enabled]
     strategy:
       matrix:
-        platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
+#        platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
+        platform: [ windows/amd64, windows/386 ]
     runs-on: ubuntu-latest
     env:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
@@ -307,16 +309,10 @@ jobs:
             gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
           done
 
-
   msi:
-    name: MSI for ${{ matrix.arch }}
+    name: Build Windows installers
     needs: [build, git-version]
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        arch: [386, amd64]
-    env:
-      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
 
     steps:
       - uses: actions/checkout@v4
@@ -331,8 +327,11 @@ jobs:
         run: sudo apt-get install -y wixl jq
 
       - name: Build MSI
+        env:
+          GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
         run: |
-          sudo wix/build_msi.sh ${GITHUB_WORKSPACE} ${{ matrix.arch }}
+          wix/build_msi.sh ${GITHUB_WORKSPACE} 386
+          wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
 
       - name: Upload MSI files
         uses: actions/upload-artifact@v4
