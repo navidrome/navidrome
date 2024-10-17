@@ -15,15 +15,19 @@ type PostMapper interface {
 	PostMapArgs(map[string]any) error
 }
 
+func timeToSQL(t time.Time) string {
+	return t.Format(time.RFC3339Nano)
+}
+
 func toSQLArgs(rec interface{}) (map[string]interface{}, error) {
 	m := structs.Map(rec)
 	for k, v := range m {
 		switch t := v.(type) {
 		case time.Time:
-			m[k] = t.Format(time.RFC3339Nano)
+			m[k] = timeToSQL(t)
 		case *time.Time:
 			if t != nil {
-				m[k] = t.Format(time.RFC3339Nano)
+				m[k] = timeToSQL(*t)
 			}
 		case driver.Valuer:
 			var err error

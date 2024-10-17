@@ -7,11 +7,11 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -52,7 +52,18 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
 	}
 	m["similar_artists"] = strings.Join(sa, ";")
+	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 	return nil
+}
+
+type dbArtists []dbArtist
+
+func (dba dbArtists) toModels() model.Artists {
+	res := make(model.Artists, len(dba))
+	for i := range dba {
+		res[i] = *dba[i].Artist
+	}
+	return res
 }
 
 func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistRepository {
@@ -63,9 +74,9 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":       idFilter(r.tableName),
-		"name":     fullTextFilter,
+		"name":     fullTextFilter(r.tableName),
 		"starred":  booleanFilter,
-		"genre_id": eqFilter,
+		"genre_id": tagIDFilter,
 	})
 	if conf.Server.PreferSortTags {
 		r.sortMappings = map[string]string{
@@ -83,12 +94,18 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
-	return r.withGenres(sql).GroupBy("artist.id")
+	sql = sql.Columns("ifnull(count(distinct mf.album_id), 0) as album_count",
+		"ifnull(count(distinct mf.id), 0) as song_count", "ifnull(sum(distinct mf.size), 0) as size").
+		// TODO Should Role be parameterized?
+		//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
+		LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
+		LeftJoin("media_file mf on mfa.media_file_id = mf.id")
+	return r.withTags(sql).GroupBy("artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("artist.id")
-	sql = r.withGenres(sql) // Required for filtering by genre
+	sql = r.withTags(sql) // Required for filtering by genre
 	return r.count(sql, options...)
 }
 
@@ -97,50 +114,35 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
-	a.FullText = getFullText(a.Name, a.SortArtistName)
 	dba := &dbArtist{Artist: a}
+	dba.CreatedAt = time.Now()
+	dba.UpdatedAt = dba.CreatedAt
 	_, err := r.put(dba.ID, dba, colsToUpdate...)
-	if err != nil {
-		return err
-	}
-	if a.ID == consts.VariousArtistsID {
-		return r.updateGenres(a.ID, nil)
-	}
-	return r.updateGenres(a.ID, a.Genres)
+	return err
 }
 
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	sel := r.selectArtist().Where(Eq{"artist.id": id})
-	var dba []dbArtist
+	var dba dbArtists
 	if err := r.queryAll(sel, &dba); err != nil {
 		return nil, err
 	}
 	if len(dba) == 0 {
 		return nil, model.ErrNotFound
 	}
-	res := r.toModels(dba)
-	err := loadAllGenres(r, res)
-	return &res[0], err
+	res := dba.toModels()
+	return &res[0], nil
 }
 
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
-	var dba []dbArtist
+	var dba dbArtists
 	err := r.queryAll(sel, &dba)
 	if err != nil {
 		return nil, err
 	}
-	res := r.toModels(dba)
-	err = loadAllGenres(r, res)
+	res := dba.toModels()
 	return res, err
-}
-
-func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
-	res := model.Artists{}
-	for i := range dba {
-		res = append(res, *dba[i].Artist)
-	}
-	return res
 }
 
 func (r *artistRepository) getIndexKey(a *model.Artist) string {
@@ -202,12 +204,12 @@ func (r *artistRepository) purgeEmpty() error {
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
-	var dba []dbArtist
+	var dba dbArtists
 	err := r.doSearch(q, offset, size, &dba, "name")
 	if err != nil {
 		return nil, err
 	}
-	return r.toModels(dba), nil
+	return dba.toModels(), nil
 }
 
 func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {

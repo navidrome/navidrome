@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sync"
@@ -55,4 +56,26 @@ func checkErr(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func addColumn(ctx context.Context, tx *sql.Tx, tableName, columnName, columnType, defaultValue, initialValue string) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(`
+alter table %s add column %s %s default null /* REPLACE ME */;`, tableName, columnName, columnType))
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, fmt.Sprintf(`
+update %s set %s = %s where %[2]s is null;`, tableName, columnName, initialValue))
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, fmt.Sprintf(`
+PRAGMA writable_schema = on;
+UPDATE sqlite_master
+SET sql = replace(sql, 'default null /* REPLACE ME */', 'default %s not null')
+WHERE type = 'table'
+  AND name = '%s';
+PRAGMA writable_schema = off;
+`, defaultValue, tableName))
+	return err
 }
