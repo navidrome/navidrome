@@ -1,4 +1,3 @@
-
 {
     "languageName": "српски",
     "resources": {
@@ -99,6 +98,7 @@
                 "userName": "Корисничко име",
                 "isAdmin": "Да ли је Админ",
                 "lastLoginAt": "Последња пријава",
+                "lastAccessAt": "Последњи приступ",
                 "updatedAt": "Ажурирано",
                 "name": "Име",
                 "password": "Лозинка",
@@ -159,7 +159,7 @@
             },
             "actions": {
                 "selectPlaylist": "Изабери плејлисту",
-                "addNewPlaylist": "Креирај \"%{name}\"",
+                "addNewPlaylist": "Креирај „%{name}”",
                 "export": "Извоз",
                 "makePublic": "Учини јавном",
                 "makePrivate": "Учини приватном"
@@ -397,7 +397,7 @@
                 "replaygain": "ReplayGain режим",
                 "preAmp": "ReplayGain претпојачање (dB)",
                 "gain": {
-                    "none": "ИскљученоDisabled",
+                    "none": "Искључено",
                     "album": "Користи Album појачање",
                     "track": "Користи Track појачање"
                 }
@@ -432,7 +432,6 @@
             "singleLoop": "Понови једну",
             "shufflePlay": "Промешано"
         }
-
     },
     "about": {
         "links": {
