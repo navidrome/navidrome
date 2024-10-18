@@ -52,6 +52,7 @@ const (
 
 	ArtistInfoTimeToLive = 24 * time.Hour
 	AlbumInfoTimeToLive  = 7 * 24 * time.Hour
+	LyricsInfoTimeToLive = 30 * 24 * time.Hour
 
 	I18nFolder   = "i18n"
 	SkipScanFile = ".ndignore"
