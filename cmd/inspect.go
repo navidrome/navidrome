@@ -75,7 +75,7 @@ func runInspector(args []string) {
 	if err != nil {
 		log.Fatal("Error extracting tags", err)
 	}
-	mapper := scanner.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
+	mapper := scanner.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{}, true)
 	marshal := marshalers[format]
 	if marshal == nil {
 		log.Fatal("Invalid format", "format", format)
