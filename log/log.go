@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"reflect"
@@ -126,6 +127,13 @@ func SetRedacting(enabled bool) {
 	if enabled {
 		defaultLogger.AddHook(redacted)
 	}
+}
+
+func SetOutput(w io.Writer) {
+	if runtime.GOOS == "windows" {
+		w = CRLFWriter(w)
+	}
+	defaultLogger.SetOutput(w)
 }
 
 // Redact applies redaction to a single string
