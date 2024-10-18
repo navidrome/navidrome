@@ -130,6 +130,9 @@ func SetRedacting(enabled bool) {
 }
 
 func SetOutput(w io.Writer) {
+	if runtime.GOOS == "windows" {
+		w = NewCRLFWriter(w)
+	}
 	defaultLogger.SetOutput(w)
 }
 
