@@ -272,7 +272,7 @@ func Load() {
 // require a nested structure, so we need to merge the nested [default] section into the root level.
 func parseIniFileConfiguration() {
 	cfgFile := viper.ConfigFileUsed()
-	if filepath.Ext(cfgFile) == ".ini" {
+	if strings.ToLower(filepath.Ext(cfgFile)) == ".ini" {
 		var iniConfig map[string]interface{}
 		err := viper.Unmarshal(&iniConfig)
 		if err != nil {
