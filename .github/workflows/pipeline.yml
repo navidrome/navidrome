@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-      - fix/*
     tags:
       - "v*"
   pull_request:
