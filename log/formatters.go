@@ -24,16 +24,16 @@ func ShortDur(d time.Duration) string {
 	return strings.TrimSuffix(s, "0m")
 }
 
-type CRLFWriter struct {
+func CRLFWriter(w io.Writer) io.Writer {
+	return &crlfWriter{w: w}
+}
+
+type crlfWriter struct {
 	w        io.Writer
 	lastByte byte
 }
 
-func NewCRLFWriter(w io.Writer) *CRLFWriter {
-	return &CRLFWriter{w: w}
-}
-
-func (cw *CRLFWriter) Write(p []byte) (int, error) {
+func (cw *crlfWriter) Write(p []byte) (int, error) {
 	var written int
 	for _, b := range p {
 		if b == '\n' && cw.lastByte != '\r' {

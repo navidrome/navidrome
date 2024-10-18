@@ -2,6 +2,7 @@ package log_test
 
 import (
 	"bytes"
+	"io"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -30,19 +31,12 @@ var _ = DescribeTable("ShortDur",
 var _ = Describe("CRLFWriter", func() {
 	var (
 		buffer *bytes.Buffer
-		writer *log.CRLFWriter
+		writer io.Writer
 	)
 
 	BeforeEach(func() {
 		buffer = new(bytes.Buffer)
-		writer = log.NewCRLFWriter(buffer)
-	})
-
-	Describe("NewCRLFWriter", func() {
-		It("should create a new CRLFWriter", func() {
-			Expect(writer).NotTo(BeNil())
-			Expect(writer).To(BeAssignableToTypeOf(&log.CRLFWriter{}))
-		})
+		writer = log.CRLFWriter(buffer)
 	})
 
 	Describe("Write", func() {
