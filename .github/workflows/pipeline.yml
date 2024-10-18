@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - fix/*
     tags:
       - "v*"
   pull_request:
@@ -164,21 +165,10 @@ jobs:
         id: check
         run: echo "is_enabled=${{ secrets.DOCKER_HUB_USERNAME != '' }}" >> $GITHUB_OUTPUT
 
-  lower-repo-name:
-    name: Get Github Repo Lowercase Name
-    runs-on: ubuntu-latest
-    outputs:
-      lowercase_repo: ${{ steps.lowercase_name.outputs.REPO_LOWER }}
-    steps:
-      - name: Get Lowercase Name
-        id: lowercase_name
-        run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_OUTPUT
 
   build:
     name: Build
-    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled, lower-repo-name]
+    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -190,7 +180,6 @@ jobs:
       DOCKER_BUILD_SUMMARY: false
       GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
       GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
-      REPO_LOWER: ${{ needs.lower-repo-name.outputs.lowercase_repo }}
     steps:
       - name: Sanitize platform name
         id: set-platform
@@ -229,6 +218,12 @@ jobs:
           name: navidrome-${{ env.PLATFORM }}
           path: ./output
           retention-days: 7
+      
+      - name: Get Lowercase Name
+        id: lowercase_name
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_OUTPUT
 
       # https://www.perplexity.ai/search/can-i-have-multiple-push-to-di-4P3ToaZFQtmVROuhaZMllQ
       - name: Build and push image by digest
@@ -267,11 +262,8 @@ jobs:
   push-manifest:
     name: Push Docker manifest
     runs-on: ubuntu-latest
-    needs: [build, check-push-enabled, lower-repo-name]
+    needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true'
-    env:
-      REGISTRY_IMAGE: ghcr.io/${{ needs.lower-repo-name.outputs.lowercase_repo }}
-      REPO_LOWER: ${{ needs.lower-repo-name.outputs.lowercase_repo }}
     steps:
       - uses: actions/checkout@v4
 
@@ -281,6 +273,14 @@ jobs:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
+      
+      - name: Get Lowercase Name
+        id: lowercase_name
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_OUTPUT
+          REGISTRY_IMAGE="ghcr.io/${{ needs.lower-repo-name.outputs.lowercase_repo }}"
+          echo "REGISTRY_IMAGE=$REGISTRY_IMAGE" >> $GITHUB_OUTPUT
 
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
