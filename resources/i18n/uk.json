@@ -1,460 +1,461 @@
 {
-    "languageName": "Українська",
-    "resources": {
-        "song": {
-            "name": "Пісня |||| Пісні",
-            "fields": {
-                "albumArtist": "Виконавець альбому",
-                "duration": "Тривалість",
-                "trackNumber": "#",
-                "playCount": "Грає",
-                "title": "Назва",
-                "artist": "Виконавець",
-                "album": "Альбом",
-                "path": "Шлях до файлу",
-                "genre": "Жанр",
-                "compilation": "Збірка",
-                "year": "Рік",
-                "size": "Розмір файлу",
-                "updatedAt": "Завантажено",
-                "bitRate": "Бітрейт",
-                "discSubtitle": "Назва диску",
-                "starred": "Обрані",
-                "comment": "Коментар",
-                "rating": "Рейтинг",
-                "quality": "Якість",
-                "bpm": "Темп",
-                "playDate": "Востаннє відтворено",
-                "channels": "Канали",
-                "createdAt": "Додано"
-            },
-            "actions": {
-                "addToQueue": "Прослухати пізніше",
-                "playNow": "Програвати зараз",
-                "addToPlaylist": "Додати у список відтворення",
-                "shuffleAll": "Перемішати",
-                "download": "Завантажити",
-                "playNext": "Наступна",
-                "info": "Отримати інформацію"
-            }
-        },
-        "album": {
-            "name": "Альбом |||| Альбоми",
-            "fields": {
-                "albumArtist": "Автор Альбому",
-                "artist": "Виконавець",
-                "duration": "Тривалість",
-                "songCount": "Пісні",
-                "playCount": "Грає",
-                "name": "Назва",
-                "genre": "Жанр",
-                "compilation": "Збірка",
-                "year": "Рік",
-                "updatedAt": "Оновлено",
-                "comment": "Коментар",
-                "rating": "Рейтинг",
-                "createdAt": "Додано",
-                "size": "Розмір",
-                "originalDate": "Оригінал",
-                "releaseDate": "Дата випуску",
-                "releases": "Випуск |||| Випуски",
-                "released": "Випущений"
-            },
-            "actions": {
-                "playAll": "Прослухати",
-                "playNext": "Прослухати наступну",
-                "addToQueue": "Прослухати пізніше",
-                "shuffle": "Перемішати",
-                "addToPlaylist": "Додати у список відтворення",
-                "download": "Завантажити",
-                "info": "Отримати інформацію",
-                "share": "Поширити"
-            },
-            "lists": {
-                "all": "Усі",
-                "random": "Випадково",
-                "recentlyAdded": "Нещодавно додані",
-                "recentlyPlayed": "Нещодавно відтворено",
-                "mostPlayed": "Часто відтворювані",
-                "starred": "Вибрані",
-                "topRated": "Найкраще"
-            }
-        },
-        "artist": {
-            "name": "Виконавець |||| Виконавці",
-            "fields": {
-                "name": "Назва",
-                "albumCount": "Кількість альбомів",
-                "songCount": "Кількість пісень",
-                "playCount": "Відтворено",
-                "rating": "Рейтинг",
-                "genre": "Жанр",
-                "size": "Розмір"
-            }
-        },
-        "user": {
-            "name": "Користувач |||| Користувачі",
-            "fields": {
-                "userName": "Ім’я користувача",
-                "isAdmin": "Є адміністратором",
-                "lastLoginAt": "Останній раз заходив о",
-                "updatedAt": "Завантажено",
-                "name": "Назва",
-                "password": "Пароль",
-                "createdAt": "Створено",
-                "changePassword": "Змінити пароль?",
-                "currentPassword": "Поточний пароль",
-                "newPassword": "Новий пароль",
-                "token": "Токен"
-            },
-            "helperTexts": {
-                "name": "Змінене ім'я буде відображатися при наступній авторизації"
-            },
-            "notifications": {
-                "created": "Користувача створено",
-                "updated": "Користувач оновлений",
-                "deleted": "Користувач видалений"
-            },
-            "message": {
-                "listenBrainzToken": "Введіть свій токен користувача ListenBrainz.",
-                "clickHereForToken": "Натисніть тут для отримання токену"
-            }
-        },
-        "player": {
-            "name": "Програвач |||| Програвачі",
-            "fields": {
-                "name": "Назва",
-                "transcodingId": "ID транскодування",
-                "maxBitRate": "Максимальний бітрейт",
-                "client": "Клієнт",
-                "userName": "Iм’я користувача",
-                "lastSeen": "Останній візит о",
-                "reportRealPath": "Повідомте про реальний шлях",
-                "scrobbleEnabled": "Надсилайте Scrobbles до зовнішніх сервісів"
-            }
-        },
-        "transcoding": {
-            "name": "Транскодувальник |||| Транскодувальники",
-            "fields": {
-                "name": "Назва",
-                "targetFormat": "Цільовий формат",
-                "defaultBitRate": "Швидкість передачі бітів за замовчуванням",
-                "command": "Команда"
-            }
-        },
-        "playlist": {
-            "name": "Список відтворення |||| Списки відтворення",
-            "fields": {
-                "name": "Назва",
-                "duration": "Тривалість",
-                "ownerName": "Власник",
-                "public": "Публічний",
-                "updatedAt": "Оновлено",
-                "createdAt": "Створено",
-                "songCount": "Пісні",
-                "comment": "Коментар",
-                "sync": "Автоімпорт",
-                "path": "Імпортувати із"
-            },
-            "actions": {
-                "selectPlaylist": "Вибрати список відтворення:",
-                "addNewPlaylist": "Створити \"%{name}\"",
-                "export": "Експортувати",
-                "makePublic": "Зробити публічним",
-                "makePrivate": "Зробити приватним"
-            },
-            "message": {
-                "duplicate_song": "Додати повторювані пісні",
-                "song_exist": "У список відтворення додаються дублікати. Хочете додати дублікати або пропустити їх?"
-            }
-        },
-        "radio": {
-            "name": "Радіостанція |||| Радіостанції",
-            "fields": {
-                "name": "Назва",
-                "streamUrl": "Посилання на стрім",
-                "homePageUrl": "Посилання на домашню сторінку",
-                "updatedAt": "Оновлено",
-                "createdAt": "Створено"
-            },
-            "actions": {
-                "playNow": "Зараз грає"
-            }
-        },
-        "share": {
-            "name": "Поширити |||| Поширення",
-            "fields": {
-                "username": "Поширено",
-                "url": "Посилання",
-                "description": "Опис",
-                "contents": "Вміст",
-                "expiresAt": "Дійсний",
-                "lastVisitedAt": "Останній візит",
-                "visitCount": "Відвідин",
-                "format": "Формат",
-                "maxBitRate": "Макс. Біт рейт",
-                "updatedAt": "Оновлено",
-                "createdAt": "Створено",
-                "downloadable": "Дозволити завантаження?"
-            }
-        }
+  "languageName": "Українська",
+  "resources": {
+    "song": {
+      "name": "Пісня |||| Пісні",
+      "fields": {
+        "albumArtist": "Виконавець альбому",
+        "duration": "Тривалість",
+        "trackNumber": "#",
+        "playCount": "Грає",
+        "title": "Назва",
+        "artist": "Виконавець",
+        "album": "Альбом",
+        "path": "Шлях до файлу",
+        "genre": "Жанр",
+        "compilation": "Збірка",
+        "year": "Рік",
+        "size": "Розмір файлу",
+        "updatedAt": "Завантажено",
+        "bitRate": "Бітрейт",
+        "discSubtitle": "Назва диску",
+        "starred": "Обрані",
+        "comment": "Коментар",
+        "rating": "Рейтинг",
+        "quality": "Якість",
+        "bpm": "Темп",
+        "playDate": "Востаннє відтворено",
+        "channels": "Канали",
+        "createdAt": "Додано"
+      },
+      "actions": {
+        "addToQueue": "Прослухати пізніше",
+        "playNow": "Програвати зараз",
+        "addToPlaylist": "Додати у список відтворення",
+        "shuffleAll": "Перемішати",
+        "download": "Завантажити",
+        "playNext": "Наступна",
+        "info": "Отримати інформацію"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Дякуємо, що встановили Navidrome!",
-            "welcome2": "Щоб розпочати, створіть акаунт адміністратора",
-            "confirmPassword": "Підтвердіть пароль",
-            "buttonCreateAdmin": "Створіть акаунт адміністратора",
-            "auth_check_error": "Будь ласка, увійдіть, щоб продовжити",
-            "user_menu": "Профіль",
-            "username": "Ім'я користувача",
-            "password": "Пароль",
-            "sign_in": "Ввійти",
-            "sign_in_error": "Помилка аутентифікації, спробуйте знову",
-            "logout": "Вийти"
-        },
-        "validation": {
-            "invalidChars": "Будь ласка, використовуйте лише букви і числа",
-            "passwordDoesNotMatch": "Пароль не співпадає",
-            "required": "Обов'язково для заповнення",
-            "minLength": "Мінімальна кількість символів %{min}",
-            "maxLength": "Максимальна кількість символів %{max}",
-            "minValue": "Мінімальне значення %{min}",
-            "maxValue": "Значення може бути менше %{max}",
-            "number": "Повинна бути цифра",
-            "email": "Хибний email",
-            "oneOf": "Повинен бути одним з: %{options}",
-            "regex": "Повинен відповідати формату (регулярний вираз): %{pattern}",
-            "unique": "Має бути унікальним",
-            "url": "Повинно бути дійсне посилання"
-        },
-        "action": {
-            "add_filter": "Додати фільтр",
-            "add": "Додати",
-            "back": "Повернутися назад",
-            "bulk_actions": "1 обрано |||| %{smart_count} обрано",
-            "cancel": "Відмінити",
-            "clear_input_value": "Очистити",
-            "clone": "Клонувати",
-            "confirm": "Підтвердити",
-            "create": "Створити",
-            "delete": "Видалити",
-            "edit": "Редагувати",
-            "export": "Експортувати",
-            "list": "Перелік",
-            "refresh": "Оновити",
-            "remove_filter": "Прибрати фільтр",
-            "remove": "Видалити",
-            "save": "Зберегти",
-            "search": "Пошук",
-            "show": "Перегляд",
-            "sort": "Сортувати",
-            "undo": "Скасувати",
-            "expand": "Розгорнути",
-            "close": "Закрити",
-            "open_menu": "Відкрити меню",
-            "close_menu": "Закрити меню",
-            "unselect": "Забрати виділення",
-            "skip": "Пропустити",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
-            "share": "Поширити",
-            "download": "Завантаження"
-        },
-        "boolean": {
-            "true": "Так",
-            "false": "Ні"
-        },
-        "page": {
-            "create": "Створити %{name}",
-            "dashboard": "Головна",
-            "edit": "%{name} #%{id}",
-            "error": "Щось пішло не так",
-            "list": "%{name}",
-            "loading": "Завантаження",
-            "not_found": "Не знайдено",
-            "show": "%{name} #%{id}",
-            "empty": "Ще %{name} не існує.",
-            "invite": "Ви хочете додати це?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Перетягніть файли сюди, або натисніть для вибору.",
-                "upload_single": "Перетягніть файл сюди, або натисніть для вибору."
-            },
-            "image": {
-                "upload_several": "Перетягніть зображення сюди, або натисніть для вибору.",
-                "upload_single": "Перетягніть зображення сюди, або натисніть для вибору."
-            },
-            "references": {
-                "all_missing": "Пов'язаних данних не знайдено.",
-                "many_missing": "Щонайменьше одне з пов'язаних посилань більше не доступно.",
-                "single_missing": "Пов'язане посилання більше не доступно."
-            },
-            "password": {
-                "toggle_visible": "Приховати пароль",
-                "toggle_hidden": "Показати пароль"
-            }
-        },
-        "message": {
-            "about": "Довідка",
-            "are_you_sure": "Ви впевнені?",
-            "bulk_delete_content": "Ви дійсно хочете видалити %{name}? |||| Ви впевнені що хочете видалити об'єкти, кількістю %{smart_count}?",
-            "bulk_delete_title": "Видалити %{name} |||| Видалити %{smart_count} %{name} елементів",
-            "delete_content": "Ви впевнені що хочете видалити цей елемент?",
-            "delete_title": "Видалити %{name} #%{id}",
-            "details": "Деталі",
-            "error": "Виникла помилка на стороні клієнта і ваш запит не був завершений.",
-            "invalid_form": "Форма заповнена не вірно. Перевірте помилки",
-            "loading": "Сторінка завантажується, хвилинку будь ласка",
-            "no": "Ні",
-            "not_found": "Ви набрали невірний URL-адресу, або перейшли за хибним посиланням.",
-            "yes": "Так",
-            "unsaved_changes": "Деякі зміни не було збережено.  Ви впевнені, що хочете проігнорувати?"
-        },
-        "navigation": {
-            "no_results": "Результатів не знайдено",
-            "no_more_results": "Номер сторінки %{page} знаходиться за межею нумерації. Спробуйте попередню сторінку.",
-            "page_out_of_boundaries": "Сторінка %{page} поза межами нумерації",
-            "page_out_from_end": "Неможливо переміститися далі останньої сторінки",
-            "page_out_from_begin": "Номер сторінки не може бути менше 1",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} із %{total}",
-            "page_rows_per_page": "Рядків на сторінці:",
-            "next": "Наступна",
-            "prev": "Попередня",
-            "skip_nav": "Пропустити вміст"
-        },
-        "notification": {
-            "updated": "Елемент оновлено |||| %{smart_count} елемент оновлено",
-            "created": "Елемент створений",
-            "deleted": "Елемент видалений |||| %{smart_count} елемент видалено",
-            "bad_item": "Хибний елемент",
-            "item_doesnt_exist": "Елемент не існує",
-            "http_error": "Помилка сервера",
-            "data_provider_error": "Помилка в dataProvider. Перевірте деталі в консолі.",
-            "i18n_error": "Неможливо завантажити переклад для вказаної мови",
-            "canceled": "Дія відмінена",
-            "logged_out": "Ваш сеанс закінчився, будь ласка, увійдіть ще раз.",
-            "new_version": "Знайдено нову версію. Оновіть сторінку."
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "Колонок відображати",
-            "layout": "Макет",
-            "grid": "Сітка",
-            "table": "Таблиця"
-        }
+    "album": {
+      "name": "Альбом |||| Альбоми",
+      "fields": {
+        "albumArtist": "Автор Альбому",
+        "artist": "Виконавець",
+        "duration": "Тривалість",
+        "songCount": "Пісні",
+        "playCount": "Грає",
+        "name": "Назва",
+        "genre": "Жанр",
+        "compilation": "Збірка",
+        "year": "Рік",
+        "updatedAt": "Оновлено",
+        "comment": "Коментар",
+        "rating": "Рейтинг",
+        "createdAt": "Додано",
+        "size": "Розмір",
+        "originalDate": "Оригінал",
+        "releaseDate": "Дата випуску",
+        "releases": "Випуск |||| Випуски",
+        "released": "Випущений"
+      },
+      "actions": {
+        "playAll": "Прослухати",
+        "playNext": "Прослухати наступну",
+        "addToQueue": "Прослухати пізніше",
+        "shuffle": "Перемішати",
+        "addToPlaylist": "Додати у список відтворення",
+        "download": "Завантажити",
+        "info": "Отримати інформацію",
+        "share": "Поширити"
+      },
+      "lists": {
+        "all": "Усі",
+        "random": "Випадково",
+        "recentlyAdded": "Нещодавно додані",
+        "recentlyPlayed": "Нещодавно відтворено",
+        "mostPlayed": "Часто відтворювані",
+        "starred": "Вибрані",
+        "topRated": "Найкраще"
+      }
     },
-    "message": {
-        "note": "Примітки",
-        "transcodingDisabled": "Зміна конфігурації перекодування через веб-інтерфейс відключена з міркувань безпеки. Якщо ви хочете змінити (відредагувати або додати) параметри перекодування, перезавантажте сервер із параметром конфігурації %{config}.",
-        "transcodingEnabled": "В даний час Navidrome працює з %{config}, що дозволяє запускати системні команди з налаштувань перекодування за допомогою веб-інтерфейсу.  Ми рекомендуємо відключити його з міркувань безпеки та ввімкнути його лише під час налаштування параметрів транскодування.",
-        "songsAddedToPlaylist": "Додати 1 пісню у список відтворення |||| Додати %{smart_count} пісні у список відтворення\n",
-        "noPlaylistsAvailable": "Нічого немає",
-        "delete_user_title": "Видалити користувача '%{name}'",
-        "delete_user_content": "Ви справді хочете видалити цього користувача і усі його данні (включаючи списки відтворення і налаштування)?",
-        "notifications_blocked": "У вас заблоковані Сповіщення для цього сайту у вашому браузері",
-        "notifications_not_available": "Ваш браузер не підтримує сповіщень або доступ до Navidrome не використовує https",
-        "lastfmLinkSuccess": "Last.fm успішно підключено, scrobbling увімкнено",
-        "lastfmLinkFailure": "Last.fm не вдалося підключити",
-        "lastfmUnlinkSuccess": "Last.fm від'єднано та вимкнено scrobbling",
-        "lastfmUnlinkFailure": "Last.fm не вдалося від'єднати",
-        "openIn": {
-            "lastfm": "Відкрити у Last.fm",
-            "musicbrainz": "Відкрити у MusicBrainz"
-        },
-        "lastfmLink": "Читати більше...",
-        "listenBrainzLinkSuccess": "ListenBrainz успішно підключено і scrobbling увімкнено для користувача: %{user}.",
-        "listenBrainzLinkFailure": "ListenBrainz не вдалося зв'язати: %{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainz від'єднано та вимкнено scrobbling",
-        "listenBrainzUnlinkFailure": "ListenBrainz не вдалося від'єднати",
-        "downloadOriginalFormat": "Завантажити в вихідному форматі",
-        "shareOriginalFormat": "Поширити у вихідному форматі",
-        "shareDialogTitle": "Поширити %{resource} '%{name}'",
-        "shareBatchDialogTitle": "Поширити 1 %{resource} |||| Поширити %{smart_count} %{resource}",
-        "shareSuccess": "URL скопійований в буфер обміну: %{url}",
-        "shareFailure": "Помилка копіюваня URL %{url} в буфер обміну",
-        "downloadDialogTitle": "Завантаження %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "Скопіювати в буфер: Ctrl+C, Enter"
+    "artist": {
+      "name": "Виконавець |||| Виконавці",
+      "fields": {
+        "name": "Назва",
+        "albumCount": "Кількість альбомів",
+        "songCount": "Кількість пісень",
+        "playCount": "Відтворено",
+        "rating": "Рейтинг",
+        "genre": "Жанр",
+        "size": "Розмір"
+      }
     },
-    "menu": {
-        "library": "Бібліотека",
-        "settings": "Налаштування",
-        "version": "Версія",
-        "theme": "Тема",
-        "personal": {
-            "name": "Особисті налаштування",
-            "options": {
-                "theme": "Тема",
-                "language": "Мова",
-                "defaultView": "Вигляд по замовчуванню",
-                "desktop_notifications": "Сповіщення",
-                "lastfmScrobbling": "Scrobble на Last.fm",
-                "listenBrainzScrobbling": "Scrobble на ListenBrainz",
-                "replaygain": "Режим ReplayGain",
-                "preAmp": "ReplayGain підсилення (дБ)",
-                "gain": {
-                    "none": "Вимкнено",
-                    "album": "Використовуйте підсилення для Альбому",
-                    "track": "Використовуйте посилення доріжки"
-                }
-            }
-        },
-        "albumList": "Альбом",
-        "about": "Довідка",
-        "playlists": "Списки відтворення",
-        "sharedPlaylists": "Загальнодоступний список відтворення"
+    "user": {
+      "name": "Користувач |||| Користувачі",
+      "fields": {
+        "userName": "Ім’я користувача",
+        "isAdmin": "Є адміністратором",
+        "lastLoginAt": "Останній раз заходив о",
+        "updatedAt": "Завантажено",
+        "name": "Назва",
+        "password": "Пароль",
+        "createdAt": "Створено",
+        "changePassword": "Змінити пароль?",
+        "currentPassword": "Поточний пароль",
+        "newPassword": "Новий пароль",
+        "token": "Токен",
+        "lastAccessAt": "Останній доступ"
+      },
+      "helperTexts": {
+        "name": "Змінене ім'я буде відображатися при наступній авторизації"
+      },
+      "notifications": {
+        "created": "Користувача створено",
+        "updated": "Користувач оновлений",
+        "deleted": "Користувач видалений"
+      },
+      "message": {
+        "listenBrainzToken": "Введіть свій токен користувача ListenBrainz.",
+        "clickHereForToken": "Натисніть тут для отримання токену"
+      }
     },
     "player": {
-        "playListsText": "Грати по черзі",
-        "openText": "Відкрити",
-        "closeText": "Закрити",
-        "notContentText": "Без музики",
-        "clickToPlayText": "Натисніть для програвання",
-        "clickToPauseText": "Натисніть для паузи",
-        "nextTrackText": "Наступний трек",
-        "previousTrackText": "Попередній трек",
-        "reloadText": "Перезавантаження",
-        "volumeText": "Гучність",
-        "toggleLyricText": "Перемикнути текст",
-        "toggleMiniModeText": "Мінімізувати",
-        "destroyText": "Видалити",
-        "downloadText": "Завантажити",
-        "removeAudioListsText": "Видалити аудіо лист",
-        "clickToDeleteText": "Натисніть, щоб видалити",
-        "emptyLyricText": "Без тексту",
-        "playModeText": {
-            "order": "По порядку",
-            "orderLoop": "Повторити",
-            "singleLoop": "Повторити один раз",
-            "shufflePlay": "Перемішати"
-        }
+      "name": "Програвач |||| Програвачі",
+      "fields": {
+        "name": "Назва",
+        "transcodingId": "ID транскодування",
+        "maxBitRate": "Максимальний бітрейт",
+        "client": "Клієнт",
+        "userName": "Iм’я користувача",
+        "lastSeen": "Останній візит о",
+        "reportRealPath": "Повідомте про реальний шлях",
+        "scrobbleEnabled": "Надсилайте Scrobbles до зовнішніх сервісів"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Головна",
-            "source": "Вихідний код",
-            "featureRequests": "Пропозиції"
-        }
+    "transcoding": {
+      "name": "Транскодувальник |||| Транскодувальники",
+      "fields": {
+        "name": "Назва",
+        "targetFormat": "Цільовий формат",
+        "defaultBitRate": "Швидкість передачі бітів за замовчуванням",
+        "command": "Команда"
+      }
     },
-    "activity": {
-        "title": "Дії",
-        "totalScanned": "Всього каталогів відскановано",
-        "quickScan": "Швидке сканування",
-        "fullScan": "Повне сканування",
-        "serverUptime": "Час роботи",
-        "serverDown": "Оффлайн"
+    "playlist": {
+      "name": "Список відтворення |||| Списки відтворення",
+      "fields": {
+        "name": "Назва",
+        "duration": "Тривалість",
+        "ownerName": "Власник",
+        "public": "Публічний",
+        "updatedAt": "Оновлено",
+        "createdAt": "Створено",
+        "songCount": "Пісні",
+        "comment": "Коментар",
+        "sync": "Автоімпорт",
+        "path": "Імпортувати із"
+      },
+      "actions": {
+        "selectPlaylist": "Вибрати список відтворення:",
+        "addNewPlaylist": "Створити \"%{name}\"",
+        "export": "Експортувати",
+        "makePublic": "Зробити публічним",
+        "makePrivate": "Зробити приватним"
+      },
+      "message": {
+        "duplicate_song": "Додати повторювані пісні",
+        "song_exist": "У список відтворення додаються дублікати. Хочете додати дублікати або пропустити їх?"
+      }
     },
-    "help": {
-        "title": "Navidrome гарячі клавіші",
-        "hotkeys": {
-            "show_help": "Показати довідку",
-            "toggle_menu": "Сховати/Показати бокове меню",
-            "toggle_play": "Грати / Пауза",
-            "prev_song": "Попередня пісня",
-            "next_song": "Наступна пісня",
-            "vol_up": "Гучність вгору",
-            "vol_down": "Гучність вниз",
-            "toggle_love": "Відмітити поточні пісні",
-            "current_song": "Перейти до поточної пісні"
-        }
+    "radio": {
+      "name": "Радіостанція |||| Радіостанції",
+      "fields": {
+        "name": "Назва",
+        "streamUrl": "Посилання на стрім",
+        "homePageUrl": "Посилання на домашню сторінку",
+        "updatedAt": "Оновлено",
+        "createdAt": "Створено"
+      },
+      "actions": {
+        "playNow": "Зараз грає"
+      }
+    },
+    "share": {
+      "name": "Поширити |||| Поширення",
+      "fields": {
+        "username": "Поширено",
+        "url": "Посилання",
+        "description": "Опис",
+        "contents": "Вміст",
+        "expiresAt": "Дійсний",
+        "lastVisitedAt": "Останній візит",
+        "visitCount": "Відвідин",
+        "format": "Формат",
+        "maxBitRate": "Макс. Біт рейт",
+        "updatedAt": "Оновлено",
+        "createdAt": "Створено",
+        "downloadable": "Дозволити завантаження?"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Дякуємо, що встановили Navidrome!",
+      "welcome2": "Щоб розпочати, створіть акаунт адміністратора",
+      "confirmPassword": "Підтвердіть пароль",
+      "buttonCreateAdmin": "Створіть акаунт адміністратора",
+      "auth_check_error": "Будь ласка, увійдіть, щоб продовжити",
+      "user_menu": "Профіль",
+      "username": "Ім'я користувача",
+      "password": "Пароль",
+      "sign_in": "Ввійти",
+      "sign_in_error": "Помилка аутентифікації, спробуйте знову",
+      "logout": "Вийти"
+    },
+    "validation": {
+      "invalidChars": "Будь ласка, використовуйте лише букви і числа",
+      "passwordDoesNotMatch": "Пароль не співпадає",
+      "required": "Обов'язково для заповнення",
+      "minLength": "Мінімальна кількість символів %{min}",
+      "maxLength": "Максимальна кількість символів %{max}",
+      "minValue": "Мінімальне значення %{min}",
+      "maxValue": "Значення може бути менше %{max}",
+      "number": "Повинна бути цифра",
+      "email": "Хибний email",
+      "oneOf": "Повинен бути одним з: %{options}",
+      "regex": "Повинен відповідати формату (регулярний вираз): %{pattern}",
+      "unique": "Має бути унікальним",
+      "url": "Повинно бути дійсне посилання"
+    },
+    "action": {
+      "add_filter": "Додати фільтр",
+      "add": "Додати",
+      "back": "Повернутися назад",
+      "bulk_actions": "1 обрано |||| %{smart_count} обрано",
+      "cancel": "Відмінити",
+      "clear_input_value": "Очистити",
+      "clone": "Клонувати",
+      "confirm": "Підтвердити",
+      "create": "Створити",
+      "delete": "Видалити",
+      "edit": "Редагувати",
+      "export": "Експортувати",
+      "list": "Перелік",
+      "refresh": "Оновити",
+      "remove_filter": "Прибрати фільтр",
+      "remove": "Видалити",
+      "save": "Зберегти",
+      "search": "Пошук",
+      "show": "Перегляд",
+      "sort": "Сортувати",
+      "undo": "Скасувати",
+      "expand": "Розгорнути",
+      "close": "Закрити",
+      "open_menu": "Відкрити меню",
+      "close_menu": "Закрити меню",
+      "unselect": "Забрати виділення",
+      "skip": "Пропустити",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Поширити",
+      "download": "Завантаження"
+    },
+    "boolean": {
+      "true": "Так",
+      "false": "Ні"
+    },
+    "page": {
+      "create": "Створити %{name}",
+      "dashboard": "Головна",
+      "edit": "%{name} #%{id}",
+      "error": "Щось пішло не так",
+      "list": "%{name}",
+      "loading": "Завантаження",
+      "not_found": "Не знайдено",
+      "show": "%{name} #%{id}",
+      "empty": "Ще %{name} не існує.",
+      "invite": "Ви хочете додати це?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Перетягніть файли сюди, або натисніть для вибору.",
+        "upload_single": "Перетягніть файл сюди, або натисніть для вибору."
+      },
+      "image": {
+        "upload_several": "Перетягніть зображення сюди, або натисніть для вибору.",
+        "upload_single": "Перетягніть зображення сюди, або натисніть для вибору."
+      },
+      "references": {
+        "all_missing": "Пов'язаних данних не знайдено.",
+        "many_missing": "Щонайменьше одне з пов'язаних посилань більше не доступно.",
+        "single_missing": "Пов'язане посилання більше не доступно."
+      },
+      "password": {
+        "toggle_visible": "Приховати пароль",
+        "toggle_hidden": "Показати пароль"
+      }
+    },
+    "message": {
+      "about": "Довідка",
+      "are_you_sure": "Ви впевнені?",
+      "bulk_delete_content": "Ви дійсно хочете видалити %{name}? |||| Ви впевнені що хочете видалити об'єкти, кількістю %{smart_count}?",
+      "bulk_delete_title": "Видалити %{name} |||| Видалити %{smart_count} %{name} елементів",
+      "delete_content": "Ви впевнені що хочете видалити цей елемент?",
+      "delete_title": "Видалити %{name} #%{id}",
+      "details": "Деталі",
+      "error": "Виникла помилка на стороні клієнта і ваш запит не був завершений.",
+      "invalid_form": "Форма заповнена не вірно. Перевірте помилки",
+      "loading": "Сторінка завантажується, хвилинку будь ласка",
+      "no": "Ні",
+      "not_found": "Ви набрали невірний URL-адресу, або перейшли за хибним посиланням.",
+      "yes": "Так",
+      "unsaved_changes": "Деякі зміни не було збережено.  Ви впевнені, що хочете проігнорувати?"
+    },
+    "navigation": {
+      "no_results": "Результатів не знайдено",
+      "no_more_results": "Номер сторінки %{page} знаходиться за межею нумерації. Спробуйте попередню сторінку.",
+      "page_out_of_boundaries": "Сторінка %{page} поза межами нумерації",
+      "page_out_from_end": "Неможливо переміститися далі останньої сторінки",
+      "page_out_from_begin": "Номер сторінки не може бути менше 1",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} із %{total}",
+      "page_rows_per_page": "Рядків на сторінці:",
+      "next": "Наступна",
+      "prev": "Попередня",
+      "skip_nav": "Пропустити вміст"
+    },
+    "notification": {
+      "updated": "Елемент оновлено |||| %{smart_count} елемент оновлено",
+      "created": "Елемент створений",
+      "deleted": "Елемент видалений |||| %{smart_count} елемент видалено",
+      "bad_item": "Хибний елемент",
+      "item_doesnt_exist": "Елемент не існує",
+      "http_error": "Помилка сервера",
+      "data_provider_error": "Помилка в dataProvider. Перевірте деталі в консолі.",
+      "i18n_error": "Неможливо завантажити переклад для вказаної мови",
+      "canceled": "Дія відмінена",
+      "logged_out": "Ваш сеанс закінчився, будь ласка, увійдіть ще раз.",
+      "new_version": "Знайдено нову версію. Оновіть сторінку."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Колонок відображати",
+      "layout": "Макет",
+      "grid": "Сітка",
+      "table": "Таблиця"
+    }
+  },
+  "message": {
+    "note": "Примітки",
+    "transcodingDisabled": "Зміна конфігурації перекодування через веб-інтерфейс відключена з міркувань безпеки. Якщо ви хочете змінити (відредагувати або додати) параметри перекодування, перезавантажте сервер із параметром конфігурації %{config}.",
+    "transcodingEnabled": "В даний час Navidrome працює з %{config}, що дозволяє запускати системні команди з налаштувань перекодування за допомогою веб-інтерфейсу.  Ми рекомендуємо відключити його з міркувань безпеки та ввімкнути його лише під час налаштування параметрів транскодування.",
+    "songsAddedToPlaylist": "Додати 1 пісню у список відтворення |||| Додати %{smart_count} пісні у список відтворення\n",
+    "noPlaylistsAvailable": "Нічого немає",
+    "delete_user_title": "Видалити користувача '%{name}'",
+    "delete_user_content": "Ви справді хочете видалити цього користувача і усі його данні (включаючи списки відтворення і налаштування)?",
+    "notifications_blocked": "У вас заблоковані Сповіщення для цього сайту у вашому браузері",
+    "notifications_not_available": "Ваш браузер не підтримує сповіщень або доступ до Navidrome не використовує https",
+    "lastfmLinkSuccess": "Last.fm успішно підключено, scrobbling увімкнено",
+    "lastfmLinkFailure": "Last.fm не вдалося підключити",
+    "lastfmUnlinkSuccess": "Last.fm від'єднано та вимкнено scrobbling",
+    "lastfmUnlinkFailure": "Last.fm не вдалося від'єднати",
+    "openIn": {
+      "lastfm": "Відкрити у Last.fm",
+      "musicbrainz": "Відкрити у MusicBrainz"
+    },
+    "lastfmLink": "Читати більше...",
+    "listenBrainzLinkSuccess": "ListenBrainz успішно підключено і scrobbling увімкнено для користувача: %{user}.",
+    "listenBrainzLinkFailure": "ListenBrainz не вдалося зв'язати: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz від'єднано та вимкнено scrobbling",
+    "listenBrainzUnlinkFailure": "ListenBrainz не вдалося від'єднати",
+    "downloadOriginalFormat": "Завантажити в вихідному форматі",
+    "shareOriginalFormat": "Поширити у вихідному форматі",
+    "shareDialogTitle": "Поширити %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Поширити 1 %{resource} |||| Поширити %{smart_count} %{resource}",
+    "shareSuccess": "URL скопійований в буфер обміну: %{url}",
+    "shareFailure": "Помилка копіюваня URL %{url} в буфер обміну",
+    "downloadDialogTitle": "Завантаження %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Скопіювати в буфер: Ctrl+C, Enter"
+  },
+  "menu": {
+    "library": "Бібліотека",
+    "settings": "Налаштування",
+    "version": "Версія",
+    "theme": "Тема",
+    "personal": {
+      "name": "Особисті налаштування",
+      "options": {
+        "theme": "Тема",
+        "language": "Мова",
+        "defaultView": "Вигляд по замовчуванню",
+        "desktop_notifications": "Сповіщення",
+        "lastfmScrobbling": "Scrobble на Last.fm",
+        "listenBrainzScrobbling": "Scrobble на ListenBrainz",
+        "replaygain": "Режим ReplayGain",
+        "preAmp": "ReplayGain підсилення (дБ)",
+        "gain": {
+          "none": "Вимкнено",
+          "album": "Використовуйте підсилення для Альбому",
+          "track": "Використовуйте посилення доріжки"
+        }
+      }
+    },
+    "albumList": "Альбом",
+    "about": "Довідка",
+    "playlists": "Списки відтворення",
+    "sharedPlaylists": "Загальнодоступний список відтворення"
+  },
+  "player": {
+    "playListsText": "Грати по черзі",
+    "openText": "Відкрити",
+    "closeText": "Закрити",
+    "notContentText": "Без музики",
+    "clickToPlayText": "Натисніть для програвання",
+    "clickToPauseText": "Натисніть для паузи",
+    "nextTrackText": "Наступний трек",
+    "previousTrackText": "Попередній трек",
+    "reloadText": "Перезавантаження",
+    "volumeText": "Гучність",
+    "toggleLyricText": "Перемикнути текст",
+    "toggleMiniModeText": "Мінімізувати",
+    "destroyText": "Видалити",
+    "downloadText": "Завантажити",
+    "removeAudioListsText": "Видалити аудіо лист",
+    "clickToDeleteText": "Натисніть, щоб видалити",
+    "emptyLyricText": "Без тексту",
+    "playModeText": {
+      "order": "По порядку",
+      "orderLoop": "Повторити",
+      "singleLoop": "Повторити один раз",
+      "shufflePlay": "Перемішати"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Головна",
+      "source": "Вихідний код",
+      "featureRequests": "Пропозиції"
+    }
+  },
+  "activity": {
+    "title": "Дії",
+    "totalScanned": "Всього каталогів відскановано",
+    "quickScan": "Швидке сканування",
+    "fullScan": "Повне сканування",
+    "serverUptime": "Час роботи",
+    "serverDown": "Оффлайн"
+  },
+  "help": {
+    "title": "Navidrome гарячі клавіші",
+    "hotkeys": {
+      "show_help": "Показати довідку",
+      "toggle_menu": "Сховати/Показати бокове меню",
+      "toggle_play": "Грати / Пауза",
+      "prev_song": "Попередня пісня",
+      "next_song": "Наступна пісня",
+      "vol_up": "Гучність вгору",
+      "vol_down": "Гучність вниз",
+      "toggle_love": "Відмітити поточні пісні",
+      "current_song": "Перейти до поточної пісні"
+    }
+  }
 }

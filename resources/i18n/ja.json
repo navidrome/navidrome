@@ -1,460 +1,461 @@
 {
-    "languageName": "日本語",
-    "resources": {
-        "song": {
-            "name": "曲",
-            "fields": {
-                "albumArtist": "アルバムアーティスト",
-                "duration": "長さ",
-                "trackNumber": "#",
-                "playCount": "再生数",
-                "title": "タイトル",
-                "artist": "アーティスト",
-                "album": "アルバム",
-                "path": "ファイルパス",
-                "genre": "ジャンル",
-                "compilation": "Compilation",
-                "year": "年",
-                "size": "ファイルサイズ",
-                "updatedAt": "更新日",
-                "bitRate": "ビットレート",
-                "discSubtitle": "ディスクサブタイトル",
-                "starred": "お気に入り",
-                "comment": "コメント",
-                "rating": "レート",
-                "quality": "品質",
-                "bpm": "BPM",
-                "playDate": "最後の再生",
-                "channels": "チャンネル",
-                "createdAt": "追加日"
-            },
-            "actions": {
-                "addToQueue": "最後に再生",
-                "playNow": "すぐに再生",
-                "addToPlaylist": "プレイリストに追加",
-                "shuffleAll": "全曲シャッフル",
-                "download": "ダウンロード",
-                "playNext": "次に再生",
-                "info": "詳細"
-            }
-        },
-        "album": {
-            "name": "アルバム",
-            "fields": {
-                "albumArtist": "アルバムアーティスト",
-                "artist": "アーティスト",
-                "duration": "長さ",
-                "songCount": "曲",
-                "playCount": "再生数",
-                "name": "名前",
-                "genre": "ジャンル",
-                "compilation": "Compilation",
-                "year": "年",
-                "updatedAt": "更新日",
-                "comment": "コメント",
-                "rating": "レート",
-                "createdAt": "追加日",
-                "size": "サイズ",
-                "originalDate": "オリジナルの日付",
-                "releaseDate": "リリース日",
-                "releases": "リリース",
-                "released": "リリース"
-            },
-            "actions": {
-                "playAll": "再生",
-                "playNext": "次に再生",
-                "addToQueue": "最後に再生",
-                "shuffle": "シャッフル",
-                "addToPlaylist": "プレイリストへ追加",
-                "download": "ダウンロード",
-                "info": "詳細",
-                "share": "共有"
-            },
-            "lists": {
-                "all": "全て",
-                "random": "ランダム",
-                "recentlyAdded": "最近の追加",
-                "recentlyPlayed": "最近の再生",
-                "mostPlayed": "最も再生",
-                "starred": "お気に入り",
-                "topRated": "高評価"
-            }
-        },
-        "artist": {
-            "name": "アーティスト",
-            "fields": {
-                "name": "名前",
-                "albumCount": "アルバム枚数",
-                "songCount": "曲数",
-                "playCount": "再生数",
-                "rating": "レート",
-                "genre": "ジャンル",
-                "size": "サイズ"
-            }
-        },
-        "user": {
-            "name": "ユーザー",
-            "fields": {
-                "userName": "ユーザー名",
-                "isAdmin": "管理者",
-                "lastLoginAt": "最終ログイン",
-                "updatedAt": "更新日",
-                "name": "名前",
-                "password": "パスワード",
-                "createdAt": "作成日",
-                "changePassword": "パスワードを変更しますか？",
-                "currentPassword": "現在のパスワード",
-                "newPassword": "新しいパスワード",
-                "token": "トークン"
-            },
-            "helperTexts": {
-                "name": "名前の変更は次回ログイン以降反映されます"
-            },
-            "notifications": {
-                "created": "ユーザーが作成されました",
-                "updated": "ユーザーが更新されました",
-                "deleted": "ユーザーが削除されました"
-            },
-            "message": {
-                "listenBrainzToken": "ListenBrainzユーザートークンを入力",
-                "clickHereForToken": "ここをクリックしトークンを入手"
-            }
-        },
-        "player": {
-            "name": "プレイヤー",
-            "fields": {
-                "name": "名前",
-                "transcodingId": "トランスコード",
-                "maxBitRate": "最大ビットレート",
-                "client": "クライアント",
-                "userName": "ユーザ名",
-                "lastSeen": "最後の利用",
-                "reportRealPath": "実際のファイルパスを返す",
-                "scrobbleEnabled": "他のサービスへscrobbleする"
-            }
-        },
-        "transcoding": {
-            "name": "トランスコード",
-            "fields": {
-                "name": "名前",
-                "targetFormat": "対象フォーマット",
-                "defaultBitRate": "デフォルトビットレート",
-                "command": "コマンド"
-            }
-        },
-        "playlist": {
-            "name": "プレイリスト",
-            "fields": {
-                "name": "名前",
-                "duration": "時間",
-                "ownerName": "所有者",
-                "public": "公開",
-                "updatedAt": "更新日",
-                "createdAt": "作成日",
-                "songCount": "曲",
-                "comment": "コメント",
-                "sync": "自動インポート",
-                "path": "インポート元"
-            },
-            "actions": {
-                "selectPlaylist": "プレイリストを選択",
-                "addNewPlaylist": "'%{name}' を作成",
-                "export": "エクスポート",
-                "makePublic": "公開する",
-                "makePrivate": "非公開にする"
-            },
-            "message": {
-                "duplicate_song": "重複する曲を追加",
-                "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
-            }
-        },
-        "radio": {
-            "name": "ラジオ",
-            "fields": {
-                "name": "名前",
-                "streamUrl": "配信URL",
-                "homePageUrl": "ホームページURL",
-                "updatedAt": "更新日",
-                "createdAt": "作成日"
-            },
-            "actions": {
-                "playNow": "すぐに再生"
-            }
-        },
-        "share": {
-            "name": "共有",
-            "fields": {
-                "username": "共有者",
-                "url": "URL",
-                "description": "説明",
-                "contents": "コンテンツ",
-                "expiresAt": "期限切れ",
-                "lastVisitedAt": "最後の訪問",
-                "visitCount": "訪問回数",
-                "format": "フォーマット",
-                "maxBitRate": "最大ビットレート",
-                "updatedAt": "更新日",
-                "createdAt": "作成日",
-                "downloadable": "ダウンロードを許可しますか？"
-            }
-        }
+  "languageName": "日本語",
+  "resources": {
+    "song": {
+      "name": "曲",
+      "fields": {
+        "albumArtist": "アルバムアーティスト",
+        "duration": "長さ",
+        "trackNumber": "#",
+        "playCount": "再生数",
+        "title": "タイトル",
+        "artist": "アーティスト",
+        "album": "アルバム",
+        "path": "ファイルパス",
+        "genre": "ジャンル",
+        "compilation": "Compilation",
+        "year": "年",
+        "size": "ファイルサイズ",
+        "updatedAt": "更新日",
+        "bitRate": "ビットレート",
+        "discSubtitle": "ディスクサブタイトル",
+        "starred": "お気に入り",
+        "comment": "コメント",
+        "rating": "レート",
+        "quality": "品質",
+        "bpm": "BPM",
+        "playDate": "最後の再生",
+        "channels": "チャンネル",
+        "createdAt": "追加日"
+      },
+      "actions": {
+        "addToQueue": "最後に再生",
+        "playNow": "すぐに再生",
+        "addToPlaylist": "プレイリストに追加",
+        "shuffleAll": "全曲シャッフル",
+        "download": "ダウンロード",
+        "playNext": "次に再生",
+        "info": "詳細"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Navidromeをインストールいただきありがとうございます！",
-            "welcome2": "管理ユーザーを作成して始めましょう",
-            "confirmPassword": "パスワードの確認",
-            "buttonCreateAdmin": "管理者の作成",
-            "auth_check_error": "認証に失敗しました。再度ログインしてください",
-            "user_menu": "プロフィール",
-            "username": "ユーザー名",
-            "password": "パスワード",
-            "sign_in": "ログイン",
-            "sign_in_error": "認証に失敗しました。入力を確認してください",
-            "logout": "ログアウト"
-        },
-        "validation": {
-            "invalidChars": "文字と数字のみを使用してください",
-            "passwordDoesNotMatch": "パスワードが一致しません",
-            "required": "必須",
-            "minLength": "%{min}文字以上である必要があります",
-            "maxLength": "%{max}文字以下である必要があります",
-            "minValue": "%{min}以上である必要があります",
-            "maxValue": "%{max}以下である必要があります",
-            "number": "数字である必要があります",
-            "email": "メールアドレスである必要があります",
-            "oneOf": "次のいずれかである必要があります: %{options}",
-            "regex": "次の正規表現形式にする必要があります: %{pattern}",
-            "unique": "一意である必要があります",
-            "url": "有効なURLを入力してください"
-        },
-        "action": {
-            "add_filter": "検索条件",
-            "add": "追加",
-            "back": "戻る",
-            "bulk_actions": "%{smart_count}件選択",
-            "cancel": "キャンセル",
-            "clear_input_value": "空にする",
-            "clone": "複製",
-            "confirm": "確認",
-            "create": "作成",
-            "delete": "削除",
-            "edit": "編集",
-            "export": "エクスポート",
-            "list": "一覧",
-            "refresh": "更新",
-            "remove_filter": "検索条件を削除",
-            "remove": "削除",
-            "save": "保存",
-            "search": "検索",
-            "show": "詳細",
-            "sort": "並び替え",
-            "undo": "元に戻す",
-            "expand": "開く",
-            "close": "閉じる",
-            "open_menu": "開く",
-            "close_menu": "閉じる",
-            "unselect": "選択解除",
-            "skip": "スキップ",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
-            "share": "共有",
-            "download": "ダウンロード"
-        },
-        "boolean": {
-            "true": "はい",
-            "false": "いいえ"
-        },
-        "page": {
-            "create": "%{name} を作成",
-            "dashboard": "ダッシュボード",
-            "edit": "%{name} #%{id}",
-            "error": "問題が発生しました",
-            "list": "%{name}",
-            "loading": "読込中",
-            "not_found": "見つかりませんでした",
-            "show": "%{name} #%{id}",
-            "empty": "%{name}はありません",
-            "invite": "作成しますか？"
-        },
-        "input": {
-            "file": {
-                "upload_several": "アップロードするファイルをドロップ、または選択してください",
-                "upload_single": "アップロードするファイルをドロップ、または選択してください"
-            },
-            "image": {
-                "upload_several": "アップロードする画像をドロップ、または選択してください",
-                "upload_single": "アップロードする画像をドロップ、または選択してください"
-            },
-            "references": {
-                "all_missing": "データが利用できなくなりました",
-                "many_missing": "選択したデータが利用できなくなりました",
-                "single_missing": "選択したデータが利用できなくなりました"
-            },
-            "password": {
-                "toggle_visible": "非表示",
-                "toggle_hidden": "表示"
-            }
-        },
-        "message": {
-            "about": "詳細",
-            "are_you_sure": "本当によろしいですか？",
-            "bulk_delete_content": "%{name} を削除してよろしいですか？ |||| 選択した %{smart_count}件のアイテムを削除してよろしいですか？",
-            "bulk_delete_title": "%{name} を削除 |||| %{name} %{smart_count}件を削除",
-            "delete_content": "削除してよろしいですか？",
-            "delete_title": "%{name} #%{id} を削除",
-            "details": "詳細",
-            "error": "クライアントエラーが発生し、処理を完了できませんでした",
-            "invalid_form": "入力値に誤りがあります。エラーメッセージを確認してください",
-            "loading": "読み込み中です。しばらくお待ちください",
-            "no": "いいえ",
-            "not_found": "間違ったURLを入力したか、間違ったリンクを辿りました",
-            "yes": "はい",
-            "unsaved_changes": "行った変更が保存されていません。このページから移動してよろしいですか？"
-        },
-        "navigation": {
-            "no_results": "結果が見つかりませんでした",
-            "no_more_results": "ページ番号 %{page} は最大のページ数を超えています。前のページに戻ってください",
-            "page_out_of_boundaries": "ページ番号 %{page} は最大のページ数を超えています",
-            "page_out_from_end": "最大のページ数より後に移動できません",
-            "page_out_from_begin": "1 ページより前に移動できません",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "表示件数:",
-            "next": "次",
-            "prev": "前",
-            "skip_nav": "スキップ"
-        },
-        "notification": {
-            "updated": "更新しました |||| %{smart_count} 件更新しました",
-            "created": "作成しました",
-            "deleted": "削除しました |||| %{smart_count} 件削除しました",
-            "bad_item": "データが不正です",
-            "item_doesnt_exist": "データが存在しませんでした",
-            "http_error": "通信エラーが発生しました",
-            "data_provider_error": "dataProviderエラー。詳細はコンソールを確認してください",
-            "i18n_error": "翻訳ファイルが読み込めませんでした",
-            "canceled": "元に戻しました",
-            "logged_out": "認証に失敗しました。再度ログインしてください",
-            "new_version": "新しいバージョンが利用可能です！ページを更新してください。"
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "表示列",
-            "layout": "レイアウト",
-            "grid": "グリッド",
-            "table": "テーブル"
-        }
+    "album": {
+      "name": "アルバム",
+      "fields": {
+        "albumArtist": "アルバムアーティスト",
+        "artist": "アーティスト",
+        "duration": "長さ",
+        "songCount": "曲",
+        "playCount": "再生数",
+        "name": "名前",
+        "genre": "ジャンル",
+        "compilation": "Compilation",
+        "year": "年",
+        "updatedAt": "更新日",
+        "comment": "コメント",
+        "rating": "レート",
+        "createdAt": "追加日",
+        "size": "サイズ",
+        "originalDate": "オリジナルの日付",
+        "releaseDate": "リリース日",
+        "releases": "リリース",
+        "released": "リリース"
+      },
+      "actions": {
+        "playAll": "再生",
+        "playNext": "次に再生",
+        "addToQueue": "最後に再生",
+        "shuffle": "シャッフル",
+        "addToPlaylist": "プレイリストへ追加",
+        "download": "ダウンロード",
+        "info": "詳細",
+        "share": "共有"
+      },
+      "lists": {
+        "all": "全て",
+        "random": "ランダム",
+        "recentlyAdded": "最近の追加",
+        "recentlyPlayed": "最近の再生",
+        "mostPlayed": "最も再生",
+        "starred": "お気に入り",
+        "topRated": "高評価"
+      }
     },
-    "message": {
-        "note": "注意",
-        "transcodingDisabled": "セキュリティ上の理由から、Web インターフェイスからのトランスコード設定は無効になっています。\nこれを設定したい場合、環境変数 %{config} を設定しサーバーを再起動してください。",
-        "transcodingEnabled": "Navidromeは現在 %{config} の設定で実行されており、WebUIのトランスコード設定からコマンドを実行できます。\nセキュリティ上の問題から、この設定はトランスコード設定を変更する時のみ有効にすることを推奨します。",
-        "songsAddedToPlaylist": "プレイリストへ1曲追加しました |||| プレイリストへ%{smart_count}曲追加しました",
-        "noPlaylistsAvailable": "利用不可",
-        "delete_user_title": "'%{name}' を削除",
-        "delete_user_content": "このユーザーとその全てのデータ(プレイリストや設定)を削除してもよろしいですか？",
-        "notifications_blocked": "ブラウザの設定でこのサイトの通知がブロックされています",
-        "notifications_not_available": "このブラウザはデスクトップ通知をサポートしていません",
-        "lastfmLinkSuccess": "Last.fmとリンクしscrobbleが有効になりました",
-        "lastfmLinkFailure": "Last.fmとリンクできませんでした",
-        "lastfmUnlinkSuccess": "設定が解除され、Last.fmへのscrobbleは無効になっています",
-        "lastfmUnlinkFailure": "Last.fmとリンクできませんでした",
-        "openIn": {
-            "lastfm": "Last.fmで開く",
-            "musicbrainz": "MusicBrainzで開く"
-        },
-        "lastfmLink": "続きを読む",
-        "listenBrainzLinkSuccess": "%{user} へのscrobbling設定に成功しました",
-        "listenBrainzLinkFailure": "ListenBrainzとのリンクに失敗しました: %{error}",
-        "listenBrainzUnlinkSuccess": "ListenBrainzとのリンクとscrobblingを無効化しました。",
-        "listenBrainzUnlinkFailure": "ListenBrainzとのリンクを解除できませんでした",
-        "downloadOriginalFormat": "元のフォーマットでダウンロード",
-        "shareOriginalFormat": "元のフォーマットで共有",
-        "shareDialogTitle": "%{resource} '%{name}' を共有",
-        "shareBatchDialogTitle": "1 %{resource} を共有 |||| %{smart_count} %{resource} を共有",
-        "shareSuccess": "コピーしました: %{url}",
-        "shareFailure": "コピーに失敗しました %{url}",
-        "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter"
+    "artist": {
+      "name": "アーティスト",
+      "fields": {
+        "name": "名前",
+        "albumCount": "アルバム枚数",
+        "songCount": "曲数",
+        "playCount": "再生数",
+        "rating": "レート",
+        "genre": "ジャンル",
+        "size": "サイズ"
+      }
     },
-    "menu": {
-        "library": "ライブラリ",
-        "settings": "設定",
-        "version": "バージョン",
-        "theme": "テーマ",
-        "personal": {
-            "name": "個人設定",
-            "options": {
-                "theme": "テーマ",
-                "language": "言語",
-                "defaultView": "デフォルト画面",
-                "desktop_notifications": "デスクトップ通知",
-                "lastfmScrobbling": "Last.fmへscrobbleする",
-                "listenBrainzScrobbling": "ListenBrainzへscrobble",
-                "replaygain": "ReplayGainモード",
-                "preAmp": "プリアンプ",
-                "gain": {
-                    "none": "無効",
-                    "album": "アルバムゲインを使う",
-                    "track": "トラックゲインを使う"
-                }
-            }
-        },
-        "albumList": "アルバム",
-        "about": "詳細",
-        "playlists": "プレイリスト",
-        "sharedPlaylists": "共有プレイリスト"
+    "user": {
+      "name": "ユーザー",
+      "fields": {
+        "userName": "ユーザー名",
+        "isAdmin": "管理者",
+        "lastLoginAt": "最終ログイン",
+        "updatedAt": "更新日",
+        "name": "名前",
+        "password": "パスワード",
+        "createdAt": "作成日",
+        "changePassword": "パスワードを変更しますか？",
+        "currentPassword": "現在のパスワード",
+        "newPassword": "新しいパスワード",
+        "token": "トークン",
+        "lastAccessAt": "最終アクセス"
+      },
+      "helperTexts": {
+        "name": "名前の変更は次回ログイン以降反映されます"
+      },
+      "notifications": {
+        "created": "ユーザーが作成されました",
+        "updated": "ユーザーが更新されました",
+        "deleted": "ユーザーが削除されました"
+      },
+      "message": {
+        "listenBrainzToken": "ListenBrainzユーザートークンを入力",
+        "clickHereForToken": "ここをクリックしトークンを入手"
+      }
     },
     "player": {
-        "playListsText": "再生リスト",
-        "openText": "開く",
-        "closeText": "閉じる",
-        "notContentText": "音楽がありません",
-        "clickToPlayText": "クリックして再生",
-        "clickToPauseText": "一時停止",
-        "nextTrackText": "次の曲",
-        "previousTrackText": "前の曲",
-        "reloadText": "更新",
-        "volumeText": "音量",
-        "toggleLyricText": "歌詞を切り替え",
-        "toggleMiniModeText": "最小化",
-        "destroyText": "削除",
-        "downloadText": "ダウンロード",
-        "removeAudioListsText": "リストを空にする",
-        "clickToDeleteText": "クリックして%{name}を削除",
-        "emptyLyricText": "歌詞がありません",
-        "playModeText": {
-            "order": "順番に",
-            "orderLoop": "リピート",
-            "singleLoop": "一曲リピート",
-            "shufflePlay": "シャッフル"
-        }
+      "name": "プレイヤー",
+      "fields": {
+        "name": "名前",
+        "transcodingId": "トランスコード",
+        "maxBitRate": "最大ビットレート",
+        "client": "クライアント",
+        "userName": "ユーザ名",
+        "lastSeen": "最後の利用",
+        "reportRealPath": "実際のファイルパスを返す",
+        "scrobbleEnabled": "他のサービスへscrobbleする"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "ホームページ",
-            "source": "ソースコード",
-            "featureRequests": "機能リクエスト"
-        }
+    "transcoding": {
+      "name": "トランスコード",
+      "fields": {
+        "name": "名前",
+        "targetFormat": "対象フォーマット",
+        "defaultBitRate": "デフォルトビットレート",
+        "command": "コマンド"
+      }
     },
-    "activity": {
-        "title": "活動",
-        "totalScanned": "スキャン済みフォルダー",
-        "quickScan": "クイックスキャン",
-        "fullScan": "フルスキャン",
-        "serverUptime": "サーバー稼働時間",
-        "serverDown": "サーバーオフライン"
+    "playlist": {
+      "name": "プレイリスト",
+      "fields": {
+        "name": "名前",
+        "duration": "時間",
+        "ownerName": "所有者",
+        "public": "公開",
+        "updatedAt": "更新日",
+        "createdAt": "作成日",
+        "songCount": "曲",
+        "comment": "コメント",
+        "sync": "自動インポート",
+        "path": "インポート元"
+      },
+      "actions": {
+        "selectPlaylist": "プレイリストを選択",
+        "addNewPlaylist": "'%{name}' を作成",
+        "export": "エクスポート",
+        "makePublic": "公開する",
+        "makePrivate": "非公開にする"
+      },
+      "message": {
+        "duplicate_song": "重複する曲を追加",
+        "song_exist": "既にプレイリストに存在する曲です。追加しますか？"
+      }
     },
-    "help": {
-        "title": "ホットキー",
-        "hotkeys": {
-            "show_help": "このヘルプを表示",
-            "toggle_menu": "サイドバーの表示/非表示",
-            "toggle_play": "再生/停止",
-            "prev_song": "前の曲",
-            "next_song": "次の曲",
-            "vol_up": "音量を上げる",
-            "vol_down": "音量を下げる",
-            "toggle_love": "星の付け外し",
-            "current_song": "現在の曲へ移動"
-        }
+    "radio": {
+      "name": "ラジオ",
+      "fields": {
+        "name": "名前",
+        "streamUrl": "配信URL",
+        "homePageUrl": "ホームページURL",
+        "updatedAt": "更新日",
+        "createdAt": "作成日"
+      },
+      "actions": {
+        "playNow": "すぐに再生"
+      }
+    },
+    "share": {
+      "name": "共有",
+      "fields": {
+        "username": "共有者",
+        "url": "URL",
+        "description": "説明",
+        "contents": "コンテンツ",
+        "expiresAt": "期限切れ",
+        "lastVisitedAt": "最後の訪問",
+        "visitCount": "訪問回数",
+        "format": "フォーマット",
+        "maxBitRate": "最大ビットレート",
+        "updatedAt": "更新日",
+        "createdAt": "作成日",
+        "downloadable": "ダウンロードを許可しますか？"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Navidromeをインストールいただきありがとうございます！",
+      "welcome2": "管理ユーザーを作成して始めましょう",
+      "confirmPassword": "パスワードの確認",
+      "buttonCreateAdmin": "管理者の作成",
+      "auth_check_error": "認証に失敗しました。再度ログインしてください",
+      "user_menu": "プロフィール",
+      "username": "ユーザー名",
+      "password": "パスワード",
+      "sign_in": "ログイン",
+      "sign_in_error": "認証に失敗しました。入力を確認してください",
+      "logout": "ログアウト"
+    },
+    "validation": {
+      "invalidChars": "文字と数字のみを使用してください",
+      "passwordDoesNotMatch": "パスワードが一致しません",
+      "required": "必須",
+      "minLength": "%{min}文字以上である必要があります",
+      "maxLength": "%{max}文字以下である必要があります",
+      "minValue": "%{min}以上である必要があります",
+      "maxValue": "%{max}以下である必要があります",
+      "number": "数字である必要があります",
+      "email": "メールアドレスである必要があります",
+      "oneOf": "次のいずれかである必要があります: %{options}",
+      "regex": "次の正規表現形式にする必要があります: %{pattern}",
+      "unique": "一意である必要があります",
+      "url": "有効なURLを入力してください"
+    },
+    "action": {
+      "add_filter": "検索条件",
+      "add": "追加",
+      "back": "戻る",
+      "bulk_actions": "%{smart_count}件選択",
+      "cancel": "キャンセル",
+      "clear_input_value": "空にする",
+      "clone": "複製",
+      "confirm": "確認",
+      "create": "作成",
+      "delete": "削除",
+      "edit": "編集",
+      "export": "エクスポート",
+      "list": "一覧",
+      "refresh": "更新",
+      "remove_filter": "検索条件を削除",
+      "remove": "削除",
+      "save": "保存",
+      "search": "検索",
+      "show": "詳細",
+      "sort": "並び替え",
+      "undo": "元に戻す",
+      "expand": "開く",
+      "close": "閉じる",
+      "open_menu": "開く",
+      "close_menu": "閉じる",
+      "unselect": "選択解除",
+      "skip": "スキップ",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "共有",
+      "download": "ダウンロード"
+    },
+    "boolean": {
+      "true": "はい",
+      "false": "いいえ"
+    },
+    "page": {
+      "create": "%{name} を作成",
+      "dashboard": "ダッシュボード",
+      "edit": "%{name} #%{id}",
+      "error": "問題が発生しました",
+      "list": "%{name}",
+      "loading": "読込中",
+      "not_found": "見つかりませんでした",
+      "show": "%{name} #%{id}",
+      "empty": "%{name}はありません",
+      "invite": "作成しますか？"
+    },
+    "input": {
+      "file": {
+        "upload_several": "アップロードするファイルをドロップ、または選択してください",
+        "upload_single": "アップロードするファイルをドロップ、または選択してください"
+      },
+      "image": {
+        "upload_several": "アップロードする画像をドロップ、または選択してください",
+        "upload_single": "アップロードする画像をドロップ、または選択してください"
+      },
+      "references": {
+        "all_missing": "データが利用できなくなりました",
+        "many_missing": "選択したデータが利用できなくなりました",
+        "single_missing": "選択したデータが利用できなくなりました"
+      },
+      "password": {
+        "toggle_visible": "非表示",
+        "toggle_hidden": "表示"
+      }
+    },
+    "message": {
+      "about": "詳細",
+      "are_you_sure": "本当によろしいですか？",
+      "bulk_delete_content": "%{name} を削除してよろしいですか？ |||| 選択した %{smart_count}件のアイテムを削除してよろしいですか？",
+      "bulk_delete_title": "%{name} を削除 |||| %{name} %{smart_count}件を削除",
+      "delete_content": "削除してよろしいですか？",
+      "delete_title": "%{name} #%{id} を削除",
+      "details": "詳細",
+      "error": "クライアントエラーが発生し、処理を完了できませんでした",
+      "invalid_form": "入力値に誤りがあります。エラーメッセージを確認してください",
+      "loading": "読み込み中です。しばらくお待ちください",
+      "no": "いいえ",
+      "not_found": "間違ったURLを入力したか、間違ったリンクを辿りました",
+      "yes": "はい",
+      "unsaved_changes": "行った変更が保存されていません。このページから移動してよろしいですか？"
+    },
+    "navigation": {
+      "no_results": "結果が見つかりませんでした",
+      "no_more_results": "ページ番号 %{page} は最大のページ数を超えています。前のページに戻ってください",
+      "page_out_of_boundaries": "ページ番号 %{page} は最大のページ数を超えています",
+      "page_out_from_end": "最大のページ数より後に移動できません",
+      "page_out_from_begin": "1 ページより前に移動できません",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
+      "page_rows_per_page": "表示件数:",
+      "next": "次",
+      "prev": "前",
+      "skip_nav": "スキップ"
+    },
+    "notification": {
+      "updated": "更新しました |||| %{smart_count} 件更新しました",
+      "created": "作成しました",
+      "deleted": "削除しました |||| %{smart_count} 件削除しました",
+      "bad_item": "データが不正です",
+      "item_doesnt_exist": "データが存在しませんでした",
+      "http_error": "通信エラーが発生しました",
+      "data_provider_error": "dataProviderエラー。詳細はコンソールを確認してください",
+      "i18n_error": "翻訳ファイルが読み込めませんでした",
+      "canceled": "元に戻しました",
+      "logged_out": "認証に失敗しました。再度ログインしてください",
+      "new_version": "新しいバージョンが利用可能です！ページを更新してください。"
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "表示列",
+      "layout": "レイアウト",
+      "grid": "グリッド",
+      "table": "テーブル"
+    }
+  },
+  "message": {
+    "note": "注意",
+    "transcodingDisabled": "セキュリティ上の理由から、Web インターフェイスからのトランスコード設定は無効になっています。\nこれを設定したい場合、環境変数 %{config} を設定しサーバーを再起動してください。",
+    "transcodingEnabled": "Navidromeは現在 %{config} の設定で実行されており、WebUIのトランスコード設定からコマンドを実行できます。\nセキュリティ上の問題から、この設定はトランスコード設定を変更する時のみ有効にすることを推奨します。",
+    "songsAddedToPlaylist": "プレイリストへ1曲追加しました |||| プレイリストへ%{smart_count}曲追加しました",
+    "noPlaylistsAvailable": "利用不可",
+    "delete_user_title": "'%{name}' を削除",
+    "delete_user_content": "このユーザーとその全てのデータ(プレイリストや設定)を削除してもよろしいですか？",
+    "notifications_blocked": "ブラウザの設定でこのサイトの通知がブロックされています",
+    "notifications_not_available": "このブラウザはデスクトップ通知をサポートしていません",
+    "lastfmLinkSuccess": "Last.fmとリンクしscrobbleが有効になりました",
+    "lastfmLinkFailure": "Last.fmとリンクできませんでした",
+    "lastfmUnlinkSuccess": "設定が解除され、Last.fmへのscrobbleは無効になっています",
+    "lastfmUnlinkFailure": "Last.fmとリンクできませんでした",
+    "openIn": {
+      "lastfm": "Last.fmで開く",
+      "musicbrainz": "MusicBrainzで開く"
+    },
+    "lastfmLink": "続きを読む",
+    "listenBrainzLinkSuccess": "%{user} へのscrobbling設定に成功しました",
+    "listenBrainzLinkFailure": "ListenBrainzとのリンクに失敗しました: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainzとのリンクとscrobblingを無効化しました。",
+    "listenBrainzUnlinkFailure": "ListenBrainzとのリンクを解除できませんでした",
+    "downloadOriginalFormat": "元のフォーマットでダウンロード",
+    "shareOriginalFormat": "元のフォーマットで共有",
+    "shareDialogTitle": "%{resource} '%{name}' を共有",
+    "shareBatchDialogTitle": "1 %{resource} を共有 |||| %{smart_count} %{resource} を共有",
+    "shareSuccess": "コピーしました: %{url}",
+    "shareFailure": "コピーに失敗しました %{url}",
+    "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter"
+  },
+  "menu": {
+    "library": "ライブラリ",
+    "settings": "設定",
+    "version": "バージョン",
+    "theme": "テーマ",
+    "personal": {
+      "name": "個人設定",
+      "options": {
+        "theme": "テーマ",
+        "language": "言語",
+        "defaultView": "デフォルト画面",
+        "desktop_notifications": "デスクトップ通知",
+        "lastfmScrobbling": "Last.fmへscrobbleする",
+        "listenBrainzScrobbling": "ListenBrainzへscrobble",
+        "replaygain": "ReplayGainモード",
+        "preAmp": "プリアンプ",
+        "gain": {
+          "none": "無効",
+          "album": "アルバムゲインを使う",
+          "track": "トラックゲインを使う"
+        }
+      }
+    },
+    "albumList": "アルバム",
+    "about": "詳細",
+    "playlists": "プレイリスト",
+    "sharedPlaylists": "共有プレイリスト"
+  },
+  "player": {
+    "playListsText": "再生リスト",
+    "openText": "開く",
+    "closeText": "閉じる",
+    "notContentText": "音楽がありません",
+    "clickToPlayText": "クリックして再生",
+    "clickToPauseText": "一時停止",
+    "nextTrackText": "次の曲",
+    "previousTrackText": "前の曲",
+    "reloadText": "更新",
+    "volumeText": "音量",
+    "toggleLyricText": "歌詞を切り替え",
+    "toggleMiniModeText": "最小化",
+    "destroyText": "削除",
+    "downloadText": "ダウンロード",
+    "removeAudioListsText": "リストを空にする",
+    "clickToDeleteText": "クリックして%{name}を削除",
+    "emptyLyricText": "歌詞がありません",
+    "playModeText": {
+      "order": "順番に",
+      "orderLoop": "リピート",
+      "singleLoop": "一曲リピート",
+      "shufflePlay": "シャッフル"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "ホームページ",
+      "source": "ソースコード",
+      "featureRequests": "機能リクエスト"
+    }
+  },
+  "activity": {
+    "title": "活動",
+    "totalScanned": "スキャン済みフォルダー",
+    "quickScan": "クイックスキャン",
+    "fullScan": "フルスキャン",
+    "serverUptime": "サーバー稼働時間",
+    "serverDown": "サーバーオフライン"
+  },
+  "help": {
+    "title": "ホットキー",
+    "hotkeys": {
+      "show_help": "このヘルプを表示",
+      "toggle_menu": "サイドバーの表示/非表示",
+      "toggle_play": "再生/停止",
+      "prev_song": "前の曲",
+      "next_song": "次の曲",
+      "vol_up": "音量を上げる",
+      "vol_down": "音量を下げる",
+      "toggle_love": "星の付け外し",
+      "current_song": "現在の曲へ移動"
+    }
+  }
 }

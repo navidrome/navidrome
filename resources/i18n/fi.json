@@ -1,460 +1,461 @@
 {
-    "languageName": "Suomi",
-    "resources": {
-        "song": {
-            "name": "Kappale |||| Kappaleet",
-            "fields": {
-                "albumArtist": "Albumin artisti",
-                "duration": "Kesto",
-                "trackNumber": "#",
-                "playCount": "Soittokerrat",
-                "title": "Kappale",
-                "artist": "Artisti",
-                "album": "Albumi",
-                "path": "Tiedostopolku",
-                "genre": "Tyylilaji",
-                "compilation": "Kokoelma",
-                "year": "Vuosi",
-                "size": "Tiedostokoko",
-                "updatedAt": "Päivitetty",
-                "bitRate": "Bittinopeus",
-                "discSubtitle": "Levyn tekstitys",
-                "starred": "Suosikki",
-                "comment": "Kommentti",
-                "rating": "Arvostelu",
-                "quality": "Äänenlaatu",
-                "bpm": "BPM",
-                "playDate": "Viimeksi kuunneltu",
-                "channels": "Kanavat",
-                "createdAt": "Lisätty"
-            },
-            "actions": {
-                "addToQueue": "Lisää jonoon",
-                "playNow": "Soita nyt",
-                "addToPlaylist": "Lisää soittolistaan",
-                "shuffleAll": "Sekoita kaikki",
-                "download": "Lataa",
-                "playNext": "Soita seuraavaksi",
-                "info": "Info"
-            }
-        },
-        "album": {
-            "name": "Albumi |||| Albumit",
-            "fields": {
-                "albumArtist": "Albumin artisti",
-                "artist": "Artisti",
-                "duration": "Kesto",
-                "songCount": "Kappaleita",
-                "playCount": "Kuuntelukertoja",
-                "name": "Albumi",
-                "genre": "Tyylilaji",
-                "compilation": "Kokoelma",
-                "year": "Vuosi",
-                "updatedAt": "Päivitetty",
-                "comment": "Kommentti",
-                "rating": "Arvostelu",
-                "createdAt": "Lisätty",
-                "size": "Koko",
-                "originalDate": "Alkuperäinen",
-                "releaseDate": "Julkaistu",
-                "releases": "Julkaisu |||| Julkaisut",
-                "released": "Julkaistu"
-            },
-            "actions": {
-                "playAll": "Soita",
-                "playNext": "Soita seuraavaksi",
-                "addToQueue": "Lisää jonoon",
-                "shuffle": "Sekoita",
-                "addToPlaylist": "Lisää soittolistaan",
-                "download": "Lataa",
-                "info": "Info",
-                "share": "Jaa"
-            },
-            "lists": {
-                "all": "Kaikki",
-                "random": "Satunnainen",
-                "recentlyAdded": "Viimeksi lisätyt",
-                "recentlyPlayed": "Viimeksi soitetut",
-                "mostPlayed": "Useimmiten soitetut",
-                "starred": "Suosikit",
-                "topRated": "Tykätyimmät"
-            }
-        },
-        "artist": {
-            "name": "Artisti |||| Artistit",
-            "fields": {
-                "name": "Artisti",
-                "albumCount": "Levyjen määrä",
-                "songCount": "Kappaleiden määrä",
-                "playCount": "Kuuntelukertoja",
-                "rating": "Arvostelu",
-                "genre": "Tyylilaji",
-                "size": "Koko"
-            }
-        },
-        "user": {
-            "name": "Käyttäjä |||| Käyttäjät",
-            "fields": {
-                "userName": "Käyttäjätunnus",
-                "isAdmin": "Pääkäyttäjä",
-                "lastLoginAt": "Viimeksi kirjautunut",
-                "updatedAt": "Päivitetty",
-                "name": "Nimi",
-                "password": "Salasana",
-                "createdAt": "Luotu",
-                "changePassword": "Vaihda salasana?",
-                "currentPassword": "Nykyinen salasana",
-                "newPassword": "Uusi salasana",
-                "token": "Avain"
-            },
-            "helperTexts": {
-                "name": "Nimen muutos tulee voimaan kun seuraavan kerran kirjaudut sisään"
-            },
-            "notifications": {
-                "created": "Käyttäjä luotu",
-                "updated": "Käyttäjä päivitetty",
-                "deleted": "Käyttäjä poistettu"
-            },
-            "message": {
-                "listenBrainzToken": "Syötä ListenBrainz avain.",
-                "clickHereForToken": "Paina tästä saadaksesi avaimen"
-            }
-        },
-        "player": {
-            "name": "Soitin |||| Soittimet",
-            "fields": {
-                "name": "Nimi",
-                "transcodingId": "Muunnos",
-                "maxBitRate": "Suurin bittinopeus",
-                "client": "Sovellus",
-                "userName": "Käyttäjänimi",
-                "lastSeen": "Viimeksi käytetty",
-                "reportRealPath": "Ilmoita todellinen polku",
-                "scrobbleEnabled": "Lähetä kuuntelutottumukset ulkoiseen palveluun"
-            }
-        },
-        "transcoding": {
-            "name": "Muunnos |||| Muunnokset",
-            "fields": {
-                "name": "Nimi",
-                "targetFormat": "Kohde formaatti",
-                "defaultBitRate": "Oletus bittinopeus",
-                "command": "Komento"
-            }
-        },
-        "playlist": {
-            "name": "Soittolista |||| Soittolistat",
-            "fields": {
-                "name": "Nimi",
-                "duration": "Kesto",
-                "ownerName": "Omistaja",
-                "public": "Julkinen",
-                "updatedAt": "Päivitetty",
-                "createdAt": "Luotu",
-                "songCount": "Kappaleita",
-                "comment": "Kommentti",
-                "sync": "Automaattinen tuonti",
-                "path": "Tuo"
-            },
-            "actions": {
-                "selectPlaylist": "Valitse soittolista:",
-                "addNewPlaylist": "Luo \"%{name}\"",
-                "export": "Vie",
-                "makePublic": "Tee julkinen",
-                "makePrivate": "Tee yksityinen"
-            },
-            "message": {
-                "duplicate_song": "Lisää olemassa oleva kappale",
-                "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?"
-            }
-        },
-        "radio": {
-            "name": "Radio |||| Radiot",
-            "fields": {
-                "name": "Nimi",
-                "streamUrl": "Streamin URL",
-                "homePageUrl": "Kotisivu",
-                "updatedAt": "Päivitetty",
-                "createdAt": "Luotu"
-            },
-            "actions": {
-                "playNow": "Kuuntele nyt"
-            }
-        },
-        "share": {
-            "name": "Jako |||| Jaot",
-            "fields": {
-                "username": "Jakanut",
-                "url": "URL",
-                "description": "Kuvaus",
-                "contents": "Sisältö",
-                "expiresAt": "Vanhenee",
-                "lastVisitedAt": "Viimeksi vierailtu",
-                "visitCount": "Vierailuja",
-                "format": "Formaatti",
-                "maxBitRate": "Max. bittinopeus",
-                "updatedAt": "Päivitetty",
-                "createdAt": "Luotu",
-                "downloadable": "Salli lataus?"
-            }
-        }
+  "languageName": "Suomi",
+  "resources": {
+    "song": {
+      "name": "Kappale |||| Kappaleet",
+      "fields": {
+        "albumArtist": "Albumin artisti",
+        "duration": "Kesto",
+        "trackNumber": "#",
+        "playCount": "Soittokerrat",
+        "title": "Kappale",
+        "artist": "Artisti",
+        "album": "Albumi",
+        "path": "Tiedostopolku",
+        "genre": "Tyylilaji",
+        "compilation": "Kokoelma",
+        "year": "Vuosi",
+        "size": "Tiedostokoko",
+        "updatedAt": "Päivitetty",
+        "bitRate": "Bittinopeus",
+        "discSubtitle": "Levyn tekstitys",
+        "starred": "Suosikki",
+        "comment": "Kommentti",
+        "rating": "Arvostelu",
+        "quality": "Äänenlaatu",
+        "bpm": "BPM",
+        "playDate": "Viimeksi kuunneltu",
+        "channels": "Kanavat",
+        "createdAt": "Lisätty"
+      },
+      "actions": {
+        "addToQueue": "Lisää jonoon",
+        "playNow": "Soita nyt",
+        "addToPlaylist": "Lisää soittolistaan",
+        "shuffleAll": "Sekoita kaikki",
+        "download": "Lataa",
+        "playNext": "Soita seuraavaksi",
+        "info": "Info"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Kiitos, että asensit Navidromen!",
-            "welcome2": "Aloittaaksesi luo admin-käyttäjä",
-            "confirmPassword": "Vahvista salasana",
-            "buttonCreateAdmin": "Luo Admin",
-            "auth_check_error": "Kirjaudu sisään jatkaaksesi",
-            "user_menu": "Profiili",
-            "username": "Käyttäjänimi",
-            "password": "Salasana",
-            "sign_in": "Kirjaudu",
-            "sign_in_error": "Autentikointi epäonnistui. Yritä uudelleen",
-            "logout": "Kirjaudu ulos"
-        },
-        "validation": {
-            "invalidChars": "Käytä vain kirjaimia ja numeroita",
-            "passwordDoesNotMatch": "Salasanat eivät täsmää",
-            "required": "Pakollinen",
-            "minLength": "Pitää vähintään olla %{min} merkkiä",
-            "maxLength": "Saa olla enintään %{max} merkkiä",
-            "minValue": "pitää olla vähintään %{min}",
-            "maxValue": "Saa olla enentään %{max}",
-            "number": "Pitää olla numero",
-            "email": "Pitää olla oikea sähköpostiosoite",
-            "oneOf": "Pitää olla joku näistä: %{options}",
-            "regex": "Pitää olla määrätyssä muodossa (regexp): %{pattern}",
-            "unique": "Pitää olla yksilöllinen",
-            "url": "Virheellinen URL"
-        },
-        "action": {
-            "add_filter": "Lisää suodatin",
-            "add": "Lisää",
-            "back": "Palaa",
-            "bulk_actions": "1 kohde valittu |||| %{smart_count} kohdetta valittu",
-            "cancel": "Peru",
-            "clear_input_value": "Tyhjennä",
-            "clone": "Kopio",
-            "confirm": "Vahvista",
-            "create": "Luo",
-            "delete": "Poista",
-            "edit": "Muokkaa",
-            "export": "Vie",
-            "list": "Lista",
-            "refresh": "Päivitä",
-            "remove_filter": "Poista suodatin",
-            "remove": "Poista",
-            "save": "Tallenna",
-            "search": "Etsi",
-            "show": "Näytä",
-            "sort": "Järjestä",
-            "undo": "Peru",
-            "expand": "Laajenna",
-            "close": "Sulje",
-            "open_menu": "Avaa valikko",
-            "close_menu": "Sulje valikko",
-            "unselect": "Poista valinta",
-            "skip": "Ohita",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
-            "share": "Jako",
-            "download": "Lataa"
-        },
-        "boolean": {
-            "true": "Kyllä",
-            "false": "Ei"
-        },
-        "page": {
-            "create": "Luo %{name}",
-            "dashboard": "Dashboard",
-            "edit": "%{name} #%{id}",
-            "error": "Jotainen meni pieleen",
-            "list": "%{name}",
-            "loading": "Ladataan",
-            "not_found": "Ei löytynyt",
-            "show": "%{name} #%{id}",
-            "empty": "%{name} on tyhjä",
-            "invite": "Haluatko luoda uuden?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Pudota tiedostoja tai valitse useampi ladataksesi ne.",
-                "upload_single": "Pudota tiedosto tai valitse tiedosto ladataksesi se."
-            },
-            "image": {
-                "upload_several": "Pudota kuvia tai valitse useampi ladataksesi ne.",
-                "upload_single": "Pudota kuva tai valitse kuva ladataksesi se."
-            },
-            "references": {
-                "all_missing": "Viitetietoja ei löytynyt.",
-                "many_missing": "Ainakin yksi viitetieto näyttäisi puuttuvan.",
-                "single_missing": "Viitetietoa ei ole enää saatavilla."
-            },
-            "password": {
-                "toggle_visible": "Piilota salasana",
-                "toggle_hidden": "Näytä salasana"
-            }
-        },
-        "message": {
-            "about": "Tietoa",
-            "are_you_sure": "Oletko varma?",
-            "bulk_delete_content": "Oletko varma, että haluat poistaa %{name}? |||| Oletko varma, että haluat poistaa %{smart_count}?",
-            "bulk_delete_title": "Poista %{name} |||| Poista %{smart_count} %{name}",
-            "delete_content": "Haluatko varmasti poistaa tämän?",
-            "delete_title": "Poista %{name} #%{id}",
-            "details": "Yksityiskohdat",
-            "error": "Tapahtui virhe, eikä pyyntöäsi voitu suorittaa.",
-            "invalid_form": "Lomakkeessa on virhe. Tarkista virheet",
-            "loading": "Sivu latautuu, odota hetki",
-            "no": "Ei",
-            "not_found": "Joko kirjoitit väärän osoitteen tai seuraamasi linkki on rikki.",
-            "yes": "Kyllä",
-            "unsaved_changes": "Joitakin muutoksiasi ei tallennettu. Haluatko varmasti jättää ne huomiotta?"
-        },
-        "navigation": {
-            "no_results": "Ei tuloksia",
-            "no_more_results": "Sivunumero %{page} on rajojen ulkopuolella. Kokeile edellinen sivu.",
-            "page_out_of_boundaries": "Sivunumero %{page} on rajojen ulkopuolella",
-            "page_out_from_end": "Viimeinen sivu, ei voi edetä",
-            "page_out_from_begin": "Ensimmäinen sivu, ei voi palata",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
-            "page_rows_per_page": "Kohteita sivulla:",
-            "next": "Seuraava",
-            "prev": "Edellinen",
-            "skip_nav": "Siirry sisältöön"
-        },
-        "notification": {
-            "updated": "Elementti päivitetty  |||| %{smart_count} elementtiä päivitetty",
-            "created": "Elementti luotu",
-            "deleted": "Elementti poistettu |||| %{smart_count} elementtiä poistettu",
-            "bad_item": "Virheellinen elementti",
-            "item_doesnt_exist": "Elementtiä ei ole",
-            "http_error": "Palvelimen yhteysvirhe",
-            "data_provider_error": "Tapahtui virhe. Katso lisätietoja konsolista.",
-            "i18n_error": "Käännöksiä valitulle kielelle ei voitu ladata.",
-            "canceled": "Toiminto peruttu",
-            "logged_out": "Istuntosi on päättynyt, yhdistä uudelleen.",
-            "new_version": "Päivitys saatavilla! Päivitä tämä ikkuna."
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "Näytettävät sarakkeet",
-            "layout": "Asettelu",
-            "grid": "Ruudukko",
-            "table": "Taulukko"
-        }
+    "album": {
+      "name": "Albumi |||| Albumit",
+      "fields": {
+        "albumArtist": "Albumin artisti",
+        "artist": "Artisti",
+        "duration": "Kesto",
+        "songCount": "Kappaleita",
+        "playCount": "Kuuntelukertoja",
+        "name": "Albumi",
+        "genre": "Tyylilaji",
+        "compilation": "Kokoelma",
+        "year": "Vuosi",
+        "updatedAt": "Päivitetty",
+        "comment": "Kommentti",
+        "rating": "Arvostelu",
+        "createdAt": "Lisätty",
+        "size": "Koko",
+        "originalDate": "Alkuperäinen",
+        "releaseDate": "Julkaistu",
+        "releases": "Julkaisu |||| Julkaisut",
+        "released": "Julkaistu"
+      },
+      "actions": {
+        "playAll": "Soita",
+        "playNext": "Soita seuraavaksi",
+        "addToQueue": "Lisää jonoon",
+        "shuffle": "Sekoita",
+        "addToPlaylist": "Lisää soittolistaan",
+        "download": "Lataa",
+        "info": "Info",
+        "share": "Jaa"
+      },
+      "lists": {
+        "all": "Kaikki",
+        "random": "Satunnainen",
+        "recentlyAdded": "Viimeksi lisätyt",
+        "recentlyPlayed": "Viimeksi soitetut",
+        "mostPlayed": "Useimmiten soitetut",
+        "starred": "Suosikit",
+        "topRated": "Tykätyimmät"
+      }
     },
-    "message": {
-        "note": "HUOM",
-        "transcodingDisabled": "Muunnoksen muokkaaminen verkkoliittymän kautta on poistettu tietoturvasyistä käytöstä. Mikäli haluat muuttaa muunnoksen asetuksia käynnistä palvelu uudelleen %{config} asetuksella.",
-        "transcodingEnabled": "Navidrome käyttää parhaillaan %{config} asetuksia. Tämä mahdollistaa järjestelmän komentojen suorittamisen muunnoksen asetuksista verkkokäyttöliittymän kautta. Tietoturvasyistä suosittelemme sen käyttöä vain kun teet muutoksia muunnoksen asetuksiin.",
-        "songsAddedToPlaylist": "Lisättiin 1 kappale soittolistalle |||| Lisättiin %{smart_count} kappaletta soittolistalle",
-        "noPlaylistsAvailable": "Soittolistaa ei saatavilla",
-        "delete_user_title": "Poista käyttäjä '%{name}'",
-        "delete_user_content": "Haluatko varmasti poistaa tämän käyttäjän ja kaikki hänen tiedot (mukaan lukien soittolistat ja asetukset)?",
-        "notifications_blocked": "Olet estänyt tämän sivuston ilmoitukset selaimesi asetuksissa",
-        "notifications_not_available": "Tämä selain ei tue työpöytäilmoituksia tai et käytä Navidromea https-yhteyden kautta",
-        "lastfmLinkSuccess": "Last.fm onnistuneesti linkitetty ja kuuntelutottumus otettu käyttöön",
-        "lastfmLinkFailure": "Last.fm linkitys epäonnistui",
-        "lastfmUnlinkSuccess": "Last.fm linkitys poistettu ja kuuntelutottumus poistettu käytöstä",
-        "lastfmUnlinkFailure": "Last.fm linkityksen poisto epäonnistui",
-        "openIn": {
-            "lastfm": "Avaa Last.fm:ssä",
-            "musicbrainz": "Avaa MusicBrainz:ssä"
-        },
-        "lastfmLink": "Lue lisää...",
-        "listenBrainzLinkSuccess": "ListenBrainz linkitetty onnistuneesti ja käyttäjän %{user} kuuntelutottumus otettu käyttöön",
-        "listenBrainzLinkFailure": "Ei voitu linkittää ListenBrainz palveluun: %{error}",
-        "listenBrainzUnlinkSuccess": "Linkitys ListenBrainz poistettu ja kuuntelutottumus poistettu käytöstä",
-        "listenBrainzUnlinkFailure": "ListenBrainz linkitystä ei voitu poistaa",
-        "downloadOriginalFormat": "Lataa alkuperäisessä formaatissa",
-        "shareOriginalFormat": "Jaa alkuperäisessä formaatissa",
-        "shareDialogTitle": "Jaa %{resource} '%{name}'",
-        "shareBatchDialogTitle": "Jako 1 %{resource} |||| Jako %{smart_count} %{resource}",
-        "shareSuccess": "Osoite kopioitu leikepöydälle: %{url}",
-        "shareFailure": "Virhe kopioitaessa %{url} leikepöydälle",
-        "downloadDialogTitle": "Lataa %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "Kopio leikepöydälle: Ctrl+C, Enter"
+    "artist": {
+      "name": "Artisti |||| Artistit",
+      "fields": {
+        "name": "Artisti",
+        "albumCount": "Levyjen määrä",
+        "songCount": "Kappaleiden määrä",
+        "playCount": "Kuuntelukertoja",
+        "rating": "Arvostelu",
+        "genre": "Tyylilaji",
+        "size": "Koko"
+      }
     },
-    "menu": {
-        "library": "Kirjasto",
-        "settings": "Asetukset",
-        "version": "Versio",
-        "theme": "Teema",
-        "personal": {
-            "name": "Omat asetukset",
-            "options": {
-                "theme": "Teema",
-                "language": "Kieli",
-                "defaultView": "Oletusnäkymä",
-                "desktop_notifications": "Työpöytäilmoitukset",
-                "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
-                "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun",
-                "replaygain": "RepleyGain -tila",
-                "preAmp": "ReplayGain esivahvistus (dB)",
-                "gain": {
-                    "none": "Pois käytöstä",
-                    "album": "Käytä albumin äänen normalisointia",
-                    "track": "Käytä kappaleen äänen normalisointia"
-                }
-            }
-        },
-        "albumList": "Albumit",
-        "about": "Tietoa",
-        "playlists": "Soittolista",
-        "sharedPlaylists": "Jaettu soittolista"
+    "user": {
+      "name": "Käyttäjä |||| Käyttäjät",
+      "fields": {
+        "userName": "Käyttäjätunnus",
+        "isAdmin": "Pääkäyttäjä",
+        "lastLoginAt": "Viimeksi kirjautunut",
+        "updatedAt": "Päivitetty",
+        "name": "Nimi",
+        "password": "Salasana",
+        "createdAt": "Luotu",
+        "changePassword": "Vaihda salasana?",
+        "currentPassword": "Nykyinen salasana",
+        "newPassword": "Uusi salasana",
+        "token": "Avain",
+        "lastAccessAt": "Viimeisin käyttö"
+      },
+      "helperTexts": {
+        "name": "Nimen muutos tulee voimaan kun seuraavan kerran kirjaudut sisään"
+      },
+      "notifications": {
+        "created": "Käyttäjä luotu",
+        "updated": "Käyttäjä päivitetty",
+        "deleted": "Käyttäjä poistettu"
+      },
+      "message": {
+        "listenBrainzToken": "Syötä ListenBrainz avain.",
+        "clickHereForToken": "Paina tästä saadaksesi avaimen"
+      }
     },
     "player": {
-        "playListsText": "Jono",
-        "openText": "Avaa",
-        "closeText": "Sulje",
-        "notContentText": "Ei musiikkia",
-        "clickToPlayText": "Soita",
-        "clickToPauseText": "Tauko",
-        "nextTrackText": "Seuraava kappale",
-        "previousTrackText": "Edellinen kappale",
-        "reloadText": "Päivitä",
-        "volumeText": "Äänenvoimakkuus",
-        "toggleLyricText": "Toggle lyric",
-        "toggleMiniModeText": "Minimoi",
-        "destroyText": "Poista",
-        "downloadText": "Lataa",
-        "removeAudioListsText": "Tyhjennä jono",
-        "clickToDeleteText": "Paina poistaaksesi %{name}",
-        "emptyLyricText": "Ei sanoja",
-        "playModeText": {
-            "order": "Järjestyksessä",
-            "orderLoop": "Toista",
-            "singleLoop": "Toista yksi",
-            "shufflePlay": "Sekoita"
-        }
+      "name": "Soitin |||| Soittimet",
+      "fields": {
+        "name": "Nimi",
+        "transcodingId": "Muunnos",
+        "maxBitRate": "Suurin bittinopeus",
+        "client": "Sovellus",
+        "userName": "Käyttäjänimi",
+        "lastSeen": "Viimeksi käytetty",
+        "reportRealPath": "Ilmoita todellinen polku",
+        "scrobbleEnabled": "Lähetä kuuntelutottumukset ulkoiseen palveluun"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Kotisivu",
-            "source": "Lähdekoodi",
-            "featureRequests": "Ominaisuuspyynnöt"
-        }
+    "transcoding": {
+      "name": "Muunnos |||| Muunnokset",
+      "fields": {
+        "name": "Nimi",
+        "targetFormat": "Kohde formaatti",
+        "defaultBitRate": "Oletus bittinopeus",
+        "command": "Komento"
+      }
     },
-    "activity": {
-        "title": "Palvelun tila",
-        "totalScanned": "Tarkistettuja hakemistoja",
-        "quickScan": "Nopea tarkistus",
-        "fullScan": "Täysi tarkistus",
-        "serverUptime": "Palvelun käyttöaika",
-        "serverDown": "SAMMUTETTU"
+    "playlist": {
+      "name": "Soittolista |||| Soittolistat",
+      "fields": {
+        "name": "Nimi",
+        "duration": "Kesto",
+        "ownerName": "Omistaja",
+        "public": "Julkinen",
+        "updatedAt": "Päivitetty",
+        "createdAt": "Luotu",
+        "songCount": "Kappaleita",
+        "comment": "Kommentti",
+        "sync": "Automaattinen tuonti",
+        "path": "Tuo"
+      },
+      "actions": {
+        "selectPlaylist": "Valitse soittolista:",
+        "addNewPlaylist": "Luo \"%{name}\"",
+        "export": "Vie",
+        "makePublic": "Tee julkinen",
+        "makePrivate": "Tee yksityinen"
+      },
+      "message": {
+        "duplicate_song": "Lisää olemassa oleva kappale",
+        "song_exist": "Olet lisäämässä soittolistalla jo olevaa kappaletta. Haluatko lisätä saman kappaleen vai ohittaa sen?"
+      }
     },
-    "help": {
-        "title": "Navidrome pikapainikkeet",
-        "hotkeys": {
-            "show_help": "Näytä tämä apuvalikko",
-            "toggle_menu": "Menuvalikko päälle ja pois",
-            "toggle_play": "Toista / Tauko",
-            "prev_song": "Esellinen kappale",
-            "next_song": "Seuraava kappale",
-            "vol_up": "Kovemmalle",
-            "vol_down": "Hiljemmalle",
-            "toggle_love": "Lisää kappale suosikkeihin",
-            "current_song": "Siirry nykyiseen kappaleeseen"
-        }
+    "radio": {
+      "name": "Radio |||| Radiot",
+      "fields": {
+        "name": "Nimi",
+        "streamUrl": "Streamin URL",
+        "homePageUrl": "Kotisivu",
+        "updatedAt": "Päivitetty",
+        "createdAt": "Luotu"
+      },
+      "actions": {
+        "playNow": "Kuuntele nyt"
+      }
+    },
+    "share": {
+      "name": "Jako |||| Jaot",
+      "fields": {
+        "username": "Jakanut",
+        "url": "URL",
+        "description": "Kuvaus",
+        "contents": "Sisältö",
+        "expiresAt": "Vanhenee",
+        "lastVisitedAt": "Viimeksi vierailtu",
+        "visitCount": "Vierailuja",
+        "format": "Formaatti",
+        "maxBitRate": "Max. bittinopeus",
+        "updatedAt": "Päivitetty",
+        "createdAt": "Luotu",
+        "downloadable": "Salli lataus?"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Kiitos, että asensit Navidromen!",
+      "welcome2": "Aloittaaksesi luo admin-käyttäjä",
+      "confirmPassword": "Vahvista salasana",
+      "buttonCreateAdmin": "Luo Admin",
+      "auth_check_error": "Kirjaudu sisään jatkaaksesi",
+      "user_menu": "Profiili",
+      "username": "Käyttäjänimi",
+      "password": "Salasana",
+      "sign_in": "Kirjaudu",
+      "sign_in_error": "Autentikointi epäonnistui. Yritä uudelleen",
+      "logout": "Kirjaudu ulos"
+    },
+    "validation": {
+      "invalidChars": "Käytä vain kirjaimia ja numeroita",
+      "passwordDoesNotMatch": "Salasanat eivät täsmää",
+      "required": "Pakollinen",
+      "minLength": "Pitää vähintään olla %{min} merkkiä",
+      "maxLength": "Saa olla enintään %{max} merkkiä",
+      "minValue": "pitää olla vähintään %{min}",
+      "maxValue": "Saa olla enentään %{max}",
+      "number": "Pitää olla numero",
+      "email": "Pitää olla oikea sähköpostiosoite",
+      "oneOf": "Pitää olla joku näistä: %{options}",
+      "regex": "Pitää olla määrätyssä muodossa (regexp): %{pattern}",
+      "unique": "Pitää olla yksilöllinen",
+      "url": "Virheellinen URL"
+    },
+    "action": {
+      "add_filter": "Lisää suodatin",
+      "add": "Lisää",
+      "back": "Palaa",
+      "bulk_actions": "1 kohde valittu |||| %{smart_count} kohdetta valittu",
+      "cancel": "Peru",
+      "clear_input_value": "Tyhjennä",
+      "clone": "Kopio",
+      "confirm": "Vahvista",
+      "create": "Luo",
+      "delete": "Poista",
+      "edit": "Muokkaa",
+      "export": "Vie",
+      "list": "Lista",
+      "refresh": "Päivitä",
+      "remove_filter": "Poista suodatin",
+      "remove": "Poista",
+      "save": "Tallenna",
+      "search": "Etsi",
+      "show": "Näytä",
+      "sort": "Järjestä",
+      "undo": "Peru",
+      "expand": "Laajenna",
+      "close": "Sulje",
+      "open_menu": "Avaa valikko",
+      "close_menu": "Sulje valikko",
+      "unselect": "Poista valinta",
+      "skip": "Ohita",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Jako",
+      "download": "Lataa"
+    },
+    "boolean": {
+      "true": "Kyllä",
+      "false": "Ei"
+    },
+    "page": {
+      "create": "Luo %{name}",
+      "dashboard": "Dashboard",
+      "edit": "%{name} #%{id}",
+      "error": "Jotainen meni pieleen",
+      "list": "%{name}",
+      "loading": "Ladataan",
+      "not_found": "Ei löytynyt",
+      "show": "%{name} #%{id}",
+      "empty": "%{name} on tyhjä",
+      "invite": "Haluatko luoda uuden?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Pudota tiedostoja tai valitse useampi ladataksesi ne.",
+        "upload_single": "Pudota tiedosto tai valitse tiedosto ladataksesi se."
+      },
+      "image": {
+        "upload_several": "Pudota kuvia tai valitse useampi ladataksesi ne.",
+        "upload_single": "Pudota kuva tai valitse kuva ladataksesi se."
+      },
+      "references": {
+        "all_missing": "Viitetietoja ei löytynyt.",
+        "many_missing": "Ainakin yksi viitetieto näyttäisi puuttuvan.",
+        "single_missing": "Viitetietoa ei ole enää saatavilla."
+      },
+      "password": {
+        "toggle_visible": "Piilota salasana",
+        "toggle_hidden": "Näytä salasana"
+      }
+    },
+    "message": {
+      "about": "Tietoa",
+      "are_you_sure": "Oletko varma?",
+      "bulk_delete_content": "Oletko varma, että haluat poistaa %{name}? |||| Oletko varma, että haluat poistaa %{smart_count}?",
+      "bulk_delete_title": "Poista %{name} |||| Poista %{smart_count} %{name}",
+      "delete_content": "Haluatko varmasti poistaa tämän?",
+      "delete_title": "Poista %{name} #%{id}",
+      "details": "Yksityiskohdat",
+      "error": "Tapahtui virhe, eikä pyyntöäsi voitu suorittaa.",
+      "invalid_form": "Lomakkeessa on virhe. Tarkista virheet",
+      "loading": "Sivu latautuu, odota hetki",
+      "no": "Ei",
+      "not_found": "Joko kirjoitit väärän osoitteen tai seuraamasi linkki on rikki.",
+      "yes": "Kyllä",
+      "unsaved_changes": "Joitakin muutoksiasi ei tallennettu. Haluatko varmasti jättää ne huomiotta?"
+    },
+    "navigation": {
+      "no_results": "Ei tuloksia",
+      "no_more_results": "Sivunumero %{page} on rajojen ulkopuolella. Kokeile edellinen sivu.",
+      "page_out_of_boundaries": "Sivunumero %{page} on rajojen ulkopuolella",
+      "page_out_from_end": "Viimeinen sivu, ei voi edetä",
+      "page_out_from_begin": "Ensimmäinen sivu, ei voi palata",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} / %{total}",
+      "page_rows_per_page": "Kohteita sivulla:",
+      "next": "Seuraava",
+      "prev": "Edellinen",
+      "skip_nav": "Siirry sisältöön"
+    },
+    "notification": {
+      "updated": "Elementti päivitetty  |||| %{smart_count} elementtiä päivitetty",
+      "created": "Elementti luotu",
+      "deleted": "Elementti poistettu |||| %{smart_count} elementtiä poistettu",
+      "bad_item": "Virheellinen elementti",
+      "item_doesnt_exist": "Elementtiä ei ole",
+      "http_error": "Palvelimen yhteysvirhe",
+      "data_provider_error": "Tapahtui virhe. Katso lisätietoja konsolista.",
+      "i18n_error": "Käännöksiä valitulle kielelle ei voitu ladata.",
+      "canceled": "Toiminto peruttu",
+      "logged_out": "Istuntosi on päättynyt, yhdistä uudelleen.",
+      "new_version": "Päivitys saatavilla! Päivitä tämä ikkuna."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Näytettävät sarakkeet",
+      "layout": "Asettelu",
+      "grid": "Ruudukko",
+      "table": "Taulukko"
+    }
+  },
+  "message": {
+    "note": "HUOM",
+    "transcodingDisabled": "Muunnoksen muokkaaminen verkkoliittymän kautta on poistettu tietoturvasyistä käytöstä. Mikäli haluat muuttaa muunnoksen asetuksia käynnistä palvelu uudelleen %{config} asetuksella.",
+    "transcodingEnabled": "Navidrome käyttää parhaillaan %{config} asetuksia. Tämä mahdollistaa järjestelmän komentojen suorittamisen muunnoksen asetuksista verkkokäyttöliittymän kautta. Tietoturvasyistä suosittelemme sen käyttöä vain kun teet muutoksia muunnoksen asetuksiin.",
+    "songsAddedToPlaylist": "Lisättiin 1 kappale soittolistalle |||| Lisättiin %{smart_count} kappaletta soittolistalle",
+    "noPlaylistsAvailable": "Soittolistaa ei saatavilla",
+    "delete_user_title": "Poista käyttäjä '%{name}'",
+    "delete_user_content": "Haluatko varmasti poistaa tämän käyttäjän ja kaikki hänen tiedot (mukaan lukien soittolistat ja asetukset)?",
+    "notifications_blocked": "Olet estänyt tämän sivuston ilmoitukset selaimesi asetuksissa",
+    "notifications_not_available": "Tämä selain ei tue työpöytäilmoituksia tai et käytä Navidromea https-yhteyden kautta",
+    "lastfmLinkSuccess": "Last.fm onnistuneesti linkitetty ja kuuntelutottumus otettu käyttöön",
+    "lastfmLinkFailure": "Last.fm linkitys epäonnistui",
+    "lastfmUnlinkSuccess": "Last.fm linkitys poistettu ja kuuntelutottumus poistettu käytöstä",
+    "lastfmUnlinkFailure": "Last.fm linkityksen poisto epäonnistui",
+    "openIn": {
+      "lastfm": "Avaa Last.fm:ssä",
+      "musicbrainz": "Avaa MusicBrainz:ssä"
+    },
+    "lastfmLink": "Lue lisää...",
+    "listenBrainzLinkSuccess": "ListenBrainz linkitetty onnistuneesti ja käyttäjän %{user} kuuntelutottumus otettu käyttöön",
+    "listenBrainzLinkFailure": "Ei voitu linkittää ListenBrainz palveluun: %{error}",
+    "listenBrainzUnlinkSuccess": "Linkitys ListenBrainz poistettu ja kuuntelutottumus poistettu käytöstä",
+    "listenBrainzUnlinkFailure": "ListenBrainz linkitystä ei voitu poistaa",
+    "downloadOriginalFormat": "Lataa alkuperäisessä formaatissa",
+    "shareOriginalFormat": "Jaa alkuperäisessä formaatissa",
+    "shareDialogTitle": "Jaa %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Jako 1 %{resource} |||| Jako %{smart_count} %{resource}",
+    "shareSuccess": "Osoite kopioitu leikepöydälle: %{url}",
+    "shareFailure": "Virhe kopioitaessa %{url} leikepöydälle",
+    "downloadDialogTitle": "Lataa %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Kopio leikepöydälle: Ctrl+C, Enter"
+  },
+  "menu": {
+    "library": "Kirjasto",
+    "settings": "Asetukset",
+    "version": "Versio",
+    "theme": "Teema",
+    "personal": {
+      "name": "Omat asetukset",
+      "options": {
+        "theme": "Teema",
+        "language": "Kieli",
+        "defaultView": "Oletusnäkymä",
+        "desktop_notifications": "Työpöytäilmoitukset",
+        "lastfmScrobbling": "Kuuntelutottumuksen lähetys Last.fm-palveluun",
+        "listenBrainzScrobbling": "Kuuntelutottumuksen lähetys ListenBrainz-palveluun",
+        "replaygain": "RepleyGain -tila",
+        "preAmp": "ReplayGain esivahvistus (dB)",
+        "gain": {
+          "none": "Pois käytöstä",
+          "album": "Käytä albumin äänen normalisointia",
+          "track": "Käytä kappaleen äänen normalisointia"
+        }
+      }
+    },
+    "albumList": "Albumit",
+    "about": "Tietoa",
+    "playlists": "Soittolista",
+    "sharedPlaylists": "Jaettu soittolista"
+  },
+  "player": {
+    "playListsText": "Jono",
+    "openText": "Avaa",
+    "closeText": "Sulje",
+    "notContentText": "Ei musiikkia",
+    "clickToPlayText": "Soita",
+    "clickToPauseText": "Tauko",
+    "nextTrackText": "Seuraava kappale",
+    "previousTrackText": "Edellinen kappale",
+    "reloadText": "Päivitä",
+    "volumeText": "Äänenvoimakkuus",
+    "toggleLyricText": "Toggle lyric",
+    "toggleMiniModeText": "Minimoi",
+    "destroyText": "Poista",
+    "downloadText": "Lataa",
+    "removeAudioListsText": "Tyhjennä jono",
+    "clickToDeleteText": "Paina poistaaksesi %{name}",
+    "emptyLyricText": "Ei sanoja",
+    "playModeText": {
+      "order": "Järjestyksessä",
+      "orderLoop": "Toista",
+      "singleLoop": "Toista yksi",
+      "shufflePlay": "Sekoita"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Kotisivu",
+      "source": "Lähdekoodi",
+      "featureRequests": "Ominaisuuspyynnöt"
+    }
+  },
+  "activity": {
+    "title": "Palvelun tila",
+    "totalScanned": "Tarkistettuja hakemistoja",
+    "quickScan": "Nopea tarkistus",
+    "fullScan": "Täysi tarkistus",
+    "serverUptime": "Palvelun käyttöaika",
+    "serverDown": "SAMMUTETTU"
+  },
+  "help": {
+    "title": "Navidrome pikapainikkeet",
+    "hotkeys": {
+      "show_help": "Näytä tämä apuvalikko",
+      "toggle_menu": "Menuvalikko päälle ja pois",
+      "toggle_play": "Toista / Tauko",
+      "prev_song": "Esellinen kappale",
+      "next_song": "Seuraava kappale",
+      "vol_up": "Kovemmalle",
+      "vol_down": "Hiljemmalle",
+      "toggle_love": "Lisää kappale suosikkeihin",
+      "current_song": "Siirry nykyiseen kappaleeseen"
+    }
+  }
 }
