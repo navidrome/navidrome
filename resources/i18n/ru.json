@@ -1,460 +1,461 @@
 {
-    "languageName": "Pусский",
-    "resources": {
-        "song": {
-            "name": "Трек |||| Треки |||| Треков",
-            "fields": {
-                "albumArtist": "Исполнитель альбома",
-                "duration": "Длительность",
-                "trackNumber": "#",
-                "playCount": "Проигран",
-                "title": "Название",
-                "artist": "Исполнитель",
-                "album": "Альбом",
-                "path": "Путь",
-                "genre": "Жанр",
-                "compilation": "Сборник",
-                "year": "Год",
-                "size": "Размер",
-                "updatedAt": "Обновлен",
-                "bitRate": "Битрейт",
-                "discSubtitle": "Название диска",
-                "starred": "Избранные",
-                "comment": "Комментарий",
-                "rating": "Рейтинг",
-                "quality": "Качество",
-                "bpm": "BPM",
-                "playDate": "Последнее воспроизведение",
-                "channels": "Каналы",
-                "createdAt": "Дата добавления"
-            },
-            "actions": {
-                "addToQueue": "В очередь",
-                "playNow": "Играть",
-                "addToPlaylist": "Добавить в плейлист",
-                "shuffleAll": "Перемешать",
-                "download": "Скачать",
-                "playNext": "Следующий",
-                "info": "Информация"
-            }
-        },
-        "album": {
-            "name": "Альбом |||| Альбомы",
-            "fields": {
-                "albumArtist": "Исполнитель альбома",
-                "artist": "Исполнитель",
-                "duration": "Длительность",
-                "songCount": "Треков",
-                "playCount": "Проигран",
-                "name": "Название",
-                "genre": "Жанр",
-                "compilation": "Сборник",
-                "year": "Год",
-                "updatedAt": "Обновлен",
-                "comment": "Комментарий",
-                "rating": "Рейтинг",
-                "createdAt": "Дата добавления",
-                "size": "Размер",
-                "originalDate": "Оригинал",
-                "releaseDate": "Релиз",
-                "releases": "Релиз |||| Релиза |||| Релизов",
-                "released": "Релиз"
-            },
-            "actions": {
-                "playAll": "Играть",
-                "playNext": "Следующий",
-                "addToQueue": "В очередь",
-                "shuffle": "Перемешать",
-                "addToPlaylist": "Добавить в плейлист",
-                "download": "Скачать",
-                "info": "Информация",
-                "share": "Поделиться"
-            },
-            "lists": {
-                "all": "Все",
-                "random": "Случайные",
-                "recentlyAdded": "Свежие",
-                "recentlyPlayed": "Проигранные",
-                "mostPlayed": "Популярные",
-                "starred": "Избранные",
-                "topRated": "Лучшие"
-            }
-        },
-        "artist": {
-            "name": "Исполнитель |||| Исполнители",
-            "fields": {
-                "name": "Название",
-                "albumCount": "Количество альбомов",
-                "songCount": "Количество треков",
-                "playCount": "Проигран",
-                "rating": "Рейтинг",
-                "genre": "Жанр",
-                "size": "Размер"
-            }
-        },
-        "user": {
-            "name": "Пользователь |||| Пользователи",
-            "fields": {
-                "userName": "Логин",
-                "isAdmin": "Администратор",
-                "lastLoginAt": "Последний вход",
-                "updatedAt": "Обновлено",
-                "name": "Имя",
-                "password": "Пароль",
-                "createdAt": "Создан",
-                "changePassword": "Сменить пароль?",
-                "currentPassword": "Текущий пароль",
-                "newPassword": "Новый пароль",
-                "token": "Токен"
-            },
-            "helperTexts": {
-                "name": "Изменение вступит в силу после следующего входа в систему"
-            },
-            "notifications": {
-                "created": "Пользователь создан",
-                "updated": "Пользователь обновлен",
-                "deleted": "Пользователь удален"
-            },
-            "message": {
-                "listenBrainzToken": "Введите свой токен пользователя ListenBrainz.",
-                "clickHereForToken": "Нажмите здесь, чтобы получить токен"
-            }
-        },
-        "player": {
-            "name": "Плеер |||| Плееры",
-            "fields": {
-                "name": "Имя",
-                "transcodingId": "Транскодирование",
-                "maxBitRate": "Макс. Битрейт",
-                "client": "Клиент",
-                "userName": "Пользователь",
-                "lastSeen": "Был на сайте",
-                "reportRealPath": "Показать реальный путь",
-                "scrobbleEnabled": "Отправлять скробблы во внешние службы"
-            }
-        },
-        "transcoding": {
-            "name": "Транскодирование  |||| Транскодирование",
-            "fields": {
-                "name": "Название",
-                "targetFormat": "Целевой формат",
-                "defaultBitRate": "Битрейт по умолчанию",
-                "command": "Команда"
-            }
-        },
-        "playlist": {
-            "name": "Плейлистов |||| Плейлисты",
-            "fields": {
-                "name": "Название",
-                "duration": "Длительность",
-                "ownerName": "Владелец",
-                "public": "Публичный",
-                "updatedAt": "Обновлен",
-                "createdAt": "Создан",
-                "songCount": "Треков",
-                "comment": "Комментарий",
-                "sync": "Автоимпорт",
-                "path": "Импортировать из"
-            },
-            "actions": {
-                "selectPlaylist": "Выберите плейлист:",
-                "addNewPlaylist": "Создать \"%{name}\"",
-                "export": "Экспорт",
-                "makePublic": "Опубликовать",
-                "makePrivate": "Сделать личным"
-            },
-            "message": {
-                "duplicate_song": "Повторяющиеся треки",
-                "song_exist": "Некоторые треки уже есть в плейлисте. Вы хотите добавить их или пропустить?"
-            }
-        },
-        "radio": {
-            "name": "Радио |||| Радио",
-            "fields": {
-                "name": "Имя",
-                "streamUrl": "Ссылка на поток",
-                "homePageUrl": "Домашняя страница",
-                "updatedAt": "Обновлено",
-                "createdAt": "Создано"
-            },
-            "actions": {
-                "playNow": "Играть сейчас"
-            }
-        },
-        "share": {
-            "name": "Общий доступ |||| Общий доступ",
-            "fields": {
-                "username": "Поделился",
-                "url": "Ссылка",
-                "description": "Описание",
-                "contents": "Содержание",
-                "expiresAt": "Ссылка истекает",
-                "lastVisitedAt": "Последнее посещение",
-                "visitCount": "Посещения",
-                "format": "Формат",
-                "maxBitRate": "Макс. Битрейт",
-                "updatedAt": "Обновлено в",
-                "createdAt": "Создано",
-                "downloadable": "Разрешить загрузку?"
-            }
-        }
+  "languageName": "Pусский",
+  "resources": {
+    "song": {
+      "name": "Трек |||| Треки |||| Треков",
+      "fields": {
+        "albumArtist": "Исполнитель альбома",
+        "duration": "Длительность",
+        "trackNumber": "#",
+        "playCount": "Проигран",
+        "title": "Название",
+        "artist": "Исполнитель",
+        "album": "Альбом",
+        "path": "Путь",
+        "genre": "Жанр",
+        "compilation": "Сборник",
+        "year": "Год",
+        "size": "Размер",
+        "updatedAt": "Обновлен",
+        "bitRate": "Битрейт",
+        "discSubtitle": "Название диска",
+        "starred": "Избранные",
+        "comment": "Комментарий",
+        "rating": "Рейтинг",
+        "quality": "Качество",
+        "bpm": "BPM",
+        "playDate": "Последнее воспроизведение",
+        "channels": "Каналы",
+        "createdAt": "Дата добавления"
+      },
+      "actions": {
+        "addToQueue": "В очередь",
+        "playNow": "Играть",
+        "addToPlaylist": "Добавить в плейлист",
+        "shuffleAll": "Перемешать",
+        "download": "Скачать",
+        "playNext": "Следующий",
+        "info": "Информация"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Спасибо за установку Navidrome!",
-            "welcome2": "Для начала создайте Администратора",
-            "confirmPassword": "Подтвердить Пароль",
-            "buttonCreateAdmin": "Создать Администратора",
-            "auth_check_error": "Пожалуйста, авторизуйтесь для продолжения работы",
-            "user_menu": "Профиль",
-            "username": "Имя пользователя",
-            "password": "Пароль",
-            "sign_in": "Войти",
-            "sign_in_error": "Ошибка аутентификации, попробуйте снова",
-            "logout": "Выйти"
-        },
-        "validation": {
-            "invalidChars": "Пожалуйста, используйте только буквы и цифры",
-            "passwordDoesNotMatch": "Пароли не совпадают",
-            "required": "Обязательно для заполнения",
-            "minLength": "Минимальное кол-во символов %{min}",
-            "maxLength": "Максимальное кол-во символов %{max}",
-            "minValue": "Минимальное значение %{min}",
-            "maxValue": "Значение может быть %{max} или меньше",
-            "number": "Должно быть цифрой",
-            "email": "Некорректный email",
-            "oneOf": "Должно быть одним из: %{options}",
-            "regex": "Должно быть в формате (regexp): %{pattern}",
-            "unique": "Должно быть уникальным",
-            "url": "Должен быть действительным URL адрес"
-        },
-        "action": {
-            "add_filter": "Фильтр",
-            "add": "Добавить",
-            "back": "Назад",
-            "bulk_actions": "1 выбран |||| %{smart_count} выбрано |||| %{smart_count} выбрано",
-            "cancel": "Отмена",
-            "clear_input_value": "Очистить",
-            "clone": "Дублировать",
-            "confirm": "Подтвердить",
-            "create": "Создать",
-            "delete": "Удалить",
-            "edit": "Редактировать",
-            "export": "Экспорт",
-            "list": "Список",
-            "refresh": "Обновить",
-            "remove_filter": "Убрать фильтр",
-            "remove": "Удалить",
-            "save": "Сохранить",
-            "search": "Поиск",
-            "show": "Просмотр",
-            "sort": "Сортировать",
-            "undo": "Отменить",
-            "expand": "Раскрыть",
-            "close": "Закрыть",
-            "open_menu": "Открыть меню",
-            "close_menu": "Закрыть меню",
-            "unselect": "Отменить выделение",
-            "skip": "Пропустить",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
-            "share": "Поделиться",
-            "download": "Скачать"
-        },
-        "boolean": {
-            "true": "Да",
-            "false": "Нет"
-        },
-        "page": {
-            "create": "Создать %{name}",
-            "dashboard": "Главная",
-            "edit": "%{name} #%{id}",
-            "error": "Что-то пошло не так",
-            "list": "%{name}",
-            "loading": "Загрузка",
-            "not_found": "Не найдено",
-            "show": "%{name} #%{id}",
-            "empty": "Нет %{name}.",
-            "invite": "Хотите создать?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Перетащите файлы сюда или нажмите для выбора.",
-                "upload_single": "Перетащите файл сюда или нажмите для выбора."
-            },
-            "image": {
-                "upload_several": "Перетащите изображения сюда или нажмите для выбора.",
-                "upload_single": "Перетащите изображение сюда или нажмите для выбора."
-            },
-            "references": {
-                "all_missing": "Связанных данных не найдено",
-                "many_missing": "Некоторые из связанных данных не доступны",
-                "single_missing": "Связанный объект не доступен"
-            },
-            "password": {
-                "toggle_visible": "Скрыть пароль",
-                "toggle_hidden": "Показать пароль"
-            }
-        },
-        "message": {
-            "about": "Справка",
-            "are_you_sure": "Вы уверены?",
-            "bulk_delete_content": "Вы уверены, что хотите удалить %{name}? |||| Вы уверены, что хотите удалить объекты, кол-вом %{smart_count} ? |||| Вы уверены, что хотите удалить объекты, кол-вом %{smart_count} ?",
-            "bulk_delete_title": "Удалить %{name} |||| Удалить %{smart_count} %{name} |||| Удалить %{smart_count} %{name}",
-            "delete_content": "Вы уверены что хотите удалить этот объект",
-            "delete_title": "Удалить %{name} #%{id}",
-            "details": "Описание",
-            "error": "При выполнении запроса возникла ошибка, и он не может быть завершен",
-            "invalid_form": "Форма заполнена неверно, проверьте, пожалуйста, ошибки",
-            "loading": "Идет загрузка, пожалуйста, подождите...",
-            "no": "Нет",
-            "not_found": "Ошибка URL или вы следуете по неверной ссылке",
-            "yes": "Да",
-            "unsaved_changes": "Некоторые из ваших изменений не сохранены. Продолжить без сохранения?"
-        },
-        "navigation": {
-            "no_results": "Результатов не найдено",
-            "no_more_results": "Страница %{page} выходит за пределы нумерации, попробуйте предыдущую",
-            "page_out_of_boundaries": "Страница %{page} вне границ",
-            "page_out_from_end": "Невозможно переместиться дальше последней страницы",
-            "page_out_from_begin": "Номер страницы не может быть меньше 1",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} из %{total}",
-            "page_rows_per_page": "Строк на странице:",
-            "next": "Следующая",
-            "prev": "Предыдущая",
-            "skip_nav": "Перейти к содержанию"
-        },
-        "notification": {
-            "updated": "Элемент обновлен |||| %{smart_count} обновлено |||| %{smart_count} обновлено",
-            "created": "Элемент создан",
-            "deleted": "Элемент удален |||| %{smart_count} удалено |||| %{smart_count} удалено",
-            "bad_item": "Элемент неправильный",
-            "item_doesnt_exist": "Элемент не существует",
-            "http_error": "Ошибка сервера",
-            "data_provider_error": "Ошибка dataProvider, проверьте консоль",
-            "i18n_error": "Не удалось загрузить перевод для указанного языка",
-            "canceled": "Операция отменена",
-            "logged_out": "Ваша сессия завершена, попробуйте переподключиться/войти снова",
-            "new_version": "Доступна новая версия! Пожалуйста, обновите это окно"
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "Отображение столбцов",
-            "layout": "Макет",
-            "grid": "Сетка",
-            "table": "Таблица"
-        }
+    "album": {
+      "name": "Альбом |||| Альбомы",
+      "fields": {
+        "albumArtist": "Исполнитель альбома",
+        "artist": "Исполнитель",
+        "duration": "Длительность",
+        "songCount": "Треков",
+        "playCount": "Проигран",
+        "name": "Название",
+        "genre": "Жанр",
+        "compilation": "Сборник",
+        "year": "Год",
+        "updatedAt": "Обновлен",
+        "comment": "Комментарий",
+        "rating": "Рейтинг",
+        "createdAt": "Дата добавления",
+        "size": "Размер",
+        "originalDate": "Оригинал",
+        "releaseDate": "Релиз",
+        "releases": "Релиз |||| Релиза |||| Релизов",
+        "released": "Релиз"
+      },
+      "actions": {
+        "playAll": "Играть",
+        "playNext": "Следующий",
+        "addToQueue": "В очередь",
+        "shuffle": "Перемешать",
+        "addToPlaylist": "Добавить в плейлист",
+        "download": "Скачать",
+        "info": "Информация",
+        "share": "Поделиться"
+      },
+      "lists": {
+        "all": "Все",
+        "random": "Случайные",
+        "recentlyAdded": "Свежие",
+        "recentlyPlayed": "Проигранные",
+        "mostPlayed": "Популярные",
+        "starred": "Избранные",
+        "topRated": "Лучшие"
+      }
     },
-    "message": {
-        "note": "ПРИМЕЧАНИЕ",
-        "transcodingDisabled": "Изменение настроек транскодирования через веб интерфейс, отключено по соображениям безопасности. Если вы хотите изменить или добавить опции транскодирования, перезапустите сервер с %{config} опцией конфигурации.",
-        "transcodingEnabled": "Navidrome работает с настройками %{config}, позволяющими запускать команды с настройками транскодирования через веб интерфейс. В целях безопасности, мы рекомендуем отключить эту возможность.",
-        "songsAddedToPlaylist": "Один трек добавлен в плейлист ||||   %{smart_count} треков добавлено в плейлист",
-        "noPlaylistsAvailable": "Недоступно",
-        "delete_user_title": "Удалить пользователя '%{name}'",
-        "delete_user_content": "Вы уверены, что вы хотите удалить пользователя и все его данные (включая плейлисты и настройки)?",
-        "notifications_blocked": "Вы заблокировали уведомления для этой страницы в настройках вашего браузера",
-        "notifications_not_available": "Ваш браузер не поддерживает всплывающие уведомления",
-        "lastfmLinkSuccess": "Соединение с Last.fm установлено, скробблинг включен",
-        "lastfmLinkFailure": "Last.fm не может быть подключен",
-        "lastfmUnlinkSuccess": "Соединение с Last.fm удалено, скробблинг отключен",
-        "lastfmUnlinkFailure": "Соединение с Last.fm не может быть удалено",
-        "openIn": {
-            "lastfm": "Показать на Last.fm",
-            "musicbrainz": "Показать на MusicBrainz"
-        },
-        "lastfmLink": "Подробнее...",
-        "listenBrainzLinkSuccess": "ListenBrainz скробблинг успешно подключен для пользователя: %{user}",
-        "listenBrainzLinkFailure": "ListenBrainz не может быть связан:",
-        "listenBrainzUnlinkSuccess": "ListenBrainz скробблинг отключен",
-        "listenBrainzUnlinkFailure": "ListenBrainz не удалось отключить",
-        "downloadOriginalFormat": "Скачать в оригинальном формате",
-        "shareOriginalFormat": "Поделиться в оригинальном формате",
-        "shareDialogTitle": "Поделиться %{resource} '%{name}'",
-        "shareBatchDialogTitle": "Поделиться 1 %{resource} |||| Поделиться %{smart_count} %{resource}",
-        "shareSuccess": "URL скопирован в буфер обмена: %{url}",
-        "shareFailure": "Ошибка копирования URL-адреса %{url} в буфер обмена",
-        "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "Копировать в буфер обмена: Ctrl+C, Enter"
+    "artist": {
+      "name": "Исполнитель |||| Исполнители",
+      "fields": {
+        "name": "Название",
+        "albumCount": "Количество альбомов",
+        "songCount": "Количество треков",
+        "playCount": "Проигран",
+        "rating": "Рейтинг",
+        "genre": "Жанр",
+        "size": "Размер"
+      }
     },
-    "menu": {
-        "library": "Библиотека",
-        "settings": "Настройки",
-        "version": "Версия",
-        "theme": "Тема",
-        "personal": {
-            "name": "Личные",
-            "options": {
-                "theme": "Тема",
-                "language": "Язык",
-                "defaultView": "Вид по умолчанию",
-                "desktop_notifications": "Уведомления на рабочем столе",
-                "lastfmScrobbling": "Скробблинг Last.fm",
-                "listenBrainzScrobbling": "Скробблинг ListenBrainz",
-                "replaygain": "ReplayGain режим",
-                "preAmp": "ReplayGain предусилитель (dB)",
-                "gain": {
-                    "none": "Отключить",
-                    "album": "Использовать усиление альбома",
-                    "track": "Использовать усиление трека"
-                }
-            }
-        },
-        "albumList": "Альбомы",
-        "about": "О нас",
-        "playlists": "Плейлисты",
-        "sharedPlaylists": "Поделиться плейлистом"
+    "user": {
+      "name": "Пользователь |||| Пользователи",
+      "fields": {
+        "userName": "Логин",
+        "isAdmin": "Администратор",
+        "lastLoginAt": "Последний вход",
+        "updatedAt": "Обновлено",
+        "name": "Имя",
+        "password": "Пароль",
+        "createdAt": "Создан",
+        "changePassword": "Сменить пароль?",
+        "currentPassword": "Текущий пароль",
+        "newPassword": "Новый пароль",
+        "token": "Токен",
+        "lastAccessAt": "Последний доступ"
+      },
+      "helperTexts": {
+        "name": "Изменение вступит в силу после следующего входа в систему"
+      },
+      "notifications": {
+        "created": "Пользователь создан",
+        "updated": "Пользователь обновлен",
+        "deleted": "Пользователь удален"
+      },
+      "message": {
+        "listenBrainzToken": "Введите свой токен пользователя ListenBrainz.",
+        "clickHereForToken": "Нажмите здесь, чтобы получить токен"
+      }
     },
     "player": {
-        "playListsText": "Очередь воспроизведения",
-        "openText": "Открыть",
-        "closeText": "Закрыть",
-        "notContentText": "Нет музыки",
-        "clickToPlayText": "Играть",
-        "clickToPauseText": "Пауза",
-        "nextTrackText": "Следующий трек",
-        "previousTrackText": "Предыдущий трек",
-        "reloadText": "Перезагрузить",
-        "volumeText": "Громкость",
-        "toggleLyricText": "Посмотреть текст",
-        "toggleMiniModeText": "Минимизировать",
-        "destroyText": "Выключить",
-        "downloadText": "Скачать",
-        "removeAudioListsText": "Удалить список воспроизведения",
-        "clickToDeleteText": "Нажмите для удаления %{name}",
-        "emptyLyricText": "Без текста",
-        "playModeText": {
-            "order": "По порядку",
-            "orderLoop": "Повторять",
-            "singleLoop": "Повторить один раз",
-            "shufflePlay": "Перемешать"
-        }
+      "name": "Плеер |||| Плееры",
+      "fields": {
+        "name": "Имя",
+        "transcodingId": "Транскодирование",
+        "maxBitRate": "Макс. Битрейт",
+        "client": "Клиент",
+        "userName": "Пользователь",
+        "lastSeen": "Был на сайте",
+        "reportRealPath": "Показать реальный путь",
+        "scrobbleEnabled": "Отправлять скробблы во внешние службы"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Главная",
-            "source": "Код",
-            "featureRequests": "Предложения"
-        }
+    "transcoding": {
+      "name": "Транскодирование  |||| Транскодирование",
+      "fields": {
+        "name": "Название",
+        "targetFormat": "Целевой формат",
+        "defaultBitRate": "Битрейт по умолчанию",
+        "command": "Команда"
+      }
     },
-    "activity": {
-        "title": "Действия",
-        "totalScanned": "Всего просканировано папок",
-        "quickScan": "Быстрое сканирование",
-        "fullScan": "Полное сканирование",
-        "serverUptime": "Время работы",
-        "serverDown": "Оффлайн"
+    "playlist": {
+      "name": "Плейлистов |||| Плейлисты",
+      "fields": {
+        "name": "Название",
+        "duration": "Длительность",
+        "ownerName": "Владелец",
+        "public": "Публичный",
+        "updatedAt": "Обновлен",
+        "createdAt": "Создан",
+        "songCount": "Треков",
+        "comment": "Комментарий",
+        "sync": "Автоимпорт",
+        "path": "Импортировать из"
+      },
+      "actions": {
+        "selectPlaylist": "Выберите плейлист:",
+        "addNewPlaylist": "Создать \"%{name}\"",
+        "export": "Экспорт",
+        "makePublic": "Опубликовать",
+        "makePrivate": "Сделать личным"
+      },
+      "message": {
+        "duplicate_song": "Повторяющиеся треки",
+        "song_exist": "Некоторые треки уже есть в плейлисте. Вы хотите добавить их или пропустить?"
+      }
     },
-    "help": {
-        "title": "Горячие клавиши Navidrome",
-        "hotkeys": {
-            "show_help": "Показать справку",
-            "toggle_menu": "Показать / скрыть боковое меню",
-            "toggle_play": "Играть / Пауза",
-            "prev_song": "Предыдущий трек",
-            "next_song": "Следующий трек",
-            "vol_up": "Увеличить громкость",
-            "vol_down": "Уменьшить громкость",
-            "toggle_love": "Добавить / удалить песню из избранного",
-            "current_song": "Перейти к текущей песне"
-        }
+    "radio": {
+      "name": "Радио |||| Радио",
+      "fields": {
+        "name": "Имя",
+        "streamUrl": "Ссылка на поток",
+        "homePageUrl": "Домашняя страница",
+        "updatedAt": "Обновлено",
+        "createdAt": "Создано"
+      },
+      "actions": {
+        "playNow": "Играть сейчас"
+      }
+    },
+    "share": {
+      "name": "Общий доступ |||| Общий доступ",
+      "fields": {
+        "username": "Поделился",
+        "url": "Ссылка",
+        "description": "Описание",
+        "contents": "Содержание",
+        "expiresAt": "Ссылка истекает",
+        "lastVisitedAt": "Последнее посещение",
+        "visitCount": "Посещения",
+        "format": "Формат",
+        "maxBitRate": "Макс. Битрейт",
+        "updatedAt": "Обновлено в",
+        "createdAt": "Создано",
+        "downloadable": "Разрешить загрузку?"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Спасибо за установку Navidrome!",
+      "welcome2": "Для начала создайте Администратора",
+      "confirmPassword": "Подтвердить Пароль",
+      "buttonCreateAdmin": "Создать Администратора",
+      "auth_check_error": "Пожалуйста, авторизуйтесь для продолжения работы",
+      "user_menu": "Профиль",
+      "username": "Имя пользователя",
+      "password": "Пароль",
+      "sign_in": "Войти",
+      "sign_in_error": "Ошибка аутентификации, попробуйте снова",
+      "logout": "Выйти"
+    },
+    "validation": {
+      "invalidChars": "Пожалуйста, используйте только буквы и цифры",
+      "passwordDoesNotMatch": "Пароли не совпадают",
+      "required": "Обязательно для заполнения",
+      "minLength": "Минимальное кол-во символов %{min}",
+      "maxLength": "Максимальное кол-во символов %{max}",
+      "minValue": "Минимальное значение %{min}",
+      "maxValue": "Значение может быть %{max} или меньше",
+      "number": "Должно быть цифрой",
+      "email": "Некорректный Email",
+      "oneOf": "Должно быть одним из: %{options}",
+      "regex": "Должно быть в формате (regexp): %{pattern}",
+      "unique": "Должно быть уникальным",
+      "url": "Должен быть действительным URL адрес"
+    },
+    "action": {
+      "add_filter": "Фильтр",
+      "add": "Добавить",
+      "back": "Назад",
+      "bulk_actions": "1 выбран |||| %{smart_count} выбрано |||| %{smart_count} выбрано",
+      "cancel": "Отмена",
+      "clear_input_value": "Очистить",
+      "clone": "Дублировать",
+      "confirm": "Подтвердить",
+      "create": "Создать",
+      "delete": "Удалить",
+      "edit": "Редактировать",
+      "export": "Экспорт",
+      "list": "Список",
+      "refresh": "Обновить",
+      "remove_filter": "Убрать фильтр",
+      "remove": "Удалить",
+      "save": "Сохранить",
+      "search": "Поиск",
+      "show": "Просмотр",
+      "sort": "Сортировать",
+      "undo": "Отменить",
+      "expand": "Расширить",
+      "close": "Закрыть",
+      "open_menu": "Открыть меню",
+      "close_menu": "Закрыть меню",
+      "unselect": "Отменить выделение",
+      "skip": "Пропустить",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Поделиться",
+      "download": "Скачать"
+    },
+    "boolean": {
+      "true": "Да",
+      "false": "Нет"
+    },
+    "page": {
+      "create": "Создать %{name}",
+      "dashboard": "Главная",
+      "edit": "%{name} #%{id}",
+      "error": "Что-то пошло не так",
+      "list": "%{name}",
+      "loading": "Загрузка",
+      "not_found": "Не найдено",
+      "show": "%{name} #%{id}",
+      "empty": "Нет %{name}.",
+      "invite": "Хотите создать?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Перетащите файлы сюда или нажмите для выбора.",
+        "upload_single": "Перетащите файл сюда или нажмите для выбора."
+      },
+      "image": {
+        "upload_several": "Перетащите изображения сюда или нажмите для выбора.",
+        "upload_single": "Перетащите изображение сюда или нажмите для выбора."
+      },
+      "references": {
+        "all_missing": "Связанных данных не найдено",
+        "many_missing": "Некоторые из связанных данных не доступны",
+        "single_missing": "Связанный объект не доступен"
+      },
+      "password": {
+        "toggle_visible": "Скрыть пароль",
+        "toggle_hidden": "Показать пароль"
+      }
+    },
+    "message": {
+      "about": "Справка",
+      "are_you_sure": "Вы уверены?",
+      "bulk_delete_content": "Вы уверены, что хотите удалить %{name}? |||| Вы уверены, что хотите удалить объекты, кол-вом %{smart_count} ? |||| Вы уверены, что хотите удалить объекты, кол-вом %{smart_count} ?",
+      "bulk_delete_title": "Удалить %{name} |||| Удалить %{smart_count} %{name} |||| Удалить %{smart_count} %{name}",
+      "delete_content": "Вы уверены что хотите удалить этот объект",
+      "delete_title": "Удалить %{name} #%{id}",
+      "details": "Описание",
+      "error": "При выполнении запроса возникла ошибка, и он не может быть завершен",
+      "invalid_form": "Форма заполнена неверно, проверьте, пожалуйста, ошибки",
+      "loading": "Идет загрузка, пожалуйста, подождите...",
+      "no": "Нет",
+      "not_found": "Ошибка URL или вы следуете по неверной ссылке",
+      "yes": "Да",
+      "unsaved_changes": "Некоторые из ваших изменений не сохранены. Продолжить без сохранения?"
+    },
+    "navigation": {
+      "no_results": "Результатов не найдено",
+      "no_more_results": "Страница %{page} выходит за пределы нумерации, попробуйте предыдущую",
+      "page_out_of_boundaries": "Страница %{page} вне границ",
+      "page_out_from_end": "Невозможно переместиться дальше последней страницы",
+      "page_out_from_begin": "Номер страницы не может быть меньше 1",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} из %{total}",
+      "page_rows_per_page": "Строк на странице:",
+      "next": "Следующая",
+      "prev": "Предыдущая",
+      "skip_nav": "Перейти к содержанию"
+    },
+    "notification": {
+      "updated": "Элемент обновлен |||| %{smart_count} обновлено |||| %{smart_count} обновлено",
+      "created": "Элемент создан",
+      "deleted": "Элемент удален |||| %{smart_count} удалено |||| %{smart_count} удалено",
+      "bad_item": "Неправильный элемент",
+      "item_doesnt_exist": "Элемент не существует",
+      "http_error": "Ошибка сервера",
+      "data_provider_error": "Ошибка dataProvider, проверьте консоль",
+      "i18n_error": "Не удалось загрузить перевод для указанного языка",
+      "canceled": "Операция отменена",
+      "logged_out": "Ваша сессия завершена, попробуйте переподключиться/войти снова",
+      "new_version": "Доступна новая версия! Пожалуйста, обновите это окно"
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Отображение столбцов",
+      "layout": "Макет",
+      "grid": "Сетка",
+      "table": "Таблица"
+    }
+  },
+  "message": {
+    "note": "ПРИМЕЧАНИЕ",
+    "transcodingDisabled": "Изменение настроек транскодирования через веб интерфейс, отключено по соображениям безопасности. Если вы хотите изменить или добавить опции транскодирования, перезапустите сервер с %{config} опцией конфигурации.",
+    "transcodingEnabled": "Navidrome работает с настройками %{config}, позволяющими запускать команды с настройками транскодирования через веб интерфейс. В целях безопасности, мы рекомендуем отключить эту возможность.",
+    "songsAddedToPlaylist": "Один трек добавлен в плейлист ||||   %{smart_count} треков добавлено в плейлист",
+    "noPlaylistsAvailable": "Недоступно",
+    "delete_user_title": "Удалить пользователя '%{name}'",
+    "delete_user_content": "Вы уверены, что вы хотите удалить пользователя и все его данные (включая плейлисты и настройки)?",
+    "notifications_blocked": "Вы заблокировали уведомления для этой страницы в настройках вашего браузера",
+    "notifications_not_available": "Ваш браузер не поддерживает всплывающие уведомления",
+    "lastfmLinkSuccess": "Соединение с Last.fm установлено, скробблинг включен",
+    "lastfmLinkFailure": "Last.fm не может быть подключен",
+    "lastfmUnlinkSuccess": "Соединение с Last.fm удалено, скробблинг отключен",
+    "lastfmUnlinkFailure": "Соединение с Last.fm не может быть удалено",
+    "openIn": {
+      "lastfm": "Показать на Last.fm",
+      "musicbrainz": "Показать на MusicBrainz"
+    },
+    "lastfmLink": "Подробнее...",
+    "listenBrainzLinkSuccess": "ListenBrainz скробблинг успешно подключен для пользователя: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz не может быть связан:",
+    "listenBrainzUnlinkSuccess": "ListenBrainz скробблинг отключен",
+    "listenBrainzUnlinkFailure": "ListenBrainz не удалось отключить",
+    "downloadOriginalFormat": "Скачать в оригинальном формате",
+    "shareOriginalFormat": "Поделиться в оригинальном формате",
+    "shareDialogTitle": "Поделиться %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Поделиться 1 %{resource} |||| Поделиться %{smart_count} %{resource}",
+    "shareSuccess": "URL скопирован в буфер обмена: %{url}",
+    "shareFailure": "Ошибка копирования URL-адреса %{url} в буфер обмена",
+    "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Копировать в буфер обмена: Ctrl+C, Enter"
+  },
+  "menu": {
+    "library": "Библиотека",
+    "settings": "Настройки",
+    "version": "Версия",
+    "theme": "Тема",
+    "personal": {
+      "name": "Личные",
+      "options": {
+        "theme": "Тема",
+        "language": "Язык",
+        "defaultView": "Вид по умолчанию",
+        "desktop_notifications": "Уведомления на рабочем столе",
+        "lastfmScrobbling": "Скробблинг Last.fm",
+        "listenBrainzScrobbling": "Скробблинг ListenBrainz",
+        "replaygain": "ReplayGain режим",
+        "preAmp": "ReplayGain предусилитель (dB)",
+        "gain": {
+          "none": "Отключить",
+          "album": "Использовать усиление альбома",
+          "track": "Использовать усиление трека"
+        }
+      }
+    },
+    "albumList": "Альбомы",
+    "about": "О нас",
+    "playlists": "Плейлисты",
+    "sharedPlaylists": "Поделиться плейлистом"
+  },
+  "player": {
+    "playListsText": "Очередь воспроизведения",
+    "openText": "Открыть",
+    "closeText": "Закрыть",
+    "notContentText": "Нет музыки",
+    "clickToPlayText": "Играть",
+    "clickToPauseText": "Пауза",
+    "nextTrackText": "Следующий трек",
+    "previousTrackText": "Предыдущий трек",
+    "reloadText": "Перезагрузить",
+    "volumeText": "Громкость",
+    "toggleLyricText": "Посмотреть текст",
+    "toggleMiniModeText": "Минимизировать",
+    "destroyText": "Выключить",
+    "downloadText": "Скачать",
+    "removeAudioListsText": "Удалить список воспроизведения",
+    "clickToDeleteText": "Нажмите для удаления %{name}",
+    "emptyLyricText": "Без текста",
+    "playModeText": {
+      "order": "По порядку",
+      "orderLoop": "Повторять",
+      "singleLoop": "Повторить один раз",
+      "shufflePlay": "Перемешать"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Главная",
+      "source": "Код",
+      "featureRequests": "Предложения"
+    }
+  },
+  "activity": {
+    "title": "Действия",
+    "totalScanned": "Всего просканировано папок",
+    "quickScan": "Быстрое сканирование",
+    "fullScan": "Полное сканирование",
+    "serverUptime": "Время работы сервера",
+    "serverDown": "Оффлайн"
+  },
+  "help": {
+    "title": "Горячие клавиши Navidrome",
+    "hotkeys": {
+      "show_help": "Показать справку",
+      "toggle_menu": "Показать / скрыть боковое меню",
+      "toggle_play": "Играть / Пауза",
+      "prev_song": "Предыдущий трек",
+      "next_song": "Следующий трек",
+      "vol_up": "Увеличить громкость",
+      "vol_down": "Уменьшить громкость",
+      "toggle_love": "Добавить / удалить песню из избранного",
+      "current_song": "Перейти к текущей песне"
+    }
+  }
 }
