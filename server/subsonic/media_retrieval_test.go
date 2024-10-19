@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
+	. "github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -24,13 +25,15 @@ var _ = Describe("MediaRetrievalController", func() {
 	mockRepo := &mockedMediaFile{}
 	var artwork *fakeArtwork
 	var w *httptest.ResponseRecorder
+	var mockedMetadata *tests.MockExternalMetadata
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
 		}
 		artwork = &fakeArtwork{}
-		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		mockedMetadata = tests.CreateMockExternalMetadata()
+		router = New(ds, artwork, nil, nil, nil, mockedMetadata, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -100,6 +103,59 @@ var _ = Describe("MediaRetrievalController", func() {
 		It("should return empty subsonic response if the record corresponding to the given artist & title is not found", func() {
 			r := newGetRequest("artist=Dheeraj", "title=Rinkiya+Ke+Papa")
 			mockRepo.SetData(model.MediaFiles{})
+			response, err := router.GetLyrics(r)
+			if err != nil {
+				log.Error("You're missing something.", err)
+			}
+			Expect(err).To(BeNil())
+			Expect(response.Lyrics.Artist).To(Equal(""))
+			Expect(response.Lyrics.Title).To(Equal(""))
+			Expect(response.Lyrics.Value).To(Equal(""))
+		})
+		It("should return lyrics from external metadata", func() {
+			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[]",
+				},
+			})
+			mockedMetadata.SetLyrics(model.LyricList{
+				{
+					DisplayArtist: "Artist",
+					DisplayTitle:  "Title",
+					Lang:          "xxx",
+					Line: []model.Line{
+						{Start: P(int64(0)), Value: "Line 1"},
+						{Start: P(int64(5210)), Value: "Line 2"},
+						{Start: P(int64(12450)), Value: "Line 5"},
+					},
+					Offset: P(int64(100)),
+					Synced: true,
+				},
+			})
+			response, err := router.GetLyrics(r)
+			if err != nil {
+				log.Error("You're missing something.", err)
+			}
+			Expect(err).To(BeNil())
+			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
+			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
+			Expect(response.Lyrics.Value).To(Equal("Line 1\nLine 2\nLine 5\n"))
+		})
+		It("should return nothing if no external metadata", func() {
+			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[]",
+				},
+			})
+			mockedMetadata.SetLyrics(nil)
 			response, err := router.GetLyrics(r)
 			if err != nil {
 				log.Error("You're missing something.", err)
@@ -244,6 +300,68 @@ var _ = Describe("MediaRetrievalController", func() {
 						Offset: &offset,
 					},
 				},
+			})
+		})
+
+		It("should get lyrics from external metadata", func() {
+			r := newGetRequest("id=1")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[]",
+				},
+			})
+			mockedMetadata.SetLyrics(model.LyricList{
+				{
+					DisplayArtist: "Artist",
+					DisplayTitle:  "Title",
+					Lang:          "xxx",
+					Line: []model.Line{
+						{Start: P(int64(0)), Value: "Line 1"},
+						{Start: P(int64(5210)), Value: "Line 2"},
+						{Start: P(int64(12450)), Value: "Line 5"},
+					},
+					Offset: P(int64(100)),
+					Synced: true,
+				},
+			})
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{
+					{
+						DisplayArtist: "Artist",
+						DisplayTitle:  "Title",
+						Lang:          "xxx",
+						Line: []responses.Line{
+							{Start: P(int64(0)), Value: "Line 1"},
+							{Start: P(int64(5210)), Value: "Line 2"},
+							{Start: P(int64(12450)), Value: "Line 5"},
+						},
+						Offset: P(int64(100)),
+						Synced: true,
+					},
+				},
+			})
+		})
+
+		It("should get have no lyrics if external metadata returns nil", func() {
+			r := newGetRequest("id=1")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+					Lyrics: "[]",
+				},
+			})
+			mockedMetadata.SetLyrics(nil)
+			response, err := router.GetLyricsBySongId(r)
+			Expect(err).ToNot(HaveOccurred())
+			compareResponses(response.LyricsList, responses.LyricsList{
+				StructuredLyrics: responses.StructuredLyrics{},
 			})
 		})
 	})
