@@ -33,7 +33,7 @@ if [ ! -f "$BINARY" ]; then
 fi
 
 if [ ! -f "$MSI_OUTPUT_DIR"/ffmpeg.exe ]; then
-  wget -O "$WORKSPACE/ffmpeg.zip" "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+  wget --quiet --output-document="$WORKSPACE/ffmpeg.zip" "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
   rm -rf "$WORKSPACE/extracted_ffmpeg"
   unzip -d "$WORKSPACE/extracted_ffmpeg" "$WORKSPACE/ffmpeg.zip" "*/ffmpeg.exe"
   cp "$WORKSPACE"/extracted_ffmpeg/ffmpeg-*-essentials_build/bin/ffmpeg.exe "$MSI_OUTPUT_DIR"
