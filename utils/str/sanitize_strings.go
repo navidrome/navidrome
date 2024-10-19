@@ -3,7 +3,7 @@ package str
 import (
 	"html"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/deluan/sanitize"
@@ -11,28 +11,29 @@ import (
 	"github.com/navidrome/navidrome/conf"
 )
 
-var quotesRegex = regexp.MustCompile("[“”‘’'\"\\[({\\])}]")
+var ignoredCharsRegex = regexp.MustCompile("[“”‘’'\"\\[({\\])},]")
 var slashRemover = strings.NewReplacer("\\", " ", "/", " ")
 
 func SanitizeStrings(text ...string) string {
+	// Concatenate all strings, removing extra spaces
 	sanitizedText := strings.Builder{}
 	for _, txt := range text {
-		sanitizedText.WriteString(strings.TrimSpace(sanitize.Accents(strings.ToLower(txt))) + " ")
+		sanitizedText.WriteString(strings.TrimSpace(txt))
+		sanitizedText.WriteByte(' ')
 	}
-	words := make(map[string]struct{})
-	for _, w := range strings.Fields(sanitizedText.String()) {
-		words[w] = struct{}{}
-	}
-	var fullText []string
-	for w := range words {
-		w = quotesRegex.ReplaceAllString(w, "")
-		w = slashRemover.Replace(w)
-		if w != "" {
-			fullText = append(fullText, w)
-		}
-	}
-	sort.Strings(fullText)
-	return Clear(strings.Join(fullText, " "))
+
+	// Remove special symbols, accents, extra spaces and slashes
+	sanitizedStrings := slashRemover.Replace(Clear(sanitizedText.String()))
+	sanitizedStrings = sanitize.Accents(strings.ToLower(sanitizedStrings))
+	sanitizedStrings = ignoredCharsRegex.ReplaceAllString(sanitizedStrings, "")
+	fullText := strings.Fields(sanitizedStrings)
+
+	// Remove duplicated words
+	slices.Sort(fullText)
+	fullText = slices.Compact(fullText)
+
+	// Returns the sanitized text as a single string
+	return strings.Join(fullText, " ")
 }
 
 var policy = bluemonday.UGCPolicy()
