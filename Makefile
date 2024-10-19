@@ -115,7 +115,7 @@ docker-platforms: ##@Cross_Compilation List supported platforms
 .PHONY: docker-platforms
 
 docker-build: ##@Cross_Compilation Cross-compile for any supported platform (check `make docker-platforms`)
-	docker build \
+	docker buildx build \
 		--platform $(PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
@@ -127,7 +127,7 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 	@echo $(IMAGE_PLATFORMS) | grep -q "windows" && echo "ERROR: Windows is not supported for Docker builds" && exit 1 || true
 	@echo $(IMAGE_PLATFORMS) | grep -q "darwin" && echo "ERROR: macOS is not supported for Docker builds" && exit 1 || true
 	@echo $(IMAGE_PLATFORMS) | grep -q "arm/v5" && echo "ERROR: Linux ARMv5 is not supported for Docker builds" && exit 1 || true
-	docker build \
+	docker buildx build \
 		--platform $(IMAGE_PLATFORMS) \
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
