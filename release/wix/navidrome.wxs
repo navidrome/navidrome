@@ -62,6 +62,10 @@
 						<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='$(var.ProductName)' Wait='yes' />
 					</Component>
 
+					<Component Id='FFMpegExecutable' Guid='d17358f7-abdc-4080-acd3-6427903a7dd8' Win64="$(var.Win64)">
+						<File Id='ffmpeg.exe' Name='ffmpeg.exe' DiskId='1' Source='ffmpeg.exe' KeyPath='yes' />
+					</Component>
+
 				</Directory>
 			</Directory>
 		</Directory>
@@ -75,6 +79,7 @@
 			<ComponentRef Id='README.mdFile' />
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
+			<ComponentRef Id='FFMpegExecutable' />
 		</Feature>
 	</Product>
 </Wix>
