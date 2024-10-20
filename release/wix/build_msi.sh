@@ -1,5 +1,9 @@
 #!/bin/sh
 
+FFMPEG_VERSION="7.1"
+FFMPEG_REPOSITORY=navidrome/ffmpeg-windows-builds
+DOWNLOAD_FOLDER=/tmp
+
 #Exit if GIT_TAG is not set
 if [ -z "$GIT_TAG" ]; then
   echo "GIT_TAG is not set, exiting..."
@@ -20,8 +24,10 @@ BINARY_DIR=$WORKSPACE/binaries/windows_${ARCH}
 
 if [ "$ARCH" = "386" ]; then
   PLATFORM="x86"
+  WIN_ARCH="win32"
 else
   PLATFORM="x64"
+  WIN_ARCH="win64"
 fi
 
 BINARY=$BINARY_DIR/navidrome.exe
@@ -32,12 +38,13 @@ if [ ! -f "$BINARY" ]; then
   exit 1
 fi
 
-if [ ! -f "$MSI_OUTPUT_DIR"/ffmpeg.exe ]; then
-  wget --quiet --output-document="$WORKSPACE/ffmpeg.zip" "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
-  rm -rf "$WORKSPACE/extracted_ffmpeg"
-  unzip -d "$WORKSPACE/extracted_ffmpeg" "$WORKSPACE/ffmpeg.zip" "*/ffmpeg.exe"
-  cp "$WORKSPACE"/extracted_ffmpeg/ffmpeg-*-essentials_build/bin/ffmpeg.exe "$MSI_OUTPUT_DIR"
-fi
+# Download static compiled ffmpeg for Windows
+FFMPEG_FILE="ffmpeg-n${FFMPEG_VERSION}-latest-${WIN_ARCH}-gpl-${FFMPEG_VERSION}"
+wget --quiet --output-document="${DOWNLOAD_FOLDER}/ffmpeg.zip" \
+  "https://github.com/${FFMPEG_REPOSITORY}/releases/download/latest/${FFMPEG_FILE}.zip"
+rm -rf "${DOWNLOAD_FOLDER}/extracted_ffmpeg"
+unzip -d "${DOWNLOAD_FOLDER}/extracted_ffmpeg" "${DOWNLOAD_FOLDER}/ffmpeg.zip" "*/ffmpeg.exe"
+cp "${DOWNLOAD_FOLDER}"/extracted_ffmpeg/${FFMPEG_FILE}/bin/ffmpeg.exe "$MSI_OUTPUT_DIR"
 
 cp "$WORKSPACE"/LICENSE "$WORKSPACE"/README.md "$MSI_OUTPUT_DIR"
 cp "$BINARY" "$MSI_OUTPUT_DIR"
