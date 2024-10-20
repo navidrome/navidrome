@@ -18,8 +18,6 @@ import (
 type FFmpeg interface {
 	Transcode(ctx context.Context, command, path string, maxBitRate, offset int) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
-	ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error)
-	ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
@@ -33,8 +31,6 @@ func New() FFmpeg {
 const (
 	extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
 	probeCmd        = "ffmpeg %s -f ffmetadata"
-	createWavCmd    = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
-	createFLACCmd   = "ffmpeg -i %s -f flac -"
 )
 
 type ffmpeg struct{}
@@ -52,16 +48,6 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 		return nil, err
 	}
 	args := createFFmpegCommand(extractImageCmd, path, 0, 0)
-	return e.start(ctx, args)
-}
-
-func (e *ffmpeg) ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error) {
-	args := createFFmpegCommand(createWavCmd, path, 0, 0)
-	return e.start(ctx, args)
-}
-
-func (e *ffmpeg) ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error) {
-	args := createFFmpegCommand(createFLACCmd, path, 0, 0)
 	return e.start(ctx, args)
 }
 
@@ -167,7 +153,6 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 			args = append(args, s)
 		}
 	}
-
 	return args
 }
 
@@ -187,16 +172,13 @@ func createProbeCommand(cmd string, inputs []string) []string {
 
 func fixCmd(cmd string) []string {
 	split := strings.Split(cmd, " ")
-	var result []string
 	cmdPath, _ := ffmpegCmd()
-	for _, s := range split {
+	for i, s := range split {
 		if s == "ffmpeg" || s == "ffmpeg.exe" {
-			result = append(result, cmdPath)
-		} else {
-			result = append(result, s)
+			split[i] = cmdPath
 		}
 	}
-	return result
+	return split
 }
 
 func ffmpegCmd() (string, error) {
