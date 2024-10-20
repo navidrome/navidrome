@@ -171,7 +171,7 @@ func createProbeCommand(cmd string, inputs []string) []string {
 }
 
 func fixCmd(cmd string) []string {
-	split := strings.Split(cmd, " ")
+	split := strings.Fields(cmd)
 	cmdPath, _ := ffmpegCmd()
 	for i, s := range split {
 		if s == "ffmpeg" || s == "ffmpeg.exe" {
