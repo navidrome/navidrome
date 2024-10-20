@@ -162,10 +162,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 		}
 		existing := make(map[string]int, len(found))
 		for idx := range found {
-			existing[found[idx].Path] = idx
+			existing[strings.ToLower(found[idx].Path)] = idx
 		}
 		for _, path := range filteredLines {
-			idx, ok := existing[path]
+			idx, ok := existing[strings.ToLower(path)]
 			if ok {
 				mfs = append(mfs, found[idx])
 			} else {
