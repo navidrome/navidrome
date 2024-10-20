@@ -153,31 +153,27 @@ func (j *ffCmd) wait() {
 
 // Path will always be an absolute path
 func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
-	split := strings.Split(fixCmd(cmd), " ")
-	var parts []string
-
-	for _, s := range split {
+	var args []string
+	for _, s := range fixCmd(cmd) {
 		if strings.Contains(s, "%s") {
 			s = strings.ReplaceAll(s, "%s", path)
-			parts = append(parts, s)
+			args = append(args, s)
 			if offset > 0 && !strings.Contains(cmd, "%t") {
-				parts = append(parts, "-ss", strconv.Itoa(offset))
+				args = append(args, "-ss", strconv.Itoa(offset))
 			}
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
-			parts = append(parts, s)
+			args = append(args, s)
 		}
 	}
 
-	return parts
+	return args
 }
 
 func createProbeCommand(cmd string, inputs []string) []string {
-	split := strings.Split(fixCmd(cmd), " ")
 	var args []string
-
-	for _, s := range split {
+	for _, s := range fixCmd(cmd) {
 		if s == "%s" {
 			for _, inp := range inputs {
 				args = append(args, "-i", inp)
@@ -189,7 +185,7 @@ func createProbeCommand(cmd string, inputs []string) []string {
 	return args
 }
 
-func fixCmd(cmd string) string {
+func fixCmd(cmd string) []string {
 	split := strings.Split(cmd, " ")
 	var result []string
 	cmdPath, _ := ffmpegCmd()
@@ -200,7 +196,7 @@ func fixCmd(cmd string) string {
 			result = append(result, s)
 		}
 	}
-	return strings.Join(result, " ")
+	return result
 }
 
 func ffmpegCmd() (string, error) {
@@ -223,6 +219,7 @@ func ffmpegCmd() (string, error) {
 	return ffmpegPath, ffmpegErr
 }
 
+// These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
 	ffOnce     sync.Once
 	ffmpegPath string
