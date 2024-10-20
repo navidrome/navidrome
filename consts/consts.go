@@ -82,6 +82,16 @@ const (
 )
 
 const (
+	// possible splitting factor, it's possible to use multiple splitting factors
+
+	SplitAlbumByArtist  = "artist"  // split album by artist name
+	SplitAlbumByRelease = "release" // split album by release date
+
+	// default album splitting policy
+	SplitAlbumDefaultPolicy = SplitAlbumByArtist + "," + SplitAlbumByRelease
+)
+
+const (
 	AlbumPlayCountModeAbsolute   = "absolute"
 	AlbumPlayCountModeNormalized = "normalized"
 )
