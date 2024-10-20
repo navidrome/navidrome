@@ -48,4 +48,17 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
 		})
 	})
+
+	When("ffmpegPath is set", func() {
+		It("returns the correct ffmpeg path", func() {
+			ffmpegPath = "/usr/bin/ffmpeg"
+			args := createProbeCommand(probeCmd, []string{"one.mp3"})
+			Expect(args).To(Equal([]string{"/usr/bin/ffmpeg", "-i", "one.mp3", "-f", "ffmetadata"}))
+		})
+		It("returns the correct ffmpeg path with spaces", func() {
+			ffmpegPath = "/usr/bin/with spaces/ffmpeg.exe"
+			args := createProbeCommand(probeCmd, []string{"one.mp3"})
+			Expect(args).To(Equal([]string{"/usr/bin/with spaces/ffmpeg.exe", "-i", "one.mp3", "-f", "ffmetadata"}))
+		})
+	})
 })
