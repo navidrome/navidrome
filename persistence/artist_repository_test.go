@@ -53,58 +53,58 @@ var _ = Describe("ArtistRepository", func() {
 		It("returns the index key when PreferSortTags is true and SortArtistName is not empty", func() {
 			conf.Server.PreferSortTags = true
 			a := model.Artist{SortArtistName: "Foo", OrderArtistName: "Bar", Name: "Qux"}
-			idx := GetIndexKey(&r, &a) // defines export_test.go
+			idx := GetIndexKey(&r, a) // defines export_test.go
 			Expect(idx).To(Equal("F"))
 
 			a = model.Artist{SortArtistName: "foo", OrderArtistName: "Bar", Name: "Qux"}
-			idx = GetIndexKey(&r, &a)
+			idx = GetIndexKey(&r, a)
 			Expect(idx).To(Equal("F"))
 		})
 
 		It("returns the index key when PreferSortTags is true, SortArtistName is empty and OrderArtistName is not empty", func() {
 			conf.Server.PreferSortTags = true
 			a := model.Artist{SortArtistName: "", OrderArtistName: "Bar", Name: "Qux"}
-			idx := GetIndexKey(&r, &a)
+			idx := GetIndexKey(&r, a)
 			Expect(idx).To(Equal("B"))
 
 			a = model.Artist{SortArtistName: "", OrderArtistName: "bar", Name: "Qux"}
-			idx = GetIndexKey(&r, &a)
+			idx = GetIndexKey(&r, a)
 			Expect(idx).To(Equal("B"))
 		})
 
 		It("returns the index key when PreferSortTags is true, both SortArtistName, OrderArtistName are empty", func() {
 			conf.Server.PreferSortTags = true
 			a := model.Artist{SortArtistName: "", OrderArtistName: "", Name: "Qux"}
-			idx := GetIndexKey(&r, &a)
+			idx := GetIndexKey(&r, a)
 			Expect(idx).To(Equal("Q"))
 
 			a = model.Artist{SortArtistName: "", OrderArtistName: "", Name: "qux"}
-			idx = GetIndexKey(&r, &a)
+			idx = GetIndexKey(&r, a)
 			Expect(idx).To(Equal("Q"))
 		})
 
 		It("returns the index key when PreferSortTags is false and SortArtistName is not empty", func() {
 			conf.Server.PreferSortTags = false
 			a := model.Artist{SortArtistName: "Foo", OrderArtistName: "Bar", Name: "Qux"}
-			idx := GetIndexKey(&r, &a)
+			idx := GetIndexKey(&r, a)
 			Expect(idx).To(Equal("Q"))
 		})
 
 		It("returns the index key when PreferSortTags is true, SortArtistName is empty and OrderArtistName is not empty", func() {
 			conf.Server.PreferSortTags = false
 			a := model.Artist{SortArtistName: "", OrderArtistName: "Bar", Name: "Qux"}
-			idx := GetIndexKey(&r, &a)
+			idx := GetIndexKey(&r, a)
 			Expect(idx).To(Equal("Q"))
 		})
 
 		It("returns the index key when PreferSortTags is true, both sort_artist_name, order_artist_name are empty", func() {
 			conf.Server.PreferSortTags = false
 			a := model.Artist{SortArtistName: "", OrderArtistName: "", Name: "Qux"}
-			idx := GetIndexKey(&r, &a)
+			idx := GetIndexKey(&r, a)
 			Expect(idx).To(Equal("Q"))
 
 			a = model.Artist{SortArtistName: "", OrderArtistName: "", Name: "qux"}
-			idx = GetIndexKey(&r, &a)
+			idx = GetIndexKey(&r, a)
 			Expect(idx).To(Equal("Q"))
 		})
 	})
