@@ -138,7 +138,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	return res, err
 }
 
-func (r *artistRepository) getIndexKey(a *model.Artist) string {
+func (r *artistRepository) getIndexKey(a model.Artist) string {
 	source := a.Name
 	if conf.Server.PreferSortTags {
 		source = cmp.Or(a.SortArtistName, a.OrderArtistName)
