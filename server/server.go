@@ -40,7 +40,7 @@ func New(ds model.DataStore, broker events.Broker) *Server {
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
 	s.mountRootRedirector()
-	checkFfmpegInstallation()
+	checkFFmpegInstallation()
 	checkExternalCredentials()
 	return s
 }
