@@ -18,8 +18,6 @@ import (
 type FFmpeg interface {
 	Transcode(ctx context.Context, command, path string, maxBitRate, offset int) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
-	ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error)
-	ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error)
 	Probe(ctx context.Context, files []string) (string, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
@@ -33,8 +31,6 @@ func New() FFmpeg {
 const (
 	extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
 	probeCmd        = "ffmpeg %s -f ffmetadata"
-	createWavCmd    = "ffmpeg -i %s -c:a pcm_s16le -f wav -"
-	createFLACCmd   = "ffmpeg -i %s -f flac -"
 )
 
 type ffmpeg struct{}
@@ -52,16 +48,6 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 		return nil, err
 	}
 	args := createFFmpegCommand(extractImageCmd, path, 0, 0)
-	return e.start(ctx, args)
-}
-
-func (e *ffmpeg) ConvertToWAV(ctx context.Context, path string) (io.ReadCloser, error) {
-	args := createFFmpegCommand(createWavCmd, path, 0, 0)
-	return e.start(ctx, args)
-}
-
-func (e *ffmpeg) ConvertToFLAC(ctx context.Context, path string) (io.ReadCloser, error) {
-	args := createFFmpegCommand(createFLACCmd, path, 0, 0)
 	return e.start(ctx, args)
 }
 
@@ -153,31 +139,26 @@ func (j *ffCmd) wait() {
 
 // Path will always be an absolute path
 func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
-	split := strings.Split(fixCmd(cmd), " ")
-	var parts []string
-
-	for _, s := range split {
+	var args []string
+	for _, s := range fixCmd(cmd) {
 		if strings.Contains(s, "%s") {
 			s = strings.ReplaceAll(s, "%s", path)
-			parts = append(parts, s)
+			args = append(args, s)
 			if offset > 0 && !strings.Contains(cmd, "%t") {
-				parts = append(parts, "-ss", strconv.Itoa(offset))
+				args = append(args, "-ss", strconv.Itoa(offset))
 			}
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
-			parts = append(parts, s)
+			args = append(args, s)
 		}
 	}
-
-	return parts
+	return args
 }
 
 func createProbeCommand(cmd string, inputs []string) []string {
-	split := strings.Split(fixCmd(cmd), " ")
 	var args []string
-
-	for _, s := range split {
+	for _, s := range fixCmd(cmd) {
 		if s == "%s" {
 			for _, inp := range inputs {
 				args = append(args, "-i", inp)
@@ -189,18 +170,15 @@ func createProbeCommand(cmd string, inputs []string) []string {
 	return args
 }
 
-func fixCmd(cmd string) string {
-	split := strings.Split(cmd, " ")
-	var result []string
+func fixCmd(cmd string) []string {
+	split := strings.Fields(cmd)
 	cmdPath, _ := ffmpegCmd()
-	for _, s := range split {
+	for i, s := range split {
 		if s == "ffmpeg" || s == "ffmpeg.exe" {
-			result = append(result, cmdPath)
-		} else {
-			result = append(result, s)
+			split[i] = cmdPath
 		}
 	}
-	return strings.Join(result, " ")
+	return split
 }
 
 func ffmpegCmd() (string, error) {
@@ -223,6 +201,7 @@ func ffmpegCmd() (string, error) {
 	return ffmpegPath, ffmpegErr
 }
 
+// These variables are accessible here for tests. Do not use them directly in production code. Use ffmpegCmd() instead.
 var (
 	ffOnce     sync.Once
 	ffmpegPath string

@@ -142,6 +142,20 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.Tracks[1].Path).To(Equal("test1.mp3"))
 			Expect(pls.Tracks[2].Path).To(Equal("test2.mp3"))
 		})
+
+		It("is case-insensitive when comparing paths", func() {
+			repo.data = []string{
+				"tEsT1.Mp3",
+			}
+			m3u := strings.Join([]string{
+				"TeSt1.mP3",
+			}, "\n")
+			f := strings.NewReader(m3u)
+			pls, err := ps.ImportM3U(ctx, f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls.Tracks).To(HaveLen(1))
+			Expect(pls.Tracks[0].Path).To(Equal("tEsT1.Mp3"))
+		})
 	})
 })
 
