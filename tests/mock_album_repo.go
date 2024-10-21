@@ -4,9 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 func CreateMockAlbumRepo() *MockAlbumRepo {
@@ -58,7 +57,7 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 		return errors.New("error")
 	}
 	if al.ID == "" {
-		al.ID = uuid.NewString()
+		al.ID = id.NewRandom()
 	}
 	m.data[al.ID] = al
 	return nil
@@ -72,10 +71,6 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 		return nil, errors.New("Error!")
 	}
 	return m.all, nil
-}
-
-func (m *MockAlbumRepo) GetAllWithoutGenres(qo ...model.QueryOptions) (model.Albums, error) {
-	return m.GetAll(qo...)
 }
 
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {

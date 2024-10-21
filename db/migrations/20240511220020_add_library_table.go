@@ -29,7 +29,7 @@ func upAddLibraryTable(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	_, err = tx.ExecContext(ctx, fmt.Sprintf(`
-		insert into library(id, name, path, last_scan_at) values(1, 'Music Library', '%s', current_timestamp);
+		insert into library(id, name, path) values(1, 'Music Library', '%s');
 		delete from property where id like 'LastScan-%%';
 `, conf.Server.MusicFolder))
 	if err != nil {

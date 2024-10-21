@@ -10,6 +10,7 @@ linters:
     - errcheck
     - errorlint
     - gocyclo
+    - gocritic
     - goprintffuncname
     - gosec
     - gosimple
@@ -25,7 +26,17 @@ linters:
     - unused
     - whitespace
 
+issues:
+  exclude-rules:
+    - path: scanner2
+      linters:
+        - unused
+
 linters-settings:
+  gocritic:
+    disable-all: true
+    enabled-checks:
+      - deprecatedComment
   govet:
     enable:
       - nilness
