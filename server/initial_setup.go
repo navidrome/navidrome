@@ -83,7 +83,7 @@ func createJWTSecret(ds model.DataStore) error {
 	return err
 }
 
-func checkFfmpegInstallation() {
+func checkFFmpegInstallation() {
 	f := ffmpeg.New()
 	_, err := f.CmdPath()
 	if err == nil {
