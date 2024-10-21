@@ -63,7 +63,7 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			ff = append(ff, fromTag(a.album.EmbedArtPath), fromFFmpegTag(ctx, ffmpeg, a.album.EmbedArtPath))
+			ff = append(ff, fromTag(ctx, a.album.EmbedArtPath), fromFFmpegTag(ctx, ffmpeg, a.album.EmbedArtPath))
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.em))
 		case a.album.ImageFiles != "":
