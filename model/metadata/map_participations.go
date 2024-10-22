@@ -58,14 +58,22 @@ func (md Metadata) mapParticipations() model.Participations {
 		participations.Add(role, artists...)
 	}
 
-	// For each artist in each role, try to figure out their MBID from the track/album artists
-	for role, participants := range participations {
-		for i, participant := range participants {
-			if participant.MbzArtistID == "" {
-				for _, artist := range append(participations[model.RoleArtist], participations[model.RoleAlbumArtist]...) {
-					if participant.Name == artist.Name && artist.MbzArtistID != "" {
-						participations[role][i].MbzArtistID = artist.MbzArtistID
-						break
+	// Create a map to store the MbzArtistID for each artist name
+	artistMbzIDMap := make(map[string]string)
+	for _, artist := range append(participations[model.RoleArtist], participations[model.RoleAlbumArtist]...) {
+		if artist.MbzArtistID != "" {
+			artistMbzIDMap[artist.Name] = artist.MbzArtistID
+		}
+	}
+
+	if len(artistMbzIDMap) > 0 {
+		// For each artist in each role, try to figure out their MBID from the
+		// track/album artists (the only roles that have MBID in MusicBrainz)
+		for role, participants := range participations {
+			for i, participant := range participants {
+				if participant.MbzArtistID == "" {
+					if mbzID, found := artistMbzIDMap[participant.Name]; found {
+						participations[role][i].MbzArtistID = mbzID
 					}
 				}
 			}
