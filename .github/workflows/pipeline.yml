@@ -217,7 +217,6 @@ jobs:
           path: ./output
           retention-days: 7
 
-      # https://www.perplexity.ai/search/can-i-have-multiple-push-to-di-4P3ToaZFQtmVROuhaZMllQ
       - name: Build and push image by digest
         id: push-image
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
@@ -307,14 +306,11 @@ jobs:
             gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
           done
 
-
   msi:
-    name: Build Windows Installers
+    name: Build Windows installers
     needs: [build, git-version]
     runs-on: ubuntu-24.04
-    env:
-      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
-      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -324,39 +320,24 @@ jobs:
           pattern: navidrome-windows*
           merge-multiple: true
 
-      - name: Build MSI files
+      - name: Install Wix
+        run: sudo apt-get install -y wixl jq
+
+      - name: Build MSI
+        env:
+          GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
         run: |
-          sudo apt-get install -y wixl jq
+          rm -rf binaries/msi
+          sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} 386
+          sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
+          du -h binaries/msi/*.msi
 
-          NAVIDROME_BUILD_VERSION=$(echo $GIT_TAG | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/')
-          echo $NAVIDROME_BUILD_VERSION
-
-          mkdir -p $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
-
-          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
-
-          cp $GITHUB_WORKSPACE/binaries/windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/binaries/windows_amd64/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
-
-          # workaround for wixl WixVariable not working to override bmp locations
-          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
-          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
-
-          cd $GITHUB_WORKSPACE/wix/386
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
-
-          cd $GITHUB_WORKSPACE/wix/amd64
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
-
-          ls -la $GITHUB_WORKSPACE/wix/*.msi
 
       - name: Upload MSI files
         uses: actions/upload-artifact@v4
         with:
           name: navidrome-windows-installers
-          path: wix/*.msi
+          path: binaries/msi/*.msi
           retention-days: 7
 
   release:

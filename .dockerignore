@@ -11,6 +11,7 @@ navidrome
 navidrome.toml
 tmp
 !tmp/taglib
-dist/*
+dist
+binaries
 cache
 music
