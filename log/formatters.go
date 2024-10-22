@@ -1,6 +1,7 @@
 package log
 
 import (
+	"io"
 	"strings"
 	"time"
 )
@@ -21,4 +22,30 @@ func ShortDur(d time.Duration) string {
 	}
 	s = strings.TrimSuffix(s, "0s")
 	return strings.TrimSuffix(s, "0m")
+}
+
+func CRLFWriter(w io.Writer) io.Writer {
+	return &crlfWriter{w: w}
+}
+
+type crlfWriter struct {
+	w        io.Writer
+	lastByte byte
+}
+
+func (cw *crlfWriter) Write(p []byte) (int, error) {
+	var written int
+	for _, b := range p {
+		if b == '\n' && cw.lastByte != '\r' {
+			if _, err := cw.w.Write([]byte{'\r'}); err != nil {
+				return written, err
+			}
+		}
+		if _, err := cw.w.Write([]byte{b}); err != nil {
+			return written, err
+		}
+		written++
+		cw.lastByte = b
+	}
+	return written, nil
 }
