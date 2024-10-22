@@ -167,11 +167,9 @@ jobs:
   build:
     name: Build
     needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
-#    needs: [git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
-#        platform: [ windows/amd64, windows/386 ]
     runs-on: ubuntu-latest
     env:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}

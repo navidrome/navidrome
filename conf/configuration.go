@@ -268,8 +268,9 @@ func Load() {
 	}
 }
 
-// parseIniFileConfiguration is used to parse the config file when it is in INI format. For INI files, it would
-// require a nested structure, so we need to merge the nested [default] section into the root level.
+// parseIniFileConfiguration is used to parse the config file when it is in INI format. For INI files, it
+// would require a nested structure, so instead we unmarshal it to a map and then merge the nested [default]
+// section into the root level.
 func parseIniFileConfiguration() {
 	cfgFile := viper.ConfigFileUsed()
 	if strings.ToLower(filepath.Ext(cfgFile)) == ".ini" {
