@@ -50,6 +50,7 @@ func (r *libraryRepository) Put(l *model.Library) error {
 const hardCodedMusicFolderID = 1
 
 // TODO Remove this method when we have a proper UI to add libraries
+// This is a temporary method to store the music folder path from the config in the DB
 func (r *libraryRepository) StoreMusicFolder() error {
 	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).
 		Set("updated_at", timeToSQL(time.Now())).

@@ -146,7 +146,7 @@ type DiscID struct {
 
 type Albums []Album
 
-// TODO Remove
+// BFR Remove
 // ToAlbumArtist creates an Artist object based on the attributes of this Albums collection.
 // It assumes all albums have the same AlbumArtist, or else results are unpredictable.
 func (als Albums) ToAlbumArtist() Artist {

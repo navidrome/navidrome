@@ -29,10 +29,10 @@ type MediaFile struct {
 	Title     string `structs:"title" json:"title"`
 	Album     string `structs:"album" json:"album"`
 	ArtistID  string `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
-	// TODO Rename to ArtistDisplayName
+	// BFR Rename to ArtistDisplayName
 	Artist        string `structs:"artist" json:"artist"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated: Use Participants instead
-	// TODO Rename to AlbumArtistDisplayName
+	// BFR Rename to AlbumArtistDisplayName
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
@@ -219,8 +219,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
-	a = fixAlbumArtist(a, albumArtistIds)          // TODO Validate if this it really needed
-	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds) // TODO Should we use the most frequent or all? Same below
+	a = fixAlbumArtist(a, albumArtistIds)          // BFR Validate if this it really needed
+	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds) // BFR Should we use the most frequent or all? Same below
 	a.MbzReleaseGroupID, _ = allOrNothing(mbzReleaseGroupIds)
 
 	return a
