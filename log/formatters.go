@@ -1,7 +1,9 @@
 package log
 
 import (
+	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -22,6 +24,14 @@ func ShortDur(d time.Duration) string {
 	}
 	s = strings.TrimSuffix(s, "0s")
 	return strings.TrimSuffix(s, "0m")
+}
+
+func StringerValue(s fmt.Stringer) string {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Pointer && v.IsNil() {
+		return "nil"
+	}
+	return s.String()
 }
 
 func CRLFWriter(w io.Writer) io.Writer {
