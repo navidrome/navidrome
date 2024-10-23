@@ -25,17 +25,14 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	filter := fullTextExpr(q)
 	if filter != nil {
 		sq = sq.Where(filter)
-		if len(orderBys) > 0 {
-			sq = sq.OrderBy(orderBys...)
-		}
+		sq = sq.OrderBy(orderBys...)
 	} else {
 		// If the filter is empty, we sort by id.
 		// This is to speed up the results of `search3?query=""`, for OpenSubsonic
 		sq = sq.OrderBy("id")
 	}
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
-	err := r.queryAll(sq, results, model.QueryOptions{Offset: offset})
-	return err
+	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})
 }
 
 func fullTextExpr(value string) Sqlizer {

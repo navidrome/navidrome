@@ -6,11 +6,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
@@ -86,7 +88,9 @@ func (api *Router) GetAlbumList(w http.ResponseWriter, r *http.Request) (*respon
 	w.Header().Set("x-total-count", strconv.Itoa(int(count)))
 
 	response := newResponse()
-	response.AlbumList = &responses.AlbumList{Album: childrenFromAlbums(r.Context(), albums)}
+	response.AlbumList = &responses.AlbumList{
+		Album: slice.MapWithArg(albums, r.Context(), childFromAlbum),
+	}
 	return response, nil
 }
 
@@ -99,7 +103,9 @@ func (api *Router) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*respo
 	w.Header().Set("x-total-count", strconv.FormatInt(pageCount, 10))
 
 	response := newResponse()
-	response.AlbumList2 = &responses.AlbumList{Album: childrenFromAlbums(r.Context(), albums)}
+	response.AlbumList2 = &responses.AlbumList{
+		Album: slice.MapWithArg(albums, r.Context(), childFromAlbum),
+	}
 	return response, nil
 }
 
@@ -124,9 +130,9 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.Starred = &responses.Starred{}
-	response.Starred.Artist = toArtists(r, artists)
-	response.Starred.Album = childrenFromAlbums(r.Context(), albums)
-	response.Starred.Song = childrenFromMediaFiles(r.Context(), mediaFiles)
+	response.Starred.Artist = slice.MapWithArg(artists, r, toArtist)
+	response.Starred.Album = slice.MapWithArg(albums, ctx, childFromAlbum)
+	response.Starred.Song = slice.MapWithArg(mediaFiles, ctx, childFromMediaFile)
 	return response, nil
 }
 
@@ -151,14 +157,16 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
-	response.NowPlaying.Entry = make([]responses.NowPlayingEntry, len(npInfo))
-	for i, np := range npInfo {
-		response.NowPlaying.Entry[i].Child = childFromMediaFile(ctx, np.MediaFile)
-		response.NowPlaying.Entry[i].UserName = np.Username
-		response.NowPlaying.Entry[i].MinutesAgo = int32(time.Since(np.Start).Minutes())
-		response.NowPlaying.Entry[i].PlayerId = int32(i + 1) // Fake numeric playerId, it does not seem to be used for anything
-		response.NowPlaying.Entry[i].PlayerName = np.PlayerName
-	}
+	var i int32
+	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.NowPlayingInfo) responses.NowPlayingEntry {
+		return responses.NowPlayingEntry{
+			Child:      childFromMediaFile(ctx, np.MediaFile),
+			UserName:   np.Username,
+			MinutesAgo: int32(time.Since(np.Start).Minutes()),
+			PlayerId:   i + 1, // Fake numeric playerId, it does not seem to be used for anything
+			PlayerName: np.PlayerName,
+		}
+	})
 	return response, nil
 }
 
@@ -177,7 +185,7 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 
 	response := newResponse()
 	response.RandomSongs = &responses.Songs{}
-	response.RandomSongs.Songs = childrenFromMediaFiles(r.Context(), songs)
+	response.RandomSongs.Songs = slice.MapWithArg(songs, r.Context(), childFromMediaFile)
 	return response, nil
 }
 
@@ -195,7 +203,7 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 
 	response := newResponse()
 	response.SongsByGenre = &responses.Songs{}
-	response.SongsByGenre.Songs = childrenFromMediaFiles(r.Context(), songs)
+	response.SongsByGenre.Songs = slice.MapWithArg(songs, r.Context(), childFromMediaFile)
 	return response, nil
 }
 

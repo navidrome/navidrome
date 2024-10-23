@@ -9,21 +9,22 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
 	repo := api.ds.MediaFile(r.Context())
-	bmks, err := repo.GetBookmarks()
+	bookmarks, err := repo.GetBookmarks()
 	if err != nil {
 		return nil, err
 	}
 
 	response := newResponse()
 	response.Bookmarks = &responses.Bookmarks{}
-	for _, bmk := range bmks {
-		b := responses.Bookmark{
+	response.Bookmarks.Bookmark = slice.Map(bookmarks, func(bmk model.Bookmark) responses.Bookmark {
+		return responses.Bookmark{
 			Entry:    childFromMediaFile(r.Context(), bmk.Item),
 			Position: bmk.Position,
 			Username: user.UserName,
@@ -31,8 +32,7 @@ func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 			Created:  bmk.CreatedAt,
 			Changed:  bmk.UpdatedAt,
 		}
-		response.Bookmarks.Bookmark = append(response.Bookmarks.Bookmark, b)
-	}
+	})
 	return response, nil
 }
 
@@ -83,7 +83,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.PlayQueue = &responses.PlayQueue{
-		Entry:     childrenFromMediaFiles(r.Context(), pq.Items),
+		Entry:     slice.MapWithArg(pq.Items, r.Context(), childFromMediaFile),
 		Current:   pq.Current,
 		Position:  pq.Position,
 		Username:  user.UserName,

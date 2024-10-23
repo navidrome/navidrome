@@ -1,8 +1,6 @@
 package subsonic
 
 import (
-	"context"
-
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -40,7 +38,7 @@ var _ = Describe("helpers", func() {
 	Describe("buildDiscTitles", func() {
 		It("should return nil when album has no discs", func() {
 			album := model.Album{}
-			Expect(buildDiscSubtitles(context.Background(), album)).To(BeNil())
+			Expect(buildDiscSubtitles(album)).To(BeNil())
 		})
 
 		It("should return correct disc titles when album has discs with valid disc numbers", func() {
@@ -54,7 +52,7 @@ var _ = Describe("helpers", func() {
 				{Disc: 1, Title: "Disc 1"},
 				{Disc: 2, Title: "Disc 2"},
 			}
-			Expect(buildDiscSubtitles(context.Background(), album)).To(Equal(expected))
+			Expect(buildDiscSubtitles(album)).To(Equal(expected))
 		})
 	})
 

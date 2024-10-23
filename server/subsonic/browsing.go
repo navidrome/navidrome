@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
@@ -61,7 +62,7 @@ func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince ti
 	res.Index = make([]responses.Index, len(indexes))
 	for i, idx := range indexes {
 		res.Index[i].Name = idx.ID
-		res.Index[i].Artists = toArtists(r, idx.Artists)
+		res.Index[i].Artists = slice.MapWithArg(idx.Artists, r, toArtist)
 	}
 	return res, nil
 }
@@ -80,7 +81,7 @@ func (api *Router) getArtistIndexID3(r *http.Request, libId int, ifModifiedSince
 	res.Index = make([]responses.IndexID3, len(indexes))
 	for i, idx := range indexes {
 		res.Index[i].Name = idx.ID
-		res.Index[i].Artists = toArtistsID3(r, idx.Artists)
+		res.Index[i].Artists = slice.MapWithArg(idx.Artists, r, toArtistID3)
 	}
 	return res, nil
 }
@@ -336,7 +337,7 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 
 	response := newResponse()
 	response.SimilarSongs = &responses.SimilarSongs{
-		Song: childrenFromMediaFiles(ctx, songs),
+		Song: slice.MapWithArg(songs, ctx, childFromMediaFile),
 	}
 	return response, nil
 }
@@ -370,7 +371,7 @@ func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	response.TopSongs = &responses.TopSongs{
-		Song: childrenFromMediaFiles(ctx, songs),
+		Song: slice.MapWithArg(songs, ctx, childFromMediaFile),
 	}
 	return response, nil
 }
@@ -394,7 +395,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 		return nil, err
 	}
 
-	dir.Child = childrenFromAlbums(ctx, albums)
+	dir.Child = slice.MapWithArg(albums, ctx, childFromAlbum)
 	return dir, nil
 }
 
@@ -408,7 +409,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 		return nil, err
 	}
 
-	a.Album = childrenFromAlbums(r.Context(), albums)
+	a.Album = slice.MapWithArg(albums, ctx, childFromAlbum)
 	return a, nil
 }
 
@@ -433,13 +434,13 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 		return nil, err
 	}
 
-	dir.Child = childrenFromMediaFiles(ctx, mfs)
+	dir.Child = slice.MapWithArg(mfs, ctx, childFromMediaFile)
 	return dir, nil
 }
 
 func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model.MediaFiles) *responses.AlbumWithSongsID3 {
 	dir := &responses.AlbumWithSongsID3{}
 	dir.AlbumID3 = buildAlbumID3(ctx, *album)
-	dir.Song = childrenFromMediaFiles(ctx, mfs)
+	dir.Song = slice.MapWithArg(mfs, ctx, childFromMediaFile)
 	return dir
 }

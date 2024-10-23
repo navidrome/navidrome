@@ -15,6 +15,12 @@ func Map[T any, R any](t []T, mapFunc func(T) R) []R {
 	return r
 }
 
+func MapWithArg[I any, O any, A any](t []I, arg A, mapFunc func(A, I) O) []O {
+	return Map(t, func(e I) O {
+		return mapFunc(arg, e)
+	})
+}
+
 func Group[T any, K comparable](s []T, keyFunc func(T) K) map[K][]T {
 	m := map[K][]T{}
 	for _, item := range s {
