@@ -28,6 +28,16 @@ var _ = DescribeTable("ShortDur",
 	Entry("4h2m", 4*time.Hour+2*time.Minute+5*time.Second+200*time.Millisecond, "4h2m"),
 )
 
+var _ = Describe("StringerValue", func() {
+	It("should return the string representation of a fmt.Stringer", func() {
+		Expect(log.StringerValue(time.Second)).To(Equal("1s"))
+	})
+	It("should return 'nil' for a nil fmt.Stringer", func() {
+		v := (*time.Time)(nil)
+		Expect(log.StringerValue(v)).To(Equal("nil"))
+	})
+})
+
 var _ = Describe("CRLFWriter", func() {
 	var (
 		buffer *bytes.Buffer
