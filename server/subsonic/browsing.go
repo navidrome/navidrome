@@ -27,12 +27,12 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 	return response, nil
 }
 
-func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
 	ctx := r.Context()
 	lib, err := api.ds.Library(ctx).Get(libId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving Library", "id", libId, err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	var indexes model.ArtistIndexes
@@ -40,19 +40,47 @@ func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince ti
 		indexes, err = api.ds.Artist(ctx).GetIndex()
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
-			return nil, err
+			return nil, 0, err
 		}
+	}
+
+	return indexes, lib.LastScanAt.UnixMilli(), err
+}
+
+func (api *Router) getArtistIndex(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Indexes, error) {
+	indexes, modified, err := api.getArtist(r, libId, ifModifiedSince)
+	if err != nil {
+		return nil, err
 	}
 
 	res := &responses.Indexes{
 		IgnoredArticles: conf.Server.IgnoredArticles,
-		LastModified:    lib.LastScanAt.UnixMilli(),
+		LastModified:    modified,
 	}
 
 	res.Index = make([]responses.Index, len(indexes))
 	for i, idx := range indexes {
 		res.Index[i].Name = idx.ID
 		res.Index[i].Artists = toArtists(r, idx.Artists)
+	}
+	return res, nil
+}
+
+func (api *Router) getArtistIndexID3(r *http.Request, libId int, ifModifiedSince time.Time) (*responses.Artists, error) {
+	indexes, modified, err := api.getArtist(r, libId, ifModifiedSince)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &responses.Artists{
+		IgnoredArticles: conf.Server.IgnoredArticles,
+		LastModified:    modified,
+	}
+
+	res.Index = make([]responses.IndexID3, len(indexes))
+	for i, idx := range indexes {
+		res.Index[i].Name = idx.ID
+		res.Index[i].Artists = toArtistsID3(r, idx.Artists)
 	}
 	return res, nil
 }
@@ -75,7 +103,7 @@ func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) GetArtists(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	musicFolderId := p.IntOr("musicFolderId", 1)
-	res, err := api.getArtistIndex(r, musicFolderId, time.Time{})
+	res, err := api.getArtistIndexID3(r, musicFolderId, time.Time{})
 	if err != nil {
 		return nil, err
 	}
