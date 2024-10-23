@@ -281,7 +281,7 @@ func buildItemGenres(genres model.Genres) []responses.ItemGenre {
 	return itemGenres
 }
 
-func buildDiscSubtitles(_ context.Context, a model.Album) responses.DiscTitles {
+func buildDiscSubtitles(a model.Album) responses.DiscTitles {
 	if len(a.Discs) == 0 {
 		return nil
 	}
@@ -293,14 +293,6 @@ func buildDiscSubtitles(_ context.Context, a model.Album) responses.DiscTitles {
 		return discTitles[i].Disc < discTitles[j].Disc
 	})
 	return discTitles
-}
-
-func buildAlbumsID3(ctx context.Context, albums model.Albums) []responses.AlbumID3 {
-	res := make([]responses.AlbumID3, len(albums))
-	for i, album := range albums {
-		res[i] = buildAlbumID3(ctx, album)
-	}
-	return res
 }
 
 func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
@@ -319,7 +311,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.Year = int32(album.MaxYear)
 	dir.Genre = album.Genre
 	dir.Genres = buildItemGenres(album.Genres)
-	dir.DiscTitles = buildDiscSubtitles(ctx, album)
+	dir.DiscTitles = buildDiscSubtitles(album)
 	dir.UserRating = int32(album.Rating)
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt

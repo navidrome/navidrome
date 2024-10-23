@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const (
@@ -58,7 +59,7 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 		playlist := responses.JukeboxPlaylist{
 			JukeboxStatus: *deviceStatusToJukeboxStatus(status),
-			Entry:         childrenFromMediaFiles(ctx, mediafiles),
+			Entry:         slice.MapWithArg(mediafiles, ctx, childFromMediaFile),
 		}
 
 		response := newResponse()
