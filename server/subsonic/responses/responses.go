@@ -35,7 +35,7 @@ type Subsonic struct {
 	Genres        *Genres            `xml:"genres,omitempty"                              json:"genres,omitempty"`
 
 	// ID3
-	Artist              *Indexes             `xml:"artists,omitempty"                     json:"artists,omitempty"`
+	Artist              *Artists             `xml:"artists,omitempty"                     json:"artists,omitempty"`
 	ArtistWithAlbumsID3 *ArtistWithAlbumsID3 `xml:"artist,omitempty"                      json:"artist,omitempty"`
 	AlbumWithSongsID3   *AlbumWithSongsID3   `xml:"album,omitempty"                       json:"album,omitempty"`
 
@@ -110,6 +110,17 @@ type Indexes struct {
 	Index           []Index `xml:"index"                  json:"index,omitempty"`
 	LastModified    int64   `xml:"lastModified,attr"      json:"lastModified"`
 	IgnoredArticles string  `xml:"ignoredArticles,attr"   json:"ignoredArticles"`
+}
+
+type IndexID3 struct {
+	Name    string      `xml:"name,attr"                     json:"name"`
+	Artists []ArtistID3 `xml:"artist"                        json:"artist"`
+}
+
+type Artists struct {
+	Index           []IndexID3 `xml:"index"                  json:"index,omitempty"`
+	LastModified    int64      `xml:"lastModified,attr"      json:"lastModified"`
+	IgnoredArticles string     `xml:"ignoredArticles,attr"   json:"ignoredArticles"`
 }
 
 type MediaType string
@@ -207,8 +218,8 @@ type ArtistID3 struct {
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
 
 	// OpenSubsonic extensions
-	MusicBrainzId string `xml:"musicBrainzId,attr,omitempty"       json:"musicBrainzId,omitempty"`
-	SortName      string `xml:"sortName,attr,omitempty"            json:"sortName,omitempty"`
+	MusicBrainzId string `xml:"musicBrainzId,attr" json:"musicBrainzId"`
+	SortName      string `xml:"sortName,attr"      json:"sortName"`
 }
 
 type AlbumID3 struct {

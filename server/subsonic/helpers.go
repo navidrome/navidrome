@@ -104,6 +104,14 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	return artist
 }
 
+func toArtistsID3(r *http.Request, artists model.Artists) []responses.ArtistID3 {
+	as := make([]responses.ArtistID3, len(artists))
+	for i, artist := range artists {
+		as[i] = toArtistID3(r, artist)
+	}
+	return as
+}
+
 func toGenres(genres model.Genres) *responses.Genres {
 	response := make([]responses.Genre, len(genres))
 	for i, g := range genres {
