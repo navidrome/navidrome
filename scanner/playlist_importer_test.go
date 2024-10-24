@@ -70,18 +70,14 @@ type mockedMediaFile struct {
 	model.MediaFileRepository
 }
 
-func (r *mockedMediaFile) FindByPath(s string) (*model.MediaFile, error) {
-	return &model.MediaFile{
-		ID:   "123",
-		Path: s,
-	}, nil
-}
-
 func (r *mockedMediaFile) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 	for _, path := range paths {
-		mf, _ := r.FindByPath(path)
-		mfs = append(mfs, *mf)
+		mf := model.MediaFile{
+			ID:   "123",
+			Path: path,
+		}
+		mfs = append(mfs, mf)
 	}
 	return mfs, nil
 }

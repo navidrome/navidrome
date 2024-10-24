@@ -55,9 +55,9 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 		"q":     playlistFilter,
 		"smart": smartPlaylistFilter,
 	})
-	r.sortMappings = map[string]string{
+	r.setSortMappings(map[string]string{
 		"owner_name": "owner_name",
-	}
+	})
 	return r
 }
 

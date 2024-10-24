@@ -81,3 +81,13 @@ func (e existsCond) ToSql() (string, []interface{}, error) {
 	}
 	return sql, args, err
 }
+
+var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
+
+// Convert the sort order to a expression. Example:
+// sort_album_name -> coalesce(nullif(sort_album_name,”),order_album_name) collate nocase
+// It finds order column names anywhere in the substring
+func mapSortOrder(order string) string {
+	order = strings.ToLower(order)
+	return sortOrderRegex.ReplaceAllString(order, "(coalesce(nullif(sort_$1,''),order_$1) collate nocase)")
+}
