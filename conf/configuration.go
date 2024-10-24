@@ -112,6 +112,7 @@ type configOptions struct {
 	DevArtworkThrottleBacklogTimeout time.Duration
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
+	DevLyricsTimeToLive              time.Duration
 }
 
 type scannerOptions struct {
@@ -298,7 +299,7 @@ func disableExternalServices() {
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
 	Server.ListenBrainz.Enabled = false
-	Server.Agents = ""
+	Server.Agents = "filesystem"
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
@@ -432,7 +433,7 @@ func init() {
 	viper.SetDefault("scanner.genreseparators", ";/,")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 
-	viper.SetDefault("agents", "lastfm,spotify")
+	viper.SetDefault("agents", "filesystem,lastfm,spotify,lrclib")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
@@ -467,6 +468,7 @@ func init() {
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
+	viper.SetDefault("devlyricstimetolive", consts.LyricsInfoTimeToLive)
 }
 
 func InitConfig(cfgFile string) {

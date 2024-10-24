@@ -113,6 +113,17 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	if len(structuredLyrics) == 0 {
+		newLyrics, err := api.externalMetadata.ExternalLyrics(r.Context(), mediaFiles[0].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		if newLyrics != nil {
+			structuredLyrics = newLyrics
+		}
+	}
+
+	if len(structuredLyrics) == 0 {
 		return response, nil
 	}
 
@@ -143,6 +154,17 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 	lyrics, err := mediaFile.StructuredLyrics()
 	if err != nil {
 		return nil, err
+	}
+
+	if len(lyrics) == 0 {
+		newLyrics, err := api.externalMetadata.ExternalLyrics(r.Context(), id)
+		if err != nil {
+			return nil, err
+		}
+
+		if newLyrics != nil {
+			lyrics = newLyrics
+		}
 	}
 
 	response := newResponse()
