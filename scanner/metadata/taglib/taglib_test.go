@@ -115,11 +115,14 @@ var _ = Describe("Extractor", func() {
 				Expect(discno).To(HaveLen(1))
 				Expect(discno[0]).To(BeElementOf([]string{"1", "1/2"}))
 
-				// WMA does not have a "compilation" tag, but "wm/iscompilation"
 				if _, ok := m["compilation"]; ok {
 					Expect(m).To(HaveKeyWithValue("compilation", []string{"1"}))
-				} else {
+				} else if _, ok := m["tcmp"]; ok {
+					Expect(m).To(HaveKeyWithValue("tcmp", []string{"1"}))
+				} else if _, ok := m["wm/iscompilation"]; ok { // WMA does not have "compilation" and "tcmp" tags, but "wm/iscompilation"
 					Expect(m).To(HaveKeyWithValue("wm/iscompilation", []string{"1"}))
+				} else { // missing known compilation tag
+					Expect(err).To(HaveOccurred())
 				}
 
 				Expect(m).NotTo(HaveKeyWithValue("has_picture", []string{"true"}))
