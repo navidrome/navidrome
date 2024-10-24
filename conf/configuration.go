@@ -115,9 +115,13 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Extractor          string
-	GenreSeparators    string
-	GroupAlbumReleases bool
+	Extractor       string
+	GenreSeparators string
+
+	// Split album policy
+	// For all possible factors, see `consts.SplitAlbumByXXX`
+	// The order of policy doesn't matter
+	SplitAlbumPolicy string
 }
 
 type lastfmOptions struct {
@@ -430,7 +434,7 @@ func init() {
 
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
-	viper.SetDefault("scanner.groupalbumreleases", false)
+	viper.SetDefault("scanner.splitalbumpolicy", consts.SplitAlbumDefaultPolicy)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
