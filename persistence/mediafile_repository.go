@@ -103,18 +103,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res, err
 }
 
-func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
-	sel := r.newSelect().Columns("*").Where(Like{"path": path})
-	var res model.MediaFiles
-	if err := r.queryAll(sel, &res); err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, model.ErrNotFound
-	}
-	return &res[0], nil
-}
-
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"path collate nocase": paths})
 	var res model.MediaFiles

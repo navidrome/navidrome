@@ -260,11 +260,10 @@ type MediaFileRepository interface {
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
+	FindByPaths(paths []string) (MediaFiles, error)
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 	FindAllByPath(path string) (MediaFiles, error)
-	FindByPath(path string) (*MediaFile, error)
-	FindByPaths(paths []string) (MediaFiles, error)
 	FindPathsRecursively(basePath string) ([]string, error)
 	DeleteByPath(path string) (int64, error)
 
