@@ -93,12 +93,13 @@ var _ = Describe("Helpers", func() {
 		It("changes order columns to sort expression", func() {
 			sort := "ORDER_ALBUM_NAME asc"
 			mapped := mapSortOrder(sort)
-			Expect(mapped).To(Equal("coalesce(nullif(sort_album_name,''),order_album_name) asc"))
+			Expect(mapped).To(Equal("coalesce(nullif(sort_album_name,''),order_album_name) collate nocase asc"))
 		})
 		It("changes multiple order columns to sort expressions", func() {
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
 			mapped := mapSortOrder(sort)
-			Expect(mapped).To(Equal("compilation, coalesce(nullif(sort_title,''),order_title) asc, coalesce(nullif(sort_album_artist_name,''),order_album_artist_name) desc, year desc"))
+			Expect(mapped).To(Equal(`compilation, coalesce(nullif(sort_title,''),order_title) collate nocase asc,` +
+				` coalesce(nullif(sort_album_artist_name,''),order_album_artist_name) collate nocase desc, year desc`))
 		})
 	})
 })

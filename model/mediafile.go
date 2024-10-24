@@ -140,7 +140,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.AlbumArtist = m.AlbumArtist
 		a.AlbumArtistID = m.AlbumArtistID
 		a.SortAlbumName = m.SortAlbumName
-		a.SortArtistName = m.SortArtistName
 		a.SortAlbumArtistName = m.SortAlbumArtistName
 		a.OrderAlbumName = m.OrderAlbumName
 		a.OrderAlbumArtistName = m.OrderAlbumArtistName
