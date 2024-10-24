@@ -11,9 +11,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// When creating migrations that change existing columns, it is easy to miss the original collation of the column.
-// These tests enforce that the required collation of the columns and indexes in the database are set correctly.
-// This is important to ensure that the database can perform case-insensitive searches and sorts.
+// When creating migrations that change existing columns, it is easy to miss the original collation of a column.
+// These tests enforce that the required collation of the columns and indexes in the database are kept in place.
+// This is important to ensure that the database can perform fast case-insensitive searches and sorts.
 var _ = Describe("Collation", func() {
 	conn := db.Db().ReadDB()
 	DescribeTable("Column collation",
@@ -68,6 +68,11 @@ order by %[2]s`, table, column))
 	}
 	defer rows.Close()
 
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+
 	if rows.Next() {
 		var dummy int
 		var detail string
@@ -90,6 +95,11 @@ func checkCollation(conn *sql.DB, table string, column string) error {
 		return err
 	}
 	defer rows.Close()
+
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
 
 	if rows.Next() {
 		var res string
