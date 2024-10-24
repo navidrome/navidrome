@@ -7,21 +7,23 @@ type Artist struct {
 
 	ID                    string     `structs:"id" json:"id"`
 	Name                  string     `structs:"name" json:"name"`
-	AlbumCount            int        `structs:"album_count" json:"albumCount"`
-	SongCount             int        `structs:"song_count" json:"songCount"`
-	Genres                Genres     `structs:"-" json:"genres"`
-	FullText              string     `structs:"full_text" json:"-"`
 	SortArtistName        string     `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
-	OrderArtistName       string     `structs:"order_artist_name" json:"orderArtistName"`
-	Size                  int64      `structs:"size" json:"size"`
+	OrderArtistName       string     `structs:"order_artist_name" json:"orderArtistName,omitempty"`
 	MbzArtistID           string     `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"`
+	Size                  int64      `structs:"-" json:"size,omitempty"`
+	AlbumCount            int        `structs:"-" json:"albumCount,omitempty"`
+	SongCount             int        `structs:"-" json:"songCount,omitempty"`
+	Genres                Genres     `structs:"-" json:"genres,omitempty"`
 	Biography             string     `structs:"biography" json:"biography,omitempty"`
 	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty"`
 	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty"`
 	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty"`
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
 	SimilarArtists        Artists    `structs:"similar_artists"  json:"-"`
-	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
+	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt,omitempty"`
+
+	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Oldest CreatedAt for all songs for this artist
+	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Newest UpdatedAt for all songs for this artist
 }
 
 func (a Artist) ArtistImageUrl() string {
