@@ -89,5 +89,5 @@ var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 // It finds order column names anywhere in the substring
 func mapSortOrder(order string) string {
 	order = strings.ToLower(order)
-	return sortOrderRegex.ReplaceAllString(order, "coalesce(nullif(sort_$1,''),order_$1) collate nocase")
+	return sortOrderRegex.ReplaceAllString(order, "(coalesce(nullif(sort_$1,''),order_$1) collate nocase)")
 }
