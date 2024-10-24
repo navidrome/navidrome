@@ -64,6 +64,7 @@ changelog:
   filters:
     exclude:
       - "^test:"
+      - "^refactor:"
       - Merge pull request
       - Merge remote-tracking branch
       - Merge branch
