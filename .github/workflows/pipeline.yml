@@ -396,12 +396,19 @@ jobs:
       - name: Upload each file as an artifact
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           ls -lR ./dist
           cd dist
           for file in `ls`; do
             echo "Uploading $file"
-            gh release upload "$GITHUB_REF" "./$file" --repo "$GITHUB_REPOSITORY"
+            gh api \
+              -X POST \
+              -H "Accept: application/vnd.github.v3+json" \
+              "/repos/$REPO/actions/runs/$RUN_ID/artifacts" \
+              -F name="$file" \
+              -F file=@"$file"
           done
 
       - name: Delete all-packages artifact
