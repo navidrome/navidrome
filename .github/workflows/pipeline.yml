@@ -386,9 +386,8 @@ jobs:
         name: Export list of generated packages
         run: |
           cd dist
-          FILES=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_//' | tr ' ' '\n')
-          echo $FILES
-          ITEMS=$(echo $FILES | jq -R -s -c 'split("\n")[:-1]')
+          set +x
+          ITEMS=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_//' | jq -R -s -c 'split("\n")[:-1]')
           echo $ITEMS
           echo "package_list=${ITEMS}" >> $GITHUB_OUTPUT
 
