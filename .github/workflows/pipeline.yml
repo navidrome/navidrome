@@ -380,9 +380,12 @@ jobs:
         id: list_files
         run: |
           cd dist
-          files=$(find . -maxdepth 1 -type f -name 'navidrome_v*' -printf '%f\n')
-          files_json=$(printf '%s\n' "$files" | jq -R . | jq -s .)
-          echo "files=$files_json" >> $GITHUB_OUTPUT
+          files=$(find . -maxdepth 1 -type f -name 'navidrome_v*' -printf '%f\n' | jq -R . | jq -s .)
+          # Escape special characters
+          files_escaped="${files//'%'/'%25'}"
+          files_escaped="${files_escaped//$'\n'/'%0A'}"
+          files_escaped="${files_escaped//$'\r'/'%0D'}"
+          echo "files=$files_escaped" >> $GITHUB_OUTPUT
 
       - name: Upload all-packages artifact
         uses: actions/upload-artifact@v4
