@@ -113,6 +113,12 @@ var svcInstance = sync.OnceValue(func() service.Service {
 	options["UserService"] = false
 	options["LogDirectory"] = conf.Server.DataFolder
 	options["SystemdScript"] = systemdScript
+	if conf.Server.LogFile != "" {
+		options["LogOutput"] = false
+	} else {
+		options["LogOutput"] = true
+		options["LogDirectory"] = conf.Server.DataFolder
+	}
 	svcConfig := &service.Config{
 		UserName:    installUser,
 		Name:        "navidrome",
@@ -161,7 +167,11 @@ func buildInstallCmd() *cobra.Command {
 		println("  working directory: " + executablePath())
 		println("  music folder:      " + conf.Server.MusicFolder)
 		println("  data folder:       " + conf.Server.DataFolder)
-		println("  logs folder:       " + conf.Server.DataFolder)
+		if conf.Server.LogFile != "" {
+			println("  log file:          " + conf.Server.LogFile)
+		} else {
+			println("  logs folder:       " + conf.Server.DataFolder)
+		}
 		if cfgFile != "" {
 			conf.Server.ConfigFile, err = filepath.Abs(cfgFile)
 			if err != nil {

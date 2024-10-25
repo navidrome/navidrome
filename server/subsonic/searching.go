@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -89,9 +90,8 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	searchResult2 := &responses.SearchResult2{}
-	searchResult2.Artist = make([]responses.Artist, len(as))
-	for i, artist := range as {
-		searchResult2.Artist[i] = responses.Artist{
+	searchResult2.Artist = slice.Map(as, func(artist model.Artist) responses.Artist {
+		a := responses.Artist{
 			Id:             artist.ID,
 			Name:           artist.Name,
 			AlbumCount:     int32(artist.AlbumCount),
@@ -100,11 +100,12 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			ArtistImageUrl: public.ImageURL(r, artist.CoverArtID(), 600),
 		}
 		if artist.Starred {
-			searchResult2.Artist[i].Starred = as[i].StarredAt
+			a.Starred = artist.StarredAt
 		}
-	}
-	searchResult2.Album = childrenFromAlbums(ctx, als)
-	searchResult2.Song = childrenFromMediaFiles(ctx, mfs)
+		return a
+	})
+	searchResult2.Album = slice.MapWithArg(als, ctx, childFromAlbum)
+	searchResult2.Song = slice.MapWithArg(mfs, ctx, childFromMediaFile)
 	response.SearchResult2 = searchResult2
 	return response, nil
 }
@@ -119,12 +120,9 @@ func (api *Router) Search3(r *http.Request) (*responses.Subsonic, error) {
 
 	response := newResponse()
 	searchResult3 := &responses.SearchResult3{}
-	searchResult3.Artist = make([]responses.ArtistID3, len(as))
-	for i, artist := range as {
-		searchResult3.Artist[i] = toArtistID3(r, artist)
-	}
-	searchResult3.Album = buildAlbumsID3(ctx, als)
-	searchResult3.Song = childrenFromMediaFiles(ctx, mfs)
+	searchResult3.Artist = slice.MapWithArg(as, r, toArtistID3)
+	searchResult3.Album = slice.MapWithArg(als, ctx, buildAlbumID3)
+	searchResult3.Song = slice.MapWithArg(mfs, ctx, childFromMediaFile)
 	response.SearchResult3 = searchResult3
 	return response, nil
 }

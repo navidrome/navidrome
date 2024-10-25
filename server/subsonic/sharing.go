@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
@@ -43,9 +44,9 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 		resp.Description = share.Contents
 	}
 	if len(share.Albums) > 0 {
-		resp.Entry = childrenFromAlbums(r.Context(), share.Albums)
+		resp.Entry = slice.MapWithArg(share.Albums, r.Context(), childFromAlbum)
 	} else {
-		resp.Entry = childrenFromMediaFiles(r.Context(), share.Tracks)
+		resp.Entry = slice.MapWithArg(share.Tracks, r.Context(), childFromMediaFile)
 	}
 	return resp
 }

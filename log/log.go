@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
-	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -126,6 +126,13 @@ func SetRedacting(enabled bool) {
 	if enabled {
 		defaultLogger.AddHook(redacted)
 	}
+}
+
+func SetOutput(w io.Writer) {
+	if runtime.GOOS == "windows" {
+		w = CRLFWriter(w)
+	}
+	defaultLogger.SetOutput(w)
 }
 
 // Redact applies redaction to a single string
@@ -269,12 +276,7 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 				case time.Duration:
 					logger = logger.WithField(name, ShortDur(v))
 				case fmt.Stringer:
-					vOf := reflect.ValueOf(v)
-					if vOf.Kind() == reflect.Pointer && vOf.IsNil() {
-						logger = logger.WithField(name, "nil")
-					} else {
-						logger = logger.WithField(name, v.String())
-					}
+					logger = logger.WithField(name, StringerValue(v))
 				default:
 					logger = logger.WithField(name, v)
 				}

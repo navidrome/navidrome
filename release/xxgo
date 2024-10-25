@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Use sed to extract the value of the -o parameter
+output=$(echo "$@" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
+
+# Ensure the directory part of the output exists
+mkdir -p "$(dirname "$output")"
+
+# Build the source folder name based on GOOS, GOARCH and GOARM.
+source="${GOOS}_${GOARCH}"
+if [ "$GOARCH" = "arm" ]; then
+    source="${source}_${GOARM}"
+fi
+
+# Copy the output to the desired location
+cp binaries/"${source}"/navidrome* "$output"

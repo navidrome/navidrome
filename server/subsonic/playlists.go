@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
@@ -20,12 +21,10 @@ func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 		log.Error(r, err)
 		return nil, err
 	}
-	playlists := make([]responses.Playlist, len(allPls))
-	for i, p := range allPls {
-		playlists[i] = *api.buildPlaylist(p)
-	}
 	response := newResponse()
-	response.Playlists = &responses.Playlists{Playlist: playlists}
+	response.Playlists = &responses.Playlists{
+		Playlist: slice.Map(allPls, api.buildPlaylist),
+	}
 	return response, nil
 }
 
@@ -51,7 +50,10 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 	}
 
 	response := newResponse()
-	response.Playlist = api.buildPlaylistWithSongs(ctx, pls)
+	response.Playlist = &responses.PlaylistWithSongs{
+		Playlist: api.buildPlaylist(*pls),
+	}
+	response.Playlist.Entry = slice.MapWithArg(pls.MediaFiles(), ctx, childFromMediaFile)
 	return response, nil
 }
 
@@ -156,16 +158,8 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 	return newResponse(), nil
 }
 
-func (api *Router) buildPlaylistWithSongs(ctx context.Context, p *model.Playlist) *responses.PlaylistWithSongs {
-	pls := &responses.PlaylistWithSongs{
-		Playlist: *api.buildPlaylist(*p),
-	}
-	pls.Entry = childrenFromMediaFiles(ctx, p.MediaFiles())
-	return pls
-}
-
-func (api *Router) buildPlaylist(p model.Playlist) *responses.Playlist {
-	pls := &responses.Playlist{}
+func (api *Router) buildPlaylist(p model.Playlist) responses.Playlist {
+	pls := responses.Playlist{}
 	pls.Id = p.ID
 	pls.Name = p.Name
 	pls.Comment = p.Comment

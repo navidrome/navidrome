@@ -27,6 +27,10 @@ var _ = Describe("ffmpeg", func() {
 			args := createFFmpegCommand("ffmpeg -i %s -b:a %bk mp3 -", "/music library/file.mp3", 123, 0)
 			Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
 		})
+		It("handles extra spaces in the command string", func() {
+			args := createFFmpegCommand("ffmpeg    -i %s -b:a    %bk      mp3 -", "/music library/file.mp3", 123, 0)
+			Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/file.mp3", "-b:a", "123k", "mp3", "-"}))
+		})
 		Context("when command has time offset param", func() {
 			It("creates a valid command line with offset", func() {
 				args := createFFmpegCommand("ffmpeg -i %s -b:a %bk -ss %t mp3 -", "/music library/file.mp3", 123, 456)
@@ -46,6 +50,19 @@ var _ = Describe("ffmpeg", func() {
 		It("creates a valid command line", func() {
 			args := createProbeCommand(probeCmd, []string{"/music library/one.mp3", "/music library/two.mp3"})
 			Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
+		})
+	})
+
+	When("ffmpegPath is set", func() {
+		It("returns the correct ffmpeg path", func() {
+			ffmpegPath = "/usr/bin/ffmpeg"
+			args := createProbeCommand(probeCmd, []string{"one.mp3"})
+			Expect(args).To(Equal([]string{"/usr/bin/ffmpeg", "-i", "one.mp3", "-f", "ffmetadata"}))
+		})
+		It("returns the correct ffmpeg path with spaces", func() {
+			ffmpegPath = "/usr/bin/with spaces/ffmpeg.exe"
+			args := createProbeCommand(probeCmd, []string{"one.mp3"})
+			Expect(args).To(Equal([]string{"/usr/bin/with spaces/ffmpeg.exe", "-i", "one.mp3", "-f", "ffmetadata"}))
 		})
 	})
 })

@@ -33,6 +33,20 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("MapWithArg", func() {
+		It("returns empty slice for an empty input", func() {
+			mapFunc := func(a int, v int) string { return strconv.Itoa(a + v) }
+			result := slice.MapWithArg([]int{}, 10, mapFunc)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns a new slice with elements mapped", func() {
+			mapFunc := func(a int, v int) string { return strconv.Itoa(a + v) }
+			result := slice.MapWithArg([]int{1, 2, 3, 4}, 10, mapFunc)
+			Expect(result).To(ConsistOf("11", "12", "13", "14"))
+		})
+	})
+
 	Describe("Group", func() {
 		It("returns empty map for an empty input", func() {
 			keyFunc := func(v int) int { return v % 2 }
