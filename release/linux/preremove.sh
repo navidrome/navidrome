@@ -3,7 +3,8 @@
 postinstall_flag="/var/lib/navidrome/.installed"
 
 if [ -f "$postinstall_flag" ]; then
-    navidrome service uninstall
+    # If this fails, ignore it
+    navidrome service uninstall || :
     rm "$postinstall_flag"
 
     printf "The following may still be present (especially if you have not done a purge):\n"
