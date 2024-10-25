@@ -45,8 +45,6 @@ nfpms:
 
     license: GPL-3.0
     formats:
-      - archlinux
-      - apk
       - deb
       - rpm
 
