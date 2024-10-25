@@ -376,17 +376,6 @@ jobs:
 
       - run: rm ./dist/*.tar.gz ./dist/*.zip
 
-      - name: List files
-        id: list_files
-        run: |
-          cd dist
-          files=$(find . -maxdepth 1 -type f -name 'navidrome_v*' -printf '%f\n' | jq -R . | jq -s .)
-          # Escape special characters
-          files_escaped="${files//'%'/'%25'}"
-          files_escaped="${files_escaped//$'\n'/'%0A'}"
-          files_escaped="${files_escaped//$'\r'/'%0D'}"
-          echo "files=$files_escaped" >> $GITHUB_OUTPUT
-
       - name: Upload all-packages artifact
         uses: actions/upload-artifact@v4
         with:
@@ -394,24 +383,26 @@ jobs:
           path: dist/navidrome_v*
 
   upload-packages:
-    name: Upload package ${{ matrix.file }}
+    name: Upload Linux packages
     runs-on: ubuntu-latest
     needs: [release]
-    strategy:
-      matrix:
-        file: ${{ fromJson(needs.release.outputs.list_files) }}
     steps:
-      - name: download packages artifact
+      - name: Download all-packages artifact
         uses: actions/download-artifact@v4
         with:
           name: packages
           path: ./dist
 
       - name: Upload each file as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.file }}
-          path: ./dist/${{ matrix.file }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -lR ./dist
+          cd dist
+          for file in `ls`; do
+            echo "Uploading $file"
+            gh release upload "$GITHUB_REF" "./$file" --repo "$GITHUB_REPOSITORY"
+          done
 
       - name: Delete all-packages artifact
         env:
