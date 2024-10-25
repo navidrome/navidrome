@@ -387,12 +387,12 @@ jobs:
         run: |
           cd dist
           set +x
-          ITEMS=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_//' | jq -R -s -c 'split("\n")[:-1]')
+          ITEMS=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_linux_//' | jq -R -s -c 'split("\n")[:-1]')
           echo $ITEMS
           echo "package_list=${ITEMS}" >> $GITHUB_OUTPUT
 
   upload-packages:
-    name: Upload Linux packages
+    name: Upload Linux PKG
     runs-on: ubuntu-latest
     needs: [release]
     strategy:
@@ -408,8 +408,8 @@ jobs:
       - name: Upload all-packages artifact
         uses: actions/upload-artifact@v4
         with:
-          name: navidrome_${{ matrix.item }}
-          path: dist/navidrome_v*_${{ matrix.item }}
+          name: navidrome_linux_${{ matrix.item }}
+          path: dist/navidrome_v*_linux_${{ matrix.item }}
 
 #  delete-artifacts:
 #    name: Delete unused artifacts
