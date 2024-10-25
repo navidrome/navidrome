@@ -62,7 +62,7 @@ type ArtistSimilarRetriever interface {
 }
 
 type ArtistImageRetriever interface {
-	GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error)
+	GetArtistImages(ctx context.Context, id, name, sortName, mbid string) ([]ExternalImage, error)
 }
 
 type ArtistTopSongsRetriever interface {
