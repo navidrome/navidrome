@@ -171,7 +171,7 @@ nfpms:
           - "(ffmpeg or ffmpeg-free)"
 
     contents:
-      - src: packaging/linux/navidrome.toml
+      - src: release/linux/navidrome.toml
         dst: /etc/navidrome/navidrome.toml
         type: "config|noreplace"
         file_info:
@@ -192,9 +192,9 @@ nfpms:
           group: navidrome
 
     scripts:
-      preinstall: "packaging/linux/preinstall.sh"
-      postinstall: "packaging/linux/postinstall.sh"
-      postremove: "packaging/linux/postremove.sh"
+      preinstall: "release/linux/preinstall.sh"
+      postinstall: "release/linux/postinstall.sh"
+      postremove: "release/linux/postremove.sh"
 
 changelog:
   sort: asc

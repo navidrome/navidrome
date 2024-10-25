@@ -71,41 +71,6 @@ func (p *svcControl) Stop(service.Service) error {
 	return nil
 }
 
-const systemdScript = `[Unit]
-Description={{.Description}}
-ConditionFileIsExecutable={{.Path|cmdEscape}}
-{{range $i, $dep := .Dependencies}} 
-{{$dep}} {{end}}
-
-[Service]
-StartLimitInterval=5
-StartLimitBurst=10
-ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
-{{if .WorkingDirectory}}WorkingDirectory={{.WorkingDirectory|cmdEscape}}{{end}}
-{{if .UserName}}User={{.UserName}}{{end}}
-{{if .Restart}}Restart={{.Restart}}{{end}}
-{{if .SuccessExitStatus}}SuccessExitStatus={{.SuccessExitStatus}}{{end}}
-TimeoutStopSec=20
-RestartSec=120
-EnvironmentFile=-/etc/sysconfig/{{.Name}}
-
-DevicePolicy=closed
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectControlGroups=yes
-ProtectKernelModules=yes
-ProtectKernelTunables=yes
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-RestrictNamespaces=yes
-RestrictRealtime=yes
-SystemCallFilter=~@clock @debug @module @mount @obsolete @reboot @setuid @swap
-{{if .WorkingDirectory}}ReadWritePaths={{.WorkingDirectory|cmdEscape}}{{end}}
-ProtectSystem=full
-
-[Install]
-WantedBy=multi-user.target
-`
-
 var svcInstance = sync.OnceValue(func() service.Service {
 	options := make(service.KeyValue)
 	options["Restart"] = "on-failure"
@@ -265,3 +230,38 @@ func buildExecuteCmd() *cobra.Command {
 		},
 	}
 }
+
+const systemdScript = `[Unit]
+Description={{.Description}}
+ConditionFileIsExecutable={{.Path|cmdEscape}}
+{{range $i, $dep := .Dependencies}} 
+{{$dep}} {{end}}
+
+[Service]
+StartLimitInterval=5
+StartLimitBurst=10
+ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
+{{if .WorkingDirectory}}WorkingDirectory={{.WorkingDirectory|cmdEscape}}{{end}}
+{{if .UserName}}User={{.UserName}}{{end}}
+{{if .Restart}}Restart={{.Restart}}{{end}}
+{{if .SuccessExitStatus}}SuccessExitStatus={{.SuccessExitStatus}}{{end}}
+TimeoutStopSec=20
+RestartSec=120
+EnvironmentFile=-/etc/sysconfig/{{.Name}}
+
+DevicePolicy=closed
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallFilter=~@clock @debug @module @mount @obsolete @reboot @setuid @swap
+{{if .WorkingDirectory}}ReadWritePaths={{.WorkingDirectory|cmdEscape}}{{end}}
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+`
