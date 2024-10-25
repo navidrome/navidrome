@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -23,6 +24,11 @@ type (
 		ImagesUpdatedAt time.Time
 		HasPlaylist     bool
 		AudioFilesCount uint32
+		externalTagsStats
+	}
+	externalTagsStats struct {
+		ExternalTagsPaths     []string
+		ExternalTagsUpdatedAt time.Time
 	}
 )
 
@@ -32,7 +38,7 @@ func walkDirTree(ctx context.Context, rootFolder string) (<-chan dirStats, <-cha
 	go func() {
 		defer close(results)
 		defer close(errC)
-		err := walkFolder(ctx, rootFolder, rootFolder, results)
+		err := walkFolder(ctx, rootFolder, rootFolder, externalTagsStats{}, results)
 		if err != nil {
 			log.Error(ctx, "There were errors reading directories from filesystem", "path", rootFolder, err)
 			errC <- err
@@ -42,13 +48,13 @@ func walkDirTree(ctx context.Context, rootFolder string) (<-chan dirStats, <-cha
 	return results, errC
 }
 
-func walkFolder(ctx context.Context, rootPath string, currentFolder string, results chan<- dirStats) error {
-	children, stats, err := loadDir(ctx, currentFolder)
+func walkFolder(ctx context.Context, rootPath string, currentFolder string, extTags externalTagsStats, results chan<- dirStats) error {
+	children, stats, err := loadDir(ctx, currentFolder, extTags)
 	if err != nil {
 		return err
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, rootPath, c, results)
+		err := walkFolder(ctx, rootPath, c, stats.externalTagsStats, results)
 		if err != nil {
 			return err
 		}
@@ -63,9 +69,11 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 	return nil
 }
 
-func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
+func loadDir(ctx context.Context, dirPath string, extTags externalTagsStats) ([]string, *dirStats, error) {
 	var children []string
-	stats := &dirStats{}
+	stats := &dirStats{
+		externalTagsStats: extTags,
+	}
 
 	dirInfo, err := os.Stat(dirPath)
 	if err != nil {
@@ -108,6 +116,11 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 				stats.Images = append(stats.Images, entry.Name())
 				if fileInfo.ModTime().After(stats.ImagesUpdatedAt) {
 					stats.ImagesUpdatedAt = fileInfo.ModTime()
+				}
+			case model.IsTagsFile(entry.Name()):
+				stats.ExternalTagsPaths = append(stats.ExternalTagsPaths, path.Join(dirPath, entry.Name()))
+				if fileInfo.ModTime().After(stats.ExternalTagsUpdatedAt) {
+					stats.ExternalTagsUpdatedAt = fileInfo.ModTime()
 				}
 			}
 		}
