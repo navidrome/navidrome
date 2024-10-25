@@ -383,9 +383,13 @@ jobs:
           path: dist/navidrome_v*
 
       - id: set-package-list
+        name: Export list of generated packages
         run: |
           cd dist
-          ITEMS=$(ls navidrome_v* | jq -R -s -c 'split("\n")[:-1]')
+          FILES=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_//')
+          echo $FILES
+          ITEMS=$(echo $FILES | jq -R -s -c 'split("\n")[:-1]')
+          echo $ITEMS
           echo "package_list=${ITEMS}" >> $GITHUB_OUTPUT
 
   upload-packages:
@@ -405,18 +409,18 @@ jobs:
       - name: Upload all-packages artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.item }}
-          path: dist/${{ matrix.item }}
+          name: navidrome_${{ matrix.item }}
+          path: dist/navidrome_v*_${{ matrix.item }}
 
-  delete-artifacts:
-    name: Delete unused artifacts
-    runs-on: ubuntu-latest
-    needs: [upload-packages]
-    steps:
-      - name: Delete all-packages artifact
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("packages")) | .id'); do
-            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
-          done
+#  delete-artifacts:
+#    name: Delete unused artifacts
+#    runs-on: ubuntu-latest
+#    needs: [upload-packages]
+#    steps:
+#      - name: Delete all-packages artifact
+#        env:
+#          GH_TOKEN: ${{ github.token }}
+#        run: |
+#          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("packages")) | .id'); do
+#            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
+#          done
