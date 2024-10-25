@@ -342,7 +342,7 @@ jobs:
 
   release:
     name: Release
-    needs: [build, msi, push-manifest]
+    needs: [build, msi]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
