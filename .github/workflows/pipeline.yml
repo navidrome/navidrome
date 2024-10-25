@@ -166,8 +166,7 @@ jobs:
 
   build:
     name: Build
-#    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
-    needs: [git-version, check-push-enabled]
+    needs: [js, go, go-lint, i18n-lint, git-version, check-push-enabled]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -341,7 +340,7 @@ jobs:
           retention-days: 7
 
   release:
-    name: Release
+    name: Package/Release
     needs: [build, msi]
     runs-on: ubuntu-latest
     outputs:
@@ -372,9 +371,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: ls -l ./dist
-
-      - run: rm ./dist/*.tar.gz ./dist/*.zip
+      - name: Remove build artifacts
+        run: |
+          ls -l ./dist
+          rm ./dist/*.tar.gz ./dist/*.zip
 
       - name: Upload all-packages artifact
         uses: actions/upload-artifact@v4
@@ -408,10 +408,15 @@ jobs:
           name: ${{ matrix.item }}
           path: dist/${{ matrix.item }}
 
-#      - name: Delete all-packages artifact
-#        env:
-#          GH_TOKEN: ${{ github.token }}
-#        run: |
-#          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("packages")) | .id'); do
-#            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
-#          done
+  delete-artifacts:
+    name: Delete unused artifacts
+    runs-on: ubuntu-latest
+    needs: [upload-packages]
+    steps:
+      - name: Delete all-packages artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("packages")) | .id'); do
+            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
+          done
