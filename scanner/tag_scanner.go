@@ -108,7 +108,13 @@ func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool,
 	var changedDirs []string
 	s.cnt = &counters{}
 	genres := newCachedGenreRepository(ctx, s.ds.Genre(ctx))
-	s.mapper = NewMediaFileMapper(s.lib.Path, genres)
+
+	useMbzIds, err := s.ds.Property(ctx).DefaultGetBool(model.PropUsingMbzIDs, false)
+	if err != nil {
+		return 0, err
+	}
+
+	s.mapper = NewMediaFileMapper(s.lib.Path, genres, useMbzIds)
 	refresher := newRefresher(s.ds, s.cacheWarmer, s.lib, allFSDirs)
 
 	log.Trace(ctx, "Loading directory tree from music folder", "folder", s.lib.Path)

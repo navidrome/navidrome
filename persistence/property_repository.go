@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
@@ -58,6 +60,19 @@ func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, 
 	return value, nil
 }
 
+func (r propertyRepository) DefaultGetBool(id string, defaultValue bool) (bool, error) {
+	val, err := r.DefaultGet(id, strconv.FormatBool(defaultValue))
+	if err != nil {
+		return false, err
+	}
+
+	return strconv.ParseBool(val)
+}
+
 func (r propertyRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
+}
+
+func (r propertyRepository) DeletePrefixed(prefix string) error {
+	return r.delete(Like{"id": strings.Replace(prefix, "%", "%%", -1) + "%"})
 }
