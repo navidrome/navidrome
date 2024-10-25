@@ -332,7 +332,6 @@ jobs:
           sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
           du -h binaries/msi/*.msi
 
-
       - name: Upload MSI files
         uses: actions/upload-artifact@v4
         with:
@@ -346,6 +345,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/download-artifact@v4
         with:

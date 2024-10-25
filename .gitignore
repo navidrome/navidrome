@@ -11,7 +11,7 @@ wiki
 TODO.md
 var
 navidrome.toml
-!contrib/navidrome.toml
+!release/linux/navidrome.toml
 master.zip
 testDB
 cache/*
