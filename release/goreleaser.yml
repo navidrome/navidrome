@@ -85,7 +85,7 @@ nfpms:
     scripts:
       preinstall: "release/linux/preinstall.sh"
       postinstall: "release/linux/postinstall.sh"
-      preremove: "release/linux/postremove.sh"
+      preremove: "release/linux/preremove.sh"
 
 release:
   draft: true
