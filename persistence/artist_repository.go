@@ -89,7 +89,7 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
 	sql = sql.Columns("ifnull(count(distinct mf.album_id), 0) as album_count",
 		"ifnull(count(distinct mf.id), 0) as song_count", "ifnull(sum(distinct mf.size), 0) as size").
-		// TODO Should Role be parameterized?
+		// BFR Should Role be parameterized?
 		//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
 		LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
 		LeftJoin("media_file mf on mfa.media_file_id = mf.id")
@@ -139,7 +139,7 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 }
 
 func (r *artistRepository) getIndexKey(a model.Artist) string {
-	source := a.Name
+	source := a.OrderArtistName
 	if conf.Server.PreferSortTags {
 		source = cmp.Or(a.SortArtistName, a.OrderArtistName)
 	}
