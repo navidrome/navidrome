@@ -1,3 +1,7 @@
+run:
+  build-tags:
+    - netgo
+
 linters:
   enable:
     - asasalint
