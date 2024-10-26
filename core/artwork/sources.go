@@ -80,14 +80,14 @@ func fromExternalFile(ctx context.Context, files string, pattern string) sourceF
 	}
 }
 
-func fromTag(ctx context.Context, path string) sourceFunc {
-	// These regexes are used to match the picture type in the file, in the order they are listed.
-	picTypeRegexes := []*regexp.Regexp{
-		regexp.MustCompile(`(?i).*cover.*front.*|.*front.*cover.*`),
-		regexp.MustCompile(`(?i).*front.*`),
-		regexp.MustCompile(`(?i).*cover.*`),
-	}
+// These regexes are used to match the picture type in the file, in the order they are listed.
+var picTypeRegexes = []*regexp.Regexp{
+	regexp.MustCompile(`(?i).*cover.*front.*|.*front.*cover.*`),
+	regexp.MustCompile(`(?i).*front.*`),
+	regexp.MustCompile(`(?i).*cover.*`),
+}
 
+func fromTag(ctx context.Context, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
 			return nil, "", nil
@@ -131,6 +131,7 @@ func fromTag(ctx context.Context, path string) sourceFunc {
 		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
 	}
 }
+
 func fromFFmpegTag(ctx context.Context, ffmpeg ffmpeg.FFmpeg, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
