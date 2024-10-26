@@ -33,6 +33,58 @@ checksum:
 snapshot:
   version_template: "{{ .Tag }}-SNAPSHOT"
 
+nfpms:
+  - id: navidrome
+    package_name: navidrome
+
+    homepage: https://navidrome.org
+    description: |-
+      🎧☁ Your Personal Streaming Service
+
+    maintainer: Deluan Quintão <deluan at navidrome.org>
+
+    license: GPL-3.0
+    formats:
+      - deb
+      - rpm
+
+    dependencies:
+      - ffmpeg
+
+    suggests:
+      - mpv
+
+    overrides:
+      rpm:
+        dependencies:
+          - "(ffmpeg or ffmpeg-free)"
+
+    contents:
+      - src: release/linux/navidrome.toml
+        dst: /etc/navidrome/navidrome.toml
+        type: "config|noreplace"
+        file_info:
+          mode: 0644
+          owner: navidrome
+          group: navidrome
+
+      - dst: /var/lib/navidrome
+        type: dir
+        file_info:
+          owner: navidrome
+          group: navidrome
+
+      - dst: /opt/navidrome/music
+        type: dir
+        file_info:
+          owner: navidrome
+          group: navidrome
+
+    scripts:
+      preinstall: "release/linux/preinstall.sh"
+      postinstall: "release/linux/postinstall.sh"
+      preremove: "release/linux/preremove.sh"
+
 release:
   draft: true
   mode: append
