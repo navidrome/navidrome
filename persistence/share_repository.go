@@ -23,10 +23,10 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 	r := &shareRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.registerModel(&model.Share{}, map[string]filterFunc{})
-	r.sortMappings = map[string]string{
+	r.registerModel(&model.Share{}, nil)
+	r.setSortMappings(map[string]string{
 		"username": "username",
-	}
+	})
 	return r
 }
 
