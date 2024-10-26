@@ -75,7 +75,7 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 //
 // If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
 // which gives precedence to sort tags.
-// Ex: order_title => coalesce(nullif(sort_title,”),order_title)
+// Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
 // To avoid performance issues, indexes should be created for these sort expressions
 func (r *sqlRepository) setSortMappings(mappings map[string]string) {
 	if conf.Server.PreferSortTags {

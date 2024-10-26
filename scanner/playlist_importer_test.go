@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -72,9 +73,9 @@ type mockedMediaFile struct {
 
 func (r *mockedMediaFile) FindByPaths(paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
-	for _, path := range paths {
+	for i, path := range paths {
 		mf := model.MediaFile{
-			ID:   "123",
+			ID:   strconv.Itoa(i),
 			Path: path,
 		}
 		mfs = append(mfs, mf)
