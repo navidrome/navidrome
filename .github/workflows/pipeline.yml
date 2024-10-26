@@ -102,7 +102,7 @@ jobs:
       - name: Test
         run: |
           pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -race -cover ./... -v
+          go test -shuffle=on -tags netgo -race -cover ./... -v
 
   js:
     name: Test JS code
