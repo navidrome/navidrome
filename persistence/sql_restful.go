@@ -36,7 +36,7 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 		}
 		// Ignore invalid filters (not based on a field or filter function)
 		if r.isFieldWhiteListed != nil && !r.isFieldWhiteListed(f) {
-			log.Warn(ctx, "Ignoring filter not whitelisted", "filter", f)
+			log.Warn(ctx, "Ignoring filter not whitelisted", "filter", f, "table", r.tableName)
 			continue
 		}
 		// For fields ending in "id", use an exact match
@@ -72,7 +72,7 @@ func (r sqlRepository) sanitizeSort(sort, order string) (string, string) {
 			sort = mapped
 		} else {
 			if !r.isFieldWhiteListed(sort) {
-				log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort)
+				log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort, "table", r.tableName)
 				sort = ""
 			}
 		}

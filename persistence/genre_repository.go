@@ -22,6 +22,9 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 	r.registerModel(&model.Tag{}, map[string]filterFunc{
 		"name": containsFilter("tag_value"),
 	})
+	r.setSortMappings(map[string]string{
+		"name": "tag_name",
+	})
 	return r
 }
 

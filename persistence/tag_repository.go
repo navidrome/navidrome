@@ -18,6 +18,7 @@ func NewTagRepository(ctx context.Context, db dbx.Builder) model.TagRepository {
 	r.ctx = ctx
 	r.db = db
 	r.tableName = "tag"
+	r.registerModel(&model.Tag{}, nil)
 	return r
 }
 
