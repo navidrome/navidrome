@@ -25,13 +25,15 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.db = r.db
 	p.tableName = "playlist_tracks"
 	p.registerModel(&model.PlaylistTrack{}, nil)
-	p.setSortMappings(map[string]string{
-		"id":       "playlist_tracks.id",
-		"artist":   "order_artist_name",
-		"album":    "order_album_name, order_album_artist_name",
-		"title":    "order_title",
-		"duration": "duration", // To make sure the field will be whitelisted
-	})
+	p.setSortMappings(
+		map[string]string{
+			"id":       "playlist_tracks.id",
+			"artist":   "order_artist_name",
+			"album":    "order_album_name, order_album_artist_name",
+			"title":    "order_title",
+			"duration": "duration", // To make sure the field will be whitelisted
+		},
+		"f") // TODO I don't like this solution, but I won't change it now as it's not the focus of BFR.
 
 	pls, err := r.Get(playlistId)
 	if err != nil {
@@ -71,7 +73,7 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 	return &trk, err
 }
 
-// This is a "hack" to allow loadAllGenres to work with playlist tracks. Will be removed once we have a new
+// BFR This is a "hack" to allow loadAllGenres to work with playlist tracks. Will be removed once we have a new
 // one-to-many relationship solution
 func (r *playlistTrackRepository) getTableName() string {
 	return "media_file"

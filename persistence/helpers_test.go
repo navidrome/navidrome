@@ -87,19 +87,20 @@ var _ = Describe("Helpers", func() {
 	Describe("mapSortOrder", func() {
 		It("does not change the sort string if there are no order columns", func() {
 			sort := "album_name asc"
-			mapped := mapSortOrder(sort)
+			mapped := mapSortOrder("album", sort)
 			Expect(mapped).To(Equal(sort))
 		})
 		It("changes order columns to sort expression", func() {
 			sort := "ORDER_ALBUM_NAME asc"
-			mapped := mapSortOrder(sort)
-			Expect(mapped).To(Equal("(coalesce(nullif(sort_album_name,''),order_album_name) collate nocase) asc"))
+			mapped := mapSortOrder("album", sort)
+			Expect(mapped).To(Equal(`(coalesce(nullif(album.sort_album_name,''),album.order_album_name)` +
+				` collate nocase) asc`))
 		})
 		It("changes multiple order columns to sort expressions", func() {
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
-			mapped := mapSortOrder(sort)
-			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(sort_title,''),order_title) collate nocase) asc,` +
-				` (coalesce(nullif(sort_album_artist_name,''),order_album_artist_name) collate nocase) desc, year desc`))
+			mapped := mapSortOrder("album", sort)
+			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
+				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
 		})
 	})
 })

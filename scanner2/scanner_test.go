@@ -230,6 +230,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		Describe("Library changes'", func() {
 			var help, revolver func(...map[string]any) *fstest.MapFile
 			var fsys storagetest.FakeFS
+			var findByPath func(string) (*model.MediaFile, error)
 
 			BeforeEach(func() {
 				By("Having two MP3 albums")
@@ -245,6 +246,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				By("Doing a full scan")
 				Expect(s.RescanAll(ctx, true)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+				findByPath = createFindByPath(ctx, ds)
 			})
 
 			It("adds new files to the library", func() {
@@ -252,7 +254,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(5)))
-				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+				mf, _ := findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
 				Expect(mf.Title).To(Equal("I'm Only Sleeping"))
 			})
 
@@ -261,7 +263,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
-				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				mf, _ := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(mf.Title).To(Equal("Eleanor Rigby (remix)"))
 			})
 
@@ -270,7 +272,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
-				mf, _ := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/01 - Taxman.mp3")
+				mf, _ := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
 				Expect(mf.BitRate).To(Equal(640))
 			})
 
@@ -285,14 +287,14 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(3)))
-				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Missing).To(BeTrue())
 			})
 
 			It("detects a file was moved to a different folder", func() {
 				By("Storing the original ID")
-				original, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				originalId := original.ID
 
@@ -306,14 +308,14 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(4)))
-				_, err = ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).To(MatchError(model.ErrNotFound))
 
 				By("Checking the new file is in the library")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": true},
 				})).To(BeZero())
-				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
+				mf, err := findByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Title).To(Equal("Eleanor Rigby"))
 				Expect(mf.Missing).To(BeFalse())
@@ -324,7 +326,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			It("detects file format upgrades", func() {
 				By("Storing the original ID")
-				original, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				originalId := original.ID
 
@@ -338,14 +340,14 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": true},
 				})).To(BeZero())
-				_, err = ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).To(MatchError(model.ErrNotFound))
 
 				By("Checking the new file is in the library")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(4)))
-				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.flac")
+				mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.flac")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Title).To(Equal("Eleanor Rigby"))
 				Expect(mf.Missing).To(BeFalse())
@@ -365,7 +367,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(3)))
-				mf, err := ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Missing).To(BeTrue())
 
@@ -379,7 +381,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(4)))
-				mf, err = ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				mf, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Missing).To(BeFalse())
 
@@ -390,7 +392,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 
 				By("Checking the file is marked as missing")
-				mf, err = ds.MediaFile(ctx).FindByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+				mf, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Missing).To(BeTrue())
 
@@ -404,10 +406,23 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
 					Filters: squirrel.Eq{"missing": false},
 				})).To(Equal(int64(4)))
-				mf, err = ds.MediaFile(ctx).FindByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
+				mf, err = findByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Missing).To(BeFalse())
 			})
 		})
 	})
 })
+
+func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {
+	return func(path string) (*model.MediaFile, error) {
+		list, err := ds.MediaFile(ctx).FindByPaths([]string{path})
+		if err != nil {
+			return nil, err
+		}
+		if len(list) == 0 {
+			return nil, model.ErrNotFound
+		}
+		return &list[0], nil
+	}
+}

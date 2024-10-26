@@ -66,5 +66,11 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.ArtistID = mf.Participations.First(model.RoleArtist).ID
 	mf.AlbumArtistID = mf.Participations.First(model.RoleAlbumArtist).ID
 
+	// BFR What to do with sort/order artist names?
+	mf.OrderArtistName = mf.Participations.First(model.RoleArtist).OrderArtistName
+	mf.OrderAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).OrderArtistName
+	mf.SortArtistName = mf.Participations.First(model.RoleArtist).SortArtistName
+	mf.SortAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).SortArtistName
+
 	return mf
 }

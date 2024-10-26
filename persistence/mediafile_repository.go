@@ -77,12 +77,13 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"genre_id": tagIDFilter,
 	})
 	r.setSortMappings(map[string]string{
-		"title":      "order_title",
-		"artist":     "order_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album":      "order_album_name, release_date, disc_number, track_number, order_artist_name, title",
-		"random":     "random",
-		"created_at": "media_file.created_at",
-		"starred_at": "starred, starred_at",
+		"title":        "order_title",
+		"artist":       "order_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album_artist": "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album":        "order_album_name, release_date, disc_number, track_number, order_artist_name, title",
+		"random":       "random",
+		"created_at":   "media_file.created_at",
+		"starred_at":   "starred, starred_at",
 	})
 	return r
 }

@@ -52,10 +52,12 @@ func (md Metadata) mapParticipations() model.Participations {
 	// Parse all other roles
 	for role, info := range roleMappings() {
 		names := md.getTags(info.name)
-		sorts := md.getTags(info.sort)
-		mbids := md.Strings(info.mbid)
-		artists := md.parseArtist(names, sorts, mbids)
-		participations.Add(role, artists...)
+		if len(names) > 0 {
+			sorts := md.getTags(info.sort)
+			mbids := md.Strings(info.mbid)
+			artists := md.parseArtist(names, sorts, mbids)
+			participations.Add(role, artists...)
+		}
 	}
 
 	// Create a map to store the MbzArtistID for each artist name

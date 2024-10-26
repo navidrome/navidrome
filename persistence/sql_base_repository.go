@@ -78,10 +78,14 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 // which gives precedence to sort tags.
 // Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
 // To avoid performance issues, indexes should be created for these sort expressions
-func (r *sqlRepository) setSortMappings(mappings map[string]string) {
+func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ...string) {
+	tn := r.tableName
+	if len(tableName) > 0 {
+		tn = tableName[0]
+	}
 	if conf.Server.PreferSortTags {
 		for k, v := range mappings {
-			v = mapSortOrder(v)
+			v = mapSortOrder(tn, v)
 			mappings[k] = v
 		}
 	}

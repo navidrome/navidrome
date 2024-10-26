@@ -153,7 +153,7 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool)
 	if refreshSmartPlaylist {
 		r.refreshSmartPlaylist(pls)
 	}
-	tracks, err := r.loadTracks(Select().From("playlist_tracks"), id)
+	tracks, err := r.loadTracks(Select().From("playlist_tracks").OrderBy("playlist_tracks.id"), id)
 	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
@@ -375,7 +375,7 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			" AND annotation.item_type = 'media_file'" +
 			" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		Join("media_file f on f.id = media_file_id").
-		Where(Eq{"playlist_id": id}).OrderBy("playlist_tracks.id")
+		Where(Eq{"playlist_id": id})
 	tracks := model.PlaylistTracks{}
 	err := r.queryAll(tracksQuery, &tracks)
 	for i, t := range tracks {

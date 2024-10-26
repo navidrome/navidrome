@@ -91,7 +91,8 @@ var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 // Convert the order_* columns to an expression using sort_* columns. Example:
 // sort_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring
-func mapSortOrder(order string) string {
+func mapSortOrder(tableName, order string) string {
 	order = strings.ToLower(order)
-	return sortOrderRegex.ReplaceAllString(order, "(coalesce(nullif(sort_$1,''),order_$1) collate nocase)")
+	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate nocase)", tableName)
+	return sortOrderRegex.ReplaceAllString(order, repl)
 }
