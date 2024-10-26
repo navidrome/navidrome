@@ -20,6 +20,9 @@ var (
 		service.StatusStopped: "Stopped",
 		service.StatusRunning: "Running",
 	}
+
+	installUser      string
+	workingDirectory string
 )
 
 func init() {
@@ -70,9 +73,11 @@ func (p *svcControl) Stop(service.Service) error {
 
 var svcInstance = sync.OnceValue(func() service.Service {
 	options := make(service.KeyValue)
-	options["Restart"] = "on-success"
+	options["Restart"] = "on-failure"
 	options["SuccessExitStatus"] = "1 2 8 SIGKILL"
 	options["UserService"] = false
+	options["LogDirectory"] = conf.Server.DataFolder
+	options["SystemdScript"] = systemdScript
 	if conf.Server.LogFile != "" {
 		options["LogOutput"] = false
 	} else {
@@ -80,12 +85,13 @@ var svcInstance = sync.OnceValue(func() service.Service {
 		options["LogDirectory"] = conf.Server.DataFolder
 	}
 	svcConfig := &service.Config{
+		UserName:    installUser,
 		Name:        "navidrome",
 		DisplayName: "Navidrome",
 		Description: "Your Personal Streaming Service",
 		Dependencies: []string{
-			"Requires=",
-			"After="},
+			"After=remote-fs.target network.target",
+		},
 		WorkingDirectory: executablePath(),
 		Option:           options,
 	}
@@ -108,6 +114,10 @@ func runServiceCmd(cmd *cobra.Command, _ []string) {
 }
 
 func executablePath() string {
+	if workingDirectory != "" {
+		return workingDirectory
+	}
+
 	ex, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
@@ -141,11 +151,15 @@ func buildInstallCmd() *cobra.Command {
 		println("Service installed. Use 'navidrome svc start' to start it.")
 	}
 
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "install",
 		Short: "Install Navidrome service.",
 		Run:   runInstallCmd,
 	}
+	cmd.Flags().StringVarP(&installUser, "user", "u", "", "user to run service")
+	cmd.Flags().StringVarP(&workingDirectory, "working-directory", "w", "", "working directory of service")
+
+	return cmd
 }
 
 func buildUninstallCmd() *cobra.Command {
@@ -216,3 +230,38 @@ func buildExecuteCmd() *cobra.Command {
 		},
 	}
 }
+
+const systemdScript = `[Unit]
+Description={{.Description}}
+ConditionFileIsExecutable={{.Path|cmdEscape}}
+{{range $i, $dep := .Dependencies}} 
+{{$dep}} {{end}}
+
+[Service]
+StartLimitInterval=5
+StartLimitBurst=10
+ExecStart={{.Path|cmdEscape}}{{range .Arguments}} {{.|cmd}}{{end}}
+{{if .WorkingDirectory}}WorkingDirectory={{.WorkingDirectory|cmdEscape}}{{end}}
+{{if .UserName}}User={{.UserName}}{{end}}
+{{if .Restart}}Restart={{.Restart}}{{end}}
+{{if .SuccessExitStatus}}SuccessExitStatus={{.SuccessExitStatus}}{{end}}
+TimeoutStopSec=20
+RestartSec=120
+EnvironmentFile=-/etc/sysconfig/{{.Name}}
+
+DevicePolicy=closed
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallFilter=~@clock @debug @module @mount @obsolete @reboot @setuid @swap
+{{if .WorkingDirectory}}ReadWritePaths={{.WorkingDirectory|cmdEscape}}{{end}}
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+`
