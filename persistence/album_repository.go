@@ -69,27 +69,15 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"has_rating":      hasRatingFilter,
 		"genre_id":        eqFilter,
 	})
-	if conf.Server.PreferSortTags {
-		r.sortMappings = map[string]string{
-			"name":           "COALESCE(NULLIF(sort_album_name,''),order_album_name)",
-			"artist":         "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"album_artist":   "compilation asc, COALESCE(NULLIF(sort_album_artist_name,''),order_album_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc",
-			"random":         "random",
-			"recently_added": recentlyAddedSort(),
-			"starred_at":     "starred, starred_at",
-		}
-	} else {
-		r.sortMappings = map[string]string{
-			"name":           "order_album_name asc, order_album_artist_name asc",
-			"artist":         "compilation asc, order_album_artist_name asc, order_album_name asc",
-			"album_artist":   "compilation asc, order_album_artist_name asc, order_album_name asc",
-			"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name, order_album_name asc",
-			"random":         "random",
-			"recently_added": recentlyAddedSort(),
-			"starred_at":     "starred, starred_at",
-		}
-	}
+	r.setSortMappings(map[string]string{
+		"name":           "order_album_name, order_album_artist_name",
+		"artist":         "compilation, order_album_artist_name, order_album_name",
+		"album_artist":   "compilation, order_album_artist_name, order_album_name",
+		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name",
+		"random":         "random",
+		"recently_added": recentlyAddedSort(),
+		"starred_at":     "starred, starred_at",
+	})
 
 	return r
 }

@@ -24,9 +24,6 @@ func NewRadioRepository(ctx context.Context, db dbx.Builder) model.RadioReposito
 	r.registerModel(&model.Radio{}, map[string]filterFunc{
 		"name": containsFilter("name"),
 	})
-	r.sortMappings = map[string]string{
-		"name": "(name collate nocase), name",
-	}
 	return r
 }
 

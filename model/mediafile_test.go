@@ -43,7 +43,6 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.AlbumArtist).To(Equal("AlbumArtist"))
 			Expect(album.AlbumArtistID).To(Equal("AlbumArtistID"))
 			Expect(album.SortAlbumName).To(Equal("SortAlbumName"))
-			Expect(album.SortArtistName).To(Equal("SortArtistName"))
 			Expect(album.SortAlbumArtistName).To(Equal("SortAlbumArtistName"))
 			Expect(album.OrderAlbumName).To(Equal("OrderAlbumName"))
 			Expect(album.OrderAlbumArtistName).To(Equal("OrderAlbumArtistName"))

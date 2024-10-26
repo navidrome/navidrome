@@ -5,7 +5,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -26,18 +25,13 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.db = r.db
 	p.tableName = "playlist_tracks"
 	p.registerModel(&model.PlaylistTrack{}, nil)
-	p.sortMappings = map[string]string{
+	p.setSortMappings(map[string]string{
 		"id":       "playlist_tracks.id",
-		"artist":   "order_artist_name asc",
-		"album":    "order_album_name asc, order_album_artist_name asc",
+		"artist":   "order_artist_name",
+		"album":    "order_album_name, order_album_artist_name",
 		"title":    "order_title",
 		"duration": "duration", // To make sure the field will be whitelisted
-	}
-	if conf.Server.PreferSortTags {
-		p.sortMappings["artist"] = "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc"
-		p.sortMappings["album"] = "COALESCE(NULLIF(sort_album_name,''),order_album_name)"
-		p.sortMappings["title"] = "COALESCE(NULLIF(sort_title,''),title)"
-	}
+	})
 
 	pls, err := r.Get(playlistId)
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -31,25 +30,14 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 		"starred":  booleanFilter,
 		"genre_id": eqFilter,
 	})
-	if conf.Server.PreferSortTags {
-		r.sortMappings = map[string]string{
-			"title":      "COALESCE(NULLIF(sort_title,''),order_title)",
-			"artist":     "COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc",
-			"album":      "COALESCE(NULLIF(sort_album_name,''),order_album_name) asc, release_date asc, disc_number asc, track_number asc, COALESCE(NULLIF(sort_artist_name,''),order_artist_name) asc, COALESCE(NULLIF(sort_title,''),title) asc",
-			"random":     "random",
-			"created_at": "media_file.created_at",
-			"starred_at": "starred, starred_at",
-		}
-	} else {
-		r.sortMappings = map[string]string{
-			"title":      "order_title",
-			"artist":     "order_artist_name asc, order_album_name asc, release_date asc, disc_number asc, track_number asc",
-			"album":      "order_album_name asc, release_date asc, disc_number asc, track_number asc, order_artist_name asc, title asc",
-			"random":     "random",
-			"created_at": "media_file.created_at",
-			"starred_at": "starred, starred_at",
-		}
-	}
+	r.setSortMappings(map[string]string{
+		"title":      "order_title",
+		"artist":     "order_artist_name, order_album_name, release_date, disc_number, track_number",
+		"album":      "order_album_name, release_date, disc_number, track_number, order_artist_name, title",
+		"random":     "random",
+		"created_at": "media_file.created_at",
+		"starred_at": "starred, starred_at",
+	})
 	return r
 }
 
@@ -113,18 +101,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	}
 	err = loadAllGenres(r, res)
 	return res, err
-}
-
-func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
-	sel := r.newSelect().Columns("*").Where(Like{"path": path})
-	var res model.MediaFiles
-	if err := r.queryAll(sel, &res); err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, model.ErrNotFound
-	}
-	return &res[0], nil
 }
 
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {

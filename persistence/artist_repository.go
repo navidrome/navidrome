@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"sort"
+	"slices"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
@@ -15,7 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/str"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -67,17 +67,10 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"starred":  booleanFilter,
 		"genre_id": eqFilter,
 	})
-	if conf.Server.PreferSortTags {
-		r.sortMappings = map[string]string{
-			"name":       "COALESCE(NULLIF(sort_artist_name,''),order_artist_name)",
-			"starred_at": "starred, starred_at",
-		}
-	} else {
-		r.sortMappings = map[string]string{
-			"name":       "order_artist_name",
-			"starred_at": "starred, starred_at",
-		}
-	}
+	r.setSortMappings(map[string]string{
+		"name":       "order_artist_name",
+		"starred_at": "starred, starred_at",
+	})
 	return r
 }
 
@@ -143,15 +136,14 @@ func (r *artistRepository) toModels(dba []dbArtist) model.Artists {
 	return res
 }
 
-func (r *artistRepository) getIndexKey(a *model.Artist) string {
-	source := a.Name
+func (r *artistRepository) getIndexKey(a model.Artist) string {
+	source := a.OrderArtistName
 	if conf.Server.PreferSortTags {
-		source = cmp.Or(a.SortArtistName, a.OrderArtistName, source)
+		source = cmp.Or(a.SortArtistName, a.OrderArtistName)
 	}
-	name := strings.ToLower(str.RemoveArticle(source))
+	name := strings.ToLower(source)
 	for k, v := range r.indexGroups {
-		key := strings.ToLower(k)
-		if strings.HasPrefix(name, key) {
+		if strings.HasPrefix(name, strings.ToLower(k)) {
 			return v
 		}
 	}
@@ -160,32 +152,16 @@ func (r *artistRepository) getIndexKey(a *model.Artist) string {
 
 // TODO Cache the index (recalculate when there are changes to the DB)
 func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	sortColumn := "order_artist_name"
-	if conf.Server.PreferSortTags {
-		sortColumn = "sort_artist_name, order_artist_name"
-	}
-	all, err := r.GetAll(model.QueryOptions{Sort: sortColumn})
+	artists, err := r.GetAll(model.QueryOptions{Sort: "name"})
 	if err != nil {
 		return nil, err
 	}
-
-	fullIdx := make(map[string]*model.ArtistIndex)
-	for i := range all {
-		a := all[i]
-		ax := r.getIndexKey(&a)
-		idx, ok := fullIdx[ax]
-		if !ok {
-			idx = &model.ArtistIndex{ID: ax}
-			fullIdx[ax] = idx
-		}
-		idx.Artists = append(idx.Artists, a)
-	}
 	var result model.ArtistIndexes
-	for _, idx := range fullIdx {
-		result = append(result, *idx)
+	for k, v := range slice.Group(artists, r.getIndexKey) {
+		result = append(result, model.ArtistIndex{ID: k, Artists: v})
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].ID < result[j].ID
+	slices.SortFunc(result, func(a, b model.ArtistIndex) int {
+		return cmp.Compare(a.ID, b.ID)
 	})
 	return result, nil
 }
