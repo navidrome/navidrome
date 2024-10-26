@@ -52,4 +52,5 @@ type ShareRepository interface {
 	Exists(id string) (bool, error)
 	Get(id string) (*Share, error)
 	GetAll(options ...QueryOptions) (Shares, error)
+	CountAll(options ...QueryOptions) (int64, error)
 }
