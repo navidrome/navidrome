@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"sync"
@@ -32,6 +33,12 @@ type data struct {
 		Arch    string `json:"arch"`
 		NumCPU  int    `json:"numCPU"`
 	} `json:"os"`
+	FS struct {
+		Music  *fsInfo `json:"music,omitempty"`
+		Data   *fsInfo `json:"data,omitempty"`
+		Cache  *fsInfo `json:"cache,omitempty"`
+		Backup *fsInfo `json:"backup,omitempty"`
+	}
 	Library struct {
 		Tracks      int64 `json:"tracks"`
 		Albums      int64 `json:"albums"`
@@ -66,6 +73,10 @@ type data struct {
 		BackupSchedule          string        `json:"backupSchedule,omitempty"`
 		BackupCount             int           `json:"backupCount,omitempty"`
 	} `json:"config"`
+}
+
+type fsInfo struct {
+	Type string `json:"type,omitempty"`
 }
 
 type Insights interface {
@@ -110,6 +121,24 @@ func buildInfo() (map[string]string, string) {
 	return bInfo, version
 }
 
+func getFSInfo(path string) *fsInfo {
+	var info fsInfo
+
+	// Normalize the path
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil
+	}
+	absPath = filepath.Clean(absPath)
+
+	fsType, err := getFilesystemType(absPath)
+	if err != nil {
+		return nil
+	}
+	info.Type = fsType
+	return &info
+}
+
 var staticData = sync.OnceValue(func() data {
 	// Basic info
 	data := data{
@@ -125,6 +154,16 @@ var staticData = sync.OnceValue(func() data {
 	data.OS.Arch = runtime.GOARCH
 	data.OS.NumCPU = runtime.NumCPU()
 	data.OS.Version, data.OS.Distro = getOSVersion()
+
+	// FS info
+	data.FS.Music = getFSInfo(conf.Server.MusicFolder)
+	data.FS.Data = getFSInfo(conf.Server.DataFolder)
+	if conf.Server.CacheFolder != "" {
+		data.FS.Cache = getFSInfo(conf.Server.CacheFolder)
+	}
+	if conf.Server.Backup.Path != "" {
+		data.FS.Backup = getFSInfo(conf.Server.Backup.Path)
+	}
 
 	// Config info
 	data.Config.LogLevel = conf.Server.LogLevel
