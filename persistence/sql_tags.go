@@ -60,6 +60,7 @@ func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
 	return err
 }
 
+// BFR FIXME: When filtering by a tag value (ex: genre=Rock), it is removing all other tags from the result
 func tagIDFilter(name string, idValue interface{}) Sqlizer {
 	tagName := strings.TrimSuffix(name, "_id")
 	return Eq{"tag.id": idValue, "tag.tag_name": tagName}
