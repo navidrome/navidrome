@@ -28,6 +28,7 @@ func TestPersistence(t *testing.T) {
 	RunSpecs(t, "Persistence Suite")
 }
 
+// BFR Test tags
 //var (
 //	genreElectronic = model.Genre{ID: "gn-1", Name: "Electronic"}
 //	genreRock       = model.Genre{ID: "gn-2", Name: "Rock"}

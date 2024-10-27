@@ -154,7 +154,7 @@ func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuild
 	//	// If there's any reference of genre in the filter, joins with genre
 	//	if strings.Contains(s, "genre") {
 	//		sql = r.withGenres(sql)
-	// FIXME Genres
+	// BFR Genres
 	//		// If there's no filter on genre_id, group the results by media_file.id
 	//		if !strings.Contains(s, "genre_id") {
 	//			sql = sql.GroupBy("album.id")

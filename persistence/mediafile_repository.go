@@ -123,7 +123,7 @@ func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sel
 	//	// If there's any reference of genre in the filter, joins with genre
 	//	if strings.Contains(s, "genre") {
 	//		sql = r.withGenres(sql)
-	// FIXME Genres
+	// BFR Genres
 	//		// If there's no filter on genre_id, group the results by media_file.id
 	//		if !strings.Contains(s, "genre_id") {
 	//			sql = sql.GroupBy("media_file.id")
