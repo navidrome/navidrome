@@ -102,7 +102,7 @@ func containsFilter(field string) func(string, any) Sqlizer {
 
 func booleanFilter(field string, value any) Sqlizer {
 	v := strings.ToLower(value.(string))
-	return Eq{field: strings.ToLower(v) == "true"}
+	return Eq{field: v == "true"}
 }
 
 func fullTextFilter(tableName string) func(string, any) Sqlizer {
@@ -110,7 +110,7 @@ func fullTextFilter(tableName string) func(string, any) Sqlizer {
 }
 
 func substringFilter(field string, value any) Sqlizer {
-	parts := strings.Split(value.(string), " ")
+	parts := strings.Fields(value.(string))
 	filters := And{}
 	for _, part := range parts {
 		filters = append(filters, Like{field: "%" + part + "%"})
