@@ -3,7 +3,6 @@ package persistence
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
@@ -61,7 +60,7 @@ func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
 }
 
 // BFR FIXME: When filtering by a tag value (ex: genre=Rock), it is removing all other tags from the result
-func tagIDFilter(name string, idValue any) Sqlizer {
-	tagName := strings.TrimSuffix(name, "_id")
-	return Eq{"tag.id": idValue, "tag.tag_name": tagName}
+func tagIDFilter(_ string, idValue any) Sqlizer {
+	// We just need to search for the tag.id, as it is calculated based on the tag name and value combined.
+	return Eq{"tag.id": idValue}
 }
