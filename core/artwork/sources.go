@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -79,7 +80,14 @@ func fromExternalFile(ctx context.Context, files string, pattern string) sourceF
 	}
 }
 
-func fromTag(path string) sourceFunc {
+// These regexes are used to match the picture type in the file, in the order they are listed.
+var picTypeRegexes = []*regexp.Regexp{
+	regexp.MustCompile(`(?i).*cover.*front.*|.*front.*cover.*`),
+	regexp.MustCompile(`(?i).*front.*`),
+	regexp.MustCompile(`(?i).*cover.*`),
+}
+
+func fromTag(ctx context.Context, path string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if path == "" {
 			return nil, "", nil
@@ -95,9 +103,30 @@ func fromTag(path string) sourceFunc {
 			return nil, "", err
 		}
 
-		picture := m.Picture()
-		if picture == nil {
+		types := m.PictureTypes()
+		if len(types) == 0 {
 			return nil, "", fmt.Errorf("no embedded image found in %s", path)
+		}
+
+		var picture *tag.Picture
+		for _, regex := range picTypeRegexes {
+			for _, t := range types {
+				if regex.MatchString(t) {
+					log.Trace(ctx, "Found embedded image", "type", t, "path", path)
+					picture = m.Pictures(t)
+					break
+				}
+			}
+			if picture != nil {
+				break
+			}
+		}
+		if picture == nil {
+			log.Trace(ctx, "Could not find a front image. Getting the first one", "type", types[0], "path", path)
+			picture = m.Picture()
+		}
+		if picture == nil {
+			return nil, "", fmt.Errorf("could not load embedded image from %s", path)
 		}
 		return io.NopCloser(bytes.NewReader(picture.Data)), path, nil
 	}
