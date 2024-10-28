@@ -15,8 +15,17 @@ import (
 
 const annotationTable = "annotation"
 
+// Deprecated
 func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.QueryOptions) SelectBuilder {
-	query := r.newSelect(options...).
+	query := r.newSelect(options...)
+	return r.withAnnotation(query, idField)
+}
+
+func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
+	if userId(r.ctx) == invalidUserId {
+		return query
+	}
+	query = query.
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
 			" AND annotation.item_type = '"+r.tableName+"'"+

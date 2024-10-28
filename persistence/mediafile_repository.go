@@ -27,7 +27,6 @@ type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
 	Participations   string `structs:"-" json:"-"`
 	TagIds           string `structs:"-" json:"-"`
-	tagList          model.TagList
 	parsedTagIDs     []string
 }
 
@@ -38,10 +37,7 @@ func (m *dbMediaFile) PostScan() error {
 	}
 	err := json.Unmarshal([]byte(m.TagIds), &m.parsedTagIDs)
 	if err != nil {
-		return err
-	}
-	for _, id := range m.parsedTagIDs {
-		m.tagList = append(m.tagList, model.Tag{ID: id})
+		return fmt.Errorf("error parsing media_file tags: %w", err)
 	}
 	return nil
 }
@@ -79,7 +75,7 @@ func (m dbMediaFiles) tagIDs() []string {
 func (m dbMediaFiles) setTags(tagMap map[string]model.Tag) {
 	for i, mf := range m {
 		tags := model.Tags{}
-		for _, id := range mf.tagIDs() {
+		for _, id := range mf.parsedTagIDs {
 			if tag, ok := tagMap[id]; ok {
 				tags[tag.TagName] = append(tags[tag.TagName], tag.TagValue)
 			}
@@ -112,9 +108,9 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 }
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelectWithAnnotation("media_file.id")
-	sql = r.withTags(sql)
-	return r.count(sql, options...)
+	query := r.newSelect()
+	query = r.withAnnotation(query, "media_file.id")
+	return r.count(query, options...)
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
@@ -133,14 +129,9 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	var sql SelectBuilder
-	if userId(r.ctx) != invalidUserId {
-		// BFR If user is unknown, don't add annotations and bookmarks. Convert newSelectWithAnnotation to withAnnotations
-		sql = r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
-		sql = r.withBookmark(sql, "media_file.id")
-	} else {
-		sql = r.newSelect(options...).Columns("media_file.*")
-	}
+	sql := r.newSelect(options...).Columns("media_file.*")
+	sql = r.withAnnotation(sql, "media_file.id")
+	sql = r.withBookmark(sql, "media_file.id")
 	sql = r.withParticipations(sql).GroupBy(r.tableName + ".id")
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
@@ -186,18 +177,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 		return nil, err
 	}
 	return res.toModels(), nil
-}
-
-func (r *mediaFileRepository) FindByPath(path string) (*model.MediaFile, error) {
-	sel := r.newSelect().Columns("*").Where(Like{"path": path})
-	var res dbMediaFiles
-	if err := r.queryAll(sel, &res); err != nil {
-		return nil, err
-	}
-	if len(res) == 0 {
-		return nil, model.ErrNotFound
-	}
-	return res[0].MediaFile, nil
 }
 
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
@@ -336,6 +315,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 	if err != nil {
 		return nil, err
 	}
+	err = r.loadTags(&res)
 	return res.toModels(), nil
 }
 
@@ -352,6 +332,7 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 	if err != nil {
 		return nil, err
 	}
+	err = r.loadTags(&results)
 	return results.toModels(), err
 }
 

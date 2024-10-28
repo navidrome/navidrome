@@ -213,10 +213,14 @@ alter table album
 	add column imported_at datetime default '0000-00-00 00:00:00' not null;
 alter table album
 	add column mbz_release_group_id varchar default '' not null;
+alter table album
+	add column tag_ids varchar default '[]' not null;
 create index if not exists album_imported_at_ix
 	on album (imported_at);
 create index if not exists album_mbz_release_group_id_ix
 	on album (mbz_release_group_id);
+create index if not exists album_tag_ids_ix
+	on album (tag_ids);
 `)
 	return err
 }
@@ -232,19 +236,16 @@ alter table media_file
 alter table media_file
 	add column mbz_release_group_id varchar default '' not null;
 alter table media_file
-	add column tag_ids varchar default '[]' not null;
-update media_file 
-	set pid = id where pid = '';
-`)
+	add column tag_ids varchar default '[]' not null;`)
 	if err != nil {
 		return err
 	}
-
-	if err = addColumn(ctx, tx, "media_file", "birth_time", "datetime", "current_timestamp", "created_at"); err != nil {
+	if err := addColumn(ctx, tx, "media_file", "birth_time", "datetime", "current_timestamp", "created_at"); err != nil {
 		return err
 	}
-
-	_, err = tx.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `	
+update media_file 
+	set pid = id where pid = '';
 create index if not exists media_file_birth_time_ix
 	on media_file (birth_time);
 create index if not exists media_file_folder_id_ix
@@ -253,6 +254,8 @@ create index if not exists media_file_pid_ix
 	on media_file (pid);
 create index if not exists media_file_missing_ix
 	on media_file (missing);
+create index if not exists media_file_tag_ids_ix
+	on media_file (tag_ids);
 `)
 
 	return err

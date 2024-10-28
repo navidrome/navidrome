@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 	"golang.org/x/exp/maps"
 )
@@ -23,8 +24,9 @@ type albumRepository struct {
 type dbAlbum struct {
 	*model.Album   `structs:",flatten"`
 	Discs          string `structs:"-" json:"discs"`
-	Tags           string `structs:"-" json:"-"`
 	Participations string `structs:"-" json:"-"`
+	TagIds         string `structs:"-" json:"-"`
+	parsedTagIDs   []string
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -34,12 +36,10 @@ func (a *dbAlbum) PostScan() error {
 		}
 	}
 	a.Album.Participations = parseParticipations(a.Participations)
-	tags, err := parseTags(a.Tags)
+	err := json.Unmarshal([]byte(a.TagIds), &a.parsedTagIDs)
 	if err != nil {
 		return fmt.Errorf("error parsing album tags: %w", err)
 	}
-	a.Album.Tags = tags
-	a.Album.Genre, a.Album.Genres = tags.ToGenres()
 	return nil
 }
 
@@ -52,6 +52,8 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	// BFR This may not be necessary once we have proper album<->artist M2M relationship
 	args["all_artist_ids"] = strings.Join(a.Album.Participations.AllIDs(), " ")
 
+	tags, _ := json.Marshal(a.Album.Tags.IDs())
+	args["tag_ids"] = string(tags)
 	delete(args, "tags")
 	delete(args, "participations")
 	if len(a.Album.Discs) == 0 {
@@ -66,14 +68,34 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	return nil
 }
 
+func (a *dbAlbum) tagIDs() []string {
+	return a.parsedTagIDs
+}
+
 type dbAlbums []dbAlbum
 
-func (dba dbAlbums) toModels() model.Albums {
-	res := make(model.Albums, len(dba))
-	for i := range dba {
-		res[i] = *dba[i].Album
+func (as dbAlbums) tagIDs() []string {
+	var ids []string
+	for _, mf := range as {
+		ids = append(ids, mf.parsedTagIDs...)
 	}
-	return res
+	return slice.Unique(ids)
+}
+
+func (as dbAlbums) setTags(tagMap map[string]model.Tag) {
+	for i, mf := range as {
+		tags := model.Tags{}
+		for _, id := range mf.parsedTagIDs {
+			if tag, ok := tagMap[id]; ok {
+				tags[tag.TagName] = append(tags[tag.TagName], tag.TagValue)
+			}
+		}
+		as[i].Album.Tags = tags
+	}
+}
+
+func (as dbAlbums) toModels() model.Albums {
+	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
 }
 
 func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
@@ -136,8 +158,8 @@ func artistFilter(_ string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelectWithAnnotation("album.id")
-	sql = r.withTags(sql)
+	sql := r.newSelect()
+	sql = r.withAnnotation(sql, "album.id")
 	return r.count(sql, options...)
 }
 
@@ -146,9 +168,9 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelectWithAnnotation("album.id", options...).Columns("album.*")
-	sql = r.withParticipations(sql)
-	sql = r.withTags(sql).GroupBy(r.tableName + ".id")
+	sql := r.newSelect(options...).Columns("album.*")
+	sql = r.withAnnotation(sql, "album.id")
+	sql = r.withParticipations(sql).GroupBy(r.tableName + ".id")
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
@@ -173,6 +195,10 @@ func (r *albumRepository) Get(id string) (*model.Album, error) {
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
+	err := r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
 	return res[0].Album, nil
 }
 
@@ -192,21 +218,22 @@ func (r *albumRepository) Put(al *model.Album) error {
 			return err
 		}
 	}
-	if len(al.Tags) > 0 {
-		err = r.updateTags(al.ID, al.Tags)
-	}
 	return err
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
 	r.resetSeededRandom(options)
 	sq := r.selectAlbum(options...)
-	var dba dbAlbums
-	err := r.queryAll(sq, &dba)
+	var res dbAlbums
+	err := r.queryAll(sq, &res)
 	if err != nil {
 		return nil, err
 	}
-	return dba.toModels(), err
+	err = r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), err
 }
 
 // Touch flags an album as being scanned by the scanner, but not necessarily updated.
@@ -234,6 +261,10 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 		})
 	var res dbAlbums
 	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadTags(&res)
 	return res.toModels(), err
 }
 
@@ -249,12 +280,13 @@ func (r *albumRepository) purgeEmpty() error {
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
-	var dba dbAlbums
-	err := r.doSearch(q, offset, size, &dba, "name")
+	var res dbAlbums
+	err := r.doSearch(q, offset, size, &res, "name")
 	if err != nil {
 		return nil, err
 	}
-	return dba.toModels(), err
+	err = r.loadTags(&res)
+	return res.toModels(), err
 }
 
 func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {

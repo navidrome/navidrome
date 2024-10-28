@@ -13,8 +13,11 @@ import (
 
 const bookmarkTable = "bookmark"
 
-func (r sqlRepository) withBookmark(sql SelectBuilder, idField string) SelectBuilder {
-	return sql.
+func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectBuilder {
+	if userId(r.ctx) == invalidUserId {
+		return query
+	}
+	return query.
 		LeftJoin("bookmark on (" +
 			"bookmark.item_id = " + idField +
 			" AND bookmark.item_type = '" + r.tableName + "'" +

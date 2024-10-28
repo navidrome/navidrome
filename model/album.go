@@ -57,7 +57,7 @@ type Album struct {
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
 
-	Tags           Tags           `structs:"tags" json:"-"`                        // All tags for this album
+	Tags           Tags           `structs:"tags" json:"tags,omitempty"`           // All imported tags for this album
 	Participations Participations `structs:"participations" json:"participations"` // All artists that participated in this album
 
 	ImportedAt time.Time `structs:"imported_at" json:"importedAt"` // When this album was imported/updated

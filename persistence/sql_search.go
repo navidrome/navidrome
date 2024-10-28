@@ -21,8 +21,9 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 		return nil
 	}
 
-	sq := r.newSelectWithAnnotation(r.tableName + ".id").Columns(r.tableName + ".*")
-	sq = r.withTags(sq).GroupBy(r.tableName + ".id")
+	sq := r.newSelect().Columns(r.tableName + ".*")
+	sq = r.withAnnotation(sq, r.tableName+".id")
+	sq = r.withBookmark(sq, r.tableName+".id")
 	filter := fullTextExpr(q, "")
 	if filter != nil {
 		sq = sq.Where(filter)
