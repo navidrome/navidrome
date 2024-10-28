@@ -12,7 +12,8 @@ import (
 func (r sqlRepository) withParticipations(sql SelectBuilder) SelectBuilder {
 	return sql.LeftJoin(fmt.Sprintf("%[1]s_artists r on r.%[1]s_id = %[1]s.id", r.tableName)).
 		LeftJoin("artist a on a.id = r.artist_id").
-		Columns("json_group_array(distinct(json_object('id', a.id, 'name', a.name, 'role', r.role))) as participations")
+		Columns("json_group_array(distinct(json_object('id', a.id, 'name', a.name, 'role', r.role))) as participations").
+		GroupBy(r.tableName + ".id")
 }
 
 func parseParticipations(strParticipations string) model.Participations {

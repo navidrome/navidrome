@@ -110,6 +110,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "media_file.id")
+	// BFR WithParticipants (for filter)?
 	return r.count(query, options...)
 }
 
@@ -132,7 +133,7 @@ func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sel
 	sql := r.newSelect(options...).Columns("media_file.*")
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")
-	sql = r.withParticipations(sql).GroupBy(r.tableName + ".id")
+	sql = r.withParticipations(sql)
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
