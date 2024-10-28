@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,24 +25,24 @@ type mediaFileRepository struct {
 
 type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
-	Tags             string `structs:"-" json:"-"`
 	Participations   string `structs:"-" json:"-"`
+	TagIds           string `structs:"-" json:"-"`
+	tagList          model.TagList
+	parsedTagIDs     []string
 }
 
 func (m *dbMediaFile) PostScan() error {
 	m.MediaFile.Participations = parseParticipations(m.Participations)
-	if m.Tags == "" {
+	if m.TagIds == "" {
 		return nil
 	}
-	tags, err := parseTags(m.Tags)
+	err := json.Unmarshal([]byte(m.TagIds), &m.parsedTagIDs)
 	if err != nil {
 		return err
 	}
-	if len(tags) != 0 {
-		m.MediaFile.Tags = tags
+	for _, id := range m.parsedTagIDs {
+		m.tagList = append(m.tagList, model.Tag{ID: id})
 	}
-
-	m.MediaFile.Genre, m.MediaFile.Genres = tags.ToGenres()
 	return nil
 }
 
@@ -50,19 +51,41 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
 	fullText = append(fullText, m.MediaFile.Participations.AllNames()...)
 	args["full_text"] = formatFullText(fullText...)
+	tags, _ := json.Marshal(m.MediaFile.Tags.IDs())
+	args["tag_ids"] = string(tags)
 	delete(args, "tags")
 	delete(args, "participations")
 	return nil
 }
 
+func (m *dbMediaFile) tagIDs() []string {
+	return m.parsedTagIDs
+}
+
 type dbMediaFiles []dbMediaFile
 
-func (m *dbMediaFiles) toModels() model.MediaFiles {
-	res := make(model.MediaFiles, len(*m))
-	for i, mf := range *m {
-		res[i] = *mf.MediaFile
+func (m dbMediaFiles) toModels() model.MediaFiles {
+	return slice.Map(m, func(mf dbMediaFile) model.MediaFile { return *mf.MediaFile })
+}
+
+func (m dbMediaFiles) tagIDs() []string {
+	var ids []string
+	for _, mf := range m {
+		ids = append(ids, mf.parsedTagIDs...)
 	}
-	return res
+	return slice.Unique(ids)
+}
+
+func (m dbMediaFiles) setTags(tagMap map[string]model.Tag) {
+	for i, mf := range m {
+		tags := model.Tags{}
+		for _, id := range mf.tagIDs() {
+			if tag, ok := tagMap[id]; ok {
+				tags[tag.TagName] = append(tags[tag.TagName], tag.TagValue)
+			}
+		}
+		m[i].MediaFile.Tags = tags
+	}
 }
 
 func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFileRepository {
@@ -106,18 +129,19 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	}
 	m.ID = id
 
-	err = r.updateParticipations(m.ID, m.Participations)
-	if err != nil {
-		return err
-	}
-	return r.updateTags(m.ID, m.Tags)
+	return r.updateParticipations(m.ID, m.Participations)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
-	sql = r.withBookmark(sql, "media_file.id")
-	sql = r.withParticipations(sql)
-	sql = r.withTags(sql).GroupBy(r.tableName + ".id")
+	var sql SelectBuilder
+	if userId(r.ctx) != invalidUserId {
+		// BFR If user is unknown, don't add annotations and bookmarks. Convert newSelectWithAnnotation to withAnnotations
+		sql = r.newSelectWithAnnotation("media_file.id", options...).Columns("media_file.*")
+		sql = r.withBookmark(sql, "media_file.id")
+	} else {
+		sql = r.newSelect(options...).Columns("media_file.*")
+	}
+	sql = r.withParticipations(sql).GroupBy(r.tableName + ".id")
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
@@ -142,6 +166,10 @@ func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
+	err := r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
 	return res[0].MediaFile, nil
 }
 
@@ -150,6 +178,10 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadTags(&res)
 	if err != nil {
 		return nil, err
 	}

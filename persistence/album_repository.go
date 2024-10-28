@@ -49,7 +49,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, maps.Values(a.Album.Discs)...)
 	args["full_text"] = formatFullText(fullText...)
 
-	// This may not be necessary once we have proper album<->artist M2M relationship
+	// BFR This may not be necessary once we have proper album<->artist M2M relationship
 	args["all_artist_ids"] = strings.Join(a.Album.Participations.AllIDs(), " ")
 
 	delete(args, "tags")

@@ -33,11 +33,12 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 		Columns(
 			"tag.id",
 			"tag.tag_value as name",
-			"coalesce(a.album_count, 0) as album_count",
-			"coalesce(m.song_count, 0) as song_count",
+			// BFR: Update counts on scan
+			"0 as album_count",
+			"0 as song_count",
 		).
-		LeftJoin("(select it.tag_id, count(it.item_id) as album_count from item_tags it where item_type = 'album' group by it.tag_id) a on a.tag_id = tag.id").
-		LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it where item_type = 'media_file' group by it.tag_id) m on m.tag_id = tag.id").
+		//LeftJoin("(select it.tag_id, count(it.item_id) as album_count from item_tags it where item_type = 'album' group by it.tag_id) a on a.tag_id = tag.id").
+		//LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it where item_type = 'media_file' group by it.tag_id) m on m.tag_id = tag.id").
 		Where(Eq{"tag.tag_name": model.TagGenre})
 	sq = r.applyOptions(sq, opt...)
 	sq = r.applyFilters(sq, opt...)

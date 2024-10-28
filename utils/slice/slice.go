@@ -35,7 +35,7 @@ func Group[T any, K comparable](s []T, keyFunc func(T) K) map[K][]T {
 }
 
 func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[K]V {
-	m := map[K]V{}
+	m := make(map[K]V, len(s))
 	for _, item := range s {
 		k, v := transformFunc(item)
 		m[k] = v

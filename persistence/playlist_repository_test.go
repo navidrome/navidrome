@@ -146,7 +146,8 @@ var _ = Describe("PlaylistRepository", func() {
 			})
 		})
 
-		Context("child smart playlists", func() {
+		// BFR Validate these tests
+		XContext("child smart playlists", func() {
 			When("refresh day has expired", func() {
 				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second

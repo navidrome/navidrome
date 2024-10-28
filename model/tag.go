@@ -25,7 +25,7 @@ func (t Tag) String() string {
 
 func NewTag(name TagName, value string) Tag {
 	name = name.ToLower()
-	hashID := id.NewHash(string(name), strings.ToLower(value))
+	hashID := tagID(name, value)
 	return Tag{
 		ID:       hashID,
 		TagName:  name,
@@ -33,10 +33,25 @@ func NewTag(name TagName, value string) Tag {
 	}
 }
 
+func tagID(name TagName, value string) string {
+	hashID := id.NewHash(string(name), strings.ToLower(value))
+	return hashID
+}
+
 type Tags map[TagName][]string
 
 func (t Tags) Values(name TagName) []string {
 	return t[name]
+}
+
+func (t Tags) IDs() []string {
+	var ids []string
+	for name, tag := range t {
+		for _, v := range tag {
+			ids = append(ids, tagID(name, v))
+		}
+	}
+	return ids
 }
 
 func (t Tags) Flatten(name TagName) TagList {

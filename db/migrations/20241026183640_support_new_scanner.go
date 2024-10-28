@@ -80,16 +80,11 @@ create table if not exists tag(
 		unique (tag_name, tag_value)
 );
 
-create table if not exists item_tags(
-    item_id varchar not null,
-    item_type varchar not null,
-    tag_name varchar not null,
-    tag_id varchar not null,
-  	constraint item_tags_ux
-    	unique (item_id, item_type, tag_id)
-);
-
-create index if not exists item_tag_name_ix on item_tags(item_id, tag_name)
+-- Genres are now stored in the tag table
+drop table if exists media_file_genres;
+drop table if exists album_genres;
+drop table if exists artist_genres;
+drop table if exists genre;
 `)
 	return err
 }
@@ -236,6 +231,8 @@ alter table media_file
 	add column missing boolean default false not null;
 alter table media_file
 	add column mbz_release_group_id varchar default '' not null;
+alter table media_file
+	add column tag_ids varchar default '[]' not null;
 update media_file 
 	set pid = id where pid = '';
 `)
