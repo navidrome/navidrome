@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"cmp"
-	"sync"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -10,28 +9,26 @@ import (
 )
 
 type roleTags struct {
+	name model.TagName
 	sort model.TagName
 	mbid model.TagName
-	name model.TagName
+}
+
+var roleMappings = map[model.Role]roleTags{
+	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort},
+	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort},
+	model.RoleConductor: {name: model.TagConductor},
+	model.RoleArranger:  {name: model.TagArranger},
+	model.RoleDirector:  {name: model.TagDirector},
+	model.RoleProducer:  {name: model.TagProducer},
+	model.RoleEngineer:  {name: model.TagEngineer},
+	model.RoleMixer:     {name: model.TagMixer},
+	model.RoleRemixer:   {name: model.TagRemixer},
+	model.RoleDJMixer:   {name: model.TagDJMixer},
+	// TODO Performer (and Instruments)
 }
 
 func (md Metadata) mapParticipations() model.Participations {
-	roleMappings := sync.OnceValue(func() map[model.Role]roleTags {
-		return map[model.Role]roleTags{
-			model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort},
-			model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort},
-			model.RoleConductor: {name: model.TagConductor},
-			model.RoleArranger:  {name: model.TagArranger},
-			model.RoleDirector:  {name: model.TagDirector},
-			model.RoleProducer:  {name: model.TagProducer},
-			model.RoleEngineer:  {name: model.TagEngineer},
-			model.RoleMixer:     {name: model.TagMixer},
-			model.RoleRemixer:   {name: model.TagRemixer},
-			model.RoleDJMixer:   {name: model.TagDJMixer},
-			// TODO Performer (and Instruments)
-		}
-	})
-
 	participations := make(model.Participations)
 
 	// Parse track artists
@@ -50,10 +47,10 @@ func (md Metadata) mapParticipations() model.Participations {
 	participations.Add(model.RoleAlbumArtist, albumArtists...)
 
 	// Parse all other roles
-	for role, info := range roleMappings() {
-		names := md.getTags(info.name)
+	for role, info := range roleMappings {
+		names := md.Strings(info.name)
 		if len(names) > 0 {
-			sorts := md.getTags(info.sort)
+			sorts := md.Strings(info.sort)
 			mbids := md.Strings(info.mbid)
 			artists := md.parseArtist(names, sorts, mbids)
 			participations.Add(role, artists...)

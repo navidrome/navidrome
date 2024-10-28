@@ -7,39 +7,54 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func (r sqlRepository) withParticipations(sql SelectBuilder) SelectBuilder {
-	return sql.LeftJoin(fmt.Sprintf("%[1]s_artists r on r.%[1]s_id = %[1]s.id", r.tableName)).
-		LeftJoin("artist a on a.id = r.artist_id").
-		Columns("json_group_array(distinct(json_object('id', a.id, 'name', a.name, 'role', r.role))) as participations").
-		GroupBy(r.tableName + ".id")
+type modelWithParticipations interface {
+	getParticipantIDs() []string
+	setParticipations(participantsMap map[string]string)
 }
 
-func parseParticipations(strParticipations string) model.Participations {
-	participations := model.Participations{}
-	var dbParticipations []map[string]string
-	err := json.Unmarshal([]byte(strParticipations), &dbParticipations)
+func (r sqlRepository) loadParticipations(m modelWithParticipations) error {
+	participantIds := m.getParticipantIDs()
+	if len(participantIds) == 0 {
+		return nil
+	}
+	query := Select("id", "name").From("artist").Where(Eq{"id": participantIds})
+	var res model.Artists
+	err := r.queryAll(query, &res)
 	if err != nil {
-		return nil
+		return err
 	}
-	for _, p := range dbParticipations {
-		// participants can be returned from the DB as `{"id":null,"name":null,"role":null}`, due to left joins
-		if p["role"] == "" || p["id"] == "" || p["name"] == "" {
-			continue
+	participantMap := slice.ToMap(res, func(t model.Artist) (string, string) {
+		return t.ID, t.Name
+	})
+	m.setParticipations(participantMap)
+	return nil
+}
+
+func buildParticipantIDs(participations model.Participations) string {
+	ids := make(map[model.Role][]string)
+	for role, artists := range participations {
+		for _, artist := range artists {
+			ids[role] = append(ids[role], artist.ID)
 		}
-		mRole := model.RoleFromString(p["role"])
-		if mRole == model.RoleInvalid {
-			log.Warn("Invalid role in participations", p["role"])
-			continue
-		}
-		participations[mRole] = append(participations[mRole], model.Artist{
-			ID:   p["id"],
-			Name: p["name"],
-		})
 	}
-	if len(participations) == 0 {
-		return nil
+	res, _ := json.Marshal(ids)
+	return string(res)
+}
+
+func parseParticipations(participantIds string) model.Participations {
+	partIDs := make(map[model.Role][]string)
+	err := json.Unmarshal([]byte(participantIds), &partIDs)
+	if err != nil {
+		log.Error("Error parsing participant ids", "ids", participantIds, err)
+		return model.Participations{}
+	}
+	participations := model.Participations{}
+	for role, ids := range partIDs {
+		artists := slice.Map(ids, func(id string) model.Artist { return model.Artist{ID: id} })
+		participations[role] = artists
 	}
 	return participations
 }
@@ -55,7 +70,7 @@ func (r sqlRepository) updateParticipations(itemID string, participations model.
 		return nil
 	}
 	sqi := Insert(r.tableName+"_artists").
-		Columns(r.tableName+"_id", "artist_id", "role"). // TODO Sub-role
+		Columns(r.tableName+"_id", "artist_id", "role"). // BFR Sub-role
 		Suffix(fmt.Sprintf("on conflict (artist_id, %s_id, role) do nothing", r.tableName))
 	for role, artists := range participations {
 		for _, artist := range artists {

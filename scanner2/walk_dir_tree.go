@@ -3,6 +3,7 @@ package scanner2
 import (
 	"context"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -12,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"golang.org/x/exp/maps"
 )
 
 type folderEntry struct {

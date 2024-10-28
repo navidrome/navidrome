@@ -25,13 +25,13 @@ type mediaFileRepository struct {
 
 type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
-	Participations   string `structs:"-" json:"-"`
+	ParticipantIDs   string `structs:"-" json:"-"`
 	TagIds           string `structs:"-" json:"-"`
 	parsedTagIDs     []string
 }
 
 func (m *dbMediaFile) PostScan() error {
-	m.MediaFile.Participations = parseParticipations(m.Participations)
+	m.MediaFile.Participations = parseParticipations(m.ParticipantIDs)
 	if m.TagIds == "" {
 		return nil
 	}
@@ -47,8 +47,8 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
 	fullText = append(fullText, m.MediaFile.Participations.AllNames()...)
 	args["full_text"] = formatFullText(fullText...)
-	tags, _ := json.Marshal(m.MediaFile.Tags.IDs())
-	args["tag_ids"] = string(tags)
+	args["tag_ids"] = buildTagIDs(m.MediaFile.Tags)
+	args["participant_ids"] = buildParticipantIDs(m.MediaFile.Participations)
 	delete(args, "tags")
 	delete(args, "participations")
 	return nil
@@ -81,6 +81,26 @@ func (m dbMediaFiles) setTags(tagMap map[string]model.Tag) {
 			}
 		}
 		m[i].MediaFile.Tags = tags
+	}
+}
+
+func (m dbMediaFiles) getParticipantIDs() []string {
+	var ids []string
+	for _, mf := range m {
+		ids = append(ids, mf.Participations.AllIDs()...)
+	}
+	return slice.Unique(ids)
+}
+
+func (m dbMediaFiles) setParticipations(participantMap map[string]string) {
+	for i, mf := range m {
+		for role, artists := range mf.MediaFile.Participations {
+			for j, artist := range artists {
+				if name, ok := participantMap[artist.ID]; ok {
+					m[i].MediaFile.Participations[role][j].Name = name
+				}
+			}
+		}
 	}
 }
 
@@ -125,7 +145,6 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 		return err
 	}
 	m.ID = id
-
 	return r.updateParticipations(m.ID, m.Participations)
 }
 
@@ -133,7 +152,6 @@ func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sel
 	sql := r.newSelect(options...).Columns("media_file.*")
 	sql = r.withAnnotation(sql, "media_file.id")
 	sql = r.withBookmark(sql, "media_file.id")
-	sql = r.withParticipations(sql)
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
@@ -168,6 +186,10 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 		return nil, err
 	}
 	err = r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadParticipations(&res)
 	if err != nil {
 		return nil, err
 	}
@@ -311,6 +333,10 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 		return nil, err
 	}
 	err = r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
+	//err = r.loadParticipations(&res) BFR Needed?
 	return res.toModels(), nil
 }
 
@@ -328,6 +354,10 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 		return nil, err
 	}
 	err = r.loadTags(&results)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadParticipations(&results)
 	return results.toModels(), err
 }
 

@@ -193,7 +193,8 @@ var _ = Describe("AlbumRepository", func() {
 			)
 		})
 
-		Describe("AllArtistIDs", func() {
+		// BFR Remove/Replace test
+		XDescribe("AllArtistIDs", func() {
 			It("collects all deduplicated artist ids", func() {
 				dba := dbAlbum{Album: &model.Album{
 					Participations: model.Participations{

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	"os"
 	"runtime"
@@ -277,6 +278,10 @@ func addFields(logger *logrus.Entry, keyValuePairs []interface{}) *logrus.Entry 
 					logger = logger.WithField(name, ShortDur(v))
 				case fmt.Stringer:
 					logger = logger.WithField(name, StringerValue(v))
+				case iter.Seq[string]:
+					logger = logger.WithField(name, formatSeq(v))
+				case []string:
+					logger = logger.WithField(name, formatSlice(v))
 				default:
 					logger = logger.WithField(name, v)
 				}

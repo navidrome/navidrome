@@ -70,6 +70,7 @@ func RoleFromString(role string) Role {
 	return RoleInvalid
 }
 
+// BFR map[Role][]Participant?
 type Participations map[Role][]Artist
 
 // Add adds the artists to the role, ignoring duplicates.

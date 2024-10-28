@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"slices"
 	"sync"
@@ -19,7 +20,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/navidrome/navidrome/utils/slice"
-	"golang.org/x/exp/maps"
 )
 
 func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Library, fullRescan bool) *phaseFolders {
@@ -158,7 +158,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	}
 
 	// Remaining dbTracks are tracks that were not found in the folder, so they should be marked as missing
-	entry.missingTracks = maps.Values(dbTracks)
+	entry.missingTracks = slices.Collect(maps.Values(dbTracks))
 
 	if len(filesToImport) > 0 {
 		entry.tracks, entry.tags, err = p.loadTagsFromFiles(entry, filesToImport)
@@ -196,7 +196,7 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) 
 			}
 		}
 	}
-	return tracks, maps.Values(uniqueTags), nil
+	return tracks, slices.Collect(maps.Values(uniqueTags)), nil
 }
 
 func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albums {
@@ -271,7 +271,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 			// Touch all albums that have missing tracks, so they get refreshed in later phases
 			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf model.MediaFile) (string, struct{}) { return mf.AlbumID, struct{}{} })
-			albumsToUpdate := maps.Keys(groupedMissingTracks)
+			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
 			err = tx.Album(p.ctx).Touch(albumsToUpdate...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
@@ -304,7 +304,7 @@ func (p *phaseFolders) finalize(err error) error {
 			if len(job.lastUpdates) == 0 {
 				continue
 			}
-			folderIDs := maps.Keys(job.lastUpdates)
+			folderIDs := slices.Collect(maps.Keys(job.lastUpdates))
 			err := tx.Folder(p.ctx).MarkMissing(true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)

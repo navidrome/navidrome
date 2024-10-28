@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"maps"
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -14,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
-	"golang.org/x/exp/maps"
 )
 
 type albumRepository struct {
@@ -24,7 +24,7 @@ type albumRepository struct {
 type dbAlbum struct {
 	*model.Album   `structs:",flatten"`
 	Discs          string `structs:"-" json:"discs"`
-	Participations string `structs:"-" json:"-"`
+	ParticipantIDs string `structs:"-" json:"-"`
 	TagIds         string `structs:"-" json:"-"`
 	parsedTagIDs   []string
 }
@@ -35,7 +35,7 @@ func (a *dbAlbum) PostScan() error {
 			return err
 		}
 	}
-	a.Album.Participations = parseParticipations(a.Participations)
+	a.Album.Participations = parseParticipations(a.ParticipantIDs)
 	err := json.Unmarshal([]byte(a.TagIds), &a.parsedTagIDs)
 	if err != nil {
 		return fmt.Errorf("error parsing album tags: %w", err)
@@ -46,14 +46,11 @@ func (a *dbAlbum) PostScan() error {
 func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText := []string{a.Name, a.SortAlbumName, a.AlbumArtist}
 	fullText = append(fullText, a.Album.Participations.AllNames()...)
-	fullText = append(fullText, maps.Values(a.Album.Discs)...)
+	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	args["full_text"] = formatFullText(fullText...)
 
-	// BFR This may not be necessary once we have proper album<->artist M2M relationship
-	args["all_artist_ids"] = strings.Join(a.Album.Participations.AllIDs(), " ")
-
-	tags, _ := json.Marshal(a.Album.Tags.IDs())
-	args["tag_ids"] = string(tags)
+	args["tag_ids"] = buildTagIDs(a.Album.Tags)
+	args["participant_ids"] = buildParticipantIDs(a.Album.Participations)
 	delete(args, "tags")
 	delete(args, "participations")
 	if len(a.Album.Discs) == 0 {
@@ -96,6 +93,26 @@ func (as dbAlbums) setTags(tagMap map[string]model.Tag) {
 
 func (as dbAlbums) toModels() model.Albums {
 	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
+}
+
+func (as dbAlbums) getParticipantIDs() []string {
+	var ids []string
+	for _, a := range as {
+		ids = append(ids, a.Participations.AllIDs()...)
+	}
+	return slice.Unique(ids)
+}
+
+func (as dbAlbums) setParticipations(participantMap map[string]string) {
+	for i, a := range as {
+		for role, artists := range a.Album.Participations {
+			for j, artist := range artists {
+				if name, ok := participantMap[artist.ID]; ok {
+					as[i].Album.Participations[role][j].Name = name
+				}
+			}
+		}
+	}
 }
 
 func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
@@ -154,7 +171,7 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 }
 
 func artistFilter(_ string, value interface{}) Sqlizer {
-	return Like{"all_artist_ids": fmt.Sprintf("%%%s%%", value)}
+	return Like{"participant_ids": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -190,7 +207,6 @@ func (r *albumRepository) Put(al *model.Album) error {
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("album.*")
 	sql = r.withAnnotation(sql, "album.id")
-	sql = r.withParticipations(sql)
 	//if len(options) > 0 && options[0].Filters != nil {
 	//	s, _, _ := options[0].Filters.ToSql()
 	//	// If there's any reference of genre in the filter, joins with genre
@@ -228,6 +244,10 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
+	err = r.loadParticipations(&res)
+	if err != nil {
+		return nil, err
+	}
 	return res.toModels(), err
 }
 
@@ -260,6 +280,10 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 		return nil, err
 	}
 	err = r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadParticipations(&res)
 	return res.toModels(), err
 }
 
@@ -281,6 +305,10 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 		return nil, err
 	}
 	err = r.loadTags(&res)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadParticipations(&res)
 	return res.toModels(), err
 }
 

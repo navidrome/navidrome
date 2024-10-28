@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"encoding/json"
+
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -34,7 +36,16 @@ func (r sqlRepository) loadTags(m modelWithTags) error {
 	return nil
 }
 
+func buildTagIDs(tags model.Tags) string {
+	ids := tags.IDs()
+	if len(ids) == 0 {
+		return "[]"
+	}
+	res, _ := json.Marshal(ids)
+	return string(res)
+}
+
 func tagIDFilter(_ string, idValue any) Sqlizer {
 	// We just need to search for the tag.id, as it is calculated based on the tag name and value combined.
-	return Like{"tag_ids": `%"` + idValue.(string) + `"%"`}
+	return Like{"tag_ids": `%"` + idValue.(string) + `"%`}
 }
