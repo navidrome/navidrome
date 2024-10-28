@@ -164,7 +164,7 @@ func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"album.id": id}))
+	return r.exists(Eq{"album.id": id})
 }
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
@@ -222,7 +222,6 @@ func (r *albumRepository) Put(al *model.Album) error {
 }
 
 func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, error) {
-	r.resetSeededRandom(options)
 	sq := r.selectAlbum(options...)
 	var res dbAlbums
 	err := r.queryAll(sq, &res)

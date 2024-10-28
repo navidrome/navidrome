@@ -44,7 +44,7 @@ func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuild
 }
 
 func (r *shareRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"id": id}))
+	return r.exists(Eq{"id": id})
 }
 func (r *shareRepository) Get(id string) (*model.Share, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})

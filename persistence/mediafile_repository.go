@@ -114,7 +114,7 @@ func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, er
 }
 
 func (r *mediaFileRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"media_file.id": id}))
+	return r.exists(Eq{"media_file.id": id})
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
@@ -149,23 +149,17 @@ func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sel
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {
-	sel := r.selectMediaFile().Where(Eq{"media_file.id": id})
-	var res dbMediaFiles
-	if err := r.queryAll(sel, &res); err != nil {
+	res, err := r.GetAll(model.QueryOptions{Filters: Eq{"media_file.id": id}})
+	if err != nil {
 		return nil, err
 	}
 	if len(res) == 0 {
 		return nil, model.ErrNotFound
 	}
-	err := r.loadTags(&res)
-	if err != nil {
-		return nil, err
-	}
-	return res[0].MediaFile, nil
+	return &res[0], nil
 }
 
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	r.resetSeededRandom(options)
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)

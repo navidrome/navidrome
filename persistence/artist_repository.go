@@ -103,7 +103,7 @@ func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(Eq{"artist.id": id}))
+	return r.exists(Eq{"artist.id": id})
 }
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {

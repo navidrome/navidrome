@@ -94,8 +94,11 @@ func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ..
 
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
-	sq = r.applyOptions(sq, options...)
-	sq = r.applyFilters(sq, options...)
+	if len(options) > 0 {
+		r.resetSeededRandom(options)
+		sq = r.applyOptions(sq, options...)
+		sq = r.applyFilters(sq, options...)
+	}
 	return sq
 }
 
@@ -298,8 +301,8 @@ func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryO
 	return sq
 }
 
-func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
-	existsQuery = existsQuery.Columns("count(*) as exist").From(r.tableName)
+func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
+	existsQuery := Select("count(*) as exist").From(r.tableName).Where(cond)
 	var res struct{ Exist int64 }
 	err := r.queryOne(existsQuery, &res)
 	return res.Exist > 0, err
@@ -309,6 +312,7 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
+		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }

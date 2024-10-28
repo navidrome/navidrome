@@ -29,7 +29,7 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 }
 
 func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
-	sq := Select().From("tag").
+	return r.newSelect(opt...).
 		Columns(
 			"tag.id",
 			"tag.tag_value as name",
@@ -40,9 +40,6 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 		//LeftJoin("(select it.tag_id, count(it.item_id) as album_count from item_tags it where item_type = 'album' group by it.tag_id) a on a.tag_id = tag.id").
 		//LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it where item_type = 'media_file' group by it.tag_id) m on m.tag_id = tag.id").
 		Where(Eq{"tag.tag_name": model.TagGenre})
-	sq = r.applyOptions(sq, opt...)
-	sq = r.applyFilters(sq, opt...)
-	return sq
 }
 
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {

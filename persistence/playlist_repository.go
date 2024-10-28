@@ -92,7 +92,7 @@ func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, err
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(And{Eq{"id": id}, r.userFilter()}))
+	return r.exists(And{Eq{"id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Delete(id string) error {
