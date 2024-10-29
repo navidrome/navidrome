@@ -130,7 +130,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "media_file.id")
-	// BFR WithParticipants (for filter)?
+	// BFR WithParticipants (for filtering by name)?
 	return r.count(query, options...)
 }
 

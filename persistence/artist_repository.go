@@ -77,6 +77,10 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":     fullTextFilter(r.tableName),
 		"starred":  booleanFilter,
 		"genre_id": tagIDFilter,
+		// BFR Filter by role
+		//"role": id in (select artist_id from album_artists where role = 'album_artist')
+		// or: (needs index on role and artist_id)
+		//"role": exists (select 1 from album_artists where role = 'album_artist' and album_artists.artist_id = artist.id)
 	})
 	r.setSortMappings(map[string]string{
 		"name":       "order_artist_name",
@@ -86,19 +90,21 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelectWithAnnotation("artist.id", options...).Columns("artist.*")
-	sql = sql.Columns("ifnull(count(distinct mf.album_id), 0) as album_count",
-		"ifnull(count(distinct mf.id), 0) as song_count", "ifnull(sum(distinct mf.size), 0) as size").
-		// BFR Should Role be parameterized?
-		//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
-		LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
-		LeftJoin("media_file mf on mfa.media_file_id = mf.id")
-	return sql.GroupBy("artist.id")
+	query := r.newSelect(options...).Columns("artist.*")
+	query = r.withAnnotation(query, "artist.id")
+	// BFR How to handle counts and sizes (per role)?
+	//sql = sql.Columns("ifnull(count(distinct mf.album_id), 0) as album_count",
+	//	"ifnull(count(distinct mf.id), 0) as song_count", "ifnull(sum(distinct mf.size), 0) as size").
+	//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
+	//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
+	//LeftJoin("media_file mf on mfa.media_file_id = mf.id")
+	return query //.GroupBy("artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelectWithAnnotation("artist.id")
-	return r.count(sql, options...)
+	query := r.newSelect()
+	query = r.withAnnotation(query, "artist.id")
+	return r.count(query, options...)
 }
 
 func (r *artistRepository) Exists(id string) (bool, error) {

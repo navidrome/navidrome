@@ -177,7 +177,7 @@ func artistFilter(_ string, value interface{}) Sqlizer {
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelect()
 	sql = r.withAnnotation(sql, "album.id")
-	// BFR WithParticipants (for filter)?
+	// BFR WithParticipants (for filtering by name)?
 	return r.count(sql, options...)
 }
 

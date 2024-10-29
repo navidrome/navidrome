@@ -51,9 +51,10 @@ create table if not exists media_file_artists(
     	constraint artist_tracks_ux
     	    			unique (artist_id, media_file_id, role)
 );
-
 create index if not exists media_file_artists_media_file_id_ix
     on media_file_artists (media_file_id);
+create index if not exists media_file_artists_role_ix
+	on media_file_artists (role);
 
 create table if not exists album_artists(
     	album_id varchar not null
@@ -66,11 +67,12 @@ create table if not exists album_artists(
     	constraint album_artists_ux
     	    			unique (album_id, artist_id, role)
 );
-
 create index if not exists album_artists_album_id_ix
     on album_artists (album_id);
+create index if not exists album_artists_role_ix
+	on album_artists (role);
 
--- FIXME Add link all artists with role "album_artist"
+-- BFR Add link all existing artists with role "album_artist"
 
 create table if not exists tag(
   	id varchar not null primary key,
