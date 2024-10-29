@@ -81,6 +81,7 @@ func (m dbMediaFiles) setTags(tagMap map[string]model.Tag) {
 			}
 		}
 		m[i].MediaFile.Tags = tags
+		m[i].MediaFile.Genre, m[i].MediaFile.Genres = tags.ToGenres()
 	}
 }
 

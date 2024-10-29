@@ -94,13 +94,15 @@ func (t Tags) Hash() string {
 }
 
 func (t Tags) ToGenres() (string, Genres) {
-	var genres Genres
-	for _, g := range t.Values("genre") {
-		t := NewTag("genre", g)
-		genres = append(genres, Genre{ID: t.ID, Name: g})
+	values := t.Values("genre")
+	if len(values) == 0 {
+		return "", nil
 	}
-	// TODO This will not work, as there is only one instance of each genre in the tags
-	return slice.MostFrequent(t.Values("genre")), genres
+	genres := slice.Map(values, func(g string) Genre {
+		t := NewTag("genre", g)
+		return Genre{ID: t.ID, Name: g}
+	})
+	return genres[0].Name, genres
 }
 
 // Merge merges the tags from another Tags object into this one, removing any duplicates

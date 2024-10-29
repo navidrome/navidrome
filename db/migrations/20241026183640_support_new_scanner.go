@@ -219,17 +219,13 @@ alter table album
 alter table album
 	add column mbz_release_group_id varchar default '' not null;
 alter table album
-	add column tag_ids varchar default '[]' not null;
+	add column tag_ids jsonb default '[]' not null;
 alter table album
-	add column participant_ids varchar default '{}' not null;
+	add column participant_ids jsonb default '{}' not null;
 create index if not exists album_imported_at_ix
 	on album (imported_at);
 create index if not exists album_mbz_release_group_id_ix
 	on album (mbz_release_group_id);
-create index if not exists album_tag_ids_ix
-	on album (tag_ids);
-create index if not exists album_participant_ids_ix
-	on album (participant_ids);
 `)
 	return err
 }
@@ -245,9 +241,9 @@ alter table media_file
 alter table media_file
 	add column mbz_release_group_id varchar default '' not null;
 alter table media_file
-	add column tag_ids varchar default '[]' not null;
+	add column tag_ids jsonb default '[]' not null;
 alter table media_file
-	add column participant_ids varchar default '{}' not null;
+	add column participant_ids jsonb default '{}' not null;
 `)
 	if err != nil {
 		return err
@@ -266,10 +262,6 @@ create index if not exists media_file_pid_ix
 	on media_file (pid);
 create index if not exists media_file_missing_ix
 	on media_file (missing);
-create index if not exists media_file_tag_ids_ix
-	on media_file (tag_ids);
-create index if not exists media_file_participant_ids_ix
-	on media_file (participant_ids);
 `)
 
 	return err

@@ -88,6 +88,7 @@ func (as dbAlbums) setTags(tagMap map[string]model.Tag) {
 			}
 		}
 		as[i].Album.Tags = tags
+		as[i].Album.Genre, as[i].Album.Genres = tags.ToGenres()
 	}
 }
 

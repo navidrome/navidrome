@@ -75,9 +75,8 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	// Remote tags that are first-class fields in the MediaFile struct
 	removedTags := []model.TagName{
 		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
-		model.TagGenre, model.TagMood, model.TagComment, model.TagAlbumSort, model.TagAlbumVersion,
-		model.TagTitleSort, model.TagCompilation, model.TagGrouping, model.TagLyrics, model.TagRecordLabel,
-		model.TagReleaseType, model.TagMedia, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
+		model.TagComment, model.TagAlbumSort, model.TagAlbumVersion, model.TagTitleSort, model.TagCompilation,
+		model.TagLyrics, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
 		model.TagReleaseDate, model.TagRecordingDate,
 
 		// MusicBrainz IDs
