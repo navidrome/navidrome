@@ -30,7 +30,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/kardianos/service v1.2.2
 	github.com/kr/pretty v0.3.1
-	github.com/lestrrat-go/jwx/v2 v2.1.1
+	github.com/lestrrat-go/jwx/v2 v2.1.2
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mattn/go-zglob v0.0.6
@@ -47,7 +47,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
-	github.com/unrolled/secure v1.16.0
+	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 	golang.org/x/image v0.21.0
