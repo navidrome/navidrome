@@ -72,5 +72,29 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.SortArtistName = mf.Participations.First(model.RoleArtist).SortArtistName
 	mf.SortAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).SortArtistName
 
+	// Remote tags that are first-class fields in the MediaFile struct
+	removedTags := []model.TagName{
+		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
+		model.TagGenre, model.TagMood, model.TagComment, model.TagAlbumSort, model.TagAlbumVersion,
+		model.TagTitleSort, model.TagCompilation, model.TagGrouping, model.TagLyrics, model.TagRecordLabel,
+		model.TagReleaseType, model.TagMedia, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
+		model.TagReleaseDate, model.TagRecordingDate,
+
+		// MusicBrainz IDs
+		model.TagMusicBrainzRecordingID, model.TagMusicBrainzTrackID, model.TagMusicBrainzAlbumID,
+		model.TagMusicBrainzReleaseGroupID, model.TagMusicBrainzAlbumArtistID, model.TagMusicBrainzArtistID,
+		model.TagReplayGainAlbumPeak, model.TagReplayGainAlbumGain, model.TagReplayGainTrackPeak, model.TagReplayGainTrackGain,
+
+		// Roles
+		model.TagComposer, model.TagConductor, model.TagArranger, model.TagLyricist, model.TagRemixer,
+		model.TagEngineer, model.TagMixer, model.TagProducer, model.TagDirector, model.TagDJMixer,
+		model.TagPerformer, model.TagAlbumArtist, model.TagAlbumArtists, model.TagAlbumArtistSort,
+		model.TagAlbumArtistsSort, model.TagTrackArtist, model.TagTrackArtists, model.TagTrackArtistSort,
+		model.TagTrackArtistsSort, model.TagComposerSort,
+	}
+	for _, tag := range removedTags {
+		delete(mf.Tags, tag)
+	}
+
 	return mf
 }
