@@ -206,20 +206,7 @@ func (r *albumRepository) Put(al *model.Album) error {
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("album.*")
-	sql = r.withAnnotation(sql, "album.id")
-	//if len(options) > 0 && options[0].Filters != nil {
-	//	s, _, _ := options[0].Filters.ToSql()
-	//	// If there's any reference of genre in the filter, joins with genre
-	//	if strings.Contains(s, "genre") {
-	//		sql = r.withGenres(sql)
-	// BFR Genres
-	//		// If there's no filter on genre_id, group the results by media_file.id
-	//		if !strings.Contains(s, "genre_id") {
-	//			sql = sql.GroupBy("album.id")
-	//		}
-	//	}
-	//}
-	return sql
+	return r.withAnnotation(sql, "album.id")
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {

@@ -93,12 +93,11 @@ func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBui
 		//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
 		LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
 		LeftJoin("media_file mf on mfa.media_file_id = mf.id")
-	return r.withTags(sql).GroupBy("artist.id")
+	return sql.GroupBy("artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelectWithAnnotation("artist.id")
-	sql = r.withTags(sql) // Required for filtering by genre
 	return r.count(sql, options...)
 }
 

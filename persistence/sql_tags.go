@@ -2,16 +2,12 @@ package persistence
 
 import (
 	"encoding/json"
+	"fmt"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
-
-// BFR remove this
-func (r sqlRepository) withTags(sql SelectBuilder) SelectBuilder {
-	return sql
-}
 
 type modelWithTags interface {
 	tagIDs() []string
@@ -47,5 +43,5 @@ func buildTagIDs(tags model.Tags) string {
 
 func tagIDFilter(_ string, idValue any) Sqlizer {
 	// We just need to search for the tag.id, as it is calculated based on the tag name and value combined.
-	return Like{"tag_ids": `%"` + idValue.(string) + `"%`}
+	return Like{"tag_ids": fmt.Sprintf(`%%"%s"%%`, idValue)}
 }
