@@ -25,20 +25,26 @@ type dbAlbum struct {
 	*model.Album   `structs:",flatten"`
 	Discs          string `structs:"-" json:"discs"`
 	ParticipantIDs string `structs:"-" json:"-"`
-	TagIds         string `structs:"-" json:"-"`
-	parsedTagIDs   []string
+	Tags           string `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
+	var err error
 	if a.Discs != "" {
-		if err := json.Unmarshal([]byte(a.Discs), &a.Album.Discs); err != nil {
-			return err
+		if err = json.Unmarshal([]byte(a.Discs), &a.Album.Discs); err != nil {
+			return fmt.Errorf("parsing album discs from db: %w", err)
 		}
 	}
-	a.Album.Participations = parseParticipations(a.ParticipantIDs)
-	err := json.Unmarshal([]byte(a.TagIds), &a.parsedTagIDs)
+	a.Album.Participations, err = unmarshalParticipations(a.ParticipantIDs)
 	if err != nil {
-		return fmt.Errorf("error parsing album tags: %w", err)
+		return fmt.Errorf("parsing album from db: %w", err)
+	}
+	if a.Tags != "" {
+		a.Album.Tags, err = unmarshalTags(a.Tags)
+		if err != nil {
+			return fmt.Errorf("parsing album from db: %w", err)
+		}
+		a.Genre, a.Genres = a.Album.Tags.ToGenres()
 	}
 	return nil
 }
@@ -49,9 +55,8 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	args["full_text"] = formatFullText(fullText...)
 
-	args["tag_ids"] = buildTagIDs(a.Album.Tags)
-	args["participant_ids"] = buildParticipantIDs(a.Album.Participations)
-	delete(args, "tags")
+	args["tags"] = marshalTags(a.Album.Tags)
+	args["participant_ids"] = marshalParticipantIDs(a.Album.Participations)
 	delete(args, "participations")
 	if len(a.Album.Discs) == 0 {
 		args["discs"] = "{}"
@@ -65,32 +70,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	return nil
 }
 
-func (a *dbAlbum) tagIDs() []string {
-	return a.parsedTagIDs
-}
-
 type dbAlbums []dbAlbum
-
-func (as dbAlbums) tagIDs() []string {
-	var ids []string
-	for _, mf := range as {
-		ids = append(ids, mf.parsedTagIDs...)
-	}
-	return slice.Unique(ids)
-}
-
-func (as dbAlbums) setTags(tagMap map[string]model.Tag) {
-	for i, mf := range as {
-		tags := model.Tags{}
-		for _, id := range mf.parsedTagIDs {
-			if tag, ok := tagMap[id]; ok {
-				tags[tag.TagName] = append(tags[tag.TagName], tag.TagValue)
-			}
-		}
-		as[i].Album.Tags = tags
-		as[i].Album.Genre, as[i].Album.Genres = tags.ToGenres()
-	}
-}
 
 func (as dbAlbums) toModels() model.Albums {
 	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
@@ -228,10 +208,6 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadTags(&res)
-	if err != nil {
-		return nil, err
-	}
 	err = r.loadParticipations(&res)
 	if err != nil {
 		return nil, err
@@ -267,10 +243,6 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadTags(&res)
-	if err != nil {
-		return nil, err
-	}
 	err = r.loadParticipations(&res)
 	return res.toModels(), err
 }
@@ -289,10 +261,6 @@ func (r *albumRepository) purgeEmpty() error {
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
 	var res dbAlbums
 	err := r.doSearch(q, offset, size, &res, "name")
-	if err != nil {
-		return nil, err
-	}
-	err = r.loadTags(&res)
 	if err != nil {
 		return nil, err
 	}

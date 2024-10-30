@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -33,7 +32,7 @@ func (r sqlRepository) loadParticipations(m modelWithParticipations) error {
 	return nil
 }
 
-func buildParticipantIDs(participations model.Participations) string {
+func marshalParticipantIDs(participations model.Participations) string {
 	ids := make(map[model.Role][]string)
 	for role, artists := range participations {
 		for _, artist := range artists {
@@ -44,19 +43,18 @@ func buildParticipantIDs(participations model.Participations) string {
 	return string(res)
 }
 
-func parseParticipations(participantIds string) model.Participations {
+func unmarshalParticipations(participantIds string) (model.Participations, error) {
 	partIDs := make(map[model.Role][]string)
 	err := json.Unmarshal([]byte(participantIds), &partIDs)
 	if err != nil {
-		log.Error("Error parsing participant ids", "ids", participantIds, err)
-		return model.Participations{}
+		return nil, fmt.Errorf("parsing participants: %w", err)
 	}
 	participations := model.Participations{}
 	for role, ids := range partIDs {
 		artists := slice.Map(ids, func(id string) model.Artist { return model.Artist{ID: id} })
 		participations[role] = artists
 	}
-	return participations
+	return participations, nil
 }
 
 func (r sqlRepository) updateParticipations(itemID string, participations model.Participations) error {

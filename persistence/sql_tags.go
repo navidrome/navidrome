@@ -3,45 +3,53 @@ package persistence
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
-type modelWithTags interface {
-	tagIDs() []string
-	setTags(tagMap map[string]model.Tag)
+// Format of a tag in the DB
+type dbTag struct {
+	ID    string `json:"id"`
+	Value string `json:"value"`
 }
+type dbTags map[model.TagName][]dbTag
 
-func (r sqlRepository) loadTags(m modelWithTags) error {
-	tagIDs := m.tagIDs()
-	if len(tagIDs) == 0 {
-		return nil
-	}
-	query := Select("*").From("tag").Where(Eq{"id": tagIDs})
-	var tags model.TagList
-	err := r.queryAll(query, &tags)
+func unmarshalTags(data string) (model.Tags, error) {
+	var dbTags dbTags
+	err := json.Unmarshal([]byte(data), &dbTags)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("parsing tags: %w", err)
 	}
-	tagMap := slice.ToMap(tags, func(t model.Tag) (string, model.Tag) {
-		return t.ID, t
-	})
-	m.setTags(tagMap)
-	return nil
+	res := model.Tags{}
+	for name, tags := range dbTags {
+		for _, tag := range tags {
+			res[name] = append(res[name], tag.Value)
+		}
+	}
+	return res, nil
 }
 
-func buildTagIDs(tags model.Tags) string {
-	ids := tags.IDs()
-	if len(ids) == 0 {
-		return "[]"
+func marshalTags(tags model.Tags) string {
+	dbTags := dbTags{}
+	for name, values := range tags {
+		for _, value := range values {
+			t := model.NewTag(name, value)
+			dbTags[name] = append(dbTags[name], dbTag{ID: t.ID, Value: value})
+		}
 	}
-	res, _ := json.Marshal(ids)
+	res, _ := json.Marshal(dbTags)
 	return string(res)
 }
 
-func tagIDFilter(_ string, idValue any) Sqlizer {
-	// We just need to search for the tag.id, as it is calculated based on the tag name and value combined.
-	return Like{"tag_ids": fmt.Sprintf(`%%"%s"%%`, idValue)}
+func tagIDFilter(name string, idValue any) Sqlizer {
+	name = strings.TrimSuffix(name, "_id")
+	return exists(
+		fmt.Sprintf(`json_tree(tags, "$.%s")`, name),
+		And{
+			Eq{"value": idValue},
+			NotEq{"json_tree.type": []string{"object", "array"}},
+		},
+	)
 }

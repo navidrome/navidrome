@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,18 +25,21 @@ type mediaFileRepository struct {
 type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
 	ParticipantIDs   string `structs:"-" json:"-"`
-	TagIds           string `structs:"-" json:"-"`
-	parsedTagIDs     []string
+	Tags             string `structs:"-" json:"-"`
 }
 
 func (m *dbMediaFile) PostScan() error {
-	m.MediaFile.Participations = parseParticipations(m.ParticipantIDs)
-	if m.TagIds == "" {
-		return nil
-	}
-	err := json.Unmarshal([]byte(m.TagIds), &m.parsedTagIDs)
+	var err error
+	m.MediaFile.Participations, err = unmarshalParticipations(m.ParticipantIDs)
 	if err != nil {
-		return fmt.Errorf("error parsing media_file tags: %w", err)
+		return fmt.Errorf("parsing media_file from db: %w", err)
+	}
+	if m.Tags != "" {
+		m.MediaFile.Tags, err = unmarshalTags(m.Tags)
+		if err != nil {
+			return fmt.Errorf("parsing media_file from db: %w", err)
+		}
+		m.Genre, m.Genres = m.MediaFile.Tags.ToGenres()
 	}
 	return nil
 }
@@ -47,42 +49,16 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
 	fullText = append(fullText, m.MediaFile.Participations.AllNames()...)
 	args["full_text"] = formatFullText(fullText...)
-	args["tag_ids"] = buildTagIDs(m.MediaFile.Tags)
-	args["participant_ids"] = buildParticipantIDs(m.MediaFile.Participations)
-	delete(args, "tags")
+	args["tags"] = marshalTags(m.MediaFile.Tags)
+	args["participant_ids"] = marshalParticipantIDs(m.MediaFile.Participations)
 	delete(args, "participations")
 	return nil
-}
-
-func (m *dbMediaFile) tagIDs() []string {
-	return m.parsedTagIDs
 }
 
 type dbMediaFiles []dbMediaFile
 
 func (m dbMediaFiles) toModels() model.MediaFiles {
 	return slice.Map(m, func(mf dbMediaFile) model.MediaFile { return *mf.MediaFile })
-}
-
-func (m dbMediaFiles) tagIDs() []string {
-	var ids []string
-	for _, mf := range m {
-		ids = append(ids, mf.parsedTagIDs...)
-	}
-	return slice.Unique(ids)
-}
-
-func (m dbMediaFiles) setTags(tagMap map[string]model.Tag) {
-	for i, mf := range m {
-		tags := model.Tags{}
-		for _, id := range mf.parsedTagIDs {
-			if tag, ok := tagMap[id]; ok {
-				tags[tag.TagName] = append(tags[tag.TagName], tag.TagValue)
-			}
-		}
-		m[i].MediaFile.Tags = tags
-		m[i].MediaFile.Genre, m[i].MediaFile.Genres = tags.ToGenres()
-	}
 }
 
 func (m dbMediaFiles) getParticipantIDs() []string {
@@ -170,10 +146,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
-	if err != nil {
-		return nil, err
-	}
-	err = r.loadTags(&res)
 	if err != nil {
 		return nil, err
 	}
@@ -320,10 +292,6 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadTags(&res)
-	if err != nil {
-		return nil, err
-	}
 	//err = r.loadParticipations(&res) BFR Needed?
 	return res.toModels(), nil
 }
@@ -338,10 +306,6 @@ func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {
 	results := dbMediaFiles{}
 	err := r.doSearch(q, offset, size, &results, "title")
-	if err != nil {
-		return nil, err
-	}
-	err = r.loadTags(&results)
 	if err != nil {
 		return nil, err
 	}

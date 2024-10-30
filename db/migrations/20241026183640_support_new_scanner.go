@@ -219,7 +219,7 @@ alter table album
 alter table album
 	add column mbz_release_group_id varchar default '' not null;
 alter table album
-	add column tag_ids jsonb default '[]' not null;
+	add column tags jsonb default '{}' not null;
 alter table album
 	add column participant_ids jsonb default '{}' not null;
 create index if not exists album_imported_at_ix
@@ -241,7 +241,7 @@ alter table media_file
 alter table media_file
 	add column mbz_release_group_id varchar default '' not null;
 alter table media_file
-	add column tag_ids jsonb default '[]' not null;
+	add column tags jsonb default '{}' not null;
 alter table media_file
 	add column participant_ids jsonb default '{}' not null;
 `)
