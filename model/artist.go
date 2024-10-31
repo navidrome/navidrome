@@ -17,7 +17,6 @@ type Artist struct {
 	AlbumCount int `structs:"-" json:"albumCount,omitempty"`
 	// Deprecated: Use Stats instead
 	SongCount             int        `structs:"-" json:"songCount,omitempty"`
-	Genres                Genres     `structs:"-" json:"genres,omitempty"`
 	Biography             string     `structs:"biography" json:"biography,omitempty"`
 	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty"`
 	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty"`
