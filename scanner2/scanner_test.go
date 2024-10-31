@@ -6,6 +6,7 @@ import (
 	"testing/fstest"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -122,14 +123,14 @@ var _ = Describe("Scanner", Ordered, func() {
 
 					mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(mf[0].Tags).ToNot(HaveKey("catalognumber"))
+					Expect(mf[0].Tags).ToNot(HaveKey("barcode"))
 
-					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"catalognumber": "123"})
+					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"barcode": "123"})
 					Expect(s.RescanAll(ctx, true)).To(Succeed())
 
 					mf, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
-					Expect(mf[0].Tags).To(HaveKeyWithValue(model.TagCatalogNumber, []string{"123"}))
+					Expect(mf[0].Tags).To(HaveKeyWithValue(model.TagName("barcode"), []string{"123"}))
 				})
 
 				It("should update the album", func() {
@@ -231,11 +232,17 @@ var _ = Describe("Scanner", Ordered, func() {
 			var help, revolver func(...map[string]any) *fstest.MapFile
 			var fsys storagetest.FakeFS
 			var findByPath func(string) (*model.MediaFile, error)
+			var beatlesMBID = uuid.NewString()
 
 			BeforeEach(func() {
 				By("Having two MP3 albums")
-				help = template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
-				revolver = template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+				beatles := _t{
+					"artist":               "The Beatles",
+					"artistsort":           "Beatles, The",
+					"musicbrainz_artistid": beatlesMBID,
+				}
+				help = template(beatles, _t{"album": "Help!", "year": 1965})
+				revolver = template(beatles, _t{"album": "Revolver", "year": 1966})
 				fsys = createFS(fstest.MapFS{
 					"The Beatles/Help!/01 - Help!.mp3":            help(track(1, "Help!")),
 					"The Beatles/Help!/02 - The Night Before.mp3": help(track(2, "The Night Before")),
@@ -254,7 +261,8 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				Expect(s.RescanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(5)))
-				mf, _ := findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+				mf, err := findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
+				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Title).To(Equal("I'm Only Sleeping"))
 			})
 
@@ -409,6 +417,45 @@ var _ = Describe("Scanner", Ordered, func() {
 				mf, err = findByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.Missing).To(BeFalse())
+			})
+
+			It("does not override artist fields when importing an undertagged file", func() {
+				By("Making sure artist in the DB contains MBID and sort name")
+				aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+					Filters: squirrel.Eq{"name": "The Beatles"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(aa).To(HaveLen(1))
+				Expect(aa[0].Name).To(Equal("The Beatles"))
+				Expect(aa[0].MbzArtistID).To(Equal(beatlesMBID))
+				Expect(aa[0].SortArtistName).To(Equal("Beatles, The"))
+
+				By("Adding a new undertagged file (no MBID or sort name)")
+				newTrack := revolver(track(4, "Love You Too",
+					_t{"artist": "The Beatles", "musicbrainz_artistid": "", "artistsort": ""}),
+				)
+				fsys.Add("The Beatles/Revolver/04 - Love You Too.mp3", newTrack)
+
+				By("Doing a partial scan")
+				Expect(s.RescanAll(ctx, false)).To(Succeed())
+
+				By("Asserting MediaFile have the artist name, but not the MBID or sort name")
+				mf, err := findByPath("The Beatles/Revolver/04 - Love You Too.mp3")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mf.Title).To(Equal("Love You Too"))
+				Expect(mf.AlbumArtist).To(Equal("The Beatles"))
+				Expect(mf.MbzAlbumArtistID).To(BeEmpty())
+				Expect(mf.SortArtistName).To(BeEmpty())
+
+				By("Makingsure the artist in the DB has not changed")
+				aa, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+					Filters: squirrel.Eq{"name": "The Beatles"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(aa).To(HaveLen(1))
+				Expect(aa[0].Name).To(Equal("The Beatles"))
+				Expect(aa[0].MbzArtistID).To(Equal(beatlesMBID))
+				Expect(aa[0].SortArtistName).To(Equal("Beatles, The"))
 			})
 		})
 	})

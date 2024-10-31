@@ -147,9 +147,9 @@ func (ffs *FakeFS) createDirTimestamps() bool {
 func ModTime(ts string) map[string]any   { return map[string]any{fakeFileInfoModTime: ts} }
 func BirthTime(ts string) map[string]any { return map[string]any{fakeFileInfoBirthTime: ts} }
 
-func Template(t map[string]any) func(...map[string]any) *fstest.MapFile {
+func Template(t ...map[string]any) func(...map[string]any) *fstest.MapFile {
 	return func(tags ...map[string]any) *fstest.MapFile {
-		return MP3(append([]map[string]any{t}, tags...)...)
+		return MP3(append(t, tags...)...)
 	}
 }
 

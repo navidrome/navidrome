@@ -77,6 +77,15 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	}
 	m["similar_artists"] = strings.Join(sa, ";")
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
+
+	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
+	// BFR: Better way to handle this?
+	if v, ok := m["sort_artist_name"]; !ok || v.(string) == "" {
+		delete(m, "sort_artist_name")
+	}
+	if v, ok := m["mbz_artist_id"]; !ok || v.(string) == "" {
+		delete(m, "mbz_artist_id")
+	}
 	return nil
 }
 
