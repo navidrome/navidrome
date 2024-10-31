@@ -48,8 +48,8 @@ func tagIDFilter(name string, idValue any) Sqlizer {
 	return exists(
 		fmt.Sprintf(`json_tree(tags, "$.%s")`, name),
 		And{
+			NotEq{"json_tree.atom": nil},
 			Eq{"value": idValue},
-			NotEq{"json_tree.type": []string{"object", "array"}},
 		},
 	)
 }

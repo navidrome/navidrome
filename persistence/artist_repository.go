@@ -184,6 +184,48 @@ func (r *artistRepository) purgeEmpty() error {
 	return err
 }
 
+func (r *artistRepository) RefreshCounters() (int64, error) {
+	/*
+	   	with artist_counters (id, counters) as
+	      (select atom as id,
+	             json_group_object(
+	                 replace(path, '"', ''),
+	                 json_object('a', album_count,'m', count,'s', size)
+	             ) as counters
+	      from (select atom, replace(jt.path, '$.', '') as path, count(distinct album_id) as album_count, count(mf.id) as count, sum(size) as size
+	      from media_file mf
+	               left join json_tree(participant_ids) jt
+	      where atom is not null
+	      -- and json_tree.atom = '7GdFklx0cdVug6jBjH7OcK'
+	      -- and json_tree.path = '$."album_artist"'
+	      group by atom, jt.path)
+	      group by atom)
+	      UPDATE artist SET counters=(SELECT counters FROM artist_counters WHERE artist_counters.id = artist.id)
+	      where counters != '[]'
+
+	*/
+	// First select all counters, group by artist/role. artist_id is the atom
+	query1 := Select("atom", "replace(jt.path, '$.', '') as path", "count(distinct album_id) as album_count",
+		"count(mf.id) as count", "sum(size) as size").From("media_file mf").
+		LeftJoin("json_tree(participant_ids) jt").Where("atom is not null").
+		GroupBy("atom", "jt.path")
+	sql1, _, err := query1.ToSql()
+	if err != nil {
+		return 0, err
+	}
+	// Then format the counters in a JSON object, one key for each role
+	query2 := Select("atom as id", "json_group_object(replace(path, '\"', ''), json_object('a', album_count,'m', count,'s', size)) as counters").
+		From("(" + sql1 + ")").GroupBy("atom")
+	sql2, _, err := query2.ToSql()
+	if err != nil {
+		return 0, err
+	}
+	// Finally update the artist table with the new counters
+	query3 := Update(r.tableName).Set("counters", Select("counters").From("("+sql2+") as artist_counters").
+		Where("artist_counters.id = artist.id"))
+	return r.executeSQL(query3)
+}
+
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
 	var dba dbArtists
 	err := r.doSearch(q, offset, size, &dba, "name")

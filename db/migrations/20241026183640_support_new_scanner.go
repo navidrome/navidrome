@@ -190,6 +190,8 @@ alter table artist
 drop index if exists artist_size;
 alter table artist
 	drop column size;
+alter table artist
+	add column counters jsonb default '{}' not null;
 `)
 	if err != nil {
 		return err
