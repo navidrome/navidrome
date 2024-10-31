@@ -3,6 +3,7 @@ package persistence
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"slices"
@@ -27,12 +28,35 @@ type artistRepository struct {
 type dbArtist struct {
 	*model.Artist  `structs:",flatten"`
 	SimilarArtists string `structs:"-" json:"similarArtists"`
+	Counters       string `structs:"-" json:"-"`
 }
 
 func (a *dbArtist) PostScan() error {
+	var counters map[string]map[string]int64
+	if err := json.Unmarshal([]byte(a.Counters), &counters); err != nil {
+		return fmt.Errorf("parsing artist counters from db: %w", err)
+	}
+	a.Artist.Stats = make(map[model.Role]model.ArtistStats)
+	for key, c := range counters {
+		if key == "total" {
+			a.Artist.Size = c["s"]
+			a.Artist.SongCount = int(c["m"])
+			a.Artist.AlbumCount = int(c["a"])
+		}
+		role := model.RoleFromString(key)
+		if role == model.RoleInvalid {
+			continue
+		}
+		a.Artist.Stats[role] = model.ArtistStats{
+			SongCount:  int(c["m"]),
+			AlbumCount: int(c["a"]),
+			Size:       c["s"],
+		}
+	}
 	if a.SimilarArtists == "" {
 		return nil
 	}
+	// BFR: Save similar artists as JSONB in the DB
 	for _, s := range strings.Split(a.SimilarArtists, ";") {
 		fields := strings.Split(s, ":")
 		if len(fields) != 2 {
@@ -73,32 +97,31 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
-		"id":       idFilter(r.tableName),
-		"name":     fullTextFilter(r.tableName),
-		"starred":  booleanFilter,
-		"genre_id": tagIDFilter,
-		// BFR Filter by role
-		//"role": id in (select artist_id from album_artists where role = 'album_artist')
-		// or: (needs index on role and artist_id)
-		//"role": exists (select 1 from album_artists where role = 'album_artist' and album_artists.artist_id = artist.id)
+		"id":      idFilter(r.tableName),
+		"name":    fullTextFilter(r.tableName),
+		"starred": booleanFilter,
+		"role":    roleFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":       "order_artist_name",
 		"starred_at": "starred, starred_at",
+		// BFR: Can be dynamic (by role) if we allow functions when sorting
+		"song_count":  "counters->>'total'->>'m'",
+		"album_count": "counters->>'total'->>'a'",
+		"size":        "counters->>'total'->>'s'",
 	})
 	return r
+}
+
+func roleFilter(_ string, role any) Sqlizer {
+	return NotEq{fmt.Sprintf("counters ->> '$.%v'", role): nil}
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	query := r.newSelect(options...).Columns("artist.*")
 	query = r.withAnnotation(query, "artist.id")
 	// BFR How to handle counts and sizes (per role)?
-	//sql = sql.Columns("ifnull(count(distinct mf.album_id), 0) as album_count",
-	//	"ifnull(count(distinct mf.id), 0) as song_count", "ifnull(sum(distinct mf.size), 0) as size").
-	//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id and mfa.role = 'album_artist'").
-	//LeftJoin("media_file_artists mfa on artist.id = mfa.artist_id").
-	//LeftJoin("media_file mf on mfa.media_file_id = mf.id")
-	return query //.GroupBy("artist.id")
+	return query
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -186,25 +209,28 @@ func (r *artistRepository) purgeEmpty() error {
 
 func (r *artistRepository) RefreshCounters() (int64, error) {
 	/*
-	   	with artist_counters (id, counters) as
-	      (select atom as id,
-	             json_group_object(
-	                 replace(path, '"', ''),
-	                 json_object('a', album_count,'m', count,'s', size)
-	             ) as counters
-	      from (select atom, replace(jt.path, '$.', '') as path, count(distinct album_id) as album_count, count(mf.id) as count, sum(size) as size
-	      from media_file mf
-	               left join json_tree(participant_ids) jt
-	      where atom is not null
-	      -- and json_tree.atom = '7GdFklx0cdVug6jBjH7OcK'
-	      -- and json_tree.path = '$."album_artist"'
-	      group by atom, jt.path)
-	      group by atom)
-	      UPDATE artist SET counters=(SELECT counters FROM artist_counters WHERE artist_counters.id = artist.id)
-	      where counters != '[]'
+		   	with artist_counters (id, counters) as
+		      (select atom as id,
+		             json_group_object(
+		                 replace(path, '"', ''),
+		                 json_object('a', album_count,'m', count,'s', size)
+		             ) as counters
+		      from (select atom, replace(jt.path, '$.', '') as path, count(distinct album_id) as album_count, count(mf.id) as count, sum(size) as size
+		      from media_file mf
+		               left join json_tree(participant_ids) jt
+		      where atom is not null
+		      group by atom, jt.path
+					      	      union
+		      select atom, 'total' as path, count(distinct album_id) as album_count, count(mf.id) as count, sum(size) as size
+				      from media_file mf
+				      left join json_tree(participant_ids)
+				      where atom is not null
+		      group by atom)
+		      UPDATE artist SET counters=(SELECT counters FROM artist_counters WHERE artist_counters.id = artist.id),
+		      	updated_at = now()
 
 	*/
-	// First select all counters, group by artist/role. artist_id is the atom
+	// First select all counters, group by artist/role. In all queries below, atom is the artist ID
 	query1 := Select("atom", "replace(jt.path, '$.', '') as path", "count(distinct album_id) as album_count",
 		"count(mf.id) as count", "sum(size) as size").From("media_file mf").
 		LeftJoin("json_tree(participant_ids) jt").Where("atom is not null").
@@ -213,16 +239,25 @@ func (r *artistRepository) RefreshCounters() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	// Then format the counters in a JSON object, one key for each role
+	// This query is to select total counters
+	query11 := Select("atom", "'total' as path", "count(distinct album_id) as album_count",
+		"count(mf.id) as count", "sum(size) as size").From("media_file mf").
+		LeftJoin("json_tree(participant_ids)").Where("atom is not null").
+		GroupBy("atom")
+	sql11, _, err := query11.ToSql()
+	if err != nil {
+		return 0, err
+	}
+	// Then format the counters in a JSON object, one key for each role. It gets data from the union of the two queries above
 	query2 := Select("atom as id", "json_group_object(replace(path, '\"', ''), json_object('a', album_count,'m', count,'s', size)) as counters").
-		From("(" + sql1 + ")").GroupBy("atom")
+		From("(" + sql1 + " union " + sql11 + ")").GroupBy("atom")
 	sql2, _, err := query2.ToSql()
 	if err != nil {
 		return 0, err
 	}
 	// Finally update the artist table with the new counters
 	query3 := Update(r.tableName).Set("counters", Select("counters").From("("+sql2+") as artist_counters").
-		Where("artist_counters.id = artist.id"))
+		Where("artist_counters.id = artist.id")).Set("updated_at", timeToSQL(time.Now()))
 	return r.executeSQL(query3)
 }
 

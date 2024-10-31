@@ -5,13 +5,17 @@ import "time"
 type Artist struct {
 	Annotations `structs:"-"`
 
-	ID                    string     `structs:"id" json:"id"`
-	Name                  string     `structs:"name" json:"name"`
-	SortArtistName        string     `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
-	OrderArtistName       string     `structs:"order_artist_name" json:"orderArtistName,omitempty"`
-	MbzArtistID           string     `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"`
-	Size                  int64      `structs:"-" json:"size,omitempty"`
-	AlbumCount            int        `structs:"-" json:"albumCount,omitempty"`
+	ID              string               `structs:"id" json:"id"`
+	Name            string               `structs:"name" json:"name"`
+	SortArtistName  string               `structs:"sort_artist_name" json:"sortArtistName,omitempty"`
+	OrderArtistName string               `structs:"order_artist_name" json:"orderArtistName,omitempty"`
+	MbzArtistID     string               `structs:"mbz_artist_id" json:"mbzArtistId,omitempty"`
+	Stats           map[Role]ArtistStats `structs:"-" json:"stats,omitempty"`
+	// Deprecated: Use Stats instead
+	Size int64 `structs:"-" json:"size,omitempty"`
+	// Deprecated: Use Stats instead
+	AlbumCount int `structs:"-" json:"albumCount,omitempty"`
+	// Deprecated: Use Stats instead
 	SongCount             int        `structs:"-" json:"songCount,omitempty"`
 	Genres                Genres     `structs:"-" json:"genres,omitempty"`
 	Biography             string     `structs:"biography" json:"biography,omitempty"`
@@ -24,6 +28,12 @@ type Artist struct {
 
 	CreatedAt time.Time `structs:"created_at" json:"createdAt,omitempty"` // Oldest CreatedAt for all songs for this artist
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt,omitempty"` // Newest UpdatedAt for all songs for this artist
+}
+
+type ArtistStats struct {
+	SongCount  int   `json:"songCount"`
+	AlbumCount int   `json:"albumCount"`
+	Size       int64 `json:"size"`
 }
 
 func (a Artist) ArtistImageUrl() string {
