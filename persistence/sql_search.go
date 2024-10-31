@@ -14,7 +14,7 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
-func (r sqlRepository) doSearch(q string, offset, size int, results interface{}, orderBys ...string) error {
+func (r sqlRepository) doSearch(q string, offset, size int, results any, orderBys ...string) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
 	if len(q) < 2 {
@@ -24,7 +24,7 @@ func (r sqlRepository) doSearch(q string, offset, size int, results interface{},
 	sq := r.newSelect().Columns(r.tableName + ".*")
 	sq = r.withAnnotation(sq, r.tableName+".id")
 	sq = r.withBookmark(sq, r.tableName+".id")
-	filter := fullTextExpr(q, "")
+	filter := fullTextExpr(r.tableName, q)
 	if filter != nil {
 		sq = sq.Where(filter)
 		sq = sq.OrderBy(orderBys...)
