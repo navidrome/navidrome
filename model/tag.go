@@ -19,6 +19,33 @@ type Tag struct {
 
 type TagList []Tag
 
+func (l TagList) GroupByFrequency() Tags {
+	grouped := map[string]map[string]int{}
+	for _, t := range l {
+		if m, ok := grouped[string(t.TagName)]; !ok {
+			grouped[string(t.TagName)] = map[string]int{t.TagValue: 0}
+		} else {
+			m[t.TagValue]++
+		}
+	}
+
+	tags := Tags{}
+	for name, values := range grouped {
+		valueList := make([]string, 0, len(values))
+		for value := range values {
+			valueList = append(valueList, value)
+		}
+		slices.SortFunc(valueList, func(a, b string) int {
+			return cmp.Or(
+				cmp.Compare(values[b], values[a]),
+				cmp.Compare(a, b),
+			)
+		})
+		tags[TagName(name)] = valueList
+	}
+	return tags
+}
+
 func (t Tag) String() string {
 	return fmt.Sprintf("%s=%s", t.TagName, t.TagValue)
 }

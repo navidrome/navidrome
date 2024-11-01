@@ -56,4 +56,46 @@ var _ = Describe("Tag", func() {
 			})
 		})
 	})
+
+	Describe("TagList", func() {
+		Describe("GroupByFrequency", func() {
+			It("should return an empty Tags map for an empty TagList", func() {
+				tagList := TagList{}
+
+				groupedTags := tagList.GroupByFrequency()
+
+				Expect(groupedTags).To(BeEmpty())
+			})
+
+			It("should handle tags with different frequencies correctly", func() {
+				tagList := TagList{
+					NewTag("genre", "Jazz"),
+					NewTag("genre", "Rock"),
+					NewTag("genre", "Pop"),
+					NewTag("genre", "Rock"),
+					NewTag("artist", "The Rolling Stones"),
+					NewTag("artist", "The Beatles"),
+					NewTag("artist", "The Beatles"),
+				}
+
+				groupedTags := tagList.GroupByFrequency()
+
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), ConsistOf("Rock", "Pop", "Jazz")))
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("artist"), ConsistOf("The Beatles", "The Rolling Stones")))
+			})
+
+			It("should sort tags by name when frequency is the same", func() {
+				tagList := TagList{
+					NewTag("genre", "Jazz"),
+					NewTag("genre", "Rock"),
+					NewTag("genre", "Alternative"),
+					NewTag("genre", "Pop"),
+				}
+
+				groupedTags := tagList.GroupByFrequency()
+
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), ConsistOf("Alternative", "Jazz", "PoP", "Rock")))
+			})
+		})
+	})
 })

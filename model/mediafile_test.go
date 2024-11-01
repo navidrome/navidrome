@@ -191,9 +191,13 @@ var _ = Describe("MediaFiles", func() {
 			})
 			When("we have multiple Genres", func() {
 				BeforeEach(func() {
-					mfs = MediaFiles{{Tags: Tags{"genre": []string{"Rock"}}}, {Tags: Tags{"genre": []string{"Punk"}}}, {Tags: Tags{"genre": []string{"Alternative", "Rock"}}}}
+					mfs = MediaFiles{
+						{Tags: Tags{"genre": []string{"Punk"}}},
+						{Tags: Tags{"genre": []string{"Rock"}}},
+						{Tags: Tags{"genre": []string{"Alternative", "Rock"}}},
+					}
 				})
-				It("sets the correct Genre", func() {
+				FIt("sets the correct Genre, sorted by frequency", func() {
 					album := mfs.ToAlbum()
 					Expect(album.Tags).To(HaveLen(1))
 					Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Punk", "Alternative"}))

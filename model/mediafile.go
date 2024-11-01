@@ -168,6 +168,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	var originalYears []int
 	var originalDates []string
 	var releaseDates []string
+	var tags TagList
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs on an album
 		a.ID = m.AlbumID
@@ -208,9 +209,13 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
 		// BFR Sort values by frequency. Use slice.CompactByFrequency
-		a.AddTags(m.Tags)
+		//a.AddTags(m.Tags)
+		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participations.Merge(m.Participations)
 	}
+
+	// Group all tags into model.Tags. Sort by most frequent
+	a.Tags = tags.GroupByFrequency()
 
 	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
 	a.Date, _ = allOrNothing(dates)
