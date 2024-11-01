@@ -9,13 +9,12 @@ import (
 var _ = Describe("fixAlbumArtist", func() {
 	var album Album
 	BeforeEach(func() {
-		album = Album{}
+		album = Album{Participations: Participations{}}
 	})
 	Context("Non-Compilations", func() {
 		BeforeEach(func() {
 			album.Compilation = false
-			album.Artist = "Sparks"
-			album.ArtistID = "ar-123"
+			album.Participations.Add(RoleArtist, Artist{ID: "ar-123", Name: "Sparks"})
 		})
 		It("returns the track artist if no album artist is specified", func() {
 			al := fixAlbumArtist(album, nil)

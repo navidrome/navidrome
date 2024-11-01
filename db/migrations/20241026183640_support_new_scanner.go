@@ -216,6 +216,13 @@ func upSupportNewScanner_UpdateTableAlbum(ctx context.Context, tx *sql.Tx) error
 drop index if exists album_all_artist_ids;
 alter table album
 	drop column all_artist_ids;
+drop index if exists album_artist;
+drop index if exists album_artist_album;
+alter table album
+	drop column artist;
+drop index if exists album_artist_id;
+alter table album
+	drop column artist_id;
 alter table album
 	add column imported_at datetime default '0000-00-00 00:00:00' not null;
 alter table album

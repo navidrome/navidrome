@@ -94,7 +94,7 @@ var _ = Describe("Tag", func() {
 
 				groupedTags := tagList.GroupByFrequency()
 
-				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), ConsistOf("Alternative", "Jazz", "PoP", "Rock")))
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), ConsistOf("Alternative", "Jazz", "Pop", "Rock")))
 			})
 		})
 	})

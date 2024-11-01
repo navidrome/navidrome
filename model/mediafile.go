@@ -159,23 +159,23 @@ func (mfs MediaFiles) ToAlbum() Album {
 	// Sorting the mediafiles ensure the results will be consistent
 	slices.SortFunc(mfs, func(a, b MediaFile) int { return cmp.Compare(a.Path, b.Path) })
 
-	var albumArtistIds []string
-	var mbzAlbumIds []string
-	var mbzReleaseGroupIds []string
-	var comments []string
-	var years []int
-	var dates []string
-	var originalYears []int
-	var originalDates []string
-	var releaseDates []string
-	var tags TagList
+	var (
+		albumArtistIds     []string
+		mbzAlbumIds        []string
+		mbzReleaseGroupIds []string
+		comments           []string
+		years              []int
+		dates              []string
+		originalYears      []int
+		originalDates      []string
+		releaseDates       []string
+		tags               TagList
+	)
 	for _, m := range mfs {
-		// We assume these attributes are all the same for all songs on an album
+		// We assume these attributes are all the same for all songs in an album
 		a.ID = m.AlbumID
 		a.LibraryID = m.LibraryID
 		a.Name = m.Album
-		a.Artist = m.Artist // TODO Remove?
-		a.ArtistID = m.ArtistID
 		a.AlbumArtist = m.AlbumArtist
 		a.AlbumArtistID = m.AlbumArtistID
 		a.SortAlbumName = m.SortAlbumName
@@ -208,16 +208,12 @@ func (mfs MediaFiles) ToAlbum() Album {
 		if m.DiscNumber > 0 {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
-		// BFR Sort values by frequency. Use slice.CompactByFrequency
-		//a.AddTags(m.Tags)
 		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participations.Merge(m.Participations)
 	}
 
-	// Group all tags into model.Tags. Sort by most frequent
 	a.Tags = tags.GroupByFrequency()
-
-	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp)
+	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp) // BFR Should be a JSONB field
 	a.Date, _ = allOrNothing(dates)
 	a.OriginalDate, _ = allOrNothing(originalDates)
 	a.ReleaseDate, a.Releases = allOrNothing(releaseDates)
@@ -276,8 +272,9 @@ func older(t1, t2 time.Time) time.Time {
 func fixAlbumArtist(a Album, albumArtistIds []string) Album {
 	if !a.Compilation {
 		if a.AlbumArtistID == "" {
-			a.AlbumArtistID = a.ArtistID
-			a.AlbumArtist = a.Artist
+			artist := a.Participations.First(RoleArtist)
+			a.AlbumArtistID = artist.ID
+			a.AlbumArtist = artist.Name
 		}
 		return a
 	}

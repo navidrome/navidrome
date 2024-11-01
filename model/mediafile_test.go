@@ -39,8 +39,6 @@ var _ = Describe("MediaFiles", func() {
 			album := mfs.ToAlbum()
 			Expect(album.ID).To(Equal("AlbumID"))
 			Expect(album.Name).To(Equal("Album"))
-			Expect(album.Artist).To(Equal("Artist"))
-			Expect(album.ArtistID).To(Equal("ArtistID"))
 			Expect(album.AlbumArtist).To(Equal("AlbumArtist"))
 			Expect(album.AlbumArtistID).To(Equal("AlbumArtistID"))
 			Expect(album.SortAlbumName).To(Equal("SortAlbumName"))
@@ -197,10 +195,10 @@ var _ = Describe("MediaFiles", func() {
 						{Tags: Tags{"genre": []string{"Alternative", "Rock"}}},
 					}
 				})
-				FIt("sets the correct Genre, sorted by frequency", func() {
+				It("sets the correct Genre, sorted by frequency, then alphabetically", func() {
 					album := mfs.ToAlbum()
 					Expect(album.Tags).To(HaveLen(1))
-					Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Punk", "Alternative"}))
+					Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Alternative", "Punk"}))
 				})
 			})
 		})

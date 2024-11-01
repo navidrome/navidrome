@@ -14,8 +14,6 @@ type Album struct {
 	LibraryID             int        `structs:"library_id" json:"libraryId"`
 	Name                  string     `structs:"name" json:"name"`
 	EmbedArtPath          string     `structs:"embed_art_path" json:"embedArtPath"`
-	ArtistID              string     `structs:"artist_id" json:"artistId" hash:"ignore"` // BFR Remove
-	Artist                string     `structs:"artist" json:"artist" hash:"ignore"`      // BFR Remove
 	AlbumArtistID         string     `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
 	MaxYear               int        `structs:"max_year" json:"maxYear"`

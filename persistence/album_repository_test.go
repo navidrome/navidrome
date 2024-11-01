@@ -133,7 +133,7 @@ var _ = Describe("AlbumRepository", func() {
 		)
 
 		BeforeEach(func() {
-			a = al(model.Album{ID: "1", Name: "name", ArtistID: "2"})
+			a = al(model.Album{ID: "1", Name: "name"})
 			dba = &dbAlbum{Album: &a, ParticipantIDs: "{}"}
 			args = make(map[string]any)
 		})

@@ -60,9 +60,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", Artist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
-	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", Artist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
-	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", Artist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2})
+	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
+	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
+	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2})
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
