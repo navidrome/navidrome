@@ -31,7 +31,7 @@ func startSignaller(ctx context.Context) func() error {
 				if err != nil {
 					log.Error(ctx, "Error scanning", err)
 				}
-				log.Info(ctx, "Triggered scan complete", "elapsed", time.Since(start).Round(100*time.Millisecond))
+				log.Info(ctx, "Triggered scan complete", "elapsed", time.Since(start))
 			case <-ctx.Done():
 				return nil
 			}

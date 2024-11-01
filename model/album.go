@@ -1,21 +1,21 @@
 package model
 
 import (
-	"maps"
 	"math"
-	"reflect"
 	"time"
+
+	"github.com/mitchellh/hashstructure/v2"
 )
 
 type Album struct {
-	Annotations `structs:"-"`
+	Annotations `structs:"-" hash:"ignore"`
 
 	ID                    string     `structs:"id" json:"id"`
 	LibraryID             int        `structs:"library_id" json:"libraryId"`
 	Name                  string     `structs:"name" json:"name"`
 	EmbedArtPath          string     `structs:"embed_art_path" json:"embedArtPath"`
-	ArtistID              string     `structs:"artist_id" json:"artistId"`
-	Artist                string     `structs:"artist" json:"artist"`
+	ArtistID              string     `structs:"artist_id" json:"artistId" hash:"ignore"` // BFR Remove
+	Artist                string     `structs:"artist" json:"artist" hash:"ignore"`      // BFR Remove
 	AlbumArtistID         string     `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
 	MaxYear               int        `structs:"max_year" json:"maxYear"`
@@ -31,8 +31,8 @@ type Album struct {
 	SongCount             int        `structs:"song_count" json:"songCount"`
 	Duration              float32    `structs:"duration" json:"duration"`
 	Size                  int64      `structs:"size" json:"size"`
-	Genre                 string     `structs:"genre" json:"genre"`
-	Genres                Genres     `structs:"-" json:"genres"`
+	Genre                 string     `structs:"genre" json:"genre" hash:"ignore"`
+	Genres                Genres     `structs:"-" json:"genres" hash:"ignore"`
 	Discs                 Discs      `structs:"discs" json:"discs,omitempty"`
 	SortAlbumName         string     `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
 	SortAlbumArtistName   string     `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
@@ -46,19 +46,19 @@ type Album struct {
 	MbzReleaseGroupID     string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
 	ImageFiles            string     `structs:"image_files" json:"imageFiles,omitempty"`
 	Paths                 string     `structs:"paths" json:"paths,omitempty"`
-	Description           string     `structs:"description" json:"description,omitempty"`
-	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty"`
-	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty"`
-	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty"`
-	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty"`
-	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt"`
+	Description           string     `structs:"description" json:"description,omitempty" hash:"ignore"`
+	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty" hash:"ignore"`
+	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty" hash:"ignore"`
+	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty" hash:"ignore"`
+	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty" hash:"ignore"`
+	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt" hash:"ignore"`
 
-	Tags           Tags           `structs:"tags" json:"tags,omitempty"`           // All imported tags for this album
-	Participations Participations `structs:"participations" json:"participations"` // All artists that participated in this album
+	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags for this album
+	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this album
 
-	ImportedAt time.Time `structs:"imported_at" json:"importedAt"` // When this album was imported/updated
-	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`   // Oldest CreatedAt for all songs in this album
-	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`   // Newest UpdatedAt for all songs in this album
+	ImportedAt time.Time `structs:"imported_at" json:"importedAt" hash:"ignore"` // When this album was imported/updated
+	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
+	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album
 }
 
 func (a Album) CoverArtID() ArtworkID {
@@ -71,44 +71,17 @@ func (a Album) Equals(other Album) bool {
 	a.Duration = float32(math.Floor(float64(a.Duration)))
 	other.Duration = float32(math.Floor(float64(other.Duration)))
 
-	// Clear some tags that should not be compared
-	a.ImportedAt = time.Time{}
-	other.ImportedAt = time.Time{}
-	a.Annotations = Annotations{}
-	other.Annotations = Annotations{}
-	a.Genre = ""
-	other.Genre = ""
-	a.Genres = nil
-	other.Genres = nil
+	opts := &hashstructure.HashOptions{
+		IgnoreZeroValue: true,
+		ZeroNil:         true,
+	}
+	hash1, _ := hashstructure.Hash(a, hashstructure.FormatV2, opts)
+	hash2, _ := hashstructure.Hash(other, hashstructure.FormatV2, opts)
 
-	// Clear external metadata
-	a.ExternalInfoUpdatedAt = nil
-	other.ExternalInfoUpdatedAt = nil
-	a.ExternalUrl = ""
-	other.ExternalUrl = ""
-	a.Description = ""
-	other.Description = ""
-	a.SmallImageUrl = ""
-	other.SmallImageUrl = ""
-	a.MediumImageUrl = ""
-	other.MediumImageUrl = ""
-	a.LargeImageUrl = ""
-	other.LargeImageUrl = ""
-
-	// Participations and Tags are cloned, to avoid mutating the original structs
-	a.Participations = maps.Clone(a.Participations)
-	a.Participations.Sort()
-	other.Participations = maps.Clone(other.Participations)
-	other.Participations.Sort()
-	a.Tags = maps.Clone(a.Tags)
-	a.Tags.Sort()
-	other.Tags = maps.Clone(other.Tags)
-	other.Tags.Sort()
-
-	return reflect.DeepEqual(a, other)
+	return hash1 == hash2
 }
 
-// This is the list of tags that are not "first-class citizens" on the Album struct, but are
+// This is the list of tags that are not "first-class citizens" in the Album struct, but are
 // still stored in the database.
 var albumLevelTags = []TagName{
 	TagGenre,

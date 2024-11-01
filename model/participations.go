@@ -116,7 +116,7 @@ func (p Participations) All() Artists {
 	for _, roleArtists := range p {
 		artists = append(artists, roleArtists...)
 	}
-	slices.SortFunc(artists, func(a1, a2 Artist) int {
+	slices.SortStableFunc(artists, func(a1, a2 Artist) int {
 		return cmp.Compare(a1.ID, a2.ID)
 	})
 	return slices.CompactFunc(artists, func(a1, a2 Artist) bool {

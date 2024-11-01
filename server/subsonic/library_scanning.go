@@ -49,7 +49,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 			log.Error(ctx, "Error scanning", err)
 			return
 		}
-		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start).Round(100*time.Millisecond))
+		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start))
 	}()
 
 	return api.GetScanStatus(r)
