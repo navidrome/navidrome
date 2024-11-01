@@ -83,7 +83,7 @@ func (t Tags) Hash() string {
 		return ""
 	}
 	all := t.FlattenAll()
-	slices.SortFunc(all, func(a, b Tag) int {
+	slices.SortStableFunc(all, func(a, b Tag) int {
 		return cmp.Compare(a.ID, b.ID)
 	})
 	sum := md5.New()

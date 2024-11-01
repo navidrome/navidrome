@@ -2,8 +2,8 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
 
-	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
 )
 
 var _ = Describe("ArtistRepository", func() {
@@ -114,7 +113,8 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(er).To(BeNil())
 			})
 
-			It("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
+			// BFR Empty SortArtistName is not saved in the DB anymore
+			XIt("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
 				idx, err := repo.GetIndex()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
@@ -169,33 +169,73 @@ var _ = Describe("ArtistRepository", func() {
 	})
 
 	Describe("dbArtist mapping", func() {
-		var a *model.Artist
+		var (
+			artist *model.Artist
+			dba    *dbArtist
+		)
+
 		BeforeEach(func() {
-			a = &model.Artist{ID: "1", Name: "Van Halen", SimilarArtists: []model.Artist{
-				{ID: "2", Name: "AC/DC"}, {ID: "-1", Name: "Test;With:Sep,Chars"},
-			}}
+			artist = &model.Artist{ID: "1", Name: "Eddie Van Halen", SortArtistName: "Van Halen, Eddie"}
+			dba = &dbArtist{Artist: artist}
 		})
-		It("maps fields", func() {
-			dba := &dbArtist{Artist: a}
-			m := structs.Map(dba)
-			Expect(dba.PostMapArgs(m)).To(Succeed())
-			Expect(m).To(HaveKeyWithValue("similar_artists", "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"))
 
-			other := dbArtist{SimilarArtists: m["similar_artists"].(string), Artist: &model.Artist{
-				ID: "1", Name: "Van Halen",
-			}}
-			Expect(other.PostScan()).To(Succeed())
+		Describe("PostScan", func() {
+			It("parses counters and similar artists correctly", func() {
+				counters := map[string]map[string]int64{
+					"total":    {"s": 1000, "m": 10, "a": 2},
+					"composer": {"s": 500, "m": 5, "a": 1},
+				}
+				countersJSON, _ := json.Marshal(counters)
+				dba.Counters = string(countersJSON)
+				dba.SimilarArtists = "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"
 
-			actual := other.Artist
-			Expect(*actual).To(MatchFields(IgnoreExtras, Fields{
-				"ID":   Equal(a.ID),
-				"Name": Equal(a.Name),
-			}))
-			Expect(actual.SimilarArtists).To(HaveLen(2))
-			Expect(actual.SimilarArtists[0].ID).To(Equal("2"))
-			Expect(actual.SimilarArtists[0].Name).To(Equal("AC/DC"))
-			Expect(actual.SimilarArtists[1].ID).To(Equal("-1"))
-			Expect(actual.SimilarArtists[1].Name).To(Equal("Test;With:Sep,Chars"))
+				err := dba.PostScan()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(dba.Artist.Size).To(Equal(int64(1000)))
+				Expect(dba.Artist.SongCount).To(Equal(10))
+				Expect(dba.Artist.AlbumCount).To(Equal(2))
+				Expect(dba.Artist.Stats).To(HaveLen(1))
+				Expect(dba.Artist.Stats[model.RoleFromString("composer")].Size).To(Equal(int64(500)))
+				Expect(dba.Artist.Stats[model.RoleFromString("composer")].SongCount).To(Equal(5))
+				Expect(dba.Artist.Stats[model.RoleFromString("composer")].AlbumCount).To(Equal(1))
+				Expect(dba.Artist.SimilarArtists).To(HaveLen(2))
+				Expect(dba.Artist.SimilarArtists[0].ID).To(Equal("2"))
+				Expect(dba.Artist.SimilarArtists[0].Name).To(Equal("AC/DC"))
+				Expect(dba.Artist.SimilarArtists[1].ID).To(Equal("-1"))
+				Expect(dba.Artist.SimilarArtists[1].Name).To(Equal("Test;With:Sep,Chars"))
+			})
+		})
+
+		Describe("PostMapArgs", func() {
+			It("maps empty similar artists correctly", func() {
+				m := make(map[string]any)
+				err := dba.PostMapArgs(m)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(m).To(HaveKeyWithValue("similar_artists", ""))
+			})
+
+			It("maps similar artists and full text correctly", func() {
+				artist.SimilarArtists = []model.Artist{
+					{ID: "2", Name: "AC/DC"},
+					{ID: "-1", Name: "Test;With:Sep,Chars"},
+				}
+				m := make(map[string]any)
+				err := dba.PostMapArgs(m)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(m).To(HaveKeyWithValue("similar_artists", "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"))
+				Expect(m).To(HaveKeyWithValue("full_text", " eddie halen van"))
+			})
+
+			It("does not override empty sort_artist_name and mbz_artist_id", func() {
+				m := map[string]any{
+					"sort_artist_name": "",
+					"mbz_artist_id":    "",
+				}
+				err := dba.PostMapArgs(m)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(m).ToNot(HaveKey("sort_artist_name"))
+				Expect(m).ToNot(HaveKey("mbz_artist_id"))
+			})
 		})
 	})
 })

@@ -53,6 +53,7 @@ func (a *dbArtist) PostScan() error {
 			Size:       c["s"],
 		}
 	}
+	a.Artist.SimilarArtists = nil
 	if a.SimilarArtists == "" {
 		return nil
 	}

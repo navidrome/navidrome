@@ -5,8 +5,6 @@ import (
 	"math"
 	"reflect"
 	"time"
-
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type Album struct {
@@ -148,24 +146,7 @@ type Albums []Album
 // ToAlbumArtist creates an Artist object based on the attributes of this Albums collection.
 // It assumes all albums have the same AlbumArtist, or else results are unpredictable.
 func (als Albums) ToAlbumArtist() Artist {
-	a := Artist{AlbumCount: len(als)}
-	var mbzArtistIds []string
-	for _, al := range als {
-		a.ID = al.AlbumArtistID
-		a.Name = al.AlbumArtist
-		a.SortArtistName = al.SortAlbumArtistName
-		a.OrderArtistName = al.OrderAlbumArtistName
-
-		a.SongCount += al.SongCount
-		a.Size += al.Size
-		//a.Genres = append(a.Genres, al.Genres...)
-		mbzArtistIds = append(mbzArtistIds, al.MbzAlbumArtistID)
-	}
-	//slices.SortFunc(a.Genres, func(a, b Genre) int { return cmp.Compare(a.ID, b.ID) })
-	//a.Genres = slices.Compact(a.Genres)
-	a.MbzArtistID = slice.MostFrequent(mbzArtistIds)
-
-	return a
+	return Artist{AlbumCount: len(als)}
 }
 
 type AlbumRepository interface {

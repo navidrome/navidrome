@@ -376,12 +376,9 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		Join("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": id})
-	tracks := model.PlaylistTracks{}
+	tracks := dbPlaylistTracks{}
 	err := r.queryAll(tracksQuery, &tracks)
-	for i, t := range tracks {
-		tracks[i].MediaFile.ID = t.MediaFileID
-	}
-	return tracks, err
+	return tracks.toModels(), err
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {

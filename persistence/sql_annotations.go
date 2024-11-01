@@ -10,16 +10,9 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 )
 
 const annotationTable = "annotation"
-
-// Deprecated
-func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.QueryOptions) SelectBuilder {
-	query := r.newSelect(options...)
-	return r.withAnnotation(query, idField)
-}
 
 func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
 	if userId(r.ctx) == invalidUserId {
