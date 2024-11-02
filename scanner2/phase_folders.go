@@ -13,6 +13,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -29,7 +30,7 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Li
 		if err != nil {
 			log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
 		}
-		// TODO Check LastScanStartedAt for interrupted full scans
+		// BFR Check LastScanStartedAt for interrupted full scans
 		job, err := newScanJob(ctx, ds, lib, fullRescan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
@@ -294,7 +295,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	logCall(p.ctx, "Scanner: Completed processing folder",
 		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
 		"elapsed", time.Since(entry.startTime), "tracksMissing", len(entry.missingTracks),
-		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, "📂", entry.path)
+		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, consts.Zwsp+"folder", entry.path)
 	return entry, nil
 }
 

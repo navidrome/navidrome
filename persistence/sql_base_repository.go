@@ -385,20 +385,9 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	//var fmtArgs []string
-	//for name, val := range args {
-	//	var f string
-	//	switch a := args[val].(type) {
-	//	case string:
-	//		f = `'` + a + `'`
-	//	default:
-	//		f = fmt.Sprintf("%v", a)
-	//	}
-	//	fmtArgs = append(fmtArgs, f)
-	//}
-	if err != nil {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+	if err == nil || errors.Is(err, context.Canceled) {
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	} else {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	}
 }
