@@ -22,8 +22,8 @@ type Artist struct {
 	SimilarArtists        Artists              `structs:"similar_artists"  json:"-"`
 	ExternalInfoUpdatedAt *time.Time           `structs:"external_info_updated_at" json:"externalInfoUpdatedAt,omitempty"`
 
-	CreatedAt time.Time `structs:"created_at" json:"createdAt,omitempty"` // Oldest CreatedAt for all songs for this artist
-	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt,omitempty"` // Newest UpdatedAt for all songs for this artist
+	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"` // Oldest CreatedAt for all songs for this artist
+	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"` // Newest UpdatedAt for all songs for this artist
 }
 
 type ArtistStats struct {

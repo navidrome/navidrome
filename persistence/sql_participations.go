@@ -11,7 +11,7 @@ import (
 
 type modelWithParticipations interface {
 	getParticipantIDs() []string
-	setParticipations(participantsMap map[string]string)
+	setParticipations(participantsMap map[string]model.Artist)
 }
 
 func (r sqlRepository) loadParticipations(m modelWithParticipations) error {
@@ -19,14 +19,14 @@ func (r sqlRepository) loadParticipations(m modelWithParticipations) error {
 	if len(participantIds) == 0 {
 		return nil
 	}
-	query := Select("id", "name").From("artist").Where(Eq{"id": participantIds})
+	query := Select("id", "name", "mbz_artist_id").From("artist").Where(Eq{"id": participantIds})
 	var res model.Artists
 	err := r.queryAll(query, &res)
 	if err != nil {
 		return err
 	}
-	participantMap := slice.ToMap(res, func(t model.Artist) (string, string) {
-		return t.ID, t.Name
+	participantMap := slice.ToMap(res, func(a model.Artist) (string, model.Artist) {
+		return a.ID, a
 	})
 	m.setParticipations(participantMap)
 	return nil

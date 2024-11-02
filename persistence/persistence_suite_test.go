@@ -60,9 +60,9 @@ var (
 )
 
 var (
-	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
-	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: P("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
-	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: P("/kraft/radio/radio.mp3"), SongCount: 2})
+	albumSgtPeppers    = al(model.Album{ID: "101", Name: "Sgt Peppers", AlbumArtist: "The Beatles", OrderAlbumName: "sgt peppers", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/sgt/a day.mp3"), SongCount: 1, MaxYear: 1967})
+	albumAbbeyRoad     = al(model.Album{ID: "102", Name: "Abbey Road", AlbumArtist: "The Beatles", OrderAlbumName: "abbey road", AlbumArtistID: "3", EmbedArtPath: p("/beatles/1/come together.mp3"), SongCount: 1, MaxYear: 1969})
+	albumRadioactivity = al(model.Album{ID: "103", Name: "Radioactivity", AlbumArtist: "Kraftwerk", OrderAlbumName: "radioactivity", AlbumArtistID: "2", EmbedArtPath: p("/kraft/radio/radio.mp3"), SongCount: 2})
 	testAlbums         = model.Albums{
 		albumSgtPeppers,
 		albumAbbeyRoad,
@@ -71,12 +71,12 @@ var (
 )
 
 var (
-	songDayInALife    = mf(model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Path: P("/beatles/1/sgt/a day.mp3")})
-	songComeTogether  = mf(model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Path: P("/beatles/1/come together.mp3")})
-	songRadioactivity = mf(model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Path: P("/kraft/radio/radio.mp3")})
+	songDayInALife    = mf(model.MediaFile{ID: "1001", Title: "A Day In A Life", ArtistID: "3", Artist: "The Beatles", AlbumID: "101", Album: "Sgt Peppers", Path: p("/beatles/1/sgt/a day.mp3")})
+	songComeTogether  = mf(model.MediaFile{ID: "1002", Title: "Come Together", ArtistID: "3", Artist: "The Beatles", AlbumID: "102", Album: "Abbey Road", Path: p("/beatles/1/come together.mp3")})
+	songRadioactivity = mf(model.MediaFile{ID: "1003", Title: "Radioactivity", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103", Album: "Radioactivity", Path: p("/kraft/radio/radio.mp3")})
 	songAntenna       = mf(model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID:     "103",
-		Path:        P("/kraft/radio/antenna.mp3"),
+		Path:        p("/kraft/radio/antenna.mp3"),
 		RgAlbumGain: 1.0, RgAlbumPeak: 2.0, RgTrackGain: 3.0, RgTrackPeak: 4.0,
 	})
 	testSongs = model.MediaFiles{
@@ -105,7 +105,7 @@ var (
 	testUsers   = model.Users{adminUser, regularUser}
 )
 
-func P(path string) string {
+func p(path string) string {
 	return filepath.FromSlash(path)
 }
 

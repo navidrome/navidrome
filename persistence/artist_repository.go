@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
@@ -146,7 +147,7 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	dba := &dbArtist{Artist: a}
-	dba.CreatedAt = time.Now()
+	dba.CreatedAt = P(time.Now())
 	dba.UpdatedAt = dba.CreatedAt
 	_, err := r.put(dba.ID, dba, colsToUpdate...)
 	return err

@@ -69,12 +69,12 @@ func (m dbMediaFiles) getParticipantIDs() []string {
 	return slice.Unique(ids)
 }
 
-func (m dbMediaFiles) setParticipations(participantMap map[string]string) {
+func (m dbMediaFiles) setParticipations(participantMap map[string]model.Artist) {
 	for i, mf := range m {
 		for role, artists := range mf.MediaFile.Participations {
 			for j, artist := range artists {
-				if name, ok := participantMap[artist.ID]; ok {
-					m[i].MediaFile.Participations[role][j].Name = name
+				if artist, ok := participantMap[artist.ID]; ok {
+					m[i].MediaFile.Participations[role][j] = artist
 				}
 			}
 		}

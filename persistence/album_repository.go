@@ -84,12 +84,12 @@ func (as dbAlbums) getParticipantIDs() []string {
 	return slice.Unique(ids)
 }
 
-func (as dbAlbums) setParticipations(participantMap map[string]string) {
+func (as dbAlbums) setParticipations(participantMap map[string]model.Artist) {
 	for i, a := range as {
 		for role, artists := range a.Album.Participations {
 			for j, artist := range artists {
-				if name, ok := participantMap[artist.ID]; ok {
-					as[i].Album.Participations[role][j].Name = name
+				if artist, ok := participantMap[artist.ID]; ok {
+					as[i].Album.Participations[role][j] = artist
 				}
 			}
 		}
