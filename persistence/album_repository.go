@@ -242,7 +242,7 @@ func (r *albumRepository) Touch(ids ...string) error {
 }
 
 // GetTouchedAlbums returns a list of albums that were touched by the scanner for a given library, in the
-// current library scan.
+// current library scan run.
 func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 	sel := r.selectAlbum().
 		Join("library on library.id = album.library_id").

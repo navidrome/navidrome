@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// FIXME
+// BFR: FIXME
 var _ = XDescribe("GenreRepository", func() {
 	var repo model.GenreRepository
 

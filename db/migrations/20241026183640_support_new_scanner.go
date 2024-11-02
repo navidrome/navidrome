@@ -12,6 +12,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/chain"
 	"github.com/pressly/goose/v3"
 )
 
@@ -20,23 +21,14 @@ func init() {
 }
 
 func upSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
-	if err := upSupportNewScanner_CreateTableFolder(ctx, tx); err != nil {
-		return err
-	}
-	if err := upSupportNewScanner_PopulateFolderTable(ctx, tx); err != nil {
-		return err
-	}
-	if err := upSupportNewScanner_UpdateTableMediaFile(ctx, tx); err != nil {
-		return err
-	}
-	if err := upSupportNewScanner_UpdateTableAlbum(ctx, tx); err != nil {
-		return err
-	}
-	if err := upSupportNewScanner_UpdateTableArtist(ctx, tx); err != nil {
-		return err
-	}
-	_, err := tx.ExecContext(ctx, `
-alter table library
+	return chain.RunSequentially(
+		func() error { return upSupportNewScanner_CreateTableFolder(ctx, tx) },
+		func() error { return upSupportNewScanner_PopulateFolderTable(ctx, tx) },
+		func() error { return upSupportNewScanner_UpdateTableMediaFile(ctx, tx) },
+		func() error { return upSupportNewScanner_UpdateTableAlbum(ctx, tx) },
+		func() error { return upSupportNewScanner_UpdateTableArtist(ctx, tx) },
+		func() error {
+			return execute(ctx, tx, `alter table library
 	add column last_scan_started_at datetime default '0000-00-00 00:00:00' not null;
 
 create table if not exists media_file_artists(
@@ -88,7 +80,8 @@ drop table if exists album_genres;
 drop table if exists artist_genres;
 drop table if exists genre;
 `)
-	return err
+		},
+	)
 }
 
 func upSupportNewScanner_CreateTableFolder(ctx context.Context, tx *sql.Tx) error {
@@ -260,7 +253,9 @@ WHERE value <> '';
 */
 
 func upSupportNewScanner_UpdateTableMediaFile(ctx context.Context, tx *sql.Tx) error {
-	_, err := tx.ExecContext(ctx, `	
+	return chain.RunSequentially(
+		func() error {
+			return execute(ctx, tx, `	
 alter table media_file 
     add column folder_id varchar default '' not null;
 alter table media_file 
@@ -274,13 +269,12 @@ alter table media_file
 alter table media_file
 	add column participant_ids jsonb default '{}' not null;
 `)
-	if err != nil {
-		return err
-	}
-	if err := addColumn(ctx, tx, "media_file", "birth_time", "datetime", "current_timestamp", "created_at"); err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `	
+		},
+		func() error {
+			return addColumn(ctx, tx, "media_file", "birth_time", "datetime", "current_timestamp", "created_at")
+		},
+		func() error {
+			return execute(ctx, tx, `	
 update media_file 
 	set pid = id where pid = '';
 create index if not exists media_file_birth_time_ix
@@ -292,8 +286,8 @@ create index if not exists media_file_pid_ix
 create index if not exists media_file_missing_ix
 	on media_file (missing);
 `)
-
-	return err
+		},
+	)
 }
 
 func downSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
