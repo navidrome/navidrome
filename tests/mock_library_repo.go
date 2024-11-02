@@ -25,4 +25,14 @@ func (m *MockLibraryRepo) GetAll(...model.QueryOptions) (model.Libraries, error)
 	return maps.Values(m.data), nil
 }
 
+func (m *MockLibraryRepo) GetPath(id int) (string, error) {
+	if m.Err != nil {
+		return "", m.Err
+	}
+	if lib, ok := m.data[id]; ok {
+		return lib.Path, nil
+	}
+	return "", model.ErrNotFound
+}
+
 var _ model.LibraryRepository = &MockLibraryRepo{}
