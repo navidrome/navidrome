@@ -231,6 +231,10 @@ alter table album
 	add column tags jsonb default '{}' not null;
 alter table album
 	add column participant_ids jsonb default '{}' not null;
+alter table album
+	drop column paths;
+alter table album
+	add column paths jsonb default '[]' not null;
 create index if not exists album_imported_at_ix
 	on album (imported_at);
 create index if not exists album_mbz_release_group_id_ix
@@ -238,6 +242,22 @@ create index if not exists album_mbz_release_group_id_ix
 `)
 	return err
 }
+
+// BFR: Convert ZWSP separated strings to jsonb:
+/*
+WITH RECURSIVE split(value, rest) AS (
+    SELECT '', my_column || ';' FROM (select "abc;def" as my_column)
+    UNION ALL
+    SELECT
+        substr(rest, 0, instr(rest, ';')),
+        substr(rest, instr(rest, ';') + 1)
+    FROM split
+    WHERE rest <> ''
+)
+SELECT json_group_array(value) AS json_array
+FROM split
+WHERE value <> '';
+*/
 
 func upSupportNewScanner_UpdateTableMediaFile(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `	

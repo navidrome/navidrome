@@ -50,7 +50,7 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	var paths []string
 	for _, al := range als {
 		files = append(files, al.ImageFiles)
-		paths = append(paths, splitList(al.Paths)...)
+		paths = append(paths, al.Paths...)
 		if a.cacheKey.lastUpdate.Before(al.UpdatedAt) {
 			a.cacheKey.lastUpdate = al.UpdatedAt
 		}

@@ -53,6 +53,7 @@ func (f sourceFunc) String() string {
 	return name
 }
 
+// BFR Only used while we don't move from concatenated strings to JSONB arrays in the DB
 func splitList(s string) []string {
 	return strings.Split(s, consts.Zwsp)
 }

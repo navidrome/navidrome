@@ -44,7 +44,7 @@ var _ = Describe("Artwork", func() {
 			ID:           "666",
 			Name:         "All options",
 			EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3",
-			Paths:        "tests/fixtures/artist/an-album",
+			Paths:        []string{"tests/fixtures/artist/an-album"},
 			ImageFiles: "tests/fixtures/artist/an-album/cover.jpg" + consts.Zwsp +
 				"tests/fixtures/artist/an-album/front.png" + consts.Zwsp +
 				"tests/fixtures/artist/an-album/artist.png",

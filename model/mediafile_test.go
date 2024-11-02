@@ -5,7 +5,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -52,7 +51,7 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
 			Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
-			Expect(album.Paths).To(Equal("/music1" + consts.Zwsp + "/music2"))
+			Expect(album.Paths).To(ConsistOf("/music1", "/music2"))
 		})
 	})
 	Context("Aggregated attributes", func() {
@@ -167,7 +166,7 @@ var _ = Describe("MediaFiles", func() {
 			})
 		})
 
-		Context("Genres", func() {
+		Context("Genres/tags", func() {
 			When("we don't have any tags", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{{}}
@@ -190,15 +189,16 @@ var _ = Describe("MediaFiles", func() {
 			When("we have multiple Genres", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{
-						{Tags: Tags{"genre": []string{"Punk"}}},
+						{Tags: Tags{"genre": []string{"Punk"}, "mood": []string{"Happy", "Chill"}}},
 						{Tags: Tags{"genre": []string{"Rock"}}},
 						{Tags: Tags{"genre": []string{"Alternative", "Rock"}}},
 					}
 				})
 				It("sets the correct Genre, sorted by frequency, then alphabetically", func() {
 					album := mfs.ToAlbum()
-					Expect(album.Tags).To(HaveLen(1))
+					Expect(album.Tags).To(HaveLen(2))
 					Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Alternative", "Punk"}))
+					Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Chill", "Happy"}))
 				})
 			})
 		})

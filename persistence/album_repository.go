@@ -26,6 +26,7 @@ type dbAlbum struct {
 	Discs          string `structs:"-" json:"discs"`
 	ParticipantIDs string `structs:"-" json:"-"`
 	Tags           string `structs:"-" json:"-"`
+	Paths          string `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -46,6 +47,13 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Genre, a.Genres = a.Album.Tags.ToGenres()
 	}
+	if a.Paths != "" {
+		var paths []string
+		if err = json.Unmarshal([]byte(a.Paths), &paths); err != nil {
+			return fmt.Errorf("parsing album paths from db: %w", err)
+		}
+		a.Album.Paths = paths
+	}
 	return nil
 }
 
@@ -55,6 +63,8 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	args["full_text"] = formatFullText(fullText...)
 
+	paths, _ := json.Marshal(a.Album.Paths)
+	args["paths"] = string(paths)
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participant_ids"] = marshalParticipantIDs(a.Album.Participations)
 	delete(args, "participations")

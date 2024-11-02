@@ -171,6 +171,12 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.Album.Genre).To(Equal("rock"))
 				Expect(dba.Album.Genres).To(HaveLen(2))
 			})
+
+			It("parses Paths correctly", func() {
+				dba.Paths = `["path1","path2"]`
+				Expect(dba.PostScan()).To(Succeed())
+				Expect(dba.Album.Paths).To(Equal([]string{"path1", "path2"}))
+			})
 		})
 
 		Describe("PostMapArgs", func() {
@@ -204,6 +210,12 @@ var _ = Describe("AlbumRepository", func() {
 				dba.Album.Discs = model.Discs{1: "disc1", 2: "disc2"}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue("discs", `{"1":"disc1","2":"disc2"}`))
+			})
+
+			It("maps paths correctly", func() {
+				dba.Album.Paths = []string{"path1", "path2"}
+				Expect(dba.PostMapArgs(args)).To(Succeed())
+				Expect(args).To(HaveKeyWithValue("paths", `["path1","path2"]`))
 			})
 		})
 	})

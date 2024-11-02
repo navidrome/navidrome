@@ -8,7 +8,6 @@ import (
 	"mime"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -213,7 +212,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	}
 
 	a.Tags = tags.GroupByFrequency()
-	a.Paths = strings.Join(mfs.Dirs(), consts.Zwsp) // BFR Should be a JSONB field
+	a.Paths = mfs.Dirs()
 	a.Date, _ = allOrNothing(dates)
 	a.OriginalDate, _ = allOrNothing(originalDates)
 	a.ReleaseDate, a.Releases = allOrNothing(releaseDates)
@@ -269,6 +268,7 @@ func older(t1, t2 time.Time) time.Time {
 }
 
 // fixAlbumArtist sets the AlbumArtist to "Various Artists" if the album has more than one artist or if it is a compilation
+// BFR Consider albums with multiple participants as album_artists
 func fixAlbumArtist(a Album, albumArtistIds []string) Album {
 	if !a.Compilation {
 		if a.AlbumArtistID == "" {

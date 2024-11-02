@@ -43,7 +43,7 @@ type Album struct {
 	MbzAlbumComment       string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
 	MbzReleaseGroupID     string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
 	ImageFiles            string     `structs:"image_files" json:"imageFiles,omitempty"`
-	Paths                 string     `structs:"paths" json:"paths,omitempty"`
+	Paths                 []string   `structs:"paths" json:"-"`
 	Description           string     `structs:"description" json:"description,omitempty" hash:"ignore"`
 	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty" hash:"ignore"`
 	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty" hash:"ignore"`
