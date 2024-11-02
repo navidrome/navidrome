@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/utils/chain"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -48,25 +49,22 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
 
-	// Phase 1: Scan all libraries and import new/updated files
-	err = runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, libs, fullRescan))
+	err = chain.RunSequentially(
+		// Phase 1: Scan all libraries and import new/updated files
+		func() error { return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, libs, fullRescan)) },
 
-	// Phase 2: Process missing files, checking for moves
-	if err == nil {
-		err = runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds))
-	}
+		// Phase 2: Process missing files, checking for moves
+		func() error { return runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)) },
 
-	// Phase 3: Refresh all new/changed albums
-	if err == nil {
-		err = runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs))
-	}
-
+		// Phase 3: Refresh all new/changed albums and update artists
+		func() error { return runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)) },
+	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
 		return err
 	}
 
-	// Update last scan completed at for all libraries, if everything went well
+	// Update last_scan_completed_at for all libraries, if everything went well
 	_ = s.ds.WithTx(func(tx model.DataStore) error {
 		for _, lib := range libs {
 			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
