@@ -246,13 +246,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
-			// BFR Check imagesUpdatedAt and update album.UpdatedAt accordingly
 			err := tx.Album(p.ctx).Put(&entry.albums[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
 			}
 		}
+
+		// BFR Touch all albums from this folder where Updated < imagesUpdatedAt
 
 		// Save all tracks to DB
 		for i := range entry.tracks {
