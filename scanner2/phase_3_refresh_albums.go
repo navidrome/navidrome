@@ -101,7 +101,11 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	if err != nil || refreshed+skipped == 0 {
 		return err
 	}
-	log.Debug(p.ctx, "Scanner: Finished checking for album updates", "refreshed", refreshed, "skipped", skipped, err)
+	logF := log.Info
+	if refreshed == 0 {
+		logF = log.Debug
+	}
+	logF(p.ctx, "Scanner: Finished checking for album updates", "refreshed", refreshed, "skipped", skipped, err)
 	return p.ds.WithTx(func(tx model.DataStore) error {
 		start := time.Now()
 		counters, err := tx.Artist(p.ctx).RefreshCounters()

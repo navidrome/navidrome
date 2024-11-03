@@ -233,12 +233,15 @@ func (r *albumRepository) Touch(ids ...string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	upd := Update(r.tableName).Set("imported_at", timeToSQL(time.Now())).Where(Eq{"id": ids})
-	c, err := r.executeSQL(upd)
-	if err == nil {
-		log.Debug(r.ctx, "Touching albums", "ids", ids, "updated", c == 1)
+	for ids := range slices.Chunk(ids, 200) {
+		upd := Update(r.tableName).Set("imported_at", timeToSQL(time.Now())).Where(Eq{"id": ids})
+		c, err := r.executeSQL(upd)
+		if err != nil {
+			return fmt.Errorf("error touching albums: %w", err)
+		}
+		log.Debug(r.ctx, "Touching albums", "ids", ids, "updated", c)
 	}
-	return err
+	return nil
 }
 
 // GetTouchedAlbums returns a list of albums that were touched by the scanner for a given library, in the

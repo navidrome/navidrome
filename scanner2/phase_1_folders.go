@@ -246,6 +246,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
+			// BFR Check imagesUpdatedAt and update album.UpdatedAt accordingly
 			err := tx.Album(p.ctx).Put(&entry.albums[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
@@ -271,7 +272,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 
 			// Touch all albums that have missing tracks, so they get refreshed in later phases
-			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf model.MediaFile) (string, struct{}) { return mf.AlbumID, struct{}{} })
+			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf model.MediaFile) (string, struct{}) {
+				return mf.AlbumID, struct{}{}
+			})
 			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
 			err = tx.Album(p.ctx).Touch(albumsToUpdate...)
 			if err != nil {
