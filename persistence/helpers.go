@@ -63,6 +63,14 @@ func toCamelCase(str string) string {
 	})
 }
 
+// rawSQL is a string that will be used as is in the SQL query executor
+// It does not support arguments
+type rawSQL string
+
+func (r rawSQL) ToSql() (string, []interface{}, error) {
+	return string(r), nil, nil
+}
+
 func exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }

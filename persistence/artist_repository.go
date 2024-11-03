@@ -219,57 +219,50 @@ func (r *artistRepository) purgeEmpty() error {
 }
 
 func (r *artistRepository) RefreshCounters() (int64, error) {
-	/*
-		   	with artist_counters (id, counters) as
-		      (select atom as id,
-		             json_group_object(
-		                 replace(path, '"', ''),
-		                 json_object('a', album_count,'m', count,'s', size)
-		             ) as counters
-		      from (select atom, replace(jt.path, '$.', '') as path, count(distinct album_id) as album_count, count(mf.id) as count, sum(size) as size
-		      from media_file mf
-		               left join json_tree(participant_ids) jt
-		      where atom is not null
-		      group by atom, jt.path
-					      	      union
-		      select atom, 'total' as path, count(distinct album_id) as album_count, count(mf.id) as count, sum(size) as size
-				      from media_file mf
-				      left join json_tree(participant_ids)
-				      where atom is not null
-		      group by atom)
-		      UPDATE artist SET counters=(SELECT counters FROM artist_counters WHERE artist_counters.id = artist.id),
-		      	updated_at = now()
-
-	*/
-	// First select all counters, group by artist/role. In all queries below, atom is the artist ID
-	query1 := Select("atom", "replace(jt.path, '$.', '') as path", "count(distinct album_id) as album_count",
-		"count(mf.id) as count", "sum(size) as size").From("media_file mf").
-		LeftJoin("json_tree(participant_ids) jt").Where("atom is not null").
-		GroupBy("atom", "jt.path")
-	sql1, _, err := query1.ToSql()
-	if err != nil {
-		return 0, err
-	}
-	// This query is to select total counters
-	query11 := Select("atom", "'total' as path", "count(distinct album_id) as album_count",
-		"count(mf.id) as count", "sum(size) as size").From("media_file mf").
-		LeftJoin("json_tree(participant_ids)").Where("atom is not null").
-		GroupBy("atom")
-	sql11, _, err := query11.ToSql()
-	if err != nil {
-		return 0, err
-	}
-	// Then format the counters in a JSON object, one key for each role. It gets data from the union of the two queries above
-	query2 := Select("atom as id", "json_group_object(replace(path, '\"', ''), json_object('a', album_count,'m', count,'s', size)) as counters").
-		From("(" + sql1 + " union " + sql11 + ")").GroupBy("atom")
-	sql2, _, err := query2.ToSql()
-	if err != nil {
-		return 0, err
-	}
+	// First get all counters, one query groups by artist/role, and another with totals per artist.
+	// Union both queries and group by artist to get a single row of counters per artist/role.
+	// Then format the counters in a JSON object, one key for each role.
 	// Finally update the artist table with the new counters
-	query3 := Update(r.tableName).Set("counters", Select("counters").From("("+sql2+") as artist_counters").
-		Where("artist_counters.id = artist.id")).Set("updated_at", timeToSQL(time.Now()))
-	return r.executeSQL(query3)
+	// In all queries, atom is the artist ID and path is the role (or "total" for the totals)
+	query := rawSQL(`
+with artist_counters (id, counters) as
+         (select atom as id,
+                 json_group_object(
+                         replace(path, '"', ''),
+                         json_object('a', album_count, 'm', count, 's', size)
+                 )    as counters
+          from (
+
+               -- Get counters for each artist, grouped by role
+                select atom,
+                       replace(jt.path, '$.', '') as path,
+                       count(distinct album_id)   as album_count,
+                       count(mf.id)               as count,
+                       sum(size)                  as size
+                from media_file mf
+                         left join json_tree(participant_ids) jt
+                where atom is not null
+                group by atom, jt.path
+
+                UNION
+
+                -- Get the totals for each artist
+                select mfa.artist_id            as atom,
+                       'total'                  as path,
+                       count(distinct mf.album) as album_count,
+                       count(distinct mf.id)    as count,
+                       sum(mf.size)             as size
+                from (select distinct artist_id, media_file_id
+                      from main.media_file_artists) as mfa
+                         join
+                     main.media_file mf on mfa.media_file_id = mf.id
+                group by mfa.artist_id)
+          group by atom)
+update artist
+set counters=(select counters from artist_counters where artist_counters.id = artist.id),
+    updated_at = current_timestamp
+`)
+	return r.executeSQL(query)
 }
 
 func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
