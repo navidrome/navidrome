@@ -2,17 +2,54 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
 type folderRepository struct {
 	sqlRepository
+}
+
+type dbFolder struct {
+	*model.Folder `structs:",flatten"`
+	ImageFiles    string `structs:"-" json:"-"`
+}
+
+func (f *dbFolder) PostScan() error {
+	var err error
+	if f.ImageFiles != "" {
+		if err = json.Unmarshal([]byte(f.ImageFiles), &f.Folder.ImageFiles); err != nil {
+			return fmt.Errorf("parsing folder image files from db: %w", err)
+		}
+	}
+	return nil
+}
+
+func (f *dbFolder) PostMapArgs(args map[string]any) error {
+	if f.Folder.ImageFiles == nil {
+		args["image_files"] = "[]"
+	} else {
+		imgFiles, err := json.Marshal(f.Folder.ImageFiles)
+		if err != nil {
+			return fmt.Errorf("marshalling image files: %w", err)
+		}
+		args["image_files"] = string(imgFiles)
+	}
+	return nil
+}
+
+type dbFolders []dbFolder
+
+func (fs dbFolders) toModels() []model.Folder {
+	return slice.Map(fs, func(f dbFolder) model.Folder { return *f.Folder })
 }
 
 func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderRepository {
@@ -26,16 +63,16 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 func (r folderRepository) Get(lib model.Library, path string) (*model.Folder, error) {
 	id := model.NewFolder(lib, path).ID
 	sq := r.newSelect().Where(Eq{"id": id})
-	var res model.Folder
+	var res dbFolder
 	err := r.queryOne(sq, res)
-	return &res, err
+	return res.Folder, err
 }
 
 func (r folderRepository) GetAll(lib model.Library) ([]model.Folder, error) {
 	sq := r.newSelect().Columns("*").Where(Eq{"library_id": lib.ID})
-	var res []model.Folder
+	var res dbFolders
 	err := r.queryAll(sq, &res)
-	return res, err
+	return res.toModels(), err
 }
 
 func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]time.Time, error) {
@@ -55,10 +92,9 @@ func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]time.Tim
 	return m, nil
 }
 
-func (r folderRepository) Put(lib model.Library, path string) error {
-	folder := model.NewFolder(lib, path)
-	folder.Missing = false
-	_, err := r.put(folder.ID, folder)
+func (r folderRepository) Put(f *model.Folder) error {
+	dbf := dbFolder{Folder: f}
+	_, err := r.put(dbf.ID, &dbf)
 	return err
 }
 

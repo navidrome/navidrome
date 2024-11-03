@@ -63,7 +63,10 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	args["full_text"] = formatFullText(fullText...)
 
-	paths, _ := json.Marshal(a.Album.Paths)
+	paths, err := json.Marshal(a.Album.Paths)
+	if err != nil {
+		return fmt.Errorf("marshalling album paths: %w", err)
+	}
 	args["paths"] = string(paths)
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participant_ids"] = marshalParticipantIDs(a.Album.Participations)
@@ -74,7 +77,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	}
 	b, err := json.Marshal(a.Album.Discs)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshalling album discs: %w", err)
 	}
 	args["discs"] = string(b)
 	return nil

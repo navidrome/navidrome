@@ -222,7 +222,11 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Art
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Save folder to DB
-		err := tx.Folder(p.ctx).Put(entry.job.lib, entry.path)
+		folder := model.NewFolder(entry.job.lib, entry.path)
+		folder.NumAudioFiles = len(entry.audioFiles)
+		folder.ImageFiles = slices.Collect(maps.Keys(entry.imageFiles))
+		folder.ImagesUpdatedAt = entry.imagesUpdatedAt
+		err := tx.Folder(p.ctx).Put(folder)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting folder to DB", "folder", entry.path, err)
 			return err
