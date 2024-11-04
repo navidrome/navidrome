@@ -50,9 +50,18 @@ var _ = Describe("Tag", func() {
 					"genre": {"Rock", "Pop"},
 				}
 				tags2 := Tags{
-					"Genre": {"rock", "pop"},
+					"Genre": {"pop", "rock"},
 				}
 				Expect(tags1.Hash()).To(Equal(tags2.Hash()))
+			})
+			It("should return different values for different tags", func() {
+				tags1 := Tags{
+					"genre": {"Rock", "Pop"},
+				}
+				tags2 := Tags{
+					"artist": {"The Beatles"},
+				}
+				Expect(tags1.Hash()).ToNot(Equal(tags2.Hash()))
 			})
 		})
 	})

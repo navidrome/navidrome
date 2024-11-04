@@ -12,9 +12,8 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-// FIXME Must be configurable
+// BFR Must be configurable
 func (md Metadata) trackPID(mf model.MediaFile) string {
-	// FIXME It will never reach the 3rd option
 	value := cmp.Or(
 		mf.MbzReleaseTrackID,
 		fmt.Sprintf("%s\\%02d\\%02d%s",
@@ -28,8 +27,8 @@ func (md Metadata) trackPID(mf model.MediaFile) string {
 	return id.NewHash(str.Clear(strings.ToLower(value)))
 }
 
-// FIXME Must be configurable
-// FIXME Tag mapper for PIDs need to use functions, to be able to extract attributes or processed values
+// BFR Must be configurable
+// BFR Tag mapper for PIDs need to use functions, to be able to extract attributes or processed values
 func (md Metadata) albumID(mf model.MediaFile) string {
 	value := cmp.Or(
 		mf.MbzAlbumID,
@@ -43,7 +42,7 @@ func (md Metadata) albumID(mf model.MediaFile) string {
 	return id.NewHash(str.Clear(strings.ToLower(value)))
 }
 
-// FIXME Must be configurable
+// BFR Must be configurable?
 func (md Metadata) artistID(name string) string {
 	return id.NewHash(str.Clear(strings.ToLower(name)))
 }

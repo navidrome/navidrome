@@ -292,8 +292,8 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 	if err != nil {
 		return nil, err
 	}
-	//err = r.loadParticipations(&res) BFR Needed?
-	return res.toModels(), nil
+	err = r.loadParticipations(&res)
+	return res.toModels(), err
 }
 
 func (r *mediaFileRepository) removeNonAlbumArtistIds() error {

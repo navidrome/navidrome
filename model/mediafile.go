@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/utils"
@@ -20,11 +21,11 @@ type MediaFile struct {
 	Annotations  `structs:"-"`
 	Bookmarkable `structs:"-"`
 
-	ID        string `structs:"id" json:"id"`
-	PID       string `structs:"pid"  json:"pid"`
-	LibraryID int    `structs:"library_id" json:"libraryId"`
-	FolderID  string `structs:"folder_id" json:"folderId"`
-	Path      string `structs:"path" json:"path"`
+	ID        string `structs:"id" json:"id" hash:"ignore"`
+	PID       string `structs:"pid"  json:"pid" hash:"ignore"`
+	LibraryID int    `structs:"library_id" json:"libraryId" hash:"ignore"`
+	FolderID  string `structs:"folder_id" json:"folderId" hash:"ignore"`
+	Path      string `structs:"path" json:"path" hash:"ignore"`
 	Title     string `structs:"title" json:"title"`
 	Album     string `structs:"album" json:"album"`
 	ArtistID  string `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
@@ -78,13 +79,13 @@ type MediaFile struct {
 	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
-	Tags           Tags           `structs:"tags" json:"tags,omitempty"`           // All imported tags from the original file
-	Participations Participations `structs:"participations" json:"participations"` // All artists that participated in this track
+	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags from the original file
+	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this track
 
-	Missing   bool      `structs:"missing" json:"missing"`      // If the file is not found in the library's FS
-	BirthTime time.Time `structs:"birth_time" json:"birthTime"` // Time of file creation (ctime)
-	CreatedAt time.Time `structs:"created_at" json:"createdAt"` // Time this entry was created in the DB
-	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt"` // Time of file last update (mtime)
+	Missing   bool      `structs:"missing" json:"missing" hash:"ignore"`      // If the file is not found in the library's FS
+	BirthTime time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"` // Time of file creation (ctime)
+	CreatedAt time.Time `structs:"created_at" json:"createdAt" hash:"ignore"` // Time this entry was created in the DB
+	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt" hash:"ignore"` // Time of file last update (mtime)
 }
 
 func (mf MediaFile) ContentType() string {
@@ -120,12 +121,20 @@ func (mf MediaFile) String() string {
 
 // Hash returns a hash of the MediaFile based on its tags and audio properties
 func (mf MediaFile) Hash() string {
+	opts := &hashstructure.HashOptions{
+		IgnoreZeroValue: true,
+		ZeroNil:         true,
+	}
+	hash, _ := hashstructure.Hash(mf, opts)
 	sum := md5.New()
-	_, _ = fmt.Fprint(sum, mf.Size, mf.Duration, mf.BitRate, mf.SampleRate, mf.Channels)
-	return fmt.Sprintf("%x", sum.Sum([]byte(mf.Tags.Hash())))
+	sum.Write([]byte(fmt.Sprintf("%d", hash)))
+	sum.Write(mf.Tags.Hash())
+	sum.Write(mf.Participations.Hash())
+	return fmt.Sprintf("%x", sum.Sum(nil))
 }
 
-// Equals compares two MediaFiles by their hash. It does not consider the ID field.
+// Equals compares two MediaFiles by their hash. It does not consider the ID, PID, Path and other identifier fields.
+// Check the structure for the fields that are marked with `hash:"ignore"`.
 func (mf MediaFile) Equals(other MediaFile) bool {
 	return mf.Hash() == other.Hash()
 }

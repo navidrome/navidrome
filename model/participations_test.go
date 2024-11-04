@@ -101,6 +101,29 @@ var _ = Describe("Participations", func() {
 		})
 	})
 
+	Describe("Hash", func() {
+		It("should return the same hash for the same participations", func() {
+			p1 := Participations{
+				RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
+				RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}},
+			}
+			p2 := Participations{
+				RoleArtist:      []Artist{{ID: "2", Name: "Artist2"}, {ID: "1", Name: "Artist1"}},
+				RoleAlbumArtist: []Artist{{ID: "4", Name: "AlbumArtist2"}, {ID: "3", Name: "AlbumArtist1"}},
+			}
+			Expect(p1.Hash()).To(Equal(p2.Hash()))
+		})
+		It("should return different hashes for different participations", func() {
+			p1 := Participations{
+				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}},
+			}
+			p2 := Participations{
+				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
+			}
+			Expect(p1.Hash()).ToNot(Equal(p2.Hash()))
+		})
+	})
+
 	Describe("All", func() {
 		var participations Participations
 		BeforeEach(func() {

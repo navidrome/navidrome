@@ -2,8 +2,10 @@ package model
 
 import (
 	"cmp"
+	"crypto/md5"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -142,4 +144,17 @@ func (p Participations) AllNames() []string {
 		}
 	}
 	return slice.Unique(names)
+}
+
+func (p Participations) Hash() []byte {
+	flattened := make([]string, 0, len(p))
+	for role, artists := range p {
+		ids := slice.Map(artists, func(artist Artist) string { return artist.ID })
+		slices.Sort(ids)
+		flattened = append(flattened, role.String()+":"+strings.Join(ids, "/"))
+	}
+	slices.Sort(flattened)
+	sum := md5.New()
+	sum.Write([]byte(strings.Join(flattened, "|")))
+	return sum.Sum(nil)
 }

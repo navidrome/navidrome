@@ -74,8 +74,9 @@ func (t Tags) Values(name TagName) []string {
 func (t Tags) IDs() []string {
 	var ids []string
 	for name, tag := range t {
+		name = name.ToLower()
 		for _, v := range tag {
-			ids = append(ids, tagID(name, v))
+			ids = append(ids, tagID(name, strings.ToLower(v)))
 		}
 	}
 	return ids
@@ -105,19 +106,15 @@ func (t Tags) Sort() {
 	}
 }
 
-func (t Tags) Hash() string {
+func (t Tags) Hash() []byte {
 	if len(t) == 0 {
-		return ""
+		return nil
 	}
-	all := t.FlattenAll()
-	slices.SortStableFunc(all, func(a, b Tag) int {
-		return cmp.Compare(a.ID, b.ID)
-	})
+	ids := t.IDs()
+	slices.Sort(ids)
 	sum := md5.New()
-	for _, tag := range all {
-		sum.Write([]byte(tag.ID))
-	}
-	return fmt.Sprintf("%x", sum.Sum(nil))
+	sum.Write([]byte(strings.Join(ids, "|")))
+	return sum.Sum(nil)
 }
 
 func (t Tags) ToGenres() (string, Genres) {

@@ -4,7 +4,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/mitchellh/hashstructure/v2"
+	"github.com/gohugoio/hashstructure"
 )
 
 type Album struct {
@@ -73,8 +73,8 @@ func (a Album) Equals(other Album) bool {
 		IgnoreZeroValue: true,
 		ZeroNil:         true,
 	}
-	hash1, _ := hashstructure.Hash(a, hashstructure.FormatV2, opts)
-	hash2, _ := hashstructure.Hash(other, hashstructure.FormatV2, opts)
+	hash1, _ := hashstructure.Hash(a, opts)
+	hash2, _ := hashstructure.Hash(other, opts)
 
 	return hash1 == hash2
 }
