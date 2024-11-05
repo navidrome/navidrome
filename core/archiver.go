@@ -138,13 +138,14 @@ func sanitizeName(target string) string {
 }
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {
+	path := AbsolutePath(ctx, a.ds, mf.LibraryID, mf.Path)
 	w, err := z.CreateHeader(&zip.FileHeader{
 		Name:     filename,
 		Modified: mf.UpdatedAt,
 		Method:   zip.Store,
 	})
 	if err != nil {
-		log.Error(ctx, "Error creating zip entry", "file", mf.Path, err)
+		log.Error(ctx, "Error creating zip entry", "file", path, err)
 		return err
 	}
 
@@ -152,22 +153,22 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	if format != "raw" && format != "" {
 		r, err = a.ms.DoStream(ctx, &mf, format, bitrate, 0)
 	} else {
-		r, err = os.Open(mf.Path)
+		r, err = os.Open(path)
 	}
 	if err != nil {
-		log.Error(ctx, "Error opening file for zipping", "file", mf.Path, "format", format, err)
+		log.Error(ctx, "Error opening file for zipping", "file", path, "format", format, err)
 		return err
 	}
 
 	defer func() {
 		if err := r.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", mf.Path, err)
+			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", path, err)
 		}
 	}()
 
 	_, err = io.Copy(w, r)
 	if err != nil {
-		log.Error(ctx, "Error zipping file", "file", mf.Path, err)
+		log.Error(ctx, "Error zipping file", "file", path, err)
 		return err
 	}
 

@@ -25,8 +25,8 @@ var _ = Describe("Archiver", func() {
 
 	BeforeEach(func() {
 		ms = &mockMediaStreamer{}
-		ds = &mockDataStore{}
 		sh = &mockShare{}
+		ds = &mockDataStore{}
 		arch = core.NewArchiver(ms, ds, sh)
 	})
 
@@ -165,6 +165,19 @@ func (m *mockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository
 func (m *mockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
 	args := m.Called(ctx)
 	return args.Get(0).(model.PlaylistRepository)
+}
+
+func (m *mockDataStore) Library(context.Context) model.LibraryRepository {
+	return &mockLibraryRepository{}
+}
+
+type mockLibraryRepository struct {
+	mock.Mock
+	model.LibraryRepository
+}
+
+func (m *mockLibraryRepository) GetPath(id int) (string, error) {
+	return "/music", nil
 }
 
 type mockMediaFileRepository struct {
