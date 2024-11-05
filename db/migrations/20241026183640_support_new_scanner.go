@@ -230,6 +230,8 @@ alter table album
 alter table album
 	drop column paths;
 alter table album
+	drop column image_files;
+alter table album
 	add column folder_ids jsonb default '[]' not null;
 create index if not exists album_imported_at_ix
 	on album (imported_at);

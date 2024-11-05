@@ -146,17 +146,6 @@ func (mf MediaFile) IsEquivalent(other MediaFile) bool {
 
 type MediaFiles []MediaFile
 
-// Dirs returns a deduped list of all directories from the MediaFiles' paths
-// Deprecated: Use folders instead
-func (mfs MediaFiles) Dirs() []string {
-	var dirs []string
-	for _, mf := range mfs {
-		dir, _ := filepath.Split(mf.Path)
-		dirs = append(dirs, filepath.Clean(dir))
-	}
-	return slice.Unique(dirs)
-}
-
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
 // It assumes all mediafiles have the same Album, or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {

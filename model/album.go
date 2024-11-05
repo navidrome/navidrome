@@ -13,7 +13,7 @@ type Album struct {
 	ID                    string     `structs:"id" json:"id"`
 	LibraryID             int        `structs:"library_id" json:"libraryId"`
 	Name                  string     `structs:"name" json:"name"`
-	EmbedArtPath          string     `structs:"embed_art_path" json:"embedArtPath"`
+	EmbedArtPath          string     `structs:"embed_art_path" json:"-"`
 	AlbumArtistID         string     `structs:"album_artist_id" json:"albumArtistId"`
 	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
 	MaxYear               int        `structs:"max_year" json:"maxYear"`
@@ -42,14 +42,13 @@ type Album struct {
 	MbzAlbumType          string     `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment       string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
 	MbzReleaseGroupID     string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
-	ImageFiles            string     `structs:"image_files" json:"-" hash:"ignore"` // Deprecated: Use folders
 	Description           string     `structs:"description" json:"description,omitempty" hash:"ignore"`
 	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty" hash:"ignore"`
 	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty" hash:"ignore"`
 	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty" hash:"ignore"`
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty" hash:"ignore"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt" hash:"ignore"`
-	FolderIDs             []string   `structs:"folder_ids" json:"folderIds,omitempty" hash:"set"` // All folders that contain media_files for this album
+	FolderIDs             []string   `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
 
 	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags for this album
 	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this album

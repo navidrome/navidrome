@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -95,11 +92,11 @@ func (r *refresher) refreshAlbums(ctx context.Context, ids ...string) error {
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)
 		a := songs.ToAlbum()
-		var updatedAt time.Time
-		a.ImageFiles, updatedAt = r.getImageFiles(songs.Dirs())
-		if updatedAt.After(a.UpdatedAt) {
-			a.UpdatedAt = updatedAt
-		}
+		//var updatedAt time.Time
+		//a.ImageFiles, updatedAt = r.getImageFiles(songs.Dirs())
+		//if updatedAt.After(a.UpdatedAt) {
+		//	a.UpdatedAt = updatedAt
+		//}
 		a.LibraryID = r.lib.ID
 		err := repo.Put(&a)
 		if err != nil {
@@ -110,21 +107,20 @@ func (r *refresher) refreshAlbums(ctx context.Context, ids ...string) error {
 	return nil
 }
 
-func (r *refresher) getImageFiles(dirs []string) (string, time.Time) {
-	var imageFiles []string
-	var updatedAt time.Time
-	for _, dir := range dirs {
-		stats := r.dirMap[dir]
-		for _, img := range stats.Images {
-			imageFiles = append(imageFiles, filepath.Join(dir, img))
-		}
-		if stats.ImagesUpdatedAt.After(updatedAt) {
-			updatedAt = stats.ImagesUpdatedAt
-		}
-	}
-	return strings.Join(imageFiles, consts.Zwsp), updatedAt
-}
-
+//	func (r *refresher) getImageFiles(dirs []string) (string, time.Time) {
+//		var imageFiles []string
+//		var updatedAt time.Time
+//		for _, dir := range dirs {
+//			stats := r.dirMap[dir]
+//			for _, img := range stats.Images {
+//				imageFiles = append(imageFiles, filepath.Join(dir, img))
+//			}
+//			if stats.ImagesUpdatedAt.After(updatedAt) {
+//				updatedAt = stats.ImagesUpdatedAt
+//			}
+//		}
+//		return strings.Join(imageFiles, consts.Zwsp), updatedAt
+//	}
 func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
 	albums, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": ids}})
 	if err != nil {

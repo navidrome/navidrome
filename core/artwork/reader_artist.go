@@ -24,7 +24,7 @@ type artistReader struct {
 	em           core.ExternalMetadata
 	artist       model.Artist
 	artistFolder string
-	files        []string
+	imgFiles     []string
 }
 
 func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em core.ExternalMetadata) (*artistReader, error) {
@@ -45,27 +45,14 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 		em:           em,
 		artist:       *ar,
 		artistFolder: artisFolder,
-		files:        imgFiles,
+		imgFiles:     imgFiles,
 	}
 	// TODO Find a way to factor in the ExternalUpdateInfoAt in the cache key. Problem is that it can
 	// change _after_ retrieving from external sources, making the key invalid
 	//a.cacheKey.lastUpdate = ar.ExternalInfoUpdatedAt
 
+	// BFR Get the latest update time from the folder?
 	a.cacheKey.lastUpdate = *imagesUpdatedAt
-	//var files []string
-	//var paths []string
-	//for _, al := range als {
-	//	files = append(files, al.ImageFiles)
-	//	//paths = append(paths, al.Paths...) BFR: This is not used anywhere
-	//	if a.cacheKey.lastUpdate.Before(al.UpdatedAt) {
-	//		a.cacheKey.lastUpdate = al.UpdatedAt
-	//	}
-	//}
-	//a.files = strings.Join(files, consts.Zwsp)
-	//a.artistFolder = str.LongestCommonPrefix(paths)
-	//if !strings.HasSuffix(a.artistFolder, string(filepath.Separator)) {
-	//	a.artistFolder, _ = filepath.Split(a.artistFolder)
-	//}
 	a.cacheKey.artID = artID
 	return a, nil
 }
@@ -97,7 +84,7 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 		case pattern == "external":
 			ff = append(ff, fromArtistExternalSource(ctx, a.artist, a.em))
 		case strings.HasPrefix(pattern, "album/"):
-			ff = append(ff, fromExternalFile(ctx, a.files, strings.TrimPrefix(pattern, "album/")))
+			ff = append(ff, fromExternalFile(ctx, a.imgFiles, strings.TrimPrefix(pattern, "album/")))
 		default:
 			ff = append(ff, fromArtistFolder(ctx, a.artistFolder, pattern))
 		}

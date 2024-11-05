@@ -173,9 +173,9 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("parses Paths correctly", func() {
-				dba.Paths = `["path1","path2"]`
+				dba.FolderIDs = `["folder1","folder2"]`
 				Expect(dba.PostScan()).To(Succeed())
-				Expect(dba.Album.Paths).To(Equal([]string{"path1", "path2"}))
+				Expect(dba.Album.FolderIDs).To(Equal([]string{"folder1", "folder2"}))
 			})
 		})
 
@@ -213,9 +213,9 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("maps paths correctly", func() {
-				dba.Album.Paths = []string{"path1", "path2"}
+				dba.Album.FolderIDs = []string{"folder1", "folder2"}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
-				Expect(args).To(HaveKeyWithValue("paths", `["path1","path2"]`))
+				Expect(args).To(HaveKeyWithValue("folder_ids", `["folder1","folder2"]`))
 			})
 		})
 	})
