@@ -13,11 +13,12 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/chrono"
 )
 
 type folderEntry struct {
 	job             *scanJob
-	startTime       time.Time
+	elapsed         chrono.Meter
 	path            string    // Full path
 	id              string    // DB ID
 	modTime         time.Time // From FS
@@ -39,7 +40,7 @@ func (f *folderEntry) hasNoFiles() bool {
 
 func newFolderEntry(job *scanJob, path string) *folderEntry {
 	id := model.FolderID(job.lib, path)
-	return &folderEntry{
+	f := &folderEntry{
 		id:         id,
 		job:        job,
 		path:       path,
@@ -47,6 +48,8 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		imageFiles: make(map[string]fs.DirEntry),
 		updTime:    job.popLastUpdate(id),
 	}
+	f.elapsed.Start()
+	return f
 }
 
 func (f *folderEntry) isOutdated() bool {

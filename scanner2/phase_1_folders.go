@@ -107,6 +107,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			for folder := range pl.ReadOrDone(p.ctx, outputChan) {
 				job.numFolders.Add(1)
 				if folder.isOutdated() || job.fullRescan {
+					folder.elapsed.Stop()
 					put(folder)
 				}
 			}
@@ -115,6 +116,11 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 		log.Info(p.ctx, "Scanner: Finished loading all folders", "numFolders", total)
 		return nil
 	}, ppl.Name("produce folders"))
+}
+
+func (p *phaseFolders) measure(entry *folderEntry) func() time.Duration {
+	entry.elapsed.Start()
+	return func() time.Duration { return entry.elapsed.Stop() }
 }
 
 func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
@@ -126,7 +132,7 @@ func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 }
 
 func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
-	entry.startTime = time.Now()
+	defer p.measure(entry)()
 
 	// Load children mediafiles from DB
 	mfs, err := p.ds.MediaFile(p.ctx).GetAll(model.QueryOptions{
@@ -220,6 +226,8 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Art
 }
 
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
+	defer p.measure(entry)()
+
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Save folder to DB
 		folder := model.NewFolder(entry.job.lib, entry.path)
@@ -307,7 +315,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",
 		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
-		"elapsed", time.Since(entry.startTime), "tracksMissing", len(entry.missingTracks),
+		"elapsed", entry.elapsed.Elapsed(), "tracksMissing", len(entry.missingTracks),
 		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, consts.Zwsp+"folder", entry.path)
 	return entry, nil
 }
