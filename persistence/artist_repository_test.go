@@ -180,13 +180,13 @@ var _ = Describe("ArtistRepository", func() {
 		})
 
 		Describe("PostScan", func() {
-			It("parses counters and similar artists correctly", func() {
-				counters := map[string]map[string]int64{
+			It("parses stats and similar artists correctly", func() {
+				stats := map[string]map[string]int64{
 					"total":    {"s": 1000, "m": 10, "a": 2},
 					"composer": {"s": 500, "m": 5, "a": 1},
 				}
-				countersJSON, _ := json.Marshal(counters)
-				dba.Counters = string(countersJSON)
+				statsJSON, _ := json.Marshal(stats)
+				dba.Stats = string(statsJSON)
 				dba.SimilarArtists = "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"
 
 				err := dba.PostScan()

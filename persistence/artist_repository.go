@@ -29,16 +29,16 @@ type artistRepository struct {
 type dbArtist struct {
 	*model.Artist  `structs:",flatten"`
 	SimilarArtists string `structs:"-" json:"similarArtists"`
-	Counters       string `structs:"-" json:"-"`
+	Stats          string `structs:"-" json:"-"`
 }
 
 func (a *dbArtist) PostScan() error {
-	var counters map[string]map[string]int64
-	if err := json.Unmarshal([]byte(a.Counters), &counters); err != nil {
-		return fmt.Errorf("parsing artist counters from db: %w", err)
+	var stats map[string]map[string]int64
+	if err := json.Unmarshal([]byte(a.Stats), &stats); err != nil {
+		return fmt.Errorf("parsing artist stats from db: %w", err)
 	}
 	a.Artist.Stats = make(map[model.Role]model.ArtistStats)
-	for key, c := range counters {
+	for key, c := range stats {
 		if key == "total" {
 			a.Artist.Size = c["s"]
 			a.Artist.SongCount = int(c["m"])
@@ -117,15 +117,15 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":       "order_artist_name",
 		"starred_at": "starred, starred_at",
 		// BFR: Can be dynamic (by role) if we allow functions when sorting
-		"song_count":  "counters->>'total'->>'m'",
-		"album_count": "counters->>'total'->>'a'",
-		"size":        "counters->>'total'->>'s'",
+		"song_count":  "stats->>'total'->>'m'",
+		"album_count": "stats->>'total'->>'a'",
+		"size":        "stats->>'total'->>'s'",
 	})
 	return r
 }
 
 func roleFilter(_ string, role any) Sqlizer {
-	return NotEq{fmt.Sprintf("counters ->> '$.%v'", role): nil}
+	return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
@@ -218,7 +218,7 @@ func (r *artistRepository) purgeEmpty() error {
 	return err
 }
 
-func (r *artistRepository) RefreshCounters() (int64, error) {
+func (r *artistRepository) RefreshStats() (int64, error) {
 	// First get all counters, one query groups by artist/role, and another with totals per artist.
 	// Union both queries and group by artist to get a single row of counters per artist/role.
 	// Then format the counters in a JSON object, one key for each role.
@@ -259,7 +259,7 @@ with artist_counters (id, counters) as
                 group by mfa.artist_id)
           group by atom)
 update artist
-set counters=(select counters from artist_counters where artist_counters.id = artist.id),
+set stats=(select counters from artist_counters where artist_counters.id = artist.id),
     updated_at = current_timestamp
 `)
 	return r.executeSQL(query)
