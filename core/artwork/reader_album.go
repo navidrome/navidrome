@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -77,11 +76,7 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			embedArtPath, err := parseEmbedArtPath(ctx, a.a.ds, a.album)
-			if err != nil {
-				log.Debug(ctx, "Error parsing embed_art_path", err)
-				continue
-			}
+			embedArtPath := core.AbsolutePath(ctx, a.a.ds, a.album.LibraryID, a.album.EmbedArtPath)
 			ff = append(ff, fromTag(ctx, embedArtPath), fromFFmpegTag(ctx, ffmpeg, embedArtPath))
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.em))
@@ -90,23 +85,6 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		}
 	}
 	return ff
-}
-
-func parseEmbedArtPath(ctx context.Context, ds model.DataStore, album model.Album) (string, error) {
-	if album.EmbedArtPath == "" {
-		return "", nil
-	}
-	parts := strings.Split(album.EmbedArtPath, "/")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid embed_art_path: '%s'", album.EmbedArtPath)
-	}
-	folderID := parts[0]
-	filename := parts[1]
-	folder, err := ds.Folder(ctx).Get(folderID)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(core.AbsolutePath(ctx, ds, folder.LibraryID, folder.Path), folder.Name, filename), nil
 }
 
 func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...model.Album) (string, []string, *time.Time, error) {

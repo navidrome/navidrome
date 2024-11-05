@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime"
-	"path/filepath"
 	"slices"
 	"time"
 
@@ -201,8 +200,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
 		if m.HasCoverArt && a.EmbedArtPath == "" {
-			_, name := filepath.Split(m.Path)
-			a.EmbedArtPath = m.FolderID + "/" + name
+			a.EmbedArtPath = m.Path
 		}
 		if m.DiscNumber > 0 {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)

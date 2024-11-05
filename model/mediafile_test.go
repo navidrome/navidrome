@@ -50,7 +50,7 @@ var _ = Describe("MediaFiles", func() {
 			Expect(album.MbzReleaseGroupID).To(Equal("MbzReleaseGroupID"))
 			Expect(album.CatalogNum).To(Equal("CatalogNum"))
 			Expect(album.Compilation).To(BeTrue())
-			Expect(album.EmbedArtPath).To(Equal("Folder2/file2.mp3"))
+			Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
 			Expect(album.FolderIDs).To(ConsistOf("Folder1", "Folder2"))
 		})
 	})
