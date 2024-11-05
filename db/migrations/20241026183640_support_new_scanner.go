@@ -101,7 +101,9 @@ create table if not exists folder(
 	images_updated_at datetime default '0000-00-00 00:00:00' not null,
 	updated_at datetime default current_timestamp not null,
 	created_at datetime default current_timestamp not null
-);`)
+);
+create index folder_parent_id on folder(parent_id);
+`)
 	return err
 }
 

@@ -243,7 +243,12 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		for i := range entry.artists {
 			err := tx.Artist(p.ctx).Put(&entry.artists[i], "name", "mbz_artist_id", "sort_artist_name", "order_artist_name")
 			if err != nil {
-				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i], err)
+				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
+				return err
+			}
+			err = tx.Library(p.ctx).AddArtist(entry.job.lib.ID, entry.artists[i].ID)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error adding artist to library", "lib", entry.job.lib.ID, "artist", entry.artists[i].Name, err)
 				return err
 			}
 		}
