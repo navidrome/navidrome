@@ -18,8 +18,8 @@ import (
 )
 
 type MediaFile struct {
-	Annotations  `structs:"-"`
-	Bookmarkable `structs:"-"`
+	Annotations  `structs:"-" hash:"ignore"`
+	Bookmarkable `structs:"-" hash:"ignore"`
 
 	ID        string `structs:"id" json:"id" hash:"ignore"`
 	PID       string `structs:"pid"  json:"pid" hash:"ignore"`
@@ -147,6 +147,7 @@ func (mf MediaFile) IsEquivalent(other MediaFile) bool {
 type MediaFiles []MediaFile
 
 // Dirs returns a deduped list of all directories from the MediaFiles' paths
+// Deprecated: Use folders instead
 func (mfs MediaFiles) Dirs() []string {
 	var dirs []string
 	for _, mf := range mfs {
@@ -211,7 +212,8 @@ func (mfs MediaFiles) ToAlbum() Album {
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
 		if m.HasCoverArt && a.EmbedArtPath == "" {
-			a.EmbedArtPath = m.Path
+			_, name := filepath.Split(m.Path)
+			a.EmbedArtPath = m.FolderID + "/" + name
 		}
 		if m.DiscNumber > 0 {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
@@ -221,7 +223,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	}
 
 	a.Tags = tags.GroupByFrequency()
-	a.Paths = mfs.Dirs()
+	a.FolderIDs = slice.Unique(slice.Map(mfs, func(m MediaFile) string { return m.FolderID }))
 	a.Date, _ = allOrNothing(dates)
 	a.OriginalDate, _ = allOrNothing(originalDates)
 	a.ReleaseDate, a.Releases = allOrNothing(releaseDates)

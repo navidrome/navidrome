@@ -26,7 +26,7 @@ type dbAlbum struct {
 	Discs          string `structs:"-" json:"discs"`
 	ParticipantIDs string `structs:"-" json:"-"`
 	Tags           string `structs:"-" json:"-"`
-	Paths          string `structs:"-" json:"-"`
+	FolderIDs      string `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -47,12 +47,12 @@ func (a *dbAlbum) PostScan() error {
 		}
 		a.Genre, a.Genres = a.Album.Tags.ToGenres()
 	}
-	if a.Paths != "" {
-		var paths []string
-		if err = json.Unmarshal([]byte(a.Paths), &paths); err != nil {
-			return fmt.Errorf("parsing album paths from db: %w", err)
+	if a.FolderIDs != "" {
+		var ids []string
+		if err = json.Unmarshal([]byte(a.FolderIDs), &ids); err != nil {
+			return fmt.Errorf("parsing album folder_ids from db: %w", err)
 		}
-		a.Album.Paths = paths
+		a.Album.FolderIDs = ids
 	}
 	return nil
 }
@@ -63,18 +63,16 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	args["full_text"] = formatFullText(fullText...)
 
-	paths, err := json.Marshal(a.Album.Paths)
-	if err != nil {
-		return fmt.Errorf("marshalling album paths: %w", err)
-	}
-	args["paths"] = string(paths)
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participant_ids"] = marshalParticipantIDs(a.Album.Participations)
 	delete(args, "participations")
-	if len(a.Album.Discs) == 0 {
-		args["discs"] = "{}"
-		return nil
+
+	folderIDs, err := json.Marshal(a.Album.FolderIDs)
+	if err != nil {
+		return fmt.Errorf("marshalling album folder_ids: %w", err)
 	}
+	args["folder_ids"] = string(folderIDs)
+
 	b, err := json.Marshal(a.Album.Discs)
 	if err != nil {
 		return fmt.Errorf("marshalling album discs: %w", err)

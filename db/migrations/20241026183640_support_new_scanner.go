@@ -230,7 +230,7 @@ alter table album
 alter table album
 	drop column paths;
 alter table album
-	add column paths jsonb default '[]' not null;
+	add column folder_ids jsonb default '[]' not null;
 create index if not exists album_imported_at_ix
 	on album (imported_at);
 create index if not exists album_mbz_release_group_id_ix

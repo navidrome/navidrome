@@ -54,8 +54,9 @@ func NewFolder(lib Library, folderPath string) *Folder {
 }
 
 type FolderRepository interface {
-	Get(lib Library, path string) (*Folder, error)
-	GetAll(lib Library) ([]Folder, error)
+	Get(id string) (*Folder, error)
+	GetByPath(lib Library, path string) (*Folder, error)
+	GetAll(...QueryOptions) ([]Folder, error)
 	GetLastUpdates(lib Library) (map[string]time.Time, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error

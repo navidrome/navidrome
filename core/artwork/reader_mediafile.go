@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -54,9 +55,10 @@ func (a *mediafileArtworkReader) LastUpdated() time.Time {
 func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	var ff []sourceFunc
 	if a.mediafile.CoverArtID().Kind == model.KindMediaFileArtwork {
+		path := core.AbsolutePath(ctx, a.a.ds, a.mediafile.LibraryID, a.mediafile.Path)
 		ff = []sourceFunc{
-			fromTag(ctx, a.mediafile.Path),
-			fromFFmpegTag(ctx, a.a.ffmpeg, a.mediafile.Path),
+			fromTag(ctx, path),
+			fromFFmpegTag(ctx, a.a.ffmpeg, path),
 		}
 	}
 	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))
