@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -187,7 +188,10 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 }
 
 func (r sqlRepository) seedKey() string {
-	return r.tableName + userId(r.ctx)
+	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
+	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
+	userIDHash := md5.Sum([]byte(userId(r.ctx)))
+	return fmt.Sprintf("%s|%x", r.tableName, userIDHash)
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
