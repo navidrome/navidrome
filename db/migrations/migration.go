@@ -25,6 +25,7 @@ NOTICE: %s
 }
 
 // Call this in migrations that requires a full rescan
+// BFR: This is a hack to force a full rescan. We now should use library.last_scan_started_at.
 func forceFullRescan(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 delete from property where id like 'LastScan%';
@@ -61,33 +62,47 @@ func checkErr(err error) {
 	}
 }
 
-// Hack way to add a column with a default value to a table. This is needed because SQLite does not support
-// adding a column with a default value to a table that already has data, and there is no ALTER TABLE MODIFY COLUMN.
-//
-// Based on https://stackoverflow.com/a/25917323
-//
-// Add a new column to a table, setting the initial value for existing rows based on a SQL expression.
-// It is done in 3 steps:
-//  1. Add the column as nullable. Due the way SQLite manipulates the DDL in memory,
-//     (we need to add extra padding to the default value to avoid truncating it when changing the column to not null)
+type (
+	execFunc      func() error
+	execStmtFunc  func(stmt string) execFunc
+	addColumnFunc func(tableName, columnName, columnType, defaultValue, initialValue string) execFunc
+)
+
+func createExecuteFunc(ctx context.Context, tx *sql.Tx) execStmtFunc {
+	return func(stmt string) execFunc {
+		return func() error {
+			_, err := tx.ExecContext(ctx, stmt)
+			return err
+		}
+	}
+}
+
+// Hack way to add a new `not null` column to a table, setting the initial value for existing rows based on a
+// SQL expression. It is done in 3 steps:
+//  1. Add the column as nullable. Due to the way SQLite manipulates the DDL in memory, we need to add extra padding
+//     to the default value to avoid truncating it when changing the column to not null
 //  2. Update the column with the initial value
 //  3. Change the column to not null with the default value
-func addColumn(ctx context.Context, tx *sql.Tx, tableName, columnName, columnType, defaultValue, initialValue string) error {
-	log.Error(conf.Server.DbPath)
-	// Format the `default null` value to have the same length as the final defaultValue
-	finalLen := len(fmt.Sprintf(`%s not`, defaultValue))
-	tempDefault := fmt.Sprintf(`default %s null`, strings.Repeat(" ", finalLen))
-	_, err := tx.ExecContext(ctx, fmt.Sprintf(`
+//
+// Based on https://stackoverflow.com/a/25917323
+func createAddColumnFunc(ctx context.Context, tx *sql.Tx) addColumnFunc {
+	return func(tableName, columnName, columnType, defaultValue, initialValue string) execFunc {
+		return func() error {
+			log.Error(conf.Server.DbPath)
+			// Format the `default null` value to have the same length as the final defaultValue
+			finalLen := len(fmt.Sprintf(`%s not`, defaultValue))
+			tempDefault := fmt.Sprintf(`default %s null`, strings.Repeat(" ", finalLen))
+			_, err := tx.ExecContext(ctx, fmt.Sprintf(`
 alter table %s add column %s %s %s;`, tableName, columnName, columnType, tempDefault))
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, fmt.Sprintf(`
+			if err != nil {
+				return err
+			}
+			_, err = tx.ExecContext(ctx, fmt.Sprintf(`
 update %s set %s = %s where %[2]s is null;`, tableName, columnName, initialValue))
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, fmt.Sprintf(`
+			if err != nil {
+				return err
+			}
+			_, err = tx.ExecContext(ctx, fmt.Sprintf(`
 PRAGMA writable_schema = on;
 UPDATE sqlite_master
 SET sql = replace(sql, '%[1]s %[2]s %[5]s', '%[1]s %[2]s default %[3]s not null')
@@ -95,13 +110,10 @@ WHERE type = 'table'
   AND name = '%[4]s';
 PRAGMA writable_schema = off;
 `, columnName, columnType, defaultValue, tableName, tempDefault))
-	if err != nil {
-		return err
+			if err != nil {
+				return err
+			}
+			return err
+		}
 	}
-	return err
-}
-
-func execute(ctx context.Context, tx *sql.Tx, stmt string) error {
-	_, err := tx.ExecContext(ctx, stmt)
-	return err
 }
