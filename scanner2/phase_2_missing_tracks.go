@@ -39,8 +39,8 @@ func (p *phaseMissingTracks) producer() ppl.Producer[*missingTracks] {
 
 func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 	var putIfMatched = func(mt missingTracks) {
-		log.Trace(p.ctx, "Scanner: Found missing and matching tracks", "pid", mt.pid, "missing", len(mt.missing), "matched", len(mt.matched), "lib", mt.lib.Name)
 		if mt.pid != "" && len(mt.matched) > 0 {
+			log.Trace(p.ctx, "Scanner: Found missing and matching tracks", "pid", mt.pid, "missing", len(mt.missing), "matched", len(mt.matched), "lib", mt.lib.Name)
 			put(&mt)
 		}
 	}
