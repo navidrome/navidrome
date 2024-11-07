@@ -31,7 +31,7 @@
       "actions": {
         "addToQueue": "Ajouter à la file",
         "playNow": "Lire",
-        "addToPlaylist": "Ajouter à la playlist",
+        "addToPlaylist": "Ajouter à la liste de lecture",
         "shuffleAll": "Tout mélanger",
         "download": "Télécharger",
         "playNext": "Jouer ensuite",
@@ -65,7 +65,7 @@
         "playNext": "Lire ensuite",
         "addToQueue": "Ajouter à la file",
         "shuffle": "Mélanger",
-        "addToPlaylist": "Ajouter à la playlist",
+        "addToPlaylist": "Ajouter à la liste de lecture",
         "download": "Télécharger",
         "info": "Plus d'informations",
         "share": "Partager"
@@ -144,7 +144,7 @@
       }
     },
     "playlist": {
-      "name": "Playlist |||| Playlists",
+      "name": "Listes de lectures |||| Listes de lectures",
       "fields": {
         "name": "Nom",
         "duration": "Durée",
@@ -158,15 +158,15 @@
         "path": "Importer depuis"
       },
       "actions": {
-        "selectPlaylist": "Ajouter les pistes à la playlist",
+        "selectPlaylist": "Ajouter les pistes à la liste de lecture",
         "addNewPlaylist": "Créer \"%{name}\"",
         "export": "Exporter",
         "makePublic": "Rendre publique",
         "makePrivate": "Rendre privée"
       },
       "message": {
-        "duplicate_song": "Pistes déjà présentes dans la playlist",
-        "song_exist": "Certaines des pistes sélectionnées font déjà partie de la playlist. Voulez-vous les ajouter ou les ignorer ?"
+        "duplicate_song": "Pistes déjà présentes dans la liste de lecture",
+        "song_exist": "Certaines des pistes sélectionnées font déjà partie de la liste de lecture. Voulez-vous les ajouter ou les ignorer ?"
       }
     },
     "radio": {
@@ -348,10 +348,10 @@
     "note": "NOTE",
     "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
     "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du transcodage.",
-    "songsAddedToPlaylist": "Une piste a été ajoutée à la playlist |||| %{smart_count} pistes ont été ajoutées à la playlist",
-    "noPlaylistsAvailable": "Aucune playlist",
+    "songsAddedToPlaylist": "Une piste a été ajoutée à la liste de lecture |||| %{smart_count} pistes ont été ajoutées à la liste de lecture",
+    "noPlaylistsAvailable": "Aucune liste de lecture",
     "delete_user_title": "Supprimer l'utilisateur '%{name}'",
-    "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
+    "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses listes de lectures et préférences) ?",
     "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
     "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS",
     "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
@@ -401,8 +401,8 @@
     },
     "albumList": "Albums",
     "about": "À propos",
-    "playlists": "Playlists",
-    "sharedPlaylists": "Playlists partagées"
+    "playlists": "Listes de lectures",
+    "sharedPlaylists": "Listes de lectures partagées"
   },
   "player": {
     "playListsText": "File de lecture",
