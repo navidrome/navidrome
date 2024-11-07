@@ -73,6 +73,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.SortAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).SortArtistName
 
 	// Remote tags that are first-class fields in the MediaFile struct
+	// BFR Automatically remove tags that were accessed in the steps above
 	removedTags := []model.TagName{
 		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
 		model.TagComment, model.TagAlbumSort, model.TagAlbumVersion, model.TagTitleSort, model.TagCompilation,

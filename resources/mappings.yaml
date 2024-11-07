@@ -18,7 +18,13 @@ artistssort:
 arranger:
   aliases: [ TIPL:arranger, IPLS:arranger, ARRANGER ]
 composer:
-  aliases: [ TCOM, COMPOSER, ©wrt, WM/Composer, IMUS ]
+  aliases: [ TCOM, COMPOSER, ©wrt, WM/Composer, IMUS,
+    WRITER, TXXX:Writer, IWRI,
+    # If you need writer separated from composer, remove these tagss from the line above
+    # and uncomment the two lines below
+  ]
+#writer:
+#  aliases: [ TXXX:Writer, WRITER, IWRI ]
 composersort:
   aliases: [ TSOC, TXXX:COMPOSERSORT, COMPOSERSORT, soco, WM/ComposerSortOrder ]
 lyricist:
@@ -39,8 +45,6 @@ producer:
   aliases: [ TIPL:producer, IPLS:producer, PRODUCER, ----:com.apple.iTunes:PRODUCER, WM/Producer, IPRO ]
 remixer:
   aliases: [ TPE4, REMIXER, MixArtist, ----:com.apple.iTunes:REMIXER, WM/ModifiedBy ]
-writer:
-  aliases: [ TXXX:Writer, WRITER, IWRI ]
 albumartist:
   aliases: [ TPE2, ALBUMARTIST, Album Artist, aART, WM/AlbumArtist ]
 albumartistsort:
