@@ -76,7 +76,7 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 		pattern = strings.TrimSpace(pattern)
 		switch {
 		case pattern == "embedded":
-			embedArtPath := core.AbsolutePath(ctx, a.a.ds, a.album.LibraryID, a.album.EmbedArtPath)
+			embedArtPath := filepath.Join(a.rootFolder, a.album.EmbedArtPath)
 			ff = append(ff, fromTag(ctx, embedArtPath), fromFFmpegTag(ctx, ffmpeg, embedArtPath))
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.em))
@@ -92,7 +92,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	for _, album := range albums {
 		folderIDs = append(folderIDs, album.FolderIDs...)
 	}
-	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": folderIDs}})
+	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": folderIDs, "missing": false}})
 	if err != nil {
 		return "", nil, nil, err
 	}
