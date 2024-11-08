@@ -154,7 +154,7 @@ movementname:
 movementtotal:
   aliases: [ MOVEMENTTOTAL, mvc ]
 movement:
-  aliases: [ MVIN(1), MOVEMENT, mvi ]
+  aliases: [ MVIN, MOVEMENT, mvi ]
 recordlabel:
   aliases: [ TPUB, LABEL, PUBLISHER, ----:com.apple.iTunes:LABEL, WM/Publisher ]
 musicbrainz_discid:

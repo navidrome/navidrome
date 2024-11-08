@@ -209,6 +209,10 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.Participations.Merge(m.Participations)
 	}
 
+	// Make sure we have at least one disc
+	if len(a.Discs) == 0 {
+		a.Discs.Add(1, "")
+	}
 	a.Tags = tags.GroupByFrequency()
 	a.FolderIDs = slice.Unique(slice.Map(mfs, func(m MediaFile) string { return m.FolderID }))
 	a.Date, _ = allOrNothing(dates)

@@ -88,6 +88,8 @@ var albumLevelTags = []TagName{
 	TagReleaseType,
 	TagMedia,
 	TagCatalogNumber,
+	TagTotalTracks,
+	TagTotalDiscs,
 }
 
 func (a Album) AddTags(tags Tags) {

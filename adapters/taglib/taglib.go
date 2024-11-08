@@ -59,6 +59,21 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	parseProp("_channels", &ap.Channels)
 	parseProp("_samplerate", &ap.SampleRate)
 
+	// Parse track/disc totals
+	parseTuple := func(prop string) {
+		tagName := prop + "number"
+		tagTotal := prop + "total"
+		if value, ok := tags[tagName]; ok && len(value) > 0 {
+			parts := strings.Split(value[0], "/")
+			tags[tagName] = []string{parts[0]}
+			if len(parts) == 2 {
+				tags[tagTotal] = []string{parts[1]}
+			}
+		}
+	}
+	parseTuple("track")
+	parseTuple("disc")
+
 	// Adjust some ID3 tags
 	parseTIPL(tags)
 	delete(tags, "tmcl") // TMCL is already parsed by TagLib

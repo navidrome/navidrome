@@ -3,6 +3,7 @@ package taglib
 import (
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/navidrome/navidrome/scanner/metadata"
 	"github.com/navidrome/navidrome/utils"
@@ -47,7 +48,8 @@ var _ = Describe("Extractor", func() {
 			Expect(m.Tags).To(HaveKeyWithValue("date", []string{"2014-05-21"}))
 			Expect(m.Tags).To(HaveKeyWithValue("originaldate", []string{"1996-11-21"}))
 			Expect(m.Tags).To(HaveKeyWithValue("releasedate", []string{"2020-12-31"}))
-			Expect(m.Tags).To(HaveKeyWithValue("discnumber", []string{"1/2"}))
+			Expect(m.Tags).To(HaveKeyWithValue("discnumber", []string{"1"}))
+			Expect(m.Tags).To(HaveKeyWithValue("disctotal", []string{"2"}))
 			Expect(m.Tags).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			Expect(m.Tags).To(HaveKeyWithValue("bpm", []string{"123"}))
 			Expect(m.Tags).To(HaveKeyWithValue("replaygain_album_gain", []string{"+3.21518 dB"}))
@@ -55,7 +57,8 @@ var _ = Describe("Extractor", func() {
 			Expect(m.Tags).To(HaveKeyWithValue("replaygain_track_gain", []string{"-1.48 dB"}))
 			Expect(m.Tags).To(HaveKeyWithValue("replaygain_track_peak", []string{"0.4512"}))
 
-			Expect(m.Tags).To(HaveKeyWithValue("tracknumber", []string{"2/10"}))
+			Expect(m.Tags).To(HaveKeyWithValue("tracknumber", []string{"2"}))
+			Expect(m.Tags).To(HaveKeyWithValue("tracktotal", []string{"10"}))
 
 			// Test OGG
 			m = mds["tests/fixtures/test.ogg"]
@@ -115,10 +118,15 @@ var _ = Describe("Extractor", func() {
 					HaveKeyWithValue("tracknumber", []string{"3"}),
 					HaveKeyWithValue("tracknumber", []string{"3/10"}),
 				))
+				if !strings.HasSuffix(file, "test.wma") {
+					// TODO Not sure why this is not working for WMA
+					Expect(m.Tags).To(HaveKeyWithValue("tracktotal", []string{"10"}))
+				}
 				Expect(m.Tags).To(Or(
 					HaveKeyWithValue("discnumber", []string{"1"}),
 					HaveKeyWithValue("discnumber", []string{"1/2"}),
 				))
+				Expect(m.Tags).To(HaveKeyWithValue("disctotal", []string{"2"}))
 
 				// WMA does not have a "compilation" tag, but "wm/iscompilation"
 				Expect(m.Tags).To(Or(
@@ -132,8 +140,8 @@ var _ = Describe("Extractor", func() {
 			// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
 			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948"),
 
-			Entry("Correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48"),
-			Entry("Correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48"),
+			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48"),
+			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48"),
 			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506"),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma

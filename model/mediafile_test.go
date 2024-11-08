@@ -137,13 +137,13 @@ var _ = Describe("MediaFiles", func() {
 	})
 	Context("Calculated attributes", func() {
 		Context("Discs", func() {
-			When("we have no discs", func() {
+			When("we have no discs info", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{{Album: "Album1"}, {Album: "Album1"}, {Album: "Album1"}}
 				})
-				It("sets the correct Discs", func() {
+				It("adds 1 disc without subtitle", func() {
 					album := mfs.ToAlbum()
-					Expect(album.Discs).To(BeEmpty())
+					Expect(album.Discs).To(Equal(Discs{1: ""}))
 				})
 			})
 			When("we have only one disc", func() {

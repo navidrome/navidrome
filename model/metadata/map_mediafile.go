@@ -78,7 +78,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
 		model.TagComment, model.TagAlbumSort, model.TagAlbumVersion, model.TagTitleSort, model.TagCompilation,
 		model.TagLyrics, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
-		model.TagReleaseDate, model.TagRecordingDate, model.TagTotalDiscs, model.TagTotalTracks,
+		model.TagReleaseDate, model.TagRecordingDate,
 
 		// MusicBrainz IDs
 		model.TagMusicBrainzRecordingID, model.TagMusicBrainzTrackID, model.TagMusicBrainzAlbumID,
