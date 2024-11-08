@@ -202,7 +202,7 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue(
 					"participant_ids",
-					`{"album_artist":["AA1"],"composer":["C1"]}`,
+					`{"albumArtist":["AA1"],"composer":["C1"]}`,
 				))
 			})
 

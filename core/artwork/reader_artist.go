@@ -32,6 +32,7 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	if err != nil {
 		return nil, err
 	}
+	// BFR Only get albums where the artist is the sole album artist.
 	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": artID.ID}})
 	if err != nil {
 		return nil, err

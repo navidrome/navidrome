@@ -10,11 +10,12 @@ import (
 type Album struct {
 	Annotations `structs:"-" hash:"ignore"`
 
-	ID                    string     `structs:"id" json:"id"`
-	LibraryID             int        `structs:"library_id" json:"libraryId"`
-	Name                  string     `structs:"name" json:"name"`
-	EmbedArtPath          string     `structs:"embed_art_path" json:"-"`
-	AlbumArtistID         string     `structs:"album_artist_id" json:"albumArtistId"`
+	ID            string `structs:"id" json:"id"`
+	LibraryID     int    `structs:"library_id" json:"libraryId"`
+	Name          string `structs:"name" json:"name"`
+	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
+	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
+	// BFR Rename to AlbumArtistDisplayName
 	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
 	MaxYear               int        `structs:"max_year" json:"maxYear"`
 	MinYear               int        `structs:"min_year" json:"minYear"`
