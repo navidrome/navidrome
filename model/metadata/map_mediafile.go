@@ -38,7 +38,6 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.RgTrackPeak = md.Float(model.TagReplayGainTrackPeak)
 	mf.RgTrackGain = md.Float(model.TagReplayGainTrackGain)
 	mf.Comment = md.String(model.TagComment)
-	mf.Lyrics = md.String(model.TagLyrics)
 	mf.Bpm = int(math.Round(md.Float(model.TagBPM)))
 	mf.HasCoverArt = md.HasPicture()
 	mf.Duration = md.Length()
@@ -50,6 +49,9 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.Size = md.Size()
 	mf.BirthTime = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
+
+	// BFR Parse and import lyrics
+	//mf.Lyrics = md.String(model.TagLyrics)
 
 	mf.Participations = md.mapParticipations()
 	mf.Artist = md.mapDisplayArtist(mf)
