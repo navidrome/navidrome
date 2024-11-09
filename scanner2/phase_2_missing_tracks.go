@@ -96,14 +96,19 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 			var exactMatch model.MediaFile
 			var equivalentMatch model.MediaFile
 
-			// Identify exact and equivalent matches
-			for _, mt := range in.matched {
-				if ms.Equals(mt) {
-					exactMatch = mt
-					break // Prioritize exact match
-				}
-				if ms.IsEquivalent(mt) {
-					equivalentMatch = mt
+			if len(in.missing) == 1 && len(in.matched) == 1 {
+				// If there is only one missing and one matched track, consider them equivalent (same PID)
+				equivalentMatch = in.matched[0]
+			} else {
+				// Identify exact and equivalent matches
+				for _, mt := range in.matched {
+					if ms.Equals(mt) {
+						exactMatch = mt
+						break // Prioritize exact match
+					}
+					if ms.IsEquivalent(mt) {
+						equivalentMatch = mt
+					}
 				}
 			}
 

@@ -98,6 +98,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
@@ -117,6 +118,28 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+
+			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
+			Expect(movedTrack.Size).To(Equal(matchedTrack.Size))
+		})
+
+		It("should move the matched track when there's only one missing track and one matched track (same PID)", func() {
+			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "dir2/path2.flac", Tags: model.Tags{"title": []string{"different title"}}, Size: 200}
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+			in := &missingTracks{
+				missing: []model.MediaFile{missingTrack},
+				matched: []model.MediaFile{matchedTrack},
+			}
+
+			_, err := phase.processMissingTracks(in)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
@@ -140,10 +163,36 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedExact.Path))
 			Expect(movedTrack.Size).To(Equal(matchedExact.Size))
+		})
+
+		It("should not move anything if there's more than one match and they don't are not exact nor equivalent", func() {
+			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/file1.mp3", Title: "title1", Size: 100}
+			matched1 := model.MediaFile{ID: "2", PID: "A", Path: "dir1/file2.flac", Title: "another title", Size: 200}
+			matched2 := model.MediaFile{ID: "3", PID: "A", Path: "dir2/file3.mp3", Title: "different title", Size: 100}
+
+			_ = ds.MediaFile(ctx).Put(&missingTrack)
+			_ = ds.MediaFile(ctx).Put(&matched1)
+			_ = ds.MediaFile(ctx).Put(&matched2)
+
+			in := &missingTracks{
+				missing: []model.MediaFile{missingTrack},
+				matched: []model.MediaFile{matched1, matched2},
+			}
+
+			_, err := phase.processMissingTracks(in)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
+
+			// The missing track should still be the same
+			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			Expect(movedTrack.Path).To(Equal(missingTrack.Path))
+			Expect(movedTrack.Title).To(Equal(missingTrack.Title))
+			Expect(movedTrack.Size).To(Equal(missingTrack.Size))
 		})
 
 		It("should return an error when there's an error moving the matched track", func() {

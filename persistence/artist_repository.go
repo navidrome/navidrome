@@ -233,34 +233,35 @@ with artist_counters (id, counters) as
                  )    as counters
           from (
 
-               -- Get counters for each artist, grouped by role
-                select atom,
-                       replace(jt.path, '$.', '') as path,
-                       count(distinct album_id)   as album_count,
-                       count(mf.id)               as count,
-                       sum(size)                  as size
-                from media_file mf
-                         left join json_tree(participant_ids) jt
-                where atom is not null
-                group by atom, jt.path
+                   -- Get counters for each artist, grouped by role
+                   select atom,
+                          replace(jt.path, '$.', '') as path,
+                          count(distinct album_id)   as album_count,
+                          count(mf.id)               as count,
+                          sum(size)                  as size
+                   from media_file mf
+                            left join json_tree(participant_ids) jt
+                   where atom is not null
+                   group by atom, jt.path
 
-                UNION
+                   UNION
 
-                -- Get the totals for each artist
-                select mfa.artist_id            as atom,
-                       'total'                  as path,
-                       count(distinct mf.album) as album_count,
-                       count(distinct mf.id)    as count,
-                       sum(mf.size)             as size
-                from (select distinct artist_id, media_file_id
-                      from main.media_file_artists) as mfa
-                         join
-                     main.media_file mf on mfa.media_file_id = mf.id
-                group by mfa.artist_id)
+                   -- Get the totals for each artist
+                   select mfa.artist_id            as atom,
+                          'total'                  as path,
+                          count(distinct mf.album) as album_count,
+                          count(distinct mf.id)    as count,
+                          sum(mf.size)             as size
+                   from (select distinct artist_id, media_file_id
+                         from main.media_file_artists) as mfa
+                            join
+                        main.media_file mf on mfa.media_file_id = mf.id
+                   group by mfa.artist_id)
           group by atom)
 update artist
-set stats=(select counters from artist_counters where artist_counters.id = artist.id),
+set stats = coalesce((select counters from artist_counters where artist_counters.id = artist.id), '{}'),
     updated_at = current_timestamp
+where id <> ''; -- always true, to avoid warnings
 `)
 	return r.executeSQL(query)
 }
