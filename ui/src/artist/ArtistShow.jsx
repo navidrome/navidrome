@@ -62,7 +62,7 @@ const AlbumShowLayout = (props) => {
           reference="album"
           target="artist_id"
           sort={{ field: 'max_year', order: 'ASC' }}
-          filter={{ artist_id: record?.id }}
+          filter={{ artist_id: record?.id, role: 'albumArtist' }}
           perPage={0}
           pagination={null}
         >
