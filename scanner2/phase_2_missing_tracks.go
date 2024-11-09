@@ -76,6 +76,8 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 		slices.SortFunc(mfs, func(i, j model.MediaFile) int {
 			return cmp.Compare(i.PID, j.PID)
 		})
+
+		// Group missing and matched tracks by PID
 		mt := missingTracks{lib: lib}
 		for _, mf := range mfs {
 			if mt.pid != mf.PID {
@@ -107,40 +109,48 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 			var exactMatch model.MediaFile
 			var equivalentMatch model.MediaFile
 
-			if len(in.missing) == 1 && len(in.matched) == 1 {
-				// If there is only one missing and one matched track, consider them equivalent (same PID)
-				equivalentMatch = in.matched[0]
-			} else {
-				// Identify exact and equivalent matches
-				for _, mt := range in.matched {
-					if ms.Equals(mt) {
-						exactMatch = mt
-						break // Prioritize exact match
-					}
-					if ms.IsEquivalent(mt) {
-						equivalentMatch = mt
-					}
+			// Identify exact and equivalent matches
+			for _, mt := range in.matched {
+				if ms.Equals(mt) {
+					exactMatch = mt
+					break // Prioritize exact match
+				}
+				if ms.IsEquivalent(mt) {
+					equivalentMatch = mt
 				}
 			}
 
-			// Process the exact match if found
+			// Use the exact match if found
 			if exactMatch.ID != "" {
-				log.Debug(p.ctx, "Scanner: Found missing track", "missing", ms.Path, "matched", exactMatch.Path, "lib", in.lib.Name)
+				log.Debug(p.ctx, "Scanner: Found missing track in a new place", "missing", ms.Path, "movedTo", exactMatch.Path, "lib", in.lib.Name)
 				err := p.moveMatched(tx, exactMatch, ms)
 				if err != nil {
-					log.Error(p.ctx, "Scanner: Error moving matched track", "missing", ms.Path, "matched", exactMatch.Path, "lib", in.lib.Name, err)
+					log.Error(p.ctx, "Scanner: Error moving matched track", "missing", ms.Path, "movedTo", exactMatch.Path, "lib", in.lib.Name, err)
 					return err
 				}
 				p.totalMatched.Add(1)
 				continue
 			}
 
-			// Process the equivalent match if no exact match was found
+			// If there is only one missing and one matched track, consider them equivalent (same PID)
+			if len(in.missing) == 1 && len(in.matched) == 1 {
+				singleMatch := in.matched[0]
+				log.Debug(p.ctx, "Scanner: Found track with same persistent ID in a new place", "missing", ms.Path, "movedTo", singleMatch.Path, "lib", in.lib.Name)
+				err := p.moveMatched(tx, singleMatch, ms)
+				if err != nil {
+					log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "movedTo", singleMatch.Path, "lib", in.lib.Name, err)
+					return err
+				}
+				p.totalMatched.Add(1)
+				continue
+			}
+
+			// Use the equivalent match if no other better match was found
 			if equivalentMatch.ID != "" {
-				log.Debug(p.ctx, "Scanner: Found track with same base path", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name)
+				log.Debug(p.ctx, "Scanner: Found missing track with same base path", "missing", ms.Path, "movedTo", equivalentMatch.Path, "lib", in.lib.Name)
 				err := p.moveMatched(tx, equivalentMatch, ms)
 				if err != nil {
-					log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "matched", equivalentMatch.Path, "lib", in.lib.Name, err)
+					log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "movedTo", equivalentMatch.Path, "lib", in.lib.Name, err)
 					return err
 				}
 				p.totalMatched.Add(1)
