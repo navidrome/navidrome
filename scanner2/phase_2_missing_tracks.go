@@ -19,6 +19,17 @@ type missingTracks struct {
 	matched model.MediaFiles
 }
 
+// phaseMissingTracks is responsible for processing missing media files during the scan process.
+// It identifies media files that are marked as missing and attempts to find matching files that
+// may have been moved or renamed. This phase helps in maintaining the integrity of the media
+// library by ensuring that moved or renamed files are correctly updated in the database.
+//
+// The phaseMissingTracks phase performs the following steps:
+// 1. Loads all libraries and their missing media files from the database.
+// 2. For each library, it sorts the missing files by their PID (persistent identifier).
+// 3. Groups missing and matched files by their PID and processes them to find exact or equivalent matches.
+// 4. Updates the database with the new locations of the matched files and removes the old entries.
+// 5. Logs the results and finalizes the phase by reporting the total number of matched files.
 type phaseMissingTracks struct {
 	ctx          context.Context
 	ds           model.DataStore

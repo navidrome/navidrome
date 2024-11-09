@@ -82,6 +82,17 @@ func (j *scanJob) popLastUpdate(folderID string) time.Time {
 	return lastUpdate
 }
 
+// phaseFolders represents the first phase of the scanning process, which is responsible
+// for scanning all libraries and importing new or updated files. This phase involves
+// traversing the directory tree of each library, identifying new or modified media files,
+// and updating the database with the relevant information.
+//
+// The phaseFolders struct holds the context, data store, and jobs required for the scanning
+// process. Each job represents a library being scanned, and contains information about the
+// library, file system, and the last updates of the folders.
+//
+// The phaseFolders struct implements the phase interface, providing methods to produce
+// folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
 	jobs []*scanJob
 	ds   model.DataStore

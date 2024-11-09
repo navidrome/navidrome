@@ -12,6 +12,17 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+// phaseRefreshAlbums is responsible for refreshing albums that have been
+// newly added or changed during the scan process. This phase ensures that
+// the album information in the database is up-to-date by performing the
+// following steps:
+//  1. Loads all libraries and their albums that have been touched (new or changed).
+//  2. For each album, it filters out unmodified albums by comparing the current
+//     state with the state in the database.
+//  3. Refreshes the album information in the database if any changes are detected.
+//  4. Logs the results and finalizes the phase by reporting the total number of
+//     refreshed and skipped albums.
+//  5. As a last step, it refreshes the artist statistics to reflect the changes
 type phaseRefreshAlbums struct {
 	ds        model.DataStore
 	ctx       context.Context
