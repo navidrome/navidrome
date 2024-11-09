@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/random"
 	"gopkg.in/yaml.v3"
 )
@@ -20,12 +22,14 @@ type Handler struct {
 	list       []string
 	lock       sync.RWMutex
 	lastUpdate time.Time
+	cache      cache.FileCache
 }
 
 func NewHandler() *Handler {
 	h := &Handler{}
+	h.cache = cache.NewFileCache("backgrounds", "100MB", "backgrounds", 1000, h.serveImage)
 	go func() {
-		_, _ = h.getImageList(log.NewContext(context.Background()))
+		_ = h.loadImageList(log.NewContext(context.Background()))
 	}()
 	return h
 }
@@ -36,35 +40,71 @@ const (
 	imageListTTL    = 24 * time.Hour
 )
 
+type cacheKey string
+
+func (k cacheKey) Key() string {
+	return string(k)
+}
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	image, err := h.getRandomImage(r.Context())
 	if err != nil {
-		defaultImage, _ := base64.StdEncoding.DecodeString(consts.DefaultUILoginBackgroundOffline)
-		w.Header().Set("content-type", "image/png")
-		_, _ = w.Write(defaultImage)
+		h.serveDefaultImage(w)
 		return
 	}
+	s, err := h.cache.Get(r.Context(), cacheKey(image))
+	if err != nil {
+		h.serveDefaultImage(w)
+		return
+	}
+	defer s.Close()
 
-	http.Redirect(w, r, imageURL(image), http.StatusFound)
+	w.Header().Set("content-type", "image/jpeg")
+	_, _ = io.Copy(w, s.Reader)
+}
+
+func (h *Handler) serveDefaultImage(w http.ResponseWriter) {
+	defaultImage, _ := base64.StdEncoding.DecodeString(consts.DefaultUILoginBackgroundOffline)
+	w.Header().Set("content-type", "image/png")
+	_, _ = w.Write(defaultImage)
+}
+
+func (h *Handler) serveImage(ctx context.Context, item cache.Item) (io.Reader, error) {
+	image := item.Key()
+	if image == "" {
+		return nil, errors.New("empty image name")
+	}
+	c := http.Client{
+		Timeout: time.Minute,
+	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageURL(image), nil)
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	return resp.Body, nil
 }
 
 func (h *Handler) getRandomImage(ctx context.Context) (string, error) {
-	list, err := h.getImageList(ctx)
+	err := h.loadImageList(ctx)
 	if err != nil {
 		return "", err
 	}
-	if len(list) == 0 {
+	if len(h.list) == 0 {
 		return "", errors.New("no images available")
 	}
-	rnd := random.Int64N(len(list))
-	return list[rnd], nil
+	rnd := random.Int64N(len(h.list))
+	return h.list[rnd], nil
 }
 
-func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
+func (h *Handler) loadImageList(ctx context.Context) error {
 	h.lock.RLock()
 	if len(h.list) > 0 && time.Since(h.lastUpdate) < imageListTTL {
-		defer h.lock.RUnlock()
-		return h.list, nil
+		h.lock.RUnlock()
+		return nil
 	}
 
 	h.lock.RUnlock()
@@ -80,14 +120,18 @@ func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
 	resp, err := c.Do(req)
 	if err != nil {
 		log.Warn(ctx, "Could not get background images from image service", err)
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	dec := yaml.NewDecoder(resp.Body)
 	err = dec.Decode(&h.list)
+	if err != nil {
+		log.Warn(ctx, "Could not decode background images from image service", err)
+		return err
+	}
 	h.lastUpdate = time.Now()
 	log.Debug(ctx, "Loaded background images from image service", "total", len(h.list), "elapsed", time.Since(start))
-	return h.list, err
+	return nil
 }
 
 func imageURL(imageName string) string {
