@@ -17,6 +17,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	//imageHostingUrl = "https://unsplash.com/photos/%s/download?fm=jpg&w=1600&h=900&fit=max"
+	imageHostingUrl     = "https://www.navidrome.org/images/%s.jpg"
+	imageListURL        = "https://www.navidrome.org/images/index.yml"
+	imageListTTL        = 24 * time.Hour
+	imageCacheDir       = "backgrounds"
+	imageCacheSize      = "100MB"
+	imageCacheMaxItems  = 1000
+	imageRequestTimeout = 5 * time.Second
+)
+
 type Handler struct {
 	httpClient *cache.HTTPClient
 	cache      cache.FileCache
@@ -25,19 +36,12 @@ type Handler struct {
 func NewHandler() *Handler {
 	h := &Handler{}
 	h.httpClient = cache.NewHTTPClient(&http.Client{Timeout: 5 * time.Second}, imageListTTL)
-	h.cache = cache.NewFileCache("backgrounds", "100MB", "backgrounds", 1000, h.serveImage)
+	h.cache = cache.NewFileCache(imageCacheDir, imageCacheSize, imageCacheDir, imageCacheMaxItems, h.serveImage)
 	go func() {
 		_, _ = h.getImageList(log.NewContext(context.Background()))
 	}()
 	return h
 }
-
-const (
-	//imageHostingUrl = "https://unsplash.com/photos/%s/download?fm=jpg&w=1600&h=900&fit=max"
-	imageHostingUrl = "https://www.navidrome.org/images/%s.jpg"
-	imageListURL    = "https://www.navidrome.org/images/index.yml"
-	imageListTTL    = 24 * time.Hour
-)
 
 type cacheKey string
 
@@ -74,9 +78,7 @@ func (h *Handler) serveImage(ctx context.Context, item cache.Item) (io.Reader, e
 	if image == "" {
 		return nil, errors.New("empty image name")
 	}
-	c := http.Client{
-		Timeout: 5 * time.Second,
-	}
+	c := http.Client{Timeout: imageRequestTimeout}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageURL(image), nil)
 	resp, err := c.Do(req) //nolint:bodyclose // No need to close resp.Body, it will be closed via the CachedStream wrapper
 	if errors.Is(err, context.DeadlineExceeded) {
