@@ -130,16 +130,16 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	})
 }
 
-func trace(ctx context.Context, msg string, f func() error) func() error {
-	return func() error {
-		start := time.Now()
-		err := f()
-		log.Debug(ctx, "GC: "+msg, "elapsed", time.Since(start), err)
-		return err
-	}
-}
-
 func (s *SQLStore) GC(ctx context.Context) error {
+	trace := func(ctx context.Context, msg string, f func() error) func() error {
+		return func() error {
+			start := time.Now()
+			err := f()
+			log.Debug(ctx, "GC: "+msg, "elapsed", time.Since(start), err)
+			return err
+		}
+	}
+
 	err := chain.RunSequentially(
 		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() }),
 		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),

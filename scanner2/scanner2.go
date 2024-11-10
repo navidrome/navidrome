@@ -48,10 +48,13 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
+	changesDetected := atomic.Bool{}
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
-		func() error { return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, libs, fullRescan)) },
+		func() error {
+			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, libs, fullRescan, &changesDetected))
+		},
 
 		// Phase 2: Process missing files, checking for moves
 		func() error { return runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)) },
@@ -64,18 +67,24 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 		return err
 	}
 
-	// Final step: Run GC and update last_scan_completed_at for all libraries
-	_ = s.ds.WithTx(func(tx model.DataStore) error {
-		// Remove dangling tracks, empty albums and artists, and orphan annotations
-		start := time.Now()
-		err := tx.GC(ctx)
-		if err != nil {
-			log.Error(ctx, "Scanner: Error running GC", err)
-			return err
-		}
-		log.Debug(ctx, "Scanner: GC completed", "duration", time.Since(start))
+	// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
+	if changesDetected.Load() {
+		_ = s.ds.WithTx(func(tx model.DataStore) error {
+			start := time.Now()
+			err := tx.GC(ctx)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error running GC", err)
+				return err
+			}
+			log.Debug(ctx, "Scanner: GC completed", "duration", time.Since(start))
+			return nil
+		})
+	} else {
+		log.Debug(ctx, "Scanner: No changes detected, skipping GC")
+	}
 
-		// Update last_scan_completed_at for all libraries, if everything went well
+	// Final step: Update last_scan_completed_at for all libraries
+	_ = s.ds.WithTx(func(tx model.DataStore) error {
 		for _, lib := range libs {
 			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
 			if err != nil {

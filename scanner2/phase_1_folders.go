@@ -23,7 +23,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Library, fullRescan bool) *phaseFolders {
+func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Library, fullRescan bool, changesDetected *atomic.Bool) *phaseFolders {
 	var jobs []*scanJob
 	for _, lib := range libs {
 		err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
@@ -38,7 +38,7 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Li
 		}
 		jobs = append(jobs, job)
 	}
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds}
+	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, changesDetected: changesDetected}
 }
 
 type scanJob struct {
@@ -94,9 +94,10 @@ func (j *scanJob) popLastUpdate(folderID string) time.Time {
 // The phaseFolders struct implements the phase interface, providing methods to produce
 // folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
-	jobs []*scanJob
-	ds   model.DataStore
-	ctx  context.Context
+	jobs            []*scanJob
+	ds              model.DataStore
+	ctx             context.Context
+	changesDetected *atomic.Bool
 }
 
 func (p *phaseFolders) description() string {
@@ -238,6 +239,7 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Art
 
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
+	p.changesDetected.Store(true)
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Save folder to DB
