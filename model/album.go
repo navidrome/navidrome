@@ -83,25 +83,25 @@ func (a Album) Equals(other Album) bool {
 // This is the list of tags that are not "first-class citizens" in the Album struct, but are
 // still stored in the database.
 var albumLevelTags = map[TagName]struct{}{
-	TagGenre:         {},
-	TagMood:          {},
-	TagGrouping:      {},
-	TagRecordLabel:   {},
-	TagReleaseType:   {},
-	TagMedia:         {},
-	TagCatalogNumber: {},
-	TagTotalTracks:   {},
-	TagTotalDiscs:    {},
+	TagGenre:          {},
+	TagMood:           {},
+	TagMedia:          {},
+	TagGrouping:       {},
+	TagAlbumVersion:   {},
+	TagRecordLabel:    {},
+	TagReleaseCountry: {},
+	TagReleaseType:    {},
+	TagTotalTracks:    {},
+	TagTotalDiscs:     {},
 }
 
 func (a *Album) AddFilteredTags(tags TagList) {
-	filteredTags := make(TagList, 0, len(tags))
-	for _, t := range tags {
-		if _, ok := albumLevelTags[t.TagName]; ok {
-			filteredTags = append(filteredTags, t)
+	a.Tags = tags.GroupByFrequency()
+	for k := range a.Tags {
+		if _, ok := albumLevelTags[k]; !ok {
+			delete(a.Tags, k)
 		}
 	}
-	a.Tags = filteredTags.GroupByFrequency()
 }
 
 type Discs map[int]string

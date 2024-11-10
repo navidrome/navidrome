@@ -55,6 +55,13 @@ const useStyles = makeStyles(
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
     },
+    albumVersion: {
+      fontSize: '12px',
+      color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
     albumSubtitle: {
       fontSize: '12px',
       color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
@@ -158,7 +165,14 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         className={classes.albumLink}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Typography className={classes.albumName}>{record.name}</Typography>
+        <span>
+          <Typography className={classes.albumName}>{record.name}</Typography>
+          {record.tags && record.tags['albumversion'] && (
+            <Typography className={classes.albumVersion}>
+              {record.tags['albumversion']}
+            </Typography>
+          )}
+        </span>
       </Link>
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />

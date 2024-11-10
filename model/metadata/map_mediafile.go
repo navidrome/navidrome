@@ -78,7 +78,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	// BFR Automatically remove tags that were accessed in the steps above
 	removedTags := []model.TagName{
 		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
-		model.TagComment, model.TagAlbumSort, model.TagAlbumVersion, model.TagTitleSort, model.TagCompilation,
+		model.TagComment, model.TagAlbumSort, model.TagTitleSort, model.TagCompilation,
 		model.TagLyrics, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
 		model.TagReleaseDate, model.TagRecordingDate,
 
