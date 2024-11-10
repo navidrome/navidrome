@@ -105,7 +105,7 @@ func (r sqlRepository) cleanAnnotations() error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return err
+		return fmt.Errorf("error cleaning up annotations: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)

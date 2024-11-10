@@ -288,12 +288,13 @@ from play_counts;
 func (r *albumRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
 	c, err := r.executeSQL(del)
-	if err == nil {
-		if c > 0 {
-			log.Debug(r.ctx, "Purged empty albums", "totalDeleted", c)
-		}
+	if err != nil {
+		return fmt.Errorf("error purging empty albums: %w", err)
 	}
-	return err
+	if c > 0 {
+		log.Debug(r.ctx, "Purged empty albums", "totalDeleted", c)
+	}
+	return nil
 }
 
 func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {

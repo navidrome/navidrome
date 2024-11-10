@@ -3,6 +3,7 @@ package persistence
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -149,7 +150,7 @@ func (r sqlRepository) cleanBookmarks() error {
 	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return err
+		return fmt.Errorf("error cleaning up bookmarks: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c)

@@ -448,7 +448,7 @@ func (r *playlistRepository) removeOrphans() error {
 	var pls []struct{ Id, Name string }
 	err := r.queryAll(sel, &pls)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching playlists with orphan tracks: %w", err)
 	}
 
 	for _, pl := range pls {
@@ -459,13 +459,13 @@ func (r *playlistRepository) removeOrphans() error {
 		})
 		n, err := r.executeSQL(del)
 		if n == 0 || err != nil {
-			return err
+			return fmt.Errorf("error deleting orphan tracks from playlist %s: %w", pl.Name, err)
 		}
 		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
 
 		// Renumber the playlist if any track was removed
 		if err := r.renumber(pl.Id); err != nil {
-			return err
+			return fmt.Errorf("error renumbering playlist %s: %w", pl.Name, err)
 		}
 	}
 	return nil

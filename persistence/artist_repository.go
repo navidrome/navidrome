@@ -211,12 +211,13 @@ func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).
 		Where(ConcatExpr("id not in (select artist_id from album_artists)"))
 	c, err := r.executeSQL(del)
-	if err == nil {
-		if c > 0 {
-			log.Debug(r.ctx, "Purged empty artists", "totalDeleted", c)
-		}
+	if err != nil {
+		return fmt.Errorf("error purging empty artists: %w", err)
 	}
-	return err
+	if c > 0 {
+		log.Debug(r.ctx, "Purged empty artists", "totalDeleted", c)
+	}
+	return nil
 }
 
 // RefreshAnnotations updates the play count and last play date annotations for all artists, based

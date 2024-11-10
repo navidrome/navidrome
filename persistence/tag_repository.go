@@ -2,9 +2,11 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
@@ -35,4 +37,19 @@ func (r *tagRepository) Add(tags ...model.Tag) error {
 		}
 	}
 	return nil
+}
+
+func (r *tagRepository) purgeNonUsed() error {
+	del := Delete(r.tableName).Where(`
+		id not in 
+(select atom from media_file left join json_tree(media_file.tags, '$') where atom is not null and key = 'id')
+`)
+	c, err := r.executeSQL(del)
+	if err != nil {
+		return fmt.Errorf("error purging unused tags: %w", err)
+	}
+	if c > 0 {
+		log.Debug(r.ctx, "Purged unused tags", "totalDeleted", c)
+	}
+	return err
 }

@@ -163,12 +163,11 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	if err != nil {
 		log.Error(ctx, "Error tidying up playlists", err)
 	}
-	// BFR: Remove unused tags
-	//err = s.Genre(ctx).(*genreRepository).purgeEmpty()
-	//if err != nil {
-	//	log.Error(ctx, "Error removing unused genres", err)
-	//	return err
-	//}
+	err = s.Tag(ctx).(*tagRepository).purgeNonUsed()
+	if err != nil {
+		log.Error(ctx, "Error removing unused tags", err)
+		return err
+	}
 	return err
 }
 
