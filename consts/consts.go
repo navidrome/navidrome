@@ -87,6 +87,11 @@ const (
 	AlbumPlayCountModeNormalized = "normalized"
 )
 
+const (
+	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
+	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {

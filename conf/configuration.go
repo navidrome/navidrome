@@ -89,6 +89,7 @@ type configOptions struct {
 	Scanner                         scannerOptions
 	Jukebox                         jukeboxOptions
 	Backup                          backupOptions
+	PID                             pidOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -159,6 +160,11 @@ type backupOptions struct {
 	Count    int
 	Path     string
 	Schedule string
+}
+
+type pidOptions struct {
+	Track string
+	Album string
 }
 
 var (
@@ -447,6 +453,9 @@ func init() {
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")
 	viper.SetDefault("backup.count", 0)
+
+	viper.SetDefault("pid.track", consts.DefaultTrackPID)
+	viper.SetDefault("pid.album", consts.DefaultAlbumPID)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

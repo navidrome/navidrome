@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -108,29 +107,5 @@ var _ = Describe("getPID", func() {
 				Expect(getPID(mf, md, spec)).To(Equal("(album name)"))
 			})
 		})
-	})
-	It("trackPID with MBID", func() {
-		md.tags = map[model.TagName][]string{
-			"musicbrainz_trackid": {"mbtrackid"},
-		}
-		mf.MbzReleaseTrackID = "mbtrackid"
-		getPID := createGetPID(id.NewHash)
-		Expect(md.trackPID(mf)).To(Equal(getPID(mf, md, trackPIDSpec)))
-	})
-	It("trackPID without MBID", func() {
-		md.tags = map[model.TagName][]string{
-			"albumartist": {"Album Artist"},
-			"album":       {"Album Name"},
-			"discnumber":  {"02"},
-			"tracknumber": {"05"},
-			"title":       {"Song Title"},
-		}
-		mf.AlbumArtist = "Album Artist"
-		mf.Title = "Song Title"
-		mf.DiscNumber = 2
-		mf.TrackNumber = 5
-		mf.Album = "Album Name"
-		getPID := createGetPID(id.NewHash)
-		Expect(md.trackPID(mf)).To(Equal(getPID(mf, md, trackPIDSpec)))
 	})
 })

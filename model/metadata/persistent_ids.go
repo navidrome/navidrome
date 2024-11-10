@@ -5,18 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
-)
-
-// BFR Must be configurable
-const (
-	albumPIDSpec = "musicbrainz_albumid|albumartistid,album,version,releasedate"
-	trackPIDSpec = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
 )
 
 type hashFunc = func(...string) string
@@ -31,7 +26,7 @@ func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec stri
 	getAttr := func(mf model.MediaFile, md Metadata, attr string) string {
 		switch attr {
 		case "albumid":
-			return getPID(mf, md, albumPIDSpec, hash)
+			return getPID(mf, md, conf.Server.PID.Album, hash)
 		case "folder":
 			return filepath.Dir(mf.Path)
 		case "albumartistid":
@@ -65,16 +60,22 @@ func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec stri
 	}
 
 	return func(mf model.MediaFile, md Metadata, spec string) string {
+		switch spec {
+		case "track_legacy":
+			return legacyTrackID(mf)
+		case "album_legacy":
+			return legacyAlbumID(md)
+		}
 		return getPID(mf, md, spec, hash)
 	}
 }
 
 func (md Metadata) trackPID(mf model.MediaFile) string {
-	return createGetPID(id.NewHash)(mf, md, trackPIDSpec)
+	return createGetPID(id.NewHash)(mf, md, conf.Server.PID.Track)
 }
 
 func (md Metadata) albumID(mf model.MediaFile) string {
-	return createGetPID(id.NewHash)(mf, md, albumPIDSpec)
+	return createGetPID(id.NewHash)(mf, md, conf.Server.PID.Album)
 }
 
 // BFR Must be configurable?
