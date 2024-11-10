@@ -164,12 +164,11 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 
 // BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
-	// Alternative, with role:
-	//  exists(select 1 from json_tree(participant_ids, '$.composer') where value = $value')
 	return Or{
 		exists("json_tree(participant_ids, '$.albumArtist')", Eq{"value": value}),
 		exists("json_tree(participant_ids, '$.artist')", Eq{"value": value}),
 	}
+	// For any role:
 	//return Like{"participant_ids": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
@@ -281,7 +280,8 @@ with play_counts as (
 insert or replace into annotation
 (item_id, item_type, play_count, play_date, user_id)
 select album_id, 'album', total_play_count, last_play_date, user_id
-from play_counts;`)
+from play_counts;
+`)
 	return r.executeSQL(query)
 }
 

@@ -219,6 +219,27 @@ func (r *artistRepository) purgeEmpty() error {
 	return err
 }
 
+// RefreshAnnotations updates the play count and last play date annotations for all artists, based
+// on the media files associated with them.
+func (r *artistRepository) RefreshAnnotations() (int64, error) {
+	query := rawSQL(`
+with play_counts as (
+    select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
+    from media_file
+    join annotation on item_id = media_file.id
+    left join json_tree(participant_ids, '$.artist') as jt
+    where atom is not null
+    group by user_id, atom
+)
+insert or replace into annotation
+(item_id, item_type, play_count, play_date, user_id)
+select artist_id, 'artist', total_play_count, last_play_date, user_id
+from play_counts;
+`)
+	return r.executeSQL(query)
+}
+
+// RefreshStats updates the stats field for all artists, based on the media files associated with them.
 func (r *artistRepository) RefreshStats() (int64, error) {
 	// First get all counters, one query groups by artist/role, and another with totals per artist.
 	// Union both queries and group by artist to get a single row of counters per artist/role.

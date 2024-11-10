@@ -133,6 +133,14 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 			return fmt.Errorf("refreshing album annotations: %w", err)
 		}
 		log.Debug(p.ctx, "Scanner: Refreshed album annotations", "albums", cnt, "elapsed", time.Since(start))
+
+		// Refresh artist annotations
+		start = time.Now()
+		cnt, err = tx.Artist(p.ctx).RefreshAnnotations()
+		if err != nil {
+			return fmt.Errorf("refreshing artist annotations: %w", err)
+		}
+		log.Debug(p.ctx, "Scanner: Refreshed artist annotations", "artists", cnt, "elapsed", time.Since(start))
 		return nil
 	})
 }
