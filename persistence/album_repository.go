@@ -167,8 +167,8 @@ func artistFilter(_ string, value interface{}) Sqlizer {
 	// Alternative, with role:
 	//  exists(select 1 from json_tree(participant_ids, '$.composer') where value = $value')
 	return Or{
-		exists(" json_tree(participant_ids, '$.albumArtist')", Eq{"value": value}),
-		exists(" json_tree(participant_ids, '$.artist')", Eq{"value": value}),
+		exists("json_tree(participant_ids, '$.albumArtist')", Eq{"value": value}),
+		exists("json_tree(participant_ids, '$.artist')", Eq{"value": value}),
 	}
 	//return Like{"participant_ids": fmt.Sprintf(`%%"%s"%%`, value)}
 }

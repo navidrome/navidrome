@@ -22,11 +22,11 @@ type hashFunc = func(...string) string
 // For each field, it gets all its attributes values and concatenates them, then hashes the result.
 // If a field is empty, it is skipped and the function looks for the next field.
 func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec string) string {
-	var getPID func(mf model.MediaFile, md Metadata, spec string, hash hashFunc) string
+	var getPID func(mf model.MediaFile, md Metadata, spec string) string
 	getAttr := func(mf model.MediaFile, md Metadata, attr string) string {
 		switch attr {
 		case "albumid":
-			return getPID(mf, md, conf.Server.PID.Album, hash)
+			return getPID(mf, md, conf.Server.PID.Album)
 		case "folder":
 			return filepath.Dir(mf.Path)
 		case "albumartistid":
@@ -38,7 +38,7 @@ func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec stri
 		}
 		return md.String(model.TagName(attr))
 	}
-	getPID = func(mf model.MediaFile, md Metadata, spec string, hash hashFunc) string {
+	getPID = func(mf model.MediaFile, md Metadata, spec string) string {
 		pid := ""
 		fields := strings.Split(spec, "|")
 		for _, field := range fields {
@@ -66,7 +66,7 @@ func createGetPID(hash hashFunc) func(mf model.MediaFile, md Metadata, spec stri
 		case "album_legacy":
 			return legacyAlbumID(md)
 		}
-		return getPID(mf, md, spec, hash)
+		return getPID(mf, md, spec)
 	}
 }
 

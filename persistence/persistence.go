@@ -134,12 +134,11 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 		log.Error(ctx, "Error removing empty albums", err)
 		return err
 	}
-	// BFR: Check All roles
-	//err = s.Artist(ctx).(*artistRepository).purgeEmpty()
-	//if err != nil {
-	//	log.Error(ctx, "Error removing empty artists", err)
-	//	return err
-	//}
+	err = s.Artist(ctx).(*artistRepository).purgeEmpty()
+	if err != nil {
+		log.Error(ctx, "Error removing empty artists", err)
+		return err
+	}
 	err = s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
 	if err != nil {
 		log.Error(ctx, "Error removing orphan mediafile annotations", err)
