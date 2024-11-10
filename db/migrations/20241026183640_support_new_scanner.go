@@ -43,7 +43,7 @@ create table if not exists media_file_artists(
 	    		 	on delete cascade,
     	role varchar default '' not null,
     	sub_role varchar default '' not null,
-    	constraint artist_tracks_ux
+    	constraint artist_tracks
     	    			unique (artist_id, media_file_id, role)
 );
 create index if not exists media_file_artists_media_file_id
@@ -59,7 +59,7 @@ create table if not exists album_artists(
 				references artist (id)
 	    		 	on delete cascade,
     	role varchar default '' not null,
-    	constraint album_artists_ux
+    	constraint album_artists
     	    			unique (album_id, artist_id, role)
 );
 create index if not exists album_artists_album_id
@@ -73,7 +73,7 @@ create table if not exists tag(
   	id varchar not null primary key,
   	tag_name varchar default '' not null,
   	tag_value varchar default '' not null,
-  	constraint tags_name_value_ux
+  	constraint tags_name_value
 		unique (tag_name, tag_value)
 );
 
