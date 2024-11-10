@@ -133,9 +133,10 @@ func (s *SQLStore) GC(ctx context.Context) error {
 	err := chain.RunSequentially(
 		func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() },
 		func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() },
-		func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() },
+		func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty() },
 		func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() },
 		func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() },
+		func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() },
 		func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks() },
 		func() error { return s.Tag(ctx).(*tagRepository).purgeNonUsed() },
 		func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() },

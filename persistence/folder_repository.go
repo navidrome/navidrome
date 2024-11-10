@@ -125,4 +125,21 @@ func (r folderRepository) Touch(lib model.Library, path string, t time.Time) err
 	return err
 }
 
+func (r folderRepository) purgeEmpty() error {
+	sq := Delete(r.tableName).Where(And{
+		Eq{"num_audio_files": 0},
+		Eq{"image_files": "[]"},
+		ConcatExpr("id not in (select parent_id from folder)"),
+		ConcatExpr("id not in (select folder_id from media_file)"),
+	})
+	c, err := r.executeSQL(sq)
+	if err != nil {
+		return fmt.Errorf("purging empty folders: %w", err)
+	}
+	if c > 0 {
+		log.Debug(r.ctx, "Purging empty folders", "totalDeleted", c)
+	}
+	return nil
+}
+
 var _ model.FolderRepository = (*folderRepository)(nil)
