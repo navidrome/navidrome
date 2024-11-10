@@ -46,9 +46,9 @@ create table if not exists media_file_artists(
     	constraint artist_tracks_ux
     	    			unique (artist_id, media_file_id, role)
 );
-create index if not exists media_file_artists_media_file_id_ix
+create index if not exists media_file_artists_media_file_id
     on media_file_artists (media_file_id);
-create index if not exists media_file_artists_role_ix
+create index if not exists media_file_artists_role
 	on media_file_artists (role);
 
 create table if not exists album_artists(
@@ -62,9 +62,9 @@ create table if not exists album_artists(
     	constraint album_artists_ux
     	    			unique (album_id, artist_id, role)
 );
-create index if not exists album_artists_album_id_ix
+create index if not exists album_artists_album_id
     on album_artists (album_id);
-create index if not exists album_artists_role_ix
+create index if not exists album_artists_role
 	on album_artists (role);
 
 -- BFR Add link all existing artists with role "album_artist"
@@ -203,13 +203,13 @@ alter table media_file
 			execute(`	
 update media_file 
 	set pid = id where pid = '';
-create index if not exists media_file_birth_time_ix
+create index if not exists media_file_birth_time
 	on media_file (birth_time);
-create index if not exists media_file_folder_id_ix
+create index if not exists media_file_folder_id
  	on media_file (folder_id);
-create index if not exists media_file_pid_ix
+create index if not exists media_file_pid
 	on media_file (pid);
-create index if not exists media_file_missing_ix
+create index if not exists media_file_missing
 	on media_file (missing);
 `),
 		)
@@ -231,6 +231,8 @@ alter table album
 alter table album
 	add column imported_at datetime default '0000-00-00 00:00:00' not null;
 alter table album
+	add column missing boolean default false not null;
+alter table album
 	add column mbz_release_group_id varchar default '' not null;
 alter table album
 	add column tags jsonb default '{}' not null;
@@ -242,9 +244,9 @@ alter table album
 	drop column image_files;
 alter table album
 	add column folder_ids jsonb default '[]' not null;
-create index if not exists album_imported_at_ix
+create index if not exists album_imported_at
 	on album (imported_at);
-create index if not exists album_mbz_release_group_id_ix
+create index if not exists album_mbz_release_group_id
 	on album (mbz_release_group_id);
 `)
 }
@@ -281,7 +283,7 @@ alter table artist
 `),
 			addColumn("artist", "updated_at", "datetime", "current_time", "(select min(album.updated_at) from album where album_artist_id = artist.id)"),
 			addColumn("artist", "created_at", "datetime", "current_time", "(select min(album.created_at) from album where album_artist_id = artist.id)"),
-			execute(`create index if not exists artist_updated_at_ix on artist (updated_at);`),
+			execute(`create index if not exists artist_updated_at on artist (updated_at);`),
 		)
 	}
 }

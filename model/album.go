@@ -54,6 +54,7 @@ type Album struct {
 	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags for this album
 	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this album
 
+	Missing    bool      `structs:"missing" json:"missing"`                      // If all file of the album ar missing
 	ImportedAt time.Time `structs:"imported_at" json:"importedAt" hash:"ignore"` // When this album was imported/updated
 	CreatedAt  time.Time `structs:"created_at" json:"createdAt"`                 // Oldest CreatedAt for all songs in this album
 	UpdatedAt  time.Time `structs:"updated_at" json:"updatedAt"`                 // Newest UpdatedAt for all songs in this album

@@ -193,8 +193,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		originalYears = append(originalYears, m.OriginalYear)
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
-		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
-		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
 		comments = append(comments, m.Comment)
 		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
@@ -207,6 +205,10 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participations.Merge(m.Participations)
+
+		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
+		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
+		a.Missing = a.Missing || m.Missing
 	}
 
 	// Make sure we have at least one disc
