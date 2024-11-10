@@ -268,6 +268,23 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 	return res.toModels(), err
 }
 
+// RefreshAnnotations updates the play count and last play date annotations for all albums, based
+// on the media files associated with them.
+func (r *albumRepository) RefreshAnnotations() (int64, error) {
+	query := rawSQL(`
+with play_counts as (
+    select user_id, album_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
+    from media_file
+             join annotation on item_id = media_file.id
+    group by user_id, album_id
+)
+insert or replace into annotation
+(item_id, item_type, play_count, play_date, user_id)
+select album_id, 'album', total_play_count, last_play_date, user_id
+from play_counts;`)
+	return r.executeSQL(query)
+}
+
 func (r *albumRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
 	c, err := r.executeSQL(del)

@@ -131,6 +131,7 @@ type AlbumRepository interface {
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
 	GetTouchedAlbums(libID int) (Albums, error)
+	RefreshAnnotations() (int64, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository
 }

@@ -95,10 +95,10 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 	}
 	start := time.Now()
 	err := p.ds.WithTx(func(tx model.DataStore) error {
-		res := tx.Album(p.ctx).Put(album)
+		err := tx.Album(p.ctx).Put(album)
 		p.refreshed.Add(1)
 		log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start))
-		return res
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -118,12 +118,21 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	}
 	logF(p.ctx, "Scanner: Finished checking for album updates", "refreshed", refreshed, "skipped", skipped, err)
 	return p.ds.WithTx(func(tx model.DataStore) error {
+		// Refresh artist stats
 		start := time.Now()
 		stats, err := tx.Artist(p.ctx).RefreshStats()
 		if err != nil {
 			return fmt.Errorf("refreshing artist stats: %w", err)
 		}
 		log.Debug(p.ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
+
+		// Refresh album annotations
+		start = time.Now()
+		cnt, err := tx.Album(p.ctx).RefreshAnnotations()
+		if err != nil {
+			return fmt.Errorf("refreshing album annotations: %w", err)
+		}
+		log.Debug(p.ctx, "Scanner: Refreshed album annotations", "albums", cnt, "elapsed", time.Since(start))
 		return nil
 	})
 }
