@@ -207,7 +207,10 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 	return result, nil
 }
 
+// BFR unused
+// nolint: unused
 func (r *artistRepository) purgeEmpty() error {
+	// BFR: Check all roles
 	del := Delete(r.tableName).Where("id not in (select distinct(album_artist_id) from album)")
 	c, err := r.executeSQL(del)
 	if err == nil {

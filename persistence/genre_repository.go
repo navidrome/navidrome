@@ -89,6 +89,8 @@ func (r *genreRepository) NewInstance() interface{} {
 	return &model.Genre{}
 }
 
+// BFR unused
+// nolint: unused
 func (r *genreRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where(`id in (
 select genre.id from genre

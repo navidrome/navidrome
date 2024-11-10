@@ -129,26 +129,17 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 }
 
 func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
-	err := s.MediaFile(ctx).(*mediaFileRepository).deleteNotInPath(rootFolder)
-	if err != nil {
-		log.Error(ctx, "Error removing dangling tracks", err)
-		return err
-	}
-	err = s.MediaFile(ctx).(*mediaFileRepository).removeNonAlbumArtistIds()
-	if err != nil {
-		log.Error(ctx, "Error removing non-album artist_ids", err)
-		return err
-	}
-	err = s.Album(ctx).(*albumRepository).purgeEmpty()
+	err := s.Album(ctx).(*albumRepository).purgeEmpty()
 	if err != nil {
 		log.Error(ctx, "Error removing empty albums", err)
 		return err
 	}
-	err = s.Artist(ctx).(*artistRepository).purgeEmpty()
-	if err != nil {
-		log.Error(ctx, "Error removing empty artists", err)
-		return err
-	}
+	// BFR: Check All roles
+	//err = s.Artist(ctx).(*artistRepository).purgeEmpty()
+	//if err != nil {
+	//	log.Error(ctx, "Error removing empty artists", err)
+	//	return err
+	//}
 	err = s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
 	if err != nil {
 		log.Error(ctx, "Error removing orphan mediafile annotations", err)
@@ -173,11 +164,12 @@ func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
 	if err != nil {
 		log.Error(ctx, "Error tidying up playlists", err)
 	}
-	err = s.Genre(ctx).(*genreRepository).purgeEmpty()
-	if err != nil {
-		log.Error(ctx, "Error removing unused genres", err)
-		return err
-	}
+	// BFR: Remove unused tags
+	//err = s.Genre(ctx).(*genreRepository).purgeEmpty()
+	//if err != nil {
+	//	log.Error(ctx, "Error removing unused genres", err)
+	//	return err
+	//}
 	return err
 }
 

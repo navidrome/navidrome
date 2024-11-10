@@ -204,6 +204,8 @@ func (r *mediaFileRepository) FindPathsRecursively(basePath string) ([]string, e
 	return res, err
 }
 
+// BFR unused
+// nolint: unused
 func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
 	path := cleanPath(basePath)
 	sel := Delete(r.tableName).Where(NotEq(pathStartsWith(path)))
@@ -296,6 +298,8 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 	return res.toModels(), err
 }
 
+// BFR unused
+// nolint: unused
 func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
 	upd := Update(r.tableName).Set("artist_id", "").Where(notExists("artist", ConcatExpr("id = artist_id")))
 	log.Debug(r.ctx, "Removing non-album artist_ids")
