@@ -42,5 +42,5 @@ type DataStore interface {
 	Resource(ctx context.Context, model interface{}) ResourceRepository
 
 	WithTx(func(tx DataStore) error) error
-	GC(ctx context.Context, rootFolder string) error
+	GC(ctx context.Context) error
 }

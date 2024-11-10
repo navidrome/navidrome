@@ -177,7 +177,7 @@ func (s *TagScanner) Scan(ctx context.Context, lib model.Library, fullScan bool,
 		log.Debug("Playlist auto-import is disabled")
 	}
 
-	err = s.ds.GC(log.NewContext(ctx), s.lib.Path)
+	err = s.ds.GC(log.NewContext(ctx))
 	log.Info("Finished processing Music Folder", "folder", s.lib.Path, "elapsed", time.Since(start),
 		"added", s.cnt.added, "updated", s.cnt.updated, "deleted", s.cnt.deleted, "playlistsImported", s.cnt.playlists)
 

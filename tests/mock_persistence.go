@@ -149,6 +149,6 @@ func (db *MockDataStore) Resource(ctx context.Context, m interface{}) model.Reso
 	return struct{ model.ResourceRepository }{}
 }
 
-func (db *MockDataStore) GC(ctx context.Context, rootFolder string) error {
+func (db *MockDataStore) GC(context.Context) error {
 	return nil
 }

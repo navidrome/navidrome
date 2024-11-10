@@ -68,7 +68,7 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	_ = s.ds.WithTx(func(tx model.DataStore) error {
 		// Remove dangling tracks, empty albums and artists, and orphan annotations
 		start := time.Now()
-		err := tx.GC(ctx, "")
+		err := tx.GC(ctx)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error running GC", err)
 			return err
