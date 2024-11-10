@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -129,17 +130,26 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	})
 }
 
+func trace(ctx context.Context, msg string, f func() error) func() error {
+	return func() error {
+		start := time.Now()
+		err := f()
+		log.Debug(ctx, "GC: "+msg, "elapsed", time.Since(start), err)
+		return err
+	}
+}
+
 func (s *SQLStore) GC(ctx context.Context) error {
 	err := chain.RunSequentially(
-		func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() },
-		func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() },
-		func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty() },
-		func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() },
-		func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() },
-		func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() },
-		func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks() },
-		func() error { return s.Tag(ctx).(*tagRepository).purgeNonUsed() },
-		func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() },
+		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() }),
+		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
+		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty() }),
+		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() }),
+		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() }),
+		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() }),
+		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks() }),
+		trace(ctx, "purge non used tags", func() error { return s.Tag(ctx).(*tagRepository).purgeNonUsed() }),
+		trace(ctx, "remove orphan playlists", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
 	)
 	if err != nil {
 		log.Error(ctx, "Error tidying up database", err)
