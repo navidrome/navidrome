@@ -209,7 +209,7 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 
 func (r *artistRepository) purgeEmpty() error {
 	del := Delete(r.tableName).
-		Where(notExists("album_artists", ConcatExpr("id = artist_id")))
+		Where(ConcatExpr("id not in (select artist_id from album_artists)"))
 	c, err := r.executeSQL(del)
 	if err == nil {
 		if c > 0 {
