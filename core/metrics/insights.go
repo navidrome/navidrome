@@ -13,76 +13,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/metrics/insights"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"golang.org/x/time/rate"
 )
-
-type Data struct {
-	InsightsID string `json:"id"`
-	Version    string `json:"version"`
-	Uptime     int64  `json:"uptime"`
-	Build      struct {
-		Settings  map[string]string `json:"settings"`
-		GoVersion string            `json:"goVersion"`
-	} `json:"build"`
-	OS struct {
-		Type    string `json:"type"`
-		Distro  string `json:"distro"`
-		Version string `json:"version"`
-		Arch    string `json:"arch"`
-		NumCPU  int    `json:"numCPU"`
-	} `json:"os"`
-	FS struct {
-		Music  *fsInfo `json:"music,omitempty"`
-		Data   *fsInfo `json:"data,omitempty"`
-		Cache  *fsInfo `json:"cache,omitempty"`
-		Backup *fsInfo `json:"backup,omitempty"`
-	}
-	Library struct {
-		Tracks      int64 `json:"tracks"`
-		Albums      int64 `json:"albums"`
-		Artists     int64 `json:"artists"`
-		Playlists   int64 `json:"playlists"`
-		Shares      int64 `json:"shares"`
-		Radios      int64 `json:"radios"`
-		ActiveUsers int64 `json:"activeUsers"`
-	} `json:"library"`
-	Config struct {
-		LogLevel                   string        `json:"logLevel,omitempty"`
-		LogFileConfigured          bool          `json:"logFileConfigured,omitempty"`
-		TLSConfigured              bool          `json:"tlsConfigured,omitempty"`
-		ScanSchedule               string        `json:"scanSchedule,omitempty"`
-		TranscodingCacheSize       string        `json:"transcodingCacheSize,omitempty"`
-		ImageCacheSize             string        `json:"imageCacheSize,omitempty"`
-		EnableArtworkPrecache      bool          `json:"enableArtworkPrecache,omitempty"`
-		EnableDownloads            bool          `json:"enableDownloads,omitempty"`
-		EnableExternalServices     bool          `json:"enableExternalServices,omitempty"`
-		EnableSharing              bool          `json:"enableSharing,omitempty"`
-		EnableStarRating           bool          `json:"enableStarRating,omitempty"`
-		EnableLastFM               bool          `json:"enableLastFM,omitempty"`
-		EnableListenBrainz         bool          `json:"enableListenBrainz,omitempty"`
-		EnableMediaFileCoverArt    bool          `json:"enableMediaFileCoverArt,omitempty"`
-		EnableSpotify              bool          `json:"enableSpotify,omitempty"`
-		EnableJukebox              bool          `json:"enableJukebox,omitempty"`
-		EnablePrometheus           bool          `json:"enablePrometheus,omitempty"`
-		SessionTimeout             time.Duration `json:"sessionTimeout,omitempty"`
-		SearchFullString           bool          `json:"searchFullString,omitempty"`
-		RecentlyAddedByModTime     bool          `json:"recentlyAddedByModTime,omitempty"`
-		PreferSortTags             bool          `json:"preferSortTags,omitempty"`
-		BackupSchedule             string        `json:"backupSchedule,omitempty"`
-		BackupCount                int           `json:"backupCount,omitempty"`
-		DefaultBackgroundURL       bool          `json:"defaultBackgroundURL,omitempty"`
-		DevActivityPanel           bool          `json:"devActivityPanel,omitempty"`
-		DevAutoLoginUsername       bool          `json:"devAutoLoginUsername,omitempty"`
-		DevAutoCreateAdminPassword bool          `json:"devAutoCreateAdminPassword,omitempty"`
-		EnableCoverAnimation       bool          `json:"enableCoverAnimation,omitempty"`
-	} `json:"config"`
-}
-
-type fsInfo struct {
-	Type string `json:"type,omitempty"`
-}
 
 type Insights interface {
 	Collect(ctx context.Context) string
@@ -93,7 +28,7 @@ var (
 	libraryUpdate = rate.Sometimes{Interval: 10 * time.Minute}
 )
 
-type insights struct {
+type insightsCollector struct {
 	ds model.DataStore
 }
 
@@ -108,7 +43,7 @@ func NewInsights(ds model.DataStore) Insights {
 		}
 	}
 	insightsID = id
-	return &insights{ds: ds}
+	return &insightsCollector{ds: ds}
 }
 
 func buildInfo() (map[string]string, string) {
@@ -126,8 +61,8 @@ func buildInfo() (map[string]string, string) {
 	return bInfo, version
 }
 
-func getFSInfo(path string) *fsInfo {
-	var info fsInfo
+func getFSInfo(path string) *insights.FSInfo {
+	var info insights.FSInfo
 
 	// Normalize the path
 	absPath, err := filepath.Abs(path)
@@ -144,9 +79,9 @@ func getFSInfo(path string) *fsInfo {
 	return &info
 }
 
-var staticData = sync.OnceValue(func() Data {
+var staticData = sync.OnceValue(func() insights.Data {
 	// Basic info
-	data := Data{
+	data := insights.Data{
 		InsightsID: insightsID,
 		Version:    consts.Version,
 	}
@@ -203,7 +138,7 @@ var staticData = sync.OnceValue(func() Data {
 	return data
 })
 
-func (s insights) Collect(ctx context.Context) string {
+func (s insightsCollector) Collect(ctx context.Context) string {
 	data := staticData()
 	data.Uptime = time.Since(consts.ServerStart).Milliseconds() / 1000
 	libraryUpdate.Do(func() {
