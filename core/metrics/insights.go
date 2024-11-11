@@ -49,29 +49,34 @@ type Data struct {
 		ActiveUsers int64 `json:"activeUsers"`
 	} `json:"library"`
 	Config struct {
-		LogLevel                string        `json:"logLevel,omitempty"`
-		LogFileConfigured       bool          `json:"logFileConfigured,omitempty"`
-		TLSConfigured           bool          `json:"tlsConfigured,omitempty"`
-		ScanSchedule            string        `json:"scanSchedule,omitempty"`
-		TranscodingCacheSize    string        `json:"transcodingCacheSize,omitempty"`
-		ImageCacheSize          string        `json:"imageCacheSize,omitempty"`
-		EnableArtworkPrecache   bool          `json:"enableArtworkPrecache,omitempty"`
-		EnableDownloads         bool          `json:"enableDownloads,omitempty"`
-		EnableExternalServices  bool          `json:"enableExternalServices,omitempty"`
-		EnableSharing           bool          `json:"enableSharing,omitempty"`
-		EnableStarRating        bool          `json:"enableStarRating,omitempty"`
-		EnableLastFM            bool          `json:"enableLastFM,omitempty"`
-		EnableListenBrainz      bool          `json:"enableListenBrainz,omitempty"`
-		EnableMediaFileCoverArt bool          `json:"enableMediaFileCoverArt,omitempty"`
-		EnableSpotify           bool          `json:"enableSpotify,omitempty"`
-		EnableJukebox           bool          `json:"enableJukebox,omitempty"`
-		EnablePrometheus        bool          `json:"enablePrometheus,omitempty"`
-		SessionTimeout          time.Duration `json:"sessionTimeout,omitempty"`
-		SearchFullString        bool          `json:"searchFullString,omitempty"`
-		RecentlyAddedByModTime  bool          `json:"recentlyAddedByModTime,omitempty"`
-		PreferSortTags          bool          `json:"preferSortTags,omitempty"`
-		BackupSchedule          string        `json:"backupSchedule,omitempty"`
-		BackupCount             int           `json:"backupCount,omitempty"`
+		LogLevel                   string        `json:"logLevel,omitempty"`
+		LogFileConfigured          bool          `json:"logFileConfigured,omitempty"`
+		TLSConfigured              bool          `json:"tlsConfigured,omitempty"`
+		ScanSchedule               string        `json:"scanSchedule,omitempty"`
+		TranscodingCacheSize       string        `json:"transcodingCacheSize,omitempty"`
+		ImageCacheSize             string        `json:"imageCacheSize,omitempty"`
+		EnableArtworkPrecache      bool          `json:"enableArtworkPrecache,omitempty"`
+		EnableDownloads            bool          `json:"enableDownloads,omitempty"`
+		EnableExternalServices     bool          `json:"enableExternalServices,omitempty"`
+		EnableSharing              bool          `json:"enableSharing,omitempty"`
+		EnableStarRating           bool          `json:"enableStarRating,omitempty"`
+		EnableLastFM               bool          `json:"enableLastFM,omitempty"`
+		EnableListenBrainz         bool          `json:"enableListenBrainz,omitempty"`
+		EnableMediaFileCoverArt    bool          `json:"enableMediaFileCoverArt,omitempty"`
+		EnableSpotify              bool          `json:"enableSpotify,omitempty"`
+		EnableJukebox              bool          `json:"enableJukebox,omitempty"`
+		EnablePrometheus           bool          `json:"enablePrometheus,omitempty"`
+		SessionTimeout             time.Duration `json:"sessionTimeout,omitempty"`
+		SearchFullString           bool          `json:"searchFullString,omitempty"`
+		RecentlyAddedByModTime     bool          `json:"recentlyAddedByModTime,omitempty"`
+		PreferSortTags             bool          `json:"preferSortTags,omitempty"`
+		BackupSchedule             string        `json:"backupSchedule,omitempty"`
+		BackupCount                int           `json:"backupCount,omitempty"`
+		DefaultBackgroundURL       bool          `json:"defaultBackgroundURL,omitempty"`
+		DevActivityPanel           bool          `json:"devActivityPanel,omitempty"`
+		DevAutoLoginUsername       bool          `json:"devAutoLoginUsername,omitempty"`
+		DevAutoCreateAdminPassword bool          `json:"devAutoCreateAdminPassword,omitempty"`
+		EnableCoverAnimation       bool          `json:"enableCoverAnimation,omitempty"`
 	} `json:"config"`
 }
 
@@ -169,7 +174,9 @@ var staticData = sync.OnceValue(func() Data {
 	data.Config.LogLevel = conf.Server.LogLevel
 	data.Config.LogFileConfigured = conf.Server.LogFile != ""
 	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
+	data.Config.DefaultBackgroundURL = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
+	data.Config.EnableCoverAnimation = conf.Server.EnableCoverAnimation
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
 	data.Config.EnableExternalServices = conf.Server.EnableExternalServices
 	data.Config.EnableSharing = conf.Server.EnableSharing
@@ -189,6 +196,9 @@ var staticData = sync.OnceValue(func() Data {
 	data.Config.PreferSortTags = conf.Server.PreferSortTags
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule
 	data.Config.BackupCount = conf.Server.Backup.Count
+	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
+	data.Config.DevAutoLoginUsername = conf.Server.DevAutoLoginUsername != ""
+	data.Config.DevAutoCreateAdminPassword = conf.Server.DevAutoCreateAdminPassword != ""
 
 	return data
 })
