@@ -95,7 +95,7 @@ var albumLevelTags = map[TagName]struct{}{
 	TagTotalDiscs:     {},
 }
 
-func (a *Album) AddFilteredTags(tags TagList) {
+func (a *Album) SetTags(tags TagList) {
 	a.Tags = tags.GroupByFrequency()
 	for k := range a.Tags {
 		if _, ok := albumLevelTags[k]; !ok {
