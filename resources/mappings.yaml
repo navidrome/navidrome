@@ -1,6 +1,12 @@
 #file: noinspection SpellCheckingInspection
 # Tag mapping adapted from https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
----
+#
+# This file contains the mapping between the tags in your music files and the fields in Navidrome.
+# You can add new tags, change the aliases, or add new split characters to the existing tags.
+# The artists and roles keys are used to define how to split the tag values into multiple values.
+# The tags are divided into two categories: main and additional.
+# The main tags are handled directly by Navidrome, while the additional tags are available as fields for smart playlists.
+#
 # Applies to single valued ARTIST and ALBUMARTIST tags. Won't be applied if the tag is multivalued or the multivalued
 # versions are available (ARTISTS and ALBUMARTISTS)
 artists:

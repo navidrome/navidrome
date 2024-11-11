@@ -61,6 +61,9 @@ var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, mappingsC
 	if err != nil {
 		log.Error("Error decoding mappings.yaml", err)
 	}
+	if len(mappings.Main) == 0 {
+		log.Error("No tag mappings found in mappings.yaml, check the format")
+	}
 	normalized := tagMappings{}
 	collectTags(mappings.Main, normalized)
 	collectTags(mappings.Additional, normalized)
