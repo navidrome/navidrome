@@ -12,8 +12,8 @@ type Data struct {
 	} `json:"build"`
 	OS struct {
 		Type    string `json:"type"`
-		Distro  string `json:"distro"`
-		Version string `json:"version"`
+		Distro  string `json:"distro,omitempty"`
+		Version string `json:"version,omitempty"`
 		Arch    string `json:"arch"`
 		NumCPU  int    `json:"numCPU"`
 	} `json:"os"`
