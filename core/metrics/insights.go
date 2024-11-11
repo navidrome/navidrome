@@ -18,7 +18,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type data struct {
+type Data struct {
 	InsightsID string `json:"id"`
 	Version    string `json:"version"`
 	Uptime     int64  `json:"uptime"`
@@ -139,9 +139,9 @@ func getFSInfo(path string) *fsInfo {
 	return &info
 }
 
-var staticData = sync.OnceValue(func() data {
+var staticData = sync.OnceValue(func() Data {
 	// Basic info
-	data := data{
+	data := Data{
 		InsightsID: insightsID,
 		Version:    consts.Version,
 	}
