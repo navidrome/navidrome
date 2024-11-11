@@ -28,19 +28,6 @@ var roleMappings = map[model.Role]roleTags{
 	// TODO Performer (and Instruments)
 }
 
-// getRoleValues returns the values of a role tag, splitting them if necessary
-func (md Metadata) getRoleValues(role model.TagName) []string {
-	values := md.Strings(role)
-	if len(values) == 0 {
-		return nil
-	}
-	if conf := rolesConf(); len(conf.Split) > 0 {
-		// Split the values by the configured separators
-		return split(values, conf.Split)
-	}
-	return values
-}
-
 func (md Metadata) mapParticipations() model.Participations {
 	participations := make(model.Participations)
 
@@ -95,9 +82,22 @@ func (md Metadata) mapParticipations() model.Participations {
 	return participations
 }
 
+// getRoleValues returns the values of a role tag, splitting them if necessary
+func (md Metadata) getRoleValues(role model.TagName) []string {
+	values := md.Strings(role)
+	if len(values) == 0 {
+		return nil
+	}
+	if conf := rolesConf(); len(conf.Split) > 0 {
+		// Split the values by the configured separators
+		return split(values, conf.Split)
+	}
+	return values
+}
+
 func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
-	nameValues := md.getTags(names, name)
-	sortValues := md.getTags(sorts, sort)
+	nameValues := md.getArtistValues(name, names)
+	sortValues := md.getArtistValues(sort, sorts)
 	mbids := md.Strings(mbid)
 	if len(nameValues) == 0 {
 		nameValues = []string{consts.UnknownArtist}
@@ -123,6 +123,23 @@ func (md Metadata) parseArtist(names, sorts, mbids []string) []model.Artist {
 		artists = append(artists, artist)
 	}
 	return artists
+}
+
+// getArtistValues returns the values of a single or multi artist tag, splitting them if necessary
+func (md Metadata) getArtistValues(single, multi model.TagName) []string {
+	vMulti := md.Strings(multi)
+	if len(vMulti) > 0 {
+		return vMulti
+	}
+	vSingle := md.Strings(single)
+	if len(vSingle) != 1 {
+		return vSingle
+	}
+	conf := artistsConf()
+	if len(conf.Split) > 0 {
+		return split(vSingle, conf.Split)
+	}
+	return vSingle
 }
 
 func (md Metadata) getTags(tagNames ...model.TagName) []string {

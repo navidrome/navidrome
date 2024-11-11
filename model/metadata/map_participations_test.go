@@ -89,28 +89,43 @@ var _ = Describe("Participations", func() {
 				Expect(artist.SortArtistName).To(Equal("Name, Artist"))
 				Expect(artist.MbzArtistID).To(Equal(mbid1))
 			})
-
-			XIt("should split the tag if it contains a separator", func() {
+		})
+		Context("Multiple values in a Single-valued ARTIST tags, no ARTISTS tags", func() {
+			BeforeEach(func() {
 				mf = toMediaFile(map[string][]string{
-					"ARTIST":               {"Artist Name feat. Someone"},
-					"ARTISTSORT":           {"Name, Artist feat. Someone"},
+					"ARTIST":               {"Artist Name feat. Someone Else"},
+					"ARTISTSORT":           {"Name, Artist feat. Else, Someone"},
 					"MUSICBRAINZ_ARTISTID": {mbid1},
 				})
-				Expect(mf.Artist).To(Equal("Artist Name feat. Someone"))
+			})
+
+			It("should split the tag", func() {
+				By("keeping the first artist as the display name")
+				Expect(mf.Artist).To(Equal("Artist Name feat. Someone Else"))
+				Expect(mf.SortArtistName).To(Equal("Name, Artist"))
+				Expect(mf.OrderArtistName).To(Equal("artist name"))
 
 				participations := mf.Participations
 				Expect(participations).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
 				))
 
+				By("adding the first artist to the participations")
 				artist0 := participations[model.RoleArtist][0]
 				Expect(artist0.ID).ToNot(BeEmpty())
 				Expect(artist0.Name).To(Equal("Artist Name"))
+				Expect(artist0.OrderArtistName).To(Equal("artist name"))
+				Expect(artist0.SortArtistName).To(Equal("Name, Artist"))
+
+				By("assuming the MBID is for the first artist")
 				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
+				By("adding the second artist to the participations")
 				artist1 := participations[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
-				Expect(artist1.Name).To(Equal("Someone"))
+				Expect(artist1.Name).To(Equal("Someone Else"))
+				Expect(artist1.OrderArtistName).To(Equal("someone else"))
+				Expect(artist1.SortArtistName).To(Equal("Else, Someone"))
 				Expect(artist1.MbzArtistID).To(BeEmpty())
 			})
 		})
