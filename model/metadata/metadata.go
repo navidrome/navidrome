@@ -214,7 +214,7 @@ func sanitizeAll(filePath string, tags model.Tags) model.Tags {
 
 const defaultMaxTagLength = 1024
 
-func sanitize(filePath string, tagName model.TagName, tag tagMapping, value string) string {
+func sanitize(filePath string, tagName model.TagName, tag tagConf, value string) string {
 	// First truncate the value to the maximum length
 	maxLength := cmp.Or(tag.MaxLength, defaultMaxTagLength)
 	if len(value) > maxLength {
