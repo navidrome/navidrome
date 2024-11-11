@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -159,6 +160,7 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	for name, mapping := range mappings() {
 		for _, k := range mapping.Aliases {
 			if v, ok := lowered[model.TagName(k)]; ok {
+				v = split(v, mapping.Split)
 				cleaned[name] = append(cleaned[name], v...)
 			}
 		}
@@ -172,6 +174,18 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 		cleaned[k] = clean
 	}
 	return sanitizeAll(filePath, cleaned)
+}
+
+// split a tag value by the given separators, but only if it has a single value.
+func split(values []string, sep []string) []string {
+	if len(values) != 1 || len(sep) == 0 {
+		return values
+	}
+	tag := values[0]
+	for _, s := range sep {
+		tag = strings.ReplaceAll(tag, s, consts.Zwsp)
+	}
+	return strings.Split(tag, consts.Zwsp)
 }
 
 func removeDuplicatedAndEmpty(values []string) []string {

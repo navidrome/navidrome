@@ -89,6 +89,30 @@ var _ = Describe("Participations", func() {
 				Expect(artist.SortArtistName).To(Equal("Name, Artist"))
 				Expect(artist.MbzArtistID).To(Equal(mbid1))
 			})
+
+			XIt("should split the tag if it contains a separator", func() {
+				mf = toMediaFile(map[string][]string{
+					"ARTIST":               {"Artist Name feat. Someone"},
+					"ARTISTSORT":           {"Name, Artist feat. Someone"},
+					"MUSICBRAINZ_ARTISTID": {mbid1},
+				})
+				Expect(mf.Artist).To(Equal("Artist Name feat. Someone"))
+
+				participations := mf.Participations
+				Expect(participations).To(SatisfyAll(
+					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
+				))
+
+				artist0 := participations[model.RoleArtist][0]
+				Expect(artist0.ID).ToNot(BeEmpty())
+				Expect(artist0.Name).To(Equal("Artist Name"))
+				Expect(artist0.MbzArtistID).To(Equal(mbid1))
+
+				artist1 := participations[model.RoleArtist][1]
+				Expect(artist1.ID).ToNot(BeEmpty())
+				Expect(artist1.Name).To(Equal("Someone"))
+				Expect(artist1.MbzArtistID).To(BeEmpty())
+			})
 		})
 
 		Context("Multi-valued ARTIST tags, no ARTISTS tags", func() {

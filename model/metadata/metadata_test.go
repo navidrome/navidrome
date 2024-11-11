@@ -108,6 +108,15 @@ var _ = Describe("Metadata", func() {
 
 				Expect(md.String(model.TagTitle)).To(HaveLen(1024))
 			})
+
+			It("should split multiple values", func() {
+				props.Tags = map[string][]string{
+					"Genre": {"Rock/Pop;;Punk"},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.Strings(model.TagGenre)).To(Equal([]string{"Rock", "Pop", "Punk"}))
+			})
 		})
 
 		DescribeTable("Date",

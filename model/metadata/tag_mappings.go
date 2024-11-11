@@ -35,6 +35,16 @@ const (
 )
 
 var mappings = sync.OnceValue(func() map[model.TagName]tagConf {
+	mappings, _ := parseMappings()
+	return mappings
+})
+
+var artistConf = sync.OnceValue(func() tagConf {
+	_, artistConf := parseMappings()
+	return artistConf
+})
+
+var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, tagConf) {
 	mappingsFile, err := resources.FS().Open("mappings.yaml")
 	if err != nil {
 		log.Error("Error opening mappings.yaml", err)
@@ -48,7 +58,7 @@ var mappings = sync.OnceValue(func() map[model.TagName]tagConf {
 	normalized := tagMappings{}
 	collectTags(mappings.Main, normalized)
 	collectTags(mappings.Additional, normalized)
-	return normalized
+	return normalized, mappings.Artist
 })
 
 func collectTags(tagMappings, normalized map[model.TagName]tagConf) {
@@ -56,6 +66,10 @@ func collectTags(tagMappings, normalized map[model.TagName]tagConf) {
 		var aliases []string
 		for _, val := range v.Aliases {
 			aliases = append(aliases, strings.ToLower(val))
+		}
+		if v.Split != nil && v.Type != "" {
+			log.Error("Tag splitting only available for string types", "tag", k, "split", v.Split, "type", v.Type)
+			v.Split = nil
 		}
 		normalized[k.ToLower()] = tagConf{Aliases: aliases, Type: v.Type, MaxLength: v.MaxLength, Split: v.Split}
 	}
