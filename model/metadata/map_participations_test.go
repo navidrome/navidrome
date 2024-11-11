@@ -323,7 +323,7 @@ var _ = Describe("Participations", func() {
 		})
 	})
 
-	Describe("COMPOSER and LYRICIST tags", func() {
+	Describe("COMPOSER and LYRICIST tags (with sort names)", func() {
 		DescribeTable("should return the correct participation",
 			func(role model.Role, nameTag, sortTag string) {
 				mf = toMediaFile(map[string][]string{
@@ -377,6 +377,23 @@ var _ = Describe("Participations", func() {
 			Entry("DIRECTOR", model.RoleDirector, "DIRECTOR"),
 			// TODO PERFORMER
 		)
+	})
+
+	Describe("Role value splitting", func() {
+		When("there the tag is single valued", func() {
+			It("should split the values by the configured separator", func() {
+				mf = toMediaFile(map[string][]string{
+					"COMPOSER": {"John Doe/Someone Else/The Album Artist"},
+				})
+
+				participations := mf.Participations
+				Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
+				composers := participations[model.RoleComposer]
+				Expect(composers[0].Name).To(Equal("John Doe"))
+				Expect(composers[1].Name).To(Equal("Someone Else"))
+				Expect(composers[2].Name).To(Equal("The Album Artist"))
+			})
+		})
 	})
 
 	Describe("MBID tags", func() {

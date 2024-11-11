@@ -13,7 +13,8 @@ import (
 type mappingsConf struct {
 	Main       tagMappings `yaml:"main"`
 	Additional tagMappings `yaml:"additional"`
-	Artist     tagConf     `yaml:"artist"`
+	Roles      tagConf     `yaml:"roles"`
+	Artists    tagConf     `yaml:"artists"`
 }
 
 type tagMappings map[model.TagName]tagConf
@@ -34,17 +35,22 @@ const (
 	TagTypeUUID    TagType = "uuid"
 )
 
-var mappings = sync.OnceValue(func() map[model.TagName]tagConf {
+func mappings() map[model.TagName]tagConf {
 	mappings, _ := parseMappings()
 	return mappings
-})
+}
 
-var artistConf = sync.OnceValue(func() tagConf {
-	_, artistConf := parseMappings()
-	return artistConf
-})
+func rolesConf() tagConf {
+	_, conf := parseMappings()
+	return conf.Roles
+}
 
-var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, tagConf) {
+func artistsConf() tagConf {
+	_, conf := parseMappings()
+	return conf.Artists
+}
+
+var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, mappingsConf) {
 	mappingsFile, err := resources.FS().Open("mappings.yaml")
 	if err != nil {
 		log.Error("Error opening mappings.yaml", err)
@@ -58,7 +64,7 @@ var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, tagConf) 
 	normalized := tagMappings{}
 	collectTags(mappings.Main, normalized)
 	collectTags(mappings.Additional, normalized)
-	return normalized, mappings.Artist
+	return normalized, mappings
 })
 
 func collectTags(tagMappings, normalized map[model.TagName]tagConf) {

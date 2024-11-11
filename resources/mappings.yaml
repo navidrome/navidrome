@@ -1,9 +1,13 @@
 #file: noinspection SpellCheckingInspection
 # Tag mapping adapted from https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
 ---
-# Applies to all single-valued role tags (composer, albumartist, artist, lyricist...)
-artist:
-    split: [" / ", " feat. ", " feat ", " ft. ", " ft "]
+# Applies to single valued ARTIST and ALBUMARTIST tags. Won't be applied if the tag is multivalued or the multivalued
+# versions are available (ARTISTS and ALBUMARTISTS)
+artists:
+  split: [" / ", " feat. ", " feat ", " ft. ", " ft "]
+# Applies to all remaining single-valued role tags (composer, lyricist, arranger...)
+roles:
+  split: ["/", ";"]
 
 # These tags are handled directly by Navidrome. You can add/remove/reorder aliases, but changing the tag name
 # may require code changes

@@ -28,6 +28,19 @@ var roleMappings = map[model.Role]roleTags{
 	// TODO Performer (and Instruments)
 }
 
+// getRoleValues returns the values of a role tag, splitting them if necessary
+func (md Metadata) getRoleValues(role model.TagName) []string {
+	values := md.Strings(role)
+	if len(values) == 0 {
+		return nil
+	}
+	if conf := rolesConf(); len(conf.Split) > 0 {
+		// Split the values by the configured separators
+		return split(values, conf.Split)
+	}
+	return values
+}
+
 func (md Metadata) mapParticipations() model.Participations {
 	participations := make(model.Participations)
 
@@ -48,7 +61,7 @@ func (md Metadata) mapParticipations() model.Participations {
 
 	// Parse all other roles
 	for role, info := range roleMappings {
-		names := md.Strings(info.name)
+		names := md.getRoleValues(info.name)
 		if len(names) > 0 {
 			sorts := md.Strings(info.sort)
 			mbids := md.Strings(info.mbid)
