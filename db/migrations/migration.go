@@ -7,9 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
 )
 
 // Use this in migrations that need to communicate something important (breaking changes, forced reindexes, etc...)
@@ -88,7 +86,6 @@ func createExecuteFunc(ctx context.Context, tx *sql.Tx) execStmtFunc {
 func createAddColumnFunc(ctx context.Context, tx *sql.Tx) addColumnFunc {
 	return func(tableName, columnName, columnType, defaultValue, initialValue string) execFunc {
 		return func() error {
-			log.Error(conf.Server.DbPath)
 			// Format the `default null` value to have the same length as the final defaultValue
 			finalLen := len(fmt.Sprintf(`%s not`, defaultValue))
 			tempDefault := fmt.Sprintf(`default %s null`, strings.Repeat(" ", finalLen))
