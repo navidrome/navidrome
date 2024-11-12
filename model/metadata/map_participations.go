@@ -39,7 +39,7 @@ func (md Metadata) mapParticipations() model.Participations {
 	albumArtists := md.parseArtists(model.TagAlbumArtist, model.TagAlbumArtists, model.TagAlbumArtistSort, model.TagAlbumArtistsSort, model.TagMusicBrainzAlbumArtistID)
 	if len(albumArtists) == 1 && albumArtists[0].Name == consts.UnknownArtist {
 		if md.Bool(model.TagCompilation) {
-			albumArtists = md.parseArtist([]string{consts.VariousArtists}, nil, []string{consts.VariousArtistsMbzId})
+			albumArtists = md.buildArtists([]string{consts.VariousArtists}, nil, []string{consts.VariousArtistsMbzId})
 		} else {
 			albumArtists = artists
 		}
@@ -52,7 +52,7 @@ func (md Metadata) mapParticipations() model.Participations {
 		if len(names) > 0 {
 			sorts := md.Strings(info.sort)
 			mbids := md.Strings(info.mbid)
-			artists := md.parseArtist(names, sorts, mbids)
+			artists := md.buildArtists(names, sorts, mbids)
 			participations.Add(role, artists...)
 		}
 	}
@@ -82,19 +82,6 @@ func (md Metadata) mapParticipations() model.Participations {
 	return participations
 }
 
-// getRoleValues returns the values of a role tag, splitting them if necessary
-func (md Metadata) getRoleValues(role model.TagName) []string {
-	values := md.Strings(role)
-	if len(values) == 0 {
-		return nil
-	}
-	if conf := rolesConf(); len(conf.Split) > 0 {
-		// Split the values by the configured separators
-		return split(values, conf.Split)
-	}
-	return values
-}
-
 func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
 	nameValues := md.getArtistValues(name, names)
 	sortValues := md.getArtistValues(sort, sorts)
@@ -102,10 +89,10 @@ func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort mo
 	if len(nameValues) == 0 {
 		nameValues = []string{consts.UnknownArtist}
 	}
-	return md.parseArtist(nameValues, sortValues, mbids)
+	return md.buildArtists(nameValues, sortValues, mbids)
 }
 
-func (md Metadata) parseArtist(names, sorts, mbids []string) []model.Artist {
+func (md Metadata) buildArtists(names, sorts, mbids []string) []model.Artist {
 	var artists []model.Artist
 	for i, name := range names {
 		id := md.artistID(name)
@@ -125,6 +112,19 @@ func (md Metadata) parseArtist(names, sorts, mbids []string) []model.Artist {
 	return artists
 }
 
+// getRoleValues returns the values of a role tag, splitting them if necessary
+func (md Metadata) getRoleValues(role model.TagName) []string {
+	values := md.Strings(role)
+	if len(values) == 0 {
+		return nil
+	}
+	if conf := rolesConf(); len(conf.Split) > 0 {
+		values = split(values, conf.Split)
+		return removeDuplicatedAndEmpty(values)
+	}
+	return values
+}
+
 // getArtistValues returns the values of a single or multi artist tag, splitting them if necessary
 func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 	vMulti := md.Strings(multi)
@@ -137,7 +137,8 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 	}
 	conf := artistsConf()
 	if len(conf.Split) > 0 {
-		return split(vSingle, conf.Split)
+		vSingle = split(vSingle, conf.Split)
+		return removeDuplicatedAndEmpty(vSingle)
 	}
 	return vSingle
 }

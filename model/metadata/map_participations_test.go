@@ -128,6 +128,17 @@ var _ = Describe("Participations", func() {
 				Expect(artist1.SortArtistName).To(Equal("Else, Someone"))
 				Expect(artist1.MbzArtistID).To(BeEmpty())
 			})
+			It("should not add an empty artist after split", func() {
+				mf = toMediaFile(map[string][]string{
+					"ARTIST": {"John Doe /  / Jane Doe"},
+				})
+
+				participations := mf.Participations
+				Expect(participations).To(HaveKeyWithValue(model.RoleArtist, HaveLen(2)))
+				artists := participations[model.RoleArtist]
+				Expect(artists[0].Name).To(Equal("John Doe"))
+				Expect(artists[1].Name).To(Equal("Jane Doe"))
+			})
 		})
 
 		Context("Multi-valued ARTIST tags, no ARTISTS tags", func() {
@@ -395,7 +406,7 @@ var _ = Describe("Participations", func() {
 	})
 
 	Describe("Role value splitting", func() {
-		When("there the tag is single valued", func() {
+		When("the tag is single valued", func() {
 			It("should split the values by the configured separator", func() {
 				mf = toMediaFile(map[string][]string{
 					"COMPOSER": {"John Doe/Someone Else/The Album Artist"},
@@ -407,6 +418,16 @@ var _ = Describe("Participations", func() {
 				Expect(composers[0].Name).To(Equal("John Doe"))
 				Expect(composers[1].Name).To(Equal("Someone Else"))
 				Expect(composers[2].Name).To(Equal("The Album Artist"))
+			})
+			It("should not add an empty participant after split", func() {
+				mf = toMediaFile(map[string][]string{
+					"COMPOSER": {"John Doe/"},
+				})
+
+				participations := mf.Participations
+				Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(1)))
+				composers := participations[model.RoleComposer]
+				Expect(composers[0].Name).To(Equal("John Doe"))
 			})
 		})
 	})
