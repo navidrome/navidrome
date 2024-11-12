@@ -42,7 +42,7 @@ func (p *phaseRefreshAlbums) description() string {
 func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 	return ppl.NewProducer(func(put func(album *model.Album)) error {
 		for _, lib := range p.libs {
-			// TODO Paginate
+			// BFR Paginate!!!!
 			albums, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
 			if err != nil {
 				return fmt.Errorf("error loading touched albums: %w", err)
