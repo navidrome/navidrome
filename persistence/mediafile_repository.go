@@ -205,20 +205,6 @@ func (r *mediaFileRepository) FindPathsRecursively(basePath string) ([]string, e
 	return res, err
 }
 
-// BFR unused
-// nolint: unused
-func (r *mediaFileRepository) deleteNotInPath(basePath string) error {
-	path := cleanPath(basePath)
-	sel := Delete(r.tableName).Where(NotEq(pathStartsWith(path)))
-	c, err := r.executeSQL(sel)
-	if err == nil {
-		if c > 0 {
-			log.Debug(r.ctx, "Deleted dangling tracks", "totalDeleted", c)
-		}
-	}
-	return err
-}
-
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }
@@ -291,7 +277,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (iter.Seq2[model.
 		}).
 		Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
-	cursor, err := queryCursor[dbMediaFile](r.sqlRepository, sel)
+	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sel)
 	if err != nil {
 		return nil, err
 	}

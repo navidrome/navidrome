@@ -5,7 +5,6 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
@@ -33,7 +32,7 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 		Columns(
 			"tag.id",
 			"tag.tag_value as name",
-			// BFR: Update counts on scan
+			// BFR: Update counts on scan?
 			"0 as album_count",
 			"0 as song_count",
 		).
@@ -49,6 +48,7 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	return res, err
 }
 
+// BFR Remove
 // Put is an Upsert operation, based on the name of the genre: If the name already exists, returns its ID, or else
 // insert the new genre in the DB and returns its new created ID.
 func (r *genreRepository) Put(m *model.Genre) error {
@@ -87,27 +87,6 @@ func (r *genreRepository) EntityName() string {
 
 func (r *genreRepository) NewInstance() interface{} {
 	return &model.Genre{}
-}
-
-// BFR unused
-// nolint: unused
-func (r *genreRepository) purgeEmpty() error {
-	del := Delete(r.tableName).Where(`id in (
-select genre.id from genre
-left join album_genres ag on genre.id = ag.genre_id
-left join artist_genres a on genre.id = a.genre_id
-left join media_file_genres mfg on genre.id = mfg.genre_id
-where ag.genre_id is null
-and a.genre_id is null
-and mfg.genre_id is null
-)`)
-	c, err := r.executeSQL(del)
-	if err == nil {
-		if c > 0 {
-			log.Debug(r.ctx, "Purged unused genres", "totalDeleted", c)
-		}
-	}
-	return err
 }
 
 var _ model.GenreRepository = (*genreRepository)(nil)

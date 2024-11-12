@@ -259,7 +259,9 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	return err
 }
 
-func queryCursor[T any](r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
+// queryWithStableResults is a helper function to execute a query and return an iterator that will yield its results
+// from a cursor, guaranteeing that the results will be stable, even if the underlying data changes.
+func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
 	if len(options) > 0 && options[0].Offset > 0 {
 		sq = r.optimizePagination(sq, options[0])
 	}

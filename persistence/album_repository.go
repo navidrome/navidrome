@@ -260,7 +260,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (iter.Seq2[model.Album, er
 			Eq{"library.id": libID},
 			ConcatExpr("album.imported_at > library.last_scan_at"),
 		})
-	cursor, err := queryCursor[dbAlbum](r.sqlRepository, query)
+	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, query)
 	if err != nil {
 		return nil, err
 	}
