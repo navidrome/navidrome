@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"iter"
 	"os"
 	"path/filepath"
 	"slices"
@@ -270,9 +271,9 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 }
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
-// that were added/updated after the last scan started
+// that were added/updated after the last scan started. The result is ordered by PID.
 // It does not need to load participations, as they are not used by the scanner.
-func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...model.QueryOptions) (model.MediaFiles, error) {
+func (r *mediaFileRepository) GetMissingAndMatching(libId int) (iter.Seq2[model.MediaFile, error], error) {
 	subQ := r.newSelect().Columns("pid").
 		Where(And{
 			Eq{"media_file.missing": true},
@@ -282,7 +283,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 	if err != nil {
 		return nil, err
 	}
-	sel := r.selectMediaFile(pagination...).
+	sel := r.selectMediaFile().
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
 			Eq{"missing": true},
@@ -290,21 +291,17 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int, pagination ...mod
 		}).
 		Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
-	var res dbMediaFiles
-	err = r.queryAll(sel, &res)
+	cursor, err := queryCursor[dbMediaFile](r.sqlRepository, sel)
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
-}
-
-// BFR unused
-// nolint: unused
-func (r *mediaFileRepository) removeNonAlbumArtistIds() error {
-	upd := Update(r.tableName).Set("artist_id", "").Where(notExists("artist", ConcatExpr("id = artist_id")))
-	log.Debug(r.ctx, "Removing non-album artist_ids")
-	_, err := r.executeSQL(upd)
-	return err
+	return func(yield func(model.MediaFile, error) bool) {
+		for m, err := range cursor {
+			if !yield(*m.MediaFile, err) || err != nil {
+				return
+			}
+		}
+	}, nil
 }
 
 func (r *mediaFileRepository) Search(q string, offset int, size int) (model.MediaFiles, error) {

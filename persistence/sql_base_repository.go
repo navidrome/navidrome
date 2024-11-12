@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"iter"
 	"reflect"
 	"strings"
 	"time"
@@ -256,6 +257,32 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	}
 	r.logSQL(query, args, err, 1, start)
 	return err
+}
+
+func queryCursor[T any](r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
+	if len(options) > 0 && options[0].Offset > 0 {
+		sq = r.optimizePagination(sq, options[0])
+	}
+	query, args, err := r.toSQL(sq)
+	if err != nil {
+		return nil, err
+	}
+	start := time.Now()
+	rows, err := r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Rows()
+	r.logSQL(query, args, err, -1, start)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(T, error) bool) {
+		defer rows.Close()
+		for rows.Next() {
+			var row T
+			err := rows.ScanStruct(&row)
+			if !yield(row, err) || err != nil {
+				return
+			}
+		}
+	}, nil
 }
 
 func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options ...model.QueryOptions) error {

@@ -1,10 +1,8 @@
 package scanner2
 
 import (
-	"cmp"
 	"context"
 	"fmt"
-	"slices"
 	"sync/atomic"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
@@ -49,9 +47,11 @@ func (p *phaseMissingTracks) producer() ppl.Producer[*missingTracks] {
 }
 
 func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
+	count := 0
 	var putIfMatched = func(mt missingTracks) {
 		if mt.pid != "" && len(mt.matched) > 0 {
 			log.Trace(p.ctx, "Scanner: Found missing and matching tracks", "pid", mt.pid, "missing", len(mt.missing), "matched", len(mt.matched), "lib", mt.lib.Name)
+			count++
 			put(&mt)
 		}
 	}
@@ -63,23 +63,18 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 		if lib.LastScanStartedAt.IsZero() {
 			continue
 		}
-		// BFR Paginate!!!!
-		mfs, err := p.ds.MediaFile(p.ctx).GetMissingAndMatching(lib.ID)
+		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name)
+		cursor, err := p.ds.MediaFile(p.ctx).GetMissingAndMatching(lib.ID)
 		if err != nil {
 			return fmt.Errorf("error loading missing tracks for library %s: %w", lib.Name, err)
 		}
-		if len(mfs) == 0 {
-			log.Debug(p.ctx, "Scanner: No potential moves found", "libraryId", lib.ID, "libraryName", lib.Name)
-			continue
-		}
-		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name, "trackCount", len(mfs))
-		slices.SortFunc(mfs, func(i, j model.MediaFile) int {
-			return cmp.Compare(i.PID, j.PID)
-		})
 
 		// Group missing and matched tracks by PID
 		mt := missingTracks{lib: lib}
-		for _, mf := range mfs {
+		for mf, err := range cursor {
+			if err != nil {
+				return fmt.Errorf("error loading missing tracks for library %s: %w", lib.Name, err)
+			}
 			if mt.pid != mf.PID {
 				putIfMatched(mt)
 				mt = missingTracks{lib: lib}
@@ -92,6 +87,11 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 			}
 		}
 		putIfMatched(mt)
+		if count == 0 {
+			log.Debug(p.ctx, "Scanner: No potential moves found", "libraryId", lib.ID, "libraryName", lib.Name)
+		} else {
+			log.Debug(p.ctx, "Scanner: Found potential moves", "libraryId", lib.ID, "count", count)
+		}
 	}
 
 	return nil
@@ -177,7 +177,7 @@ func (p *phaseMissingTracks) moveMatched(tx model.DataStore, mt, ms model.MediaF
 func (p *phaseMissingTracks) finalize(err error) error {
 	matched := p.totalMatched.Load()
 	if matched > 0 {
-		log.Debug(p.ctx, "Scanner: Found moved files", "total", matched, err)
+		log.Info(p.ctx, "Scanner: Found moved files", "total", matched, err)
 	}
 	return err
 }

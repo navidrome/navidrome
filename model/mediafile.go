@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"mime"
 	"slices"
 	"time"
@@ -301,7 +302,7 @@ type MediaFileRepository interface {
 	FindByPaths(paths []string) (MediaFiles, error)
 	MarkMissing(bool, ...MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
-	GetMissingAndMatching(libId int, pagination ...QueryOptions) (MediaFiles, error)
+	GetMissingAndMatching(libId int) (iter.Seq2[MediaFile, error], error)
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 
