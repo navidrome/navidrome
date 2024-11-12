@@ -251,6 +251,7 @@ func (r *albumRepository) Touch(ids ...string) error {
 
 // GetTouchedAlbums returns a list of albums that were touched by the scanner for a given library, in the
 // current library scan run.
+// It does not need to load participations, as they are not used by the scanner.
 func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 	sel := r.selectAlbum().
 		Join("library on library.id = album.library_id").
@@ -263,8 +264,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadParticipations(&res)
-	return res.toModels(), err
+	return res.toModels(), nil
 }
 
 // RefreshAnnotations updates the play count and last play date annotations for all albums, based

@@ -146,7 +146,7 @@ func (mf MediaFile) IsEquivalent(other MediaFile) bool {
 type MediaFiles []MediaFile
 
 // ToAlbum creates an Album object based on the attributes of this MediaFiles collection.
-// It assumes all mediafiles have the same Album, or else results are unpredictable.
+// It assumes all mediafiles have the same Album (same ID), or else results are unpredictable.
 func (mfs MediaFiles) ToAlbum() Album {
 	if len(mfs) == 0 {
 		return Album{}
