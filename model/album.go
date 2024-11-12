@@ -1,6 +1,7 @@
 package model
 
 import (
+	"iter"
 	"math"
 	"time"
 
@@ -132,7 +133,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
-	GetTouchedAlbums(libID int) (Albums, error)
+	GetTouchedAlbums(libID int) (iter.Seq2[Album, error], error)
 	RefreshAnnotations() (int64, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository

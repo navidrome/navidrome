@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 	"time"
@@ -249,22 +250,27 @@ func (r *albumRepository) Touch(ids ...string) error {
 	return nil
 }
 
-// GetTouchedAlbums returns a list of albums that were touched by the scanner for a given library, in the
+// GetTouchedAlbums returns all albums that were touched by the scanner for a given library, in the
 // current library scan run.
 // It does not need to load participations, as they are not used by the scanner.
-func (r *albumRepository) GetTouchedAlbums(libID int) (model.Albums, error) {
-	sel := r.selectAlbum().
+func (r *albumRepository) GetTouchedAlbums(libID int) (iter.Seq2[model.Album, error], error) {
+	query := r.selectAlbum().
 		Join("library on library.id = album.library_id").
 		Where(And{
 			Eq{"library.id": libID},
 			ConcatExpr("album.imported_at > library.last_scan_at"),
 		})
-	var res dbAlbums
-	err := r.queryAll(sel, &res)
+	cursor, err := queryCursor[dbAlbum](r.sqlRepository, query)
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	return func(yield func(model.Album, error) bool) {
+		for a, err := range cursor {
+			if !yield(*a.Album, err) || err != nil {
+				return
+			}
+		}
+	}, nil
 }
 
 // RefreshAnnotations updates the play count and last play date annotations for all albums, based

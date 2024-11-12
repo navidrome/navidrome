@@ -41,19 +41,25 @@ func (p *phaseRefreshAlbums) description() string {
 
 func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 	return ppl.NewProducer(func(put func(album *model.Album)) error {
+		count := 0
 		for _, lib := range p.libs {
-			// BFR Paginate!!!!
-			albums, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
+			cursor, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
 			if err != nil {
 				return fmt.Errorf("error loading touched albums: %w", err)
 			}
-			if len(albums) == 0 {
-				continue
-			}
-			log.Debug(p.ctx, "Scanner: Checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name, "albumCount", len(albums))
-			for _, album := range albums {
+			log.Debug(p.ctx, "Scanner: Checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name)
+			for album, err := range cursor {
+				if err != nil {
+					return fmt.Errorf("error loading touched albums: %w", err)
+				}
+				count++
 				put(&album)
 			}
+		}
+		if count == 0 {
+			log.Debug(p.ctx, "Scanner: No albums needing refresh")
+		} else {
+			log.Debug(p.ctx, "Scanner: Found albums that may need refreshing", "count", count)
 		}
 		return nil
 	}, ppl.Name("load albums from db"))
@@ -116,7 +122,7 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	if refreshed == 0 {
 		logF = log.Debug
 	}
-	logF(p.ctx, "Scanner: Finished checking for album updates", "refreshed", refreshed, "skipped", skipped, err)
+	logF(p.ctx, "Scanner: Finished refreshing albums", "refreshed", refreshed, "skipped", skipped, err)
 	return p.ds.WithTx(func(tx model.DataStore) error {
 		// Refresh artist stats
 		start := time.Now()
