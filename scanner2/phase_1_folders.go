@@ -127,7 +127,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 		}
 		log.Info(p.ctx, "Scanner: Finished loading all folders", "numFolders", total)
 		return nil
-	}, ppl.Name("produce folders"))
+	}, ppl.Name("traverse filesystem"))
 }
 
 func (p *phaseFolders) measure(entry *folderEntry) func() time.Duration {
@@ -139,7 +139,7 @@ func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 	return []ppl.Stage[*folderEntry]{
 		ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(5)),
 		ppl.NewStage(p.persistChanges, ppl.Name("persist changes")),
-		ppl.NewStage(p.logFolder, ppl.Name("log folder")),
+		ppl.NewStage(p.logFolder, ppl.Name("log results")),
 	}
 }
 
