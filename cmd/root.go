@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/navidrome/navidrome/adapters/taglib"
+
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
