@@ -27,17 +27,20 @@ import (
 //   - Call registerModel with the model instance and any possible filters.
 //   - If the model has a different table name than the default (lowercase of the model name), it should be set manually
 //     using the tableName field.
-//   - Sort mappings should be set in the sortMappings field. If the sort field is not in the map, it will be used as is.
+//   - Sort mappings must be set with setSortMappings method. If a sort field is not in the map, it will be used as the name of the column.
 //
 // All fields in filters and sortMappings must be in snake_case. Only sorts and filters based on real field names or
 // defined in the mappings will be allowed.
 type sqlRepository struct {
-	ctx                context.Context
-	tableName          string
-	db                 dbx.Builder
-	sortMappings       map[string]string
+	ctx       context.Context
+	tableName string
+	db        dbx.Builder
+
+	// Do not set these fields manually, they are set by the registerModel method
 	filterMappings     map[string]filterFunc
 	isFieldWhiteListed fieldWhiteListedFunc
+	// Do not set this field manually, it is set by the setSortMappings method
+	sortMappings map[string]string
 }
 
 const invalidUserId = "-1"
@@ -66,6 +69,22 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 	r.tableName = strings.ToLower(r.tableName)
 	r.isFieldWhiteListed = registerModelWhiteList(instance)
 	r.filterMappings = filters
+}
+
+// setSortMappings sets the mappings for the sort fields. If the sort field is not in the map, it will be used as is.
+//
+// If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
+// which gives precedence to sort tags.
+// Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
+// To avoid performance issues, indexes should be created for these sort expressions
+func (r *sqlRepository) setSortMappings(mappings map[string]string) {
+	if conf.Server.PreferSortTags {
+		for k, v := range mappings {
+			v = mapSortOrder(v)
+			mappings[k] = v
+		}
+	}
+	r.sortMappings = mappings
 }
 
 func (r sqlRepository) getTableName() string {

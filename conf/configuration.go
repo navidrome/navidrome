@@ -26,6 +26,7 @@ type configOptions struct {
 	CacheFolder                     string
 	DbPath                          string
 	LogLevel                        string
+	LogFile                         string
 	ScanInterval                    time.Duration
 	ScanSchedule                    string
 	SessionTimeout                  time.Duration
@@ -176,14 +177,17 @@ func LoadFromFile(confFile string) {
 }
 
 func Load() {
+	parseIniFileConfiguration()
+
 	err := viper.Unmarshal(&Server)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
 		os.Exit(1)
 	}
+
 	err = os.MkdirAll(Server.DataFolder, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", "path", Server.DataFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating data path:", err)
 		os.Exit(1)
 	}
 
@@ -192,7 +196,7 @@ func Load() {
 	}
 	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", "path", Server.CacheFolder, err)
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
 		os.Exit(1)
 	}
 
@@ -204,9 +208,19 @@ func Load() {
 	if Server.Backup.Path != "" {
 		err = os.MkdirAll(Server.Backup.Path, os.ModePerm)
 		if err != nil {
-			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", "path", Server.Backup.Path, err)
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating backup path:", err)
 			os.Exit(1)
 		}
+	}
+
+	out := os.Stderr
+	if Server.LogFile != "" {
+		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Error opening log file %s: %s\n", Server.LogFile, err.Error())
+			os.Exit(1)
+		}
+		log.SetOutput(out)
 	}
 
 	log.SetLevelString(Server.LogLevel)
@@ -225,7 +239,7 @@ func Load() {
 	if Server.BaseURL != "" {
 		u, err := url.Parse(Server.BaseURL)
 		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "FATAL: Invalid BaseURL %s: %s\n", Server.BaseURL, err.Error())
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Invalid BaseURL:", err)
 			os.Exit(1)
 		}
 		Server.BasePath = u.Path
@@ -241,7 +255,7 @@ func Load() {
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
-		_, _ = fmt.Fprintln(os.Stderr, prettyConf)
+		_, _ = fmt.Fprintln(out, prettyConf)
 	}
 
 	if !Server.EnableExternalServices {
@@ -251,6 +265,31 @@ func Load() {
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+// parseIniFileConfiguration is used to parse the config file when it is in INI format. For INI files, it
+// would require a nested structure, so instead we unmarshal it to a map and then merge the nested [default]
+// section into the root level.
+func parseIniFileConfiguration() {
+	cfgFile := viper.ConfigFileUsed()
+	if strings.ToLower(filepath.Ext(cfgFile)) == ".ini" {
+		var iniConfig map[string]interface{}
+		err := viper.Unmarshal(&iniConfig)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
+			os.Exit(1)
+		}
+		cfg, ok := iniConfig["default"].(map[string]any)
+		if !ok {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config: missing [default] section:", iniConfig)
+			os.Exit(1)
+		}
+		err = viper.MergeConfigMap(cfg)
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error parsing config:", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -324,6 +363,7 @@ func init() {
 	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
 	viper.SetDefault("loglevel", "info")
+	viper.SetDefault("logfile", "")
 	viper.SetDefault("address", "0.0.0.0")
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")

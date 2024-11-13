@@ -11,6 +11,7 @@ wiki
 TODO.md
 var
 navidrome.toml
+!release/linux/navidrome.toml
 master.zip
 testDB
 cache/*
@@ -23,3 +24,4 @@ docker-compose.yml
 !contrib/docker-compose.yml
 binaries
 taglib
+navidrome-master

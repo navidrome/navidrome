@@ -17,17 +17,59 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
+// Item represents an item that can be cached. It must implement the Key method that returns a unique key for a
+// given item.
 type Item interface {
 	Key() string
 }
 
+// ReadFunc is a function that retrieves the data to be cached. It receives the Item to be cached and returns
+// an io.Reader with the data and an error.
 type ReadFunc func(ctx context.Context, item Item) (io.Reader, error)
 
+// FileCache is designed to cache data on the filesystem to improve performance by avoiding repeated data
+// retrieval operations.
+//
+// Errors are handled gracefully. If the cache is not initialized or an error occurs during data
+// retrieval, it will log the error and proceed without caching.
 type FileCache interface {
+
+	// Get retrieves data from the cache. This method checks if the data is already cached. If it is, it
+	// returns the cached data. If not, it retrieves the data using the provided getReader function and caches it.
+	//
+	// Example Usage:
+	//
+	//	s, err := fc.Get(context.Background(), cacheKey("testKey"))
+	//	if err != nil {
+	//	    log.Fatal(err)
+	//	}
+	//	defer s.Close()
+	//
+	//	data, err := io.ReadAll(s)
+	//	if err != nil {
+	//	    log.Fatal(err)
+	//	}
+	//	fmt.Println(string(data))
 	Get(ctx context.Context, item Item) (*CachedStream, error)
+
+	// Available checks if the cache is available
 	Available(ctx context.Context) bool
 }
 
+// NewFileCache creates a new FileCache. This function initializes the cache and starts it in the background.
+//
+//	name: A string representing the name of the cache.
+//	cacheSize: A string representing the maximum size of the cache (e.g., "1KB", "10MB").
+//	cacheFolder: A string representing the folder where the cache files will be stored.
+//	maxItems: An integer representing the maximum number of items the cache can hold.
+//	getReader: A function of type ReadFunc that retrieves the data to be cached.
+//
+// Example Usage:
+//
+//	fc := NewFileCache("exampleCache", "10MB", "cacheFolder", 100, func(ctx context.Context, item Item) (io.Reader, error) {
+//	    // Implement the logic to retrieve the data for the given item
+//	    return strings.NewReader(item.Key()), nil
+//	})
 func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) FileCache {
 	fc := &fileCache{
 		name:        name,
@@ -150,6 +192,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	return &CachedStream{Reader: r, Cached: cached}, nil
 }
 
+// CachedStream is a wrapper around an io.ReadCloser that allows reading from a cache.
 type CachedStream struct {
 	io.Reader
 	io.Seeker

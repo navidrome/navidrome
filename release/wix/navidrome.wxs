@@ -29,8 +29,6 @@
 
 		<UIRef Id="Navidrome_UI_Flow"/>
 
-		<Property Id="CSCRIPT_LOCATION" Value="C:\Windows\System32\cscript.exe" />
-
 		<Directory Id='TARGETDIR' Name='SourceDir'>
 			<Directory Id="$(var.PlatformProgramFilesFolder)">
 				<Directory Id='INSTALLDIR' Name='Navidrome'>
@@ -43,14 +41,11 @@
 						<File Id='README.md' Name='README.md' DiskId='1' Source='README.md' KeyPath='yes' />
 					</Component>
 
-					<Component Id='convertIniToToml.vbsFile' Guid='2a5d3241-9a8b-4a8c-9edc-fbef1a030d4d' Win64="$(var.Win64)">
-						<File Id='convertIniToToml.vbs' Name='convertIniToToml.vbs' DiskId='1' Source='convertIniToToml.vbs' KeyPath='yes' />
-					</Component>
-
 					<Component Id="Configuration" Guid="9e17ed4b-ef13-44bf-a605-ed4132cff7f6" Win64="$(var.Win64)">
-						<IniFile Id="ConfigurationPort" Name="navidrome-msi.ini" Action="createLine" Directory="INSTALLDIR" Key="Port" Section="MSI_PLACEHOLDER_SECTION" Value="&apos;[ND_PORT]&apos;" />
-						<IniFile Id="ConfigurationMusicDir" Name="navidrome-msi.ini" Action="addLine" Directory="INSTALLDIR" Key="MusicFolder" Section="MSI_PLACEHOLDER_SECTION" Value="&apos;[ND_MUSICFOLDER]&apos;" />
-						<IniFile Id="ConfigurationDataDir" Name="navidrome-msi.ini" Action="addLine" Directory="INSTALLDIR" Key="DataFolder" Section="MSI_PLACEHOLDER_SECTION" Value="&apos;[ND_DATAFOLDER]&apos;" />
+						<IniFile Id="ConfigurationPort" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="Port" Section="default" Value="&apos;[ND_PORT]&apos;" />
+						<IniFile Id="ConfigurationMusicDir" Name="navidrome.ini" Action="addLine" Directory="INSTALLDIR" Key="MusicFolder" Section="default" Value="&apos;[ND_MUSICFOLDER]&apos;" />
+						<IniFile Id="ConfigurationDataDir" Name="navidrome.ini" Action="addLine" Directory="INSTALLDIR" Key="DataFolder" Section="default" Value="&apos;[ND_DATAFOLDER]&apos;" />
+						<IniFile Id="FFmpegPath" Name="navidrome.ini" Action="addLine" Directory="INSTALLDIR" Key="FFmpegPath" Section="default" Value="&apos;[INSTALLDIR]ffmpeg.exe&apos;" />
 					</Component>
 
 					<Component Id='MainExecutable' Guid='e645aa06-8bbc-40d6-8d3c-73b4f5b76fd7' Win64="$(var.Win64)">
@@ -63,31 +58,29 @@
 							Start='auto'
 							Type='ownProcess'
 							Vital='yes'
-							Arguments='service execute --configfile &quot;[INSTALLDIR]navidrome.toml&quot;'
+							Arguments='service execute --configfile &quot;[INSTALLDIR]navidrome.ini&quot; --logfile &quot;[ND_DATAFOLDER]\navidrome.log&quot;'
 						/>
 						<ServiceControl Id='StartNavidromeService' Start='install' Stop='both' Remove='uninstall' Name='$(var.ProductName)' Wait='yes' />
+					</Component>
+
+					<Component Id='FFMpegExecutable' Guid='d17358f7-abdc-4080-acd3-6427903a7dd8' Win64="$(var.Win64)">
+						<File Id='ffmpeg.exe' Name='ffmpeg.exe' DiskId='1' Source='ffmpeg.exe' KeyPath='yes' />
 					</Component>
 
 				</Directory>
 			</Directory>
 		</Directory>
 
-		<CustomAction Id="HackIniIntoTOML" Impersonate="no" Property="CSCRIPT_LOCATION" Execute="deferred" ExeCommand='&quot;[INSTALLDIR]convertIniToToml.vbs&quot; &quot;[INSTALLDIR]navidrome-msi.ini&quot; &quot;[INSTALLDIR]navidrome.toml&quot;' />
-
 		<InstallUISequence>
 			<Show Dialog="MyCustomPropertiesDlg" After="WelcomeDlg">Not Installed AND NOT WIX_UPGRADE_DETECTED</Show>
 		</InstallUISequence>
 
-		<InstallExecuteSequence>
-			<Custom Action="HackIniIntoTOML" After="WriteIniValues">NOT Installed AND NOT REMOVE</Custom>
-		</InstallExecuteSequence>
-
 		<Feature Id='Complete' Level='1'>
-			<ComponentRef Id='convertIniToToml.vbsFile' />
 			<ComponentRef Id='LICENSEFile' />
 			<ComponentRef Id='README.mdFile' />
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
+			<ComponentRef Id='FFMpegExecutable' />
 		</Feature>
 	</Product>
 </Wix>

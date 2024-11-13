@@ -102,7 +102,7 @@ jobs:
       - name: Test
         run: |
           pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -race -cover ./... -v
+          go test -shuffle=on -tags netgo -race -cover ./... -v
 
   js:
     name: Test JS code
@@ -224,7 +224,6 @@ jobs:
           path: ./output
           retention-days: 7
 
-      # https://www.perplexity.ai/search/can-i-have-multiple-push-to-di-4P3ToaZFQtmVROuhaZMllQ
       - name: Build and push image by digest
         id: push-image
         if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
@@ -320,14 +319,11 @@ jobs:
             gh api --method DELETE repos/${{ env.REPO_LOWER }}/actions/artifacts/$artifact
           done
 
-
   msi:
-    name: Build Windows Installers
+    name: Build Windows installers
     needs: [build, git-version]
     runs-on: ubuntu-24.04
-    env:
-      GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
-      GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -337,47 +333,36 @@ jobs:
           pattern: navidrome-windows*
           merge-multiple: true
 
-      - name: Build MSI files
+      - name: Install Wix
+        run: sudo apt-get install -y wixl jq
+
+      - name: Build MSI
+        env:
+          GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
         run: |
-          sudo apt-get install -y wixl jq
-
-          NAVIDROME_BUILD_VERSION=$(echo $GIT_TAG | sed -e 's/^v//' -e 's/-SNAPSHOT/.1/')
-          echo $NAVIDROME_BUILD_VERSION
-
-          mkdir -p $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/LICENSE $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/wix/386
-
-          cp -r $GITHUB_WORKSPACE/wix/386 $GITHUB_WORKSPACE/wix/amd64
-
-          cp $GITHUB_WORKSPACE/binaries/windows_386/navidrome.exe $GITHUB_WORKSPACE/wix/386
-          cp $GITHUB_WORKSPACE/binaries/windows_amd64/navidrome.exe $GITHUB_WORKSPACE/wix/amd64
-
-          # workaround for wixl WixVariable not working to override bmp locations
-          sudo cp $GITHUB_WORKSPACE/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
-          sudo cp $GITHUB_WORKSPACE/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
-
-          cd $GITHUB_WORKSPACE/wix/386
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x86 --arch x86 --ext ui --output ../navidrome_386.msi
-
-          cd $GITHUB_WORKSPACE/wix/amd64
-          wixl ../navidrome.wxs -D Version=$NAVIDROME_BUILD_VERSION -D Platform=x64 --arch x64 --ext ui --output ../navidrome_amd64.msi
-
-          ls -la $GITHUB_WORKSPACE/wix/*.msi
+          rm -rf binaries/msi
+          sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} 386
+          sudo GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
+          du -h binaries/msi/*.msi
 
       - name: Upload MSI files
         uses: actions/upload-artifact@v4
         with:
           name: navidrome-windows-installers
-          path: wix/*.msi
+          path: binaries/msi/*.msi
           retention-days: 7
 
   release:
-    name: Release
-    needs: [build, msi, push-manifest]
+    name: Package/Release
+    needs: [build, msi]
     runs-on: ubuntu-latest
+    outputs:
+      package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - uses: actions/download-artifact@v4
         with:
@@ -398,3 +383,56 @@ jobs:
           args: "release --clean -f release/goreleaser.yml ${{ env.RELEASE_FLAGS }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove build artifacts
+        run: |
+          ls -l ./dist
+          rm ./dist/*.tar.gz ./dist/*.zip
+
+      - name: Upload all-packages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/navidrome_v*
+
+      - id: set-package-list
+        name: Export list of generated packages
+        run: |
+          cd dist
+          set +x
+          ITEMS=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_linux_//' | jq -R -s -c 'split("\n")[:-1]')
+          echo $ITEMS
+          echo "package_list=${ITEMS}" >> $GITHUB_OUTPUT
+
+  upload-packages:
+    name: Upload Linux PKG
+    runs-on: ubuntu-latest
+    needs: [release]
+    strategy:
+      matrix:
+        item: ${{ fromJson(needs.release.outputs.package_list) }}
+    steps:
+      - name: Download all-packages artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: ./dist
+
+      - name: Upload all-packages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: navidrome_linux_${{ matrix.item }}
+          path: dist/navidrome_v*_linux_${{ matrix.item }}
+
+#  delete-artifacts:
+#    name: Delete unused artifacts
+#    runs-on: ubuntu-latest
+#    needs: [upload-packages]
+#    steps:
+#      - name: Delete all-packages artifact
+#        env:
+#          GH_TOKEN: ${{ github.token }}
+#        run: |
+#          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("packages")) | .id'); do
+#            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
+#          done

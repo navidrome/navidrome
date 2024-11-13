@@ -33,11 +33,11 @@ server: check_go_env buildjs ##@Development Start the backend in development mod
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -notify ./...
+	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -tags netgo -notify ./...
 .PHONY: watch
 
 test: ##@Development Run Go tests
-	go test -race -shuffle=on ./...
+	go test -tags netgo -race -shuffle=on ./...
 .PHONY: test
 
 testall: test ##@Development Run Go and JS tests
@@ -120,7 +120,7 @@ docker-build: ##@Cross_Compilation Cross-compile for any supported platform (che
 		--build-arg GIT_TAG=${GIT_TAG} \
 		--build-arg GIT_SHA=${GIT_SHA} \
 		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
-		--output "./dist" --target binary .
+		--output "./binaries" --target binary .
 .PHONY: docker-build
 
 docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidrome:develop`, override with DOCKER_TAG var. Use IMAGE_PLATFORMS to specify target platforms
@@ -134,6 +134,20 @@ docker-image: ##@Cross_Compilation Build Docker image, tagged as `deluan/navidro
 		--build-arg CROSS_TAGLIB_VERSION=${CROSS_TAGLIB_VERSION} \
 		--tag $(DOCKER_TAG) .
 .PHONY: docker-image
+
+docker-msi: ##@Cross_Compilation Build MSI installer for Windows
+	make docker-build PLATFORMS=windows/386,windows/amd64
+	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f release/wix/msitools.dockerfile .
+	@rm -rf binaries/msi
+	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries -e GIT_TAG=${GIT_TAG} \
+		navidrome-msi-builder sh -c "release/wix/build_msi.sh /workspace 386 && release/wix/build_msi.sh /workspace amd64"
+	@du -h binaries/msi/*.msi
+.PHONY: docker-msi
+
+package: docker-build ##@Cross_Compilation Create binaries and packages for ALL supported platforms
+	@if [ -z `which goreleaser` ]; then echo "Please install goreleaser first: https://goreleaser.com/install/"; exit 1; fi
+	goreleaser release -f release/goreleaser.yml --clean --skip=publish --snapshot
+.PHONY: package
 
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music
@@ -149,6 +163,11 @@ get-music: ##@Development Download some free music from Navidrome's demo instanc
 
 ##########################################
 #### Miscellaneous
+
+clean:
+	@rm -rf ./binaries ./dist ./ui/build/*
+	@touch ./ui/build/.gitkeep
+.PHONY: clean
 
 release:
 	@if [[ ! "${V}" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$$ ]]; then echo "Usage: make release V=X.X.X"; exit 1; fi
