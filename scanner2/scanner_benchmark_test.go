@@ -27,8 +27,8 @@ func BenchmarkScan(b *testing.B) {
 
 	fs := storagetest.FakeFS{}
 	storagetest.Register("fake", &fs)
-	revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
-	help := template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965})
+	revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966, "composer": "Lennon/McCartney"})
+	help := template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965, "composer": "Lennon/McCartney"})
 	fs.SetFiles(fstest.MapFS{
 		"The Beatles/Revolver/01 - Taxman.mp3":                         revolver(track(1, "Taxman")),
 		"The Beatles/Revolver/02 - Eleanor Rigby.mp3":                  revolver(track(2, "Eleanor Rigby")),

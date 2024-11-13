@@ -235,13 +235,22 @@ func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 		return "", nil, err
 	}
 	// Replace query placeholders with named params
-	params := make(dbx.Params, len(args))
-	for i, arg := range args {
-		p := fmt.Sprintf("p%d", i)
-		query = strings.Replace(query, "?", "{:"+p+"}", 1)
-		params[p] = arg
+	parts := strings.Split(query, "?")
+	if len(args)+1 != len(parts) {
+		log.Error("invalid args", "args", args, "parts", parts)
+		return query, nil, fmt.Errorf("invalid number of args")
 	}
-	return query, params, nil
+	params := make(dbx.Params, len(args))
+	newQuery := strings.Builder{}
+	for i, part := range parts {
+		newQuery.WriteString(part)
+		if i < len(args) {
+			p := fmt.Sprintf("p%d", i)
+			newQuery.WriteString("{:" + p + "}")
+			params[p] = args[i]
+		}
+	}
+	return newQuery.String(), params, nil
 }
 
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
