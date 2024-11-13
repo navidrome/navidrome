@@ -235,7 +235,7 @@ func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 		return "", nil, err
 	}
 	// Replace query placeholders with named params
-	params := dbx.Params{}
+	params := make(dbx.Params, len(args))
 	for i, arg := range args {
 		p := fmt.Sprintf("p%d", i)
 		query = strings.Replace(query, "?", "{:"+p+"}", 1)

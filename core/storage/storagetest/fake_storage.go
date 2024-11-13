@@ -37,9 +37,11 @@ func (s FakeStorage) FS() (storage.MusicFS, error) {
 // behavior of a real filesystem, and you should not bypass this logic.
 type FakeFS struct {
 	fstest.MapFS
+	properInit bool
 }
 
 func (ffs *FakeFS) SetFiles(files fstest.MapFS) {
+	ffs.properInit = true
 	ffs.MapFS = files
 	ffs.createDirTimestamps()
 }
@@ -214,6 +216,9 @@ func audioProperties(suffix string, bitrate int) map[string]any {
 }
 
 func (ffs *FakeFS) ReadTags(paths ...string) (map[string]metadata.Info, error) {
+	if !ffs.properInit {
+		log.Fatal("FakeFS not initialized properly. Use SetFiles")
+	}
 	result := make(map[string]metadata.Info)
 	for _, file := range paths {
 		p, err := ffs.parseFile(file)
