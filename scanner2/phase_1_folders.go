@@ -106,7 +106,7 @@ func (p *phaseFolders) description() string {
 
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
-		// TODO Parallelize multiple job
+		// TODO Parallelize multiple job when we have multiple libraries
 		var total int64
 		for _, job := range p.jobs {
 			if utils.IsCtxDone(p.ctx) {
@@ -156,7 +156,8 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	}
 	dbTracks := slice.ToMap(mfs, func(mf model.MediaFile) (string, model.MediaFile) { return mf.Path, mf })
 
-	// Get list of files to import, leave in dbTracks only tracks that are missing
+	// Get list of files to import, based on modtime (or all if fullRescan),
+	// leave in dbTracks only tracks that are missing (not found in the FS)
 	filesToImport := make([]string, 0, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
@@ -176,9 +177,10 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		delete(dbTracks, fullPath)
 	}
 
-	// Remaining dbTracks are tracks that were not found in the folder, so they should be marked as missing
+	// Remaining dbTracks are tracks that were not found in the FS, so they should be marked as missing
 	entry.missingTracks = slices.Collect(maps.Values(dbTracks))
 
+	// Load metadata from files that need to be imported
 	if len(filesToImport) > 0 {
 		entry.tracks, entry.tags, err = p.loadTagsFromFiles(entry, filesToImport)
 		if err != nil {
@@ -220,7 +222,7 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) 
 
 func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albums {
 	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumID })
-	var albums model.Albums
+	albums := make(model.Albums, 0, len(grouped))
 	for _, group := range grouped {
 		songs := model.MediaFiles(group)
 		album := songs.ToAlbum()
@@ -230,7 +232,7 @@ func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albu
 }
 
 func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Artists {
-	participants := model.Participations{}
+	participants := make(model.Participations, len(entry.tracks)*3) // preallocate ~3 artists per track
 	for _, track := range entry.tracks {
 		participants.Merge(track.Participations)
 	}
@@ -242,19 +244,27 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	p.changesDetected.Store(true)
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
+		// Instantiate all repositories just once per folder
+		folderRepo := tx.Folder(p.ctx)
+		tagRepo := tx.Tag(p.ctx)
+		artistRepo := tx.Artist(p.ctx)
+		libraryRepo := tx.Library(p.ctx)
+		albumRepo := tx.Album(p.ctx)
+		mfRepo := tx.MediaFile(p.ctx)
+
 		// Save folder to DB
 		folder := model.NewFolder(entry.job.lib, entry.path)
 		folder.NumAudioFiles = len(entry.audioFiles)
 		folder.ImageFiles = slices.Collect(maps.Keys(entry.imageFiles))
 		folder.ImagesUpdatedAt = entry.imagesUpdatedAt
-		err := tx.Folder(p.ctx).Put(folder)
+		err := folderRepo.Put(folder)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting folder to DB", "folder", entry.path, err)
 			return err
 		}
 
 		// Save all tags to DB
-		err = tx.Tag(p.ctx).Add(entry.tags...)
+		err = tagRepo.Add(entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err
@@ -262,12 +272,12 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
-			err := tx.Artist(p.ctx).Put(&entry.artists[i], "name", "mbz_artist_id", "sort_artist_name", "order_artist_name")
+			err := artistRepo.Put(&entry.artists[i], "name", "mbz_artist_id", "sort_artist_name", "order_artist_name")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
 			}
-			err = tx.Library(p.ctx).AddArtist(entry.job.lib.ID, entry.artists[i].ID)
+			err = libraryRepo.AddArtist(entry.job.lib.ID, entry.artists[i].ID)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error adding artist to library", "lib", entry.job.lib.ID, "artist", entry.artists[i].Name, err)
 				return err
@@ -276,18 +286,16 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
-			err := tx.Album(p.ctx).Put(&entry.albums[i])
+			err := albumRepo.Put(&entry.albums[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
 			}
 		}
 
-		// BFR Touch all albums from this folder where Updated < imagesUpdatedAt
-
 		// Save all tracks to DB
 		for i := range entry.tracks {
-			err = tx.MediaFile(p.ctx).Put(&entry.tracks[i])
+			err = mfRepo.Put(&entry.tracks[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
 				return err
@@ -296,7 +304,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Mark all missing tracks as not available
 		if len(entry.missingTracks) > 0 {
-			err = tx.MediaFile(p.ctx).MarkMissing(true, entry.missingTracks...)
+			err = mfRepo.MarkMissing(true, entry.missingTracks...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
 				return err
@@ -307,7 +315,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return mf.AlbumID, struct{}{}
 			})
 			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
-			err = tx.Album(p.ctx).Touch(albumsToUpdate...)
+			err = albumRepo.Touch(albumsToUpdate...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
 				return err

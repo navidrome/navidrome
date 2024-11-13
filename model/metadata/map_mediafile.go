@@ -74,9 +74,9 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 	mf.SortArtistName = mf.Participations.First(model.RoleArtist).SortArtistName
 	mf.SortAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).SortArtistName
 
-	// Remote tags that are first-class fields in the MediaFile struct
+	// Don't store tags that are first-class fields in the MediaFile struct
 	// BFR Automatically remove tags that were accessed in the steps above
-	removedTags := []model.TagName{
+	tagsToIgnore := []model.TagName{
 		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
 		model.TagComment, model.TagAlbumSort, model.TagTitleSort, model.TagCompilation,
 		model.TagLyrics, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
@@ -94,7 +94,7 @@ func (md Metadata) ToMediaFile() model.MediaFile {
 		model.TagAlbumArtistsSort, model.TagTrackArtist, model.TagTrackArtists, model.TagTrackArtistSort,
 		model.TagTrackArtistsSort, model.TagComposerSort,
 	}
-	for _, tag := range removedTags {
+	for _, tag := range tagsToIgnore {
 		delete(mf.Tags, tag)
 	}
 
