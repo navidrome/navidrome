@@ -7,6 +7,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -22,13 +23,19 @@ func BenchmarkScan(b *testing.B) {
 	ds := persistence.New(db.Db())
 	s := scanner2.GetInstance(context.Background(), ds)
 
-	lib := model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-	ds.Library(context.Background()).Put(&lib)
-
 	fs := storagetest.FakeFS{}
 	storagetest.Register("fake", &fs)
-	revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966, "composer": "Lennon/McCartney"})
-	help := template(_t{"albumartist": "The Beatles", "album": "Help!", "year": 1965, "composer": "Lennon/McCartney"})
+	var beatlesMBID = uuid.NewString()
+	beatles := _t{
+		"artist":                    "The Beatles",
+		"artistsort":                "Beatles, The",
+		"musicbrainz_artistid":      beatlesMBID,
+		"albumartist":               "The Beatles",
+		"albumartistsort":           "Beatles The",
+		"musicbrainz_albumartistid": beatlesMBID,
+	}
+	revolver := template(beatles, _t{"album": "Revolver", "year": 1966, "composer": "Lennon/McCartney"})
+	help := template(beatles, _t{"album": "Help!", "year": 1965, "composer": "Lennon/McCartney"})
 	fs.SetFiles(fstest.MapFS{
 		"The Beatles/Revolver/01 - Taxman.mp3":                         revolver(track(1, "Taxman")),
 		"The Beatles/Revolver/02 - Eleanor Rigby.mp3":                  revolver(track(2, "Eleanor Rigby")),
@@ -39,10 +46,14 @@ func BenchmarkScan(b *testing.B) {
 		"The Beatles/Help!/03 - You've Got to Hide Your Love Away.mp3": help(track(3, "You've Got to Hide Your Love Away")),
 	})
 
+	lib := model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
+	ds.Library(context.Background()).Put(&lib)
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		err := s.RescanAll(context.Background(), true)
 		if err != nil {
-			panic(err)
+			b.Fatal(err)
 		}
 	}
 }

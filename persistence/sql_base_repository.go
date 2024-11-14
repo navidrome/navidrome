@@ -286,8 +286,8 @@ func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ..
 	}
 	return func(yield func(T, error) bool) {
 		defer rows.Close()
+		var row T
 		for rows.Next() {
-			var row T
 			err := rows.ScanStruct(&row)
 			if !yield(row, err) || err != nil {
 				return

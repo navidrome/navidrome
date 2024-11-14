@@ -272,7 +272,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
-			err := artistRepo.Put(&entry.artists[i], "name", "mbz_artist_id", "sort_artist_name", "order_artist_name")
+			err = artistRepo.Put(&entry.artists[i], "name", "mbz_artist_id", "sort_artist_name", "order_artist_name")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
@@ -286,7 +286,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
-			err := albumRepo.Put(&entry.albums[i])
+			err = albumRepo.Put(&entry.albums[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
