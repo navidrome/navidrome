@@ -44,8 +44,29 @@ jobs:
           echo "GIT_TAG=$GIT_TAG" |tee -a $GITHUB_OUTPUT
           echo "GIT_SHA=$GIT_SHA" |tee -a $GITHUB_OUTPUT
 
+  changes:
+    name: Get filters to run tests on relevant changes
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      js: ${{ steps.filter.outputs.js }} 
+      i18n: ${{steps.filter.outputs.i18n }}
+    steps:
+      - uses: actions/checkout@v4 #if this will be used on PR only, might be removed
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            go: [ '**.go', 'go.mod', 'go.sum', 'tests/**' ]
+            js: [ './ui/**' ]
+            i18n: [ './resources/i18n/*.json' ]
+
   go-lint:
     name: Lint Go code
+    needs: changes
+    if: ${{ needs.changes.outputs.go =='true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,6 +90,8 @@ jobs:
 
   go-test:
     name: Test Go code
+    needs: changes
+    if: ${{ needs.changes.outputs.go =='true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,6 +108,8 @@ jobs:
 
   js-test:
     name: Test JS code
+    needs: changes
+    if: ${{ needs.changes.outputs.js =='true' }}
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
@@ -107,6 +132,8 @@ jobs:
 
   i18n-lint:
     name: Lint i18n files
+    needs: changes
+    if: ${{ needs.changes.outputs.i18n =='true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -135,6 +162,7 @@ jobs:
   build:
     name: Build
     needs: [js-test, go-test, go-lint, i18n-lint, git-version, check-push-enabled]
+    if: ${{ !failure() && !cancelled() }} #continue on sucess or skipped
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -215,7 +243,7 @@ jobs:
     name: Push Docker manifest
     runs-on: ubuntu-latest
     needs: [build, check-push-enabled]
-    if: needs.check-push-enabled.outputs.is_enabled == 'true'
+    if: ${{ !failure() && !cancelled() && needs.check-push-enabled.outputs.is_enabled == 'true' }}
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
@@ -264,6 +292,7 @@ jobs:
   msi:
     name: Build Windows installers
     needs: [build, git-version]
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -292,6 +321,7 @@ jobs:
   release:
     name: Package/Release
     needs: [build, msi]
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
@@ -338,6 +368,7 @@ jobs:
     name: Upload Linux PKG
     runs-on: ubuntu-latest
     needs: [release]
+    if: ${{ !failure() && !cancelled() }}
     strategy:
       matrix:
         item: ${{ fromJson(needs.release.outputs.package_list) }}
