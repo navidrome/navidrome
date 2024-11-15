@@ -70,10 +70,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/get-version
+        id: crosstaglib
+        with:
+          filepath: ./release/crosstaglib.version
       - name: Download TagLib
         uses: ./.github/actions/download-taglib
         with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+          version: ${{ steps.crosstaglib.outputs.version }}
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -95,10 +99,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/get-version
+        id: crosstaglib
+        with:
+          filepath: ./release/crosstaglib.version
       - name: Download TagLib
         uses: ./.github/actions/download-taglib
         with:
-          version: ${{ env.CROSS_TAGLIB_VERSION }}
+          version: ${{ steps.crosstaglib.outputs.version }}
       - name: Download dependencies
         run: go mod download
       - name: Test
@@ -181,6 +189,10 @@ jobs:
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/get-version
+        id: crosstaglib
+        with:
+          filepath: ./release/crosstaglib.version
       - name: Prepare Docker Buildx
         uses: ./.github/actions/prepare-docker
         id: docker
@@ -201,7 +213,7 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
+            CROSS_TAGLIB_VERSION=${{ steps.crosstaglib.outputs.version }}
       - name: Upload Binaries
         uses: actions/upload-artifact@v4
         with:
@@ -220,7 +232,7 @@ jobs:
           build-args: |
             GIT_SHA=${{ env.GIT_SHA }}
             GIT_TAG=${{ env.GIT_TAG }}
-            CROSS_TAGLIB_VERSION=${{ env.CROSS_TAGLIB_VERSION }}
+            CROSS_TAGLIB_VERSION=${{ steps.crosstaglib.outputs.version }}
           outputs: |
             type=image,name=${{ steps.docker.outputs.hub_repository }},push-by-digest=true,name-canonical=true,push=${{ steps.docker.outputs.hub_enabled }}
             type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
