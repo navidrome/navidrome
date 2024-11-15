@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -220,19 +221,23 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 	return res.RowsAffected()
 }
 
+var placeholderRegex = regexp.MustCompile(`\?`)
+
 func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 	query, args, err := sq.ToSql()
 	if err != nil {
 		return "", nil, err
 	}
 	// Replace query placeholders with named params
-	params := dbx.Params{}
-	for i, arg := range args {
-		p := fmt.Sprintf("p%d", i)
-		query = strings.Replace(query, "?", "{:"+p+"}", 1)
-		params[p] = arg
-	}
-	return query, params, nil
+	params := make(dbx.Params, len(args))
+	counter := 0
+	result := placeholderRegex.ReplaceAllStringFunc(query, func(_ string) string {
+		p := fmt.Sprintf("p%d", counter)
+		params[p] = args[counter]
+		counter++
+		return "{:" + p + "}"
+	})
+	return result, params, nil
 }
 
 func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
