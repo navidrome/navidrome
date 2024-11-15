@@ -59,11 +59,9 @@ jobs:
           version: latest
           problem-matchers: true
           args: --timeout 2m
-      - name: Run go goimports
-        run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$'`
-      - run: go mod tidy
-      - name: Verify no changes from goimports and go mod tidy
+      - name: Verify no changes from go mod tidy
         run: |
+          go mod tidy
           if [ -n "$(git diff HEAD)" ]; then
             echo 'To fix this check, run "make format" and commit the changes'
             exit 1

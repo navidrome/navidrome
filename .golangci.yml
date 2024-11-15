@@ -14,6 +14,7 @@ linters:
     - errcheck
     - errorlint
     - gocyclo
+    - goimports
     - goprintffuncname
     - gosec
     - gosimple
@@ -35,7 +36,7 @@ linters-settings:
       - nilness
   gosec:
     excludes:
-      - G501
-      - G401
-      - G505
       - G115 # Can't check context, where the warning is clearly a false positive. See discussion in https://github.com/securego/gosec/pull/1149
+      - G401
+      - G501
+      - G505
