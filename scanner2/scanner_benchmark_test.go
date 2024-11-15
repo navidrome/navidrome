@@ -14,12 +14,22 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner2"
+	"go.uber.org/goleak"
 )
 
 func BenchmarkScan(b *testing.B) {
+	// Detect any goroutine leaks in the scanner code under test
+	defer goleak.VerifyNone(b,
+		goleak.IgnoreTopFunction("testing.(*B).run1"),
+		goleak.IgnoreAnyFunction("testing.(*B).doBench"),
+		// Ignore database/sql.(*DB).connectionOpener, as we are not closing the database connection
+		goleak.IgnoreAnyFunction("database/sql.(*DB).connectionOpener"),
+	)
+
 	tmpDir := os.TempDir()
 	conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 	db.Init()
+
 	ds := persistence.New(db.Db())
 	s := scanner2.GetInstance(context.Background(), ds)
 
