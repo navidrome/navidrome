@@ -43,8 +43,8 @@ type ExternalMetadata interface {
 type externalMetadata struct {
 	ds          model.DataStore
 	ag          *agents.Agents
-	artistQueue refreshQueue[auxArtist]
-	albumQueue  refreshQueue[auxAlbum]
+	artistQueue refreshQueue[*auxArtist]
+	albumQueue  refreshQueue[*auxAlbum]
 }
 
 type auxAlbum struct {
@@ -103,7 +103,7 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 	// If info is expired, trigger a populateAlbumInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
-		e.albumQueue.enqueue(*album)
+		e.albumQueue.enqueue(album)
 	}
 
 	return &album.Album, nil
@@ -206,7 +206,7 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*a
 	// If info is expired, trigger a populateArtistInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artist.Name)
-		e.artistQueue.enqueue(*artist)
+		e.artistQueue.enqueue(artist)
 	}
 	return artist, nil
 }
@@ -554,25 +554,27 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 
 type refreshQueue[T any] chan<- T
 
-func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context, *T) error) refreshQueue[T] {
+func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context, T) error) refreshQueue[T] {
 	queue := make(chan T, refreshQueueLength)
 	go func() {
 		for {
-			time.Sleep(refreshDelay)
-			ctx, cancel := context.WithTimeout(ctx, refreshTimeout)
 			select {
-			case item := <-queue:
-				_ = processFn(ctx, &item)
-				cancel()
 			case <-ctx.Done():
-				cancel()
-				break
+				return
+			case <-time.After(refreshDelay):
+				ctx, cancel := context.WithTimeout(ctx, refreshTimeout)
+				select {
+				case item := <-queue:
+					_ = processFn(ctx, item)
+					cancel()
+				case <-ctx.Done():
+					cancel()
+				}
 			}
 		}
 	}()
 	return queue
 }
-
 func (q *refreshQueue[T]) enqueue(item T) {
 	select {
 	case *q <- item:
