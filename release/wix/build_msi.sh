@@ -50,8 +50,8 @@ cp "$WORKSPACE"/LICENSE "$WORKSPACE"/README.md "$MSI_OUTPUT_DIR"
 cp "$BINARY" "$MSI_OUTPUT_DIR"
 
 # workaround for wixl WixVariable not working to override bmp locations
-cp "$WORKSPACE"/release/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
-cp "$WORKSPACE"/release/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
+#cp "$WORKSPACE"/release/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
+#cp "$WORKSPACE"/release/wix/bmp/dialogue.bmp /usr/share/wixl-*/ext/ui/bitmaps/dlgbmp.bmp
 
 cd "$MSI_OUTPUT_DIR"
 rm -f "$MSI_OUTPUT_DIR"/navidrome_"${ARCH}".msi
