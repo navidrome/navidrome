@@ -308,6 +308,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/get-version
+        id: ffmpeg
+        with:
+          filepath: ./release/ffmpeg.version
       - uses: actions/download-artifact@v4
         with:
           path: ./binaries
@@ -318,10 +322,12 @@ jobs:
       - name: Build MSI
         env:
           GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
+          FFMPEG_VERSION: ${{ steps.ffmpeg.outputs.version }}
         run: |
-          rm -rf binaries/msi
-          GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} 386
-          GIT_TAG=$GIT_TAG release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
+          export GIT_TAG=$GIT_TAG
+          export FFMPEG_VERSION=$FFMPEG_VERSION
+          release/wix/build_msi.sh ${GITHUB_WORKSPACE} 386
+          release/wix/build_msi.sh ${GITHUB_WORKSPACE} amd64
           du -h binaries/msi/*.msi
       - name: Upload MSI files
         uses: actions/upload-artifact@v4

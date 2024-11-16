@@ -1,6 +1,10 @@
 #!/bin/sh
 
-FFMPEG_VERSION="7.1"
+if [ -z $FFMPEG_VERSION ]; then
+  echo "FFMPEG_VERSION is not set, exiting..."
+  exit 1
+fi
+
 FFMPEG_REPOSITORY=navidrome/ffmpeg-windows-builds
 DOWNLOAD_FOLDER=/tmp
 
