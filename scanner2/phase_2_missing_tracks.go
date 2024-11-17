@@ -77,10 +77,10 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 			}
 			if mt.pid != mf.PID {
 				putIfMatched(mt)
+				mt.pid = mf.PID
 				mt.missing = nil
 				mt.matched = nil
 			}
-			mt.pid = mf.PID
 			if mf.Missing {
 				mt.missing = append(mt.missing, mf)
 			} else {
