@@ -22,21 +22,14 @@ type translation struct {
 	Data string `json:"data"`
 }
 
-var (
-	once         sync.Once
-	translations map[string]translation
-)
-
-func newTranslationRepository(ctx context.Context) rest.Repository {
-	if err := loadTranslations(ctx, resources.FS()); err != nil {
-		log.Error(ctx, "Error loading translation files", err)
-	}
+func newTranslationRepository(context.Context) rest.Repository {
 	return &translationRepository{}
 }
 
 type translationRepository struct{}
 
 func (r *translationRepository) Read(id string) (interface{}, error) {
+	translations, _ := loadTranslations()
 	if t, ok := translations[id]; ok {
 		return t, nil
 	}
@@ -45,11 +38,13 @@ func (r *translationRepository) Read(id string) (interface{}, error) {
 
 // Count simple implementation, does not support any `options`
 func (r *translationRepository) Count(...rest.QueryOptions) (int64, error) {
-	return int64(len(translations)), nil
+	_, count := loadTranslations()
+	return count, nil
 }
 
 // ReadAll simple implementation, only returns IDs. Does not support any `options`
 func (r *translationRepository) ReadAll(...rest.QueryOptions) (interface{}, error) {
+	translations, _ := loadTranslations()
 	var result []translation
 	for _, t := range translations {
 		t.Data = ""
@@ -66,33 +61,32 @@ func (r *translationRepository) NewInstance() interface{} {
 	return &translation{}
 }
 
-func loadTranslations(ctx context.Context, fsys fs.FS) (loadError error) {
-	once.Do(func() {
-		translations = make(map[string]translation)
-		dir, err := fsys.Open(consts.I18nFolder)
+var loadTranslations = sync.OnceValues(func() (map[string]translation, int64) {
+	translations := make(map[string]translation)
+	fsys := resources.FS()
+	dir, err := fsys.Open(consts.I18nFolder)
+	if err != nil {
+		log.Error("Error opening translation folder", err)
+		return translations, 0
+	}
+	files, err := dir.(fs.ReadDirFile).ReadDir(-1)
+	if err != nil {
+		log.Error("Error reading translation folder", err)
+		return translations, 0
+	}
+	var languages []string
+	for _, f := range files {
+		t, err := loadTranslation(fsys, f.Name())
 		if err != nil {
-			loadError = err
-			return
+			log.Error("Error loading translation file", "file", f.Name(), err)
+			continue
 		}
-		files, err := dir.(fs.ReadDirFile).ReadDir(-1)
-		if err != nil {
-			loadError = err
-			return
-		}
-		var languages []string
-		for _, f := range files {
-			t, err := loadTranslation(fsys, f.Name())
-			if err != nil {
-				log.Error(ctx, "Error loading translation file", "file", f.Name(), err)
-				continue
-			}
-			translations[t.ID] = t
-			languages = append(languages, t.ID)
-		}
-		log.Info(ctx, "Loading translations", "languages", languages)
-	})
-	return
-}
+		translations[t.ID] = t
+		languages = append(languages, t.ID)
+	}
+	log.Info("Loaded translations", "languages", languages)
+	return translations, int64(len(translations))
+})
 
 func loadTranslation(fsys fs.FS, fileName string) (translation translation, err error) {
 	// Get id and full path
