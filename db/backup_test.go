@@ -82,7 +82,7 @@ var _ = Describe("database backups", func() {
 
 		DescribeTable("prune", func(count, expected int) {
 			conf.Server.Backup.Count = count
-			pruneCount, err := prune(ctx)
+			pruneCount, err := Prune(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			for idx, time := range timesDecreasingChronologically {
 				_, err := os.Stat(backupPath(time))
@@ -124,7 +124,7 @@ var _ = Describe("database backups", func() {
 		})
 
 		It("successfully backups the database", func() {
-			path, err := Db().Backup(ctx)
+			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			backup, err := sql.Open(Driver, path)
@@ -133,21 +133,21 @@ var _ = Describe("database backups", func() {
 		})
 
 		It("successfully restores the database", func() {
-			path, err := Db().Backup(ctx)
+			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// https://stackoverflow.com/questions/525512/drop-all-tables-command
-			_, err = Db().WriteDB().ExecContext(ctx, `
+			_, err = Db().ExecContext(ctx, `
 PRAGMA writable_schema = 1;
 DELETE FROM sqlite_master WHERE type in ('table', 'index', 'trigger');
 PRAGMA writable_schema = 0;
 			`)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(Db().WriteDB())).To(BeTrue())
+			Expect(isSchemaEmpty(Db())).To(BeTrue())
 
-			err = Db().Restore(ctx, path)
+			err = Restore(ctx, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(Db().WriteDB())).To(BeFalse())
+			Expect(isSchemaEmpty(Db())).To(BeFalse())
 		})
 	})
 })
