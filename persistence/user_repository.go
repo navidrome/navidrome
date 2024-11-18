@@ -81,7 +81,7 @@ func (r *userRepository) Put(u *model.User) error {
 	if count > 0 {
 		return nil
 	}
-	values["created_at"] = timeToSQL(time.Now())
+	values["created_at"] = time.Now()
 	insert := Insert(r.tableName).SetMap(values)
 	_, err = r.executeSQL(insert)
 	return err

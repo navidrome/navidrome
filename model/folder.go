@@ -60,5 +60,4 @@ type FolderRepository interface {
 	GetLastUpdates(lib Library) (map[string]time.Time, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
-	Touch(lib Library, path string, t time.Time) error
 }

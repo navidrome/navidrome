@@ -240,7 +240,7 @@ func (r *albumRepository) Touch(ids ...string) error {
 		return nil
 	}
 	for ids := range slices.Chunk(ids, 200) {
-		upd := Update(r.tableName).Set("imported_at", timeToSQL(time.Now())).Where(Eq{"id": ids})
+		upd := Update(r.tableName).Set("imported_at", time.Now()).Where(Eq{"id": ids})
 		c, err := r.executeSQL(upd)
 		if err != nil {
 			return fmt.Errorf("error touching albums: %w", err)

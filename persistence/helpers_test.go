@@ -57,8 +57,8 @@ var _ = Describe("Helpers", func() {
 				HaveKeyWithValue("id", "123"),
 				HaveKeyWithValue("album_id", "456"),
 				HaveKeyWithValue("play_count", 2),
-				HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)),
-				HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)),
+				HaveKeyWithValue("updated_at", BeTemporally("~", now)),
+				HaveKeyWithValue("created_at", BeTemporally("~", now)),
 				Not(HaveKey("Embed")),
 			))
 		})

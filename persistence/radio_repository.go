@@ -83,7 +83,7 @@ func (r *radioRepository) Put(radio *model.Radio) error {
 		}
 	}
 
-	values["created_at"] = timeToSQL(time.Now())
+	values["created_at"] = time.Now()
 	insert := Insert(r.tableName).SetMap(values)
 	_, err := r.executeSQL(insert)
 	return err

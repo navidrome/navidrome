@@ -225,7 +225,7 @@ func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...model.MediaFile) 
 	for chunk := range slice.CollectChunks(ids, 200) {
 		upd := Update(r.tableName).
 			Set("missing", missing).
-			Set("updated_at", timeToSQL(time.Now())).
+			Set("updated_at", time.Now()).
 			Where(Eq{"id": chunk})
 		c, err := r.executeSQL(upd)
 		if err != nil || c == 0 {
@@ -241,7 +241,7 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 	for chunk := range slices.Chunk(folderIDs, 200) {
 		upd := Update(r.tableName).
 			Set("missing", missing).
-			Set("updated_at", timeToSQL(time.Now())).
+			Set("updated_at", time.Now()).
 			Where(And{
 				Eq{"folder_id": chunk},
 				Eq{"missing": !missing},

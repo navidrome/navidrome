@@ -107,7 +107,7 @@ func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 	for chunk := range slices.Chunk(ids, 200) {
 		sq := Update(r.tableName).
 			Set("missing", missing).
-			Set("updated_at", timeToSQL(time.Now())).
+			Set("updated_at", time.Now()).
 			Where(Eq{"id": chunk})
 		_, err := r.executeSQL(sq)
 		if err != nil {
@@ -115,14 +115,6 @@ func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 		}
 	}
 	return nil
-}
-
-// TODO Remove?
-func (r folderRepository) Touch(lib model.Library, path string, t time.Time) error {
-	id := model.FolderID(lib, path)
-	sq := Update(r.tableName).Set("updated_at", timeToSQL(t)).Where(Eq{"id": id})
-	_, err := r.executeSQL(sq)
-	return err
 }
 
 func (r folderRepository) purgeEmpty() error {
