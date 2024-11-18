@@ -92,9 +92,8 @@ func runBackup(ctx context.Context) {
 		return
 	}
 
-	database := db.Db()
 	start := time.Now()
-	path, err := database.Backup(ctx)
+	path, err := db.Backup(ctx)
 	if err != nil {
 		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
 	}
@@ -138,9 +137,8 @@ func runPrune(ctx context.Context) {
 		return
 	}
 
-	database := db.Db()
 	start := time.Now()
-	count, err := database.Prune(ctx)
+	count, err := db.Prune(ctx)
 	if err != nil {
 		log.Fatal("Error pruning up database", "backup path", conf.Server.BasePath, err)
 	}
@@ -177,9 +175,8 @@ func runRestore(ctx context.Context) {
 		}
 	}
 
-	database := db.Db()
 	start := time.Now()
-	err := database.Restore(ctx, restorePath)
+	err := db.Restore(ctx, restorePath)
 	if err != nil {
 		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
 	}

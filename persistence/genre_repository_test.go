@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -16,7 +15,7 @@ var _ = Describe("GenreRepository", func() {
 	var repo model.GenreRepository
 
 	BeforeEach(func() {
-		repo = persistence.NewGenreRepository(log.NewContext(context.TODO()), persistence.NewDBXBuilder(db.Db()))
+		repo = persistence.NewGenreRepository(log.NewContext(context.TODO()), persistence.GetDBXBuilder())
 	})
 
 	Describe("GetAll()", func() {

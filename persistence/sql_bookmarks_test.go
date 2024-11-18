@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -17,7 +16,7 @@ var _ = Describe("sqlBookmarks", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		mr = NewMediaFileRepository(ctx, NewDBXBuilder(db.Db()))
+		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
 	Describe("Bookmarks", func() {
