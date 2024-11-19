@@ -64,7 +64,6 @@ func walkFolder(ctx context.Context, rootPath string, currentFolder string, resu
 }
 
 func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
-	var children []string
 	stats := &dirStats{}
 
 	dirInfo, err := os.Stat(dirPath)
@@ -77,11 +76,13 @@ func loadDir(ctx context.Context, dirPath string) ([]string, *dirStats, error) {
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		log.Error(ctx, "Error in Opening directory", "path", dirPath, err)
-		return children, stats, err
+		return nil, stats, err
 	}
 	defer dir.Close()
 
-	for _, entry := range fullReadDir(ctx, dir) {
+	entries := fullReadDir(ctx, dir)
+	children := make([]string, 0, len(entries))
+	for _, entry := range entries {
 		isDir, err := isDirOrSymlinkToDir(dirPath, entry)
 		// Skip invalid symlinks
 		if err != nil {
