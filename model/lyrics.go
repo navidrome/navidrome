@@ -39,11 +39,11 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 	text = str.SanitizeText(text)
 
 	lines := strings.Split(text, "\n")
+	structuredLines := make([]Line, 0, len(lines)*2)
 
 	artist := ""
 	title := ""
 	var offset *int64 = nil
-	structuredLines := []Line{}
 
 	synced := syncRegex.MatchString(text)
 	priorLine := ""
@@ -105,7 +105,7 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 						Value: strings.TrimSpace(priorLine),
 					})
 				}
-				timestamps = []int64{}
+				timestamps = nil
 			}
 
 			end := 0

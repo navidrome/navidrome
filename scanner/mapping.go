@@ -143,7 +143,7 @@ func (s MediaFileMapper) albumArtistID(md metadata.Tags) string {
 func (s MediaFileMapper) mapGenres(genres []string) (string, model.Genres) {
 	var result model.Genres
 	unique := map[string]struct{}{}
-	var all []string
+	all := make([]string, 0, len(genres)*2)
 	for i := range genres {
 		gs := strings.FieldsFunc(genres[i], func(r rune) bool {
 			return strings.ContainsRune(conf.Server.Scanner.GenreSeparators, r)

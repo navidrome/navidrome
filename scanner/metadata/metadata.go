@@ -84,7 +84,7 @@ func NewTag(filePath string, fileInfo os.FileInfo, tags ParsedTags) Tags {
 func removeDuplicatesAndEmpty(values []string) []string {
 	encountered := map[string]struct{}{}
 	empty := true
-	var result []string
+	result := make([]string, 0, len(values))
 	for _, v := range values {
 		if _, ok := encountered[v]; ok {
 			continue
@@ -300,7 +300,7 @@ func (t Tags) getFirstTagValue(tagNames ...string) string {
 }
 
 func (t Tags) getAllTagValues(tagNames ...string) []string {
-	var values []string
+	values := make([]string, 0, len(tagNames)*2)
 	for _, tag := range tagNames {
 		if v, ok := t.Tags[tag]; ok {
 			values = append(values, v...)
@@ -311,7 +311,8 @@ func (t Tags) getAllTagValues(tagNames ...string) []string {
 
 func (t Tags) getSortTag(originalTag string, tagNames ...string) string {
 	formats := []string{"sort%s", "sort_%s", "sort-%s", "%ssort", "%s_sort", "%s-sort"}
-	all := []string{originalTag}
+	all := make([]string, 1, len(tagNames)*len(formats)+1)
+	all[0] = originalTag
 	for _, tag := range tagNames {
 		for _, format := range formats {
 			name := fmt.Sprintf(format, tag)

@@ -100,7 +100,7 @@ func (c *simpleCache[K, V]) evictExpired() {
 }
 
 func (c *simpleCache[K, V]) Keys() []K {
-	var res []K
+	res := make([]K, 0, c.data.Len())
 	c.data.Range(func(item *ttlcache.Item[K, V]) bool {
 		if !item.IsExpired() {
 			res = append(res, item.Key())
@@ -111,7 +111,7 @@ func (c *simpleCache[K, V]) Keys() []K {
 }
 
 func (c *simpleCache[K, V]) Values() []V {
-	var res []V
+	res := make([]V, 0, c.data.Len())
 	c.data.Range(func(item *ttlcache.Item[K, V]) bool {
 		if !item.IsExpired() {
 			res = append(res, item.Value())

@@ -84,7 +84,7 @@ type Albums []Album
 // It assumes all albums have the same AlbumArtist, or else results are unpredictable.
 func (als Albums) ToAlbumArtist() Artist {
 	a := Artist{AlbumCount: len(als)}
-	var mbzArtistIds []string
+	mbzArtistIds := make([]string, 0, len(als))
 	for _, al := range als {
 		a.ID = al.AlbumArtistID
 		a.Name = al.AlbumArtist
