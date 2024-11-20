@@ -119,7 +119,9 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 		return folder, children, err
 	}
 
-	for _, entry := range fullReadDir(ctx, dirFile) {
+	entries := fullReadDir(ctx, dirFile)
+	children = make([]string, 0, len(entries))
+	for _, entry := range entries {
 		if isEntryIgnored(job.fs, dirPath, entry.Name()) {
 			continue
 		}
@@ -168,7 +170,7 @@ func fullReadDir(ctx context.Context, dir fs.ReadDirFile) []fs.DirEntry {
 	var prevErrStr = ""
 	for {
 		if ctx.Err() != nil {
-			return []fs.DirEntry{}
+			return nil
 		}
 		entries, err := dir.ReadDir(-1)
 		allEntries = append(allEntries, entries...)
