@@ -29,7 +29,7 @@ var _ = Describe("playlistImporter", func() {
 		}
 		pls = core.NewPlaylists(ds)
 
-		cw = &noopCacheWarmer{}
+		cw = &artwork.NoopCacheWarmer{}
 	})
 
 	Describe("processPlaylists", func() {
@@ -94,7 +94,3 @@ func (r *mockedPlaylist) FindByPath(_ string) (*model.Playlist, error) {
 func (r *mockedPlaylist) Put(_ *model.Playlist) error {
 	return nil
 }
-
-type noopCacheWarmer struct{}
-
-func (a *noopCacheWarmer) PreCache(_ model.ArtworkID) {}

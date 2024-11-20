@@ -33,7 +33,7 @@ server: check_go_env buildjs ##@Development Start the backend in development mod
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -tags netgo -notify ./...
+	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -tags=netgo -notify ./...
 .PHONY: watch
 
 test: ##@Development Run Go tests
@@ -60,7 +60,7 @@ format: ##@Development Format code
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire@latest ./...
+	go run github.com/google/wire/cmd/wire@latest gen -tags=netgo ./...
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests

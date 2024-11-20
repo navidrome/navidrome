@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
@@ -31,7 +32,7 @@ func BenchmarkScan(b *testing.B) {
 	db.Init()
 
 	ds := persistence.New(db.Db())
-	s := scanner2.GetInstance(context.Background(), ds)
+	s := scanner2.GetInstance(context.Background(), ds, &artwork.NoopCacheWarmer{})
 
 	fs := storagetest.FakeFS{}
 	storagetest.Register("fake", &fs)

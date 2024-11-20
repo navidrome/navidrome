@@ -9,6 +9,7 @@ import (
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -24,12 +25,17 @@ var (
 type scanner2 struct {
 	rootCtx context.Context
 	ds      model.DataStore
+	cw      artwork.CacheWarmer
 	running sync.Mutex
 }
 
-func GetInstance(rootCtx context.Context, ds model.DataStore) scanner.Scanner {
+func GetInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer) scanner.Scanner {
 	return singleton.GetInstance(func() *scanner2 {
-		return &scanner2{rootCtx: rootCtx, ds: ds}
+		return &scanner2{
+			rootCtx: rootCtx,
+			ds:      ds,
+			cw:      cw,
+		}
 	})
 }
 
@@ -53,7 +59,7 @@ func (s *scanner2) RescanAll(requestCtx context.Context, fullRescan bool) error 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		func() error {
-			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, libs, fullRescan, &changesDetected))
+			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &changesDetected))
 		},
 
 		// Phase 2: Process missing files, checking for moves

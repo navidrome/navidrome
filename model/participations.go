@@ -77,7 +77,7 @@ type Participations map[Role][]Artist
 
 // Add adds the artists to the role, ignoring duplicates.
 func (p Participations) Add(role Role, artists ...Artist) {
-	seen := map[string]struct{}{}
+	seen := make(map[string]struct{}, len(p[role]))
 	for _, artist := range p[role] {
 		seen[artist.ID] = struct{}{}
 	}
@@ -114,7 +114,7 @@ func (p Participations) Merge(other Participations) {
 
 // All returns all artists found in the Participations.
 func (p Participations) All() Artists {
-	var artists Artists
+	artists := make(Artists, 0, len(p))
 	for _, roleArtists := range p {
 		artists = append(artists, roleArtists...)
 	}
@@ -134,7 +134,7 @@ func (p Participations) AllIDs() []string {
 
 // AllNames returns all artist names found in the Participations, including SortArtistNames.
 func (p Participations) AllNames() []string {
-	var names []string
+	names := make([]string, 0, len(p))
 	for _, artists := range p {
 		for _, artist := range artists {
 			names = append(names, artist.Name)

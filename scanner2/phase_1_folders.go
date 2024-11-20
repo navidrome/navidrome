@@ -14,6 +14,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -23,7 +24,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Library, fullRescan bool, changesDetected *atomic.Bool) *phaseFolders {
+func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullRescan bool, changesDetected *atomic.Bool) *phaseFolders {
 	var jobs []*scanJob
 	for _, lib := range libs {
 		err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
@@ -31,7 +32,7 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Li
 			log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
 		}
 		// BFR Check LastScanStartedAt for interrupted full scans
-		job, err := newScanJob(ctx, ds, lib, fullRescan)
+		job, err := newScanJob(ctx, ds, cw, lib, fullRescan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			continue
@@ -44,13 +45,14 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, libs []model.Li
 type scanJob struct {
 	lib         model.Library
 	fs          storage.MusicFS
+	cw          artwork.CacheWarmer
 	lastUpdates map[string]time.Time
 	lock        sync.Mutex
 	fullRescan  bool
 	numFolders  atomic.Int64
 }
 
-func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullRescan bool) (*scanJob, error) {
+func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullRescan bool) (*scanJob, error) {
 	lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib)
 	if err != nil {
 		return nil, fmt.Errorf("error getting last updates: %w", err)
@@ -68,6 +70,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 	return &scanJob{
 		lib:         lib,
 		fs:          fsys,
+		cw:          cw,
 		lastUpdates: lastUpdates,
 		fullRescan:  fullRescan,
 	}, nil
@@ -282,6 +285,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				log.Error(p.ctx, "Scanner: Error adding artist to library", "lib", entry.job.lib.ID, "artist", entry.artists[i].Name, err)
 				return err
 			}
+			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
+				entry.job.cw.PreCache(entry.artists[i].CoverArtID())
+			}
 		}
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
@@ -290,6 +296,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
+			}
+			if entry.albums[i].Name != consts.UnknownAlbum {
+				entry.job.cw.PreCache(entry.albums[i].CoverArtID())
 			}
 		}
 
