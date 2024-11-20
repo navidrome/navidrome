@@ -290,6 +290,10 @@ func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ..
 				return
 			}
 		}
+		if err := rows.Err(); err != nil {
+			var empty T
+			yield(empty, err)
+		}
 	}, nil
 }
 
