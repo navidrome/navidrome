@@ -128,7 +128,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			}
 			total += job.numFolders.Load()
 		}
-		log.Info(p.ctx, "Scanner: Finished loading all folders", "numFolders", total)
+		log.Debug(p.ctx, "Scanner: Finished loading all folders", "numFolders", total)
 		return nil
 	}, ppl.Name("traverse filesystem"))
 }
