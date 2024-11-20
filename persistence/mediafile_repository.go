@@ -63,7 +63,7 @@ func (m dbMediaFiles) toModels() model.MediaFiles {
 }
 
 func (m dbMediaFiles) getParticipantIDs() []string {
-	var ids []string
+	ids := make([]string, 0, len(m)*3)
 	for _, mf := range m {
 		ids = append(ids, mf.Participations.AllIDs()...)
 	}

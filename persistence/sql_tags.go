@@ -22,10 +22,12 @@ func unmarshalTags(data string) (model.Tags, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing tags: %w", err)
 	}
-	res := model.Tags{}
+
+	res := make(model.Tags, len(dbTags))
 	for name, tags := range dbTags {
-		for _, tag := range tags {
-			res[name] = append(res[name], tag.Value)
+		res[name] = make([]string, len(tags))
+		for i, tag := range tags {
+			res[name][i] = tag.Value
 		}
 	}
 	return res, nil

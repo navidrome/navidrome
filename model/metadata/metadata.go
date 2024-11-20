@@ -152,27 +152,37 @@ func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 // combine equivalent tags and remove duplicated values.
 // It keeps the order of the tags names as they are defined in the mappings.
 func clean(filePath string, tags map[string][]string) model.Tags {
-	lowered := model.Tags{}
+	lowered := make(model.Tags, len(tags))
 	for k, v := range tags {
 		lowered[model.TagName(strings.ToLower(k))] = v
 	}
-	cleaned := model.Tags{}
-	for name, mapping := range mappings() {
+
+	mappings := mappings()
+	cleaned := make(model.Tags, len(mappings))
+	for name, mapping := range mappings {
 		for _, k := range mapping.Aliases {
 			if v, ok := lowered[model.TagName(k)]; ok {
 				v = split(v, mapping.Split)
-				cleaned[name] = append(cleaned[name], v...)
+				if len(v) > 0 {
+					if existing, exists := cleaned[name]; exists {
+						cleaned[name] = append(existing, v...)
+					} else {
+						cleaned[name] = v
+					}
+				}
 			}
 		}
 	}
+
 	for k, v := range cleaned {
 		clean := removeDuplicatedAndEmpty(v)
 		if len(clean) == 0 {
 			delete(cleaned, k)
-			continue
+		} else {
+			cleaned[k] = clean
 		}
-		cleaned[k] = clean
 	}
+
 	return sanitizeAll(filePath, cleaned)
 }
 
@@ -183,7 +193,14 @@ func split(values []string, sep []string) []string {
 	}
 	tag := values[0]
 	for _, s := range sep {
-		tag = strings.ReplaceAll(tag, s, consts.Zwsp)
+		re, err := regexp.Compile(regexp.QuoteMeta(s))
+		if err != nil {
+			log.Error("Error compiling regexp", "sep", s, err)
+			continue
+		}
+		tag = re.ReplaceAllStringFunc(tag, func(_ string) string {
+			return consts.Zwsp
+		})
 	}
 	return strings.Split(tag, consts.Zwsp)
 }

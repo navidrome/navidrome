@@ -114,7 +114,12 @@ func (p Participations) Merge(other Participations) {
 
 // All returns all artists found in the Participations.
 func (p Participations) All() Artists {
-	artists := make(Artists, 0, len(p))
+	// First count the total number of artists to avoid reallocations.
+	totalArtists := 0
+	for _, roleArtists := range p {
+		totalArtists += len(roleArtists)
+	}
+	artists := make(Artists, 0, totalArtists)
 	for _, roleArtists := range p {
 		artists = append(artists, roleArtists...)
 	}

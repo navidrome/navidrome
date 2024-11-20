@@ -49,7 +49,8 @@ func unmarshalParticipations(participantIds string) (model.Participations, error
 	if err != nil {
 		return nil, fmt.Errorf("parsing participants: %w", err)
 	}
-	participations := model.Participations{}
+
+	participations := make(model.Participations, len(partIDs))
 	for role, ids := range partIDs {
 		artists := slice.Map(ids, func(id string) model.Artist { return model.Artist{ID: id} })
 		participations[role] = artists
