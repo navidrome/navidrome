@@ -150,14 +150,21 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
 
 	// Load children mediafiles from DB
-	mfs, err := p.ds.MediaFile(p.ctx).GetAll(model.QueryOptions{
+	cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{
 		Filters: squirrel.And{squirrel.Eq{"folder_id": entry.id}},
 	})
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error loading mediafiles from DB", "folder", entry.path, err)
 		return entry, err
 	}
-	dbTracks := slice.ToMap(mfs, func(mf model.MediaFile) (string, model.MediaFile) { return mf.Path, mf })
+	dbTracks := make(map[string]*model.MediaFile)
+	for mf, err := range cursor {
+		if err != nil {
+			log.Error(p.ctx, "Scanner: Error loading mediafiles from DB", "folder", entry.path, err)
+			return entry, err
+		}
+		dbTracks[mf.Path] = &mf
+	}
 
 	// Get list of files to import, based on modtime (or all if fullRescan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
@@ -320,7 +327,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 
 			// Touch all albums that have missing tracks, so they get refreshed in later phases
-			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf model.MediaFile) (string, struct{}) {
+			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf *model.MediaFile) (string, struct{}) {
 				return mf.AlbumID, struct{}{}
 			})
 			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))

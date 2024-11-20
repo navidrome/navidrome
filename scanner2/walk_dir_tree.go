@@ -31,7 +31,7 @@ type folderEntry struct {
 	albums          model.Albums
 	artists         model.Artists
 	tags            model.TagList
-	missingTracks   model.MediaFiles
+	missingTracks   []*model.MediaFile
 }
 
 func (f *folderEntry) hasNoFiles() bool {

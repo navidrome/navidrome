@@ -296,10 +296,11 @@ type MediaFileRepository interface {
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
+	GetCursor(options ...QueryOptions) (iter.Seq2[MediaFile, error], error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	FindByPaths(paths []string) (MediaFiles, error)
-	MarkMissing(bool, ...MediaFile) error
+	MarkMissing(bool, ...*MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
 	GetMissingAndMatching(libId int) (iter.Seq2[MediaFile, error], error)
 

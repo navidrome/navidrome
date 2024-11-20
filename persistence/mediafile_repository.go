@@ -157,6 +157,21 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res.toModels(), nil
 }
 
+func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (iter.Seq2[model.MediaFile, error], error) {
+	sq := r.selectMediaFile(options...)
+	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sq)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.MediaFile, error) bool) {
+		for m, err := range cursor {
+			if !yield(*m.MediaFile, err) || err != nil {
+				return
+			}
+		}
+	}, nil
+}
+
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"path collate nocase": paths})
 	var res dbMediaFiles
@@ -220,8 +235,8 @@ func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
 	return r.executeSQL(del)
 }
 
-func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...model.MediaFile) error {
-	ids := slice.SeqFunc(mfs, func(m model.MediaFile) string { return m.ID })
+func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...*model.MediaFile) error {
+	ids := slice.SeqFunc(mfs, func(m *model.MediaFile) string { return m.ID })
 	for chunk := range slice.CollectChunks(ids, 200) {
 		upd := Update(r.tableName).
 			Set("missing", missing).
