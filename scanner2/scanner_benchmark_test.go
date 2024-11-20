@@ -57,7 +57,10 @@ func BenchmarkScan(b *testing.B) {
 	})
 
 	lib := model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-	ds.Library(context.Background()).Put(&lib)
+	err := ds.Library(context.Background()).Put(&lib)
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
