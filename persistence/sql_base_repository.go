@@ -146,11 +146,12 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 		reverseOrder = "desc"
 	}
 
-	var newSort []string
 	parts := strings.FieldsFunc(sort, splitFunc(','))
+	newSort := make([]string, 0, len(parts))
 	for _, p := range parts {
 		f := strings.FieldsFunc(p, splitFunc(' '))
-		newField := []string{f[0]}
+		newField := make([]string, 1, len(f))
+		newField[0] = f[0]
 		if len(f) == 1 {
 			newField = append(newField, order)
 		} else {

@@ -59,13 +59,9 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 	if err != nil {
 		return nil, "", err
 	}
-
-	// Keep a copy of the original data. In case we can't resize it, send it as is
-	buf := new(bytes.Buffer)
-	r := io.TeeReader(orig, buf)
 	defer orig.Close()
 
-	resized, origSize, err := resizeImage(r, a.size, a.square)
+	resized, origSize, err := resizeImage(orig, a.size, a.square)
 	if resized == nil {
 		log.Trace(ctx, "Image smaller than requested size", "artID", a.artID, "original", origSize, "resized", a.size)
 	} else {
@@ -75,9 +71,9 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", a.artID, "size", a.size, err)
 	}
 	if err != nil || resized == nil {
-		// Force finish reading any remaining data
-		_, _ = io.Copy(io.Discard, r)
-		return io.NopCloser(buf), "", nil //nolint:nilerr
+		// if we couldn't resize the image, return the original
+		orig, _, err = a.a.Get(ctx, a.artID, 0, false)
+		return orig, "", err
 	}
 	return io.NopCloser(resized), fmt.Sprintf("%s@%d", a.artID, a.size), nil
 }

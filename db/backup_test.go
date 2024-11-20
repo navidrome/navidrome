@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -125,7 +126,7 @@ var _ = Describe("database backups", func() {
 		})
 
 		It("successfully backups the database", func() {
-			path, err := Db().Backup(ctx)
+			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			backup, err := sql.Open(Driver, path)
@@ -134,21 +135,16 @@ var _ = Describe("database backups", func() {
 		})
 
 		It("successfully restores the database", func() {
-			path, err := Db().Backup(ctx)
+			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			// https://stackoverflow.com/questions/525512/drop-all-tables-command
-			_, err = Db().WriteDB().ExecContext(ctx, `
-PRAGMA writable_schema = 1;
-DELETE FROM sqlite_master WHERE type in ('table', 'index', 'trigger');
-PRAGMA writable_schema = 0;
-			`)
+			err = tests.ClearDB()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(IsSchemaEmpty(Db().WriteDB())).To(BeTrue())
+			Expect(IsSchemaEmpty(Db())).To(BeTrue())
 
-			err = Db().Restore(ctx, path)
+			err = Restore(ctx, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(IsSchemaEmpty(Db().WriteDB())).To(BeFalse())
+			Expect(IsSchemaEmpty(Db())).To(BeFalse())
 		})
 	})
 })

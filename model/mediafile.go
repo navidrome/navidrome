@@ -157,18 +157,17 @@ func (mfs MediaFiles) ToAlbum() Album {
 	// Sorting the mediafiles ensure the results will be consistent
 	slices.SortFunc(mfs, func(a, b MediaFile) int { return cmp.Compare(a.Path, b.Path) })
 
-	var (
-		albumArtistIds     []string
-		mbzAlbumIds        []string
-		mbzReleaseGroupIds []string
-		comments           []string
-		years              []int
-		dates              []string
-		originalYears      []int
-		originalDates      []string
-		releaseDates       []string
-		tags               TagList
-	)
+	albumArtistIds := make([]string, 0, len(mfs))
+	mbzAlbumIds := make([]string, 0, len(mfs))
+	mbzReleaseGroupIds := make([]string, 0, len(mfs))
+	comments := make([]string, 0, len(mfs))
+	years := make([]int, 0, len(mfs))
+	dates := make([]string, 0, len(mfs))
+	originalYears := make([]int, 0, len(mfs))
+	originalDates := make([]string, 0, len(mfs))
+	releaseDates := make([]string, 0, len(mfs))
+	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
+
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs in an album
 		a.ID = m.AlbumID

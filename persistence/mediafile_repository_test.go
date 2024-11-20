@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -20,7 +19,7 @@ var _ = Describe("MediaRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		mr = NewMediaFileRepository(ctx, NewDBXBuilder(db.Db()))
+		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
 	It("gets mediafile from the DB", func() {

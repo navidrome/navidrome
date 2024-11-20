@@ -6,7 +6,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -21,7 +20,7 @@ var _ = Describe("ArtistRepository", func() {
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		repo = NewArtistRepository(ctx, NewDBXBuilder(db.Db()))
+		repo = NewArtistRepository(ctx, GetDBXBuilder())
 	})
 
 	Describe("Count", func() {
