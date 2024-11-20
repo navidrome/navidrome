@@ -10,7 +10,7 @@ require (
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
-	github.com/deluan/sanitize v0.0.0-20230310221930-6e18967d9fc1
+	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20241005113212-7cdefca0e933
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/disintegration/imaging v1.6.2
