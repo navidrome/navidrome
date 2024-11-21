@@ -2,11 +2,14 @@ package scanner2_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"testing/fstest"
 
+	"github.com/dustin/go-humanize"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -63,6 +66,10 @@ func BenchmarkScan(b *testing.B) {
 		b.Fatal(err)
 	}
 
+	var m1, m2 runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&m1)
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		err := s.RescanAll(context.Background(), true)
@@ -70,4 +77,8 @@ func BenchmarkScan(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
+	runtime.ReadMemStats(&m2)
+	fmt.Println("total:", humanize.Bytes(m2.TotalAlloc-m1.TotalAlloc))
+	fmt.Println("mallocs:", humanize.Comma(int64(m2.Mallocs-m1.Mallocs)))
 }

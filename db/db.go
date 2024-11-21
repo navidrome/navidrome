@@ -33,7 +33,6 @@ func Db() *sql.DB {
 				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
 			},
 		})
-
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
@@ -43,7 +42,7 @@ func Db() *sql.DB {
 		instance, err := sql.Open(Driver, Path)
 		instance.SetMaxOpenConns(max(4, runtime.NumCPU()))
 		if err != nil {
-			log.Fatal("Error opening read database", err)
+			log.Fatal("Error opening database", err)
 		}
 		return instance
 	})
