@@ -41,10 +41,10 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   // Add audio properties to the tags
   const TagLib::AudioProperties *props(f.audioProperties());
-  go_map_put_int(id, (char *)"_lengthinmilliseconds", props->lengthInMilliseconds());
-  go_map_put_int(id, (char *)"_bitrate", props->bitrate());
-  go_map_put_int(id, (char *)"_channels", props->channels());
-  go_map_put_int(id, (char *)"_samplerate", props->sampleRate());
+  goPutInt(id, (char *)"_lengthinmilliseconds", props->lengthInMilliseconds());
+  goPutInt(id, (char *)"_bitrate", props->bitrate());
+  goPutInt(id, (char *)"_channels", props->channels());
+  goPutInt(id, (char *)"_samplerate", props->sampleRate());
 
   // Send all properties to the Go map
   TagLib::PropertyMap tags = f.file()->properties();
@@ -54,7 +54,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     for (TagLib::StringList::ConstIterator j = i->second.begin();
          j != i->second.end(); ++j) {
       char *val = (char *)(*j).toCString(true);
-      go_map_put_str(id, key, val);
+      goPutStr(id, key, val);
     }
   }
 
@@ -66,7 +66,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
       char *key = (char *)item.first.toCString(true);
       for (const auto value: item.second.toStringList()) {
         char *val = (char *)value.toCString(true);
-        go_map_put_str(id, key, val);
+        goPutStr(id, key, val);
       }
     }
   }
@@ -79,13 +79,13 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     for (const auto item : itemListMap) {
       char *key = (char *)item.first.toCString(true);
       char *val = (char *)item.second.front().toString().toCString(true);
-      go_map_put_str(id, key, val);
+      goPutStr(id, key, val);
     }
   }
 
   // Cover art has to be handled separately
   if (has_cover(f)) {
-    go_map_put_str(id, (char *)"has_picture", (char *)"true");
+    goPutStr(id, (char *)"has_picture", (char *)"true");
   }
 
   return 0;

@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/navidrome/navidrome/log"
@@ -42,8 +43,8 @@ func Read(filename string) (tags map[string][]string, err error) {
 
 	fp := getFilename(filename)
 	defer C.free(unsafe.Pointer(fp))
-	id, m := newMap()
-	defer deleteMap(id)
+	id, m, release := newMap()
+	defer release()
 
 	log.Trace("extractor: reading tags", "filename", filename, "map_id", id)
 	res := C.taglib_read(fp, C.ulong(id))
@@ -73,73 +74,70 @@ func Read(filename string) (tags map[string][]string, err error) {
 	return m, nil
 }
 
-var lock sync.RWMutex
-var allMaps = make(map[uint32]map[string][]string)
-var mapsNextID uint32
+type tagMap map[string][]string
 
-func newMap() (id uint32, m map[string][]string) {
-	lock.Lock()
-	defer lock.Unlock()
-	id = mapsNextID
-	mapsNextID++
-	m = make(map[string][]string)
-	allMaps[id] = m
-	return
+var allMaps sync.Map
+var mapsNextID atomic.Uint32
+
+func newMap() (uint32, tagMap, func()) {
+	id := mapsNextID.Add(1)
+
+	m := tagMap{}
+	allMaps.Store(id, m)
+
+	return id, m, func() {
+		allMaps.Delete(id)
+	}
 }
 
-func deleteMap(id uint32) {
-	lock.Lock()
-	defer lock.Unlock()
-	delete(allMaps, id)
-}
-
-//export go_map_put_m4a_str
-func go_map_put_m4a_str(id C.ulong, key *C.char, val *C.char) {
-	k := strings.ToLower(C.GoString(key))
-
-	// Special for M4A, do not catch keys that have no actual name
-	k = strings.TrimPrefix(k, iTunesKeyPrefix)
-	do_put_map(id, k, val)
-}
-
-//export go_map_put_str
-func go_map_put_str(id C.ulong, key *C.char, val *C.char) {
-	k := strings.ToLower(C.GoString(key))
-	do_put_map(id, k, val)
-}
-
-//export go_map_put_lyrics
-func go_map_put_lyrics(id C.ulong, lang *C.char, val *C.char) {
-	k := "lyrics-" + strings.ToLower(C.GoString(lang))
-	do_put_map(id, k, val)
-}
-
-func do_put_map(id C.ulong, key string, val *C.char) {
+func doPutTag(id C.ulong, key string, val *C.char) {
 	if key == "" {
 		return
 	}
 
-	lock.RLock()
-	defer lock.RUnlock()
-	m := allMaps[uint32(id)]
+	r, _ := allMaps.Load(uint32(id))
+	m := r.(tagMap)
+	k := strings.ToLower(key)
 	v := strings.TrimSpace(C.GoString(val))
-	m[key] = append(m[key], v)
+	m[k] = append(m[k], v)
 }
 
-/*
-As I'm working on the new scanner, I see that the `properties` from extractor is ill-suited to extract multi-valued ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there, instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving us more flexibility, including parsing the USLT / SYLT frames in Go
-*/
+//export goPutM4AStr
+func goPutM4AStr(id C.ulong, key *C.char, val *C.char) {
+	k := C.GoString(key)
 
-//export go_map_put_int
-func go_map_put_int(id C.ulong, key *C.char, val C.int) {
+	// Special for M4A, do not catch keys that have no actual name
+	k = strings.TrimPrefix(k, iTunesKeyPrefix)
+	doPutTag(id, k, val)
+}
+
+//export goPutStr
+func goPutStr(id C.ulong, key *C.char, val *C.char) {
+	doPutTag(id, C.GoString(key), val)
+}
+
+//export goPutInt
+func goPutInt(id C.ulong, key *C.char, val C.int) {
 	valStr := strconv.Itoa(int(val))
 	vp := C.CString(valStr)
 	defer C.free(unsafe.Pointer(vp))
-	go_map_put_str(id, key, vp)
+	goPutStr(id, key, vp)
 }
 
-//export go_map_put_lyric_line
-func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
+/*
+BFR: As I'm working on the new scanner, I see that the `properties` from extractor is ill-suited to extract multi-valued
+ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there,
+instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving
+us more flexibility, including parsing the USLT / SYLT frames in Go
+*/
+
+//export goPutLyrics
+func goPutLyrics(id C.ulong, lang *C.char, val *C.char) {
+	doPutTag(id, "lyrics-"+C.GoString(lang), val)
+}
+
+//export goPutLyricLine
+func goPutLyricLine(id C.ulong, lang *C.char, text *C.char, time C.int) {
 	language := C.GoString(lang)
 	line := C.GoString(text)
 	timeGo := int64(time)
@@ -148,19 +146,18 @@ func go_map_put_lyric_line(id C.ulong, lang *C.char, text *C.char, time C.int) {
 	timeGo /= 1000
 	sec := timeGo % 60
 	timeGo /= 60
-	min := timeGo % 60
-	formatted_line := fmt.Sprintf("[%02d:%02d.%02d]%s\n", min, sec, ms/10, line)
-
-	lock.RLock()
-	defer lock.RUnlock()
+	minimum := timeGo % 60
+	formattedLine := fmt.Sprintf("[%02d:%02d.%02d]%s\n", minimum, sec, ms/10, line)
 
 	key := "lyrics-" + language
 
-	m := allMaps[uint32(id)]
-	existing, ok := m[key]
+	r, _ := allMaps.Load(uint32(id))
+	m := r.(tagMap)
+	k := strings.ToLower(key)
+	existing, ok := m[k]
 	if ok {
-		existing[0] += formatted_line
+		existing[0] += formattedLine
 	} else {
-		m[key] = []string{formatted_line}
+		m[k] = []string{formattedLine}
 	}
 }
