@@ -1,4 +1,4 @@
-package scanner2_test
+package scanner_test
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
-	"github.com/navidrome/navidrome/scanner2"
+	"github.com/navidrome/navidrome/scanner"
 	"go.uber.org/goleak"
 )
 
@@ -35,7 +35,7 @@ func BenchmarkScan(b *testing.B) {
 	db.Init()
 
 	ds := persistence.New(db.Db())
-	s := scanner2.GetInstance(context.Background(), ds, &artwork.NoopCacheWarmer{})
+	s := scanner.GetInstance(context.Background(), ds, &artwork.NoopCacheWarmer{})
 
 	fs := storagetest.FakeFS{}
 	storagetest.Register("fake", &fs)

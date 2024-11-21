@@ -8,8 +8,8 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/scanner_old"
+	"github.com/navidrome/navidrome/scanner_old/metadata"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
@@ -75,7 +75,7 @@ func runInspector(args []string) {
 	if err != nil {
 		log.Fatal("Error extracting tags", err)
 	}
-	mapper := scanner.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
+	mapper := scanner_old.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
 	marshal := marshalers[format]
 	if marshal == nil {
 		log.Fatal("Invalid format", "format", format)

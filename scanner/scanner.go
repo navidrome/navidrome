@@ -5,16 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
+	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/chain"
 	"github.com/navidrome/navidrome/utils/singleton"
-	"golang.org/x/time/rate"
+)
+
+var (
+	ErrAlreadyScanning = errors.New("already scanning")
 )
 
 type Scanner interface {
@@ -29,229 +33,136 @@ type StatusInfo struct {
 	FolderCount uint32
 }
 
-var (
-	ErrAlreadyScanning = errors.New("already scanning")
-	ErrScanError       = errors.New("scan error")
-)
-
-type FolderScanner interface {
-	// Scan process finds any changes after `lastModifiedSince` and returns the number of changes found
-	Scan(ctx context.Context, lib model.Library, fullRescan bool, progress chan uint32) (int64, error)
-}
-
-var isScanning sync.Mutex
-
 type scanner struct {
-	folders     map[string]FolderScanner
-	libs        map[string]model.Library
-	status      map[string]*scanStatus
-	lock        *sync.RWMutex
-	ds          model.DataStore
-	pls         core.Playlists
-	broker      events.Broker
-	cacheWarmer artwork.CacheWarmer
+	rootCtx context.Context
+	ds      model.DataStore
+	cw      artwork.CacheWarmer
+	running sync.Mutex
 }
 
-type scanStatus struct {
-	active      bool
-	fileCount   uint32
-	folderCount uint32
-	lastUpdate  time.Time
-}
-
-func GetInstance(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker) Scanner {
+func GetInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer) Scanner {
 	return singleton.GetInstance(func() *scanner {
-		s := &scanner{
-			ds:          ds,
-			pls:         playlists,
-			broker:      broker,
-			folders:     map[string]FolderScanner{},
-			libs:        map[string]model.Library{},
-			status:      map[string]*scanStatus{},
-			lock:        &sync.RWMutex{},
-			cacheWarmer: cacheWarmer,
+		return &scanner{
+			rootCtx: rootCtx,
+			ds:      ds,
+			cw:      cw,
 		}
-		s.loadFolders()
-		return s
 	})
 }
 
-func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) error {
-	folderScanner := s.folders[library]
-	start := time.Now()
-
-	lib, ok := s.libs[library]
-	if !ok {
-		log.Error(ctx, "Folder not a valid library path", "folder", library)
-		return fmt.Errorf("folder %s not a valid library path", library)
-	}
-
-	s.setStatusStart(library)
-	defer s.setStatusEnd(library, start)
-
-	if fullRescan {
-		log.Debug("Scanning folder (full scan)", "folder", library)
-	} else {
-		log.Debug("Scanning folder", "folder", library, "lastScan", lib.LastScanAt)
-	}
-
-	progress, cancel := s.startProgressTracker(library)
-	defer cancel()
-
-	changeCount, err := folderScanner.Scan(ctx, lib, fullRescan, progress)
-	if err != nil {
-		log.Error("Error scanning Library", "folder", library, err)
-	}
-
-	if changeCount > 0 {
-		log.Debug(ctx, "Detected changes in the music folder. Sending refresh event",
-			"folder", library, "changeCount", changeCount)
-		// Don't use real context, forcing a refresh in all open windows, including the one that triggered the scan
-		s.broker.SendMessage(context.Background(), &events.RefreshResource{})
-	}
-
-	s.updateLastModifiedSince(ctx, library, start)
-	return err
-}
-
-func (s *scanner) startProgressTracker(library string) (chan uint32, context.CancelFunc) {
-	// Must be a new context (not the one passed to the scan method) to allow broadcasting the scan status to all clients
-	ctx, cancel := context.WithCancel(context.Background())
-	progress := make(chan uint32, 1000)
-	limiter := rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate}
-	go func() {
-		s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
-		defer func() {
-			if status, ok := s.getStatus(library); ok {
-				s.broker.SendMessage(ctx, &events.ScanStatus{
-					Scanning:    false,
-					Count:       int64(status.fileCount),
-					FolderCount: int64(status.folderCount),
-				})
-			}
-		}()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case count := <-progress:
-				if count == 0 {
-					continue
-				}
-				totalFolders, totalFiles := s.incStatusCounter(library, count)
-				limiter.Do(func() {
-					s.broker.SendMessage(ctx, &events.ScanStatus{
-						Scanning:    true,
-						Count:       int64(totalFiles),
-						FolderCount: int64(totalFolders),
-					})
-				})
-			}
-		}
-	}()
-	return progress, cancel
-}
-
-func (s *scanner) getStatus(folder string) (scanStatus, bool) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	status, ok := s.status[folder]
-	return *status, ok
-}
-
-func (s *scanner) incStatusCounter(folder string, numFiles uint32) (totalFolders uint32, totalFiles uint32) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if status, ok := s.status[folder]; ok {
-		status.fileCount += numFiles
-		status.folderCount++
-		totalFolders = status.folderCount
-		totalFiles = status.fileCount
-	}
-	return
-}
-
-func (s *scanner) setStatusStart(folder string) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if status, ok := s.status[folder]; ok {
-		status.active = true
-		status.fileCount = 0
-		status.folderCount = 0
-	}
-}
-
-func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if status, ok := s.status[folder]; ok {
-		status.active = false
-		status.lastUpdate = lastUpdate
-	}
-}
-
-func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
-	ctx = context.WithoutCancel(ctx)
-
-	if !isScanning.TryLock() {
-		log.Debug(ctx, "Scanner already running, ignoring request for rescan.")
+func (s *scanner) RescanAll(requestCtx context.Context, fullRescan bool) error {
+	if !s.running.TryLock() {
+		log.Debug(requestCtx, "Scanner already running, ignoring request for rescan.")
 		return ErrAlreadyScanning
 	}
-	defer isScanning.Unlock()
+	defer s.running.Unlock()
 
-	var hasError bool
-	for folder := range s.folders {
-		err := s.rescan(ctx, folder, fullRescan)
-		hasError = hasError || err != nil
+	ctx := request.AddValues(s.rootCtx, requestCtx)
+	libs, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return err
 	}
-	if hasError {
-		log.Error(ctx, "Errors while scanning media. Please check the logs")
-		core.WriteAfterScanMetrics(ctx, s.ds, false)
-		return ErrScanError
+
+	startTime := time.Now()
+	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
+	changesDetected := atomic.Bool{}
+
+	err = chain.RunSequentially(
+		// Phase 1: Scan all libraries and import new/updated files
+		func() error {
+			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &changesDetected))
+		},
+
+		// Phase 2: Process missing files, checking for moves
+		func() error { return runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)) },
+
+		// Phase 3: Refresh all new/changed albums and update artists
+		func() error { return runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)) },
+	)
+	if err != nil {
+		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
+		return err
 	}
-	core.WriteAfterScanMetrics(ctx, s.ds, true)
+
+	// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
+	if changesDetected.Load() {
+		_ = s.ds.WithTx(func(tx model.DataStore) error {
+			start := time.Now()
+			err := tx.GC(ctx)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error running GC", err)
+				return err
+			}
+			log.Debug(ctx, "Scanner: GC completed", "duration", time.Since(start))
+			return nil
+		})
+	} else {
+		log.Debug(ctx, "Scanner: No changes detected, skipping GC")
+	}
+
+	// Final step: Update last_scan_completed_at for all libraries
+	_ = s.ds.WithTx(func(tx model.DataStore) error {
+		for _, lib := range libs {
+			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
+			if err != nil {
+				log.Error(ctx, "Scanner: Error updating last scan completed at", "lib", lib.Name, err)
+			}
+		}
+		return nil
+	})
+
+	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 	return nil
 }
 
+type phase[T any] interface {
+	producer() ppl.Producer[T]
+	stages() []ppl.Stage[T]
+	finalize(error) error
+	description() string
+}
+
+func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
+	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d: %s", phaseNum, phase.description()))
+	start := time.Now()
+
+	producer := phase.producer()
+	stages := phase.stages()
+
+	// Prepend a counter stage to the phase's pipeline
+	counter, countStageFn := countTasks[T]()
+	stages = append([]ppl.Stage[T]{ppl.NewStage(countStageFn, ppl.Name("count tasks"))}, stages...)
+
+	var err error
+	if log.IsGreaterOrEqualTo(log.LevelDebug) {
+		var metrics *ppl.Metrics
+		metrics, err = ppl.Measure(producer, stages...)
+		log.Info(ctx, "Scanner: "+metrics.String(), err)
+	} else {
+		err = ppl.Do(producer, stages...)
+	}
+
+	err = phase.finalize(err)
+
+	if err != nil {
+		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
+	} else {
+		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start), "totalTasks", counter.Load())
+	}
+
+	return err
+}
+
+func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
+	counter := atomic.Int64{}
+	return &counter, func(in T) (T, error) {
+		counter.Add(1)
+		return in, nil
+	}
+}
+
 func (s *scanner) Status(context.Context) (*StatusInfo, error) {
-	status, ok := s.getStatus(conf.Server.MusicFolder)
-	if !ok {
-		return nil, errors.New("library not found")
-	}
-	return &StatusInfo{
-		Scanning:    status.active,
-		LastScan:    status.lastUpdate,
-		Count:       status.fileCount,
-		FolderCount: status.folderCount,
-	}, nil
+	return &StatusInfo{}, nil
 }
 
-func (s *scanner) updateLastModifiedSince(ctx context.Context, folder string, t time.Time) {
-	lib := s.libs[folder]
-	id := lib.ID
-	if err := s.ds.Library(ctx).UpdateLastScanCompletedAt(id, t); err != nil {
-		log.Error("Error updating DB after scan", err)
-	}
-	lib.LastScanAt = t
-	s.libs[folder] = lib
-}
-
-func (s *scanner) loadFolders() {
-	ctx := context.TODO()
-	libs, _ := s.ds.Library(ctx).GetAll()
-	for _, lib := range libs {
-		log.Info("Configuring Media Folder", "name", lib.Name, "path", lib.Path)
-		s.folders[lib.Path] = s.newScanner()
-		s.libs[lib.Path] = lib
-		s.status[lib.Path] = &scanStatus{
-			active:      false,
-			fileCount:   0,
-			folderCount: 0,
-			lastUpdate:  lib.LastScanAt,
-		}
-	}
-}
-
-func (s *scanner) newScanner() FolderScanner {
-	return NewTagScanner(s.ds, s.pls, s.cacheWarmer)
-}
+var _ Scanner = (*scanner)(nil)

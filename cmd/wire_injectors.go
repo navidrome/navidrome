@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scanner2"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/nativeapi"
@@ -33,7 +32,7 @@ var allProviders = wire.NewSet(
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner2.GetInstance,
+	scanner.GetInstance,
 	db.Db,
 )
 

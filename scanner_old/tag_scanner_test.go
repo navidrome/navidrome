@@ -1,4 +1,4 @@
-package scanner
+package scanner_old
 
 import (
 	. "github.com/onsi/ginkgo/v2"

@@ -11,7 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/scanner_old/metadata"
 )
 
 const ExtractorID = "ffmpeg"

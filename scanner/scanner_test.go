@@ -1,4 +1,4 @@
-package scanner2_test
+package scanner_test
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scanner2"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
@@ -56,7 +55,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		ds = persistence.New(db.Db())
-		s = scanner2.GetInstance(ctx, ds, &artwork.NoopCacheWarmer{})
+		s = scanner.GetInstance(ctx, ds, &artwork.NoopCacheWarmer{})
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())

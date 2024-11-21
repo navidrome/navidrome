@@ -1,4 +1,4 @@
-package scanner
+package scanner_old
 
 import (
 	"crypto/md5"
@@ -10,7 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/scanner_old/metadata"
 	"github.com/navidrome/navidrome/utils/str"
 )
 

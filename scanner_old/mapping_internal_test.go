@@ -1,10 +1,10 @@
-package scanner
+package scanner_old
 
 import (
 	"context"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner/metadata"
+	"github.com/navidrome/navidrome/scanner_old/metadata"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
