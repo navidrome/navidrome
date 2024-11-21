@@ -44,7 +44,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	go func() {
 		start := time.Now()
 		log.Info(ctx, "Triggering manual scan", "fullScan", fullScan, "user", loggedUser.UserName)
-		err := api.scanner.RescanAll(ctx, fullScan)
+		err := api.scanner.ScanAll(ctx, fullScan)
 		if err != nil {
 			log.Error(ctx, "Error scanning", err)
 			return

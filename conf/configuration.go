@@ -113,6 +113,7 @@ type configOptions struct {
 	DevArtworkThrottleBacklogTimeout time.Duration
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
+	DevExternalScanner               bool
 }
 
 type scannerOptions struct {
@@ -179,10 +180,10 @@ func LoadFromFile(confFile string) {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
 		os.Exit(1)
 	}
-	Load()
+	Load(true)
 }
 
-func Load() {
+func Load(noConfig bool) {
 	parseIniFileConfiguration()
 
 	err := viper.Unmarshal(&Server)
@@ -256,7 +257,7 @@ func Load() {
 	}
 
 	// Print current configuration if log level is Debug
-	if log.IsGreaterOrEqualTo(log.LevelDebug) {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) && !noConfig {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
@@ -476,6 +477,7 @@ func init() {
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
+	viper.SetDefault("devexternalscanner", false)
 }
 
 func InitConfig(cfgFile string) {

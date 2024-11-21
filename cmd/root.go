@@ -28,6 +28,7 @@ import (
 var (
 	cfgFile  string
 	noBanner bool
+	noConfig bool
 
 	rootCmd = &cobra.Command{
 		Use:   "navidrome",
@@ -59,7 +60,7 @@ func preRun() {
 	if !noBanner {
 		println(resources.Banner())
 	}
-	conf.Load()
+	conf.Load(noConfig)
 }
 
 func postRun() {
@@ -140,7 +141,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
 		err := schedulerInstance.Add(schedule, func() {
-			_ = scanner.RescanAll(ctx, false)
+			_ = scanner.ScanAll(ctx, false)
 		})
 		if err != nil {
 			log.Error("Error scheduling periodic scan", err)
@@ -148,7 +149,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 
 		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		log.Debug("Executing initial scan")
-		if err := scanner.RescanAll(ctx, false); err != nil {
+		if err := scanner.ScanAll(ctx, false); err != nil {
 			log.Error("Error executing initial scan", err)
 		}
 		log.Debug("Finished initial scan")
@@ -223,6 +224,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
 	rootCmd.PersistentFlags().BoolVarP(&noBanner, "nobanner", "n", false, `don't show banner`)
+	rootCmd.PersistentFlags().BoolVarP(&noConfig, "noconfig", "", false, `don't show config`)
 	rootCmd.PersistentFlags().String("musicfolder", viper.GetString("musicfolder"), "folder where your music is stored")
 	rootCmd.PersistentFlags().String("datafolder", viper.GetString("datafolder"), "folder to store application data (DB), needs write access")
 	rootCmd.PersistentFlags().String("cachefolder", viper.GetString("cachefolder"), "folder to store cache data (transcoding, images...), needs write access")

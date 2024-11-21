@@ -28,7 +28,7 @@ type CacheWarmer interface {
 func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" || !conf.Server.EnableArtworkPrecache {
-		return &NoopCacheWarmer{}
+		return &noopCacheWarmer{}
 	}
 
 	a := &cacheWarmer{
@@ -131,6 +131,10 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 	return nil
 }
 
-type NoopCacheWarmer struct{}
+func NoopCacheWarmer() CacheWarmer {
+	return &noopCacheWarmer{}
+}
 
-func (a *NoopCacheWarmer) PreCache(model.ArtworkID) {}
+type noopCacheWarmer struct{}
+
+func (a *noopCacheWarmer) PreCache(model.ArtworkID) {}

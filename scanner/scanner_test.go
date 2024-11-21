@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/db"
@@ -53,9 +54,11 @@ var _ = Describe("Scanner", Ordered, func() {
 		DeferCleanup(func() {
 			Expect(tests.ClearDB()).To(Succeed())
 		})
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DevExternalScanner = false
 
 		ds = persistence.New(db.Db())
-		s = scanner.GetInstance(ctx, ds, &artwork.NoopCacheWarmer{})
+		s = scanner.GetInstance(ctx, ds, artwork.NoopCacheWarmer())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
@@ -80,7 +83,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 			When("it is the first scan", func() {
 				It("should import all folders", func() {
-					Expect(s.RescanAll(ctx, true)).To(Succeed())
+					Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 					folders, _ := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 					paths := slice.Map(folders, func(f model.Folder) string { return f.Name })
@@ -90,7 +93,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					))
 				})
 				It("should import all mediafiles", func() {
-					Expect(s.RescanAll(ctx, true)).To(Succeed())
+					Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 					mfs, _ := ds.MediaFile(ctx).GetAll()
 					paths := slice.Map(mfs, func(f model.MediaFile) string { return f.Title })
@@ -103,7 +106,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					))
 				})
 				It("should import all albums", func() {
-					Expect(s.RescanAll(ctx, true)).To(Succeed())
+					Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 					albums, _ := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "name"})
 					Expect(albums).To(HaveLen(2))
@@ -119,14 +122,14 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 			When("a file was changed", func() {
 				It("should update the media_file", func() {
-					Expect(s.RescanAll(ctx, true)).To(Succeed())
+					Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 					mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mf[0].Tags).ToNot(HaveKey("barcode"))
 
 					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"barcode": "123"})
-					Expect(s.RescanAll(ctx, true)).To(Succeed())
+					Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 					mf, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
@@ -134,7 +137,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				})
 
 				It("should update the album", func() {
-					Expect(s.RescanAll(ctx, true)).To(Succeed())
+					Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 					albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
@@ -143,7 +146,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(albums[0].SongCount).To(Equal(3))
 
 					fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
-					Expect(s.RescanAll(ctx, false)).To(Succeed())
+					Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 					albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 					Expect(err).ToNot(HaveOccurred())
@@ -163,7 +166,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 
 			It("should not import the ignored file", func() {
-				Expect(s.RescanAll(ctx, true)).To(Succeed())
+				Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 				mfs, err := ds.MediaFile(ctx).GetAll()
 				Expect(err).ToNot(HaveOccurred())
@@ -185,7 +188,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 
 			It("should import as one album", func() {
-				Expect(s.RescanAll(ctx, true)).To(Succeed())
+				Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 				albums, err := ds.Album(ctx).GetAll()
 				Expect(err).ToNot(HaveOccurred())
@@ -212,7 +215,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 
 			It("should import as two distinct albums", func() {
-				Expect(s.RescanAll(ctx, true)).To(Succeed())
+				Expect(s.ScanAll(ctx, true)).To(Succeed())
 
 				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "release_date"})
 				Expect(err).ToNot(HaveOccurred())
@@ -251,7 +254,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				})
 
 				By("Doing a full scan")
-				Expect(s.RescanAll(ctx, true)).To(Succeed())
+				Expect(s.ScanAll(ctx, true)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
 				findByPath = createFindByPath(ctx, ds)
 			})
@@ -259,7 +262,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("adds new files to the library", func() {
 				fsys.Add("The Beatles/Revolver/03 - I'm Only Sleeping.mp3", revolver(track(3, "I'm Only Sleeping")))
 
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(5)))
 				mf, err := findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
 				Expect(err).ToNot(HaveOccurred())
@@ -269,7 +272,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("updates tags of a file in the library", func() {
 				fsys.UpdateTags("The Beatles/Revolver/02 - Eleanor Rigby.mp3", _t{"title": "Eleanor Rigby (remix)"})
 
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
 				mf, _ := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 				Expect(mf.Title).To(Equal("Eleanor Rigby (remix)"))
@@ -278,7 +281,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("upgrades file with same format in the library", func() {
 				fsys.Add("The Beatles/Revolver/01 - Taxman.mp3", revolver(track(1, "Taxman", _t{"bitrate": 640})))
 
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 				Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
 				mf, _ := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
 				Expect(mf.BitRate).To(Equal(640))
@@ -289,7 +292,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 
 				By("Rescanning the library")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the file is marked as missing")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
@@ -310,7 +313,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Move("The Beatles/Revolver/02 - Eleanor Rigby.mp3", "The Beatles/Help!/02 - Eleanor Rigby.mp3")
 
 				By("Rescanning the library")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the old file is not in the library")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
@@ -342,7 +345,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Move("The Beatles/Revolver/02 - Eleanor Rigby.mp3", "The Beatles/Revolver/02 - Eleanor Rigby.flac")
 
 				By("Rescanning the library")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the old file is not in the library")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
@@ -369,7 +372,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				origFile := fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 
 				By("Rescanning the library")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the file is marked as missing")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
@@ -383,7 +386,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3", origFile)
 
 				By("Rescanning the library again")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the file is not marked as missing")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
@@ -397,7 +400,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 
 				By("Rescanning the library again")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the file is marked as missing")
 				mf, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
@@ -408,7 +411,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Add("The Beatles/Help!/02 - Eleanor Rigby.mp3", origFile)
 
 				By("Rescanning the library once more")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Checking the file was found in the new folder")
 				Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
@@ -437,7 +440,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.Add("The Beatles/Revolver/04 - Love You Too.mp3", newTrack)
 
 				By("Doing a partial scan")
-				Expect(s.RescanAll(ctx, false)).To(Succeed())
+				Expect(s.ScanAll(ctx, false)).To(Succeed())
 
 				By("Asserting MediaFile have the artist name, but not the MBID or sort name")
 				mf, err := findByPath("The Beatles/Revolver/04 - Love You Too.mp3")

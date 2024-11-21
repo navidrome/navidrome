@@ -2,7 +2,6 @@ package scanner
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -14,24 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/chain"
-	"github.com/navidrome/navidrome/utils/singleton"
 )
-
-var (
-	ErrAlreadyScanning = errors.New("already scanning")
-)
-
-type Scanner interface {
-	RescanAll(ctx context.Context, fullRescan bool) error
-	Status(context.Context) (*StatusInfo, error)
-}
-
-type StatusInfo struct {
-	Scanning    bool
-	LastScan    time.Time
-	Count       uint32
-	FolderCount uint32
-}
 
 type scanner struct {
 	rootCtx context.Context
@@ -40,17 +22,7 @@ type scanner struct {
 	running sync.Mutex
 }
 
-func GetInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer) Scanner {
-	return singleton.GetInstance(func() *scanner {
-		return &scanner{
-			rootCtx: rootCtx,
-			ds:      ds,
-			cw:      cw,
-		}
-	})
-}
-
-func (s *scanner) RescanAll(requestCtx context.Context, fullRescan bool) error {
+func (s *scanner) ScanAll(requestCtx context.Context, fullRescan bool) error {
 	if !s.running.TryLock() {
 		log.Debug(requestCtx, "Scanner already running, ignoring request for rescan.")
 		return ErrAlreadyScanning

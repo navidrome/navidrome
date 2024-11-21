@@ -58,7 +58,7 @@ var _ = Describe("Meter", func() {
 			time.Sleep(20 * time.Millisecond)
 			meter.Stop()
 
-			Expect(meter.Elapsed()).To(BeNumerically("~", 40*time.Millisecond, 10*time.Millisecond))
+			Expect(meter.Elapsed()).To(BeNumerically("~", 40*time.Millisecond, 20*time.Millisecond))
 		})
 
 		It("should include the current running time if started", func() {

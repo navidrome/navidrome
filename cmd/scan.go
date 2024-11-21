@@ -3,7 +3,11 @@ package cmd
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +28,12 @@ var scanCmd = &cobra.Command{
 }
 
 func runScanner() {
-	scanner := GetScanner(context.Background())
-	_ = scanner.RescanAll(context.Background(), fullRescan)
+	sqlDB := db.Db()
+	ds := persistence.New(sqlDB)
+	ctx := context.Background()
+	s := scanner.GetLocalInstance(ctx, ds, artwork.NoopCacheWarmer())
+
+	_ = s.ScanAll(ctx, fullRescan)
 	if fullRescan {
 		log.Info("Finished full rescan")
 	} else {

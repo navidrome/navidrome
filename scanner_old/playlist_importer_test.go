@@ -29,7 +29,7 @@ var _ = Describe("playlistImporter", func() {
 		}
 		pls = core.NewPlaylists(ds)
 
-		cw = &artwork.NoopCacheWarmer{}
+		cw = artwork.NoopCacheWarmer()
 	})
 
 	Describe("processPlaylists", func() {
