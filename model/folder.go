@@ -57,6 +57,7 @@ type FolderRepository interface {
 	Get(id string) (*Folder, error)
 	GetByPath(lib Library, path string) (*Folder, error)
 	GetAll(...QueryOptions) ([]Folder, error)
+	CountAll(...QueryOptions) (int64, error)
 	GetLastUpdates(lib Library) (map[string]time.Time, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error

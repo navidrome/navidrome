@@ -188,6 +188,9 @@ func (b *broker) unsubscribe(c client) {
 }
 
 func (b *broker) shouldSend(msg message, c client) bool {
+	if broadcastToAll, ok := msg.senderCtx.Value(broadcastToAllKey).(bool); ok && broadcastToAll {
+		return true
+	}
 	clientUniqueId, originatedFromClient := request.ClientUniqueIdFrom(msg.senderCtx)
 	if !originatedFromClient {
 		return true
@@ -269,3 +272,13 @@ func sendOrDrop(client client, msg message) {
 		}
 	}
 }
+
+func NoopBroker() Broker {
+	return noopBroker{}
+}
+
+type noopBroker struct {
+	http.Handler
+}
+
+func (noopBroker) SendMessage(context.Context, Event) {}

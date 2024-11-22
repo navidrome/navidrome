@@ -24,7 +24,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullRescan bool, changesDetected *atomic.Bool) *phaseFolders {
+func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullRescan bool, changesDetected *atomic.Bool, progress chan<- *scannerStatus) *phaseFolders {
 	var jobs []*scanJob
 	for _, lib := range libs {
 		err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
@@ -39,7 +39,7 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.Cach
 		}
 		jobs = append(jobs, job)
 	}
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, changesDetected: changesDetected}
+	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, changesDetected: changesDetected, progress: progress}
 }
 
 type scanJob struct {
@@ -101,6 +101,7 @@ type phaseFolders struct {
 	ds              model.DataStore
 	ctx             context.Context
 	changesDetected *atomic.Bool
+	progress        chan<- *scannerStatus
 }
 
 func (p *phaseFolders) description() string {
@@ -121,6 +122,12 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			}
 			for folder := range pl.ReadOrDone(p.ctx, outputChan) {
 				job.numFolders.Add(1)
+				p.progress <- &scannerStatus{
+					libID:     job.lib.ID,
+					fileCount: uint32(len(folder.audioFiles)),
+					lastPath:  folder.path,
+					phase:     "1",
+				}
 				if folder.isOutdated() || job.fullRescan {
 					folder.elapsed.Stop()
 					put(folder)

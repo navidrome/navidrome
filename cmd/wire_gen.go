@@ -64,8 +64,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
 	players := core.NewPlayers(dataStore)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	scannerScanner := scanner.GetInstance(ctx, dataStore, cacheWarmer)
 	broker := events.GetBroker()
+	scannerScanner := scanner.GetInstance(ctx, dataStore, cacheWarmer, broker)
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
@@ -112,7 +112,8 @@ func GetScanner(ctx context.Context) scanner.Scanner {
 	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
-	scannerScanner := scanner.GetInstance(ctx, dataStore, cacheWarmer)
+	broker := events.GetBroker()
+	scannerScanner := scanner.GetInstance(ctx, dataStore, cacheWarmer, broker)
 	return scannerScanner
 }
 

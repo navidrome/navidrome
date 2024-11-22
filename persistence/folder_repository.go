@@ -79,6 +79,11 @@ func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, err
 	return res.toModels(), err
 }
 
+func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
+	sq := r.newSelect(opt...).Columns("count(*)")
+	return r.count(sq)
+}
+
 func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]time.Time, error) {
 	sq := r.newSelect().Columns("id", "updated_at").Where(Eq{"library_id": lib.ID, "missing": false})
 	var res []struct {

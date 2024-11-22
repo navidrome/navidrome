@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -11,28 +10,19 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/chain"
 )
 
-type scanner struct {
-	rootCtx context.Context
-	ds      model.DataStore
-	cw      artwork.CacheWarmer
-	running sync.Mutex
+type scannerImpl struct {
+	ds model.DataStore
+	cw artwork.CacheWarmer
 }
 
-func (s *scanner) ScanAll(requestCtx context.Context, fullRescan bool) error {
-	if !s.running.TryLock() {
-		log.Debug(requestCtx, "Scanner already running, ignoring request for rescan.")
-		return ErrAlreadyScanning
-	}
-	defer s.running.Unlock()
-
-	ctx := request.AddValues(s.rootCtx, requestCtx)
+func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress chan<- *scannerStatus) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		return err
+		progress <- &scannerStatus{err: fmt.Errorf("failed to get libraries: %w", err)}
+		return
 	}
 
 	startTime := time.Now()
@@ -42,7 +32,7 @@ func (s *scanner) ScanAll(requestCtx context.Context, fullRescan bool) error {
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		func() error {
-			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &changesDetected))
+			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &changesDetected, progress))
 		},
 
 		// Phase 2: Process missing files, checking for moves
@@ -53,7 +43,8 @@ func (s *scanner) ScanAll(requestCtx context.Context, fullRescan bool) error {
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		return err
+		progress <- &scannerStatus{err: err}
+		return
 	}
 
 	// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
@@ -84,7 +75,6 @@ func (s *scanner) ScanAll(requestCtx context.Context, fullRescan bool) error {
 	})
 
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
-	return nil
 }
 
 type phase[T any] interface {
@@ -133,8 +123,8 @@ func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
 	}
 }
 
-func (s *scanner) Status(context.Context) (*StatusInfo, error) {
+func (s *scannerImpl) Status(context.Context) (*StatusInfo, error) {
 	return &StatusInfo{}, nil
 }
 
-var _ Scanner = (*scanner)(nil)
+var _ scanner = (*scannerImpl)(nil)

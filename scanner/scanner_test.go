@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
@@ -58,7 +59,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		conf.Server.DevExternalScanner = false
 
 		ds = persistence.New(db.Db())
-		s = scanner.GetInstance(ctx, ds, artwork.NoopCacheWarmer())
+		s = scanner.GetInstance(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
