@@ -208,11 +208,10 @@ func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
 }
 
 func (r *artistRepository) purgeEmpty() error {
-	del := Delete(r.tableName).
-		Where(ConcatExpr("id not in (select artist_id from album_artists)"))
+	del := Delete(r.tableName).Where("id not in (select artist_id from album_artists)")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error purging empty artists: %w", err)
+		return fmt.Errorf("purging empty artists: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Purged empty artists", "totalDeleted", c)

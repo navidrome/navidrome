@@ -295,7 +295,7 @@ func (r *albumRepository) purgeEmpty() error {
 	del := Delete(r.tableName).Where("id not in (select distinct(album_id) from media_file)")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return fmt.Errorf("error purging empty albums: %w", err)
+		return fmt.Errorf("purging empty albums: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Purged empty albums", "totalDeleted", c)

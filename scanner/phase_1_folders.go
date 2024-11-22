@@ -112,6 +112,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
 		// TODO Parallelize multiple job when we have multiple libraries
 		var total int64
+		var totalChanged int64
 		for _, job := range p.jobs {
 			if utils.IsCtxDone(p.ctx) {
 				break
@@ -125,17 +126,21 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				p.progress <- &scannerStatus{
 					libID:     job.lib.ID,
 					fileCount: uint32(len(folder.audioFiles)),
-					lastPath:  folder.path,
+					path:      folder.path,
 					phase:     "1",
 				}
 				if folder.isOutdated() || job.fullRescan {
+					if !job.fullRescan {
+						log.Trace(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
+					}
+					totalChanged++
 					folder.elapsed.Stop()
 					put(folder)
 				}
 			}
 			total += job.numFolders.Load()
 		}
-		log.Debug(p.ctx, "Scanner: Finished loading all folders", "numFolders", total)
+		log.Debug(p.ctx, "Scanner: Finished loading all folders", "numFolders", total, "numChanged", totalChanged)
 		return nil
 	}, ppl.Name("traverse filesystem"))
 }
