@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
+	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"golang.org/x/time/rate"
@@ -58,6 +60,7 @@ func GetLocalInstance(rootCtx context.Context, ds model.DataStore, cw artwork.Ca
 			rootCtx: rootCtx,
 			ds:      ds,
 			broker:  broker,
+			limiter: P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate}),
 		}
 	})
 }
@@ -80,7 +83,8 @@ type controller struct {
 	rootCtx     context.Context
 	ds          model.DataStore
 	broker      events.Broker
-	active      atomic.Bool
+	limiter     *rate.Sometimes
+	running     atomic.Bool
 	count       atomic.Uint32
 	folderCount atomic.Uint32
 }
@@ -91,7 +95,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 		log.Error(ctx, "Error getting library", err)
 		return nil, err
 	}
-	if s.active.Load() {
+	if s.running.Load() {
 		status := &StatusInfo{
 			Scanning:    true,
 			LastScan:    lib.LastScanAt,
@@ -100,14 +104,9 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 		}
 		return status, nil
 	}
-	count, err := s.ds.MediaFile(ctx).CountAll()
+	count, folderCount, err := s.getCounters(ctx)
 	if err != nil {
-		log.Error(ctx, "Error getting media file count", err)
-		return nil, err
-	}
-	folderCount, err := s.ds.Folder(ctx).CountAll()
-	if err != nil {
-		log.Error(ctx, "Error getting folder count", err)
+		log.Error(ctx, "Error getting lib stats", err)
 		return nil, err
 	}
 	return &StatusInfo{
@@ -118,36 +117,53 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	}, nil
 }
 
+func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
+	count, err := s.ds.MediaFile(ctx).CountAll()
+	if err != nil {
+		return 0, 0, fmt.Errorf("media file count: %w", err)
+	}
+	folderCount, err := s.ds.Folder(ctx).CountAll()
+	if err != nil {
+		return 0, 0, fmt.Errorf("folder count: %w", err)
+	}
+	return count, folderCount, nil
+}
+
 func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error {
-	if !s.active.CompareAndSwap(false, true) {
+	if !s.running.CompareAndSwap(false, true) {
 		log.Debug(requestCtx, "Scanner already running, ignoring request")
 		return ErrAlreadyScanning
 	}
-	defer s.active.Store(false)
+	defer s.running.Store(false)
 
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = events.BroadcastToAll(ctx)
+	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 	progress := make(chan *scannerStatus, 100)
 	go func() {
 		defer close(progress)
 		s.scanner.scanAll(ctx, fullRescan, progress)
 	}()
-	return s.wait(ctx, progress)
+	err := s.wait(ctx, progress)
+	if err != nil {
+		return err
+	}
+	count, folderCount, err := s.getCounters(ctx)
+	if err != nil {
+		return err
+	}
+	s.sendMessage(ctx, &events.ScanStatus{
+		Scanning:    false,
+		Count:       count,
+		FolderCount: folderCount,
+	})
+	return nil
 }
 
 func (s *controller) wait(ctx context.Context, progress <-chan *scannerStatus) error {
-	limiter := rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate}
-	s.broker.SendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 	s.count.Store(0)
 	s.folderCount.Store(0)
 	var errs []error
-	defer func() {
-		s.broker.SendMessage(ctx, &events.ScanStatus{
-			Scanning:    false,
-			Count:       int64(s.count.Load()),
-			FolderCount: int64(s.folderCount.Load()),
-		})
-	}()
 	for p := range pl.ReadOrDone(ctx, progress) {
 		if p.err != nil {
 			errs = append(errs, p.err)
@@ -155,16 +171,23 @@ func (s *controller) wait(ctx context.Context, progress <-chan *scannerStatus) e
 		}
 		s.count.Add(p.fileCount)
 		s.folderCount.Add(1)
-		limiter.Do(func() {
-			s.broker.SendMessage(ctx, &events.ScanStatus{
-				Scanning:    true,
-				Count:       int64(s.count.Load()),
-				FolderCount: int64(s.folderCount.Load()),
-			})
-		})
+		status := &events.ScanStatus{
+			Scanning:    true,
+			Count:       int64(s.count.Load()),
+			FolderCount: int64(s.folderCount.Load()),
+		}
+		if s.limiter != nil {
+			s.limiter.Do(func() { s.sendMessage(ctx, status) })
+		} else {
+			s.sendMessage(ctx, status)
+		}
 	}
 	if len(errs) != 0 {
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {
+	s.broker.SendMessage(ctx, status)
 }
