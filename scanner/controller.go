@@ -207,7 +207,10 @@ func (s *controller) wait(ctx context.Context, progress <-chan *ProgressInfo) er
 			errs = append(errs, p.Err)
 			continue
 		}
-		s.changesDetected = s.changesDetected || p.ChangesDetected
+		if p.ChangesDetected {
+			s.changesDetected = true
+			continue
+		}
 		s.count.Add(p.FileCount)
 		s.folderCount.Add(1)
 		status := &events.ScanStatus{
@@ -221,10 +224,7 @@ func (s *controller) wait(ctx context.Context, progress <-chan *ProgressInfo) er
 			s.sendMessage(ctx, status)
 		}
 	}
-	if len(errs) != 0 {
-		return errors.Join(errs...)
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {
