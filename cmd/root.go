@@ -136,7 +136,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 			return nil
 		}
 
-		scanner := GetScanner(ctx)
+		scanner := CreateScanner(ctx)
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)

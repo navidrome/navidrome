@@ -103,7 +103,7 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	return router
 }
 
-func GetScanner(ctx context.Context) scanner.Scanner {
+func CreateScanner(ctx context.Context) scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()

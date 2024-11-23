@@ -72,7 +72,7 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	))
 }
 
-func GetScanner(ctx context.Context) scanner.Scanner {
+func CreateScanner(ctx context.Context) scanner.Scanner {
 	panic(wire.Build(
 		allProviders,
 	))
