@@ -30,7 +30,7 @@ var scanCmd = &cobra.Command{
 	Short: "Scan music folder",
 	Long:  "Scan music folder for updates",
 	Run: func(cmd *cobra.Command, args []string) {
-		runScanner()
+		runScanner(cmd.Context())
 	},
 }
 
@@ -59,10 +59,7 @@ func runScanAsSubprocess(ctx context.Context, progress <-chan *scanner.ProgressI
 	}
 }
 
-func runScanner() {
-	// BFR Handle signals
-	ctx := context.Background()
-
+func runScanner(ctx context.Context) {
 	sqlDB := db.Db()
 	defer db.Db().Close()
 	ds := persistence.New(sqlDB)

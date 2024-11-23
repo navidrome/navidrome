@@ -50,8 +50,11 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 
 // Execute runs the root cobra command, which will start the Navidrome server by calling the runNavidrome function.
 func Execute() {
+	ctx, cancel := mainContext(context.Background())
+	defer cancel()
+
 	rootCmd.SetVersionTemplate(`{{println .Version}}`)
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -72,9 +75,6 @@ func postRun() {
 // it will cancel the context and exit gracefully.
 func runNavidrome(ctx context.Context) {
 	defer db.Init()()
-
-	ctx, cancel := mainContext(ctx)
-	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
