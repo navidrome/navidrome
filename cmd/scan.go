@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"context"
+	"encoding/gob"
+	"os"
 
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/spf13/cobra"
 )
 
@@ -32,9 +34,15 @@ func runScanner() {
 	sqlDB := db.Db()
 	ds := persistence.New(sqlDB)
 	ctx := context.Background()
-	s := scanner.GetLocalInstance(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker())
+	progress := scanner.Scan(ctx, ds, artwork.NoopCacheWarmer(), fullRescan)
+	encoder := gob.NewEncoder(os.Stdout)
+	for status := range pl.ReadOrDone(ctx, progress) {
+		err := encoder.Encode(status)
+		if err != nil {
+			log.Error(ctx, "Failed to encode status", err)
+		}
+	}
 
-	_ = s.ScanAll(ctx, fullRescan)
 	if fullRescan {
 		log.Info("Finished full rescan")
 	} else {

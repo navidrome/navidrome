@@ -18,10 +18,10 @@ type scannerImpl struct {
 	cw artwork.CacheWarmer
 }
 
-func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress chan<- *scannerStatus) {
+func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		progress <- &scannerStatus{err: fmt.Errorf("failed to get libraries: %w", err)}
+		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get libraries: %w", err)}
 		return
 	}
 
@@ -43,7 +43,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress cha
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		progress <- &scannerStatus{err: err}
+		progress <- &ProgressInfo{Err: err}
 		return
 	}
 

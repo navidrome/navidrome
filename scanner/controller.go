@@ -37,12 +37,12 @@ type StatusInfo struct {
 
 func GetInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
 	if conf.Server.DevExternalScanner {
-		return GetExternalInstance(rootCtx, ds, broker)
+		return createExternalInstance(rootCtx, ds, broker)
 	}
-	return GetLocalInstance(rootCtx, ds, cw, broker)
+	return createLocalInstance(rootCtx, ds, cw, broker)
 }
 
-func GetExternalInstance(rootCtx context.Context, ds model.DataStore, broker events.Broker) Scanner {
+func createExternalInstance(rootCtx context.Context, ds model.DataStore, broker events.Broker) Scanner {
 	return singleton.GetInstance(func() *controller {
 		return &controller{
 			scanner: &scannerExternal{rootCtx: rootCtx},
@@ -53,7 +53,7 @@ func GetExternalInstance(rootCtx context.Context, ds model.DataStore, broker eve
 	})
 }
 
-func GetLocalInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
+func createLocalInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
 	return singleton.GetInstance(func() *controller {
 		return &controller{
 			scanner: &scannerImpl{ds: ds, cw: cw},
@@ -65,17 +65,28 @@ func GetLocalInstance(rootCtx context.Context, ds model.DataStore, cw artwork.Ca
 	})
 }
 
-type scannerStatus struct {
-	libID     int
-	fileCount uint32
-	path      string
-	phase     string
-	err       error
+func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullRescan bool) <-chan *ProgressInfo {
+	scanner := &scannerImpl{ds: ds, cw: cw}
+	progress := make(chan *ProgressInfo, 100)
+	go func() {
+		defer close(progress)
+		scanner.scanAll(ctx, fullRescan, progress)
+	}()
+	return progress
+}
+
+type ProgressInfo struct {
+	LibID       int
+	FileCount   uint32
+	FolderCount uint32
+	Path        string
+	Phase       string
+	Err         error
 }
 
 type scanner interface {
-	scanAll(ctx context.Context, fullRescan bool, progress chan<- *scannerStatus)
-	// BFR: scanFolders(ctx context.Context, lib model.Lib, folders []string, progress chan<- *scannerStatus)
+	scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo)
+	// BFR: scanFolders(ctx context.Context, lib model.Lib, folders []string, progress chan<- *ScannerStatus)
 }
 
 type controller struct {
@@ -139,7 +150,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = events.BroadcastToAll(ctx)
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
-	progress := make(chan *scannerStatus, 100)
+	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
 		s.scanner.scanAll(ctx, fullRescan, progress)
@@ -160,16 +171,16 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	return nil
 }
 
-func (s *controller) wait(ctx context.Context, progress <-chan *scannerStatus) error {
+func (s *controller) wait(ctx context.Context, progress <-chan *ProgressInfo) error {
 	s.count.Store(0)
 	s.folderCount.Store(0)
 	var errs []error
 	for p := range pl.ReadOrDone(ctx, progress) {
-		if p.err != nil {
-			errs = append(errs, p.err)
+		if p.Err != nil {
+			errs = append(errs, p.Err)
 			continue
 		}
-		s.count.Add(p.fileCount)
+		s.count.Add(p.FileCount)
 		s.folderCount.Add(1)
 		status := &events.ScanStatus{
 			Scanning:    true,

@@ -2,7 +2,10 @@ package scanner
 
 import (
 	"context"
+	"encoding/gob"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -14,35 +17,51 @@ type scannerExternal struct {
 	rootCtx context.Context
 }
 
-func (s *scannerExternal) scanAll(requestCtx context.Context, fullRescan bool, progress chan<- *scannerStatus) {
+func (s *scannerExternal) scanAll(requestCtx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
 	ex, err := os.Executable()
 	if err != nil {
-		progress <- &scannerStatus{err: fmt.Errorf("failed to get executable path: %w", err)}
+		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get executable path: %w", err)}
 		return
 	}
 	log.Debug(requestCtx, "Spawning external scanner process", "fullRescan", fullRescan, "path", ex)
 	cmd := exec.CommandContext(s.rootCtx, ex, "scan", "--nobanner", "--noconfig", If(fullRescan, "--full", ""))
 
-	//in, out := io.Pipe()
+	in, out := io.Pipe()
+	defer in.Close()
+	defer out.Close()
+	cmd.Stdout = out
 	cmd.Stderr = os.Stderr
-	//cmd.Stdout = out
 
 	if err := cmd.Start(); err != nil {
-		progress <- &scannerStatus{err: fmt.Errorf("failed to start scanner process: %w", err)}
+		progress <- &ProgressInfo{Err: fmt.Errorf("failed to start scanner process: %w", err)}
 		return
 	}
+	go s.wait(cmd, out)
 
-	//go func() {
-	//	sc := bufio.NewScanner(in)
-	//	for sc.Scan() {
-	//		fmt.Println("!!!!", sc.Text())
-	//	}
-	//}()
+	decoder := gob.NewDecoder(in)
+	for {
+		var p ProgressInfo
+		if err := decoder.Decode(&p); err != nil {
+			if !errors.Is(err, io.EOF) {
+				progress <- &ProgressInfo{Err: fmt.Errorf("failed to read status from scanner: %w", err)}
+			}
+			break
+		}
+		progress <- &p
+	}
+}
 
+func (s *scannerExternal) wait(cmd *exec.Cmd, out *io.PipeWriter) {
 	if err := cmd.Wait(); err != nil {
-		progress <- &scannerStatus{err: fmt.Errorf("scanner process failed: %w", err)}
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			_ = out.CloseWithError(fmt.Errorf("%s exited with non-zero status code: %w", cmd, exitErr))
+		} else {
+			_ = out.CloseWithError(fmt.Errorf("waiting %s cmd: %w", cmd, err))
+		}
 		return
 	}
+	_ = out.Close()
 }
 
 var _ scanner = (*scannerExternal)(nil)
