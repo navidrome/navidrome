@@ -72,12 +72,13 @@ func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullR
 }
 
 type ProgressInfo struct {
-	LibID       int
-	FileCount   uint32
-	FolderCount uint32
-	Path        string
-	Phase       string
-	Err         error
+	LibID           int
+	FileCount       uint32
+	FolderCount     uint32
+	Path            string
+	Phase           string
+	ChangesDetected bool
+	Err             error
 }
 
 type scanner interface {
@@ -86,13 +87,14 @@ type scanner interface {
 }
 
 type controller struct {
-	rootCtx     context.Context
-	ds          model.DataStore
-	cw          artwork.CacheWarmer
-	broker      events.Broker
-	limiter     *rate.Sometimes
-	count       atomic.Uint32
-	folderCount atomic.Uint32
+	rootCtx         context.Context
+	ds              model.DataStore
+	cw              artwork.CacheWarmer
+	broker          events.Broker
+	limiter         *rate.Sometimes
+	count           atomic.Uint32
+	folderCount     atomic.Uint32
+	changesDetected bool
 }
 
 func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
@@ -142,8 +144,11 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	}
 	defer release()
 
+	// Prepare the context for the scan
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = events.BroadcastToAll(ctx)
+
+	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
@@ -151,10 +156,20 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 		scanner := s.getScanner()
 		scanner.scanAll(ctx, fullRescan, progress)
 	}()
+
+	// Wait for the scan to finish, sending progress events to all connected clients
 	err = s.wait(ctx, progress)
 	if err != nil {
 		return err
 	}
+
+	// If changes were detected, send a refresh event to all clients
+	if s.changesDetected {
+		log.Debug(ctx, "Detected changes in the music folder. Sending refresh event")
+		s.broker.SendMessage(ctx, &events.RefreshResource{})
+	}
+
+	// Send the final scan status event, with totals
 	count, folderCount, err := s.getCounters(ctx)
 	if err != nil {
 		return err
@@ -184,12 +199,15 @@ func lockScan(ctx context.Context) (func(), error) {
 func (s *controller) wait(ctx context.Context, progress <-chan *ProgressInfo) error {
 	s.count.Store(0)
 	s.folderCount.Store(0)
+	s.changesDetected = false
+
 	var errs []error
 	for p := range pl.ReadOrDone(ctx, progress) {
 		if p.Err != nil {
 			errs = append(errs, p.Err)
 			continue
 		}
+		s.changesDetected = s.changesDetected || p.ChangesDetected
 		s.count.Add(p.FileCount)
 		s.folderCount.Add(1)
 		status := &events.ScanStatus{

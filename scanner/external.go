@@ -20,8 +20,7 @@ import (
 //
 // The external process will send progress updates to the main process through its STDOUT, and the main
 // process will forward them to the caller.
-type scannerExternal struct {
-}
+type scannerExternal struct{}
 
 func (s *scannerExternal) scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
 	exe, err := os.Executable()

@@ -74,6 +74,10 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress cha
 		return nil
 	})
 
+	if changesDetected.Load() {
+		progress <- &ProgressInfo{ChangesDetected: true}
+	}
+
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 }
 
