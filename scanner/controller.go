@@ -158,8 +158,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	}()
 
 	// Wait for the scan to finish, sending progress events to all connected clients
-	err = s.wait(ctx, progress)
-	if err != nil {
+	if err = s.trackProgress(ctx, progress); err != nil {
 		return err
 	}
 
@@ -196,7 +195,7 @@ func lockScan(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-func (s *controller) wait(ctx context.Context, progress <-chan *ProgressInfo) error {
+func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) error {
 	s.count.Store(0)
 	s.folderCount.Store(0)
 	s.changesDetected = false

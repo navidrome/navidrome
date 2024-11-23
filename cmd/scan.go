@@ -34,7 +34,7 @@ var scanCmd = &cobra.Command{
 	},
 }
 
-func runScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
+func trackScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
 	for status := range pl.ReadOrDone(ctx, progress) {
 		if status.Err != nil {
 			log.Error(ctx, "Scan error", status.Err)
@@ -49,7 +49,7 @@ func runScanInteractively(ctx context.Context, progress <-chan *scanner.Progress
 	}
 }
 
-func runScanAsSubprocess(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
+func trackScanAsSubprocess(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
 	encoder := gob.NewEncoder(os.Stdout)
 	for status := range pl.ReadOrDone(ctx, progress) {
 		err := encoder.Encode(status)
@@ -69,9 +69,10 @@ func runScanner(ctx context.Context) {
 		log.Fatal(ctx, "Failed to scan", err)
 	}
 
+	// Wait for the scanner to finish
 	if subprocess {
-		runScanAsSubprocess(ctx, progress)
+		trackScanAsSubprocess(ctx, progress)
 	} else {
-		runScanInteractively(ctx, progress)
+		trackScanInteractively(ctx, progress)
 	}
 }
