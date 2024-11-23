@@ -14,10 +14,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var fullRescan bool
+var (
+	fullScan   bool
+	subprocess bool
+)
 
 func init() {
-	scanCmd.Flags().BoolVarP(&fullRescan, "full", "f", false, "check all subfolders, ignoring timestamps")
+	scanCmd.Flags().BoolVarP(&fullScan, "full", "f", false, "check all subfolders, ignoring timestamps")
+	scanCmd.Flags().BoolVarP(&subprocess, "subprocess", "", false, "run as subprocess (internal use)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -30,11 +34,22 @@ var scanCmd = &cobra.Command{
 	},
 }
 
-func runScanner() {
-	sqlDB := db.Db()
-	ds := persistence.New(sqlDB)
-	ctx := context.Background()
-	progress := scanner.Scan(ctx, ds, artwork.NoopCacheWarmer(), fullRescan)
+func runScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
+	for status := range pl.ReadOrDone(ctx, progress) {
+		if status.Err != nil {
+			log.Error(ctx, "Scan error", status.Err)
+		}
+		// Discard the progress status, we only care about errors
+	}
+
+	if fullScan {
+		log.Info("Finished full rescan")
+	} else {
+		log.Info("Finished rescan")
+	}
+}
+
+func runScanAsSubprocess(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
 	encoder := gob.NewEncoder(os.Stdout)
 	for status := range pl.ReadOrDone(ctx, progress) {
 		err := encoder.Encode(status)
@@ -42,10 +57,24 @@ func runScanner() {
 			log.Error(ctx, "Failed to encode status", err)
 		}
 	}
+}
 
-	if fullRescan {
-		log.Info("Finished full rescan")
+func runScanner() {
+	// BFR Handle signals
+	ctx := context.Background()
+
+	sqlDB := db.Db()
+	defer db.Db().Close()
+	ds := persistence.New(sqlDB)
+
+	progress, err := scanner.Scan(ctx, ds, artwork.NoopCacheWarmer(), fullScan)
+	if err != nil {
+		log.Fatal(ctx, "Failed to scan", err)
+	}
+
+	if subprocess {
+		runScanAsSubprocess(ctx, progress)
 	} else {
-		log.Info("Finished rescan")
+		runScanInteractively(ctx, progress)
 	}
 }

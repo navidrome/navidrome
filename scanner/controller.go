@@ -65,14 +65,21 @@ func createLocalInstance(rootCtx context.Context, ds model.DataStore, cw artwork
 	})
 }
 
-func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullRescan bool) <-chan *ProgressInfo {
+// Scan starts a full scan of the music library. This is meant to be called from the command line (see cmd/scan.go).
+func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullRescan bool) (<-chan *ProgressInfo, error) {
+	release, err := lockScan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
 	scanner := &scannerImpl{ds: ds, cw: cw}
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
 		scanner.scanAll(ctx, fullRescan, progress)
 	}()
-	return progress
+	return progress, nil
 }
 
 type ProgressInfo struct {
@@ -89,13 +96,14 @@ type scanner interface {
 	// BFR: scanFolders(ctx context.Context, lib model.Lib, folders []string, progress chan<- *ScannerStatus)
 }
 
+var running atomic.Bool
+
 type controller struct {
 	scanner
 	rootCtx     context.Context
 	ds          model.DataStore
 	broker      events.Broker
 	limiter     *rate.Sometimes
-	running     atomic.Bool
 	count       atomic.Uint32
 	folderCount atomic.Uint32
 }
@@ -106,7 +114,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 		log.Error(ctx, "Error getting library", err)
 		return nil, err
 	}
-	if s.running.Load() {
+	if running.Load() {
 		status := &StatusInfo{
 			Scanning:    true,
 			LastScan:    lib.LastScanAt,
@@ -141,11 +149,11 @@ func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
 }
 
 func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error {
-	if !s.running.CompareAndSwap(false, true) {
-		log.Debug(requestCtx, "Scanner already running, ignoring request")
-		return ErrAlreadyScanning
+	release, err := lockScan(requestCtx)
+	if err != nil {
+		return err
 	}
-	defer s.running.Store(false)
+	defer release()
 
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = events.BroadcastToAll(ctx)
@@ -155,7 +163,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 		defer close(progress)
 		s.scanner.scanAll(ctx, fullRescan, progress)
 	}()
-	err := s.wait(ctx, progress)
+	err = s.wait(ctx, progress)
 	if err != nil {
 		return err
 	}
@@ -169,6 +177,16 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 		FolderCount: folderCount,
 	})
 	return nil
+}
+
+func lockScan(requestCtx context.Context) (func(), error) {
+	if !running.CompareAndSwap(false, true) {
+		log.Debug(requestCtx, "Scanner already running, ignoring request")
+		return func() {}, ErrAlreadyScanning
+	}
+	return func() {
+		running.Store(false)
+	}, nil
 }
 
 func (s *controller) wait(ctx context.Context, progress <-chan *ProgressInfo) error {

@@ -24,7 +24,7 @@ func (s *scannerExternal) scanAll(requestCtx context.Context, fullRescan bool, p
 		return
 	}
 	log.Debug(requestCtx, "Spawning external scanner process", "fullRescan", fullRescan, "path", ex)
-	cmd := exec.CommandContext(s.rootCtx, ex, "scan", "--nobanner", "--noconfig", If(fullRescan, "--full", ""))
+	cmd := exec.CommandContext(s.rootCtx, ex, "scan", "--nobanner", "--noconfig", "--subprocess", If(fullRescan, "--full", ""))
 
 	in, out := io.Pipe()
 	defer in.Close()
