@@ -13,18 +13,24 @@ import (
 	. "github.com/navidrome/navidrome/utils/gg"
 )
 
+// scannerExternal is a scanner that runs an external process to do the scanning. It is used to avoid
+// memory leaks or retention in the main process, as the scanner can consume a lot of memory. The
+// external process will be spawned with the same executable as the current process, and will run
+// the "scan" command with the "--subprocess" flag.
+//
+// The external process will send progress updates to the main process through its STDOUT, and the main
+// process will forward them to the caller.
 type scannerExternal struct {
-	rootCtx context.Context
 }
 
-func (s *scannerExternal) scanAll(requestCtx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
-	ex, err := os.Executable()
+func (s *scannerExternal) scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
+	exe, err := os.Executable()
 	if err != nil {
 		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get executable path: %w", err)}
 		return
 	}
-	log.Debug(requestCtx, "Spawning external scanner process", "fullRescan", fullRescan, "path", ex)
-	cmd := exec.CommandContext(s.rootCtx, ex, "scan", "--nobanner", "--noconfig", "--subprocess", If(fullRescan, "--full", ""))
+	log.Debug(ctx, "Spawning external scanner process", "fullRescan", fullRescan, "path", exe)
+	cmd := exec.CommandContext(ctx, exe, "scan", "--nobanner", "--noconfig", "--subprocess", If(fullRescan, "--full", ""))
 
 	in, out := io.Pipe()
 	defer in.Close()

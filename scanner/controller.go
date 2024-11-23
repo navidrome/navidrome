@@ -15,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/pl"
-	"github.com/navidrome/navidrome/utils/singleton"
 	"golang.org/x/time/rate"
 )
 
@@ -36,33 +35,23 @@ type StatusInfo struct {
 }
 
 func GetInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
-	if conf.Server.DevExternalScanner {
-		return createExternalInstance(rootCtx, ds, broker)
+	c := &controller{
+		rootCtx: rootCtx,
+		ds:      ds,
+		cw:      cw,
+		broker:  broker,
 	}
-	return createLocalInstance(rootCtx, ds, cw, broker)
+	if !conf.Server.DevExternalScanner {
+		c.limiter = P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
+	}
+	return c
 }
 
-func createExternalInstance(rootCtx context.Context, ds model.DataStore, broker events.Broker) Scanner {
-	return singleton.GetInstance(func() *controller {
-		return &controller{
-			scanner: &scannerExternal{rootCtx: rootCtx},
-			rootCtx: rootCtx,
-			ds:      ds,
-			broker:  broker,
-		}
-	})
-}
-
-func createLocalInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
-	return singleton.GetInstance(func() *controller {
-		return &controller{
-			scanner: &scannerImpl{ds: ds, cw: cw},
-			rootCtx: rootCtx,
-			ds:      ds,
-			broker:  broker,
-			limiter: P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate}),
-		}
-	})
+func (s *controller) getScanner() scanner {
+	if conf.Server.DevExternalScanner {
+		return &scannerExternal{}
+	}
+	return &scannerImpl{ds: s.ds, cw: s.cw}
 }
 
 // Scan starts a full scan of the music library. This is meant to be called from the command line (see cmd/scan.go).
@@ -73,10 +62,10 @@ func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullR
 	}
 	defer release()
 
-	scanner := &scannerImpl{ds: ds, cw: cw}
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
+		scanner := &scannerImpl{ds: ds, cw: cw}
 		scanner.scanAll(ctx, fullRescan, progress)
 	}()
 	return progress, nil
@@ -96,12 +85,10 @@ type scanner interface {
 	// BFR: scanFolders(ctx context.Context, lib model.Lib, folders []string, progress chan<- *ScannerStatus)
 }
 
-var running atomic.Bool
-
 type controller struct {
-	scanner
 	rootCtx     context.Context
 	ds          model.DataStore
+	cw          artwork.CacheWarmer
 	broker      events.Broker
 	limiter     *rate.Sometimes
 	count       atomic.Uint32
@@ -161,7 +148,8 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		s.scanner.scanAll(ctx, fullRescan, progress)
+		scanner := s.getScanner()
+		scanner.scanAll(ctx, fullRescan, progress)
 	}()
 	err = s.wait(ctx, progress)
 	if err != nil {
@@ -179,9 +167,13 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	return nil
 }
 
-func lockScan(requestCtx context.Context) (func(), error) {
+// This is a global variable that is used to prevent multiple scans from running at the same time.
+// "There can be only one" - https://youtu.be/sqcLjcSloXs?si=VlsjEOjTJZ68zIyg
+var running atomic.Bool
+
+func lockScan(ctx context.Context) (func(), error) {
 	if !running.CompareAndSwap(false, true) {
-		log.Debug(requestCtx, "Scanner already running, ignoring request")
+		log.Debug(ctx, "Scanner already running, ignoring request")
 		return func() {}, ErrAlreadyScanning
 	}
 	return func() {
