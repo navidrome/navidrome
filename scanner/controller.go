@@ -34,7 +34,7 @@ type StatusInfo struct {
 	FolderCount uint32
 }
 
-func GetInstance(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
+func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
 	c := &controller{
 		rootCtx: rootCtx,
 		ds:      ds,

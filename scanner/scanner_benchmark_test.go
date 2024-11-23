@@ -37,7 +37,7 @@ func BenchmarkScan(b *testing.B) {
 
 	ds := persistence.New(db.Db())
 	conf.Server.DevExternalScanner = false
-	s := scanner.GetInstance(context.Background(), ds, artwork.NoopCacheWarmer(), events.NoopBroker())
+	s := scanner.New(context.Background(), ds, artwork.NoopCacheWarmer(), events.NoopBroker())
 
 	fs := storagetest.FakeFS{}
 	storagetest.Register("fake", &fs)

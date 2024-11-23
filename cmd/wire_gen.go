@@ -65,7 +65,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	players := core.NewPlayers(dataStore)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	scannerScanner := scanner.GetInstance(ctx, dataStore, cacheWarmer, broker)
+	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker)
 	playlists := core.NewPlaylists(dataStore)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
@@ -113,7 +113,7 @@ func GetScanner(ctx context.Context) scanner.Scanner {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	scannerScanner := scanner.GetInstance(ctx, dataStore, cacheWarmer, broker)
+	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker)
 	return scannerScanner
 }
 
@@ -126,4 +126,4 @@ func GetPlaybackServer() playback.PlaybackServer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, db.Db)

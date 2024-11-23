@@ -59,7 +59,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		conf.Server.DevExternalScanner = false
 
 		ds = persistence.New(db.Db())
-		s = scanner.GetInstance(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker())
+		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
 		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())

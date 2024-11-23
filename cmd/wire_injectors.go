@@ -32,7 +32,7 @@ var allProviders = wire.NewSet(
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.GetInstance,
+	scanner.New,
 	db.Db,
 )
 
