@@ -1,8 +1,10 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -16,11 +18,12 @@ import (
 	"github.com/navidrome/navidrome/core/metrics/insights"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"golang.org/x/time/rate"
 )
 
 type Insights interface {
-	Collect(ctx context.Context) string
+	Run(ctx context.Context)
 }
 
 var (
@@ -32,18 +35,59 @@ type insightsCollector struct {
 	ds model.DataStore
 }
 
-func NewInsights(ds model.DataStore) Insights {
-	id, err := ds.Property(context.TODO()).Get(consts.InsightsID)
-	if err != nil {
-		log.Trace("Could not get Insights ID from DB", err)
-		id = uuid.NewString()
-		err = ds.Property(context.TODO()).Put(consts.InsightsID, id)
+func GetInstance(ds model.DataStore) Insights {
+	return singleton.GetInstance(func() *insightsCollector {
+		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
 		if err != nil {
-			log.Trace("Could not save Insights ID to DB", err)
+			log.Trace("Could not get Insights ID from DB", err)
+			id = uuid.NewString()
+			err = ds.Property(context.TODO()).Put(consts.InsightsIDKey, id)
+			if err != nil {
+				log.Trace("Could not save Insights ID to DB", err)
+			}
+		}
+		insightsID = id
+		return &insightsCollector{ds: ds}
+	})
+}
+
+func (c insightsCollector) Run(ctx context.Context) {
+	for {
+		c.sendInsights(ctx)
+		select {
+		case <-time.After(consts.InsightsUpdateInterval):
+			continue
+		case <-ctx.Done():
+			return
 		}
 	}
-	insightsID = id
-	return &insightsCollector{ds: ds}
+}
+
+func (c insightsCollector) sendInsights(ctx context.Context) {
+	hc := &http.Client{
+		Timeout: consts.DefaultHttpClientTimeOut,
+	}
+	data := c.collect(ctx)
+	if data == nil {
+		return
+	}
+	body := bytes.NewReader(data)
+	req, err := http.NewRequestWithContext(ctx, "POST", consts.InsightsEndpoint, body)
+	if err != nil {
+		log.Trace(ctx, "Could not create Insights request", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := hc.Do(req)
+	if err != nil {
+		log.Trace(ctx, "Could not send Insights data", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		log.Trace(ctx, "Could not send Insights data", "status", resp.Status)
+		return
+	}
 }
 
 func buildInfo() (map[string]string, string) {
@@ -109,7 +153,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.LogLevel = conf.Server.LogLevel
 	data.Config.LogFileConfigured = conf.Server.LogFile != ""
 	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
-	data.Config.DefaultBackgroundURL = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
+	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
 	data.Config.EnableCoverAnimation = conf.Server.EnableCoverAnimation
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
@@ -132,32 +176,38 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule
 	data.Config.BackupCount = conf.Server.Backup.Count
 	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
-	data.Config.DevAutoLoginUsername = conf.Server.DevAutoLoginUsername != ""
-	data.Config.DevAutoCreateAdminPassword = conf.Server.DevAutoCreateAdminPassword != ""
+	data.Config.DevAutoLoginUsernameSet = conf.Server.DevAutoLoginUsername != ""
+	data.Config.DevAutoCreateAdminPasswordSet = conf.Server.DevAutoCreateAdminPassword != ""
 
 	return data
 })
 
-func (s insightsCollector) Collect(ctx context.Context) string {
+func (c insightsCollector) collect(ctx context.Context) []byte {
 	data := staticData()
 	data.Uptime = time.Since(consts.ServerStart).Milliseconds() / 1000
 	libraryUpdate.Do(func() {
-		data.Library.Tracks, _ = s.ds.MediaFile(ctx).CountAll()
-		data.Library.Albums, _ = s.ds.Album(ctx).CountAll()
-		data.Library.Artists, _ = s.ds.Artist(ctx).CountAll()
-		data.Library.Playlists, _ = s.ds.Playlist(ctx).Count()
-		data.Library.Shares, _ = s.ds.Share(ctx).CountAll()
-		data.Library.Radios, _ = s.ds.Radio(ctx).Count()
-		data.Library.ActiveUsers, _ = s.ds.User(ctx).CountAll(model.QueryOptions{
+		data.Library.Tracks, _ = c.ds.MediaFile(ctx).CountAll()
+		data.Library.Albums, _ = c.ds.Album(ctx).CountAll()
+		data.Library.Artists, _ = c.ds.Artist(ctx).CountAll()
+		data.Library.Playlists, _ = c.ds.Playlist(ctx).Count()
+		data.Library.Shares, _ = c.ds.Share(ctx).CountAll()
+		data.Library.Radios, _ = c.ds.Radio(ctx).Count()
+		data.Library.ActiveUsers, _ = c.ds.User(ctx).CountAll(model.QueryOptions{
 			Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 		})
 	})
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	data.Mem.Alloc = m.Alloc
+	data.Mem.TotalAlloc = m.TotalAlloc
+	data.Mem.Sys = m.Sys
+	data.Mem.NumGC = m.NumGC
 
 	// Marshal to JSON
 	resp, err := json.Marshal(data)
 	if err != nil {
 		log.Trace(ctx, "Could not marshal Insights data", err)
-		return ""
+		return nil
 	}
-	return string(resp)
+	return resp
 }
