@@ -48,13 +48,88 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 
   // Send all properties to the Go map
   TagLib::PropertyMap tags = f.file()->properties();
-  for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
-       ++i) {
-    char *key = (char *)i->first.toCString(true);
-    for (TagLib::StringList::ConstIterator j = i->second.begin();
-         j != i->second.end(); ++j) {
-      char *val = (char *)(*j).toCString(true);
-      goPutStr(id, key, val);
+
+  TagLib::ID3v2::Tag *id3Tags = NULL;
+
+  // Get some extended/non-standard ID3-only tags (ex: iTunes extended frames)
+  TagLib::MPEG::File *mp3File(dynamic_cast<TagLib::MPEG::File *>(f.file()));
+  if (mp3File != NULL) {
+    id3Tags = mp3File->ID3v2Tag();
+  }
+
+  if (id3Tags == NULL) {
+    TagLib::RIFF::WAV::File *wavFile(dynamic_cast<TagLib::RIFF::WAV::File *>(f.file()));
+    if (wavFile != NULL && wavFile->hasID3v2Tag()) {
+      id3Tags = wavFile->ID3v2Tag();
+    }
+  }
+
+  if (id3Tags == NULL) {
+    TagLib::RIFF::AIFF::File *aiffFile(dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file()));
+    if (aiffFile && aiffFile->hasID3v2Tag()) {
+      id3Tags = aiffFile->tag();
+    }
+  }
+
+  // Yes, it is possible to have ID3v2 tags in FLAC. However, that can cause problems
+  // with many players, so they will not be parsed
+
+  if (id3Tags != NULL) {
+    const auto &frames = id3Tags->frameListMap();
+
+    for (const auto &kv: frames) {
+      if (kv.first == "USLT") {
+        for (const auto &tag: kv.second) {
+          TagLib::ID3v2::UnsynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(tag);
+          if (frame == NULL) continue;
+
+          tags.erase("LYRICS");
+
+          const auto bv = frame->language();
+          char language[4] = {'x', 'x', 'x', '\0'};
+          if (bv.size() == 3) {
+            strncpy(language, bv.data(), 3);
+          }
+
+          char *val = (char *)frame->text().toCString(true);
+
+          goPutLyrics(id, language, val);
+        }
+      } else if (kv.first == "SYLT") {
+        for (const auto &tag: kv.second) {
+          TagLib::ID3v2::SynchronizedLyricsFrame *frame = dynamic_cast<TagLib::ID3v2::SynchronizedLyricsFrame *>(tag);
+          if (frame == NULL) continue;
+
+          const auto bv = frame->language();
+          char language[4] = {'x', 'x', 'x', '\0'};
+          if (bv.size() == 3) {
+            strncpy(language, bv.data(), 3);
+          }
+
+          const auto format = frame->timestampFormat();
+          if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMilliseconds) {
+
+            for (const auto &line: frame->synchedText()) {
+              char *text = (char *)line.text.toCString(true);
+              goPutLyricLine(id, language, text, line.time);
+            }
+          } else if (format == TagLib::ID3v2::SynchronizedLyricsFrame::AbsoluteMpegFrames) {
+            const int sampleRate = props->sampleRate();
+
+            if (sampleRate != 0) {
+              for (const auto &line: frame->synchedText()) {
+                const int timeInMs = (line.time * 1000) / sampleRate;
+                char *text = (char *)line.text.toCString(true);
+                goPutLyricLine(id, language, text, timeInMs);
+              }
+            }
+          }
+        }
+      } else if (kv.first == "TIPL"){
+        if (!kv.second.isEmpty()) {
+          tags.insert(kv.first, kv.second.front()->toString());
+        }
+      }
     }
   }
 
@@ -66,7 +141,7 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
       char *key = (char *)item.first.toCString(true);
       for (const auto value: item.second.toStringList()) {
         char *val = (char *)value.toCString(true);
-        goPutStr(id, key, val);
+        goPutM4AStr(id, key, val);
       }
     }
   }
@@ -77,8 +152,17 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     const TagLib::ASF::Tag *asfTags{asfFile->tag()};
     const auto itemListMap = asfTags->attributeListMap();
     for (const auto item : itemListMap) {
-      char *key = (char *)item.first.toCString(true);
-      char *val = (char *)item.second.front().toString().toCString(true);
+      tags.insert(item.first, item.second.front().toString());
+    }
+  }
+
+  // Send all collected tags to the Go map
+  for (TagLib::PropertyMap::ConstIterator i = tags.begin(); i != tags.end();
+       ++i) {
+    char *key = (char *)i->first.toCString(true);
+    for (TagLib::StringList::ConstIterator j = i->second.begin();
+         j != i->second.end(); ++j) {
+      char *val = (char *)(*j).toCString(true);
       goPutStr(id, key, val);
     }
   }
