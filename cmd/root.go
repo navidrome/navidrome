@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"strings"
@@ -81,6 +80,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
+	g.Go(startInsightCollector(ctx))
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -99,9 +99,6 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 
 // startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
-	i := CreateInsights()
-	r := i.Collect(ctx)
-	fmt.Printf("\n\nInsights: %s\n\n", r)
 	return func() error {
 		a := CreateServer(conf.Server.MusicFolder)
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
@@ -199,6 +196,19 @@ func startScheduler(ctx context.Context) func() error {
 		log.Info(ctx, "Starting scheduler")
 		schedulerInstance := scheduler.GetInstance()
 		schedulerInstance.Run(ctx)
+		return nil
+	}
+}
+
+// startInsightCollector starts the Navidrome Insight Collector, if configured.
+func startInsightCollector(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.EnableInsightsCollector {
+			return nil
+		}
+		log.Info(ctx, "Starting Insight Collector")
+		ic := CreateInsights()
+		ic.Run(ctx)
 		return nil
 	}
 }

@@ -21,5 +21,5 @@ var Set = wire.NewSet(
 	ffmpeg.New,
 	scrobbler.GetPlayTracker,
 	playback.GetInstance,
-	metrics.NewInsights,
+	metrics.GetInstance,
 )

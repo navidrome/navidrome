@@ -13,7 +13,6 @@ const (
 
 	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
 	InitialSetupFlagKey = "InitialSetup"
-	InsightsID          = "InsightsID"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
@@ -85,6 +84,12 @@ const (
 const (
 	AlbumPlayCountModeAbsolute   = "absolute"
 	AlbumPlayCountModeNormalized = "normalized"
+)
+
+const (
+	InsightsIDKey          = "InsightsID"
+	InsightsEndpoint       = "https://insights.navidrome.org/collect"
+	InsightsUpdateInterval = 24 * time.Hour
 )
 
 var (
