@@ -114,6 +114,7 @@ type configOptions struct {
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
 	DevExternalScanner               bool
+	DevScannerThreads                uint
 }
 
 type scannerOptions struct {
@@ -478,6 +479,7 @@ func init() {
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", false)
+	viper.SetDefault("devscannerthreads", 5)
 }
 
 func InitConfig(cfgFile string) {
