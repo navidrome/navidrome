@@ -28,7 +28,7 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags map[string][]string) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile()
+		return md.ToMediaFile(1, "folderID")
 	}
 
 	Describe("Dates", func() {

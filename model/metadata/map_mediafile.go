@@ -7,9 +7,11 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-func (md Metadata) ToMediaFile() model.MediaFile {
+func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf := model.MediaFile{
-		Tags: md.tags,
+		LibraryID: libID,
+		FolderID:  folderID,
+		Tags:      md.tags,
 	}
 	mf.Title = md.mapTrackTitle()
 	mf.Album = md.mapAlbumName()

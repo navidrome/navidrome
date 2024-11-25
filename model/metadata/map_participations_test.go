@@ -34,7 +34,7 @@ var _ = Describe("Participations", func() {
 	var toMediaFile = func(tags map[string][]string) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile()
+		return md.ToMediaFile(1, "folderID")
 	}
 
 	Describe("ARTIST(S) tags", func() {
