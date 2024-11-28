@@ -39,6 +39,7 @@ func TestPersistence(t *testing.T) {
 func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
 	mf.LibraryID = 1
+	mf.LibraryPath = "music" // Default folder
 	mf.Participations = model.Participations{}
 	return mf
 }

@@ -53,11 +53,11 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 	})
 	for _, album := range albums {
 		discs := slice.Group(album, func(mf model.MediaFile) int { return mf.DiscNumber })
-		isMultDisc := len(discs) > 1
+		isMultiDisc := len(discs) > 1
 		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist,
-			"format", format, "bitrate", bitrate, "isMultDisc", isMultDisc, "numTracks", len(album))
+			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
-			file := a.albumFilename(mf, format, isMultDisc)
+			file := a.albumFilename(mf, format, isMultiDisc)
 			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
 		}
 	}
@@ -78,12 +78,12 @@ func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	return z
 }
 
-func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc bool) string {
+func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc bool) string {
 	_, file := filepath.Split(mf.Path)
 	if format != "raw" {
 		file = strings.TrimSuffix(file, mf.Suffix) + format
 	}
-	if isMultDisc {
+	if isMultiDisc {
 		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
 	}
 	return fmt.Sprintf("%s/%s", sanitizeName(mf.Album), file)
@@ -91,11 +91,11 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc b
 
 func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
 	s, err := a.shares.Load(ctx, id)
-	if !s.Downloadable {
-		return model.ErrNotAuthorized
-	}
 	if err != nil {
 		return err
+	}
+	if !s.Downloadable {
+		return model.ErrNotAuthorized
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
 	return a.zipMediaFiles(ctx, id, s.Format, s.MaxBitRate, out, s.Tracks)
@@ -138,7 +138,7 @@ func sanitizeName(target string) string {
 }
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {
-	path := AbsolutePath(ctx, a.ds, mf.LibraryID, mf.Path)
+	path := mf.AbsolutePath()
 	w, err := z.CreateHeader(&zip.FileHeader{
 		Name:     filename,
 		Modified: mf.UpdatedAt,

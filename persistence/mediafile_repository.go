@@ -127,7 +127,8 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("media_file.*")
+	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path").
+		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
 	return r.withBookmark(sql, "media_file.id")
 }
@@ -290,7 +291,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (iter.Seq2[model.
 			Eq{"missing": true},
 			ConcatExpr("media_file.created_at > library.last_scan_started_at"),
 		}).
-		Join("library on media_file.library_id = library.id").
+		//Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
 	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sel)
 	if err != nil {

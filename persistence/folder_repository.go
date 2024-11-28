@@ -60,8 +60,13 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 	return r
 }
 
+func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
+	return r.newSelect(options...).Columns("folder.*", "l.path as library_path").
+		Join("library l on l.id = folder.library_id")
+}
+
 func (r folderRepository) Get(id string) (*model.Folder, error) {
-	sq := r.newSelect().Columns("*").Where(Eq{"id": id})
+	sq := r.selectFolder().Where(Eq{"folder.id": id})
 	var res dbFolder
 	err := r.queryOne(sq, &res)
 	return res.Folder, err
@@ -73,7 +78,7 @@ func (r folderRepository) GetByPath(lib model.Library, path string) (*model.Fold
 }
 
 func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, error) {
-	sq := r.newSelect(opt...).Columns("*")
+	sq := r.selectFolder(opt...)
 	var res dbFolders
 	err := r.queryAll(sq, &res)
 	return res.toModels(), err

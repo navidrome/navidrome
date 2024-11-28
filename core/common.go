@@ -16,7 +16,7 @@ func userName(ctx context.Context) string {
 	}
 }
 
-// TODO We should only access files through the `storage.Storage` interface. This will require changing how
+// BFR We should only access files through the `storage.Storage` interface. This will require changing how
 // TagLib and ffmpeg access files
 func AbsolutePath(ctx context.Context, ds model.DataStore, libId int, path string) string {
 	libPath, err := ds.Library(ctx).GetPath(libId)

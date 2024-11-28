@@ -69,7 +69,7 @@ func (ms *mediaStreamer) DoStream(ctx context.Context, mf *model.MediaFile, reqF
 
 	format, bitRate = selectTranscodingOptions(ctx, ms.ds, mf, reqFormat, reqBitRate)
 	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
-	filePath := AbsolutePath(ctx, ms.ds, mf.LibraryID, mf.Path)
+	filePath := mf.AbsolutePath()
 
 	if format == "raw" {
 		log.Debug(ctx, "Streaming RAW file", "id", mf.ID, "path", filePath,

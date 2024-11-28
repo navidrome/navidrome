@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 type Folder struct {
 	ID              string    `structs:"id"`
 	LibraryID       int       `structs:"library_id"`
+	LibraryPath     string    `structs:"-" json:"-" hash:"-"`
 	Path            string    `structs:"path"`
 	Name            string    `structs:"name"`
 	ParentID        string    `structs:"parent_id"`
@@ -23,6 +25,10 @@ type Folder struct {
 	Missing         bool      `structs:"missing"`
 	UpdateAt        time.Time `structs:"updated_at"`
 	CreatedAt       time.Time `structs:"created_at"`
+}
+
+func (f Folder) AbsolutePath() string {
+	return filepath.Join(f.LibraryPath, f.Path, f.Name)
 }
 
 func FolderID(lib Library, path string) string {

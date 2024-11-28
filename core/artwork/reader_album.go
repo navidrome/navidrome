@@ -92,7 +92,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	for _, album := range albums {
 		folderIDs = append(folderIDs, album.FolderIDs...)
 	}
-	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": folderIDs, "missing": false}})
+	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -100,7 +100,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 	var imgFiles []string
 	var updatedAt time.Time
 	for _, f := range folders {
-		path := core.AbsolutePath(ctx, ds, f.LibraryID, f.Path)
+		path := f.AbsolutePath()
 		paths = append(paths, path)
 		if f.ImagesUpdatedAt.After(updatedAt) {
 			updatedAt = f.ImagesUpdatedAt

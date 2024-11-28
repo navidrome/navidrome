@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"iter"
 	"mime"
+	"path/filepath"
 	"slices"
 	"time"
 
@@ -21,14 +22,15 @@ type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
 
-	ID        string `structs:"id" json:"id" hash:"ignore"`
-	PID       string `structs:"pid"  json:"pid" hash:"ignore"`
-	LibraryID int    `structs:"library_id" json:"libraryId" hash:"ignore"`
-	FolderID  string `structs:"folder_id" json:"folderId" hash:"ignore"`
-	Path      string `structs:"path" json:"path" hash:"ignore"`
-	Title     string `structs:"title" json:"title"`
-	Album     string `structs:"album" json:"album"`
-	ArtistID  string `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
+	ID          string `structs:"id" json:"id" hash:"ignore"`
+	PID         string `structs:"pid"  json:"pid" hash:"ignore"`
+	LibraryID   int    `structs:"library_id" json:"libraryId" hash:"ignore"`
+	LibraryPath string `structs:"-" json:"-" hash:"-"`
+	FolderID    string `structs:"folder_id" json:"folderId" hash:"ignore"`
+	Path        string `structs:"path" json:"path" hash:"ignore"`
+	Title       string `structs:"title" json:"title"`
+	Album       string `structs:"album" json:"album"`
+	ArtistID    string `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
 	// BFR Rename to ArtistDisplayName
 	Artist        string `structs:"artist" json:"artist"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated: Use Participants instead
@@ -142,6 +144,10 @@ func (mf MediaFile) Equals(other MediaFile) bool {
 // IsEquivalent compares two MediaFiles by path only. Used for matching missing tracks.
 func (mf MediaFile) IsEquivalent(other MediaFile) bool {
 	return utils.BaseName(mf.Path) == utils.BaseName(other.Path)
+}
+
+func (mf MediaFile) AbsolutePath() string {
+	return filepath.Join(mf.LibraryPath, mf.Path)
 }
 
 type MediaFiles []MediaFile
