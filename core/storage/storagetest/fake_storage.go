@@ -3,6 +3,7 @@ package storagetest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -103,6 +104,25 @@ func (ffs *FakeFS) touchContainingFolder(filePath string, ts time.Time) {
 	if dirFile.ModTime.Before(ts) {
 		dirFile.ModTime = ts
 	}
+}
+
+// SetError sets an error that will be returned when trying to read the file.
+func (ffs *FakeFS) SetError(filePath string, err error) {
+	filePath = path.Clean(filePath)
+	if ffs.MapFS[filePath] == nil {
+		ffs.MapFS[filePath] = &fstest.MapFile{Data: []byte{}}
+	}
+	ffs.MapFS[filePath].Sys = err
+	ffs.Touch(filePath)
+}
+
+// ClearError clears the error set by SetError.
+func (ffs *FakeFS) ClearError(filePath string) {
+	filePath = path.Clean(filePath)
+	if file := ffs.MapFS[filePath]; file != nil {
+		file.Sys = nil
+	}
+	ffs.Touch(filePath)
 }
 
 func (ffs *FakeFS) UpdateTags(filePath string, newTags map[string]any, when ...time.Time) {
@@ -220,17 +240,33 @@ func (ffs *FakeFS) ReadTags(paths ...string) (map[string]metadata.Info, error) {
 		log.Fatal("FakeFS not initialized properly. Use SetFiles")
 	}
 	result := make(map[string]metadata.Info)
+	var errs []error
 	for _, file := range paths {
 		p, err := ffs.parseFile(file)
 		if err != nil {
 			log.Warn("Error reading metadata from file", "file", file, "err", err)
+			errs = append(errs, err)
+		} else {
+			result[file] = *p
 		}
-		result[file] = *p
+	}
+	if len(errs) > 0 {
+		return result, fmt.Errorf("errors reading metadata: %w", errors.Join(errs...))
 	}
 	return result, nil
 }
 
 func (ffs *FakeFS) parseFile(filePath string) (*metadata.Info, error) {
+	// Check if it should throw an error when reading this file
+	stat, err := ffs.Stat(filePath)
+	if err != nil {
+		return nil, err
+	}
+	if stat.Sys() != nil {
+		return nil, stat.Sys().(error)
+	}
+
+	// Read the file contents and parse the tags
 	contents, err := fs.ReadFile(ffs, filePath)
 	if err != nil {
 		return nil, err

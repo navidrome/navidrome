@@ -18,6 +18,11 @@ type scannerImpl struct {
 	cw artwork.CacheWarmer
 }
 
+type scanState struct {
+	changesDetected atomic.Bool
+	progress        chan<- *ProgressInfo
+}
+
 func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
@@ -27,12 +32,12 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress cha
 
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
-	changesDetected := atomic.Bool{}
+	state := scanState{progress: progress}
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		func() error {
-			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &changesDetected, progress))
+			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &state))
 		},
 
 		// Phase 2: Process missing files, checking for moves
@@ -43,12 +48,12 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress cha
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		progress <- &ProgressInfo{Err: err}
+		state.progress <- &ProgressInfo{Err: err}
 		return
 	}
 
 	// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
-	if changesDetected.Load() {
+	if state.changesDetected.Load() {
 		_ = s.ds.WithTx(func(tx model.DataStore) error {
 			start := time.Now()
 			err := tx.GC(ctx)
@@ -68,14 +73,15 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress cha
 		for _, lib := range libs {
 			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
 			if err != nil {
-				log.Error(ctx, "Scanner: Error updating last scan completed at", "lib", lib.Name, err)
+				state.progress <- &ProgressInfo{Err: fmt.Errorf("updating last scan completed: %w", err)}
+				log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 			}
 		}
 		return nil
 	})
 
-	if changesDetected.Load() {
-		progress <- &ProgressInfo{ChangesDetected: true}
+	if state.changesDetected.Load() {
+		state.progress <- &ProgressInfo{ChangesDetected: true}
 	}
 
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))

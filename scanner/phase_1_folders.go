@@ -25,22 +25,28 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullRescan bool, changesDetected *atomic.Bool, progress chan<- *ProgressInfo) *phaseFolders {
+func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullRescan bool, state *scanState) *phaseFolders {
 	var jobs []*scanJob
 	for _, lib := range libs {
-		err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
-		if err != nil {
-			log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
+		if lib.LastScanStartedAt.IsZero() {
+			err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
+			if err != nil {
+				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
+				state.progress <- &ProgressInfo{Err: err}
+			}
+		} else {
+			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt)
 		}
 		// BFR Check LastScanStartedAt for interrupted full scans
 		job, err := newScanJob(ctx, ds, cw, lib, fullRescan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
+			state.progress <- &ProgressInfo{Err: err}
 			continue
 		}
 		jobs = append(jobs, job)
 	}
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, changesDetected: changesDetected, progress: progress}
+	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
 }
 
 type scanJob struct {
@@ -98,11 +104,10 @@ func (j *scanJob) popLastUpdate(folderID string) time.Time {
 // The phaseFolders struct implements the phase interface, providing methods to produce
 // folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
-	jobs            []*scanJob
-	ds              model.DataStore
-	ctx             context.Context
-	changesDetected *atomic.Bool
-	progress        chan<- *ProgressInfo
+	jobs  []*scanJob
+	ds    model.DataStore
+	ctx   context.Context
+	state *scanState
 }
 
 func (p *phaseFolders) description() string {
@@ -124,7 +129,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			}
 			for folder := range pl.ReadOrDone(p.ctx, outputChan) {
 				job.numFolders.Add(1)
-				p.progress <- &ProgressInfo{
+				p.state.progress <- &ProgressInfo{
 					LibID:     job.lib.ID,
 					FileCount: uint32(len(folder.audioFiles)),
 					Path:      folder.path,
@@ -191,7 +196,8 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			info, err := af.Info()
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
-				return nil, err
+				p.state.progress <- &ProgressInfo{Err: err}
+				return entry, nil
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
 				filesToImport = append(filesToImport, fullPath)
@@ -208,6 +214,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		entry.tracks, entry.tags, err = p.loadTagsFromFiles(entry, filesToImport)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error loading tags from files. Skipping", "folder", entry.path, err)
+			p.state.progress <- &ProgressInfo{Err: err}
 			return entry, nil
 		}
 
@@ -262,7 +269,7 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Art
 
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
-	p.changesDetected.Store(true)
+	p.state.changesDetected.Store(true)
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder

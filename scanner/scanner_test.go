@@ -2,6 +2,8 @@ package scanner_test
 
 import (
 	"context"
+	"errors"
+	"iter"
 	"path/filepath"
 	"testing/fstest"
 
@@ -32,7 +34,8 @@ var track = storagetest.Track
 var _ = Describe("Scanner", Ordered, func() {
 	var ctx context.Context
 	var lib model.Library
-	var ds model.DataStore
+	var ds *tests.MockDataStore
+	var mfRepo *mockMediaFileRepo
 	var s scanner.Scanner
 
 	createFS := func(files fstest.MapFS) storagetest.FakeFS {
@@ -58,7 +61,12 @@ var _ = Describe("Scanner", Ordered, func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DevExternalScanner = false
 
-		ds = persistence.New(db.Db())
+		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
+		mfRepo = &mockMediaFileRepo{
+			MediaFileRepository: ds.RealDS.MediaFile(ctx),
+		}
+		ds.MockedMediaFile = mfRepo
+
 		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
@@ -335,6 +343,33 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(mf.ID).To(Equal(originalId))
 		})
 
+		It("detects a move after a scan is interrupted by an error", func() {
+			By("Storing the original ID")
+			By("Moving the file to a different folder")
+			fsys.Move("The Beatles/Revolver/01 - Taxman.mp3", "The Beatles/Help!/01 - Taxman.mp3")
+
+			By("Interrupting the scan with an error before the move is processed")
+			mfRepo.GetMissingAndMatchingError = errors.New("I/O read error")
+			Expect(s.ScanAll(ctx, false)).To(MatchError(ContainSubstring("I/O read error")))
+
+			By("Checking the both instances of the file are in the lib")
+			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+				Filters: squirrel.Eq{"title": "Taxman"},
+			})).To(Equal(int64(2)))
+
+			By("Rescanning the library without error")
+			mfRepo.GetMissingAndMatchingError = nil
+			Expect(s.ScanAll(ctx, false)).To(Succeed())
+
+			By("Checking the old file is not in the library")
+			mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.Eq{"title": "Taxman"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).To(HaveLen(1))
+			Expect(mfs[0].Path).To(Equal("The Beatles/Help!/01 - Taxman.mp3"))
+		})
+
 		It("detects file format upgrades", func() {
 			By("Storing the original ID")
 			original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
@@ -474,4 +509,16 @@ func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*mo
 		}
 		return &list[0], nil
 	}
+}
+
+type mockMediaFileRepo struct {
+	model.MediaFileRepository
+	GetMissingAndMatchingError error
+}
+
+func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (iter.Seq2[model.MediaFile, error], error) {
+	if m.GetMissingAndMatchingError != nil {
+		return nil, m.GetMissingAndMatchingError
+	}
+	return m.MediaFileRepository.GetMissingAndMatching(libId)
 }
