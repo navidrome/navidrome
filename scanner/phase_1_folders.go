@@ -25,7 +25,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullRescan bool, state *scanState) *phaseFolders {
+func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullScan bool, state *scanState) *phaseFolders {
 	var jobs []*scanJob
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
@@ -38,7 +38,7 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.Cach
 			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt)
 		}
 		// BFR Check LastScanStartedAt for interrupted full scans
-		job, err := newScanJob(ctx, ds, cw, lib, fullRescan)
+		job, err := newScanJob(ctx, ds, cw, lib, fullScan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.progress <- &ProgressInfo{Err: err}
@@ -55,11 +55,11 @@ type scanJob struct {
 	cw          artwork.CacheWarmer
 	lastUpdates map[string]time.Time
 	lock        sync.Mutex
-	fullRescan  bool
+	fullScan    bool
 	numFolders  atomic.Int64
 }
 
-func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullRescan bool) (*scanJob, error) {
+func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool) (*scanJob, error) {
 	lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib)
 	if err != nil {
 		return nil, fmt.Errorf("error getting last updates: %w", err)
@@ -79,7 +79,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 		fs:          fsys,
 		cw:          cw,
 		lastUpdates: lastUpdates,
-		fullRescan:  fullRescan,
+		fullScan:    fullScan,
 	}, nil
 }
 
@@ -135,8 +135,8 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 					Path:      folder.path,
 					Phase:     "1",
 				}
-				if folder.isOutdated() || job.fullRescan {
-					if !job.fullRescan {
+				if folder.isOutdated() || job.fullScan {
+					if !job.fullScan {
 						log.Trace(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
 					}
 					totalChanged++
@@ -184,13 +184,13 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		dbTracks[mf.Path] = &mf
 	}
 
-	// Get list of files to import, based on modtime (or all if fullRescan),
+	// Get list of files to import, based on modtime (or all if fullScan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
 	filesToImport := make([]string, 0, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
-		if !foundInDB || entry.job.fullRescan {
+		if !foundInDB || entry.job.fullScan {
 			filesToImport = append(filesToImport, fullPath)
 		} else {
 			info, err := af.Info()

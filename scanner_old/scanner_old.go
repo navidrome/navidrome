@@ -18,7 +18,7 @@ import (
 )
 
 type Scanner interface {
-	RescanAll(ctx context.Context, fullRescan bool) error
+	RescanAll(ctx context.Context, fullScan bool) error
 	Status(context.Context) (*StatusInfo, error)
 }
 
@@ -36,7 +36,7 @@ var (
 
 type FolderScanner interface {
 	// Scan process finds any changes after `lastModifiedSince` and returns the number of changes found
-	Scan(ctx context.Context, lib model.Library, fullRescan bool, progress chan uint32) (int64, error)
+	Scan(ctx context.Context, lib model.Library, fullScan bool, progress chan uint32) (int64, error)
 }
 
 var isScanning sync.Mutex
@@ -76,7 +76,7 @@ func GetInstance(ds model.DataStore, playlists core.Playlists, cacheWarmer artwo
 	})
 }
 
-func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) error {
+func (s *scanner) rescan(ctx context.Context, library string, fullScan bool) error {
 	folderScanner := s.folders[library]
 	start := time.Now()
 
@@ -89,7 +89,7 @@ func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) e
 	s.setStatusStart(library)
 	defer s.setStatusEnd(library, start)
 
-	if fullRescan {
+	if fullScan {
 		log.Debug("Scanning folder (full scan)", "folder", library)
 	} else {
 		log.Debug("Scanning folder", "folder", library, "lastScan", lib.LastScanAt)
@@ -98,7 +98,7 @@ func (s *scanner) rescan(ctx context.Context, library string, fullRescan bool) e
 	progress, cancel := s.startProgressTracker(library)
 	defer cancel()
 
-	changeCount, err := folderScanner.Scan(ctx, lib, fullRescan, progress)
+	changeCount, err := folderScanner.Scan(ctx, lib, fullScan, progress)
 	if err != nil {
 		log.Error("Error scanning Library", "folder", library, err)
 	}
@@ -190,7 +190,7 @@ func (s *scanner) setStatusEnd(folder string, lastUpdate time.Time) {
 	}
 }
 
-func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
+func (s *scanner) RescanAll(ctx context.Context, fullScan bool) error {
 	ctx = context.WithoutCancel(ctx)
 
 	if !isScanning.TryLock() {
@@ -201,7 +201,7 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 
 	var hasError bool
 	for folder := range s.folders {
-		err := s.rescan(ctx, folder, fullRescan)
+		err := s.rescan(ctx, folder, fullScan)
 		hasError = hasError || err != nil
 	}
 	if hasError {

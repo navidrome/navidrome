@@ -84,7 +84,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 		}
 	}
 
-	//if !folder.isOutdated() && !job.fullRescan {
+	//if !folder.isOutdated() && !job.fullScan {
 	//	return nil
 	//}
 	dir := filepath.Clean(currentFolder)

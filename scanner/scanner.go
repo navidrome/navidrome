@@ -23,7 +23,7 @@ type scanState struct {
 	progress        chan<- *ProgressInfo
 }
 
-func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
+func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
 		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get libraries: %w", err)}
@@ -31,13 +31,13 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullRescan bool, progress cha
 	}
 
 	startTime := time.Now()
-	log.Info(ctx, "Scanner: Starting scan", "fullRescan", fullRescan, "numLibraries", len(libs))
+	log.Info(ctx, "Scanner: Starting scan", "fullScan", fullScan, "numLibraries", len(libs))
 	state := scanState{progress: progress}
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		func() error {
-			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullRescan, &state))
+			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullScan, &state))
 		},
 
 		// Phase 2: Process missing files, checking for moves

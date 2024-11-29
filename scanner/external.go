@@ -22,14 +22,14 @@ import (
 // process will forward them to the caller.
 type scannerExternal struct{}
 
-func (s *scannerExternal) scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo) {
+func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
 	exe, err := os.Executable()
 	if err != nil {
 		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get executable path: %w", err)}
 		return
 	}
-	log.Debug(ctx, "Spawning external scanner process", "fullRescan", fullRescan, "path", exe)
-	cmd := exec.CommandContext(ctx, exe, "scan", "--nobanner", "--noconfig", "--subprocess", If(fullRescan, "--full", ""))
+	log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
+	cmd := exec.CommandContext(ctx, exe, "scan", "--nobanner", "--noconfig", "--subprocess", If(fullScan, "--full", ""))
 
 	in, out := io.Pipe()
 	defer in.Close()

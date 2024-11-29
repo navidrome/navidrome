@@ -23,7 +23,7 @@ var (
 )
 
 type Scanner interface {
-	ScanAll(ctx context.Context, fullRescan bool) error
+	ScanAll(ctx context.Context, fullScan bool) error
 	Status(context.Context) (*StatusInfo, error)
 }
 
@@ -55,7 +55,7 @@ func (s *controller) getScanner() scanner {
 }
 
 // Scan starts a full scan of the music library. This is meant to be called from the command line (see cmd/scan.go).
-func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullRescan bool) (<-chan *ProgressInfo, error) {
+func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullR
 	go func() {
 		defer close(progress)
 		scanner := &scannerImpl{ds: ds, cw: cw}
-		scanner.scanAll(ctx, fullRescan, progress)
+		scanner.scanAll(ctx, fullScan, progress)
 	}()
 	return progress, nil
 }
@@ -82,7 +82,7 @@ type ProgressInfo struct {
 }
 
 type scanner interface {
-	scanAll(ctx context.Context, fullRescan bool, progress chan<- *ProgressInfo)
+	scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo)
 	// BFR: scanFolders(ctx context.Context, lib model.Lib, folders []string, progress chan<- *ScannerStatus)
 }
 
@@ -137,7 +137,7 @@ func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
 	return count, folderCount, nil
 }
 
-func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error {
+func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) error {
 	release, err := lockScan(requestCtx)
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullRescan bool) error 
 	go func() {
 		defer close(progress)
 		scanner := s.getScanner()
-		scanner.scanAll(ctx, fullRescan, progress)
+		scanner.scanAll(ctx, fullScan, progress)
 	}()
 
 	// Wait for the scan to finish, sending progress events to all connected clients
