@@ -36,15 +36,13 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
-		func() error {
-			return runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullScan, &state))
-		},
+		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullScan, &state)),
 
 		// Phase 2: Process missing files, checking for moves
-		func() error { return runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)) },
+		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)),
 
 		// Phase 3: Refresh all new/changed albums and update artists
-		func() error { return runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)) },
+		runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)),
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
@@ -94,35 +92,37 @@ type phase[T any] interface {
 	description() string
 }
 
-func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) error {
-	log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d: %s", phaseNum, phase.description()))
-	start := time.Now()
+func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) func() error {
+	return func() error {
+		log.Debug(ctx, fmt.Sprintf("Scanner: Starting phase %d: %s", phaseNum, phase.description()))
+		start := time.Now()
 
-	producer := phase.producer()
-	stages := phase.stages()
+		producer := phase.producer()
+		stages := phase.stages()
 
-	// Prepend a counter stage to the phase's pipeline
-	counter, countStageFn := countTasks[T]()
-	stages = append([]ppl.Stage[T]{ppl.NewStage(countStageFn, ppl.Name("count tasks"))}, stages...)
+		// Prepend a counter stage to the phase's pipeline
+		counter, countStageFn := countTasks[T]()
+		stages = append([]ppl.Stage[T]{ppl.NewStage(countStageFn, ppl.Name("count tasks"))}, stages...)
 
-	var err error
-	if log.IsGreaterOrEqualTo(log.LevelDebug) {
-		var metrics *ppl.Metrics
-		metrics, err = ppl.Measure(producer, stages...)
-		log.Info(ctx, "Scanner: "+metrics.String(), err)
-	} else {
-		err = ppl.Do(producer, stages...)
+		var err error
+		if log.IsGreaterOrEqualTo(log.LevelDebug) {
+			var metrics *ppl.Metrics
+			metrics, err = ppl.Measure(producer, stages...)
+			log.Info(ctx, "Scanner: "+metrics.String(), err)
+		} else {
+			err = ppl.Do(producer, stages...)
+		}
+
+		err = phase.finalize(err)
+
+		if err != nil {
+			log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
+		} else {
+			log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start), "totalTasks", counter.Load())
+		}
+
+		return err
 	}
-
-	err = phase.finalize(err)
-
-	if err != nil {
-		log.Error(ctx, fmt.Sprintf("Scanner: Error processing libraries in phase %d", phaseNum), "elapsed", time.Since(start), err)
-	} else {
-		log.Debug(ctx, fmt.Sprintf("Scanner: Finished phase %d", phaseNum), "elapsed", time.Since(start), "totalTasks", counter.Load())
-	}
-
-	return err
 }
 
 func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
@@ -131,10 +131,6 @@ func countTasks[T any]() (*atomic.Int64, func(T) (T, error)) {
 		counter.Add(1)
 		return in, nil
 	}
-}
-
-func (s *scannerImpl) Status(context.Context) (*StatusInfo, error) {
-	return &StatusInfo{}, nil
 }
 
 var _ scanner = (*scannerImpl)(nil)
