@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"path"
+	"path/filepath"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -25,7 +26,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, fullScan bool, state *scanState) *phaseFolders {
+func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library, state *scanState) *phaseFolders {
 	var jobs []*scanJob
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
@@ -38,7 +39,7 @@ func createPhaseFolders(ctx context.Context, ds model.DataStore, cw artwork.Cach
 			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt)
 		}
 		// BFR Check LastScanStartedAt for interrupted full scans
-		job, err := newScanJob(ctx, ds, cw, lib, fullScan)
+		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.progress <- &ProgressInfo{Err: err}
@@ -333,6 +334,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
 				return err
+			}
+		}
+
+		// Collect any playlists found and add them to the scanState, to be processed in later phases
+		if len(entry.playlists) > 0 {
+			folderPath := filepath.Join(entry.job.lib.Path, entry.path)
+			for _, pl := range entry.playlists {
+				p.state.addPlaylist(filepath.Join(folderPath, pl.Name()))
 			}
 		}
 

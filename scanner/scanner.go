@@ -3,6 +3,7 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,6 +22,15 @@ type scannerImpl struct {
 type scanState struct {
 	changesDetected atomic.Bool
 	progress        chan<- *ProgressInfo
+	fullScan        bool
+	playlistsFound  []string
+	plsMutex        sync.Mutex
+}
+
+func (s *scanState) addPlaylist(path string) {
+	s.plsMutex.Lock()
+	defer s.plsMutex.Unlock()
+	s.playlistsFound = append(s.playlistsFound, path)
 }
 
 func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
@@ -32,11 +42,11 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullScan", fullScan, "numLibraries", len(libs))
-	state := scanState{progress: progress}
+	state := scanState{progress: progress, fullScan: fullScan}
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
-		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, fullScan, &state)),
+		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, &state)),
 
 		// Phase 2: Process missing files, checking for moves
 		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)),
