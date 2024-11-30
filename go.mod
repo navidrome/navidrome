@@ -8,6 +8,7 @@ replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0
+	github.com/bmatcuk/doublestar/v4 v4.7.1
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
@@ -35,7 +36,6 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.1.3
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-sqlite3 v1.14.24
-	github.com/mattn/go-zglob v0.0.6
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.22.0

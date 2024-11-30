@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -165,6 +167,52 @@ var _ = Describe("Playlists", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(1))
 			Expect(pls.Tracks[0].Path).To(Equal("tEsT1.Mp3"))
+		})
+	})
+
+	Describe("InPlaylistsPath", func() {
+		var folder model.Folder
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			folder = model.Folder{
+				LibraryPath: "/music",
+				Path:        "playlists/abc",
+				Name:        "folder1",
+			}
+		})
+
+		It("returns true if PlaylistsPath is empty", func() {
+			conf.Server.PlaylistsPath = ""
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if PlaylistsPath is any (**/**)", func() {
+			conf.Server.PlaylistsPath = "**/**"
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if folder is in PlaylistsPath", func() {
+			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns false if folder is not in PlaylistsPath", func() {
+			conf.Server.PlaylistsPath = "other"
+			Expect(InPlaylistsPath(folder)).To(BeFalse())
+		})
+
+		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
+			conf.Server.PlaylistsPath = "."
+			Expect(InPlaylistsPath(folder)).To(BeFalse())
+
+			folder2 := model.Folder{
+				LibraryPath: "/music",
+				Path:        "",
+				Name:        ".",
+			}
+
+			Expect(InPlaylistsPath(folder2)).To(BeTrue())
 		})
 	})
 })

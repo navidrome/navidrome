@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/chain"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -236,11 +238,12 @@ func Load(noConfig bool) {
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
-	if err := validateScanSchedule(); err != nil {
-		os.Exit(1)
-	}
-
-	if err := validateBackupSchedule(); err != nil {
+	err = chain.RunSequentially(
+		validateScanSchedule,
+		validateBackupSchedule,
+		validatePlaylistsPath,
+	)
+	if err != nil {
 		os.Exit(1)
 	}
 
@@ -310,6 +313,17 @@ func disableExternalServices() {
 	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
 		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
+}
+
+func validatePlaylistsPath() error {
+	for _, path := range strings.Split(Server.PlaylistsPath, string(filepath.ListSeparator)) {
+		_, err := doublestar.Match(path, "")
+		if err != nil {
+			log.Error("Invalid PlaylistsPath", "path", path, err)
+			return err
+		}
+	}
+	return nil
 }
 
 func validateScanSchedule() error {
@@ -391,7 +405,7 @@ func init() {
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("defaultplaylistpublicvisibility", false)
-	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
+	viper.SetDefault("playlistspath", "")
 	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)

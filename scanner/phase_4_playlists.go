@@ -81,10 +81,6 @@ func (p *phasePlaylists) stages() []ppl.Stage[*model.Folder] {
 }
 
 func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.Folder, error) {
-	// BFR PlaylistsPath
-	//if !s.inPlaylistsPath(dir) {
-	//	return 0
-	//}
 	files, err := os.ReadDir(folder.AbsolutePath())
 	if err != nil {
 		log.Error(p.ctx, "Error reading files", "folder", folder, err)
@@ -125,15 +121,5 @@ func (p *phasePlaylists) finalize(err error) error {
 	logF(p.ctx, "Scanner: Finished refreshing playlists", "refreshed", refreshed, err)
 	return err
 }
-
-//func (s *playlistImporter) inPlaylistsPath(dir string) bool {
-//	rel, _ := filepath.Rel(s.rootFolder, dir)
-//	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
-//		if match, _ := zglob.Match(path, rel); match {
-//			return true
-//		}
-//	}
-//	return false
-//}
 
 var _ phase[*model.Folder] = (*phasePlaylists)(nil)

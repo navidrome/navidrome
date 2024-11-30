@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/RaveNoX/go-jsoncommentstrip"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -33,6 +34,19 @@ type playlists struct {
 
 func NewPlaylists(ds model.DataStore) Playlists {
 	return &playlists{ds: ds}
+}
+
+func InPlaylistsPath(folder model.Folder) bool {
+	if conf.Server.PlaylistsPath == "" {
+		return true
+	}
+	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
+	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+		if match, _ := doublestar.Match(path, rel); match {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *playlists) ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {

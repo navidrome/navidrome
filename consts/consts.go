@@ -1,7 +1,6 @@
 package consts
 
 import (
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -119,8 +118,6 @@ var (
 			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
-
-	DefaultPlaylistsPath = strings.Join([]string{".", "**/**"}, string(filepath.ListSeparator))
 )
 
 var (

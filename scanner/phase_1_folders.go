@@ -15,6 +15,7 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
@@ -284,7 +285,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		folder := model.NewFolder(entry.job.lib, entry.path)
 		// BFR Convert entry.audioFiles and entry.playlists to int?
 		folder.NumAudioFiles = len(entry.audioFiles)
-		folder.NumPlaylists = len(entry.playlists)
+		if core.InPlaylistsPath(*folder) {
+			folder.NumPlaylists = len(entry.playlists)
+		}
 		folder.ImageFiles = slices.Collect(maps.Keys(entry.imageFiles))
 		folder.ImagesUpdatedAt = entry.imagesUpdatedAt
 		err := folderRepo.Put(folder)

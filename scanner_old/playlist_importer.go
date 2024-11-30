@@ -3,11 +3,8 @@ package scanner_old
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/mattn/go-zglob"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
@@ -26,9 +23,9 @@ func newPlaylistImporter(ds model.DataStore, playlists core.Playlists, cacheWarm
 }
 
 func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int64 {
-	if !s.inPlaylistsPath(dir) {
-		return 0
-	}
+	//if !s.inPlaylistsPath(dir) {
+	//	return 0
+	//}
 	var count int64
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -58,12 +55,12 @@ func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int
 	return count
 }
 
-func (s *playlistImporter) inPlaylistsPath(dir string) bool {
-	rel, _ := filepath.Rel(s.rootFolder, dir)
-	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
-		if match, _ := zglob.Match(path, rel); match {
-			return true
-		}
-	}
-	return false
-}
+//func (s *playlistImporter) inPlaylistsPath(dir string) bool {
+//	rel, _ := filepath.Rel(s.rootFolder, dir)
+//	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+//		if match, _ := zglob.Match(path, rel); match {
+//			return true
+//		}
+//	}
+//	return false
+//}
