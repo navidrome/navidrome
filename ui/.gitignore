@@ -4,3 +4,4 @@ node_modules
 build/*
 !build/.gitkeep
 /coverage/
+public/3rdparty/workbox
