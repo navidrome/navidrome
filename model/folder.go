@@ -65,6 +65,8 @@ func NewFolder(lib Library, folderPath string) *Folder {
 	}
 }
 
+type FolderCursor iter.Seq2[Folder, error]
+
 type FolderRepository interface {
 	Get(id string) (*Folder, error)
 	GetByPath(lib Library, path string) (*Folder, error)
@@ -73,5 +75,5 @@ type FolderRepository interface {
 	GetLastUpdates(lib Library) (map[string]time.Time, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
-	GetTouchedWithPlaylists() (iter.Seq2[Folder, error], error)
+	GetTouchedWithPlaylists() (FolderCursor, error)
 }

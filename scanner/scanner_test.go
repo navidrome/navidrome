@@ -3,7 +3,6 @@ package scanner_test
 import (
 	"context"
 	"errors"
-	"iter"
 	"path/filepath"
 	"testing/fstest"
 
@@ -517,7 +516,7 @@ type mockMediaFileRepo struct {
 	GetMissingAndMatchingError error
 }
 
-func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (iter.Seq2[model.MediaFile, error], error) {
+func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	if m.GetMissingAndMatchingError != nil {
 		return nil, m.GetMissingAndMatchingError
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"iter"
 	"maps"
 	"slices"
 	"time"
@@ -253,7 +252,7 @@ func (r *albumRepository) Touch(ids ...string) error {
 // GetTouchedAlbums returns all albums that were touched by the scanner for a given library, in the
 // current library scan run.
 // It does not need to load participations, as they are not used by the scanner.
-func (r *albumRepository) GetTouchedAlbums(libID int) (iter.Seq2[model.Album, error], error) {
+func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	query := r.selectAlbum().
 		Join("library on library.id = album.library_id").
 		Where(And{

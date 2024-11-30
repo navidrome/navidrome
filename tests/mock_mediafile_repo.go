@@ -3,7 +3,6 @@ package tests
 import (
 	"cmp"
 	"errors"
-	"iter"
 	"maps"
 	"slices"
 	"time"
@@ -114,7 +113,7 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	return res, nil
 }
 
-func (m *MockMediaFileRepo) GetMissingAndMatching(libId int) (iter.Seq2[model.MediaFile, error], error) {
+func (m *MockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	if m.err {
 		return nil, errors.New("error")
 	}

@@ -225,7 +225,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.FolderIDs = slice.Unique(slice.Map(mfs, func(m MediaFile) string { return m.FolderID }))
 	a.Date, _ = allOrNothing(dates)
 	a.OriginalDate, _ = allOrNothing(originalDates)
-	a.ReleaseDate, a.Releases = allOrNothing(releaseDates)
+	a.ReleaseDate, _ = allOrNothing(releaseDates)
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
@@ -296,19 +296,21 @@ func fixAlbumArtist(a Album, albumArtistIds []string) Album {
 	return a
 }
 
+type MediaFileCursor iter.Seq2[MediaFile, error]
+
 type MediaFileRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
-	GetCursor(options ...QueryOptions) (iter.Seq2[MediaFile, error], error)
+	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	FindByPaths(paths []string) (MediaFiles, error)
 	MarkMissing(bool, ...*MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
-	GetMissingAndMatching(libId int) (iter.Seq2[MediaFile, error], error)
+	GetMissingAndMatching(libId int) (MediaFileCursor, error)
 
 	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
 

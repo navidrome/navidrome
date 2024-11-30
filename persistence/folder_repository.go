@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"iter"
 	"slices"
 	"time"
 
@@ -128,7 +127,7 @@ func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 	return nil
 }
 
-func (r folderRepository) GetTouchedWithPlaylists() (iter.Seq2[model.Folder, error], error) {
+func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) {
 	query := r.selectFolder().Where(And{
 		Eq{"missing": false},
 		Gt{"num_playlists": 0},

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"iter"
 	"os"
 	"path/filepath"
 	"sort"
@@ -145,7 +144,7 @@ type mockFolderRepository struct {
 	data map[*model.Folder]error
 }
 
-func (f *mockFolderRepository) GetTouchedWithPlaylists() (iter.Seq2[model.Folder, error], error) {
+func (f *mockFolderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) {
 	return func(yield func(model.Folder, error) bool) {
 		for folder, err := range f.data {
 			if err != nil {

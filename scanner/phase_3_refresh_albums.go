@@ -41,29 +41,31 @@ func (p *phaseRefreshAlbums) description() string {
 }
 
 func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
-	return ppl.NewProducer(func(put func(album *model.Album)) error {
-		count := 0
-		for _, lib := range p.libs {
-			cursor, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
+	return ppl.NewProducer(p.produce, ppl.Name("load albums from db"))
+}
+
+func (p *phaseRefreshAlbums) produce(put func(album *model.Album)) error {
+	count := 0
+	for _, lib := range p.libs {
+		cursor, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
+		if err != nil {
+			return fmt.Errorf("error loading touched albums: %w", err)
+		}
+		log.Debug(p.ctx, "Scanner: Checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name)
+		for album, err := range cursor {
 			if err != nil {
 				return fmt.Errorf("error loading touched albums: %w", err)
 			}
-			log.Debug(p.ctx, "Scanner: Checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name)
-			for album, err := range cursor {
-				if err != nil {
-					return fmt.Errorf("error loading touched albums: %w", err)
-				}
-				count++
-				put(&album)
-			}
+			count++
+			put(&album)
 		}
-		if count == 0 {
-			log.Debug(p.ctx, "Scanner: No albums needing refresh")
-		} else {
-			log.Debug(p.ctx, "Scanner: Found albums that may need refreshing", "count", count)
-		}
-		return nil
-	}, ppl.Name("load albums from db"))
+	}
+	if count == 0 {
+		log.Debug(p.ctx, "Scanner: No albums needing refresh")
+	} else {
+		log.Debug(p.ctx, "Scanner: Found albums that may need refreshing", "count", count)
+	}
+	return nil
 }
 
 func (p *phaseRefreshAlbums) stages() []ppl.Stage[*model.Album] {
@@ -103,9 +105,12 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 	start := time.Now()
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		err := tx.Album(p.ctx).Put(album)
-		p.refreshed.Add(1)
 		log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start))
-		return err
+		if err != nil {
+			return fmt.Errorf("refreshing album %s: %w", album.ID, err)
+		}
+		p.refreshed.Add(1)
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -114,12 +119,12 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 }
 
 func (p *phaseRefreshAlbums) finalize(err error) error {
-	refreshed := p.refreshed.Load()
-	skipped := p.skipped.Load()
-	if err != nil || refreshed+skipped == 0 {
+	if err != nil {
 		return err
 	}
 	logF := log.Info
+	refreshed := p.refreshed.Load()
+	skipped := p.skipped.Load()
 	if refreshed == 0 {
 		logF = log.Debug
 	}

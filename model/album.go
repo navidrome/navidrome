@@ -25,7 +25,7 @@ type Album struct {
 	MinOriginalYear       int        `structs:"min_original_year" json:"minOriginalYear"`
 	OriginalDate          string     `structs:"original_date" json:"originalDate,omitempty"`
 	ReleaseDate           string     `structs:"release_date" json:"releaseDate,omitempty"`
-	Releases              int        `structs:"releases" json:"releases"`
+	Releases              int        `structs:"releases" json:"releases"` // Deprecated in BFR
 	Compilation           bool       `structs:"compilation" json:"compilation"`
 	Comment               string     `structs:"comment" json:"comment,omitempty"`
 	SongCount             int        `structs:"song_count" json:"songCount"`
@@ -126,6 +126,8 @@ func (als Albums) ToAlbumArtist() Artist {
 	return Artist{AlbumCount: len(als)}
 }
 
+type AlbumCursor iter.Seq2[Album, error]
+
 type AlbumRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
@@ -133,7 +135,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
-	GetTouchedAlbums(libID int) (iter.Seq2[Album, error], error)
+	GetTouchedAlbums(libID int) (AlbumCursor, error)
 	RefreshAnnotations() (int64, error)
 	Search(q string, offset int, size int) (Albums, error)
 	AnnotatedRepository

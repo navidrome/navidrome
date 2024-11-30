@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"iter"
 	"os"
 	"path/filepath"
 	"slices"
@@ -158,7 +157,7 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res.toModels(), nil
 }
 
-func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (iter.Seq2[model.MediaFile, error], error) {
+func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	sq := r.selectMediaFile(options...)
 	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sq)
 	if err != nil {
@@ -275,7 +274,7 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
 // that were added/updated after the last scan started. The result is ordered by PID.
 // It does not need to load participations, as they are not used by the scanner.
-func (r *mediaFileRepository) GetMissingAndMatching(libId int) (iter.Seq2[model.MediaFile, error], error) {
+func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	subQ := r.newSelect().Columns("pid").
 		Where(And{
 			Eq{"media_file.missing": true},
