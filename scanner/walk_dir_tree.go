@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"maps"
 	"path/filepath"
-	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -227,6 +227,12 @@ func isDirReadable(ctx context.Context, fsys fs.FS, baseDir string, dirEnt fs.Di
 	return true
 }
 
+// List of special directories to ignore
+var ignoredDirs = []string{
+	"$RECYCLE.BIN",
+	"#snapshot",
+}
+
 // isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after skipScanFile)
 func isDirIgnored(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) bool {
@@ -235,8 +241,7 @@ func isDirIgnored(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) bool {
 	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
 		return true
 	}
-
-	if runtime.GOOS == "windows" && strings.EqualFold(name, "$RECYCLE.BIN") {
+	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
 		return true
 	}
 	_, err := fs.Stat(fsys, filepath.Join(baseDir, name, consts.SkipScanFile))
