@@ -99,6 +99,7 @@ create table if not exists folder(
 	missing boolean default false not null,
 	parent_id varchar default '' not null,
 	num_audio_files integer default 0 not null,
+	num_playlists integer default 0 not null,
 	image_files jsonb default '[]' not null,
 	images_updated_at datetime default '0000-00-00 00:00:00' not null,
 	updated_at datetime default current_timestamp not null,

@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"iter"
 	"path"
 	"path/filepath"
 	"strings"
@@ -20,6 +21,7 @@ type Folder struct {
 	Name            string    `structs:"name"`
 	ParentID        string    `structs:"parent_id"`
 	NumAudioFiles   int       `structs:"num_audio_files"`
+	NumPlaylists    int       `structs:"num_playlists"`
 	ImageFiles      []string  `structs:"image_files"`
 	ImagesUpdatedAt time.Time `structs:"images_updated_at"`
 	Missing         bool      `structs:"missing"`
@@ -29,6 +31,10 @@ type Folder struct {
 
 func (f Folder) AbsolutePath() string {
 	return filepath.Join(f.LibraryPath, f.Path, f.Name)
+}
+
+func (f Folder) String() string {
+	return f.AbsolutePath()
 }
 
 func FolderID(lib Library, path string) string {
@@ -67,4 +73,5 @@ type FolderRepository interface {
 	GetLastUpdates(lib Library) (map[string]time.Time, error)
 	Put(*Folder) error
 	MarkMissing(missing bool, ids ...string) error
+	GetTouchedWithPlaylists() (iter.Seq2[Folder, error], error)
 }

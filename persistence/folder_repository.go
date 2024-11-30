@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"slices"
 	"time"
 
@@ -61,8 +62,8 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Columns("folder.*", "l.path as library_path").
-		Join("library l on l.id = folder.library_id")
+	return r.newSelect(options...).Columns("folder.*", "library.path as library_path").
+		Join("library on library.id = folder.library_id")
 }
 
 func (r folderRepository) Get(id string) (*model.Folder, error) {
@@ -125,6 +126,25 @@ func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 		}
 	}
 	return nil
+}
+
+func (r folderRepository) GetTouchedWithPlaylists() (iter.Seq2[model.Folder, error], error) {
+	query := r.selectFolder().Where(And{
+		Eq{"missing": false},
+		Gt{"num_playlists": 0},
+		ConcatExpr("folder.updated_at > library.last_scan_at"),
+	})
+	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Folder, error) bool) {
+		for f, err := range cursor {
+			if !yield(*f.Folder, err) || err != nil {
+				return
+			}
+		}
+	}, nil
 }
 
 func (r folderRepository) purgeEmpty() error {

@@ -3,11 +3,11 @@ package scanner
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -15,22 +15,15 @@ import (
 )
 
 type scannerImpl struct {
-	ds model.DataStore
-	cw artwork.CacheWarmer
+	ds  model.DataStore
+	cw  artwork.CacheWarmer
+	pls core.Playlists
 }
 
 type scanState struct {
-	changesDetected atomic.Bool
 	progress        chan<- *ProgressInfo
 	fullScan        bool
-	playlistsFound  []string
-	plsMutex        sync.Mutex
-}
-
-func (s *scanState) addPlaylist(path string) {
-	s.plsMutex.Lock()
-	defer s.plsMutex.Unlock()
-	s.playlistsFound = append(s.playlistsFound, path)
+	changesDetected atomic.Bool
 }
 
 func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
@@ -46,13 +39,18 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
-		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, s.ds, s.cw, libs, &state)),
+		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, &state, s.ds, s.cw, libs)),
 
 		// Phase 2: Process missing files, checking for moves
 		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)),
 
-		// Phase 3: Refresh all new/changed albums and update artists
-		runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)),
+		chain.RunParallel(
+			// Phase 3: Refresh all new/changed albums and update artists
+			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)),
+
+			// Phase 4: Import/update playlists
+			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw)),
+		),
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)

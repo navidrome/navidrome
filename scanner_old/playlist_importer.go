@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/mattn/go-zglob"
 	"github.com/navidrome/navidrome/conf"
@@ -37,23 +36,23 @@ func (s *playlistImporter) processPlaylists(ctx context.Context, dir string) int
 		return count
 	}
 	for _, f := range files {
-		started := time.Now()
+		//started := time.Now()
 		if strings.HasPrefix(f.Name(), ".") {
 			continue
 		}
 		if !model.IsValidPlaylist(f.Name()) {
 			continue
 		}
-		pls, err := s.pls.ImportFile(ctx, dir, f.Name())
-		if err != nil {
-			continue
-		}
-		if pls.IsSmartPlaylist() {
-			log.Debug("Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
-		} else {
-			log.Debug("Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
-		}
-		s.cacheWarmer.PreCache(pls.CoverArtID())
+		//pls, err := s.pls.ImportFile(ctx, dir, f.Name())
+		//if err != nil {
+		//	continue
+		//}
+		//if pls.IsSmartPlaylist() {
+		//	log.Debug("Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
+		//} else {
+		//	log.Debug("Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
+		//}
+		//s.cacheWarmer.PreCache(pls.CoverArtID())
 		count++
 	}
 	return count

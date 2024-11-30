@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -34,12 +36,13 @@ type StatusInfo struct {
 	FolderCount uint32
 }
 
-func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker) Scanner {
+func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker, pls core.Playlists) Scanner {
 	c := &controller{
 		rootCtx: rootCtx,
 		ds:      ds,
 		cw:      cw,
 		broker:  broker,
+		pls:     pls,
 	}
 	if !conf.Server.DevExternalScanner {
 		c.limiter = P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
@@ -51,21 +54,22 @@ func (s *controller) getScanner() scanner {
 	if conf.Server.DevExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw}
+	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
 }
 
 // Scan starts a full scan of the music library. This is meant to be called from the command line (see cmd/scan.go).
-func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, fullScan bool) (<-chan *ProgressInfo, error) {
+func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 
+	ctx = auth.WithAdminUser(ctx, ds)
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: cw}
+		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls}
 		scanner.scanAll(ctx, fullScan, progress)
 	}()
 	return progress, nil
@@ -91,6 +95,7 @@ type controller struct {
 	ds              model.DataStore
 	cw              artwork.CacheWarmer
 	broker          events.Broker
+	pls             core.Playlists
 	limiter         *rate.Sometimes
 	count           atomic.Uint32
 	folderCount     atomic.Uint32
@@ -147,6 +152,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) error {
 	// Prepare the context for the scan
 	ctx := request.AddValues(s.rootCtx, requestCtx)
 	ctx = events.BroadcastToAll(ctx)
+	ctx = auth.WithAdminUser(ctx, s.ds)
 
 	// Send the initial scan status event
 	s.sendMessage(ctx, &events.ScanStatus{Scanning: true, Count: 0, FolderCount: 0})

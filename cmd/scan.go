@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"os"
 
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -63,8 +64,9 @@ func runScanner(ctx context.Context) {
 	sqlDB := db.Db()
 	defer db.Db().Close()
 	ds := persistence.New(sqlDB)
+	pls := core.NewPlaylists(ds)
 
-	progress, err := scanner.Scan(ctx, ds, artwork.NoopCacheWarmer(), fullScan)
+	progress, err := scanner.Scan(ctx, ds, artwork.NoopCacheWarmer(), pls, fullScan)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}
