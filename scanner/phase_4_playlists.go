@@ -41,35 +41,37 @@ func (p *phasePlaylists) description() string {
 }
 
 func (p *phasePlaylists) producer() ppl.Producer[*model.Folder] {
-	return ppl.NewProducer(func(put func(entry *model.Folder)) error {
-		u, _ := request.UserFrom(p.ctx)
-		if !conf.Server.AutoImportPlaylists || !u.IsAdmin {
-			log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
-				"Please create an admin user first, and then update the playlists for them to be imported")
-			return nil
-		}
+	return ppl.NewProducer(p.produce, ppl.Name("load folders with playlists from db"))
+}
 
-		count := 0
-		cursor, err := p.ds.Folder(p.ctx).GetTouchedWithPlaylists()
-		if err != nil {
-			return fmt.Errorf("error loading touched folders: %w", err)
-		}
-		log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh")
-		for folder, err := range cursor {
-			if err != nil {
-				return fmt.Errorf("error loading touched folder: %w", err)
-			}
-			count++
-			put(&folder)
-		}
-		if count == 0 {
-			log.Debug(p.ctx, "Scanner: No folders with playlists needs refreshing")
-		} else {
-			log.Debug(p.ctx, "Scanner: Found folders with playlists that may need refreshing", "count", count)
-		}
-
+func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
+	u, _ := request.UserFrom(p.ctx)
+	if !conf.Server.AutoImportPlaylists || !u.IsAdmin {
+		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
+			"Please create an admin user first, and then update the playlists for them to be imported")
 		return nil
-	}, ppl.Name("load folders with playlists from db"))
+	}
+
+	count := 0
+	cursor, err := p.ds.Folder(p.ctx).GetTouchedWithPlaylists()
+	if err != nil {
+		return fmt.Errorf("error loading touched folders: %w", err)
+	}
+	log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh")
+	for folder, err := range cursor {
+		if err != nil {
+			return fmt.Errorf("error loading touched folder: %w", err)
+		}
+		count++
+		put(&folder)
+	}
+	if count == 0 {
+		log.Debug(p.ctx, "Scanner: No folders with playlists needs refreshing")
+	} else {
+		log.Debug(p.ctx, "Scanner: Found folders with playlists that may need refreshing", "count", count)
+	}
+
+	return nil
 }
 
 func (p *phasePlaylists) stages() []ppl.Stage[*model.Folder] {
@@ -78,15 +80,16 @@ func (p *phasePlaylists) stages() []ppl.Stage[*model.Folder] {
 	}
 }
 
-func (p *phasePlaylists) processPlaylistsInFolder(folderPath *model.Folder) (*model.Folder, error) {
+func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.Folder, error) {
 	// BFR PlaylistsPath
 	//if !s.inPlaylistsPath(dir) {
 	//	return 0
 	//}
-	files, err := os.ReadDir(folderPath.AbsolutePath())
+	files, err := os.ReadDir(folder.AbsolutePath())
 	if err != nil {
-		log.Error(p.ctx, "Error reading files", "folderPath", folderPath, err)
-		p.scanState.progress <- &ProgressInfo{Err: err}
+		log.Error(p.ctx, "Error reading files", "folder", folder, err)
+		p.scanState.sendError(err)
+		return folder, nil
 	}
 	for _, f := range files {
 		started := time.Now()
@@ -96,7 +99,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folderPath *model.Folder) (*mo
 		if !model.IsValidPlaylist(f.Name()) {
 			continue
 		}
-		pls, err := p.pls.ImportFile(p.ctx, folderPath, f.Name())
+		pls, err := p.pls.ImportFile(p.ctx, folder, f.Name())
 		if err != nil {
 			continue
 		}
@@ -108,7 +111,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folderPath *model.Folder) (*mo
 		p.cw.PreCache(pls.CoverArtID())
 		p.refreshed.Add(1)
 	}
-	return folderPath, nil
+	return folder, nil
 }
 
 func (p *phasePlaylists) finalize(err error) error {

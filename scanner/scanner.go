@@ -26,16 +26,26 @@ type scanState struct {
 	changesDetected atomic.Bool
 }
 
+func (s *scanState) sendProgress(info *ProgressInfo) {
+	if s.progress != nil {
+		s.progress <- info
+	}
+}
+
+func (s *scanState) sendError(err error) {
+	s.sendProgress(&ProgressInfo{Err: err})
+}
+
 func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
+	state := scanState{progress: progress, fullScan: fullScan}
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get libraries: %w", err)}
+		state.sendProgress(&ProgressInfo{Err: fmt.Errorf("failed to get libraries: %w", err)})
 		return
 	}
 
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullScan", fullScan, "numLibraries", len(libs))
-	state := scanState{progress: progress, fullScan: fullScan}
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
@@ -54,7 +64,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		state.progress <- &ProgressInfo{Err: err}
+		state.sendError(err)
 		return
 	}
 
@@ -79,7 +89,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		for _, lib := range libs {
 			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
 			if err != nil {
-				state.progress <- &ProgressInfo{Err: fmt.Errorf("updating last scan completed: %w", err)}
+				state.sendProgress(&ProgressInfo{Err: fmt.Errorf("updating last scan completed: %w", err)})
 				log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 			}
 		}
@@ -87,7 +97,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	})
 
 	if state.changesDetected.Load() {
-		state.progress <- &ProgressInfo{ChangesDetected: true}
+		state.sendProgress(&ProgressInfo{ChangesDetected: true})
 	}
 
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))

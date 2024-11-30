@@ -32,7 +32,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
 			if err != nil {
 				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
-				state.progress <- &ProgressInfo{Err: err}
+				state.sendError(err)
 			}
 		} else {
 			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt)
@@ -41,7 +41,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
-			state.progress <- &ProgressInfo{Err: err}
+			state.sendError(err)
 			continue
 		}
 		jobs = append(jobs, job)
@@ -129,12 +129,12 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 			}
 			for folder := range pl.ReadOrDone(p.ctx, outputChan) {
 				job.numFolders.Add(1)
-				p.state.progress <- &ProgressInfo{
+				p.state.sendProgress(&ProgressInfo{
 					LibID:     job.lib.ID,
 					FileCount: uint32(len(folder.audioFiles)),
 					Path:      folder.path,
 					Phase:     "1",
-				}
+				})
 				if folder.isOutdated() || job.fullScan {
 					if !job.fullScan {
 						log.Trace(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
@@ -196,7 +196,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			info, err := af.Info()
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
-				p.state.progress <- &ProgressInfo{Err: err}
+				p.state.sendError(err)
 				return entry, nil
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
@@ -214,7 +214,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		entry.tracks, entry.tags, err = p.loadTagsFromFiles(entry, filesToImport)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error loading tags from files. Skipping", "folder", entry.path, err)
-			p.state.progress <- &ProgressInfo{Err: err}
+			p.state.sendError(err)
 			return entry, nil
 		}
 
