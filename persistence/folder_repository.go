@@ -149,6 +149,7 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 func (r folderRepository) purgeEmpty() error {
 	sq := Delete(r.tableName).Where(And{
 		Eq{"num_audio_files": 0},
+		Eq{"num_playlists": 0},
 		Eq{"image_files": "[]"},
 		ConcatExpr("id not in (select parent_id from folder)"),
 		ConcatExpr("id not in (select folder_id from media_file)"),
