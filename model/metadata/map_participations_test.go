@@ -10,6 +10,8 @@ import (
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 )
 
 var _ = Describe("Participations", func() {
@@ -373,6 +375,39 @@ var _ = Describe("Participations", func() {
 			Entry("COMPOSER", model.RoleComposer, "COMPOSER", "COMPOSERSORT"),
 			Entry("LYRICIST", model.RoleLyricist, "LYRICIST", "LYRICISTSORT"),
 		)
+	})
+
+	Describe("PERFORMER tags", func() {
+		When("PERFORMER tag is set", func() {
+			matchPerformer := func(name, orderName, subRole string) types.GomegaMatcher {
+				return MatchFields(IgnoreExtras, Fields{
+					"Artist": MatchFields(IgnoreExtras, Fields{
+						"Name":            Equal(name),
+						"OrderArtistName": Equal(orderName),
+					}),
+					"SubRole": Equal(subRole),
+				})
+			}
+
+			It("should return the correct participation", func() {
+				mf = toMediaFile(map[string][]string{
+					"PERFORMER:GUITAR":        {"Eric Clapton", "B.B. King"},
+					"PERFORMER:BASS":          {"Nathan East"},
+					"PERFORMER:HAMMOND ORGAN": {"Tim Carmon"},
+				})
+
+				participations := mf.Participations
+				Expect(participations).To(HaveKeyWithValue(model.RolePerformer, HaveLen(4)))
+
+				p := participations[model.RolePerformer]
+				Expect(p).To(ContainElements(
+					matchPerformer("Eric Clapton", "eric clapton", "Guitar"),
+					matchPerformer("B.B. King", "b.b. king", "Guitar"),
+					matchPerformer("Nathan East", "nathan east", "Bass"),
+					matchPerformer("Tim Carmon", "tim carmon", "Hammond Organ"),
+				))
+			})
+		})
 	})
 
 	Describe("Other tags", func() {

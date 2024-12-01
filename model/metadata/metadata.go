@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type Info struct {
@@ -44,6 +45,24 @@ func (d Date) Year() int {
 	}
 	y, _ := strconv.Atoi(string(d[:4]))
 	return y
+}
+
+type Pair string
+
+func (p Pair) Key() string   { return p.parse(0) }
+func (p Pair) Value() string { return p.parse(1) }
+func (p Pair) parse(i int) string {
+	parts := strings.SplitN(string(p), consts.Zwsp, 2)
+	if len(parts) > i {
+		return parts[i]
+	}
+	return ""
+}
+func (p Pair) String() string {
+	return string(p)
+}
+func NewPair(key, value string) string {
+	return key + consts.Zwsp + value
 }
 
 func New(filePath string, info Info) Metadata {
@@ -87,6 +106,10 @@ func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 func (md Metadata) Gain(key model.TagName) float64 {
 	v := strings.TrimSpace(strings.Replace(md.first(key), "dB", "", 1))
 	return float(v)
+}
+func (md Metadata) Pairs(key model.TagName) []Pair {
+	values := md.tags[key]
+	return slice.Map(values, func(v string) Pair { return Pair(v) })
 }
 
 func (md Metadata) first(key model.TagName) string {
@@ -182,7 +205,7 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 					if strings.HasPrefix(string(tagKey), string(prefix)) {
 						key := strings.TrimPrefix(string(tagKey), string(prefix))
 						for _, value := range tagValues {
-							cleaned[name] = append(cleaned[name], Pair(key, value))
+							cleaned[name] = append(cleaned[name], NewPair(key, value))
 						}
 					}
 				}
@@ -209,10 +232,6 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	}
 
 	return sanitizeAll(filePath, cleaned)
-}
-
-func Pair(key, value string) string {
-	return key + consts.Zwsp + value
 }
 
 // split a tag value by the given separators, but only if it has a single value.

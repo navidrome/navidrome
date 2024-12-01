@@ -175,9 +175,9 @@ var _ = Describe("Metadata", func() {
 
 				Expect(md.All()).To(HaveKey(model.TagPerformer))
 				Expect(md.Strings(model.TagPerformer)).To(ContainElements(
-					metadata.Pair("guitar", "Guitarist 1"),
-					metadata.Pair("guitar", "Guitarist 2"),
-					metadata.Pair("background vocals", "Backing Singer"),
+					metadata.NewPair("guitar", "Guitarist 1"),
+					metadata.NewPair("guitar", "Guitarist 2"),
+					metadata.NewPair("background vocals", "Backing Singer"),
 				))
 			})
 		})

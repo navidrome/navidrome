@@ -87,6 +87,14 @@ func (p Participations) Add(role Role, artists ...Artist) {
 	p.add(role, participants...)
 }
 
+// AddWithSubRole adds the artists to the role, ignoring duplicates.
+func (p Participations) AddWithSubRole(role Role, subRole string, artists ...Artist) {
+	participants := slice.Map(artists, func(artist Artist) Participant {
+		return Participant{Artist: artist, SubRole: subRole}
+	})
+	p.add(role, participants...)
+}
+
 func (p Participations) Sort() {
 	for _, artists := range p {
 		slices.SortFunc(artists, func(a1, a2 Participant) int {

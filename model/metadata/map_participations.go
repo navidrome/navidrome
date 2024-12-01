@@ -6,6 +6,8 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type roleTags struct {
@@ -55,6 +57,20 @@ func (md Metadata) mapParticipations() model.Participations {
 			artists := md.buildArtists(names, sorts, mbids)
 			participations.Add(role, artists...)
 		}
+	}
+
+	// Parse performers
+	caser := cases.Title(language.Und)
+	for _, performer := range md.Pairs(model.TagPerformer) {
+		name := performer.Value()
+		id := md.artistID(name)
+		orderName := str.SanitizeFieldForSortingNoArticle(name)
+		subRole := caser.String(performer.Key())
+		participations.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
+			ID:              id,
+			Name:            name,
+			OrderArtistName: orderName,
+		})
 	}
 
 	// Create a map to store the MbzArtistID for each artist name
