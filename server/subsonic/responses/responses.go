@@ -167,7 +167,7 @@ type Child struct {
 	*/
 	// OpenSubsonic extensions
 	Played        *time.Time `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	Bpm           int32      `xml:"bpm,attr"                json:"bpm"`
+	BPM           int32      `xml:"bpm,attr"                json:"bpm"`
 	Comment       string     `xml:"comment,attr"            json:"comment"`
 	SortName      string     `xml:"sortName,attr"           json:"sortName"`
 	MediaType     MediaType  `xml:"mediaType,attr"          json:"mediaType"`

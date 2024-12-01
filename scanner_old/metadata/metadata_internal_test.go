@@ -89,7 +89,7 @@ var _ = Describe("Tags", func() {
 		})
 	})
 
-	Describe("Bpm", func() {
+	Describe("BPM", func() {
 		var t *Tags
 		BeforeEach(func() {
 			t = &Tags{Tags: map[string][]string{

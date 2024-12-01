@@ -172,7 +172,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
 	child.SortName = mf.SortTitle
-	child.Bpm = int32(mf.Bpm)
+	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
 	child.ReplayGain = responses.ReplayGain{

@@ -30,7 +30,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.DiscSubtitle = md.String(model.TagDiscSubtitle)
 	mf.CatalogNum = md.String(model.TagCatalogNumber)
 	mf.Comment = md.String(model.TagComment)
-	mf.Bpm = int(math.Round(md.Float(model.TagBPM)))
+	mf.BPM = int(math.Round(md.Float(model.TagBPM)))
 
 	// Dates
 	origDate := md.Date(model.TagOriginalDate)
