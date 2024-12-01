@@ -3,6 +3,7 @@ package metadata
 import (
 	"cmp"
 	"io/fs"
+	"math"
 	"path"
 	"regexp"
 	"strconv"
@@ -80,9 +81,12 @@ func (md Metadata) Int(key model.TagName) int64              { v, _ := strconv.A
 func (md Metadata) Bool(key model.TagName) bool              { v, _ := strconv.ParseBool(md.first(key)); return v }
 func (md Metadata) Date(key model.TagName) Date              { return md.date(key) }
 func (md Metadata) NumAndTotal(key model.TagName) (int, int) { return md.tuple(key) }
-func (md Metadata) Float(key model.TagName) float64 {
-	v, _ := strconv.ParseFloat(md.first(key), 64)
-	return v
+func (md Metadata) Float(key model.TagName, def ...float64) float64 {
+	return float(md.first(key), def...)
+}
+func (md Metadata) Gain(key model.TagName) float64 {
+	v := strings.TrimSpace(strings.Replace(md.first(key), "dB", "", 1))
+	return float(v)
 }
 
 func (md Metadata) first(key model.TagName) string {
@@ -90,6 +94,17 @@ func (md Metadata) first(key model.TagName) string {
 		return v[0]
 	}
 	return ""
+}
+
+func float(value string, def ...float64) float64 {
+	v, err := strconv.ParseFloat(value, 64)
+	if err != nil || v == math.Inf(-1) || v == math.Inf(1) {
+		if len(def) > 0 {
+			return def[0]
+		}
+		return 0
+	}
+	return v
 }
 
 // Used for tracks and discs

@@ -141,6 +141,10 @@ main:
     aliases: [ TXXX:REPLAYGAIN_TRACK_GAIN, REPLAYGAIN_TRACK_GAIN, ----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN ]
   replaygain_track_peak:
     aliases: [ TXXX:REPLAYGAIN_TRACK_PEAK, REPLAYGAIN_TRACK_PEAK, ----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK ]
+  r128_album_gain:
+    aliases: [r128_album_gain]
+  r128_track_gain:
+    aliases: [r128_track_gain]
 
 # Additional tags. You can add new tags without the need to modify the code. They will be available as fields
 # for smart playlists

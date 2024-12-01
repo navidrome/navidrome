@@ -161,5 +161,49 @@ var _ = Describe("Metadata", func() {
 			Entry(nil, "", "", 0, 0),
 			Entry(nil, "A", "", 0, 0),
 		)
+
+		Describe("ReplayGain", func() {
+			createMF := func(tag, tagValue string) model.MediaFile {
+				props.Tags = map[string][]string{
+					tag: {tagValue},
+				}
+				md = metadata.New(filePath, props)
+				return md.ToMediaFile(0, "0")
+			}
+
+			DescribeTable("Gain",
+				func(tagValue string, expected float64) {
+					mf := createMF("replaygain_track_gain", tagValue)
+					Expect(mf.RgTrackGain).To(Equal(expected))
+				},
+				Entry("0", "0", 0.0),
+				Entry("1.2dB", "1.2dB", 1.2),
+				Entry("Infinity", "Infinity", 0.0),
+				Entry("Invalid value", "INVALID VALUE", 0.0),
+			)
+			DescribeTable("Peak",
+				func(tagValue string, expected float64) {
+					mf := createMF("replaygain_track_peak", tagValue)
+					Expect(mf.RgTrackPeak).To(Equal(expected))
+				},
+				Entry("0", "0", 0.0),
+				Entry("0.5", "0.5", 0.5),
+				Entry("Invalid dB suffix", "0.7dB", 1.0),
+				Entry("Infinity", "Infinity", 1.0),
+				Entry("Invalid value", "INVALID VALUE", 1.0),
+			)
+			DescribeTable("getR128GainValue",
+				func(tagValue string, expected float64) {
+					mf := createMF("r128_track_gain", tagValue)
+					Expect(mf.RgTrackGain).To(Equal(expected))
+
+				},
+				Entry("0", "0", 5.0),
+				Entry("-3776", "-3776", -9.75),
+				Entry("Infinity", "Infinity", 0.0),
+				Entry("Invalid value", "INVALID VALUE", 0.0),
+			)
+		})
+
 	})
 })

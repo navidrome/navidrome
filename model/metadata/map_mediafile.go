@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"math"
+	"strconv"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -13,6 +14,8 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 		FolderID:  folderID,
 		Tags:      md.tags,
 	}
+
+	// Title and Names
 	mf.Title = md.mapTrackTitle()
 	mf.Album = md.mapAlbumName()
 	mf.SortTitle = md.String(model.TagTitleSort)
@@ -21,26 +24,35 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.OrderAlbumName = str.SanitizeFieldForSortingNoArticle(mf.Album)
 	mf.Compilation = md.Bool(model.TagCompilation)
 
+	// Disc and Track info
 	mf.TrackNumber, _ = md.NumAndTotal(model.TagTrackNumber)
 	mf.DiscNumber, _ = md.NumAndTotal(model.TagDiscNumber)
 	mf.DiscSubtitle = md.String(model.TagDiscSubtitle)
+	mf.CatalogNum = md.String(model.TagCatalogNumber)
+	mf.Comment = md.String(model.TagComment)
+	mf.Bpm = int(math.Round(md.Float(model.TagBPM)))
+
+	// Dates
 	origDate := md.Date(model.TagOriginalDate)
 	mf.OriginalYear, mf.OriginalDate = origDate.Year(), string(origDate)
 	relDate := md.Date(model.TagReleaseDate)
 	mf.ReleaseYear, mf.ReleaseDate = relDate.Year(), string(relDate)
 	date := md.Date(model.TagRecordingDate)
 	mf.Year, mf.Date = date.Year(), string(date)
-	mf.CatalogNum = md.String(model.TagCatalogNumber)
+
+	// MBIDs
 	mf.MbzRecordingID = md.String(model.TagMusicBrainzRecordingID)
 	mf.MbzReleaseTrackID = md.String(model.TagMusicBrainzTrackID)
 	mf.MbzAlbumID = md.String(model.TagMusicBrainzAlbumID)
 	mf.MbzReleaseGroupID = md.String(model.TagMusicBrainzReleaseGroupID)
-	mf.RgAlbumPeak = md.Float(model.TagReplayGainAlbumPeak)
-	mf.RgAlbumGain = md.Float(model.TagReplayGainAlbumGain)
-	mf.RgTrackPeak = md.Float(model.TagReplayGainTrackPeak)
-	mf.RgTrackGain = md.Float(model.TagReplayGainTrackGain)
-	mf.Comment = md.String(model.TagComment)
-	mf.Bpm = int(math.Round(md.Float(model.TagBPM)))
+
+	// ReplayGain
+	mf.RgAlbumPeak = md.Float(model.TagReplayGainAlbumPeak, 1)
+	mf.RgAlbumGain = md.mapGain(model.TagReplayGainAlbumGain, model.TagR128AlbumGain)
+	mf.RgTrackPeak = md.Float(model.TagReplayGainTrackPeak, 1)
+	mf.RgTrackGain = md.mapGain(model.TagReplayGainTrackGain, model.TagR128TrackGain)
+
+	// General properties
 	mf.HasCoverArt = md.HasPicture()
 	mf.Duration = md.Length()
 	mf.BitRate = md.AudioProperties().BitRate
@@ -59,11 +71,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.Artist = md.mapDisplayArtist(mf)
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
+	// Persistent IDs
 	mf.PID = md.trackPID(mf)
 	mf.AlbumID = md.albumID(mf)
-
-	// BFR Use PIDs for matching albums (AlbumPID method), but it does not need to be saved in the DB
-	// BFR Album must also have a ArtistPID method, not saved to the DB as well.
 
 	// BFR These IDs will go away once the UI handle multiple participants.
 	// BFR For Legacy Subsonic compatibility, we will set them in the API handlers
@@ -87,7 +97,10 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 		// MusicBrainz IDs
 		model.TagMusicBrainzRecordingID, model.TagMusicBrainzTrackID, model.TagMusicBrainzAlbumID,
 		model.TagMusicBrainzReleaseGroupID, model.TagMusicBrainzAlbumArtistID, model.TagMusicBrainzArtistID,
+
+		// ReplayGain
 		model.TagReplayGainAlbumPeak, model.TagReplayGainAlbumGain, model.TagReplayGainTrackPeak, model.TagReplayGainTrackGain,
+		model.TagR128AlbumGain, model.TagR128TrackGain,
 
 		// Roles
 		model.TagComposer, model.TagConductor, model.TagArranger, model.TagLyricist, model.TagRemixer,
@@ -101,4 +114,23 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	}
 
 	return mf
+}
+
+func (md Metadata) mapGain(rg, r128 model.TagName) float64 {
+	v := md.Gain(rg)
+	if v != 0 {
+		return v
+	}
+	r128value := md.String(r128)
+	if r128value != "" {
+		var v, err = strconv.Atoi(r128value)
+		if err != nil {
+			return 0
+		}
+		// Convert Q7.8 to float
+		var value = float64(v) / 256.0
+		// Adding 5 dB to normalize with ReplayGain level
+		return value + 5
+	}
+	return 0
 }

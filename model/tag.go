@@ -222,6 +222,8 @@ const (
 	TagReplayGainAlbumPeak TagName = "replaygain_album_peak"
 	TagReplayGainTrackGain TagName = "replaygain_track_gain"
 	TagReplayGainTrackPeak TagName = "replaygain_track_peak"
+	TagR128AlbumGain       TagName = "r128_album_gain"
+	TagR128TrackGain       TagName = "r128_track_gain"
 
 	// MusicBrainz
 
