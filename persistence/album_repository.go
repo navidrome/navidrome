@@ -100,7 +100,7 @@ func (as dbAlbums) setParticipations(participantMap map[string]model.Artist) {
 		for role, artists := range a.Album.Participations {
 			for j, artist := range artists {
 				if artist, ok := participantMap[artist.ID]; ok {
-					as[i].Album.Participations[role][j] = artist
+					as[i].Album.Participations[role][j].Artist = artist
 				}
 			}
 		}

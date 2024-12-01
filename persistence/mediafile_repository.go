@@ -74,7 +74,7 @@ func (m dbMediaFiles) setParticipations(participantMap map[string]model.Artist) 
 		for role, artists := range mf.MediaFile.Participations {
 			for j, artist := range artists {
 				if artist, ok := participantMap[artist.ID]; ok {
-					m[i].MediaFile.Participations[role][j] = artist
+					m[i].MediaFile.Participations[role][j].Artist = artist
 				}
 			}
 		}

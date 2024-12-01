@@ -32,11 +32,16 @@ func (r sqlRepository) loadParticipations(m modelWithParticipations) error {
 	return nil
 }
 
+type participant struct {
+	ID      string `json:"id"`
+	SubRole string `json:"subRole,omitempty"`
+}
+
 func marshalParticipantIDs(participations model.Participations) string {
-	ids := make(map[model.Role][]string)
+	ids := make(map[model.Role][]participant)
 	for role, artists := range participations {
 		for _, artist := range artists {
-			ids[role] = append(ids[role], artist.ID)
+			ids[role] = append(ids[role], participant{ID: artist.ID, SubRole: artist.SubRole})
 		}
 	}
 	res, _ := json.Marshal(ids)
@@ -44,15 +49,17 @@ func marshalParticipantIDs(participations model.Participations) string {
 }
 
 func unmarshalParticipations(participantIds string) (model.Participations, error) {
-	partIDs := make(map[model.Role][]string)
+	partIDs := make(map[model.Role][]participant)
 	err := json.Unmarshal([]byte(participantIds), &partIDs)
 	if err != nil {
 		return nil, fmt.Errorf("parsing participants: %w", err)
 	}
 
 	participations := make(model.Participations, len(partIDs))
-	for role, ids := range partIDs {
-		artists := slice.Map(ids, func(id string) model.Artist { return model.Artist{ID: id} })
+	for role, participants := range partIDs {
+		artists := slice.Map(participants, func(p participant) model.Participant {
+			return model.Participant{Artist: model.Artist{ID: p.ID}, SubRole: p.SubRole}
+		})
 		participations[role] = artists
 	}
 	return participations, nil

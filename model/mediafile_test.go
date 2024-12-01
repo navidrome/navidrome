@@ -240,27 +240,27 @@ var _ = Describe("MediaFiles", func() {
 							Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist1",
 							DiscSubtitle: "DiscSubtitle1", SortAlbumName: "SortAlbumName1",
 							Participations: Participations{
-								RoleAlbumArtist: {{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}},
-								RoleArtist:      {{ID: "A1", Name: "Artist1", SortArtistName: "SortArtistName1"}},
+								RoleAlbumArtist: []Participant{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
+								RoleArtist:      []Participant{_p("A1", "Artist1", "SortArtistName1")},
 							},
 						},
 						{
 							Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist2",
 							DiscSubtitle: "DiscSubtitle2", SortAlbumName: "SortAlbumName1",
 							Participations: Participations{
-								RoleAlbumArtist: {{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}},
-								RoleArtist:      {{ID: "A2", Name: "Artist2", SortArtistName: "SortArtistName2"}},
-								RoleComposer:    {{ID: "C1", Name: "Composer1"}},
+								RoleAlbumArtist: []Participant{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
+								RoleArtist:      []Participant{_p("A2", "Artist2", "SortArtistName2")},
+								RoleComposer:    []Participant{_p("C1", "Composer1")},
 							},
 						},
 					}
 					album = mfs.ToAlbum()
 				})
 				It("gets all participations from all tracks", func() {
-					Expect(album.Participations).To(HaveKeyWithValue(RoleAlbumArtist, []Artist{{ID: "AA1", Name: "AlbumArtist1", SortArtistName: "SortAlbumArtistName1"}}))
-					Expect(album.Participations).To(HaveKeyWithValue(RoleComposer, []Artist{{ID: "C1", Name: "Composer1"}}))
-					Expect(album.Participations).To(HaveKeyWithValue(RoleArtist, []Artist{
-						{ID: "A1", Name: "Artist1", SortArtistName: "SortArtistName1"}, {ID: "A2", Name: "Artist2", SortArtistName: "SortArtistName2"},
+					Expect(album.Participations).To(HaveKeyWithValue(RoleAlbumArtist, []Participant{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")}))
+					Expect(album.Participations).To(HaveKeyWithValue(RoleComposer, []Participant{_p("C1", "Composer1")}))
+					Expect(album.Participations).To(HaveKeyWithValue(RoleArtist, []Participant{
+						_p("A1", "Artist1", "SortArtistName1"), _p("A2", "Artist2", "SortArtistName2"),
 					}))
 				})
 			})

@@ -8,14 +8,22 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+func _p(id, name string, sortName ...string) Participant {
+	p := Participant{Artist: Artist{ID: id, Name: name}}
+	if len(sortName) > 0 {
+		p.Artist.SortArtistName = sortName[0]
+	}
+	return p
+}
+
 var _ = Describe("Participations", func() {
 	Describe("JSON Marshalling", func() {
 		When("we have a valid Albums object", func() {
 			var participations Participations
 			BeforeEach(func() {
 				participations = Participations{
-					RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
-					RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}},
+					RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
+					RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 				}
 			})
 
@@ -40,8 +48,8 @@ var _ = Describe("Participations", func() {
 		var participations Participations
 		BeforeEach(func() {
 			participations = Participations{
-				RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
-				RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}},
+				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
+				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 			}
 		})
 		It("returns the first artist of the role", func() {
@@ -56,26 +64,26 @@ var _ = Describe("Participations", func() {
 		var participations Participations
 		BeforeEach(func() {
 			participations = Participations{
-				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
+				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}
 		})
 		It("adds the artist to the role", func() {
-			participations.Add(RoleArtist, Artist{ID: "5", Name: "Artist3"})
+			participations.Add(RoleArtist, Artist{ID: "5", Name: "Artist5"})
 			Expect(participations).To(Equal(Participations{
-				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}, {ID: "5", Name: "Artist3"}},
+				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2"), _p("5", "Artist5")},
 			}))
 		})
 		It("creates a new role if it doesn't exist", func() {
-			participations.Add(RoleComposer, Artist{ID: "5", Name: "Artist3"})
+			participations.Add(RoleComposer, Artist{ID: "5", Name: "Artist5"})
 			Expect(participations).To(Equal(Participations{
-				RoleArtist:   []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
-				RoleComposer: []Artist{{ID: "5", Name: "Artist3"}},
+				RoleArtist:   []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
+				RoleComposer: []Participant{_p("5", "Artist5")},
 			}))
 		})
 		It("should not add duplicate artists", func() {
 			participations.Add(RoleArtist, Artist{ID: "1", Name: "Artist1"})
 			Expect(participations).To(Equal(Participations{
-				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
+				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}))
 		})
 	})
@@ -84,19 +92,19 @@ var _ = Describe("Participations", func() {
 		var participations1, participations2 Participations
 		BeforeEach(func() {
 			participations1 = Participations{
-				RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Duplicated Artist"}},
-				RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}},
+				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Duplicated Artist")},
+				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 			}
 			participations2 = Participations{
-				RoleArtist:      []Artist{{ID: "5", Name: "Artist3"}, {ID: "6", Name: "Artist4"}, {ID: "2", Name: "Duplicated Artist"}},
-				RoleAlbumArtist: []Artist{{ID: "7", Name: "AlbumArtist3"}, {ID: "8", Name: "AlbumArtist4"}},
+				RoleArtist:      []Participant{_p("5", "Artist3"), _p("6", "Artist4"), _p("2", "Duplicated Artist")},
+				RoleAlbumArtist: []Participant{_p("7", "AlbumArtist3"), _p("8", "AlbumArtist4")},
 			}
 		})
 		It("merges correctly, skipping duplicated artists", func() {
 			participations1.Merge(participations2)
 			Expect(participations1).To(Equal(Participations{
-				RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Duplicated Artist"}, {ID: "5", Name: "Artist3"}, {ID: "6", Name: "Artist4"}},
-				RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}, {ID: "7", Name: "AlbumArtist3"}, {ID: "8", Name: "AlbumArtist4"}},
+				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Duplicated Artist"), _p("5", "Artist3"), _p("6", "Artist4")},
+				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2"), _p("7", "AlbumArtist3"), _p("8", "AlbumArtist4")},
 			}))
 		})
 	})
@@ -104,21 +112,21 @@ var _ = Describe("Participations", func() {
 	Describe("Hash", func() {
 		It("should return the same hash for the same participations", func() {
 			p1 := Participations{
-				RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
-				RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}},
+				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
+				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 			}
 			p2 := Participations{
-				RoleArtist:      []Artist{{ID: "2", Name: "Artist2"}, {ID: "1", Name: "Artist1"}},
-				RoleAlbumArtist: []Artist{{ID: "4", Name: "AlbumArtist2"}, {ID: "3", Name: "AlbumArtist1"}},
+				RoleArtist:      []Participant{_p("2", "Artist2"), _p("1", "Artist1")},
+				RoleAlbumArtist: []Participant{_p("4", "AlbumArtist2"), _p("3", "AlbumArtist1")},
 			}
 			Expect(p1.Hash()).To(Equal(p2.Hash()))
 		})
 		It("should return different hashes for different participations", func() {
 			p1 := Participations{
-				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}},
+				RoleArtist: []Participant{_p("1", "Artist1")},
 			}
 			p2 := Participations{
-				RoleArtist: []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
+				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}
 			Expect(p1.Hash()).ToNot(Equal(p2.Hash()))
 		})
@@ -128,16 +136,16 @@ var _ = Describe("Participations", func() {
 		var participations Participations
 		BeforeEach(func() {
 			participations = Participations{
-				RoleArtist:      []Artist{{ID: "1", Name: "Artist1"}, {ID: "2", Name: "Artist2"}},
-				RoleAlbumArtist: []Artist{{ID: "3", Name: "AlbumArtist1"}, {ID: "4", Name: "AlbumArtist2"}},
-				RoleProducer:    []Artist{{ID: "5", Name: "Producer", SortArtistName: "SortProducerName"}},
-				RoleComposer:    []Artist{{ID: "1", Name: "Artist1"}},
+				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
+				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
+				RoleProducer:    []Participant{_p("5", "Producer", "SortProducerName")},
+				RoleComposer:    []Participant{_p("1", "Artist1")},
 			}
 		})
 
 		Describe("All", func() {
 			It("returns all artists found in the Participations", func() {
-				artists := participations.All()
+				artists := participations.AllArtists()
 				Expect(artists).To(ConsistOf(
 					Artist{ID: "1", Name: "Artist1"},
 					Artist{ID: "2", Name: "Artist2"},

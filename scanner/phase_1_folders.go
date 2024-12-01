@@ -265,7 +265,7 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Art
 	for _, track := range entry.tracks {
 		participants.Merge(track.Participations)
 	}
-	return participants.All()
+	return participants.AllArtists()
 }
 
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
