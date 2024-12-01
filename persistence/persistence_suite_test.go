@@ -79,7 +79,7 @@ var (
 	songAntenna       = mf(model.MediaFile{ID: "1004", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk",
 		AlbumID:     "103",
 		Path:        p("/kraft/radio/antenna.mp3"),
-		RgAlbumGain: 1.0, RgAlbumPeak: 2.0, RgTrackGain: 3.0, RgTrackPeak: 4.0,
+		RGAlbumGain: 1.0, RGAlbumPeak: 2.0, RGTrackGain: 3.0, RGTrackPeak: 4.0,
 	})
 	testSongs = model.MediaFiles{
 		songDayInALife,

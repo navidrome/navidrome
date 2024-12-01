@@ -76,10 +76,10 @@ type MediaFile struct {
 	MbzAlbumArtistID     string  `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"` // Deprecated: Use Participants instead
 	MbzAlbumType         string  `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
 	MbzAlbumComment      string  `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
-	RgAlbumGain          float64 `structs:"rg_album_gain" json:"rgAlbumGain"`
-	RgAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
-	RgTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
-	RgTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
+	RGAlbumGain          float64 `structs:"rg_album_gain" json:"rgAlbumGain"`
+	RGAlbumPeak          float64 `structs:"rg_album_peak" json:"rgAlbumPeak"`
+	RGTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
+	RGTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
 	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags from the original file
 	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this track

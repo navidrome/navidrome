@@ -194,7 +194,7 @@ var _ = Describe("Metadata", func() {
 			DescribeTable("Gain",
 				func(tagValue string, expected float64) {
 					mf := createMF("replaygain_track_gain", tagValue)
-					Expect(mf.RgTrackGain).To(Equal(expected))
+					Expect(mf.RGTrackGain).To(Equal(expected))
 				},
 				Entry("0", "0", 0.0),
 				Entry("1.2dB", "1.2dB", 1.2),
@@ -204,7 +204,7 @@ var _ = Describe("Metadata", func() {
 			DescribeTable("Peak",
 				func(tagValue string, expected float64) {
 					mf := createMF("replaygain_track_peak", tagValue)
-					Expect(mf.RgTrackPeak).To(Equal(expected))
+					Expect(mf.RGTrackPeak).To(Equal(expected))
 				},
 				Entry("0", "0", 0.0),
 				Entry("0.5", "0.5", 0.5),
@@ -215,7 +215,7 @@ var _ = Describe("Metadata", func() {
 			DescribeTable("getR128GainValue",
 				func(tagValue string, expected float64) {
 					mf := createMF("r128_track_gain", tagValue)
-					Expect(mf.RgTrackGain).To(Equal(expected))
+					Expect(mf.RGTrackGain).To(Equal(expected))
 
 				},
 				Entry("0", "0", 5.0),

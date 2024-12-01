@@ -176,10 +176,10 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
 	child.ReplayGain = responses.ReplayGain{
-		TrackGain: mf.RgTrackGain,
-		AlbumGain: mf.RgAlbumGain,
-		TrackPeak: mf.RgTrackPeak,
-		AlbumPeak: mf.RgAlbumPeak,
+		TrackGain: mf.RGTrackGain,
+		AlbumGain: mf.RGAlbumGain,
+		TrackPeak: mf.RGTrackPeak,
+		AlbumPeak: mf.RGAlbumPeak,
 	}
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
