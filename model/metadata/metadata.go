@@ -111,7 +111,6 @@ func (md Metadata) Pairs(key model.TagName) []Pair {
 	values := md.tags[key]
 	return slice.Map(values, func(v string) Pair { return Pair(v) })
 }
-
 func (md Metadata) first(key model.TagName) string {
 	if v, ok := md.tags[key]; ok && len(v) > 0 {
 		return v[0]

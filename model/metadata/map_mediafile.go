@@ -1,9 +1,11 @@
 package metadata
 
 import (
+	"encoding/json"
 	"math"
 	"strconv"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 )
@@ -15,7 +17,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 		Tags:      md.tags,
 	}
 
-	// Title and Names
+	// Title and Album
 	mf.Title = md.mapTrackTitle()
 	mf.Album = md.mapAlbumName()
 	mf.SortTitle = md.String(model.TagTitleSort)
@@ -31,6 +33,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.CatalogNum = md.String(model.TagCatalogNumber)
 	mf.Comment = md.String(model.TagComment)
 	mf.BPM = int(math.Round(md.Float(model.TagBPM)))
+	mf.Lyrics = md.mapLyrics()
 
 	// Dates
 	origDate := md.Date(model.TagOriginalDate)
@@ -133,4 +136,29 @@ func (md Metadata) mapGain(rg, r128 model.TagName) float64 {
 		return value + 5
 	}
 	return 0
+}
+
+func (md Metadata) mapLyrics() string {
+	rawLyrics := md.Pairs(model.TagLyrics)
+
+	lyricList := make(model.LyricList, 0, len(rawLyrics))
+
+	for _, raw := range rawLyrics {
+		lang := raw.Key()
+		text := raw.Value()
+
+		lyrics, err := model.ToLyrics(lang, text)
+		if err != nil {
+			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
+			continue
+		}
+		lyricList = append(lyricList, *lyrics)
+	}
+
+	res, err := json.Marshal(lyricList)
+	if err != nil {
+		log.Warn("Unexpected error occurred when serializing lyrics", "file", md.filePath, err)
+		return ""
+	}
+	return string(res)
 }

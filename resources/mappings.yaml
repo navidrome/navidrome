@@ -99,6 +99,7 @@ main:
   lyrics:
     aliases: [ USLT:description, LYRICS, ©lyr, WM/Lyrics ]
     maxLength: 32768
+    type: pair # ex: lyrics:eng, lyrics:xxx
   comment:
     aliases: [ COMM:description, COMMENT, ©cmt, Description, ICMT ]
     maxLength: 4096

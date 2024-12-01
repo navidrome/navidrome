@@ -124,13 +124,6 @@ func goPutInt(id C.ulong, key *C.char, val C.int) {
 	goPutStr(id, key, vp)
 }
 
-/*
-BFR: As I'm working on the new scanner, I see that the `properties` from extractor is ill-suited to extract multi-valued
-ID3 frames. I'll have to change the way we do it for ID3, probably by sending the raw frames to Go and mapping there,
-instead of relying on the auto-mapped `properties`.  I think this would reduce our reliance on C++, while also giving
-us more flexibility, including parsing the USLT / SYLT frames in Go
-*/
-
 //export goPutLyrics
 func goPutLyrics(id C.ulong, lang *C.char, val *C.char) {
 	doPutTag(id, "lyrics:"+C.GoString(lang), val)

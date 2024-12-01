@@ -1,11 +1,14 @@
 package metadata_test
 
 import (
+	"encoding/json"
 	"os"
+	"sort"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/tests"
+	. "github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -45,6 +48,31 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(mf.OriginalDate).To(Equal("1978-09-10"))
 			Expect(mf.ReleaseYear).To(Equal(2002))
 			Expect(mf.ReleaseDate).To(Equal("2002-01-02"))
+		})
+	})
+
+	Describe("Lyrics", func() {
+		It("should parse the lyrics", func() {
+			mf = toMediaFile(map[string][]string{
+				"LYRICS:XXX": {"Lyrics"},
+				"LYRICS:ENG": {
+					"[00:00.00]This is\n[00:02.50]English SYLT\n",
+				},
+			})
+			var actual model.LyricList
+			err := json.Unmarshal([]byte(mf.Lyrics), &actual)
+			Expect(err).ToNot(HaveOccurred())
+
+			expected := model.LyricList{
+				{Lang: "eng", Line: []model.Line{
+					{Value: "This is", Start: P(int64(0))},
+					{Value: "English SYLT", Start: P(int64(2500))},
+				}, Synced: true},
+				{Lang: "xxx", Line: []model.Line{{Value: "Lyrics"}}, Synced: false},
+			}
+			sort.Slice(actual, func(i, j int) bool { return actual[i].Lang < actual[j].Lang })
+			sort.Slice(expected, func(i, j int) bool { return expected[i].Lang < expected[j].Lang })
+			Expect(actual).To(Equal(expected))
 		})
 	})
 })

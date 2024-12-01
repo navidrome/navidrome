@@ -75,6 +75,7 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	parseTuple("disc")
 
 	// Adjust some ID3 tags
+	parseLyrics(tags)
 	parseTIPL(tags)
 	delete(tags, "tmcl") // TMCL is already parsed by TagLib
 
@@ -83,6 +84,15 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 		AudioProperties: ap,
 		HasPicture:      tags["has_picture"] != nil && len(tags["has_picture"]) > 0 && tags["has_picture"][0] == "true",
 	}, nil
+}
+
+// parseLyrics make sure lyrics tags have language
+func parseLyrics(tags map[string][]string) {
+	lyrics := tags["lyrics"]
+	if len(lyrics) > 0 {
+		tags["lyrics:xxx"] = lyrics
+		delete(tags, "lyrics")
+	}
 }
 
 // These are the only roles we support, based on Picard's tag map:

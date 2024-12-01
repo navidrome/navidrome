@@ -158,7 +158,7 @@ var _ = Describe("Extractor", func() {
 						"[00:00.00]This is\n[00:02.50]unspecified",
 					}))
 				} else {
-					Expect(m.Tags).To(HaveKeyWithValue("lyrics", []string{
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics:xxx", []string{
 						"[00:00.00]This is\n[00:02.50]unspecified",
 						"[00:00.00]This is\n[00:02.50]English",
 					}))
