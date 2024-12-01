@@ -60,6 +60,22 @@ var _ = Describe("Extractor", func() {
 			Expect(m.Tags).To(HaveKeyWithValue("tracknumber", []string{"2"}))
 			Expect(m.Tags).To(HaveKeyWithValue("tracktotal", []string{"10"}))
 
+			Expect(m.Tags).ToNot(HaveKey("lyrics"))
+			Expect(m.Tags).To(Or(HaveKeyWithValue("lyrics:eng", []string{
+				"[00:00.00]This is\n[00:02.50]English SYLT\n",
+				"[00:00.00]This is\n[00:02.50]English",
+			}), HaveKeyWithValue("lyrics:eng", []string{
+				"[00:00.00]This is\n[00:02.50]English",
+				"[00:00.00]This is\n[00:02.50]English SYLT\n",
+			})))
+			Expect(m.Tags).To(Or(HaveKeyWithValue("lyrics:xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
+				"[00:00.00]This is\n[00:02.50]unspecified",
+			}), HaveKeyWithValue("lyrics:xxx", []string{
+				"[00:00.00]This is\n[00:02.50]unspecified",
+				"[00:00.00]This is\n[00:02.50]unspecified SYLT\n",
+			})))
+
 			// Test OGG
 			m = mds["tests/fixtures/test.ogg"]
 			Expect(err).To(BeNil())
@@ -75,7 +91,7 @@ var _ = Describe("Extractor", func() {
 		})
 
 		DescribeTable("Format-Specific tests",
-			func(file, duration string, channels, samplerate int, albumGain, albumPeak, trackGain, trackPeak string) {
+			func(file, duration string, channels, samplerate int, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -134,28 +150,42 @@ var _ = Describe("Extractor", func() {
 					HaveKeyWithValue("wm/iscompilation", []string{"1"})),
 				)
 
+				if id3Lyrics {
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics:eng", []string{
+						"[00:00.00]This is\n[00:02.50]English",
+					}))
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics:xxx", []string{
+						"[00:00.00]This is\n[00:02.50]unspecified",
+					}))
+				} else {
+					Expect(m.Tags).To(HaveKeyWithValue("lyrics", []string{
+						"[00:00.00]This is\n[00:02.50]unspecified",
+						"[00:00.00]This is\n[00:02.50]English",
+					}))
+				}
+
 				Expect(m.Tags).To(HaveKeyWithValue("comment", []string{"Comment1\nComment2"}))
 			},
 
 			// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
-			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948"),
+			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false),
 
-			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48"),
-			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48"),
-			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506"),
+			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48", false),
+			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, "0.37", "0.48", "0.37", "0.48", false),
+			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
 			// Weird note: for the tag parsing to work, the lyrics are actually stored in the reverse order
-			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, "3.27 dB", "0.132914", "3.27 dB", "0.132914"),
+			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
-			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, "3.43 dB", "0.125061", "3.43 dB", "0.125061"),
+			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
-			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, "3.06 dB", "0.125056", "3.06 dB", "0.125056"),
+			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, "3.06 dB", "0.125056", "3.06 dB", "0.125056", true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
-			Entry("correctly parses aiff tags", "test.aiff", "1s", 1, 44100, "2.00 dB", "0.124972", "2.00 dB", "0.124972"),
+			Entry("correctly parses aiff tags", "test.aiff", "1s", 1, 44100, "2.00 dB", "0.124972", "2.00 dB", "0.124972", true),
 		)
 
 		// Skip these tests when running as root

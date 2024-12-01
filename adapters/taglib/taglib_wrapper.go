@@ -133,7 +133,7 @@ us more flexibility, including parsing the USLT / SYLT frames in Go
 
 //export goPutLyrics
 func goPutLyrics(id C.ulong, lang *C.char, val *C.char) {
-	doPutTag(id, "lyrics-"+C.GoString(lang), val)
+	doPutTag(id, "lyrics:"+C.GoString(lang), val)
 }
 
 //export goPutLyricLine
@@ -149,7 +149,7 @@ func goPutLyricLine(id C.ulong, lang *C.char, text *C.char, time C.int) {
 	minimum := timeGo % 60
 	formattedLine := fmt.Sprintf("[%02d:%02d.%02d]%s\n", minimum, sec, ms/10, line)
 
-	key := "lyrics-" + language
+	key := "lyrics:" + language
 
 	r, _ := allMaps.Load(uint32(id))
 	m := r.(tagMap)
