@@ -83,7 +83,7 @@ func (p *phasePlaylists) stages() []ppl.Stage[*model.Folder] {
 func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.Folder, error) {
 	files, err := os.ReadDir(folder.AbsolutePath())
 	if err != nil {
-		log.Error(p.ctx, "Error reading files", "folder", folder, err)
+		log.Error(p.ctx, "Scanner: Error reading files", "folder", folder, err)
 		p.scanState.sendError(err)
 		return folder, nil
 	}
@@ -100,9 +100,9 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 			continue
 		}
 		if pls.IsSmartPlaylist() {
-			log.Debug("Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
+			log.Debug("Scanner: Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
 		} else {
-			log.Debug("Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
+			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))
 		}
 		p.cw.PreCache(pls.CoverArtID())
 		p.refreshed.Add(1)
