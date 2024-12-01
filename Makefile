@@ -37,10 +37,14 @@ watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 .PHONY: watch
 
 test: ##@Development Run Go tests
+	go test -tags netgo ./...
+.PHONY: test
+
+testrace: ##@Development Run Go tests with race detector
 	go test -tags netgo -race -shuffle=on ./...
 .PHONY: test
 
-testall: test ##@Development Run Go and JS tests
+testall: testrace ##@Development Run Go and JS tests
 	@(cd ./ui && npm run test:ci)
 .PHONY: testall
 

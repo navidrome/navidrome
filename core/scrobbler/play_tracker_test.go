@@ -48,8 +48,8 @@ var _ = Describe("PlayTracker", func() {
 			TrackNumber:    1,
 			Duration:       180,
 			MbzRecordingID: "mbz-123",
-			Participations: map[model.Role][]model.Artist{
-				model.RoleArtist: {{ID: "ar-1"}, {ID: "ar-2"}},
+			Participations: map[model.Role][]model.Participant{
+				model.RoleArtist: []model.Participant{_p("ar-1", "Artist 1"), _p("ar-2", "Artist 2")},
 			},
 		}
 		_ = ds.MediaFile(ctx).Put(&track)
@@ -228,4 +228,13 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	f.UserID = userId
 	f.LastScrobble = s
 	return nil
+}
+
+// BFR This is duplicated in a few places
+func _p(id, name string, sortName ...string) model.Participant {
+	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	if len(sortName) > 0 {
+		p.Artist.SortArtistName = sortName[0]
+	}
+	return p
 }

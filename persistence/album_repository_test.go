@@ -145,16 +145,16 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("parses ParticipantIDs correctly", func() {
-				dba.ParticipantIDs = `{"composer":["1"],"artist":["2","3"]}`
+				dba.ParticipantIDs = `{"composer":[{"id":"1"}],"artist":[{"id":"2"},{"id":"3","subRole":"subRole"}]}`
 				Expect(dba.PostScan()).To(Succeed())
 				Expect(dba.Album.Participations).To(HaveLen(2))
 				Expect(dba.Album.Participations).To(HaveKeyWithValue(
 					model.RoleFromString("composer"),
-					[]model.Artist{{ID: "1"}},
+					[]model.Participant{{Artist: model.Artist{ID: "1"}}},
 				))
 				Expect(dba.Album.Participations).To(HaveKeyWithValue(
 					model.RoleFromString("artist"),
-					[]model.Artist{{ID: "2"}, {ID: "3"}},
+					[]model.Participant{{Artist: model.Artist{ID: "2"}}, {Artist: model.Artist{ID: "3"}, SubRole: "subRole"}},
 				))
 			})
 
@@ -195,13 +195,13 @@ var _ = Describe("AlbumRepository", func() {
 
 			It("maps participant_ids correctly", func() {
 				dba.Album.Participations = model.Participations{
-					model.RoleAlbumArtist: {{ID: "AA1", Name: "AlbumArtist1"}},
-					model.RoleComposer:    {{ID: "C1", Name: "Composer1"}},
+					model.RoleAlbumArtist: []model.Participant{_p("AA1", "AlbumArtist1")},
+					model.RoleComposer:    []model.Participant{{Artist: model.Artist{ID: "C1"}, SubRole: "subRole"}},
 				}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue(
 					"participant_ids",
-					`{"albumArtist":["AA1"],"composer":["C1"]}`,
+					`{"albumArtist":[{"id":"AA1"}],"composer":[{"id":"C1","subRole":"subRole"}]}`,
 				))
 			})
 
@@ -235,3 +235,11 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 })
+
+func _p(id, name string, sortName ...string) model.Participant {
+	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	if len(sortName) > 0 {
+		p.Artist.SortArtistName = sortName[0]
+	}
+	return p
+}

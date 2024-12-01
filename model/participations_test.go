@@ -8,14 +8,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func _p(id, name string, sortName ...string) Participant {
-	p := Participant{Artist: Artist{ID: id, Name: name}}
-	if len(sortName) > 0 {
-		p.Artist.SortArtistName = sortName[0]
-	}
-	return p
-}
-
 var _ = Describe("Participations", func() {
 	Describe("JSON Marshalling", func() {
 		When("we have a valid Albums object", func() {
@@ -172,3 +164,11 @@ var _ = Describe("Participations", func() {
 		})
 	})
 })
+
+func _p(id, name string, sortName ...string) Participant {
+	p := Participant{Artist: Artist{ID: id, Name: name}}
+	if len(sortName) > 0 {
+		p.Artist.SortArtistName = sortName[0]
+	}
+	return p
+}
