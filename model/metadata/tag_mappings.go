@@ -33,6 +33,7 @@ const (
 	TagTypeFloat   TagType = "float"
 	TagTypeDate    TagType = "date"
 	TagTypeUUID    TagType = "uuid"
+	TagTypePair    TagType = "pair"
 )
 
 func mappings() map[model.TagName]tagConf {

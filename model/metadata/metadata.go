@@ -176,7 +176,17 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	cleaned := make(model.Tags, len(mappings))
 	for name, mapping := range mappings {
 		for _, k := range mapping.Aliases {
-			if v, ok := lowered[model.TagName(k)]; ok {
+			if mapping.Type == TagTypePair {
+				prefix := name + ":"
+				for tagKey, tagValues := range lowered {
+					if strings.HasPrefix(string(tagKey), string(prefix)) {
+						key := strings.TrimPrefix(string(tagKey), string(prefix))
+						for _, value := range tagValues {
+							cleaned[name] = append(cleaned[name], Pair(key, value))
+						}
+					}
+				}
+			} else if v, ok := lowered[model.TagName(k)]; ok {
 				v = split(v, mapping.Split)
 				if len(v) > 0 {
 					if existing, exists := cleaned[name]; exists {
@@ -199,6 +209,10 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	}
 
 	return sanitizeAll(filePath, cleaned)
+}
+
+func Pair(key, value string) string {
+	return key + consts.Zwsp + value
 }
 
 // split a tag value by the given separators, but only if it has a single value.

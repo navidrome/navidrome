@@ -145,6 +145,9 @@ main:
     aliases: [r128_album_gain]
   r128_track_gain:
     aliases: [r128_track_gain]
+  performer:
+    aliases: [PERFORMER]
+    type: pair
 
 # Additional tags. You can add new tags without the need to modify the code. They will be available as fields
 # for smart playlists

@@ -162,6 +162,26 @@ var _ = Describe("Metadata", func() {
 			Entry(nil, "A", "", 0, 0),
 		)
 
+		Describe("Performers", func() {
+			BeforeEach(func() {
+				props.Tags = map[string][]string{
+					"PERFORMER:GUITAR":            {"Guitarist 1", "Guitarist 2"},
+					"PERFORMER:BACKGROUND VOCALS": {"Backing Singer"},
+				}
+			})
+
+			It("should return the performers", func() {
+				md = metadata.New(filePath, props)
+
+				Expect(md.All()).To(HaveKey(model.TagPerformer))
+				Expect(md.Strings(model.TagPerformer)).To(ContainElements(
+					metadata.Pair("guitar", "Guitarist 1"),
+					metadata.Pair("guitar", "Guitarist 2"),
+					metadata.Pair("background vocals", "Backing Singer"),
+				))
+			})
+		})
+
 		Describe("ReplayGain", func() {
 			createMF := func(tag, tagValue string) model.MediaFile {
 				props.Tags = map[string][]string{
