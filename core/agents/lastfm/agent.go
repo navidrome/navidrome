@@ -3,11 +3,13 @@ package lastfm
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/andybalholm/cascadia"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
@@ -15,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"golang.org/x/net/html"
 )
 
 const (
@@ -174,6 +177,44 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 			Name: t.Name,
 			MBID: t.MBID,
 		})
+	}
+	return res, nil
+}
+
+var artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
+
+func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
+	a, err := l.callArtistGetInfo(ctx, name, mbid)
+	if err != nil {
+		return nil, fmt.Errorf("get artist info: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodGet, a.URL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create artist image request: %w", err)
+	}
+	resp, err := l.client.hc.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("get artist url: %w", err)
+	}
+	defer resp.Body.Close()
+
+	node, err := html.Parse(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("parse html: %w", err)
+	}
+
+	var res []agents.ExternalImage
+	n := cascadia.Query(node, artistOpenGraphQuery)
+	if n == nil {
+		return res, nil
+	}
+	for _, attr := range n.Attr {
+		if attr.Key == "content" {
+			res = []agents.ExternalImage{
+				{URL: attr.Val},
+			}
+			break
+		}
 	}
 	return res, nil
 }

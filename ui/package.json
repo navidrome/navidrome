@@ -12,7 +12,8 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",
     "prettier": "prettier --write ./src",
-    "check-formatting": "prettier -c ./src"
+    "check-formatting": "prettier -c ./src",
+    "postinstall": "bin/update-workbox.sh"
   },
   "dependencies": {
     "@material-ui/core": "^4.11.4",
@@ -46,7 +47,8 @@
     "react-router-dom": "^5.3.4",
     "redux": "^4.2.0",
     "redux-saga": "^1.1.3",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "workbox-cli": "^7.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

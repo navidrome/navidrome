@@ -45,6 +45,7 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 				UserId:          user.ID,
 				Client:          client,
 				ScrobbleEnabled: true,
+				ReportRealPath:  true,
 			}
 			log.Info(ctx, "Registering new player", "id", plr.ID, "client", client, "username", userName(ctx), "type", userAgent)
 		}
