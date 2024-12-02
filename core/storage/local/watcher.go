@@ -28,7 +28,7 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 
 		libPath := filepath.Join(s.u.Path, "...")
 		log.Debug(ctx, "Starting watcher", "lib", libPath)
-		err := notify.Watch(libPath, input, notify.All)
+		err := notify.Watch(libPath, input, WatchEvents)
 		if err != nil {
 			log.Error("Error starting watcher", "lib", libPath, err)
 			return
