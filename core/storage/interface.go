@@ -17,9 +17,9 @@ type MusicFS interface {
 	ReadTags(path ...string) (map[string]metadata.Info, error)
 }
 
-// Watcher is a storage with the ability to start and stop a fs watcher.
+// Watcher is a storage with the ability watch the FS and notify changes
 type Watcher interface {
 	// Start starts a watcher on the whole FS and returns a channel to send detected changes.
-	// The watcher should be stopped when the context is done.
+	// The watcher must be stopped when the context is done.
 	Start(context.Context) (<-chan string, error)
 }

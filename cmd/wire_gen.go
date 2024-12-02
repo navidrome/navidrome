@@ -118,6 +118,22 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	return scannerScanner
 }
 
+func CreateScanWatcher(ctx context.Context) scanner.Watcher {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	fileCache := artwork.GetImageCache()
+	fFmpeg := ffmpeg.New()
+	agentsAgents := agents.New(dataStore)
+	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
+	broker := events.GetBroker()
+	playlists := core.NewPlaylists(dataStore)
+	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists)
+	watcher := scanner.NewWatcher(dataStore, scannerScanner)
+	return watcher
+}
+
 func GetPlaybackServer() playback.PlaybackServer {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
@@ -127,4 +143,4 @@ func GetPlaybackServer() playback.PlaybackServer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, db.Db)

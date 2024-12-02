@@ -33,6 +33,7 @@ var allProviders = wire.NewSet(
 	listenbrainz.NewRouter,
 	events.GetBroker,
 	scanner.New,
+	scanner.NewWatcher,
 	db.Db,
 )
 
@@ -73,6 +74,12 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 }
 
 func CreateScanner(ctx context.Context) scanner.Scanner {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	panic(wire.Build(
 		allProviders,
 	))

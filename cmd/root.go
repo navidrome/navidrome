@@ -8,9 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/navidrome/navidrome/adapters/taglib"
-
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -82,6 +81,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(startScanWatcher(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 
 	if err := g.Wait(); err != nil {
@@ -153,6 +153,17 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 			log.Error("Error executing initial scan", err)
 		}
 		log.Debug("Finished initial scan")
+		return nil
+	}
+}
+
+func startScanWatcher(ctx context.Context) func() error {
+	return func() error {
+		w := CreateScanWatcher(ctx)
+		err := w.Run(ctx)
+		if err != nil {
+			log.Error("Error starting watcher", err)
+		}
 		return nil
 	}
 }
