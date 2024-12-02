@@ -3,6 +3,8 @@ package scanner
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
@@ -51,7 +53,6 @@ func (w *watcher) Run(ctx context.Context) error {
 				log.Info(ctx, "Watcher: Scan completed")
 			}
 		case <-ctx.Done():
-			log.Info(ctx, "Stopping watcher")
 			return nil
 		case <-watcherChan:
 			trigger.Reset(triggerWait)
@@ -63,6 +64,11 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 	s, err := storage.For(lib.Path)
 	if err != nil {
 		log.Error(ctx, "Error creating storage", "library", lib.ID, err)
+		return
+	}
+	fsys, err := s.FS()
+	if err != nil {
+		log.Error(ctx, "Error getting FS", "library", lib.ID, err)
 		return
 	}
 	watcher, ok := s.(storage.Watcher)
@@ -81,8 +87,34 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 		case <-ctx.Done():
 			return
 		case path := <-c:
+			path, err = filepath.Rel(lib.Path, path)
+			if err != nil {
+				log.Error(ctx, "Error getting relative path", "library", lib.ID, "path", path, err)
+				continue
+			}
+			if isIgnoredPath(ctx, fsys, path) {
+				log.Trace(ctx, "Watcher: Ignoring change", "library", lib.ID, "path", path)
+				continue
+			}
 			log.Debug(ctx, "Watcher: Detected change", "library", lib.ID, "path", path)
 			watchChan <- struct{}{}
 		}
 	}
+}
+
+func isIgnoredPath(_ context.Context, fsys fs.FS, path string) bool {
+	baseDir, name := filepath.Split(path)
+	switch {
+	case model.IsAudioFile(path):
+		return false
+	case model.IsValidPlaylist(path):
+		return false
+	case model.IsImageFile(path):
+		return false
+	case name == ".DS_Store":
+		return true
+	}
+	// As it can be a deletion and not a change, we cannot reliably know if the path is a file or directory.
+	// But at this point, we can assume it's a directory. If it's a file, it would be ignored anyway
+	return isDirIgnored(fsys, baseDir, name)
 }

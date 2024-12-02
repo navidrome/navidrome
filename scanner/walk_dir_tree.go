@@ -134,7 +134,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", filepath.Join(dirPath, entry.Name()), err)
 			continue
 		}
-		if isDir && !isDirIgnored(job.fs, dirPath, entry) && isDirReadable(ctx, job.fs, dirPath, entry) {
+		if isDir && !isDirIgnored(job.fs, dirPath, entry.Name()) && isDirReadable(ctx, job.fs, dirPath, entry.Name()) {
 			children = append(children, filepath.Join(dirPath, entry.Name()))
 		} else {
 			fileInfo, err := entry.Info()
@@ -210,8 +210,8 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 }
 
 // isDirReadable returns true if the directory represented by dirEnt is readable
-func isDirReadable(ctx context.Context, fsys fs.FS, baseDir string, dirEnt fs.DirEntry) bool {
-	path := filepath.Join(baseDir, dirEnt.Name())
+func isDirReadable(ctx context.Context, fsys fs.FS, baseDir string, name string) bool {
+	path := filepath.Join(baseDir, name)
 
 	dir, err := fsys.Open(path)
 	if err != nil {
@@ -235,9 +235,8 @@ var ignoredDirs = []string{
 
 // isDirIgnored returns true if the directory represented by dirEnt contains an
 // `ignore` file (named after skipScanFile)
-func isDirIgnored(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) bool {
+func isDirIgnored(fsys fs.FS, baseDir string, name string) bool {
 	// allows Album folders for albums which eg start with ellipses
-	name := dirEnt.Name()
 	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
 		return true
 	}

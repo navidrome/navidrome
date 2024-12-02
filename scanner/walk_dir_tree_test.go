@@ -38,27 +38,27 @@ var _ = Describe("walk_dir_tree", func() {
 	Describe("isDirIgnored", func() {
 		It("returns false for normal dirs", func() {
 			dirEntry := getDirEntry(baseDir, "empty_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry)).To(BeFalse())
+			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeFalse())
 		})
 		It("returns true when folder contains .ndignore file", func() {
 			dirEntry := getDirEntry(baseDir, "ignored_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry)).To(BeTrue())
+			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
 		})
 		It("returns true when folder name starts with a `.`", func() {
 			dirEntry := getDirEntry(baseDir, ".hidden_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry)).To(BeTrue())
+			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
 		})
 		It("returns false when folder name starts with ellipses", func() {
 			dirEntry := getDirEntry(baseDir, "...unhidden_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry)).To(BeFalse())
+			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeFalse())
 		})
 		It("returns true when folder name is $Recycle.Bin", func() {
 			dirEntry := getDirEntry(baseDir, "$Recycle.Bin")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry)).To(BeTrue())
+			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
 		})
 		It("returns true when folder name is #snapshot", func() {
 			dirEntry := getDirEntry(baseDir, "#snapshot")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry)).To(BeTrue())
+			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
 		})
 	})
 
