@@ -187,14 +187,20 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 }
 
 func fakePath(mf model.MediaFile) string {
-	filename := mapSlashToDash(mf.Title)
-	if mf.TrackNumber != 0 {
-		filename = fmt.Sprintf("%02d - %s", mf.TrackNumber, filename)
+	builder := strings.Builder{}
+
+	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.Album)))
+	if mf.DiscNumber != 0 {
+		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
 	}
-	return fmt.Sprintf("%s/%s/%s.%s", mapSlashToDash(mf.AlbumArtist), mapSlashToDash(mf.Album), filename, mf.Suffix)
+	if mf.TrackNumber != 0 {
+		builder.WriteString(fmt.Sprintf("%02d - ", mf.TrackNumber))
+	}
+	builder.WriteString(fmt.Sprintf("%s.%s", sanitizeSlashes(mf.Title), mf.Suffix))
+	return builder.String()
 }
 
-func mapSlashToDash(target string) string {
+func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
