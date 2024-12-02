@@ -58,6 +58,7 @@ func (e extractor) extractMetadata(filePath string) (*metadata.Info, error) {
 	parseProp("_bitrate", &ap.BitRate)
 	parseProp("_channels", &ap.Channels)
 	parseProp("_samplerate", &ap.SampleRate)
+	parseProp("_bitspersample", &ap.BitDepth)
 
 	// Parse track/disc totals
 	parseTuple := func(prop string) {

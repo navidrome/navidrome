@@ -199,6 +199,8 @@ alter table media_file
 	add column tags jsonb default '{}' not null;
 alter table media_file
 	add column participant_ids jsonb default '{}' not null;
+alter table media_file 
+    add column bit_depth integer default 0 not null;
 `),
 			addColumn("media_file", "birth_time", "datetime", "current_timestamp", "created_at"),
 			execute(`	

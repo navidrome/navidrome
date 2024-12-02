@@ -3,8 +3,11 @@
 #include <typeinfo>
 
 #define TAGLIB_STATIC
+#include <apeproperties.h>
+#include <apetag.h>
 #include <aifffile.h>
 #include <asffile.h>
+#include <dsffile.h>
 #include <fileref.h>
 #include <flacfile.h>
 #include <id3v2tag.h>
@@ -16,6 +19,8 @@
 #include <tpropertymap.h>
 #include <vorbisfile.h>
 #include <wavfile.h>
+#include <wavfile.h>
+#include <wavpackfile.h>
 
 #include "taglib_wrapper.h"
 
@@ -45,6 +50,23 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
   goPutInt(id, (char *)"_bitrate", props->bitrate());
   goPutInt(id, (char *)"_channels", props->channels());
   goPutInt(id, (char *)"_samplerate", props->sampleRate());
+
+  if (const auto* apeProperties{ dynamic_cast<const TagLib::APE::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  apeProperties->bitsPerSample());
+  if (const auto* asfProperties{ dynamic_cast<const TagLib::ASF::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  asfProperties->bitsPerSample());
+  else if (const auto* flacProperties{ dynamic_cast<const TagLib::FLAC::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  flacProperties->bitsPerSample());
+  else if (const auto* mp4Properties{ dynamic_cast<const TagLib::MP4::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  mp4Properties->bitsPerSample());
+  else if (const auto* wavePackProperties{ dynamic_cast<const TagLib::WavPack::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  wavePackProperties->bitsPerSample());
+  else if (const auto* aiffProperties{ dynamic_cast<const TagLib::RIFF::AIFF::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  aiffProperties->bitsPerSample());
+  else if (const auto* wavProperties{ dynamic_cast<const TagLib::RIFF::WAV::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  wavProperties->bitsPerSample());
+  else if (const auto* dsfProperties{ dynamic_cast<const TagLib::DSF::Properties*>(props) })
+      goPutInt(id, (char *)"_bitspersample",  dsfProperties->bitsPerSample());
 
   // Send all properties to the Go map
   TagLib::PropertyMap tags = f.file()->properties();
