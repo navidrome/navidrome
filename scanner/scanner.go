@@ -40,7 +40,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	state := scanState{progress: progress, fullScan: fullScan}
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		state.sendProgress(&ProgressInfo{Err: fmt.Errorf("failed to get libraries: %w", err)})
+		state.sendProgress(&ProgressInfo{Err: fmt.Errorf("getting libraries: %w", err)})
 		return
 	}
 

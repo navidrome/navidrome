@@ -57,7 +57,7 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 	}
 	libs, err := p.ds.Library(p.ctx).GetAll()
 	if err != nil {
-		return fmt.Errorf("error loading libraries: %w", err)
+		return fmt.Errorf("loading libraries: %w", err)
 	}
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
@@ -66,14 +66,14 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name)
 		cursor, err := p.ds.MediaFile(p.ctx).GetMissingAndMatching(lib.ID)
 		if err != nil {
-			return fmt.Errorf("error loading missing tracks for library %s: %w", lib.Name, err)
+			return fmt.Errorf("loading missing tracks for library %s: %w", lib.Name, err)
 		}
 
 		// Group missing and matched tracks by PID
 		mt := missingTracks{lib: lib}
 		for mf, err := range cursor {
 			if err != nil {
-				return fmt.Errorf("error loading missing tracks for library %s: %w", lib.Name, err)
+				return fmt.Errorf("loading missing tracks for library %s: %w", lib.Name, err)
 			}
 			if mt.pid != mf.PID {
 				putIfMatched(mt)

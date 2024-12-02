@@ -55,12 +55,12 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 	count := 0
 	cursor, err := p.ds.Folder(p.ctx).GetTouchedWithPlaylists()
 	if err != nil {
-		return fmt.Errorf("error loading touched folders: %w", err)
+		return fmt.Errorf("loading touched folders: %w", err)
 	}
 	log.Debug(p.ctx, "Scanner: Checking playlists that may need refresh")
 	for folder, err := range cursor {
 		if err != nil {
-			return fmt.Errorf("error loading touched folder: %w", err)
+			return fmt.Errorf("loading touched folder: %w", err)
 		}
 		count++
 		put(&folder)

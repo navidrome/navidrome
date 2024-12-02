@@ -49,12 +49,12 @@ func (p *phaseRefreshAlbums) produce(put func(album *model.Album)) error {
 	for _, lib := range p.libs {
 		cursor, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
 		if err != nil {
-			return fmt.Errorf("error loading touched albums: %w", err)
+			return fmt.Errorf("loading touched albums: %w", err)
 		}
 		log.Debug(p.ctx, "Scanner: Checking albums that may need refresh", "libraryId", lib.ID, "libraryName", lib.Name)
 		for album, err := range cursor {
 			if err != nil {
-				return fmt.Errorf("error loading touched albums: %w", err)
+				return fmt.Errorf("loading touched albums: %w", err)
 			}
 			count++
 			put(&album)

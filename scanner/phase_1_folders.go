@@ -63,17 +63,17 @@ type scanJob struct {
 func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool) (*scanJob, error) {
 	lastUpdates, err := ds.Folder(ctx).GetLastUpdates(lib)
 	if err != nil {
-		return nil, fmt.Errorf("error getting last updates: %w", err)
+		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
 	fileStore, err := storage.For(lib.Path)
 	if err != nil {
 		log.Error(ctx, "Error getting storage for library", "library", lib.Name, "path", lib.Path, err)
-		return nil, fmt.Errorf("error getting storage for library: %w", err)
+		return nil, fmt.Errorf("getting storage for library: %w", err)
 	}
 	fsys, err := fileStore.FS()
 	if err != nil {
 		log.Error(ctx, "Error getting fs for library", "library", lib.Name, "path", lib.Path, err)
-		return nil, fmt.Errorf("error getting fs for library: %w", err)
+		return nil, fmt.Errorf("getting fs for library: %w", err)
 	}
 	return &scanJob{
 		lib:         lib,
