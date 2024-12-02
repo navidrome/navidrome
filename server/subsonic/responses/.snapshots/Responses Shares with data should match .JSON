@@ -24,7 +24,8 @@
             "genres": [],
             "replayGain": {},
             "channelCount": 0,
-            "samplingRate": 0
+            "samplingRate": 0,
+            "bitDepth": 0
           },
           {
             "id": "2",
@@ -42,7 +43,8 @@
             "genres": [],
             "replayGain": {},
             "channelCount": 0,
-            "samplingRate": 0
+            "samplingRate": 0,
+            "bitDepth": 0
           }
         ],
         "id": "ABC123",

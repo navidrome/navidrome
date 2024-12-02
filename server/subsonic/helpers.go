@@ -183,6 +183,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
+	child.BitDepth = int32(mf.BitDepth)
 	return child
 }
 

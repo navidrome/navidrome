@@ -176,6 +176,7 @@ type Child struct {
 	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
 	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
 	SamplingRate  int32      `xml:"samplingRate,attr"       json:"samplingRate"`
+	BitDepth      int32      `xml:"bitDepth,attr"           json:"bitDepth"`
 }
 
 type Songs struct {
