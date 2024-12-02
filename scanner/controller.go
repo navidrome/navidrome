@@ -25,6 +25,7 @@ var (
 )
 
 type Scanner interface {
+	// ScanAll starts a full scan of the music library. This is a blocking operation.
 	ScanAll(ctx context.Context, fullScan bool) error
 	Status(context.Context) (*StatusInfo, error)
 }
@@ -103,10 +104,9 @@ type controller struct {
 }
 
 func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
-	lib, err := s.ds.Library(ctx).Get(1)
+	lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
 	if err != nil {
-		log.Error(ctx, "Error getting library", err)
-		return nil, err
+		return nil, fmt.Errorf("getting library: %w", err)
 	}
 	if running.Load() {
 		status := &StatusInfo{
@@ -119,8 +119,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	}
 	count, folderCount, err := s.getCounters(ctx)
 	if err != nil {
-		log.Error(ctx, "Error getting lib stats", err)
-		return nil, err
+		return nil, fmt.Errorf("getting library stats: %w", err)
 	}
 	return &StatusInfo{
 		Scanning:    false,

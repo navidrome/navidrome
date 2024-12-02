@@ -36,6 +36,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	watcherChan := make(chan struct{})
 	defer close(watcherChan)
 
+	// Start a watcher for each library
 	for _, lib := range libs {
 		go watchLib(ctx, lib, watcherChan)
 	}
@@ -46,12 +47,24 @@ func (w *watcher) Run(ctx context.Context) error {
 		select {
 		case <-trigger.C:
 			log.Info("Watcher: Triggering scan")
-			err := w.scanner.ScanAll(ctx, false)
+			status, err := w.scanner.Status(ctx)
 			if err != nil {
-				log.Error(ctx, "Watcher: Error scanning", err)
-			} else {
-				log.Info(ctx, "Watcher: Scan completed")
+				log.Error(ctx, "Watcher: Error retrieving Scanner status", err)
+				break
 			}
+			if status.Scanning {
+				log.Info(ctx, "Watcher: Already scanning, will retry later", "waitTime", triggerWait*3)
+				trigger.Reset(triggerWait * 3)
+				continue
+			}
+			go func() {
+				err := w.scanner.ScanAll(ctx, false)
+				if err != nil {
+					log.Error(ctx, "Watcher: Error scanning", err)
+				} else {
+					log.Info(ctx, "Watcher: Scan completed")
+				}
+			}()
 		case <-ctx.Done():
 			return nil
 		case <-watcherChan:
@@ -63,12 +76,12 @@ func (w *watcher) Run(ctx context.Context) error {
 func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 	s, err := storage.For(lib.Path)
 	if err != nil {
-		log.Error(ctx, "Error creating storage", "library", lib.ID, err)
+		log.Error(ctx, "Watcher: Error creating storage", "library", lib.ID, "path", lib.Path, err)
 		return
 	}
 	fsys, err := s.FS()
 	if err != nil {
-		log.Error(ctx, "Error getting FS", "library", lib.ID, err)
+		log.Error(ctx, "Watcher: Error getting FS", "library", lib.ID, "path", lib.Path, err)
 		return
 	}
 	watcher, ok := s.(storage.Watcher)
@@ -78,7 +91,7 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 	}
 	c, err := watcher.Start(ctx)
 	if err != nil {
-		log.Error(ctx, "Error starting watcher", "library", lib.ID, err)
+		log.Error(ctx, "Watcher: Error watching library", "library", lib.ID, "path", lib.Path, err)
 		return
 	}
 	log.Info(ctx, "Watcher started", "library", lib.ID, "path", lib.Path)
@@ -89,7 +102,7 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 		case path := <-c:
 			path, err = filepath.Rel(lib.Path, path)
 			if err != nil {
-				log.Error(ctx, "Error getting relative path", "library", lib.ID, "path", path, err)
+				log.Error(ctx, "Watcher: Error getting relative path", "library", lib.ID, "path", path, err)
 				continue
 			}
 			if isIgnoredPath(ctx, fsys, path) {
