@@ -27,11 +27,18 @@ var _ = Describe("helpers", func() {
 				Expect(fakePath(mf)).To(Equal("Brock Berrigan/Point Pleasant/04 - Split Decision.flac"))
 			})
 		})
+		When("TrackNumber and DiscNumber are available", func() {
+			It("adds the trackNumber to the path", func() {
+				mf.TrackNumber = 4
+				mf.DiscNumber = 1
+				Expect(fakePath(mf)).To(Equal("Brock Berrigan/Point Pleasant/01-04 - Split Decision.flac"))
+			})
+		})
 	})
 
-	Describe("mapSlashToDash", func() {
+	Describe("sanitizeSlashes", func() {
 		It("maps / to _", func() {
-			Expect(mapSlashToDash("AC/DC")).To(Equal("AC_DC"))
+			Expect(sanitizeSlashes("AC/DC")).To(Equal("AC_DC"))
 		})
 	})
 
