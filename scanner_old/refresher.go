@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -122,35 +121,35 @@ func (r *refresher) refreshAlbums(ctx context.Context, ids ...string) error {
 //		return strings.Join(imageFiles, consts.Zwsp), updatedAt
 //	}
 func (r *refresher) refreshArtists(ctx context.Context, ids ...string) error {
-	albums, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": ids}})
-	if err != nil {
-		return err
-	}
-	if len(albums) == 0 {
-		return nil
-	}
-
-	repo := r.ds.Artist(ctx)
-	libRepo := r.ds.Library(ctx)
-	grouped := slice.Group(albums, func(al model.Album) string { return al.AlbumArtistID })
-	for _, group := range grouped {
-		a := model.Albums(group).ToAlbumArtist()
-
-		// Force an external metadata lookup on next access
-		a.ExternalInfoUpdatedAt = &time.Time{}
-
-		// Do not remove old metadata
-		err := repo.Put(&a, "album_count", "genres", "external_info_updated_at", "mbz_artist_id", "name", "order_artist_name", "size", "sort_artist_name", "song_count")
-		if err != nil {
-			return err
-		}
-
-		// Link the artist to the current library being scanned
-		err = libRepo.AddArtist(r.lib.ID, a.ID)
-		if err != nil {
-			return err
-		}
-		r.cacheWarmer.PreCache(a.CoverArtID())
-	}
+	//albums, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": ids}})
+	//if err != nil {
+	//	return err
+	//}
+	//if len(albums) == 0 {
+	//	return nil
+	//}
+	//
+	//repo := r.ds.Artist(ctx)
+	//libRepo := r.ds.Library(ctx)
+	//grouped := slice.Group(albums, func(al model.Album) string { return al.AlbumArtistID })
+	//for _, group := range grouped {
+	//	a := model.Albums(group).ToAlbumArtist()
+	//
+	//	// Force an external metadata lookup on next access
+	//	a.ExternalInfoUpdatedAt = &time.Time{}
+	//
+	//	// Do not remove old metadata
+	//	err := repo.Put(&a, "album_count", "genres", "external_info_updated_at", "mbz_artist_id", "name", "order_artist_name", "size", "sort_artist_name", "song_count")
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	// Link the artist to the current library being scanned
+	//	err = libRepo.AddArtist(r.lib.ID, a.ID)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	r.cacheWarmer.PreCache(a.CoverArtID())
+	//}
 	return nil
 }

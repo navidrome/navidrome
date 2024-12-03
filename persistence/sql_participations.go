@@ -76,11 +76,11 @@ func (r sqlRepository) updateParticipations(itemID string, participations model.
 		return nil
 	}
 	sqi := Insert(r.tableName+"_artists").
-		Columns(r.tableName+"_id", "artist_id", "role"). // BFR Sub-role
-		Suffix(fmt.Sprintf("on conflict (artist_id, %s_id, role) do nothing", r.tableName))
+		Columns(r.tableName+"_id", "artist_id", "role", "sub_role").
+		Suffix(fmt.Sprintf("on conflict (artist_id, %s_id, role, sub_role) do nothing", r.tableName))
 	for role, artists := range participations {
 		for _, artist := range artists {
-			sqi = sqi.Values(itemID, artist.ID, role.String())
+			sqi = sqi.Values(itemID, artist.ID, role.String(), artist.SubRole)
 		}
 	}
 	_, err = r.executeSQL(sqi)

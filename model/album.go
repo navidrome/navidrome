@@ -119,13 +119,6 @@ type DiscID struct {
 
 type Albums []Album
 
-// BFR Remove
-// ToAlbumArtist creates an Artist object based on the attributes of this Albums collection.
-// It assumes all albums have the same AlbumArtist, or else results are unpredictable.
-func (als Albums) ToAlbumArtist() Artist {
-	return Artist{AlbumCount: len(als)}
-}
-
 type AlbumCursor iter.Seq2[Album, error]
 
 type AlbumRepository interface {

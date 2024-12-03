@@ -68,9 +68,6 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.BirthTime = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
 
-	// BFR Parse and import lyrics
-	//mf.Lyrics = md.String(model.TagLyrics)
-
 	mf.Participations = md.mapParticipations()
 	mf.Artist = md.mapDisplayArtist(mf)
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)

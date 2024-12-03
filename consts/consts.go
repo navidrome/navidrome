@@ -65,7 +65,6 @@ const (
 
 	DefaultScannerExtractor = "taglib"
 
-	// BFR Replace concatenated strings with JSONB in the DB
 	Zwsp = string('\u200b')
 )
 
