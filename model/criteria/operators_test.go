@@ -40,6 +40,7 @@ var _ = Describe("Operators", func() {
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN "+
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
+		Entry("tag is [string]", Is{"genre": "Rock"}, "tags.value = ?", "5qDZoz1FBC36K73YeoJ2lF"),
 	)
 
 	DescribeTable("JSON Marshaling",

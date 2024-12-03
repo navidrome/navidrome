@@ -61,8 +61,7 @@ func NewTag(name TagName, value string) Tag {
 }
 
 func tagID(name TagName, value string) string {
-	hashID := id.NewHash(string(name), strings.ToLower(value))
-	return hashID
+	return id.NewTagID(string(name), value)
 }
 
 type Tags map[TagName][]string
@@ -76,7 +75,7 @@ func (t Tags) IDs() []string {
 	for name, tag := range t {
 		name = name.ToLower()
 		for _, v := range tag {
-			ids = append(ids, tagID(name, strings.ToLower(v)))
+			ids = append(ids, tagID(name, v))
 		}
 	}
 	return ids

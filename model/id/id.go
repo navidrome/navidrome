@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"math/big"
+	"strings"
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
@@ -28,4 +29,8 @@ func NewHash(data ...string) string {
 	bi.SetBytes(h)
 	s := bi.Text(62)
 	return fmt.Sprintf("%022s", s)
+}
+
+func NewTagID(name, value string) string {
+	return NewHash(strings.ToLower(name), strings.ToLower(value))
 }

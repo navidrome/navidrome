@@ -24,7 +24,7 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 				expr = unmarshalConjunction(k, v)
 			}
 			if expr == nil {
-				return fmt.Errorf(`invalid expression key %s`, k)
+				return fmt.Errorf(`invalid expression key '%s'`, k)
 			}
 			es = append(es, expr)
 		}

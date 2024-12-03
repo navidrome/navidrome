@@ -24,16 +24,19 @@ func (c Criteria) OrderBy() string {
 	if c.Sort == "" {
 		c.Sort = "title"
 	}
-	f := fieldMap[strings.ToLower(c.Sort)]
+	sortField := strings.ToLower(c.Sort)
+	f := fieldMap[sortField]
 	var mapped string
 	if f == nil {
 		log.Error("Invalid field in 'sort' field. Using 'title'", "sort", c.Sort)
 		mapped = fieldMap["title"].field
 	} else {
-		if f.order == "" {
-			mapped = f.field
-		} else {
+		if f.order != "" {
 			mapped = f.order
+		} else if f.isTag {
+			mapped = "COALESCE(media_file.tags->>'" + sortField + "'->>'value', '')"
+		} else {
+			mapped = f.field
 		}
 	}
 	if c.Order != "" {
