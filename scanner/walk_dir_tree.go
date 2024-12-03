@@ -26,6 +26,7 @@ type folderEntry struct {
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
 	playlists       []fs.DirEntry
+	numSubFolders   int
 	imagesUpdatedAt time.Time
 	tracks          model.MediaFiles
 	albums          model.Albums
@@ -35,7 +36,7 @@ type folderEntry struct {
 }
 
 func (f *folderEntry) hasNoFiles() bool {
-	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && len(f.playlists) == 0
+	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && len(f.playlists) == 0 && f.numSubFolders == 0
 }
 
 func newFolderEntry(job *scanJob, path string) *folderEntry {
@@ -136,6 +137,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 		}
 		if isDir && !isDirIgnored(job.fs, dirPath, entry.Name()) && isDirReadable(ctx, job.fs, dirPath, entry.Name()) {
 			children = append(children, filepath.Join(dirPath, entry.Name()))
+			folder.numSubFolders++
 		} else {
 			fileInfo, err := entry.Info()
 			if err != nil {
