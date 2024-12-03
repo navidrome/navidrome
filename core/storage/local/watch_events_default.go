@@ -1,8 +1,7 @@
-//go:build !linux
+//go:build !linux && !darwin && !windows
 
 package local
 
 import "github.com/rjeczalik/notify"
 
-// BFR: Need to support all other platforms
 const WatchEvents = notify.All
