@@ -17,6 +17,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 		mfRepo    *tests.MockMediaFileRepo
 		ds        *tests.MockDataStore
 		libs      model.Libraries
+		state     *scanState
 	)
 
 	BeforeEach(func() {
@@ -31,7 +32,8 @@ var _ = Describe("phaseRefreshAlbums", func() {
 			{ID: 1, Name: "Library 1"},
 			{ID: 2, Name: "Library 2"},
 		}
-		phase = createPhaseRefreshAlbums(ctx, ds, libs)
+		state = &scanState{}
+		phase = createPhaseRefreshAlbums(ctx, state, ds, libs)
 	})
 
 	Describe("description", func() {
@@ -63,7 +65,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 
 			err := phase.produce(func(album *model.Album) {})
 
-			Expect(err).To(MatchError(ContainSubstring("error loading touched albums")))
+			Expect(err).To(MatchError(ContainSubstring("loading touched albums")))
 		})
 	})
 
@@ -116,6 +118,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 			Expect(savedAlbum).ToNot(BeNil())
 			Expect(savedAlbum.ID).To(Equal("album1"))
 			Expect(phase.refreshed.Load()).To(Equal(uint32(1)))
+			Expect(state.changesDetected.Load()).To(BeTrue())
 		})
 
 		It("returns an error if there is an error refreshing the album", func() {
@@ -126,6 +129,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 			Expect(result).To(BeNil())
 			Expect(err).To(MatchError(ContainSubstring("refreshing album")))
 			Expect(phase.refreshed.Load()).To(Equal(uint32(0)))
+			Expect(state.changesDetected.Load()).To(BeFalse())
 		})
 	})
 })

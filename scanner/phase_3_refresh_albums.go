@@ -30,10 +30,11 @@ type phaseRefreshAlbums struct {
 	libs      model.Libraries
 	refreshed atomic.Uint32
 	skipped   atomic.Uint32
+	state     *scanState
 }
 
-func createPhaseRefreshAlbums(ctx context.Context, ds model.DataStore, libs model.Libraries) *phaseRefreshAlbums {
-	return &phaseRefreshAlbums{ctx: ctx, ds: ds, libs: libs}
+func createPhaseRefreshAlbums(ctx context.Context, state *scanState, ds model.DataStore, libs model.Libraries) *phaseRefreshAlbums {
+	return &phaseRefreshAlbums{ctx: ctx, ds: ds, libs: libs, state: state}
 }
 
 func (p *phaseRefreshAlbums) description() string {
@@ -110,6 +111,7 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 			return fmt.Errorf("refreshing album %s: %w", album.ID, err)
 		}
 		p.refreshed.Add(1)
+		p.state.changesDetected.Store(true)
 		return nil
 	})
 	if err != nil {
@@ -129,6 +131,10 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 		logF = log.Debug
 	}
 	logF(p.ctx, "Scanner: Finished refreshing albums", "refreshed", refreshed, "skipped", skipped, err)
+	if !p.state.changesDetected.Load() {
+		log.Debug(p.ctx, "Scanner: No changes detected, skipping refreshing stats and annotations")
+		return nil
+	}
 	return p.ds.WithTx(func(tx model.DataStore) error {
 		// Refresh artist stats
 		start := time.Now()
@@ -153,6 +159,7 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 			return fmt.Errorf("refreshing artist annotations: %w", err)
 		}
 		log.Debug(p.ctx, "Scanner: Refreshed artist annotations", "artists", cnt, "elapsed", time.Since(start))
+		p.state.changesDetected.Store(true)
 		return nil
 	})
 }

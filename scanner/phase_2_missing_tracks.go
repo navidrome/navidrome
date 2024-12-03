@@ -32,10 +32,11 @@ type phaseMissingTracks struct {
 	ctx          context.Context
 	ds           model.DataStore
 	totalMatched atomic.Uint32
+	state        *scanState
 }
 
-func createPhaseMissingTracks(ctx context.Context, ds model.DataStore) *phaseMissingTracks {
-	return &phaseMissingTracks{ctx: ctx, ds: ds}
+func createPhaseMissingTracks(ctx context.Context, state *scanState, ds model.DataStore) *phaseMissingTracks {
+	return &phaseMissingTracks{ctx: ctx, ds: ds, state: state}
 }
 
 func (p *phaseMissingTracks) description() string {
@@ -172,7 +173,12 @@ func (p *phaseMissingTracks) moveMatched(tx model.DataStore, mt, ms model.MediaF
 	if err != nil {
 		return fmt.Errorf("update matched track: %w", err)
 	}
-	return tx.MediaFile(p.ctx).Delete(discardedID)
+	err = tx.MediaFile(p.ctx).Delete(discardedID)
+	if err != nil {
+		return fmt.Errorf("delete discarded track: %w", err)
+	}
+	p.state.changesDetected.Store(true)
+	return nil
 }
 
 func (p *phaseMissingTracks) finalize(err error) error {

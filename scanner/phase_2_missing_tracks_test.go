@@ -17,6 +17,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		ds    model.DataStore
 		mr    *tests.MockMediaFileRepo
 		lr    *tests.MockLibraryRepo
+		state *scanState
 	)
 
 	BeforeEach(func() {
@@ -25,7 +26,8 @@ var _ = Describe("phaseMissingTracks", func() {
 		lr = &tests.MockLibraryRepo{}
 		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
 		ds = &tests.MockDataStore{MockedMediaFile: mr, MockedLibrary: lr}
-		phase = createPhaseMissingTracks(ctx, ds)
+		state = &scanState{}
+		phase = createPhaseMissingTracks(ctx, state, ds)
 	})
 
 	Describe("produceMissingTracks", func() {
@@ -99,6 +101,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+			Expect(state.changesDetected.Load()).To(BeTrue())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
@@ -119,6 +122,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+			Expect(state.changesDetected.Load()).To(BeTrue())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
@@ -140,6 +144,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+			Expect(state.changesDetected.Load()).To(BeTrue())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
@@ -164,6 +169,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
+			Expect(state.changesDetected.Load()).To(BeTrue())
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedExact.Path))
@@ -187,6 +193,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(0)))
+			Expect(state.changesDetected.Load()).To(BeFalse())
 
 			// The missing track should still be the same
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
@@ -212,6 +219,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			_, err := phase.processMissingTracks(in)
 			Expect(err).To(HaveOccurred())
+			Expect(state.changesDetected.Load()).To(BeFalse())
 		})
 	})
 })

@@ -52,11 +52,11 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, &state, s.ds, s.cw, libs)),
 
 		// Phase 2: Process missing files, checking for moves
-		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, s.ds)),
+		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, &state, s.ds)),
 
 		chain.RunParallel(
 			// Phase 3: Refresh all new/changed albums and update artists
-			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, s.ds, libs)),
+			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, &state, s.ds, libs)),
 
 			// Phase 4: Import/update playlists
 			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw)),
