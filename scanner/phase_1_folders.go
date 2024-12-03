@@ -15,7 +15,6 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
@@ -138,7 +137,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				})
 				if folder.isOutdated() || job.fullScan {
 					if !job.fullScan {
-						if folder.hasNoFiles() && folder.updTime.IsZero() {
+						if folder.hasNoFiles() && folder.isNew() {
 							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
@@ -286,14 +285,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		mfRepo := tx.MediaFile(p.ctx)
 
 		// Save folder to DB
-		folder := model.NewFolder(entry.job.lib, entry.path)
-		// BFR Convert entry.audioFiles and entry.playlists to int?
-		folder.NumAudioFiles = len(entry.audioFiles)
-		if core.InPlaylistsPath(*folder) {
-			folder.NumPlaylists = len(entry.playlists)
-		}
-		folder.ImageFiles = slices.Collect(maps.Keys(entry.imageFiles))
-		folder.ImagesUpdatedAt = entry.imagesUpdatedAt
+		folder := entry.toFolder()
 		err := folderRepo.Put(folder)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting folder to DB", "folder", entry.path, err)
@@ -378,7 +370,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 		logCall = log.Trace
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",
-		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlists),
+		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", entry.numPlaylists,
 		"elapsed", entry.elapsed.Elapsed(), "tracksMissing", len(entry.missingTracks),
 		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, consts.Zwsp+"folder", entry.path)
 	return entry, nil

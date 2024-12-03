@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chrono"
@@ -25,7 +26,7 @@ type folderEntry struct {
 	updTime         time.Time // from DB
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
-	playlists       []fs.DirEntry
+	numPlaylists    int
 	numSubFolders   int
 	imagesUpdatedAt time.Time
 	tracks          model.MediaFiles
@@ -36,7 +37,22 @@ type folderEntry struct {
 }
 
 func (f *folderEntry) hasNoFiles() bool {
-	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && len(f.playlists) == 0 && f.numSubFolders == 0
+	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && f.numPlaylists == 0 && f.numSubFolders == 0
+}
+
+func (f *folderEntry) isNew() bool {
+	return f.updTime.IsZero()
+}
+
+func (f *folderEntry) toFolder() *model.Folder {
+	folder := model.NewFolder(f.job.lib, f.path)
+	folder.NumAudioFiles = len(f.audioFiles)
+	if core.InPlaylistsPath(*folder) {
+		folder.NumPlaylists = f.numPlaylists
+	}
+	folder.ImageFiles = slices.Collect(maps.Keys(f.imageFiles))
+	folder.ImagesUpdatedAt = f.imagesUpdatedAt
+	return folder
 }
 
 func newFolderEntry(job *scanJob, path string) *folderEntry {
@@ -90,7 +106,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 	//}
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
-		"images", maps.Keys(folder.imageFiles), "playlists", folder.playlists, "imagesUpdatedAt", folder.imagesUpdatedAt,
+		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
 	results <- folder
@@ -151,7 +167,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 			case model.IsAudioFile(entry.Name()):
 				folder.audioFiles[entry.Name()] = entry
 			case model.IsValidPlaylist(entry.Name()):
-				folder.playlists = append(folder.playlists, entry)
+				folder.numPlaylists++
 			case model.IsImageFile(entry.Name()):
 				folder.imageFiles[entry.Name()] = entry
 				if fileInfo.ModTime().After(folder.imagesUpdatedAt) {

@@ -20,6 +20,7 @@ type scannerImpl struct {
 	pls core.Playlists
 }
 
+// scanState holds the state of a in-progress scan, to be passed to the various phases
 type scanState struct {
 	progress        chan<- *ProgressInfo
 	fullScan        bool
