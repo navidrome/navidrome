@@ -14,6 +14,8 @@ export const DOWNLOAD_MENU_PLAY = 'playlist'
 export const DOWNLOAD_MENU_SONG = 'song'
 export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
 export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
+export const MOVE_TO_INDEX_OPEN = 'MOVE_TO_INDEX_OPEN'
+export const MOVE_TO_INDEX_CLOSE = 'MOVE_TO_INDEX_CLOSE'
 
 export const openShareMenu = (ids, resource, name, label) => ({
   type: SHARE_MENU_OPEN,
@@ -35,6 +37,16 @@ export const openAddToPlaylist = ({ selectedIds, onSuccess }) => ({
 
 export const closeAddToPlaylist = () => ({
   type: ADD_TO_PLAYLIST_CLOSE,
+})
+
+export const openMoveToIndexDialog = (record) => ({
+  type: MOVE_TO_INDEX_OPEN,
+  record
+})
+
+export const closeMoveToIndexDialog = (record) => ({
+  type: MOVE_TO_INDEX_CLOSE,
+  record
 })
 
 export const openDownloadMenu = (record, recordType) => {

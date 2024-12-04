@@ -31,6 +31,7 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import MoveToIndexDialog from '../dialogs/MoveToIndexDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -213,6 +214,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
+      <MoveToIndexDialog onSuccess={handleDragEnd} />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )

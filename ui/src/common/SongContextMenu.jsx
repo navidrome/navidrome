@@ -15,6 +15,7 @@ import {
   openDownloadMenu,
   DOWNLOAD_MENU_SONG,
   openShareMenu,
+  openMoveToIndexDialog,
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
@@ -86,6 +87,11 @@ export const SongContextMenu = ({
       enabled: true,
       label: translate('resources.song.actions.info'),
       action: (record) => dispatch(openExtendedInfoDialog(record)),
+    },
+    moveToIndex: {
+      enabled: true,
+      label: translate('resources.song.actions.moveToIndex'),
+      action: (record) => dispatch(openMoveToIndexDialog(record)),
     },
   }
 
