@@ -398,6 +398,9 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 
 		updateValues["id"] = id
 		delete(updateValues, "created_at")
+		// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
+		// TODO move to mediafile_repository when each repo has its own upsert method
+		delete(updateValues, "birth_time")
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
 		if err != nil {
