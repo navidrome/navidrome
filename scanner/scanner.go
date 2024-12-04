@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -66,36 +67,47 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
 		state.sendError(err)
+		core.WriteAfterScanMetrics(ctx, s.ds, false)
 		return
 	}
 
 	// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
-	if state.changesDetected.Load() {
-		_ = s.ds.WithTx(func(tx model.DataStore) error {
+	errGC := s.ds.WithTx(func(tx model.DataStore) error {
+		if state.changesDetected.Load() {
 			start := time.Now()
 			err := tx.GC(ctx)
 			if err != nil {
+				state.sendError(fmt.Errorf("running GC: %w", err))
 				log.Error(ctx, "Scanner: Error running GC", err)
 				return err
 			}
 			log.Debug(ctx, "Scanner: GC completed", "duration", time.Since(start))
-			return nil
-		})
-	} else {
-		log.Debug(ctx, "Scanner: No changes detected, skipping GC")
-	}
+		} else {
+			log.Debug(ctx, "Scanner: No changes detected, skipping GC")
+		}
+		return nil
+	})
 
 	// Final step: Update last_scan_completed_at for all libraries
-	_ = s.ds.WithTx(func(tx model.DataStore) error {
+	errUpdateLib := s.ds.WithTx(func(tx model.DataStore) error {
 		for _, lib := range libs {
 			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
 			if err != nil {
-				state.sendProgress(&ProgressInfo{Err: fmt.Errorf("updating last scan completed: %w", err)})
+				state.sendError(fmt.Errorf("updating last scan completed: %w", err))
 				log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
+				return err
 			}
 		}
 		return nil
 	})
+
+	if errGC != nil || errUpdateLib != nil {
+		err := errors.Join(errGC, errUpdateLib)
+		state.sendError(fmt.Errorf("finalizing scan: %w", err))
+		core.WriteAfterScanMetrics(ctx, s.ds, false)
+	} else {
+		core.WriteAfterScanMetrics(ctx, s.ds, true)
+	}
 
 	if state.changesDetected.Load() {
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})

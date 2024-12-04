@@ -169,7 +169,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) error {
 
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
-		log.Debug(ctx, "Detected changes in the music folder. Sending refresh event")
+		log.Debug(ctx, "Library changes imported. Sending refresh event")
 		s.broker.SendMessage(ctx, &events.RefreshResource{})
 	}
 
