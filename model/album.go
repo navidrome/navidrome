@@ -25,7 +25,6 @@ type Album struct {
 	MinOriginalYear       int        `structs:"min_original_year" json:"minOriginalYear"`
 	OriginalDate          string     `structs:"original_date" json:"originalDate,omitempty"`
 	ReleaseDate           string     `structs:"release_date" json:"releaseDate,omitempty"`
-	Releases              int        `structs:"releases" json:"releases"` // Deprecated in BFR
 	Compilation           bool       `structs:"compilation" json:"compilation"`
 	Comment               string     `structs:"comment" json:"comment,omitempty"`
 	SongCount             int        `structs:"song_count" json:"songCount"`
