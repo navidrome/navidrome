@@ -110,7 +110,6 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 		log.Error(r.ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
 		return nil, err
 	}
-	// BFR Load genres and other tags
 
 	ids := make([]string, len(mfs))
 	mfMap := make(map[string]int)

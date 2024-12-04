@@ -159,12 +159,11 @@ func (mfs MediaFiles) ToAlbum() Album {
 	if len(mfs) == 0 {
 		return Album{}
 	}
-	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations), Discs: make(Discs)}
+	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations), Discs: Discs{1: ""}}
 
 	// Sorting the mediafiles ensure the results will be consistent
 	slices.SortFunc(mfs, func(a, b MediaFile) int { return cmp.Compare(a.Path, b.Path) })
 
-	albumArtistIds := make([]string, 0, len(mfs))
 	mbzAlbumIds := make([]string, 0, len(mfs))
 	mbzReleaseGroupIds := make([]string, 0, len(mfs))
 	comments := make([]string, 0, len(mfs))
@@ -201,7 +200,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		originalDates = append(originalDates, m.OriginalDate)
 		releaseDates = append(releaseDates, m.ReleaseDate)
 		comments = append(comments, m.Comment)
-		albumArtistIds = append(albumArtistIds, m.AlbumArtistID)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
 		if m.HasCoverArt && a.EmbedArtPath == "" {
@@ -218,10 +216,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.Missing = a.Missing || m.Missing
 	}
 
-	// Make sure we have at least one disc
-	if len(a.Discs) == 0 {
-		a.Discs.Add(1, "")
-	}
 	a.SetTags(tags)
 	a.FolderIDs = slice.Unique(slice.Map(mfs, func(m MediaFile) string { return m.FolderID }))
 	a.Date, _ = allOrNothing(dates)
@@ -230,9 +224,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 	a.MinYear, a.MaxYear = minMax(years)
 	a.MinOriginalYear, a.MaxOriginalYear = minMax(originalYears)
 	a.Comment, _ = allOrNothing(comments)
-	a = fixAlbumArtist(a, albumArtistIds)          // BFR Validate if this it really needed
-	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds) // BFR Should we use the most frequent or all? Same below
-	a.MbzReleaseGroupID, _ = allOrNothing(mbzReleaseGroupIds)
+	a.MbzAlbumID = slice.MostFrequent(mbzAlbumIds)
+	a.MbzReleaseGroupID = slice.MostFrequent(mbzReleaseGroupIds)
+	fixAlbumArtist(&a)
 
 	return a
 }
@@ -278,23 +272,22 @@ func older(t1, t2 time.Time) time.Time {
 	return t1
 }
 
-// fixAlbumArtist sets the AlbumArtist to "Various Artists" if the album has more than one artist or if it is a compilation
-// BFR Consider albums with multiple participants as album_artists
-func fixAlbumArtist(a Album, albumArtistIds []string) Album {
+// fixAlbumArtist sets the AlbumArtist to "Various Artists" if the album has more than one artist
+// or if it is a compilation
+func fixAlbumArtist(a *Album) {
 	if !a.Compilation {
 		if a.AlbumArtistID == "" {
 			artist := a.Participations.First(RoleArtist)
 			a.AlbumArtistID = artist.ID
 			a.AlbumArtist = artist.Name
 		}
-		return a
+		return
 	}
-
+	albumArtistIds := slice.Map(a.Participations[RoleAlbumArtist], func(p Participant) string { return p.ID })
 	if len(slice.Unique(albumArtistIds)) > 1 {
 		a.AlbumArtist = consts.VariousArtists
 		a.AlbumArtistID = consts.VariousArtistsID
 	}
-	return a
 }
 
 type MediaFileCursor iter.Seq2[MediaFile, error]
