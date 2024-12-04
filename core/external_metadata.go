@@ -64,11 +64,11 @@ func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMeta
 	return e
 }
 
-func (e *externalMetadata) getAlbum(ctx context.Context, id string) (*auxAlbum, error) {
+func (e *externalMetadata) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
 	var entity interface{}
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
-		return nil, err
+		return auxAlbum{}, err
 	}
 
 	var album auxAlbum
@@ -79,9 +79,9 @@ func (e *externalMetadata) getAlbum(ctx context.Context, id string) (*auxAlbum, 
 	case *model.MediaFile:
 		return e.getAlbum(ctx, v.AlbumID)
 	default:
-		return nil, model.ErrNotFound
+		return auxAlbum{}, model.ErrNotFound
 	}
-	return &album, nil
+	return album, nil
 }
 
 func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error) {
@@ -94,7 +94,7 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 	updatedAt := V(album.ExternalInfoUpdatedAt)
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "AlbumInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", album.Name)
-		err = e.populateAlbumInfo(ctx, *album)
+		album, err = e.populateAlbumInfo(ctx, album)
 		if err != nil {
 			return nil, err
 		}
@@ -103,22 +103,22 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 	// If info is expired, trigger a populateAlbumInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevAlbumInfoTimeToLive {
 		log.Debug("Found expired cached AlbumInfo, refreshing in the background", "updatedAt", album.ExternalInfoUpdatedAt, "name", album.Name)
-		e.albumQueue.enqueue(album)
+		e.albumQueue.enqueue(&album)
 	}
 
 	return &album.Album, nil
 }
 
-func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum) error {
+func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAlbum, error) {
 	start := time.Now()
 	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
 	if errors.Is(err, agents.ErrNotFound) {
-		return nil
+		return album, nil
 	}
 	if err != nil {
 		log.Error("Error refreshing AlbumInfo", "id", album.ID, "name", album.Name, "artist", album.AlbumArtist,
 			"elapsed", time.Since(start), err)
-		return err
+		return album, err
 	}
 
 	album.ExternalInfoUpdatedAt = P(time.Now())
@@ -152,14 +152,14 @@ func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum
 		log.Trace(ctx, "AlbumInfo collected", "album", album, "elapsed", time.Since(start))
 	}
 
-	return nil
+	return album, nil
 }
 
-func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist, error) {
+func (e *externalMetadata) getArtist(ctx context.Context, id string) (auxArtist, error) {
 	var entity interface{}
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
-		return nil, err
+		return auxArtist{}, err
 	}
 
 	var artist auxArtist
@@ -172,9 +172,9 @@ func (e *externalMetadata) getArtist(ctx context.Context, id string) (*auxArtist
 	case *model.Album:
 		return e.getArtist(ctx, v.AlbumArtistID)
 	default:
-		return nil, model.ErrNotFound
+		return auxArtist{}, model.ErrNotFound
 	}
-	return &artist, nil
+	return artist, nil
 }
 
 func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
@@ -183,35 +183,35 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 		return nil, err
 	}
 
-	err = e.loadSimilar(ctx, artist, similarCount, includeNotPresent)
+	err = e.loadSimilar(ctx, &artist, similarCount, includeNotPresent)
 	return &artist.Artist, err
 }
 
-func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (*auxArtist, error) {
+func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (auxArtist, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
-		return nil, err
+		return auxArtist{}, err
 	}
 
 	// If we don't have any info, retrieves it now
 	updatedAt := V(artist.ExternalInfoUpdatedAt)
 	if updatedAt.IsZero() {
 		log.Debug(ctx, "ArtistInfo not cached. Retrieving it now", "updatedAt", updatedAt, "id", id, "name", artist.Name)
-		err := e.populateArtistInfo(ctx, *artist)
+		artist, err = e.populateArtistInfo(ctx, artist)
 		if err != nil {
-			return nil, err
+			return auxArtist{}, err
 		}
 	}
 
 	// If info is expired, trigger a populateArtistInfo in the background
 	if time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
 		log.Debug("Found expired cached ArtistInfo, refreshing in the background", "updatedAt", updatedAt, "name", artist.Name)
-		e.artistQueue.enqueue(artist)
+		e.artistQueue.enqueue(&artist)
 	}
 	return artist, nil
 }
 
-func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArtist) error {
+func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArtist) (auxArtist, error) {
 	start := time.Now()
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
@@ -232,7 +232,7 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArt
 
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", "elapsed", "id", artist.ID, "name", artist.Name, time.Since(start), ctx.Err())
-		return ctx.Err()
+		return artist, ctx.Err()
 	}
 
 	artist.ExternalInfoUpdatedAt = P(time.Now())
@@ -243,7 +243,7 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArt
 	} else {
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
 	}
-	return nil
+	return artist, nil
 }
 
 func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
@@ -252,7 +252,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 		return nil, err
 	}
 
-	e.callGetSimilar(ctx, e.ag, artist, 15, false)
+	e.callGetSimilar(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 		return nil, ctx.Err()
@@ -310,7 +310,7 @@ func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL
 		return nil, err
 	}
 
-	e.callGetImage(ctx, e.ag, artist)
+	e.callGetImage(ctx, e.ag, &artist)
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
 		return nil, ctx.Err()
@@ -554,7 +554,7 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 
 type refreshQueue[T any] chan<- *T
 
-func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context, T) error) refreshQueue[T] {
+func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context, T) (T, error)) refreshQueue[T] {
 	queue := make(chan *T, refreshQueueLength)
 	go func() {
 		for {
@@ -565,7 +565,7 @@ func newRefreshQueue[T any](ctx context.Context, processFn func(context.Context,
 				ctx, cancel := context.WithTimeout(ctx, refreshTimeout)
 				select {
 				case item := <-queue:
-					_ = processFn(ctx, *item)
+					_, _ = processFn(ctx, *item)
 					cancel()
 				case <-ctx.Done():
 					cancel()
