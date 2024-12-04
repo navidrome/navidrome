@@ -31,7 +31,6 @@ const MoveToIndexDialog = ({ title, onSuccess }) => {
   }
 
   const handleConfirm = (e) => {
-    // TODO: to index should be different based on if the song will be moved further or back 
     // FIXME: verify: I get why to should be decremented, but why the id? does it start from 0 and displays from 1?
     onSuccess(record.id - 1, parseInt(to) - 1)
     dispatch(closeMoveToIndexDialog())
