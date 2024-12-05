@@ -177,7 +177,7 @@ func isDirIgnored(baseDir string, dirEnt fs.DirEntry) bool {
 	if slices.IndexFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) != -1 {
 		return true
 	}
-	_, err := os.Stat(filepath.Join(baseDir, name, consts.SkipScanFile))
+	_, err := os.Stat(filepath.Join(baseDir, name, consts.ScanIgnoreFile))
 	return err == nil
 }
 

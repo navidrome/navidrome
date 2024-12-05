@@ -129,5 +129,5 @@ func isIgnoredPath(_ context.Context, fsys fs.FS, path string) bool {
 	}
 	// As it can be a deletion and not a change, we cannot reliably know if the path is a file or directory.
 	// But at this point, we can assume it's a directory. If it's a file, it would be ignored anyway
-	return isDirIgnored(fsys, baseDir, name)
+	return isDirIgnored(baseDir)
 }

@@ -8,57 +8,112 @@ import (
 	"path/filepath"
 	"testing/fstest"
 
+	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/sync/errgroup"
 )
 
 var _ = Describe("walk_dir_tree", func() {
-	dir, _ := os.Getwd()
-	fsys := os.DirFS(dir)
-	baseDir := filepath.Join("tests", "fixtures")
+	Describe("walkDirTree", func() {
+		var fsys storage.MusicFS
+		BeforeEach(func() {
+			fsys = &mockMusicFS{
+				FS: fstest.MapFS{
+					"root/a/.ndignore":       {Data: []byte("ignored/*")},
+					"root/a/f1.mp3":          {},
+					"root/a/f2.mp3":          {},
+					"root/a/ignored/bad.mp3": {},
+					"root/b/cover.jpg":       {},
+					"root/c/f3":              {},
+					"root/d":                 {},
+					"root/d/.ndignore":       {},
+					"root/d/f1.mp3":          {},
+					"root/d/f2.mp3":          {},
+					"root/d/f3.mp3":          {},
+				},
+			}
+		})
 
-	Describe("isDirOrSymlinkToDir", func() {
-		It("returns true for normal dirs", func() {
-			dirEntry := getDirEntry("tests", "fixtures")
-			Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeTrue())
-		})
-		It("returns true for symlinks to dirs", func() {
-			dirEntry := getDirEntry(baseDir, "symlink2dir")
-			Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeTrue())
-		})
-		It("returns false for files", func() {
-			dirEntry := getDirEntry(baseDir, "test.mp3")
-			Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeFalse())
-		})
-		It("returns false for symlinks to files", func() {
-			dirEntry := getDirEntry(baseDir, "symlink")
-			Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeFalse())
+		It("walks all directories", func() {
+			job := &scanJob{
+				fs:  fsys,
+				lib: model.Library{Path: "/music"},
+			}
+			ctx := context.Background()
+			results, err := walkDirTree(ctx, job)
+			Expect(err).ToNot(HaveOccurred())
+
+			folders := map[string]*folderEntry{}
+
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+				return nil
+			})
+			_ = g.Wait()
+
+			Expect(folders).To(HaveLen(6))
+			Expect(folders["root/a/ignored"].audioFiles).To(BeEmpty())
+			Expect(folders["root/a"].audioFiles).To(SatisfyAll(
+				HaveLen(2),
+				HaveKey("f1.mp3"),
+				HaveKey("f2.mp3"),
+			))
+			Expect(folders["root/a"].imageFiles).To(BeEmpty())
+			Expect(folders["root/b"].audioFiles).To(BeEmpty())
+			Expect(folders["root/b"].imageFiles).To(SatisfyAll(
+				HaveLen(1),
+				HaveKey("cover.jpg"),
+			))
+			Expect(folders["root/c"].audioFiles).To(BeEmpty())
+			Expect(folders["root/c"].imageFiles).To(BeEmpty())
+			Expect(folders).ToNot(HaveKey("root/d"))
 		})
 	})
-	Describe("isDirIgnored", func() {
-		It("returns false for normal dirs", func() {
-			dirEntry := getDirEntry(baseDir, "empty_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeFalse())
+
+	Describe("helper functions", func() {
+		dir, _ := os.Getwd()
+		fsys := os.DirFS(dir)
+		baseDir := filepath.Join("tests", "fixtures")
+
+		Describe("isDirOrSymlinkToDir", func() {
+			It("returns true for normal dirs", func() {
+				dirEntry := getDirEntry("tests", "fixtures")
+				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeTrue())
+			})
+			It("returns true for symlinks to dirs", func() {
+				dirEntry := getDirEntry(baseDir, "symlink2dir")
+				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeTrue())
+			})
+			It("returns false for files", func() {
+				dirEntry := getDirEntry(baseDir, "test.mp3")
+				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeFalse())
+			})
+			It("returns false for symlinks to files", func() {
+				dirEntry := getDirEntry(baseDir, "symlink")
+				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeFalse())
+			})
 		})
-		It("returns true when folder contains .ndignore file", func() {
-			dirEntry := getDirEntry(baseDir, "ignored_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
-		})
-		It("returns true when folder name starts with a `.`", func() {
-			dirEntry := getDirEntry(baseDir, ".hidden_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
-		})
-		It("returns false when folder name starts with ellipses", func() {
-			dirEntry := getDirEntry(baseDir, "...unhidden_folder")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeFalse())
-		})
-		It("returns true when folder name is $Recycle.Bin", func() {
-			dirEntry := getDirEntry(baseDir, "$Recycle.Bin")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
-		})
-		It("returns true when folder name is #snapshot", func() {
-			dirEntry := getDirEntry(baseDir, "#snapshot")
-			Expect(isDirIgnored(fsys, baseDir, dirEntry.Name())).To(BeTrue())
+		Describe("isDirIgnored", func() {
+			It("returns false for normal dirs", func() {
+				Expect(isDirIgnored("empty_folder")).To(BeFalse())
+			})
+			It("returns true when folder name starts with a `.`", func() {
+				Expect(isDirIgnored(".hidden_folder")).To(BeTrue())
+			})
+			It("returns false when folder name starts with ellipses", func() {
+				Expect(isDirIgnored("...unhidden_folder")).To(BeFalse())
+			})
+			It("returns true when folder name is $Recycle.Bin", func() {
+				Expect(isDirIgnored("$Recycle.Bin")).To(BeTrue())
+			})
+			It("returns true when folder name is #snapshot", func() {
+				Expect(isDirIgnored("#snapshot")).To(BeTrue())
+			})
 		})
 	})
 
@@ -118,7 +173,7 @@ type fakeDirFile struct {
 }
 
 // Only works with n == -1
-func (fd *fakeDirFile) ReadDir(n int) ([]fs.DirEntry, error) {
+func (fd *fakeDirFile) ReadDir(int) ([]fs.DirEntry, error) {
 	if fd.err != nil {
 		return nil, fd.err
 	}
@@ -148,4 +203,13 @@ func getDirEntry(baseDir, name string) os.DirEntry {
 		}
 	}
 	panic(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+}
+
+type mockMusicFS struct {
+	storage.MusicFS
+	fs.FS
+}
+
+func (m *mockMusicFS) Open(name string) (fs.File, error) {
+	return m.FS.Open(name)
 }

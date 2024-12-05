@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"bufio"
 	"context"
 	"io/fs"
 	"maps"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chrono"
+	ignore "github.com/sabhiram/go-gitignore"
 )
 
 type folderEntry struct {
@@ -77,25 +79,26 @@ func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error)
 	results := make(chan *folderEntry)
 	go func() {
 		defer close(results)
-		rootFolder := job.lib.Path
-		err := walkFolder(ctx, job, ".", results)
+		err := walkFolder(ctx, job, ".", nil, results)
 		if err != nil {
-			log.Error(ctx, "Scanner: There were errors reading directories from filesystem", "path", rootFolder, err)
+			log.Error(ctx, "Scanner: There were errors reading directories from filesystem", "path", job.lib.Path, err)
 			return
 		}
-		log.Debug(ctx, "Scanner: Finished reading folders", "lib", job.lib.Name, "path", rootFolder, "numFolders", job.numFolders.Load())
+		log.Debug(ctx, "Scanner: Finished reading folders", "lib", job.lib.Name, "path", job.lib.Path, "numFolders", job.numFolders.Load())
 	}()
 	return results, nil
 }
 
-func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results chan<- *folderEntry) error {
-	folder, children, err := loadDir(ctx, job, currentFolder)
+func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignorePatterns []string, results chan<- *folderEntry) error {
+	ignorePatterns = loadIgnoredPatterns(ctx, job.fs, currentFolder, ignorePatterns)
+
+	folder, children, err := loadDir(ctx, job, currentFolder, ignorePatterns)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
 		return nil
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, job, c, results)
+		err := walkFolder(ctx, job, c, ignorePatterns, results)
 		if err != nil {
 			return err
 		}
@@ -114,7 +117,40 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, results
 	return nil
 }
 
-func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderEntry, children []string, err error) {
+func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, currentPatterns []string) []string {
+	ignoreFilePath := filepath.Join(currentFolder, consts.ScanIgnoreFile)
+	var newPatterns []string
+	if _, err := fs.Stat(fsys, ignoreFilePath); err == nil {
+		// Read and parse the .ndignore file
+		ignoreFile, err := fsys.Open(ignoreFilePath)
+		if err != nil {
+			log.Warn(ctx, "Scanner: Error opening .ndignore file", "path", ignoreFilePath, err)
+			// Continue with previous patterns
+		} else {
+			defer ignoreFile.Close()
+			scanner := bufio.NewScanner(ignoreFile)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue // Skip empty lines and comments
+				}
+				newPatterns = append(newPatterns, line)
+			}
+			if err := scanner.Err(); err != nil {
+				log.Warn(ctx, "Scanner: Error reading .ignore file", "path", ignoreFilePath, err)
+			}
+		}
+		// If the .ndignore file is empty, mimic the current behavior and ignore everything
+		if len(newPatterns) == 0 {
+			newPatterns = []string{"**/*"}
+		}
+	}
+	// Combine the patterns from the .ndignore file with the ones passed as argument
+	combinedPatterns := append([]string{}, currentPatterns...)
+	return append(combinedPatterns, newPatterns...)
+}
+
+func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns []string) (folder *folderEntry, children []string, err error) {
 	folder = newFolderEntry(job, dirPath)
 
 	dirInfo, err := fs.Stat(job.fs, dirPath)
@@ -136,10 +172,16 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 		return folder, children, err
 	}
 
+	ignoreMatcher := ignore.CompileIgnoreLines(ignorePatterns...)
 	entries := fullReadDir(ctx, dirFile)
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if isEntryIgnored(job.fs, dirPath, entry.Name()) {
+		entryPath := filepath.Join(dirPath, entry.Name())
+		if len(ignorePatterns) > 0 && isScanIgnored(ignoreMatcher, entryPath) {
+			log.Debug(ctx, "Scanner: Ignoring entry", "path", entryPath)
+			continue
+		}
+		if isEntryIgnored(entry.Name()) {
 			continue
 		}
 		if ctx.Err() != nil {
@@ -148,11 +190,11 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 		isDir, err := isDirOrSymlinkToDir(job.fs, dirPath, entry)
 		// Skip invalid symlinks
 		if err != nil {
-			log.Warn(ctx, "Scanner: Invalid symlink", "dir", filepath.Join(dirPath, entry.Name()), err)
+			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
 			continue
 		}
-		if isDir && !isDirIgnored(job.fs, dirPath, entry.Name()) && isDirReadable(ctx, job.fs, dirPath, entry.Name()) {
-			children = append(children, filepath.Join(dirPath, entry.Name()))
+		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
+			children = append(children, entryPath)
 			folder.numSubFolders++
 		} else {
 			fileInfo, err := entry.Info()
@@ -228,20 +270,16 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 }
 
 // isDirReadable returns true if the directory represented by dirEnt is readable
-func isDirReadable(ctx context.Context, fsys fs.FS, baseDir string, name string) bool {
-	path := filepath.Join(baseDir, name)
-
-	dir, err := fsys.Open(path)
+func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
+	dir, err := fsys.Open(dirPath)
 	if err != nil {
-		log.Warn("Scanner: Skipping unreadable directory", "path", path, err)
+		log.Warn("Scanner: Skipping unreadable directory", "path", dirPath, err)
 		return false
 	}
-
 	err = dir.Close()
 	if err != nil {
-		log.Warn(ctx, "Scanner: Error closing directory", "path", path, err)
+		log.Warn(ctx, "Scanner: Error closing directory", "path", dirPath, err)
 	}
-
 	return true
 }
 
@@ -249,11 +287,13 @@ func isDirReadable(ctx context.Context, fsys fs.FS, baseDir string, name string)
 var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
+	"@Recently-Snapshot",
+	".streams",
+	"lost+found",
 }
 
-// isDirIgnored returns true if the directory represented by dirEnt contains an
-// `ignore` file (named after skipScanFile)
-func isDirIgnored(fsys fs.FS, baseDir string, name string) bool {
+// isDirIgnored returns true if the directory represented by dirEnt should be ignored
+func isDirIgnored(name string) bool {
 	// allows Album folders for albums which eg start with ellipses
 	if strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..") {
 		return true
@@ -261,10 +301,13 @@ func isDirIgnored(fsys fs.FS, baseDir string, name string) bool {
 	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
 		return true
 	}
-	_, err := fs.Stat(fsys, filepath.Join(baseDir, name, consts.SkipScanFile))
-	return err == nil
+	return false
 }
 
-func isEntryIgnored(fsys fs.FS, baseDir string, name string) bool {
+func isEntryIgnored(name string) bool {
 	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
+}
+
+func isScanIgnored(matcher *ignore.GitIgnore, entryPath string) bool {
+	return matcher.MatchesPath(entryPath)
 }
