@@ -120,7 +120,8 @@ type configOptions struct {
 }
 
 type scannerOptions struct {
-	Extractor          string
+	Extractor string
+	// Deprecated
 	GenreSeparators    string
 	GroupAlbumReleases bool
 }
@@ -186,7 +187,7 @@ func LoadFromFile(confFile string) {
 	Load(true)
 }
 
-func Load(noConfig bool) {
+func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
 
 	err := viper.Unmarshal(&Server)
@@ -261,7 +262,7 @@ func Load(noConfig bool) {
 	}
 
 	// Print current configuration if log level is Debug
-	if log.IsGreaterOrEqualTo(log.LevelDebug) && !noConfig {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) && !noConfigDump {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)

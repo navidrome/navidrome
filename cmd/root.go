@@ -27,7 +27,6 @@ import (
 var (
 	cfgFile  string
 	noBanner bool
-	noConfig bool
 
 	rootCmd = &cobra.Command{
 		Use:   "navidrome",
@@ -62,7 +61,7 @@ func preRun() {
 	if !noBanner {
 		println(resources.Banner())
 	}
-	conf.Load(noConfig)
+	conf.Load(noBanner)
 }
 
 func postRun() {
@@ -235,7 +234,6 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "configfile", "c", "", `config file (default "./navidrome.toml")`)
 	rootCmd.PersistentFlags().BoolVarP(&noBanner, "nobanner", "n", false, `don't show banner`)
-	rootCmd.PersistentFlags().BoolVarP(&noConfig, "noconfig", "", false, `don't show config`)
 	rootCmd.PersistentFlags().String("musicfolder", viper.GetString("musicfolder"), "folder where your music is stored")
 	rootCmd.PersistentFlags().String("datafolder", viper.GetString("datafolder"), "folder to store application data (DB), needs write access")
 	rootCmd.PersistentFlags().String("cachefolder", viper.GetString("cachefolder"), "folder to store cache data (transcoding, images...), needs write access")

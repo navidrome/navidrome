@@ -39,7 +39,7 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 		for {
 			select {
 			case event := <-input:
-				log.Debug(ctx, "Detected change", "event", event, "lib", s.u.Path)
+				log.Trace(ctx, "Detected change", "event", event, "lib", s.u.Path)
 				name := event.Path()
 				name = strings.Replace(name, s.resolvedPath, s.u.Path, 1)
 				output <- name

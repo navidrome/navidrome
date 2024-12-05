@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/navidrome/navidrome/utils/gg"
 )
@@ -29,7 +30,10 @@ func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress c
 		return
 	}
 	log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
-	cmd := exec.CommandContext(ctx, exe, "scan", "--nobanner", "--noconfig", "--subprocess", If(fullScan, "--full", ""))
+	cmd := exec.CommandContext(ctx, exe, "scan",
+		"--nobanner", "--subprocess",
+		"--configfile", conf.Server.ConfigFile,
+		If(fullScan, "--full", ""))
 
 	in, out := io.Pipe()
 	defer in.Close()
