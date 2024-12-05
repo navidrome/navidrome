@@ -29,7 +29,7 @@ export const ArtistLinkField = withWidth()(({
   // Dedupe artists
   const seen = new Set()
   const dedupedArtists = []
-  artists.forEach((artist) => {
+  artists?.forEach((artist) => {
     if (!seen.has(artist.id)) {
       seen.add(artist.id)
       dedupedArtists.push(artist)
