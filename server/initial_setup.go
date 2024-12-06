@@ -27,10 +27,6 @@ func initialSetup(ds model.DataStore) {
 			return nil
 		}
 		log.Info("Running initial setup")
-		if err = createJWTSecret(tx); err != nil {
-			return err
-		}
-
 		if conf.Server.DevAutoCreateAdminPassword != "" {
 			if err = createInitialAdminUser(tx, conf.Server.DevAutoCreateAdminPassword); err != nil {
 				return err
@@ -65,20 +61,6 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 		if err != nil {
 			log.Error("Could not create initial admin user", "user", initialUser, err)
 		}
-	}
-	return err
-}
-
-func createJWTSecret(ds model.DataStore) error {
-	properties := ds.Property(context.TODO())
-	_, err := properties.Get(consts.JWTSecretKey)
-	if err == nil {
-		return nil
-	}
-	log.Info("Creating new JWT secret, used for encrypting UI sessions")
-	err = properties.Put(consts.JWTSecretKey, uuid.NewString())
-	if err != nil {
-		log.Error("Could not save JWT secret in DB", err)
 	}
 	return err
 }
