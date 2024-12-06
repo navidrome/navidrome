@@ -11,7 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/scanner_old/metadata"
+	"github.com/navidrome/navidrome/scanner_old/metadata_old"
 )
 
 const ExtractorID = "ffmpeg"
@@ -20,13 +20,13 @@ type Extractor struct {
 	ffmpeg ffmpeg.FFmpeg
 }
 
-func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, error) {
+func (e *Extractor) Parse(files ...string) (map[string]metadata_old.ParsedTags, error) {
 	output, err := e.ffmpeg.Probe(context.TODO(), files)
 	if err != nil {
 		log.Error("Cannot use ffmpeg to extract tags. Aborting", err)
 		return nil, err
 	}
-	fileTags := map[string]metadata.ParsedTags{}
+	fileTags := map[string]metadata_old.ParsedTags{}
 	if len(output) == 0 {
 		return fileTags, errors.New("error extracting metadata files")
 	}
@@ -41,8 +41,8 @@ func (e *Extractor) Parse(files ...string) (map[string]metadata.ParsedTags, erro
 	return fileTags, nil
 }
 
-func (e *Extractor) CustomMappings() metadata.ParsedTags {
-	return metadata.ParsedTags{
+func (e *Extractor) CustomMappings() metadata_old.ParsedTags {
+	return metadata_old.ParsedTags{
 		"disc":         {"tpa"},
 		"has_picture":  {"metadata_block_picture"},
 		"originaldate": {"tdor"},
@@ -53,7 +53,7 @@ func (e *Extractor) Version() string {
 	return e.ffmpeg.Version()
 }
 
-func (e *Extractor) extractMetadata(filePath, info string) (metadata.ParsedTags, error) {
+func (e *Extractor) extractMetadata(filePath, info string) (metadata_old.ParsedTags, error) {
 	tags := e.parseInfo(info)
 	if len(tags) == 0 {
 		log.Trace("Not a media file. Skipping", "filePath", filePath)
@@ -207,5 +207,5 @@ func (e *Extractor) parseChannels(tag string) string {
 
 // Inputs will always be absolute paths
 func init() {
-	metadata.RegisterExtractor(ExtractorID, &Extractor{ffmpeg: ffmpeg.New()})
+	metadata_old.RegisterExtractor(ExtractorID, &Extractor{ffmpeg: ffmpeg.New()})
 }

@@ -1,4 +1,4 @@
-package metadata_test
+package metadata_old_test
 
 import (
 	"cmp"
@@ -9,8 +9,8 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner_old/metadata"
-	_ "github.com/navidrome/navidrome/scanner_old/metadata/ffmpeg"
+	"github.com/navidrome/navidrome/scanner_old/metadata_old"
+	_ "github.com/navidrome/navidrome/scanner_old/metadata_old/ffmpeg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -51,7 +51,7 @@ var _ = Describe("Tags", func() {
 		return lines
 	}
 
-	compareLyrics := func(m metadata.Tags, expected model.LyricList) {
+	compareLyrics := func(m metadata_old.Tags, expected model.LyricList) {
 		lyrics := model.LyricList{}
 		Expect(json.Unmarshal([]byte(m.Lyrics()), &lyrics)).To(BeNil())
 		Expect(sortLyrics(lyrics)).To(Equal(sortLyrics(expected)))
@@ -71,7 +71,7 @@ var _ = Describe("Tags", func() {
 		DescribeTable("Lyrics test",
 			func(file string) {
 				path := "tests/fixtures/" + file
-				mds, err := metadata.Extract(path)
+				mds, err := metadata_old.Extract(path)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mds).To(HaveLen(1))
 

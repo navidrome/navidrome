@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/navidrome/navidrome/scanner_old/metadata"
+	"github.com/navidrome/navidrome/scanner_old/metadata_old"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -248,10 +248,10 @@ var _ = Describe("Extractor", func() {
 	})
 
 	Describe("parseTIPL", func() {
-		var tags metadata.ParsedTags
+		var tags metadata_old.ParsedTags
 
 		BeforeEach(func() {
-			tags = metadata.ParsedTags{}
+			tags = metadata_old.ParsedTags{}
 		})
 
 		Context("when the TIPL string is populated", func() {

@@ -1,4 +1,4 @@
-package metadata
+package metadata_old
 
 import (
 	. "github.com/onsi/ginkgo/v2"
