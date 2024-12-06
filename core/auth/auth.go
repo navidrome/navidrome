@@ -32,6 +32,7 @@ func Init(ds model.DataStore) {
 
 		secret, err := ds.Property(ctx).Get(consts.JWTSecretKey)
 		if err != nil || secret == "" {
+			log.Info(ctx, "Creating new JWT secret, used for encrypting UI sessions")
 			secret = createNewSecret(ctx, ds)
 		} else {
 			if secret, err = utils.Decrypt(ctx, getEncKey(), secret); err != nil {
@@ -124,17 +125,15 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 }
 
 func createNewSecret(ctx context.Context, ds model.DataStore) string {
-	log.Info(ctx, "Creating new JWT secret, used for encrypting UI sessions")
 	secret := uuid.NewString()
 	encSecret, err := utils.Encrypt(ctx, getEncKey(), secret)
 	if err != nil {
 		log.Error(ctx, "Could not encrypt JWT secret", err)
+		return secret
 	}
-
 	if err := ds.Property(ctx).Put(consts.JWTSecretKey, encSecret); err != nil {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
-
 	return secret
 }
 
