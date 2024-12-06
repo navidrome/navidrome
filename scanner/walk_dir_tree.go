@@ -178,7 +178,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 	for _, entry := range entries {
 		entryPath := filepath.Join(dirPath, entry.Name())
 		if len(ignorePatterns) > 0 && isScanIgnored(ignoreMatcher, entryPath) {
-			log.Debug(ctx, "Scanner: Ignoring entry", "path", entryPath)
+			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
 		if isEntryIgnored(entry.Name()) {
