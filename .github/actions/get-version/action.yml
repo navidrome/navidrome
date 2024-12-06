@@ -1,0 +1,26 @@
+name: 'Get version'
+description: 'Get version from file in repo tree'
+inputs:
+  filepath:
+    description: 'path to file in repository containing version string'
+    required: true
+outputs:
+  version:
+    description: 'version string'
+    value: ${{ steps.getversion.outputs.version }}
+
+
+runs:
+  using: 'composite'
+  steps:
+    - name: get version
+      id: getversion
+      shell: bash
+      run: |
+        # block injecting additional variables into GITHUB_OUTPUT
+        cat ${{ inputs.filepath }}
+        if [[ $(wc -l < ${{ inputs.filepath }} ) > 1 ]]; then
+          echo "Version string should be one line only"
+          exit 1
+        fi
+        echo "version=`cat ${{ inputs.filepath }}`" >> $GITHUB_OUTPUT
