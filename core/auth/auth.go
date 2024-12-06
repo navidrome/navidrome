@@ -129,12 +129,11 @@ func createNewSecret(ctx context.Context, ds model.DataStore) string {
 	encSecret, err := utils.Encrypt(ctx, getEncKey(), secret)
 	if err != nil {
 		log.Error(ctx, "Could not encrypt JWT secret", err)
+		return secret
 	}
-
 	if err := ds.Property(ctx).Put(consts.JWTSecretKey, encSecret); err != nil {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
-
 	return secret
 }
 
