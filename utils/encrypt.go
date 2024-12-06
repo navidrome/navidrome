@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"io"
 
 	"github.com/navidrome/navidrome/log"
@@ -36,7 +37,15 @@ func Encrypt(ctx context.Context, encKey []byte, data string) (string, error) {
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
-func Decrypt(ctx context.Context, encKey []byte, encData string) (string, error) {
+func Decrypt(ctx context.Context, encKey []byte, encData string) (value string, err error) {
+	// Recover from any panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "Panic during decryption", r)
+			err = errors.New("decryption panicked")
+		}
+	}()
+
 	enc, _ := base64.StdEncoding.DecodeString(encData)
 
 	block, err := aes.NewCipher(encKey)

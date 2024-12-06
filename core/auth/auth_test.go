@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,8 +32,10 @@ var _ = BeforeSuite(func() {
 var _ = Describe("Auth", func() {
 
 	BeforeEach(func() {
-		auth.Secret = []byte(testJWTSecret)
-		auth.TokenAuth = jwtauth.New("HS256", auth.Secret, nil)
+		ds := &tests.MockDataStore{
+			MockedProperty: &tests.MockedPropertyRepo{},
+		}
+		auth.Init(ds)
 	})
 
 	Describe("Validate", func() {
