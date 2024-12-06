@@ -9,8 +9,8 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner_old/metadata_old"
-	_ "github.com/navidrome/navidrome/scanner_old/metadata_old/ffmpeg"
+	"github.com/navidrome/navidrome/scanner/metadata_old"
+	_ "github.com/navidrome/navidrome/scanner/metadata_old/ffmpeg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
