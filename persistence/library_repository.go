@@ -116,17 +116,21 @@ func (r *libraryRepository) AddArtist(id int, artistID string) error {
 	return nil
 }
 
-func (r *libraryRepository) UpdateLastScanCompletedAt(id int, t time.Time) error {
+func (r *libraryRepository) BeginScan(id int, fullScan bool) error {
 	sq := Update(r.tableName).
-		Set("last_scan_at", t).
-		Set("last_scan_started_at", time.Time{}).
+		Set("last_scan_started_at", time.Now()).
+		Set("full_scan_in_progress", fullScan).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
 	return err
 }
 
-func (r *libraryRepository) UpdateLastScanStartedAt(id int, t time.Time) error {
-	sq := Update(r.tableName).Set("last_scan_started_at", t).Where(Eq{"id": id})
+func (r *libraryRepository) EndScan(id int) error {
+	sq := Update(r.tableName).
+		Set("last_scan_at", time.Now()).
+		Set("full_scan_in_progress", false).
+		Set("last_scan_started_at", time.Time{}).
+		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
 	return err
 }

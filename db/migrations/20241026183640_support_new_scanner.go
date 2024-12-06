@@ -33,6 +33,8 @@ func upSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
 		execute(`
 alter table library
 	add column last_scan_started_at datetime default '0000-00-00 00:00:00' not null;
+alter table library
+	add column full_scan_in_progress boolean default false not null;
 
 create table if not exists media_file_artists(
     	media_file_id varchar not null

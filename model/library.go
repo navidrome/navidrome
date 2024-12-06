@@ -5,14 +5,15 @@ import (
 )
 
 type Library struct {
-	ID                int
-	Name              string
-	Path              string
-	RemotePath        string
-	LastScanAt        time.Time
-	LastScanStartedAt time.Time
-	UpdatedAt         time.Time
-	CreatedAt         time.Time
+	ID                 int
+	Name               string
+	Path               string
+	RemotePath         string
+	LastScanAt         time.Time
+	LastScanStartedAt  time.Time
+	FullScanInProgress bool
+	UpdatedAt          time.Time
+	CreatedAt          time.Time
 }
 
 type Libraries []Library
@@ -22,10 +23,10 @@ type LibraryRepository interface {
 	// GetPath returns the path of the library with the given ID.
 	// Its implementation must be optimized to avoid unnecessary queries.
 	GetPath(id int) (string, error)
+	GetAll(...QueryOptions) (Libraries, error)
 	Put(*Library) error
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error
-	UpdateLastScanStartedAt(id int, t time.Time) error
-	UpdateLastScanCompletedAt(id int, t time.Time) error
-	GetAll(...QueryOptions) (Libraries, error)
+	BeginScan(id int, fullScan bool) error
+	EndScan(id int) error
 }

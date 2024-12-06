@@ -29,15 +29,23 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 	var jobs []*scanJob
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
-			err := ds.Library(ctx).UpdateLastScanStartedAt(lib.ID, time.Now())
+			err := ds.Library(ctx).BeginScan(lib.ID, state.fullScan)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
 				state.sendError(err)
+				continue
 			}
+			// Reload library to get updated state
+			l, err := ds.Library(ctx).Get(lib.ID)
+			if err != nil {
+				log.Error(ctx, "Scanner: Error reloading library", "lib", lib.Name, err)
+				state.sendError(err)
+				continue
+			}
+			lib = *l
 		} else {
-			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt)
+			log.Debug(ctx, "Scanner: Resuming previous scan", "lib", lib.Name, "lastScanStartedAt", lib.LastScanStartedAt, "fullScan", lib.FullScanInProgress)
 		}
-		// BFR Check LastScanStartedAt for interrupted full scans
 		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
@@ -55,7 +63,6 @@ type scanJob struct {
 	cw          artwork.CacheWarmer
 	lastUpdates map[string]time.Time
 	lock        sync.Mutex
-	fullScan    bool
 	numFolders  atomic.Int64
 }
 
@@ -74,12 +81,12 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 		log.Error(ctx, "Error getting fs for library", "library", lib.Name, "path", lib.Path, err)
 		return nil, fmt.Errorf("getting fs for library: %w", err)
 	}
+	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 	return &scanJob{
 		lib:         lib,
 		fs:          fsys,
 		cw:          cw,
 		lastUpdates: lastUpdates,
-		fullScan:    fullScan,
 	}, nil
 }
 
@@ -135,8 +142,8 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 					Path:      folder.path,
 					Phase:     "1",
 				})
-				if folder.isOutdated() || job.fullScan {
-					if !job.fullScan {
+				if folder.isOutdated() {
+					if !p.state.fullScan {
 						if folder.hasNoFiles() && folder.isNew() {
 							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
 							continue
@@ -194,7 +201,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
-		if !foundInDB || entry.job.fullScan {
+		if !foundInDB || p.state.fullScan {
 			filesToImport = append(filesToImport, fullPath)
 		} else {
 			info, err := af.Info()

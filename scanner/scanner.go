@@ -47,7 +47,18 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	}
 
 	startTime := time.Now()
-	log.Info(ctx, "Scanner: Starting scan", "fullScan", fullScan, "numLibraries", len(libs))
+	log.Info(ctx, "Scanner: Starting scan", "fullScan", state.fullScan, "numLibraries", len(libs))
+
+	// if there was a full scan in progress, force a full scan
+	if !state.fullScan {
+		for _, lib := range libs {
+			if lib.FullScanInProgress {
+				log.Warn(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
+				state.fullScan = true
+				break
+			}
+		}
+	}
 
 	err = chain.RunSequentially(
 		// Phase 1: Scan all libraries and import new/updated files
@@ -91,7 +102,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	// Final step: Update last_scan_completed_at for all libraries
 	errUpdateLib := s.ds.WithTx(func(tx model.DataStore) error {
 		for _, lib := range libs {
-			err := tx.Library(ctx).UpdateLastScanCompletedAt(lib.ID, time.Now())
+			err := tx.Library(ctx).EndScan(lib.ID)
 			if err != nil {
 				state.sendError(fmt.Errorf("updating last scan completed: %w", err))
 				log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)

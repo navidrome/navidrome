@@ -72,6 +72,9 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 }
 
 func (f *folderEntry) isOutdated() bool {
+	if f.job.lib.FullScanInProgress {
+		return f.updTime.Before(f.job.lib.LastScanStartedAt)
+	}
 	return f.updTime.Before(f.modTime)
 }
 
@@ -104,9 +107,6 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignoreP
 		}
 	}
 
-	//if !folder.isOutdated() && !job.fullScan {
-	//	return nil
-	//}
 	dir := filepath.Clean(currentFolder)
 	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
