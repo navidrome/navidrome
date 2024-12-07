@@ -49,7 +49,7 @@ func (c Criteria) OrderBy() string {
 	return mapped
 }
 
-func (c Criteria) ToSql() (sql string, args []interface{}, err error) {
+func (c Criteria) ToSql() (sql string, args []any, err error) {
 	return c.Expression.ToSql()
 }
 

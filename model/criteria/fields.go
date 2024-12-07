@@ -57,8 +57,8 @@ type mappedField struct {
 	isTag bool
 }
 
-func mapFields(expr map[string]interface{}) map[string]interface{} {
-	m := make(map[string]interface{})
+func mapFields(expr map[string]any) map[string]any {
+	m := make(map[string]any)
 	for f, v := range expr {
 		dbf := fieldMap[strings.ToLower(f)]
 		if dbf == nil {
@@ -80,7 +80,7 @@ func mapFields(expr map[string]interface{}) map[string]interface{} {
 	return m
 }
 
-func firstKV(expr map[string]interface{}) (string, string) {
+func firstKV(expr map[string]any) (string, string) {
 	for k, v := range expr {
 		return k, fmt.Sprint(v)
 	}

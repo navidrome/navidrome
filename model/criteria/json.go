@@ -34,7 +34,7 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 }
 
 func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	err := json.Unmarshal(rawValue, &m)
 	if err != nil {
 		return nil
@@ -89,7 +89,7 @@ func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression 
 	return nil
 }
 
-func marshalExpression(name string, value map[string]interface{}) ([]byte, error) {
+func marshalExpression(name string, value map[string]any) ([]byte, error) {
 	if len(value) != 1 {
 		return nil, fmt.Errorf(`invalid %s expression length %d for values %v`, name, len(value), value)
 	}
