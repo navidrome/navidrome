@@ -124,6 +124,7 @@ type scannerOptions struct {
 	// Deprecated
 	GenreSeparators    string
 	GroupAlbumReleases bool
+	WatcherWait        time.Duration
 }
 
 type lastfmOptions struct {
@@ -454,6 +455,7 @@ func init() {
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
 	viper.SetDefault("scanner.groupalbumreleases", false)
+	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)

@@ -7,24 +7,24 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
-
-const triggerWait = 5 * time.Second
 
 type Watcher interface {
 	Run(ctx context.Context) error
 }
 
 type watcher struct {
-	ds      model.DataStore
-	scanner Scanner
+	ds          model.DataStore
+	scanner     Scanner
+	triggerWait time.Duration
 }
 
 func NewWatcher(ds model.DataStore, s Scanner) Watcher {
-	return &watcher{ds: ds, scanner: s}
+	return &watcher{ds: ds, scanner: s, triggerWait: conf.Server.Scanner.WatcherWait}
 }
 
 func (w *watcher) Run(ctx context.Context) error {
@@ -41,7 +41,7 @@ func (w *watcher) Run(ctx context.Context) error {
 		go watchLib(ctx, lib, watcherChan)
 	}
 
-	trigger := time.NewTimer(triggerWait)
+	trigger := time.NewTimer(w.triggerWait)
 	trigger.Stop()
 	for {
 		select {
@@ -53,8 +53,8 @@ func (w *watcher) Run(ctx context.Context) error {
 				break
 			}
 			if status.Scanning {
-				log.Info(ctx, "Watcher: Already scanning, will retry later", "waitTime", triggerWait*3)
-				trigger.Reset(triggerWait * 3)
+				log.Info(ctx, "Watcher: Already scanning, will retry later", "waitTime", w.triggerWait*3)
+				trigger.Reset(w.triggerWait * 3)
 				continue
 			}
 			go func() {
@@ -68,7 +68,7 @@ func (w *watcher) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-watcherChan:
-			trigger.Reset(triggerWait)
+			trigger.Reset(w.triggerWait)
 		}
 	}
 }
@@ -115,7 +115,7 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 	}
 }
 
-func isIgnoredPath(_ context.Context, fsys fs.FS, path string) bool {
+func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 	baseDir, name := filepath.Split(path)
 	switch {
 	case model.IsAudioFile(path):

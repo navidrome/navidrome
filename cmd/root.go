@@ -158,6 +158,10 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 
 func startScanWatcher(ctx context.Context) func() error {
 	return func() error {
+		if conf.Server.Scanner.WatcherWait == 0 {
+			log.Debug("Folder watcher is DISABLED")
+			return nil
+		}
 		w := CreateScanWatcher(ctx)
 		err := w.Run(ctx)
 		if err != nil {

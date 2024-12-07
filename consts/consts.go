@@ -64,8 +64,8 @@ const (
 	DefaultHttpClientTimeOut = 10 * time.Second
 
 	DefaultScannerExtractor = "taglib"
-
-	Zwsp = string('\u200b')
+	DefaultWatcherWait      = 5 * time.Second
+	Zwsp                    = string('\u200b')
 )
 
 // Cache options
