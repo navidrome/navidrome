@@ -53,19 +53,16 @@ func (c Criteria) ToSql() (sql string, args []interface{}, err error) {
 	return c.Expression.ToSql()
 }
 
-func (c Criteria) ChildPlaylistIds() (ids []string) {
+func (c Criteria) ChildPlaylistIds() []string {
 	if c.Expression == nil {
-		return ids
+		return nil
 	}
 
-	switch rules := c.Expression.(type) {
-	case Any:
-		ids = rules.ChildPlaylistIds()
-	case All:
-		ids = rules.ChildPlaylistIds()
+	if parent := c.Expression.(interface{ ChildPlaylistIds() (ids []string) }); parent != nil {
+		return parent.ChildPlaylistIds()
 	}
 
-	return ids
+	return nil
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {

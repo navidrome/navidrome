@@ -185,4 +185,9 @@ var _ = Describe("Criteria", func() {
 
 		gomega.Expect(ids).To(gomega.ConsistOf(nestedAnyInPlaylistID, nestedAnyNotInPlaylistID, nestedAllInPlaylistID, nestedAllNotInPlaylistID))
 	})
+
+	It("returns empty list when no child playlist IDs are present", func() {
+		ids := Criteria{}.ChildPlaylistIds()
+		gomega.Expect(ids).To(gomega.BeEmpty())
+	})
 })
