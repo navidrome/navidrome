@@ -15,6 +15,7 @@ import {
   TextField,
 } from '@material-ui/core'
 import { closeMoveToIndexDialog } from '../actions'
+import debounce from "lodash.debounce"
 
 /**
  * Calculate the optimal number of page items and the page number
@@ -38,16 +39,9 @@ function CalculatePagination(listLength, targetIndex) {
       throw new Error("targetIndex must be within the range of listLength.");
   }
 
-  // Minimum page size to include targetIndex and 2 items before and after
-  const minStart = Math.max(1, targetIndex - 2);
-  const maxEnd = Math.min(listLength - 1, targetIndex + 2);
-
-  // Items per page should cover the range [minStart, maxEnd]
-  const itemsPerPage = maxEnd - minStart + 1;
-
-  // Calculate the page number (1-based) assuming the page starts at minStart
-  // Assuming each page's items are sequential
-  const pageNumber = Math.floor(minStart / itemsPerPage) + 1;
+  // TODO: Fix the algorithm
+  const itemsPerPage = 6;
+  const pageNumber = Math.ceil(targetIndex / itemsPerPage)
 
   return { itemsPerPage, pageNumber };
 }
@@ -81,6 +75,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
    * @type {ReturnType<typeof useState<import('ra-core').Record[]>>}
    */
   const [targetArea, setTargetArea] = useState([]);
+  const [loading, setLoading] = useState(false);
   const notify = useNotify()
 
   const dataProvider = useDataProvider();
@@ -110,9 +105,11 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     setValidationError(undefined);
   }, [to, max, translate]);
 
-  React.useEffect(() => {
-    if (validationError || !open)
+  const callback = React.useRef(debounce((to, max) => {
+    if (!to || parseInt(to) > max || parseInt < 1) {
+      setLoading(false);
       return;
+    }
 
     // FIXME: algorithm is not providing the correct amount of items above and below, fix it
     const { itemsPerPage, pageNumber } = CalculatePagination(max, parseInt(to))
@@ -124,10 +121,23 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
       filter: { playlist_id: playlistId },
     }).then(e => {
       // TODO: Only show 3 above and 3 below
+      if (!e.data.some(x => x.id == to))
+        return;
+      console.log(e.data)
       setTargetArea(e.data);
+      setLoading(false);
     }).catch(() => {
       notify('ra.page.error', 'warning')
     })
+  }, 1500, {leading: false, trailing: true}))
+
+  React.useEffect(() => {
+    if (validationError || !open) {
+      return;
+    }
+
+    setLoading(true);
+    callback.current?.(to, max);
   }, [validationError, to, dataProvider, playlistId, max, open, notify]);
 
 
@@ -160,7 +170,32 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
             helperText={validationError ?? `1 - ${max}`}
             error={!!validationError}
         />
-        {(!validationError, targetArea) &&
+        {loading &&
+          <List>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+              <ListItem disableGutters>
+                Loading...
+              </ListItem>
+          </List>
+        }
+        {(!validationError && targetArea && !loading) &&
           <List>
             {targetArea.map((x => {
               if (!to || (record.mediaFileId == x.mediaFileId && record.id != to))
@@ -206,12 +241,14 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
                   ?
                     <ListItem 
                       disableGutters
+                      style={{textWrap: "nowrap"}}
                     >
                       {newIndex}{movingUp ? "↑" : "↓"} - {x.title} - {x.album} - {x.artist}
                     </ListItem>
                   : 
                     <ListItem 
                       disableGutters
+                      style={{textWrap: "nowrap"}}
                     >
                       {x.id} - {x.title} - {x.album} - {x.artist}
                     </ListItem> 
