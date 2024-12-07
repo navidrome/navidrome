@@ -39,10 +39,22 @@ function CalculatePagination(listLength, targetIndex) {
       throw new Error("targetIndex must be within the range of listLength.");
   }
 
-  // TODO: Fix the algorithm
-  const itemsPerPage = 6;
-  const pageNumber = Math.ceil(targetIndex / itemsPerPage)
+  if (targetIndex < 5) {
+    return {itemsPerPage: 10, pageNumber: 1}
+  }
 
+  let modulo = 0;
+  let divisor = 6;
+  // we need 3 items before and after in a page, we just go until we find one.
+  // usually it takes 3-5 iterations
+  while(divisor - modulo < 3 || modulo < 3) {
+    divisor++;
+    modulo = targetIndex % divisor;
+  }
+
+  const itemsPerPage = divisor;
+  const pageNumber = Math.ceil(targetIndex / itemsPerPage)
+  
   return { itemsPerPage, pageNumber };
 }
 
@@ -105,40 +117,51 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     setValidationError(undefined);
   }, [to, max, translate]);
 
-  const callback = React.useRef(debounce((to, max, playlistId) => {
+  const callback = React.useRef(debounce((from, to, max, playlistId) => {
     if (!to || parseInt(to) > max || parseInt < 1) {
       setLoading(false);
       return;
     }
 
-    // FIXME: algorithm is not providing the correct amount of items above and below, fix it
     const { itemsPerPage, pageNumber } = CalculatePagination(max, parseInt(to))
 
     // TODO: stop interfering with the playlist page 
-    dataProvider.getList('playlistTrack', {
-      pagination: { page: pageNumber, perPage: itemsPerPage },
-      sort: { field: 'id', order: 'ASC' },
-      filter: { playlist_id: playlistId },
-    }).then(e => {
-      // TODO: Only show 3 above and 3 below
-      if (!e.data.some(x => x.id == to))
-        return;
+    dataProvider.getList(
+      'playlistTrack', 
+      {
+        pagination: { page: pageNumber, perPage: itemsPerPage },
+        sort: { field: 'id', order: 'ASC' },
+        filter: { playlist_id: playlistId },
+      }
+    ).
+    then(e => {
+      const target = e.data.findIndex(x => x.id == to);
+      // should not happen
+      if (target == -1) {
+          setLoading(false);
+          return
+      }
 
-      setTargetArea(e.data);
+      const around = e.data.slice(Math.max(0, target - 3), Math.min(target + 4, e.data.length))
+
+      setTargetArea(around);
       setLoading(false);
-    }).catch(() => {
+    }).
+    catch(() => {
       notify('ra.page.error', 'warning')
     })
+
   }, 1500, {leading: false, trailing: true}))
 
   React.useEffect(() => {
     if (validationError || !open) {
+      setLoading(false);
       return;
     }
 
     setLoading(true);
-    callback.current?.(to, max, playlistId);
-  }, [validationError, to, dataProvider, playlistId, max, open, notify]);
+    callback.current?.(record.id, to, max, playlistId);
+  }, [validationError, to, dataProvider, playlistId, max, open, notify, record]);
 
 
   const handleClose = (e) => {
@@ -151,6 +174,54 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     dispatch(closeMoveToIndexDialog())
     e.stopPropagation()
   }
+
+  const fromNum = parseInt(record?.id ?? -1);
+  const toNum = parseInt(to);
+  const moving = toNum == fromNum ? "no" : toNum > fromNum ? "up" : "down";
+  const changeRange = [Math.min(fromNum, toNum), Math.max(fromNum, toNum)];
+  const target = targetArea.findIndex(x => x.id == to);
+  const getItem = (index) => {
+    if (!record)
+      return null;
+
+    const goingBackwards = index < 0;
+    const initialIndexModifier = goingBackwards ? (moving == "up" ? 1 : 0) : -(moving == "down" ? 1 : 0);
+
+    let resultItem;
+    for (let i = target + index + initialIndexModifier; goingBackwards ? i >= 0 : i < targetArea.length; goingBackwards ? i-- : i++) {
+      const elem = targetArea[i];
+      if (!elem)
+        return null;
+
+      const isTarget = elem.id == record.id;
+      if (isTarget)
+        continue
+
+      resultItem = elem;
+      break;
+    }
+
+    if (!resultItem)
+      return null;
+
+    const elemID = parseInt(resultItem.id)
+    const willMove = elemID >= changeRange[0] && elemID <= changeRange[1];
+    let newIndex = elemID;
+    if (willMove) {
+      newIndex = moving == "up" ? elemID - 1 : elemID + 1;
+    }
+
+    return {
+      elem: resultItem,
+      newIndex,
+      willMove
+    };
+  }
+
+  const Minus2 = getItem(-2);
+  const Minus1 = getItem(-1);
+  const Plus1 = getItem(1);
+  const Plus2 = getItem(2);
 
   return (
     <Dialog
@@ -187,76 +258,25 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
               <ListItem disableGutters>
                 Loading...
               </ListItem>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
           </List>
         }
         {(!validationError && targetArea && !loading) &&
           <List>
-            {targetArea.map((x => {
-              if (!to || (record.mediaFileId == x.mediaFileId && record.id != to))
-                return null;
-
-              const fromNum = parseInt(record.id);
-              const toNum = parseInt(to);
-              const current = parseInt(x.id);
-
-              const movingUp = toNum > fromNum;
-              const changeRange = [Math.min(fromNum, toNum), Math.max(fromNum, toNum)];
-
-              const willMove = current >= changeRange[0] && current <= changeRange[1];
-              const isTarget = current == toNum;
-
-              let newIndex = current;
-              if (willMove) {
-                newIndex = movingUp ? current - 1 : current + 1;
-              }
-
-              const Target = () => {
-                if (!isTarget)
-                  return null;
-
-                return (
-                  <ListItem
-                      disableGutters
-                      selected
-                  >
-                    {toNum} - {record.title} - {record.album} - {record.artist}
-
-                  </ListItem>
-                )
-              }
-
-              return (
-                <React.Fragment key={x.id}>
-                  {newIndex == record.id && (
-                    <Divider />
-                  )}
-                  {!movingUp && <Target />}
-                  {willMove 
-                  ?
-                    <ListItem 
-                      disableGutters
-                      style={{textWrap: "nowrap"}}
-                    >
-                      {newIndex}{movingUp ? "↑" : "↓"} - {x.title} - {x.album} - {x.artist}
-                    </ListItem>
-                  : 
-                    <ListItem 
-                      disableGutters
-                      style={{textWrap: "nowrap"}}
-                    >
-                      {x.id} - {x.title} - {x.album} - {x.artist}
-                    </ListItem> 
-                  }
-                  {movingUp && <Target />}
-                </React.Fragment>
-              )
-            }))}
+            <ListItem disableGutters>
+              {Minus2?.newIndex}{Minus2?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Minus2?.elem.title} - {Minus2?.elem.album} - {Minus2?.elem.artist}
+            </ListItem>
+            <ListItem disableGutters>
+              {Minus1?.newIndex}{Minus1?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Minus1?.elem.title} - {Minus1?.elem.album} - {Minus1?.elem.artist}
+            </ListItem>
+            <ListItem disableGutters selected>
+              {to} - {record?.title} - {record?.album} - {record?.artist}
+            </ListItem>
+            <ListItem disableGutters>
+              {Plus1?.newIndex}{Plus1?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Plus1?.elem.title} - {Plus1?.elem.album} - {Plus1?.elem.artist}
+            </ListItem>
+            <ListItem disableGutters>
+              {Plus2?.newIndex}{Plus2?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Plus2?.elem.title} - {Plus2?.elem.album} - {Plus2?.elem.artist}
+            </ListItem>
           </List>
         }
       </DialogContent>
