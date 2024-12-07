@@ -227,7 +227,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
-      <MoveToIndexDialog onSuccess={onSongMoved} max={total} />
+      <MoveToIndexDialog onSuccess={onSongMoved} max={total} playlistId={playlistId} />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )
