@@ -105,7 +105,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     setValidationError(undefined);
   }, [to, max, translate]);
 
-  const callback = React.useRef(debounce((to, max) => {
+  const callback = React.useRef(debounce((to, max, playlistId) => {
     if (!to || parseInt(to) > max || parseInt < 1) {
       setLoading(false);
       return;
@@ -123,7 +123,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
       // TODO: Only show 3 above and 3 below
       if (!e.data.some(x => x.id == to))
         return;
-      console.log(e.data)
+
       setTargetArea(e.data);
       setLoading(false);
     }).catch(() => {
@@ -137,7 +137,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     }
 
     setLoading(true);
-    callback.current?.(to, max);
+    callback.current?.(to, max, playlistId);
   }, [validationError, to, dataProvider, playlistId, max, open, notify]);
 
 
