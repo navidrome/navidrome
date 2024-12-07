@@ -105,8 +105,8 @@ const MoveToIndexDialog = ({ title, onSuccess, max }) => {
 
 MoveToIndexDialog.propTypes = {
   title: PropTypes.string,
-  content: PropTypes.object.isRequired,
-  onSuccess: PropTypes.func.isRequired
+  onSuccess: PropTypes.func.isRequired,
+  max: PropTypes.number.isRequired
 }
 
 export default MoveToIndexDialog

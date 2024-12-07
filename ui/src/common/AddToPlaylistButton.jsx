@@ -4,8 +4,20 @@ import { useDispatch } from 'react-redux'
 import { Button, useTranslate, useUnselectAll } from 'react-admin'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import { openAddToPlaylist } from '../actions'
+import { Add } from '@material-ui/icons'
+import { IconButton } from '@material-ui/core'
 
-export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
+/**
+ * @component
+ * @param {{
+*  selectedIds: string[],
+*  resource?: string,
+*  className?: string,
+*  compact?: boolean
+*  disabled?: boolean
+* }}
+*/
+export const AddToPlaylistButton = ({ resource, selectedIds, className, compact, disabled }) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const unselectAll = useUnselectAll()
@@ -19,6 +31,22 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
     )
   }
 
+  if (compact) {
+    return (
+      <IconButton
+          aria-controls="simple-menu"
+          aria-haspopup="true"
+          size={'small'}
+          onClick={handleClick}
+          className={className}
+          label={translate('resources.song.actions.addToPlaylist')}
+          disabled={disabled}
+        >
+        <Add fontSize='small' />
+      </IconButton>
+    )
+  }
+
   return (
     <Button
       aria-controls="simple-menu"
@@ -26,6 +54,7 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
       onClick={handleClick}
       className={className}
       label={translate('resources.song.actions.addToPlaylist')}
+      disabled={disabled}
     >
       <PlaylistAddIcon />
     </Button>
@@ -33,6 +62,9 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {
 }
 
 AddToPlaylistButton.propTypes = {
-  resource: PropTypes.string.isRequired,
+  resource: PropTypes.string,
   selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
+  className: PropTypes.string,
+  compact: PropTypes.bool,
+  disabled: PropTypes.bool
 }
