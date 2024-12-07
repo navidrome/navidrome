@@ -16,7 +16,7 @@ import { closeMoveToIndexDialog } from '../actions'
  * @component
  * @param {{
  *  title?: string,
- *  onSuccess: (from: number, to: number) => void,
+ *  onSuccess: (from: string, to: string) => void,
  *  max: number
  * }}
  */
@@ -65,8 +65,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max }) => {
   }
 
   const handleConfirm = (e) => {
-    // FIXME: verify: I get why to should be decremented, but why the id? does it start from 0 and displays from 1?
-    onSuccess(record.id - 1, parseInt(to) - 1)
+    onSuccess(record.id, to)
     dispatch(closeMoveToIndexDialog())
     e.stopPropagation()
   }

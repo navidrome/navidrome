@@ -130,6 +130,18 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
     [playlistId, reorder, ids],
   )
 
+  const onSongMoved = useCallback(
+    /**
+     * 
+     * @param {string} from index 
+     * @param {string} to index 
+     */
+    (from, to) => {
+      reorder(playlistId, from, to)
+    },
+    [playlistId, reorder],
+  )
+
   const toggleableFields = useMemo(() => {
     return {
       trackNumber: isDesktop && <TextField source="id" label={'#'} />,
@@ -215,7 +227,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
-      <MoveToIndexDialog onSuccess={handleDragEnd} max={total} />
+      <MoveToIndexDialog onSuccess={onSongMoved} max={total} />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )
