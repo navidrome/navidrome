@@ -208,6 +208,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={false}
                 className={classes.contextMenu}
+                showMoveToIndex={!readOnly}
               />
             </SongDatagrid>
           </ReorderableList>

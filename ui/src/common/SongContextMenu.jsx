@@ -31,6 +31,7 @@ export const SongContextMenu = ({
   resource,
   record,
   showLove,
+  showMoveToIndex,
   onAddToPlaylist,
   className,
 }) => {
@@ -89,7 +90,7 @@ export const SongContextMenu = ({
       action: (record) => dispatch(openExtendedInfoDialog(record)),
     },
     moveToIndex: {
-      enabled: true,
+      enabled: showMoveToIndex,
       label: translate('resources.song.actions.moveToIndex'),
       action: (record) => dispatch(openMoveToIndexDialog(record)),
     },
