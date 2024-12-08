@@ -33,14 +33,26 @@ var _ = Describe("Operators", func() {
 		Entry("inTheRange [date]", InTheRange{"lastPlayed": []date{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
 		Entry("before", Before{"lastPlayed": rangeStart}, "annotation.play_date < ?", rangeStart),
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
-		// TODO These may be flaky
-		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", startOfPeriod(30, time.Now())),
-		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", startOfPeriod(30, time.Now())),
+
+		// InPlaylis and NotInPlaylist are special cases
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN "+
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN "+
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
-		Entry("tag is [string]", Is{"genre": "Rock"}, "tags.value = ?", "5qDZoz1FBC36K73YeoJ2lF"),
+
+		// TODO These may be flaky
+		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", startOfPeriod(30, time.Now())),
+		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", startOfPeriod(30, time.Now())),
+
+		// Tag tests
+		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
+		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
+		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value > ?)", "A"),
+		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value < ?)", "Z"),
+		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
+		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
+		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
+		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
 	)
 
 	DescribeTable("JSON Marshaling",

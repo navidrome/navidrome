@@ -2,10 +2,11 @@ package criteria
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/id"
 )
 
 var fieldMap = map[string]*mappedField{
@@ -48,7 +49,8 @@ var fieldMap = map[string]*mappedField{
 	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
 	"rating":          {field: "COALESCE(annotation.rating, 0)"},
 	"random":          {field: "", order: "random()"},
-	"genre":           {isTag: true},
+	"genre":           {field: "genre", isTag: true},
+	"value":           {field: "value"}, // pseudo-field for tag values
 }
 
 type mappedField struct {
@@ -60,24 +62,53 @@ type mappedField struct {
 func mapFields(expr map[string]any) map[string]any {
 	m := make(map[string]any)
 	for f, v := range expr {
-		dbf := fieldMap[strings.ToLower(f)]
-		if dbf == nil {
-			log.Error("Invalid field in criteria", "field", f)
-			continue
-		}
-		if dbf.field != "" {
+		if dbf := fieldMap[strings.ToLower(f)]; dbf != nil && dbf.field != "" {
 			m[dbf.field] = v
-			continue
-		}
-		if dbf.isTag {
-			// BFR Should we validate tags that exist in the DB?
-			// BFR Handle multi-valued tags
-			k, v := firstKV(expr)
-			tagID := id.NewTagID(k, v)
-			m["tags.value"] = tagID
+		} else {
+			log.Error("Invalid field in criteria", "field", f)
 		}
 	}
 	return m
+}
+
+// BFR Should we validate tags that exist in the DB?
+func mapTagFields(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+	rv := reflect.ValueOf(expr)
+	if rv.Kind() != reflect.Map || rv.Type().Key().Kind() != reflect.String {
+		log.Fatal(fmt.Sprintf("expr is not a map-based operator: %T", expr))
+	}
+
+	// Extract into a generic map
+	m := make(map[string]any, rv.Len())
+	for _, key := range rv.MapKeys() {
+		m[key.String()] = rv.MapIndex(key).Interface()
+	}
+
+	// Modify the map
+	k, _ := firstKV(m)
+	m["value"] = m[k]
+	delete(m, k)
+
+	// Clear the original map
+	for _, key := range rv.MapKeys() {
+		rv.SetMapIndex(key, reflect.Value{})
+	}
+
+	// Write the updated map back into the original variable
+	for key, val := range m {
+		rv.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(val))
+	}
+
+	return tagExpr(k, expr, negate)
+}
+
+func isTagExpr(expr map[string]any) bool {
+	for f := range expr {
+		if f2, ok := fieldMap[strings.ToLower(f)]; ok && f2.isTag {
+			return true
+		}
+	}
+	return false
 }
 
 func firstKV(expr map[string]any) (string, string) {
@@ -85,4 +116,24 @@ func firstKV(expr map[string]any) (string, string) {
 		return k, fmt.Sprint(v)
 	}
 	return "", ""
+}
+
+func tagExpr(tag string, cond squirrel.Sqlizer, negate bool) tagCond {
+	return tagCond{tag: tag, cond: cond, not: negate}
+}
+
+type tagCond struct {
+	tag  string
+	cond squirrel.Sqlizer
+	not  bool
+}
+
+func (e tagCond) ToSql() (string, []any, error) {
+	sql, args, err := e.cond.ToSql()
+	sql = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
+		e.tag, sql)
+	if e.not {
+		sql = "not " + sql
+	}
+	return sql, args, err
 }

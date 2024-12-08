@@ -238,7 +238,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	}
 
 	sq := Select("row_number() over (order by "+rules.OrderBy()+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
-		From("media_file, json_tree(media_file.tags) as tags").LeftJoin("annotation on (" +
+		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
 		" AND annotation.user_id = '" + userId(r.ctx) + "')")

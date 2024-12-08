@@ -69,9 +69,9 @@ var _ = Describe("Criteria", func() {
 			"(media_file.title LIKE ? AND media_file.title NOT LIKE ? " +
 				"AND (media_file.artist <> ? OR media_file.album = ?) " +
 				"AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) " +
-				"AND tags.value <> ?))",
+				"AND not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))",
 		))
-		gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "5qDZoz1FBC36K73YeoJ2lF"))
+		gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock"))
 	})
 
 	It("marshals to JSON", func() {

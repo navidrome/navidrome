@@ -48,6 +48,9 @@ type Is squirrel.Eq
 type Eq = Is
 
 func (is Is) ToSql() (sql string, args []any, err error) {
+	if isTagExpr(is) {
+		return mapTagFields(is, false).ToSql()
+	}
 	return squirrel.Eq(mapFields(is)).ToSql()
 }
 
@@ -58,6 +61,9 @@ func (is Is) MarshalJSON() ([]byte, error) {
 type IsNot squirrel.NotEq
 
 func (in IsNot) ToSql() (sql string, args []any, err error) {
+	if isTagExpr(in) {
+		return mapTagFields(squirrel.Eq(in), true).ToSql()
+	}
 	return squirrel.NotEq(mapFields(in)).ToSql()
 }
 
@@ -68,6 +74,9 @@ func (in IsNot) MarshalJSON() ([]byte, error) {
 type Gt squirrel.Gt
 
 func (gt Gt) ToSql() (sql string, args []any, err error) {
+	if isTagExpr(gt) {
+		return mapTagFields(gt, false).ToSql()
+	}
 	return squirrel.Gt(mapFields(gt)).ToSql()
 }
 
@@ -78,6 +87,9 @@ func (gt Gt) MarshalJSON() ([]byte, error) {
 type Lt squirrel.Lt
 
 func (lt Lt) ToSql() (sql string, args []any, err error) {
+	if isTagExpr(lt) {
+		return mapTagFields(squirrel.Lt(lt), false).ToSql()
+	}
 	return squirrel.Lt(mapFields(lt)).ToSql()
 }
 
@@ -88,17 +100,17 @@ func (lt Lt) MarshalJSON() ([]byte, error) {
 type Before squirrel.Lt
 
 func (bf Before) ToSql() (sql string, args []any, err error) {
-	return squirrel.Lt(mapFields(bf)).ToSql()
+	return Lt(bf).ToSql()
 }
 
 func (bf Before) MarshalJSON() ([]byte, error) {
 	return marshalExpression("before", bf)
 }
 
-type After squirrel.Gt
+type After Gt
 
 func (af After) ToSql() (sql string, args []any, err error) {
-	return squirrel.Gt(mapFields(af)).ToSql()
+	return Gt(af).ToSql()
 }
 
 func (af After) MarshalJSON() ([]byte, error) {
@@ -111,6 +123,9 @@ func (ct Contains) ToSql() (sql string, args []any, err error) {
 	lk := squirrel.Like{}
 	for f, v := range mapFields(ct) {
 		lk[f] = fmt.Sprintf("%%%s%%", v)
+	}
+	if isTagExpr(ct) {
+		return mapTagFields(lk, false).ToSql()
 	}
 	return lk.ToSql()
 }
@@ -126,6 +141,9 @@ func (nct NotContains) ToSql() (sql string, args []any, err error) {
 	for f, v := range mapFields(nct) {
 		lk[f] = fmt.Sprintf("%%%s%%", v)
 	}
+	if isTagExpr(nct) {
+		return mapTagFields(squirrel.Like(lk), true).ToSql()
+	}
 	return lk.ToSql()
 }
 
@@ -139,6 +157,9 @@ func (sw StartsWith) ToSql() (sql string, args []any, err error) {
 	lk := squirrel.Like{}
 	for f, v := range mapFields(sw) {
 		lk[f] = fmt.Sprintf("%s%%", v)
+	}
+	if isTagExpr(sw) {
+		return mapTagFields(lk, false).ToSql()
 	}
 	return lk.ToSql()
 }
@@ -154,6 +175,9 @@ func (sw EndsWith) ToSql() (sql string, args []any, err error) {
 	for f, v := range mapFields(sw) {
 		lk[f] = fmt.Sprintf("%%%s", v)
 	}
+	if isTagExpr(sw) {
+		return mapTagFields(lk, false).ToSql()
+	}
 	return lk.ToSql()
 }
 
@@ -164,7 +188,7 @@ func (sw EndsWith) MarshalJSON() ([]byte, error) {
 type InTheRange map[string]any
 
 func (itr InTheRange) ToSql() (sql string, args []any, err error) {
-	var and squirrel.And
+	and := squirrel.And{}
 	for f, v := range mapFields(itr) {
 		s := reflect.ValueOf(v)
 		if s.Kind() != reflect.Slice || s.Len() != 2 {
