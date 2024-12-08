@@ -1,17 +1,20 @@
-package criteria
+package criteria_test
 
 import (
 	"encoding/json"
 	"fmt"
 	"time"
 
+	. "github.com/navidrome/navidrome/model/criteria"
 	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 var _ = Describe("Operators", func() {
-	rangeStart := date(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
-	rangeEnd := date(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
+	AddTagNames([]string{"genre"})
+
+	rangeStart := Date(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
+	rangeEnd := Date(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
 
 	DescribeTable("ToSQL",
 		func(op Expression, expectedSql string, expectedArgs ...any) {
@@ -30,7 +33,7 @@ var _ = Describe("Operators", func() {
 		Entry("startsWith", StartsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "Low Rider%"),
 		Entry("endsWith", EndsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider"),
 		Entry("inTheRange [number]", InTheRange{"year": []int{1980, 1990}}, "(media_file.year >= ? AND media_file.year <= ?)", 1980, 1990),
-		Entry("inTheRange [date]", InTheRange{"lastPlayed": []date{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
+		Entry("inTheRange [date]", InTheRange{"lastPlayed": []Date{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
 		Entry("before", Before{"lastPlayed": rangeStart}, "annotation.play_date < ?", rangeStart),
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
 
@@ -41,8 +44,8 @@ var _ = Describe("Operators", func() {
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 
 		// TODO These may be flaky
-		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", startOfPeriod(30, time.Now())),
-		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", startOfPeriod(30, time.Now())),
+		Entry("inTheLast", InTheLast{"lastPlayed": 30}, "annotation.play_date > ?", StartOfPeriod(30, time.Now())),
+		Entry("notInTheLast", NotInTheLast{"lastPlayed": 30}, "(annotation.play_date < ? OR annotation.play_date IS NULL)", StartOfPeriod(30, time.Now())),
 
 		// Tag tests
 		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
@@ -55,6 +58,23 @@ var _ = Describe("Operators", func() {
 		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
 	)
 
+	Describe("Custom Tags", func() {
+		It("generates valid SQL", func() {
+			AddTagNames([]string{"mood"})
+			op := EndsWith{"mood": "Soft"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.mood') where key='value' and value LIKE ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
+		})
+		It("returns errors for unknown tag names", func() {
+			op := EndsWith{"unknown": "value"}
+			sql, args, _ := op.ToSql()
+			gomega.Expect(sql).To(gomega.BeEmpty())
+			gomega.Expect(args).To(gomega.BeEmpty())
+		})
+	})
+
 	DescribeTable("JSON Marshaling",
 		func(op Expression, jsonString string) {
 			obj := And{op}
@@ -62,7 +82,7 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(string(newJs)).To(gomega.Equal(fmt.Sprintf(`{"all":[%s]}`, jsonString)))
 
-			var unmarshalObj unmarshalConjunctionType
+			var unmarshalObj UnmarshalConjunctionType
 			js := "[" + jsonString + "]"
 			err = json.Unmarshal([]byte(js), &unmarshalObj)
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())

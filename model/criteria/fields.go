@@ -18,7 +18,7 @@ var fieldMap = map[string]*mappedField{
 	"tracknumber":     {field: "media_file.track_number"},
 	"discnumber":      {field: "media_file.disc_number"},
 	"year":            {field: "media_file.year"},
-	"date":            {field: "media_file.date"},
+	"date":            {field: "media_file.date", alias: "recordingdate"},
 	"originalyear":    {field: "media_file.original_year"},
 	"originaldate":    {field: "media_file.original_date"},
 	"releaseyear":     {field: "media_file.release_year"},
@@ -34,13 +34,14 @@ var fieldMap = map[string]*mappedField{
 	"sortalbum":       {field: "media_file.sort_album_name"},
 	"sortartist":      {field: "media_file.sort_artist_name"},
 	"sortalbumartist": {field: "media_file.sort_album_artist_name"},
-	"albumtype":       {field: "media_file.mbz_album_type"},
+	"albumtype":       {field: "media_file.mbz_album_type", alias: "releasetype"},
 	"albumcomment":    {field: "media_file.mbz_album_comment"},
 	"catalognumber":   {field: "media_file.catalog_num"},
 	"filepath":        {field: "media_file.path"},
 	"filetype":        {field: "media_file.suffix"},
 	"duration":        {field: "media_file.duration"},
 	"bitrate":         {field: "media_file.bit_rate"},
+	"bitdepth":        {field: "media_file.bit_depth"},
 	"bpm":             {field: "media_file.bpm"},
 	"channels":        {field: "media_file.channels"},
 	"loved":           {field: "COALESCE(annotation.starred, false)"},
@@ -48,15 +49,17 @@ var fieldMap = map[string]*mappedField{
 	"lastplayed":      {field: "annotation.play_date"},
 	"playcount":       {field: "COALESCE(annotation.play_count, 0)"},
 	"rating":          {field: "COALESCE(annotation.rating, 0)"},
-	"random":          {field: "", order: "random()"},
-	"genre":           {field: "genre", isTag: true},
-	"value":           {field: "value"}, // pseudo-field for tag values
+
+	// special fields
+	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
+	"value":  {field: "value"},               // pseudo-field for tag values
 }
 
 type mappedField struct {
 	field string
 	order string
 	isTag bool
+	alias string // name from `mappings.yml` that may differ from the name used in the smart playlist
 }
 
 func mapFields(expr map[string]any) map[string]any {
@@ -71,7 +74,6 @@ func mapFields(expr map[string]any) map[string]any {
 	return m
 }
 
-// BFR Should we validate tags that exist in the DB?
 func mapTagFields(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
 	rv := reflect.ValueOf(expr)
 	if rv.Kind() != reflect.Map || rv.Type().Key().Kind() != reflect.String {
@@ -136,4 +138,25 @@ func (e tagCond) ToSql() (string, []any, error) {
 		sql = "not " + sql
 	}
 	return sql, args, err
+}
+
+// AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`
+// file to the field map, so they can be used in smart playlists.
+// If a tag name already exists in the field map, it is ignored, so calls to this function are idempotent.
+func AddTagNames(tagNames []string) {
+	for _, name := range tagNames {
+		name := strings.ToLower(name)
+		if _, ok := fieldMap[name]; ok {
+			continue
+		}
+		for _, fm := range fieldMap {
+			if fm.alias == name {
+				fieldMap[name] = fm
+				break
+			}
+		}
+		if _, ok := fieldMap[name]; !ok {
+			fieldMap[name] = &mappedField{field: name, isTag: true}
+		}
+	}
 }

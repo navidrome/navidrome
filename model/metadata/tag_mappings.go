@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/resources"
 	"gopkg.in/yaml.v3"
 )
@@ -83,4 +84,19 @@ func collectTags(tagMappings, normalized map[model.TagName]tagConf) {
 		}
 		normalized[k.ToLower()] = tagConf{Aliases: aliases, Type: v.Type, MaxLength: v.MaxLength, Split: v.Split}
 	}
+}
+
+func tagNames() []string {
+	mappings := mappings()
+	names := make([]string, 0, len(mappings))
+	for k := range mappings {
+		names = append(names, string(k))
+	}
+	return names
+}
+
+// This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be used in
+// smart playlists
+func init() {
+	criteria.AddTagNames(tagNames())
 }
