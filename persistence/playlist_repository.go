@@ -375,6 +375,10 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 		Where(Eq{"playlist_id": id})
 	tracks := dbPlaylistTracks{}
 	err := r.queryAll(tracksQuery, &tracks)
+	if err != nil {
+		return nil, err
+	}
+	err = r.loadParticipations(&tracks)
 	return tracks.toModels(), err
 }
 
