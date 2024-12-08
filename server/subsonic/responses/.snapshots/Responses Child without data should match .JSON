@@ -18,7 +18,8 @@
         "genres": [],
         "replayGain": {},
         "channelCount": 0,
-        "samplingRate": 0
+        "samplingRate": 0,
+        "bitDepth": 0
       }
     ],
     "id": "",

@@ -151,7 +151,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = &mf.CreatedAt
+	child.Created = &mf.BirthTime
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -172,17 +172,18 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
 	child.SortName = mf.SortTitle
-	child.Bpm = int32(mf.Bpm)
+	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
 	child.ReplayGain = responses.ReplayGain{
-		TrackGain: mf.RgTrackGain,
-		AlbumGain: mf.RgAlbumGain,
-		TrackPeak: mf.RgTrackPeak,
-		AlbumPeak: mf.RgAlbumPeak,
+		TrackGain: mf.RGTrackGain,
+		AlbumGain: mf.RGAlbumGain,
+		TrackPeak: mf.RGTrackPeak,
+		AlbumPeak: mf.RGAlbumPeak,
 	}
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
+	child.BitDepth = int32(mf.BitDepth)
 	return child
 }
 

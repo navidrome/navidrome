@@ -47,7 +47,8 @@
           "fallbackGain": 6
         },
         "channelCount": 2,
-        "samplingRate": 44100
+        "samplingRate": 44100,
+        "bitDepth": 16
       }
     ],
     "id": "1",

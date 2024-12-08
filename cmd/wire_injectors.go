@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
@@ -30,11 +32,12 @@ var allProviders = wire.NewSet(
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.GetInstance,
+	scanner.New,
+	scanner.NewWatcher,
 	db.Db,
 )
 
-func CreateServer(musicFolder string) *server.Server {
+func CreateServer() *server.Server {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -46,7 +49,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	))
 }
 
-func CreateSubsonicAPIRouter() *subsonic.Router {
+func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -70,7 +73,13 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	))
 }
 
-func GetScanner() scanner.Scanner {
+func CreateScanner(ctx context.Context) scanner.Scanner {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	panic(wire.Build(
 		allProviders,
 	))

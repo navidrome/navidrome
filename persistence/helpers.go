@@ -19,11 +19,9 @@ func toSQLArgs(rec interface{}) (map[string]interface{}, error) {
 	m := structs.Map(rec)
 	for k, v := range m {
 		switch t := v.(type) {
-		case time.Time:
-			m[k] = t.Format(time.RFC3339Nano)
 		case *time.Time:
 			if t != nil {
-				m[k] = t.Format(time.RFC3339Nano)
+				m[k] = *t
 			}
 		case driver.Valuer:
 			var err error
@@ -59,6 +57,14 @@ func toCamelCase(str string) string {
 	})
 }
 
+// rawSQL is a string that will be used as is in the SQL query executor
+// It does not support arguments
+type rawSQL string
+
+func (r rawSQL) ToSql() (string, []interface{}, error) {
+	return string(r), nil, nil
+}
+
 func exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }
@@ -87,7 +93,8 @@ var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 // Convert the order_* columns to an expression using sort_* columns. Example:
 // sort_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring
-func mapSortOrder(order string) string {
+func mapSortOrder(tableName, order string) string {
 	order = strings.ToLower(order)
-	return sortOrderRegex.ReplaceAllString(order, "(coalesce(nullif(sort_$1,''),order_$1) collate nocase)")
+	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate nocase)", tableName)
+	return sortOrderRegex.ReplaceAllString(order, repl)
 }
