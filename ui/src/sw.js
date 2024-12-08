@@ -12,6 +12,7 @@ workbox.loadModule('workbox-core')
 workbox.loadModule('workbox-strategies')
 workbox.loadModule('workbox-routing')
 workbox.loadModule('workbox-navigation-preload')
+workbox.loadModule('workbox-precaching')
 
 workbox.core.clientsClaim()
 self.skipWaiting()
@@ -48,7 +49,7 @@ const navigationHandler = async (params) => {
 }
 
 // self.__WB_MANIFEST is default injection point
-precacheAndRoute(self.__WB_MANIFEST)
+workbox.precaching.precacheAndRoute(self.__WB_MANIFEST)
 
 // Register this strategy to handle all navigations.
 workbox.routing.registerRoute(
