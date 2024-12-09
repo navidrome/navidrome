@@ -55,10 +55,10 @@
                 "rating": "评分",
                 "createdAt": "创建于",
                 "size": "文件大小",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "originalDate": "原始日期",
+                "releaseDate": "发⾏日期",
+                "releases": "发⾏",
+                "released": "已发⾏"
             },
             "actions": {
                 "playAll": "立即播放",
