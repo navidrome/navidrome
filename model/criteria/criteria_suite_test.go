@@ -12,5 +12,7 @@ import (
 func TestCriteria(t *testing.T) {
 	log.SetLevel(log.LevelFatal)
 	gomega.RegisterFailHandler(Fail)
+	// Register `genre` as a tag name, so we can use it in tests
+	AddTagNames([]string{"genre"})
 	RunSpecs(t, "Criteria Suite")
 }

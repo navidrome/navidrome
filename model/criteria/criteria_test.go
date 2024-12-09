@@ -89,12 +89,6 @@ var _ = Describe("Criteria", func() {
 		gomega.Expect(string(j)).To(gomega.Equal(jsonObj))
 	})
 
-	It("allows sort by random", func() {
-		newObj := goObj
-		newObj.Sort = "random"
-		gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
-	})
-
 	It("extracts all child smart playlist IDs from All expression criteria", func() {
 		topLevelInPlaylistID := uuid.NewString()
 		topLevelNotInPlaylistID := uuid.NewString()
@@ -189,5 +183,26 @@ var _ = Describe("Criteria", func() {
 	It("returns empty list when no child playlist IDs are present", func() {
 		ids := Criteria{}.ChildPlaylistIds()
 		gomega.Expect(ids).To(gomega.BeEmpty())
+	})
+
+	Describe("OrderBy", func() {
+		It("sorts by regular fields", func() {
+			gomega.Expect(goObj.OrderBy()).To(gomega.Equal("media_file.title asc"))
+		})
+
+		It("sorts by tag fields", func() {
+			goObj.Sort = "genre"
+			gomega.Expect(goObj.OrderBy()).To(
+				gomega.Equal(
+					"COALESCE(json_extract(media_file.tags, '$.genre[0].value'), '') asc",
+				),
+			)
+		})
+		It("sorts by random", func() {
+			newObj := goObj
+			newObj.Sort = "random"
+			gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
+		})
+
 	})
 })

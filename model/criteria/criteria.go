@@ -34,7 +34,7 @@ func (c Criteria) OrderBy() string {
 		if f.order != "" {
 			mapped = f.order
 		} else if f.isTag {
-			mapped = "COALESCE(media_file.tags->>'" + sortField + "'->>'value', '')"
+			mapped = "COALESCE(json_extract(media_file.tags, '$." + sortField + "[0].value'), '')"
 		} else {
 			mapped = f.field
 		}

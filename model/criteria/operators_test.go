@@ -11,8 +11,6 @@ import (
 )
 
 var _ = Describe("Operators", func() {
-	AddTagNames([]string{"genre"})
-
 	rangeStart := Date(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
 	rangeEnd := Date(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
 
