@@ -45,6 +45,10 @@
       "month": 5,
       "day": 10
     },
+    "moods": [
+      "happy",
+      "sad"
+    ],
     "song": [
       {
         "id": "1",

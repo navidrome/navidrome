@@ -193,7 +193,7 @@ func fakePath(mf model.MediaFile) string {
 
 	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.Album)))
 	if mf.DiscNumber != 0 {
-		builder.WriteString(fmt.Spraintf("%02d-", mf.DiscNumber))
+		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
 	}
 	if mf.TrackNumber != 0 {
 		builder.WriteString(fmt.Sprintf("%02d - ", mf.TrackNumber))
