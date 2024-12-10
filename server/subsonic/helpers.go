@@ -242,6 +242,12 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.SortName = al.SortAlbumName
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
+	child.Artists = slice.Map(al.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
+		return responses.ArtistID3Ref{
+			Id:   p.ID,
+			Name: p.Name,
+		}
+	})
 	return child
 }
 
