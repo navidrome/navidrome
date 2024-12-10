@@ -11,6 +11,8 @@
       <genres name="rock"></genres>
       <genres name="progressive"></genres>
       <replayGain trackGain="1" albumGain="2" trackPeak="3" albumPeak="4" baseGain="5" fallbackGain="6"></replayGain>
+      <moods>happy</moods>
+      <moods>sad</moods>
     </song>
   </album>
 </subsonic-response>

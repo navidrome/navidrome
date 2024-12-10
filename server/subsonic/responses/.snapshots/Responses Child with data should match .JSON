@@ -48,7 +48,11 @@
         },
         "channelCount": 2,
         "samplingRate": 44100,
-        "bitDepth": 16
+        "bitDepth": 16,
+        "moods": [
+          "happy",
+          "sad"
+        ]
       }
     ],
     "id": "1",

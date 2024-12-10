@@ -184,6 +184,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
 	child.BitDepth = int32(mf.BitDepth)
+	child.Moods = mf.Tags[model.TagMood]
 	return child
 }
 
@@ -192,7 +193,7 @@ func fakePath(mf model.MediaFile) string {
 
 	builder.WriteString(fmt.Sprintf("%s/%s/", sanitizeSlashes(mf.AlbumArtist), sanitizeSlashes(mf.Album)))
 	if mf.DiscNumber != 0 {
-		builder.WriteString(fmt.Sprintf("%02d-", mf.DiscNumber))
+		builder.WriteString(fmt.Spraintf("%02d-", mf.DiscNumber))
 	}
 	if mf.TrackNumber != 0 {
 		builder.WriteString(fmt.Sprintf("%02d - ", mf.TrackNumber))

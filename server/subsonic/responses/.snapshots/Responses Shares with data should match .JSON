@@ -25,7 +25,8 @@
             "replayGain": {},
             "channelCount": 0,
             "samplingRate": 0,
-            "bitDepth": 0
+            "bitDepth": 0,
+            "moods": []
           },
           {
             "id": "2",
@@ -44,7 +45,8 @@
             "replayGain": {},
             "channelCount": 0,
             "samplingRate": 0,
-            "bitDepth": 0
+            "bitDepth": 0,
+            "moods": []
           }
         ],
         "id": "ABC123",

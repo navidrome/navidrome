@@ -166,17 +166,18 @@ type Child struct {
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/
 	// OpenSubsonic extensions
-	Played        *time.Time `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	BPM           int32      `xml:"bpm,attr"                json:"bpm"`
-	Comment       string     `xml:"comment,attr"            json:"comment"`
-	SortName      string     `xml:"sortName,attr"           json:"sortName"`
-	MediaType     MediaType  `xml:"mediaType,attr"          json:"mediaType"`
-	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
-	Genres        ItemGenres `xml:"genres"                  json:"genres"`
-	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
-	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
-	SamplingRate  int32      `xml:"samplingRate,attr"       json:"samplingRate"`
-	BitDepth      int32      `xml:"bitDepth,attr"           json:"bitDepth"`
+	Played        *time.Time        `xml:"played,attr,omitempty"   json:"played,omitempty"`
+	BPM           int32             `xml:"bpm,attr"                json:"bpm"`
+	Comment       string            `xml:"comment,attr"            json:"comment"`
+	SortName      string            `xml:"sortName,attr"           json:"sortName"`
+	MediaType     MediaType         `xml:"mediaType,attr"          json:"mediaType"`
+	MusicBrainzId string            `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
+	Genres        ItemGenres        `xml:"genres"                  json:"genres"`
+	ReplayGain    ReplayGain        `xml:"replayGain"              json:"replayGain"`
+	ChannelCount  int32             `xml:"channelCount,attr"       json:"channelCount"`
+	SamplingRate  int32             `xml:"samplingRate,attr"       json:"samplingRate"`
+	BitDepth      int32             `xml:"bitDepth,attr"           json:"bitDepth"`
+	Moods         JSONArray[string] `xml:"moods"                   json:"moods"`
 }
 
 type Songs struct {
@@ -493,6 +494,12 @@ type OpenSubsonicExtension struct {
 }
 
 type OpenSubsonicExtensions []OpenSubsonicExtension
+
+type JSONArray[T any] []T
+
+func (a JSONArray[T]) MarshalJSON() ([]byte, error) {
+	return marshalJSONArray(a)
+}
 
 type ItemGenre struct {
 	Name string `xml:"name,attr" json:"name"`
