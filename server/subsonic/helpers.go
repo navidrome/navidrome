@@ -304,6 +304,14 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 		return responses.RecordLabel{Name: s}
 	})
 	dir.Moods = album.Tags[model.TagMood]
+	dir.Artists = slice.Map(album.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3 {
+		return responses.ArtistID3{
+			Id:            p.ID,
+			Name:          p.Name,
+			MusicBrainzId: p.MbzArtistID,
+			SortName:      p.SortArtistName,
+		}
+	})
 
 	return dir
 }

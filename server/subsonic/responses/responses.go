@@ -251,6 +251,7 @@ type AlbumID3 struct {
 	ReleaseTypes        Array[string]      `xml:"releaseTypes"          json:"releaseTypes"`
 	RecordLabels        Array[RecordLabel] `xml:"recordLabels"          json:"recordLabels"`
 	Moods               Array[string]      `xml:"moods"                 json:"moods"`
+	Artists             Array[ArtistID3]   `xml:"artists"               json:"artists"`
 }
 
 type ArtistWithAlbumsID3 struct {

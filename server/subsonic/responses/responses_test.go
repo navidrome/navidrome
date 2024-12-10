@@ -251,6 +251,10 @@ var _ = Describe("Responses", func() {
 					ReleaseTypes:        []string{"album", "live"},
 					RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
 					Moods:               []string{"happy", "sad"},
+					Artists: []ArtistID3{
+						{Id: "1", Name: "artist1", MusicBrainzId: "1234", SortName: "sorted artist"},
+						{Id: "2", Name: "artist2", MusicBrainzId: "4321", SortName: "sorted artist2"},
+					},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
