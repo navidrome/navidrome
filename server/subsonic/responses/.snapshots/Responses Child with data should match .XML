@@ -6,6 +6,8 @@
       <replayGain trackGain="1" albumGain="2" trackPeak="3" albumPeak="4" baseGain="5" fallbackGain="6"></replayGain>
       <moods>happy</moods>
       <moods>sad</moods>
+      <artists id="1" name="artist1" musicBrainzId="1234" sortName="sorted artist"></artists>
+      <artists id="2" name="artist2" musicBrainzId="4321" sortName="sorted artist2"></artists>
     </child>
   </directory>
 </subsonic-response>

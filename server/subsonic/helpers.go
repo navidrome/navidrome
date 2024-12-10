@@ -186,6 +186,14 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.SamplingRate = int32(mf.SampleRate)
 	child.BitDepth = int32(mf.BitDepth)
 	child.Moods = mf.Tags[model.TagMood]
+	child.Artists = slice.Map(mf.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3 {
+		return responses.ArtistID3{
+			Id:            p.ID,
+			Name:          p.Name,
+			MusicBrainzId: p.MbzArtistID,
+			SortName:      p.SortArtistName,
+		}
+	})
 	return child
 }
 

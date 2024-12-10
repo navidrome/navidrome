@@ -178,6 +178,7 @@ type Child struct {
 	SamplingRate  int32            `xml:"samplingRate,attr"       json:"samplingRate"`
 	BitDepth      int32            `xml:"bitDepth,attr"           json:"bitDepth"`
 	Moods         Array[string]    `xml:"moods"                   json:"moods"`
+	Artists       Array[ArtistID3] `xml:"artists"                 json:"artists"`
 }
 
 type Songs struct {

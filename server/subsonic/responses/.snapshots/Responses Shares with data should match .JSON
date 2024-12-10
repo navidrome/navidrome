@@ -26,7 +26,8 @@
             "channelCount": 0,
             "samplingRate": 0,
             "bitDepth": 0,
-            "moods": []
+            "moods": [],
+            "artists": []
           },
           {
             "id": "2",
@@ -46,7 +47,8 @@
             "channelCount": 0,
             "samplingRate": 0,
             "bitDepth": 0,
-            "moods": []
+            "moods": [],
+            "artists": []
           }
         ],
         "id": "ABC123",

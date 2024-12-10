@@ -52,6 +52,20 @@
         "moods": [
           "happy",
           "sad"
+        ],
+        "artists": [
+          {
+            "id": "1",
+            "name": "artist1",
+            "musicBrainzId": "1234",
+            "sortName": "sorted artist"
+          },
+          {
+            "id": "2",
+            "name": "artist2",
+            "musicBrainzId": "4321",
+            "sortName": "sorted artist2"
+          }
         ]
       }
     ],

@@ -22,7 +22,8 @@
           "channelCount": 0,
           "samplingRate": 0,
           "bitDepth": 0,
-          "moods": []
+          "moods": [],
+          "artists": []
         },
         "position": 123,
         "username": "user2",
