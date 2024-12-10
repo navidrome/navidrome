@@ -44,7 +44,7 @@ EOT
 
 ########################################################################################################################
 ### Build Navidrome UI
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine3.20 AS ui
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine AS ui
 WORKDIR /app
 
 # Install node dependencies
