@@ -217,6 +217,10 @@ var _ = Describe("Responses", func() {
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
 					},
+					AlbumArtists: []ArtistID3Ref{
+						{Id: "1", Name: "album artist1"},
+						{Id: "2", Name: "album artist2"},
+					},
 					Contributors: []Contributor{
 						{Role: "role1", SubRole: "subrole3", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},
 						{Role: "role2", Artist: ArtistID3Ref{Id: "2", Name: "artist2"}},
@@ -276,6 +280,10 @@ var _ = Describe("Responses", func() {
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
+					},
+					AlbumArtists: []ArtistID3Ref{
+						{Id: "1", Name: "album artist1"},
+						{Id: "2", Name: "album artist2"},
 					},
 					Contributors: []Contributor{
 						{Role: "role1", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},

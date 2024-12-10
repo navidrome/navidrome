@@ -8,6 +8,8 @@
       <moods>sad</moods>
       <artists id="1" name="artist1"></artists>
       <artists id="2" name="artist2"></artists>
+      <albumArtists id="1" name="album artist1"></albumArtists>
+      <albumArtists id="2" name="album artist2"></albumArtists>
       <contributors role="role1" subRole="subrole3">
         <artist id="1" name="artist1"></artist>
       </contributors>

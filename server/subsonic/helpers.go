@@ -193,8 +193,17 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 			Name: p.Name,
 		}
 	})
+	child.AlbumArtists = slice.Map(mf.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
+		return responses.ArtistID3Ref{
+			Id:   p.ID,
+			Name: p.Name,
+		}
+	})
 	var contributors []responses.Contributor
 	for role, participants := range mf.Participations {
+		if role == model.RoleArtist || role == model.RoleAlbumArtist {
+			continue
+		}
 		for _, participant := range participants {
 			contributors = append(contributors, responses.Contributor{
 				Role:    role.String(),

@@ -129,6 +129,16 @@
             "name": "artist2"
           }
         ],
+        "albumArtists": [
+          {
+            "id": "1",
+            "name": "album artist1"
+          },
+          {
+            "id": "2",
+            "name": "album artist2"
+          }
+        ],
         "contributors": [
           {
             "role": "role1",

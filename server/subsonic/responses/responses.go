@@ -180,6 +180,7 @@ type Child struct {
 	BitDepth      int32               `xml:"bitDepth,attr"           json:"bitDepth"`
 	Moods         Array[string]       `xml:"moods"                   json:"moods"`
 	Artists       Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
+	AlbumArtists  Array[ArtistID3Ref] `xml:"albumArtists"            json:"albumArtists"`
 	Contributors  Array[Contributor]  `xml:"contributors"            json:"contributors"`
 }
 
