@@ -95,6 +95,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 		if !model.IsValidPlaylist(f.Name()) {
 			continue
 		}
+		// BFR: Check if playlist needs to be refreshed (timestamp, sync flag, etc)
 		pls, err := p.pls.ImportFile(p.ctx, folder, f.Name())
 		if err != nil {
 			continue

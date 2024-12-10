@@ -64,15 +64,11 @@
     "artists": [
       {
         "id": "1",
-        "name": "artist1",
-        "musicBrainzId": "1234",
-        "sortName": "sorted artist"
+        "name": "artist1"
       },
       {
         "id": "2",
-        "name": "artist2",
-        "musicBrainzId": "4321",
-        "sortName": "sorted artist2"
+        "name": "artist2"
       }
     ],
     "song": [
@@ -126,15 +122,11 @@
         "artists": [
           {
             "id": "1",
-            "name": "artist1",
-            "musicBrainzId": "1234",
-            "sortName": "sorted artist"
+            "name": "artist1"
           },
           {
             "id": "2",
-            "name": "artist2",
-            "musicBrainzId": "4321",
-            "sortName": "sorted artist2"
+            "name": "artist2"
           }
         ]
       }

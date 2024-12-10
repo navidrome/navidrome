@@ -185,13 +185,12 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
 	child.BitDepth = int32(mf.BitDepth)
-	child.Moods = mf.Tags[model.TagMood]
-	child.Artists = slice.Map(mf.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3 {
-		return responses.ArtistID3{
-			Id:            p.ID,
-			Name:          p.Name,
-			MusicBrainzId: p.MbzArtistID,
-			SortName:      p.SortArtistName,
+	child.Moods = mf.Tags.Values(model.TagMood)
+	// BFR What if Child is an Album and not a Song?
+	child.Artists = slice.Map(mf.Participations[model.RoleArtist], func(p model.Participant) responses.ArtistID3Ref {
+		return responses.ArtistID3Ref{
+			Id:   p.ID,
+			Name: p.Name,
 		}
 	})
 	return child
@@ -307,17 +306,15 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir.SortName = album.SortAlbumName
 	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	dir.ReleaseDate = toItemDate(album.ReleaseDate)
-	dir.ReleaseTypes = album.Tags[model.TagReleaseType]
-	dir.RecordLabels = slice.Map(album.Tags[model.TagRecordLabel], func(s string) responses.RecordLabel {
+	dir.ReleaseTypes = album.Tags.Values(model.TagReleaseType)
+	dir.RecordLabels = slice.Map(album.Tags.Values(model.TagRecordLabel), func(s string) responses.RecordLabel {
 		return responses.RecordLabel{Name: s}
 	})
-	dir.Moods = album.Tags[model.TagMood]
-	dir.Artists = slice.Map(album.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3 {
-		return responses.ArtistID3{
-			Id:            p.ID,
-			Name:          p.Name,
-			MusicBrainzId: p.MbzArtistID,
-			SortName:      p.SortArtistName,
+	dir.Moods = album.Tags.Values(model.TagMood)
+	dir.Artists = slice.Map(album.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
+		return responses.ArtistID3Ref{
+			Id:   p.ID,
+			Name: p.Name,
 		}
 	})
 

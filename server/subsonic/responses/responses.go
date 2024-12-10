@@ -57,8 +57,9 @@ type Subsonic struct {
 	JukeboxStatus   *JukeboxStatus   `xml:"jukeboxStatus,omitempty"                       json:"jukeboxStatus,omitempty"`
 	JukeboxPlaylist *JukeboxPlaylist `xml:"jukeboxPlaylist,omitempty"                     json:"jukeboxPlaylist,omitempty"`
 
+	// OpenSubsonic extensions
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
-	LyricsList             *LyricsList             `xml:"lyricsList,omitempty" json:"lyricsList,omitempty"`
+	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
 }
 
 const (
@@ -166,19 +167,19 @@ type Child struct {
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/
 	// OpenSubsonic extensions
-	Played        *time.Time       `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	BPM           int32            `xml:"bpm,attr"                json:"bpm"`
-	Comment       string           `xml:"comment,attr"            json:"comment"`
-	SortName      string           `xml:"sortName,attr"           json:"sortName"`
-	MediaType     MediaType        `xml:"mediaType,attr"          json:"mediaType"`
-	MusicBrainzId string           `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
-	Genres        Array[ItemGenre] `xml:"genres"                  json:"genres"`
-	ReplayGain    ReplayGain       `xml:"replayGain"              json:"replayGain"`
-	ChannelCount  int32            `xml:"channelCount,attr"       json:"channelCount"`
-	SamplingRate  int32            `xml:"samplingRate,attr"       json:"samplingRate"`
-	BitDepth      int32            `xml:"bitDepth,attr"           json:"bitDepth"`
-	Moods         Array[string]    `xml:"moods"                   json:"moods"`
-	Artists       Array[ArtistID3] `xml:"artists"                 json:"artists"`
+	Played        *time.Time          `xml:"played,attr,omitempty"   json:"played,omitempty"`
+	BPM           int32               `xml:"bpm,attr"                json:"bpm"`
+	Comment       string              `xml:"comment,attr"            json:"comment"`
+	SortName      string              `xml:"sortName,attr"           json:"sortName"`
+	MediaType     MediaType           `xml:"mediaType,attr"          json:"mediaType"`
+	MusicBrainzId string              `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
+	Genres        Array[ItemGenre]    `xml:"genres"                  json:"genres"`
+	ReplayGain    ReplayGain          `xml:"replayGain"              json:"replayGain"`
+	ChannelCount  int32               `xml:"channelCount,attr"       json:"channelCount"`
+	SamplingRate  int32               `xml:"samplingRate,attr"       json:"samplingRate"`
+	BitDepth      int32               `xml:"bitDepth,attr"           json:"bitDepth"`
+	Moods         Array[string]       `xml:"moods"                   json:"moods"`
+	Artists       Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
 }
 
 type Songs struct {
@@ -211,6 +212,13 @@ type Directory struct {
 	*/
 }
 
+// ArtistID3Ref is a reference to an artist, a simplified version of ArtistID3. This is used to resolve the
+// documentation conflict in OpenSubsonic: https://github.com/opensubsonic/open-subsonic-api/discussions/120
+type ArtistID3Ref struct {
+	Id   string `xml:"id,attr"   json:"id"`
+	Name string `xml:"name,attr" json:"name"`
+}
+
 type ArtistID3 struct {
 	Id             string     `xml:"id,attr"                            json:"id"`
 	Name           string     `xml:"name,attr"                          json:"name"`
@@ -240,19 +248,19 @@ type AlbumID3 struct {
 	Genre     string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 
 	// OpenSubsonic extensions
-	Played              *time.Time         `xml:"played,attr,omitempty" json:"played,omitempty"`
-	UserRating          int32              `xml:"userRating,attr"       json:"userRating"`
-	Genres              Array[ItemGenre]   `xml:"genres"                json:"genres"`
-	MusicBrainzId       string             `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
-	IsCompilation       bool               `xml:"isCompilation,attr"    json:"isCompilation"`
-	SortName            string             `xml:"sortName,attr"         json:"sortName"`
-	DiscTitles          Array[DiscTitle]   `xml:"discTitles"            json:"discTitles"`
-	OriginalReleaseDate ItemDate           `xml:"originalReleaseDate"   json:"originalReleaseDate"`
-	ReleaseDate         ItemDate           `xml:"releaseDate"           json:"releaseDate"`
-	ReleaseTypes        Array[string]      `xml:"releaseTypes"          json:"releaseTypes"`
-	RecordLabels        Array[RecordLabel] `xml:"recordLabels"          json:"recordLabels"`
-	Moods               Array[string]      `xml:"moods"                 json:"moods"`
-	Artists             Array[ArtistID3]   `xml:"artists"               json:"artists"`
+	Played              *time.Time          `xml:"played,attr,omitempty" json:"played,omitempty"`
+	UserRating          int32               `xml:"userRating,attr"       json:"userRating"`
+	Genres              Array[ItemGenre]    `xml:"genres"                json:"genres"`
+	MusicBrainzId       string              `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
+	IsCompilation       bool                `xml:"isCompilation,attr"    json:"isCompilation"`
+	SortName            string              `xml:"sortName,attr"         json:"sortName"`
+	DiscTitles          Array[DiscTitle]    `xml:"discTitles"            json:"discTitles"`
+	OriginalReleaseDate ItemDate            `xml:"originalReleaseDate"   json:"originalReleaseDate"`
+	ReleaseDate         ItemDate            `xml:"releaseDate"           json:"releaseDate"`
+	ReleaseTypes        Array[string]       `xml:"releaseTypes"          json:"releaseTypes"`
+	RecordLabels        Array[RecordLabel]  `xml:"recordLabels"          json:"recordLabels"`
+	Moods               Array[string]       `xml:"moods"                 json:"moods"`
+	Artists             Array[ArtistID3Ref] `xml:"artists"               json:"artists"`
 }
 
 type ArtistWithAlbumsID3 struct {
@@ -541,6 +549,5 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 	if len(v) == 0 {
 		return json.Marshal([]T{})
 	}
-	a := v
-	return json.Marshal(a)
+	return json.Marshal(v)
 }

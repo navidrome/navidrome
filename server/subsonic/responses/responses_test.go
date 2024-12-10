@@ -213,9 +213,9 @@ var _ = Describe("Responses", func() {
 					BPM: 127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					Moods:      []string{"happy", "sad"},
 					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
-					Artists: []ArtistID3{
-						{Id: "1", Name: "artist1", MusicBrainzId: "1234", SortName: "sorted artist"},
-						{Id: "2", Name: "artist2", MusicBrainzId: "4321", SortName: "sorted artist2"},
+					Artists: []ArtistID3Ref{
+						{Id: "1", Name: "artist1"},
+						{Id: "2", Name: "artist2"},
 					},
 				}
 				response.Directory.Child = child
@@ -255,9 +255,9 @@ var _ = Describe("Responses", func() {
 					ReleaseTypes:        []string{"album", "live"},
 					RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
 					Moods:               []string{"happy", "sad"},
-					Artists: []ArtistID3{
-						{Id: "1", Name: "artist1", MusicBrainzId: "1234", SortName: "sorted artist"},
-						{Id: "2", Name: "artist2", MusicBrainzId: "4321", SortName: "sorted artist2"},
+					Artists: []ArtistID3Ref{
+						{Id: "1", Name: "artist1"},
+						{Id: "2", Name: "artist2"},
 					},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
@@ -269,9 +269,9 @@ var _ = Describe("Responses", func() {
 					Comment: "a comment", BPM: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
 					Moods:      []string{"happy", "sad"},
 					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
-					Artists: []ArtistID3{
-						{Id: "1", Name: "artist1", MusicBrainzId: "1234", SortName: "sorted artist"},
-						{Id: "2", Name: "artist2", MusicBrainzId: "4321", SortName: "sorted artist2"},
+					Artists: []ArtistID3Ref{
+						{Id: "1", Name: "artist1"},
+						{Id: "2", Name: "artist2"},
 					},
 				}}
 				response.AlbumWithSongsID3.AlbumID3 = album
