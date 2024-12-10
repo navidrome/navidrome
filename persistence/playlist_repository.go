@@ -131,7 +131,8 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	p.ID = id
 
 	if p.IsSmartPlaylist() {
-		r.refreshSmartPlaylist(p)
+		// Do not update tracks at this point, as it may take a long time and lock the DB, breaking the scan process
+		//r.refreshSmartPlaylist(p)
 		return nil
 	}
 	// Only update tracks if they were specified
