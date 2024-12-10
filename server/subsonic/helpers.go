@@ -298,6 +298,9 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir.SortName = album.SortAlbumName
 	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	dir.ReleaseDate = toItemDate(album.ReleaseDate)
+	dir.ReleaseTypes = album.Tags[model.TagReleaseType]
+	dir.Moods = album.Tags[model.TagMood]
+
 	return dir
 }
 

@@ -248,6 +248,7 @@ type AlbumID3 struct {
 	DiscTitles          JSONArray[DiscTitle] `xml:"discTitles"            json:"discTitles"`
 	OriginalReleaseDate ItemDate             `xml:"originalReleaseDate"   json:"originalReleaseDate"`
 	ReleaseDate         ItemDate             `xml:"releaseDate"           json:"releaseDate"`
+	ReleaseTypes        JSONArray[string]    `xml:"releaseTypes"          json:"releaseTypes"`
 	Moods               JSONArray[string]    `xml:"moods"                 json:"moods"`
 }
 

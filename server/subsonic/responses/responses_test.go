@@ -248,6 +248,7 @@ var _ = Describe("Responses", func() {
 					DiscTitles:          JSONArray[DiscTitle]{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
 					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
+					ReleaseTypes:        []string{"album", "live"},
 					Moods:               []string{"happy", "sad"},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
@@ -520,6 +521,7 @@ var _ = Describe("Responses", func() {
 			BeforeEach(func() {
 				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="https://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
 				response.ArtistInfo.MusicBrainzID = "5182c1d9-c7d2-4dad-afa0-ccfeada921a8"
+
 				response.ArtistInfo.LastFmUrl = "https://www.last.fm/music/Black+Sabbath"
 				response.ArtistInfo.SmallImageUrl = "https://userserve-ak.last.fm/serve/64/27904353.jpg"
 				response.ArtistInfo.MediumImageUrl = "https://userserve-ak.last.fm/serve/126/27904353.jpg"
