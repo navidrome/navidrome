@@ -193,6 +193,20 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 			Name: p.Name,
 		}
 	})
+	var contributors []responses.Contributor
+	for role, participants := range mf.Participations {
+		for _, participant := range participants {
+			contributors = append(contributors, responses.Contributor{
+				Role:    role.String(),
+				SubRole: participant.SubRole,
+				Artist: responses.ArtistID3Ref{
+					Id:   participant.ID,
+					Name: participant.Name,
+				},
+			})
+		}
+	}
+	child.Contributors = contributors
 	return child
 }
 

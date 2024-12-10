@@ -180,6 +180,7 @@ type Child struct {
 	BitDepth      int32               `xml:"bitDepth,attr"           json:"bitDepth"`
 	Moods         Array[string]       `xml:"moods"                   json:"moods"`
 	Artists       Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
+	Contributors  Array[Contributor]  `xml:"contributors"            json:"contributors"`
 }
 
 type Songs struct {
@@ -534,6 +535,12 @@ type ItemDate struct {
 
 type RecordLabel struct {
 	Name string `xml:"name,attr" json:"name"`
+}
+
+type Contributor struct {
+	Role    string       `xml:"role,attr" json:"role"`
+	SubRole string       `xml:"subRole,attr,omitempty" json:"subRole,omitempty"`
+	Artist  ArtistID3Ref `xml:"artist" json:"artist"`
 }
 
 // Array is a generic type for marshalling slices to JSON. It is used to avoid marshalling empty slices as null.

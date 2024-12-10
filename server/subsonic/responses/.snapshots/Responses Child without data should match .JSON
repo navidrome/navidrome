@@ -21,7 +21,8 @@
         "samplingRate": 0,
         "bitDepth": 0,
         "moods": [],
-        "artists": []
+        "artists": [],
+        "contributors": []
       }
     ],
     "id": "",

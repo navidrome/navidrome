@@ -23,6 +23,12 @@
       <moods>sad</moods>
       <artists id="1" name="artist1"></artists>
       <artists id="2" name="artist2"></artists>
+      <contributors role="role1">
+        <artist id="1" name="artist1"></artist>
+      </contributors>
+      <contributors role="role2" subRole="subrole4">
+        <artist id="2" name="artist2"></artist>
+      </contributors>
     </song>
   </album>
 </subsonic-response>

@@ -128,6 +128,23 @@
             "id": "2",
             "name": "artist2"
           }
+        ],
+        "contributors": [
+          {
+            "role": "role1",
+            "artist": {
+              "id": "1",
+              "name": "artist1"
+            }
+          },
+          {
+            "role": "role2",
+            "subRole": "subrole4",
+            "artist": {
+              "id": "2",
+              "name": "artist2"
+            }
+          }
         ]
       }
     ]

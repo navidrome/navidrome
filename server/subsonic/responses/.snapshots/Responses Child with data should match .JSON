@@ -62,6 +62,23 @@
             "id": "2",
             "name": "artist2"
           }
+        ],
+        "contributors": [
+          {
+            "role": "role1",
+            "subRole": "subrole3",
+            "artist": {
+              "id": "1",
+              "name": "artist1"
+            }
+          },
+          {
+            "role": "role2",
+            "artist": {
+              "id": "2",
+              "name": "artist2"
+            }
+          }
         ]
       }
     ],

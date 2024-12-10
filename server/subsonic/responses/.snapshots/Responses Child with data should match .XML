@@ -8,6 +8,12 @@
       <moods>sad</moods>
       <artists id="1" name="artist1"></artists>
       <artists id="2" name="artist2"></artists>
+      <contributors role="role1" subRole="subrole3">
+        <artist id="1" name="artist1"></artist>
+      </contributors>
+      <contributors role="role2">
+        <artist id="2" name="artist2"></artist>
+      </contributors>
     </child>
   </directory>
 </subsonic-response>

@@ -217,6 +217,10 @@ var _ = Describe("Responses", func() {
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
 					},
+					Contributors: []Contributor{
+						{Role: "role1", SubRole: "subrole3", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},
+						{Role: "role2", Artist: ArtistID3Ref{Id: "2", Name: "artist2"}},
+					},
 				}
 				response.Directory.Child = child
 			})
@@ -272,6 +276,10 @@ var _ = Describe("Responses", func() {
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
+					},
+					Contributors: []Contributor{
+						{Role: "role1", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},
+						{Role: "role2", SubRole: "subrole4", Artist: ArtistID3Ref{Id: "2", Name: "artist2"}},
 					},
 				}}
 				response.AlbumWithSongsID3.AlbumID3 = album

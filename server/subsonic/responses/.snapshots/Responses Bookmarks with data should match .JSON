@@ -23,7 +23,8 @@
           "samplingRate": 0,
           "bitDepth": 0,
           "moods": [],
-          "artists": []
+          "artists": [],
+          "contributors": []
         },
         "position": 123,
         "username": "user2",

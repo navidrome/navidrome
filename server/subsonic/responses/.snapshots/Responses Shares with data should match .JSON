@@ -27,7 +27,8 @@
             "samplingRate": 0,
             "bitDepth": 0,
             "moods": [],
-            "artists": []
+            "artists": [],
+            "contributors": []
           },
           {
             "id": "2",
@@ -48,7 +49,8 @@
             "samplingRate": 0,
             "bitDepth": 0,
             "moods": [],
-            "artists": []
+            "artists": [],
+            "contributors": []
           }
         ],
         "id": "ABC123",
