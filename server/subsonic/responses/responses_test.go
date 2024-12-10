@@ -245,7 +245,7 @@ var _ = Describe("Responses", func() {
 					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
-					DiscTitles:          DiscTitles{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
+					DiscTitles:          JSONArray[DiscTitle]{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
 					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
 					Moods:               []string{"happy", "sad"},

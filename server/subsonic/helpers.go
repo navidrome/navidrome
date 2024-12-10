@@ -255,11 +255,11 @@ func toItemDate(date string) responses.ItemDate {
 	return itemDate
 }
 
-func buildDiscSubtitles(a model.Album) responses.DiscTitles {
+func buildDiscSubtitles(a model.Album) responses.JSONArray[responses.DiscTitle] {
 	if len(a.Discs) == 0 {
 		return nil
 	}
-	discTitles := responses.DiscTitles{}
+	discTitles := responses.JSONArray[responses.DiscTitle]{}
 	for num, title := range a.Discs {
 		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
 	}
@@ -269,7 +269,7 @@ func buildDiscSubtitles(a model.Album) responses.DiscTitles {
 	return discTitles
 }
 
-func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
+func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir := responses.AlbumID3{}
 	dir.Id = album.ID
 	dir.Name = album.Name

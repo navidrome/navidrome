@@ -55,7 +55,7 @@ var _ = Describe("helpers", func() {
 					2: "Disc 2",
 				},
 			}
-			expected := responses.DiscTitles{
+			expected := responses.JSONArray[responses.DiscTitle]{
 				{Disc: 1, Title: "Disc 1"},
 				{Disc: 2, Title: "Disc 2"},
 			}
