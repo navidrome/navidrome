@@ -3,8 +3,8 @@ package tests
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 type MockedRadioRepo struct {
@@ -78,7 +78,7 @@ func (m *MockedRadioRepo) Put(radio *model.Radio) error {
 		return errors.New("error")
 	}
 	if radio.ID == "" {
-		radio.ID = uuid.NewString()
+		radio.ID = id.NewRandom()
 	}
 	m.data[radio.ID] = radio
 	return nil

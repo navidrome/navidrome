@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func newResponse() *responses.Subsonic {
@@ -151,7 +152,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Path = fakePath(mf)
 	}
 	child.DiscNumber = int32(mf.DiscNumber)
-	child.Created = &mf.CreatedAt
+	child.Created = &mf.BirthTime
 	child.AlbumId = mf.AlbumID
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
@@ -172,17 +173,27 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
 	child.SortName = mf.SortTitle
-	child.Bpm = int32(mf.Bpm)
+	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
 	child.ReplayGain = responses.ReplayGain{
-		TrackGain: mf.RgTrackGain,
-		AlbumGain: mf.RgAlbumGain,
-		TrackPeak: mf.RgTrackPeak,
-		AlbumPeak: mf.RgAlbumPeak,
+		TrackGain: mf.RGTrackGain,
+		AlbumGain: mf.RGAlbumGain,
+		TrackPeak: mf.RGTrackPeak,
+		AlbumPeak: mf.RGAlbumPeak,
 	}
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
+	child.BitDepth = int32(mf.BitDepth)
+	child.Moods = mf.Tags[model.TagMood]
+	child.Artists = slice.Map(mf.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3 {
+		return responses.ArtistID3{
+			Id:            p.ID,
+			Name:          p.Name,
+			MusicBrainzId: p.MbzArtistID,
+			SortName:      p.SortArtistName,
+		}
+	})
 	return child
 }
 
@@ -253,11 +264,11 @@ func toItemDate(date string) responses.ItemDate {
 	return itemDate
 }
 
-func buildDiscSubtitles(a model.Album) responses.DiscTitles {
+func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	if len(a.Discs) == 0 {
 		return nil
 	}
-	discTitles := responses.DiscTitles{}
+	var discTitles []responses.DiscTitle
 	for num, title := range a.Discs {
 		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
 	}
@@ -267,7 +278,7 @@ func buildDiscSubtitles(a model.Album) responses.DiscTitles {
 	return discTitles
 }
 
-func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
+func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir := responses.AlbumID3{}
 	dir.Id = album.ID
 	dir.Name = album.Name
@@ -296,6 +307,20 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.SortName = album.SortAlbumName
 	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	dir.ReleaseDate = toItemDate(album.ReleaseDate)
+	dir.ReleaseTypes = album.Tags[model.TagReleaseType]
+	dir.RecordLabels = slice.Map(album.Tags[model.TagRecordLabel], func(s string) responses.RecordLabel {
+		return responses.RecordLabel{Name: s}
+	})
+	dir.Moods = album.Tags[model.TagMood]
+	dir.Artists = slice.Map(album.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3 {
+		return responses.ArtistID3{
+			Id:            p.ID,
+			Name:          p.Name,
+			MusicBrainzId: p.MbzArtistID,
+			SortName:      p.SortArtistName,
+		}
+	})
+
 	return dir
 }
 

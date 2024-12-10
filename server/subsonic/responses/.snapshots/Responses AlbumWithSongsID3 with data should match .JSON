@@ -45,6 +45,36 @@
       "month": 5,
       "day": 10
     },
+    "releaseTypes": [
+      "album",
+      "live"
+    ],
+    "recordLabels": [
+      {
+        "name": "label1"
+      },
+      {
+        "name": "label2"
+      }
+    ],
+    "moods": [
+      "happy",
+      "sad"
+    ],
+    "artists": [
+      {
+        "id": "1",
+        "name": "artist1",
+        "musicBrainzId": "1234",
+        "sortName": "sorted artist"
+      },
+      {
+        "id": "2",
+        "name": "artist2",
+        "musicBrainzId": "4321",
+        "sortName": "sorted artist2"
+      }
+    ],
     "song": [
       {
         "id": "1",
@@ -87,7 +117,26 @@
           "fallbackGain": 6
         },
         "channelCount": 0,
-        "samplingRate": 0
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [
+          "happy",
+          "sad"
+        ],
+        "artists": [
+          {
+            "id": "1",
+            "name": "artist1",
+            "musicBrainzId": "1234",
+            "sortName": "sorted artist"
+          },
+          {
+            "id": "2",
+            "name": "artist2",
+            "musicBrainzId": "4321",
+            "sortName": "sorted artist2"
+          }
+        ]
       }
     ]
   }

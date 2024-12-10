@@ -17,6 +17,48 @@ type playlistTrackRepository struct {
 	playlistRepo *playlistRepository
 }
 
+type dbPlaylistTrack struct {
+	dbMediaFile
+	*model.PlaylistTrack `structs:",flatten"`
+}
+
+func (t *dbPlaylistTrack) PostScan() error {
+	if err := t.dbMediaFile.PostScan(); err != nil {
+		return err
+	}
+	t.PlaylistTrack.MediaFile = *t.dbMediaFile.MediaFile
+	t.PlaylistTrack.MediaFile.ID = t.MediaFileID
+	return nil
+}
+
+type dbPlaylistTracks []dbPlaylistTrack
+
+func (t dbPlaylistTracks) toModels() model.PlaylistTracks {
+	return slice.Map(t, func(trk dbPlaylistTrack) model.PlaylistTrack {
+		return *trk.PlaylistTrack
+	})
+}
+
+func (t dbPlaylistTracks) getParticipantIDs() []string {
+	ids := make([]string, 0, len(t)*3)
+	for _, mf := range t {
+		ids = append(ids, mf.dbMediaFile.Participations.AllIDs()...)
+	}
+	return slice.Unique(ids)
+}
+
+func (t dbPlaylistTracks) setParticipations(participantMap map[string]model.Artist) {
+	for i, mf := range t {
+		for role, artists := range mf.dbMediaFile.Participations {
+			for j, artist := range artists {
+				if artist, ok := participantMap[artist.ID]; ok {
+					t[i].dbMediaFile.Participations[role][j].Artist = artist
+				}
+			}
+		}
+	}
+}
+
 func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool) model.PlaylistTrackRepository {
 	p := &playlistTrackRepository{}
 	p.playlistRepo = r
@@ -25,13 +67,15 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.db = r.db
 	p.tableName = "playlist_tracks"
 	p.registerModel(&model.PlaylistTrack{}, nil)
-	p.setSortMappings(map[string]string{
-		"id":       "playlist_tracks.id",
-		"artist":   "order_artist_name",
-		"album":    "order_album_name, order_album_artist_name",
-		"title":    "order_title",
-		"duration": "duration", // To make sure the field will be whitelisted
-	})
+	p.setSortMappings(
+		map[string]string{
+			"id":       "playlist_tracks.id",
+			"artist":   "order_artist_name",
+			"album":    "order_album_name, order_album_artist_name",
+			"title":    "order_title",
+			"duration": "duration", // To make sure the field will be whitelisted
+		},
+		"f") // TODO I don't like this solution, but I won't change it now as it's not the focus of BFR.
 
 	pls, err := r.Get(playlistId)
 	if err != nil {
@@ -66,15 +110,9 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 		).
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
-	var trk model.PlaylistTrack
+	var trk dbPlaylistTrack
 	err := r.queryOne(sel, &trk)
-	return &trk, err
-}
-
-// This is a "hack" to allow loadAllGenres to work with playlist tracks. Will be removed once we have a new
-// one-to-many relationship solution
-func (r *playlistTrackRepository) getTableName() string {
-	return "media_file"
+	return trk.PlaylistTrack.MediaFile, err
 }
 
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
@@ -82,24 +120,15 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 	if err != nil {
 		return nil, err
 	}
-	mfs := tracks.MediaFiles()
-	err = loadAllGenres(r, mfs)
-	if err != nil {
-		log.Error(r.ctx, "Error loading genres for playlist", "playlist", r.playlist.Name, "id", r.playlist.ID, err)
-		return nil, err
-	}
-	for i, mf := range mfs {
-		tracks[i].MediaFile.Genres = mf.Genres
-	}
 	return tracks, err
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {
-	sql := r.newSelect(options...).Columns("distinct mf.album_id").
+	query := r.newSelect(options...).Columns("distinct mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
 	var ids []string
-	err := r.queryAllSlice(sql, &ids)
+	err := r.queryAllSlice(query, &ids)
 	if err != nil {
 		return nil, err
 	}

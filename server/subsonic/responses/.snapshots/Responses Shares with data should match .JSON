@@ -24,7 +24,10 @@
             "genres": [],
             "replayGain": {},
             "channelCount": 0,
-            "samplingRate": 0
+            "samplingRate": 0,
+            "bitDepth": 0,
+            "moods": [],
+            "artists": []
           },
           {
             "id": "2",
@@ -42,7 +45,10 @@
             "genres": [],
             "replayGain": {},
             "channelCount": 0,
-            "samplingRate": 0
+            "samplingRate": 0,
+            "bitDepth": 0,
+            "moods": [],
+            "artists": []
           }
         ],
         "id": "ABC123",
