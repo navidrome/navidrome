@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/number"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func newResponse() *responses.Subsonic {
@@ -299,6 +300,9 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	dir.ReleaseDate = toItemDate(album.ReleaseDate)
 	dir.ReleaseTypes = album.Tags[model.TagReleaseType]
+	dir.RecordLabels = slice.Map(album.Tags[model.TagRecordLabel], func(s string) responses.RecordLabel {
+		return responses.RecordLabel{Name: s}
+	})
 	dir.Moods = album.Tags[model.TagMood]
 
 	return dir

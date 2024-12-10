@@ -249,6 +249,7 @@ var _ = Describe("Responses", func() {
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
 					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
 					ReleaseTypes:        []string{"album", "live"},
+					RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
 					Moods:               []string{"happy", "sad"},
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)

@@ -239,17 +239,18 @@ type AlbumID3 struct {
 	Genre     string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 
 	// OpenSubsonic extensions
-	Played              *time.Time           `xml:"played,attr,omitempty" json:"played,omitempty"`
-	UserRating          int32                `xml:"userRating,attr"       json:"userRating"`
-	Genres              JSONArray[ItemGenre] `xml:"genres"                json:"genres"`
-	MusicBrainzId       string               `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
-	IsCompilation       bool                 `xml:"isCompilation,attr"    json:"isCompilation"`
-	SortName            string               `xml:"sortName,attr"         json:"sortName"`
-	DiscTitles          JSONArray[DiscTitle] `xml:"discTitles"            json:"discTitles"`
-	OriginalReleaseDate ItemDate             `xml:"originalReleaseDate"   json:"originalReleaseDate"`
-	ReleaseDate         ItemDate             `xml:"releaseDate"           json:"releaseDate"`
-	ReleaseTypes        JSONArray[string]    `xml:"releaseTypes"          json:"releaseTypes"`
-	Moods               JSONArray[string]    `xml:"moods"                 json:"moods"`
+	Played              *time.Time             `xml:"played,attr,omitempty" json:"played,omitempty"`
+	UserRating          int32                  `xml:"userRating,attr"       json:"userRating"`
+	Genres              JSONArray[ItemGenre]   `xml:"genres"                json:"genres"`
+	MusicBrainzId       string                 `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
+	IsCompilation       bool                   `xml:"isCompilation,attr"    json:"isCompilation"`
+	SortName            string                 `xml:"sortName,attr"         json:"sortName"`
+	DiscTitles          JSONArray[DiscTitle]   `xml:"discTitles"            json:"discTitles"`
+	OriginalReleaseDate ItemDate               `xml:"originalReleaseDate"   json:"originalReleaseDate"`
+	ReleaseDate         ItemDate               `xml:"releaseDate"           json:"releaseDate"`
+	ReleaseTypes        JSONArray[string]      `xml:"releaseTypes"          json:"releaseTypes"`
+	RecordLabels        JSONArray[RecordLabel] `xml:"recordLabels"          json:"recordLabels"`
+	Moods               JSONArray[string]      `xml:"moods"                 json:"moods"`
 }
 
 type ArtistWithAlbumsID3 struct {
@@ -519,6 +520,10 @@ type ItemDate struct {
 	Year  int32 `xml:"year,attr,omitempty" json:"year,omitempty"`
 	Month int32 `xml:"month,attr,omitempty" json:"month,omitempty"`
 	Day   int32 `xml:"day,attr,omitempty" json:"day,omitempty"`
+}
+
+type RecordLabel struct {
+	Name string `xml:"name,attr" json:"name"`
 }
 
 type JSONArray[T any] []T

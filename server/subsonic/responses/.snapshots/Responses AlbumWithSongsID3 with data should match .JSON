@@ -49,6 +49,14 @@
       "album",
       "live"
     ],
+    "recordLabels": [
+      {
+        "name": "label1"
+      },
+      {
+        "name": "label2"
+      }
+    ],
     "moods": [
       "happy",
       "sad"
