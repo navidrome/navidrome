@@ -518,7 +518,7 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
-				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="http://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
+				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="https://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
 				response.ArtistInfo.MusicBrainzID = "5182c1d9-c7d2-4dad-afa0-ccfeada921a8"
 				response.ArtistInfo.LastFmUrl = "https://www.last.fm/music/Black+Sabbath"
 				response.ArtistInfo.SmallImageUrl = "https://userserve-ak.last.fm/serve/64/27904353.jpg"
