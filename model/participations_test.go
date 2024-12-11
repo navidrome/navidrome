@@ -165,6 +165,29 @@ var _ = Describe("Participations", func() {
 	})
 })
 
+var _ = Describe("Participants", func() {
+	Describe("Join", func() {
+		It("joins the participants with the given separator", func() {
+			participants := Participants{
+				_p("1", "Artist 1"),
+				_p("3", "Artist 2"),
+			}
+			participants[0].SubRole = "SubRole"
+			Expect(participants.Join(", ")).To(Equal("Artist 1 (SubRole), Artist 2"))
+		})
+
+		It("returns the sole participant if there is only one", func() {
+			participants := Participants{_p("1", "Artist 1")}
+			Expect(participants.Join(", ")).To(Equal("Artist 1"))
+		})
+
+		It("returns empty string if there are no participants", func() {
+			var participants Participants
+			Expect(participants.Join(", ")).To(Equal(""))
+		})
+	})
+})
+
 func _p(id, name string, sortName ...string) Participant {
 	p := Participant{Artist: Artist{ID: id, Name: name}}
 	if len(sortName) > 0 {

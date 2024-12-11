@@ -150,11 +150,11 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(dba.Album.Participations).To(HaveLen(2))
 				Expect(dba.Album.Participations).To(HaveKeyWithValue(
 					model.RoleFromString("composer"),
-					[]model.Participant{{Artist: model.Artist{ID: "1"}}},
+					model.Participants{{Artist: model.Artist{ID: "1"}}},
 				))
 				Expect(dba.Album.Participations).To(HaveKeyWithValue(
 					model.RoleFromString("artist"),
-					[]model.Participant{{Artist: model.Artist{ID: "2"}}, {Artist: model.Artist{ID: "3"}, SubRole: "subRole"}},
+					model.Participants{{Artist: model.Artist{ID: "2"}}, {Artist: model.Artist{ID: "3"}, SubRole: "subRole"}},
 				))
 			})
 
@@ -195,8 +195,8 @@ var _ = Describe("AlbumRepository", func() {
 
 			It("maps participant_ids correctly", func() {
 				dba.Album.Participations = model.Participations{
-					model.RoleAlbumArtist: []model.Participant{_p("AA1", "AlbumArtist1")},
-					model.RoleComposer:    []model.Participant{{Artist: model.Artist{ID: "C1"}, SubRole: "subRole"}},
+					model.RoleAlbumArtist: model.Participants{_p("AA1", "AlbumArtist1")},
+					model.RoleComposer:    model.Participants{{Artist: model.Artist{ID: "C1"}, SubRole: "subRole"}},
 				}
 				Expect(dba.PostMapArgs(args)).To(Succeed())
 				Expect(args).To(HaveKeyWithValue(

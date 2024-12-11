@@ -77,7 +77,18 @@ type Participant struct {
 	SubRole string `json:"subRole,omitempty"`
 }
 
-type Participations map[Role][]Participant
+type Participants []Participant
+
+func (p Participants) Join(sep string) string {
+	return strings.Join(slice.Map(p, func(p Participant) string {
+		if p.SubRole != "" {
+			return p.Name + " (" + p.SubRole + ")"
+		}
+		return p.Name
+	}), sep)
+}
+
+type Participations map[Role]Participants
 
 // Add adds the artists to the role, ignoring duplicates.
 func (p Participations) Add(role Role, artists ...Artist) {

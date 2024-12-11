@@ -201,26 +201,11 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Moods = mf.Tags.Values(model.TagMood)
 	// BFR What if Child is an Album and not a Song?
 	child.DisplayArtist = mf.Artist
-	child.Artists = slice.Map(mf.Participations[model.RoleArtist], func(p model.Participant) responses.ArtistID3Ref {
-		return responses.ArtistID3Ref{
-			Id:   p.ID,
-			Name: p.Name,
-		}
-	})
+	child.Artists = artistRefs(mf.Participations[model.RoleArtist])
 	child.DisplayAlbumArtist = mf.AlbumArtist
-	child.AlbumArtists = slice.Map(mf.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
-		return responses.ArtistID3Ref{
-			Id:   p.ID,
-			Name: p.Name,
-		}
-	})
+	child.AlbumArtists = artistRefs(mf.Participations[model.RoleAlbumArtist])
 	var contributors []responses.Contributor
-	child.DisplayComposer = strings.Join(
-		slice.Map(mf.Participations[model.RoleComposer], func(p model.Participant) string {
-			return p.Name
-		}),
-		" • ",
-	)
+	child.DisplayComposer = mf.Participations[model.RoleComposer].Join(" • ")
 	for role, participants := range mf.Participations {
 		if role == model.RoleArtist || role == model.RoleAlbumArtist {
 			continue
@@ -238,6 +223,15 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.Contributors = contributors
 	return child
+}
+
+func artistRefs(participants model.Participants) []responses.ArtistID3Ref {
+	return slice.Map(participants, func(p model.Participant) responses.ArtistID3Ref {
+		return responses.ArtistID3Ref{
+			Id:   p.ID,
+			Name: p.Name,
+		}
+	})
 }
 
 func fakePath(mf model.MediaFile) string {
@@ -287,12 +281,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
 	child.DisplayAlbumArtist = al.AlbumArtist
-	child.AlbumArtists = slice.Map(al.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
-		return responses.ArtistID3Ref{
-			Id:   p.ID,
-			Name: p.Name,
-		}
-	})
+	child.AlbumArtists = artistRefs(al.Participations[model.RoleAlbumArtist])
 	return child
 }
 
@@ -363,12 +352,7 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	})
 	dir.Moods = album.Tags.Values(model.TagMood)
 	dir.DisplayArtist = album.AlbumArtist
-	dir.Artists = slice.Map(album.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
-		return responses.ArtistID3Ref{
-			Id:   p.ID,
-			Name: p.Name,
-		}
-	})
+	dir.Artists = artistRefs(album.Participations[model.RoleAlbumArtist])
 
 	return dir
 }
