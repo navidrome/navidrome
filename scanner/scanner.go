@@ -66,6 +66,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		// Phase 2: Process missing files, checking for moves
 		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, &state, s.ds)),
 
+		// Phases 3 and 4 can be run in parallel
 		chain.RunParallel(
 			// Phase 3: Refresh all new/changed albums and update artists
 			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, &state, s.ds, libs)),
@@ -73,6 +74,17 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 			// Phase 4: Import/update playlists
 			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw)),
 		),
+
+		// Final Steps (cannot be parallelized):
+
+		// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
+		s.runGC(ctx, &state),
+
+		// Refresh artist stats and roles
+		s.runRefreshArtistStats(ctx, &state),
+
+		// Update last_scan_completed_at for all libraries
+		s.runUpdateLibraries(ctx, libs, &state),
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
@@ -81,73 +93,68 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		return
 	}
 
-	err = chain.RunSequentially(
-		// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
-		func() error {
-			return s.ds.WithTx(func(tx model.DataStore) error {
-				if state.changesDetected.Load() {
-					start := time.Now()
-					err := tx.GC(ctx)
-					if err != nil {
-						state.sendError(fmt.Errorf("running GC: %w", err))
-						log.Error(ctx, "Scanner: Error running GC", err)
-						return err
-					}
-					log.Debug(ctx, "Scanner: GC completed", "elapsed", time.Since(start))
-				} else {
-					log.Debug(ctx, "Scanner: No changes detected, skipping GC")
-				}
-				return nil
-			})
-		},
-
-		// Refresh artist stats and roles
-		func() error {
-			return s.ds.WithTx(func(tx model.DataStore) error {
-				if state.changesDetected.Load() {
-					start := time.Now()
-					stats, err := tx.Artist(ctx).RefreshStats()
-					if err != nil {
-						state.sendError(fmt.Errorf("refreshing artists stats: %w", err))
-						log.Error(ctx, "Scanner: Error refreshing artists stats", err)
-						return err
-					}
-					log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
-				} else {
-					log.Debug(ctx, "Scanner: No changes detected, skipping refreshing stats")
-				}
-				return nil
-			})
-		},
-
-		// Final step: Update last_scan_completed_at for all libraries
-		func() error {
-			return s.ds.WithTx(func(tx model.DataStore) error {
-				for _, lib := range libs {
-					err := tx.Library(ctx).EndScan(lib.ID)
-					if err != nil {
-						state.sendError(fmt.Errorf("updating last scan completed: %w", err))
-						log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
-						return err
-					}
-				}
-				return nil
-			})
-		},
-	)
-
-	if err != nil {
-		state.sendError(fmt.Errorf("finalizing scan: %w", err))
-		core.WriteAfterScanMetrics(ctx, s.ds, false)
-	} else {
-		core.WriteAfterScanMetrics(ctx, s.ds, true)
-	}
-
 	if state.changesDetected.Load() {
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
 	}
 
+	core.WriteAfterScanMetrics(ctx, s.ds, err == nil)
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
+}
+
+func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error {
+	return func() error {
+		return s.ds.WithTx(func(tx model.DataStore) error {
+			if state.changesDetected.Load() {
+				start := time.Now()
+				err := tx.GC(ctx)
+				if err != nil {
+					state.sendError(fmt.Errorf("running GC: %w", err))
+					log.Error(ctx, "Scanner: Error running GC", err)
+					return err
+				}
+				log.Debug(ctx, "Scanner: GC completed", "elapsed", time.Since(start))
+			} else {
+				log.Debug(ctx, "Scanner: No changes detected, skipping GC")
+			}
+			return nil
+		})
+	}
+}
+
+func (s *scannerImpl) runRefreshArtistStats(ctx context.Context, state *scanState) func() error {
+	return func() error {
+		return s.ds.WithTx(func(tx model.DataStore) error {
+			if state.changesDetected.Load() {
+				start := time.Now()
+				stats, err := tx.Artist(ctx).RefreshStats()
+				if err != nil {
+					state.sendError(fmt.Errorf("refreshing artists stats: %w", err))
+					log.Error(ctx, "Scanner: Error refreshing artists stats", err)
+					return err
+				}
+				log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
+			} else {
+				log.Debug(ctx, "Scanner: No changes detected, skipping refreshing stats")
+			}
+			return nil
+		})
+	}
+}
+
+func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries, state *scanState) func() error {
+	return func() error {
+		return s.ds.WithTx(func(tx model.DataStore) error {
+			for _, lib := range libs {
+				err := tx.Library(ctx).EndScan(lib.ID)
+				if err != nil {
+					state.sendError(fmt.Errorf("updating last scan completed: %w", err))
+					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
+					return err
+				}
+			}
+			return nil
+		})
+	}
 }
 
 type phase[T any] interface {

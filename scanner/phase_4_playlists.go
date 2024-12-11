@@ -66,7 +66,7 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 		put(&folder)
 	}
 	if count == 0 {
-		log.Debug(p.ctx, "Scanner: No folders with playlists needs refreshing")
+		log.Debug(p.ctx, "Scanner: No playlists need refreshing")
 	} else {
 		log.Debug(p.ctx, "Scanner: Found folders with playlists that may need refreshing", "count", count)
 	}
