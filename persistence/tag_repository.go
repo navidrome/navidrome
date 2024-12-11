@@ -40,9 +40,8 @@ func (r *tagRepository) Add(tags ...model.Tag) error {
 }
 
 func (r *tagRepository) purgeNonUsed() error {
-	del := Delete(r.tableName).Where(`
-		id not in 
-(select atom from media_file left join json_tree(media_file.tags, '$') where atom is not null and key = 'id')
+	del := Delete(r.tableName).Where(`	not exists 
+(select 1 from media_file left join json_tree(media_file.tags, '$') where atom is not null and key = 'id')
 `)
 	c, err := r.executeSQL(del)
 	if err != nil {
