@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"maps"
+	"slices"
+	"time"
+)
 
 type Artist struct {
 	Annotations `structs:"-"`
@@ -52,12 +56,9 @@ func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
 }
 
+// Roles returns the roles this artist has participated in., based on the Stats field
 func (a Artist) Roles() []Role {
-	roles := make([]Role, 0, len(a.Stats))
-	for role := range a.Stats {
-		roles = append(roles, role)
-	}
-	return roles
+	return slices.Collect(maps.Keys(a.Stats))
 }
 
 type Artists []Artist
