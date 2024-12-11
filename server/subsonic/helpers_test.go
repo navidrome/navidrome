@@ -1,6 +1,8 @@
 package subsonic
 
 import (
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -39,6 +41,38 @@ var _ = Describe("helpers", func() {
 	Describe("sanitizeSlashes", func() {
 		It("maps / to _", func() {
 			Expect(sanitizeSlashes("AC/DC")).To(Equal("AC_DC"))
+		})
+	})
+
+	Describe("sortName", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+		When("PreferSortTags is false", func() {
+			BeforeEach(func() {
+				conf.Server.PreferSortTags = false
+			})
+			It("returns the order name even if sort name is provided", func() {
+				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Order Album Name"))
+			})
+			It("returns the order name if sort name is empty", func() {
+				Expect(sortName("", "Order Album Name")).To(Equal("Order Album Name"))
+			})
+		})
+		When("PreferSortTags is true", func() {
+			BeforeEach(func() {
+				conf.Server.PreferSortTags = true
+			})
+			It("returns the sort name if provided", func() {
+				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Sort Album Name"))
+			})
+
+			It("returns the order name if sort name is empty", func() {
+				Expect(sortName("", "Order Album Name")).To(Equal("Order Album Name"))
+			})
+		})
+		It("returns an empty string if both sort name and order name are empty", func() {
+			Expect(sortName("", "")).To(Equal(""))
 		})
 	})
 

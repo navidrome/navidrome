@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -65,6 +67,16 @@ func getUser(ctx context.Context) model.User {
 	return model.User{}
 }
 
+func sortName(sortName, orderName string) string {
+	if conf.Server.PreferSortTags {
+		return cmp.Or(
+			sortName,
+			orderName,
+		)
+	}
+	return orderName
+}
+
 func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
@@ -89,7 +101,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
 		MusicBrainzId:  a.MbzArtistID,
-		SortName:       a.SortArtistName,
+		SortName:       sortName(a.SortArtistName, a.OrderArtistName),
 	}
 	artist.Roles = slice.Map(a.Roles(), func(r model.Role) string { return r.String() })
 	if a.Starred {
@@ -173,7 +185,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
-	child.SortName = mf.SortTitle
+	child.SortName = sortName(mf.SortTitle, mf.OrderTitle)
 	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
@@ -271,7 +283,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 		child.Played = al.PlayDate
 	}
 	child.UserRating = int32(al.Rating)
-	child.SortName = al.SortAlbumName
+	child.SortName = sortName(al.SortAlbumName, al.OrderAlbumName)
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
 	child.DisplayAlbumArtist = al.AlbumArtist
@@ -342,7 +354,7 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	}
 	dir.MusicBrainzId = album.MbzAlbumID
 	dir.IsCompilation = album.Compilation
-	dir.SortName = album.SortAlbumName
+	dir.SortName = sortName(album.SortAlbumName, album.OrderAlbumName)
 	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
 	dir.ReleaseDate = toItemDate(album.ReleaseDate)
 	dir.ReleaseTypes = album.Tags.Values(model.TagReleaseType)
