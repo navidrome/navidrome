@@ -172,6 +172,7 @@ var _ = Describe("Responses", func() {
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
 					MusicBrainzId:  "1234",
 					SortName:       "sort name",
+					Roles:          []string{"role1", "role2"},
 				}
 				index := make([]IndexID3, 1)
 				index[0] = IndexID3{Name: "A", Artists: artists}

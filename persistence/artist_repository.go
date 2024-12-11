@@ -254,10 +254,17 @@ with artist_counters (id, counters) as
                          json_object('a', album_count, 'm', count, 's', size)
                  )    as counters
           from (
-
-                   -- Get counters for each artist, grouped by role
+                   -- Get counters for each artist, grouped by role 
+                   -- (remove the index from the role: composer[0] => composer
                    select atom,
-                          replace(jt.path, '$.', '') as path,
+						   substr(
+								   replace(jt.path, '$.', ''),
+								   1,
+								   case when instr(replace(jt.path, '$.', ''), '[') > 0
+											then instr(replace(jt.path, '$.', ''), '[') - 1
+										else length(replace(jt.path, '$.', ''))
+									   end
+						   ) as path,
                           count(distinct album_id)   as album_count,
                           count(mf.id)               as count,
                           sum(size)                  as size

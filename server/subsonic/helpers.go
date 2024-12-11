@@ -91,6 +91,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		MusicBrainzId:  a.MbzArtistID,
 		SortName:       a.SortArtistName,
 	}
+	artist.Roles = slice.Map(a.Roles(), func(r model.Role) string { return r.String() })
 	if a.Starred {
 		artist.Starred = a.StarredAt
 	}

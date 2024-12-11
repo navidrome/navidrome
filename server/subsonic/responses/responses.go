@@ -234,8 +234,9 @@ type ArtistID3 struct {
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
 
 	// OpenSubsonic extensions
-	MusicBrainzId string `xml:"musicBrainzId,attr" json:"musicBrainzId"`
-	SortName      string `xml:"sortName,attr"      json:"sortName"`
+	MusicBrainzId string        `xml:"musicBrainzId,attr" json:"musicBrainzId"`
+	SortName      string        `xml:"sortName,attr"      json:"sortName"`
+	Roles         Array[string] `xml:"roles"              json:"roles"`
 }
 
 type AlbumID3 struct {

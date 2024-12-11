@@ -52,6 +52,14 @@ func (a Artist) CoverArtID() ArtworkID {
 	return artworkIDFromArtist(a)
 }
 
+func (a Artist) Roles() []Role {
+	roles := make([]Role, 0, len(a.Stats))
+	for role := range a.Stats {
+		roles = append(roles, role)
+	}
+	return roles
+}
+
 type Artists []Artist
 
 type ArtistIndex struct {
