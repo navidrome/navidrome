@@ -8,9 +8,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scanner/metadata"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/scanner/metadata_old"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -62,7 +60,7 @@ func prettyMarshal(v interface{}) ([]byte, error) {
 
 type inspectorOutput struct {
 	File       string
-	RawTags    metadata.ParsedTags
+	RawTags    metadata_old.ParsedTags
 	MappedTags model.MediaFile
 }
 
@@ -71,11 +69,11 @@ func runInspector(args []string) {
 		conf.Server.Scanner.Extractor = extractor
 	}
 	log.Info("Using extractor", "extractor", conf.Server.Scanner.Extractor)
-	md, err := metadata.Extract(args...)
+	md, err := metadata_old.Extract(args...)
 	if err != nil {
 		log.Fatal("Error extracting tags", err)
 	}
-	mapper := scanner.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
+	// BFR mapper := scanner_old.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
 	marshal := marshalers[format]
 	if marshal == nil {
 		log.Fatal("Invalid format", "format", format)
@@ -89,9 +87,9 @@ func runInspector(args []string) {
 			continue
 		}
 		out = append(out, inspectorOutput{
-			File:       k,
-			RawTags:    v.Tags,
-			MappedTags: mapper.ToMediaFile(v),
+			File:    k,
+			RawTags: v.Tags,
+			// BFR MappedTags: mapper.ToMediaFile(v),
 		})
 	}
 	data, _ := marshal(out)

@@ -92,7 +92,7 @@ func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, err
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(Select().Where(And{Eq{"id": id}, r.userFilter()}))
+	return r.exists(And{Eq{"id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Delete(id string) error {
@@ -131,7 +131,8 @@ func (r *playlistRepository) Put(p *model.Playlist) error {
 	p.ID = id
 
 	if p.IsSmartPlaylist() {
-		r.refreshSmartPlaylist(p)
+		// Do not update tracks at this point, as it may take a long time and lock the DB, breaking the scan process
+		//r.refreshSmartPlaylist(p)
 		return nil
 	}
 	// Only update tracks if they were specified
@@ -153,7 +154,7 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool)
 	if refreshSmartPlaylist {
 		r.refreshSmartPlaylist(pls)
 	}
-	tracks, err := r.loadTracks(Select().From("playlist_tracks"), id)
+	tracks, err := r.loadTracks(Select().From("playlist_tracks").OrderBy("playlist_tracks.id"), id)
 	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
@@ -241,9 +242,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		From("media_file").LeftJoin("annotation on (" +
 		"annotation.item_id = media_file.id" +
 		" AND annotation.item_type = 'media_file'" +
-		" AND annotation.user_id = '" + userId(r.ctx) + "')").
-		LeftJoin("media_file_genres ag on media_file.id = ag.media_file_id").
-		LeftJoin("genre on ag.genre_id = genre.id").GroupBy("media_file.id")
+		" AND annotation.user_id = '" + userId(r.ctx) + "')")
 	sq = r.addCriteria(sq, rules)
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	_, err = r.executeSQL(insSql)
@@ -374,13 +373,14 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			" AND annotation.item_type = 'media_file'" +
 			" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		Join("media_file f on f.id = media_file_id").
-		Where(Eq{"playlist_id": id}).OrderBy("playlist_tracks.id")
-	tracks := model.PlaylistTracks{}
+		Where(Eq{"playlist_id": id})
+	tracks := dbPlaylistTracks{}
 	err := r.queryAll(tracksQuery, &tracks)
-	for i, t := range tracks {
-		tracks[i].MediaFile.ID = t.MediaFileID
+	if err != nil {
+		return nil, err
 	}
-	return tracks, err
+	err = r.loadParticipations(&tracks)
+	return tracks.toModels(), err
 }
 
 func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
@@ -450,7 +450,7 @@ func (r *playlistRepository) removeOrphans() error {
 	var pls []struct{ Id, Name string }
 	err := r.queryAll(sel, &pls)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching playlists with orphan tracks: %w", err)
 	}
 
 	for _, pl := range pls {
@@ -461,13 +461,13 @@ func (r *playlistRepository) removeOrphans() error {
 		})
 		n, err := r.executeSQL(del)
 		if n == 0 || err != nil {
-			return err
+			return fmt.Errorf("error deleting orphan tracks from playlist %s: %w", pl.Name, err)
 		}
 		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
 
 		// Renumber the playlist if any track was removed
 		if err := r.renumber(pl.Id); err != nil {
-			return err
+			return fmt.Errorf("error renumbering playlist %s: %w", pl.Name, err)
 		}
 	}
 	return nil

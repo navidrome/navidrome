@@ -5,8 +5,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/google/uuid"
-
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/singleton"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,7 +21,7 @@ var _ = Describe("GetInstance", func() {
 	var numInstancesCreated int
 	constructor := func() *T {
 		numInstancesCreated++
-		return &T{id: uuid.NewString()}
+		return &T{id: id.NewRandom()}
 	}
 
 	It("calls the constructor to create a new instance", func() {
@@ -43,7 +42,7 @@ var _ = Describe("GetInstance", func() {
 		instance := singleton.GetInstance(constructor)
 		newInstance := singleton.GetInstance(func() T {
 			numInstancesCreated++
-			return T{id: uuid.NewString()}
+			return T{id: id.NewRandom()}
 		})
 
 		Expect(instance).To(BeAssignableToTypeOf(&T{}))
