@@ -28,7 +28,9 @@
             "bitDepth": 0,
             "moods": [],
             "artists": [],
+            "displayArtist": "",
             "albumArtists": [],
+            "displayAlbumArtist": "",
             "contributors": []
           },
           {
@@ -51,7 +53,9 @@
             "bitDepth": 0,
             "moods": [],
             "artists": [],
+            "displayArtist": "",
             "albumArtists": [],
+            "displayAlbumArtist": "",
             "contributors": []
           }
         ],

@@ -167,21 +167,23 @@ type Child struct {
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/
 	// OpenSubsonic extensions
-	Played        *time.Time          `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	BPM           int32               `xml:"bpm,attr"                json:"bpm"`
-	Comment       string              `xml:"comment,attr"            json:"comment"`
-	SortName      string              `xml:"sortName,attr"           json:"sortName"`
-	MediaType     MediaType           `xml:"mediaType,attr"          json:"mediaType"`
-	MusicBrainzId string              `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
-	Genres        Array[ItemGenre]    `xml:"genres"                  json:"genres"`
-	ReplayGain    ReplayGain          `xml:"replayGain"              json:"replayGain"`
-	ChannelCount  int32               `xml:"channelCount,attr"       json:"channelCount"`
-	SamplingRate  int32               `xml:"samplingRate,attr"       json:"samplingRate"`
-	BitDepth      int32               `xml:"bitDepth,attr"           json:"bitDepth"`
-	Moods         Array[string]       `xml:"moods"                   json:"moods"`
-	Artists       Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
-	AlbumArtists  Array[ArtistID3Ref] `xml:"albumArtists"            json:"albumArtists"`
-	Contributors  Array[Contributor]  `xml:"contributors"            json:"contributors"`
+	Played             *time.Time          `xml:"played,attr,omitempty"   json:"played,omitempty"`
+	BPM                int32               `xml:"bpm,attr"                json:"bpm"`
+	Comment            string              `xml:"comment,attr"            json:"comment"`
+	SortName           string              `xml:"sortName,attr"           json:"sortName"`
+	MediaType          MediaType           `xml:"mediaType,attr"          json:"mediaType"`
+	MusicBrainzId      string              `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
+	Genres             Array[ItemGenre]    `xml:"genres"                  json:"genres"`
+	ReplayGain         ReplayGain          `xml:"replayGain"              json:"replayGain"`
+	ChannelCount       int32               `xml:"channelCount,attr"       json:"channelCount"`
+	SamplingRate       int32               `xml:"samplingRate,attr"       json:"samplingRate"`
+	BitDepth           int32               `xml:"bitDepth,attr"           json:"bitDepth"`
+	Moods              Array[string]       `xml:"moods"                   json:"moods"`
+	Artists            Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
+	DisplayArtist      string              `xml:"displayArtist,attr"      json:"displayArtist"`
+	AlbumArtists       Array[ArtistID3Ref] `xml:"albumArtists"            json:"albumArtists"`
+	DisplayAlbumArtist string              `xml:"displayAlbumArtist,attr" json:"displayAlbumArtist"`
+	Contributors       Array[Contributor]  `xml:"contributors"            json:"contributors"`
 }
 
 type Songs struct {
@@ -263,6 +265,7 @@ type AlbumID3 struct {
 	RecordLabels        Array[RecordLabel]  `xml:"recordLabels"          json:"recordLabels"`
 	Moods               Array[string]       `xml:"moods"                 json:"moods"`
 	Artists             Array[ArtistID3Ref] `xml:"artists"               json:"artists"`
+	DisplayArtist       string              `xml:"displayArtist,attr"    json:"displayArtist"`
 }
 
 type ArtistWithAlbumsID3 struct {

@@ -187,12 +187,14 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.BitDepth = int32(mf.BitDepth)
 	child.Moods = mf.Tags.Values(model.TagMood)
 	// BFR What if Child is an Album and not a Song?
+	child.DisplayArtist = mf.Artist
 	child.Artists = slice.Map(mf.Participations[model.RoleArtist], func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,
 			Name: p.Name,
 		}
 	})
+	child.DisplayAlbumArtist = mf.AlbumArtist
 	child.AlbumArtists = slice.Map(mf.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,
@@ -265,6 +267,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.SortName = al.SortAlbumName
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
+	child.DisplayArtist = al.AlbumArtist
 	child.Artists = slice.Map(al.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,
@@ -340,6 +343,7 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 		return responses.RecordLabel{Name: s}
 	})
 	dir.Moods = album.Tags.Values(model.TagMood)
+	dir.DisplayArtist = album.AlbumArtist
 	dir.Artists = slice.Map(album.Participations[model.RoleAlbumArtist], func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,

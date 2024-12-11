@@ -18,6 +18,7 @@
     "releaseTypes": [],
     "recordLabels": [],
     "moods": [],
-    "artists": []
+    "artists": [],
+    "displayArtist": ""
   }
 }

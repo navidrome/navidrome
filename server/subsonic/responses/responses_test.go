@@ -211,12 +211,14 @@ var _ = Describe("Responses", func() {
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted title",
 					BPM: 127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
-					Moods:      []string{"happy", "sad"},
-					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					Moods:         []string{"happy", "sad"},
+					ReplayGain:    ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					DisplayArtist: "artist 1 & artist 2",
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
 					},
+					DisplayAlbumArtist: "album artist 1 & album artist 2",
 					AlbumArtists: []ArtistID3Ref{
 						{Id: "1", Name: "album artist1"},
 						{Id: "2", Name: "album artist2"},
@@ -263,6 +265,7 @@ var _ = Describe("Responses", func() {
 					ReleaseTypes:        []string{"album", "live"},
 					RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
 					Moods:               []string{"happy", "sad"},
+					DisplayArtist:       "artist1 & artist2",
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
@@ -275,12 +278,14 @@ var _ = Describe("Responses", func() {
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
 					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", BPM: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
-					Moods:      []string{"happy", "sad"},
-					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					Moods:         []string{"happy", "sad"},
+					ReplayGain:    ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					DisplayArtist: "artist1 & artist2",
 					Artists: []ArtistID3Ref{
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
 					},
+					DisplayAlbumArtist: "album artist1 & album artist2",
 					AlbumArtists: []ArtistID3Ref{
 						{Id: "1", Name: "album artist1"},
 						{Id: "2", Name: "album artist2"},
