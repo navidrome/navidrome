@@ -184,6 +184,7 @@ type Child struct {
 	AlbumArtists       Array[ArtistID3Ref] `xml:"albumArtists"            json:"albumArtists"`
 	DisplayAlbumArtist string              `xml:"displayAlbumArtist,attr" json:"displayAlbumArtist"`
 	Contributors       Array[Contributor]  `xml:"contributors"            json:"contributors"`
+	DisplayComposer    string              `xml:"displayComposer,attr"    json:"displayComposer"`
 }
 
 type Songs struct {

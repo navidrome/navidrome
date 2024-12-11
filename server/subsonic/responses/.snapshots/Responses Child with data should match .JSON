@@ -90,8 +90,23 @@
               "id": "2",
               "name": "artist2"
             }
+          },
+          {
+            "role": "composer",
+            "artist": {
+              "id": "3",
+              "name": "composer1"
+            }
+          },
+          {
+            "role": "composer",
+            "artist": {
+              "id": "4",
+              "name": "composer2"
+            }
           }
-        ]
+        ],
+        "displayComposer": "composer 1 \u0026 composer 2"
       }
     ],
     "id": "1",

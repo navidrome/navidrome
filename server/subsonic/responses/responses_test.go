@@ -223,9 +223,12 @@ var _ = Describe("Responses", func() {
 						{Id: "1", Name: "album artist1"},
 						{Id: "2", Name: "album artist2"},
 					},
+					DisplayComposer: "composer 1 & composer 2",
 					Contributors: []Contributor{
 						{Role: "role1", SubRole: "subrole3", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},
 						{Role: "role2", Artist: ArtistID3Ref{Id: "2", Name: "artist2"}},
+						{Role: "composer", Artist: ArtistID3Ref{Id: "3", Name: "composer1"}},
+						{Role: "composer", Artist: ArtistID3Ref{Id: "4", Name: "composer2"}},
 					},
 				}
 				response.Directory.Child = child

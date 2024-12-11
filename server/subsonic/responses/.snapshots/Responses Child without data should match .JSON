@@ -25,7 +25,8 @@
         "displayArtist": "",
         "albumArtists": [],
         "displayAlbumArtist": "",
-        "contributors": []
+        "contributors": [],
+        "displayComposer": ""
       }
     ],
     "id": "",

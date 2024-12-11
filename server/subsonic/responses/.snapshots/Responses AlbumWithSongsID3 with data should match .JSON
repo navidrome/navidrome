@@ -158,7 +158,8 @@
               "name": "artist2"
             }
           }
-        ]
+        ],
+        "displayComposer": ""
       }
     ]
   }

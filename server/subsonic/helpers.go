@@ -202,6 +202,12 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		}
 	})
 	var contributors []responses.Contributor
+	child.DisplayComposer = strings.Join(
+		slice.Map(mf.Participations[model.RoleComposer], func(p model.Participant) string {
+			return p.Name
+		}),
+		", ",
+	)
 	for role, participants := range mf.Participations {
 		if role == model.RoleArtist || role == model.RoleAlbumArtist {
 			continue

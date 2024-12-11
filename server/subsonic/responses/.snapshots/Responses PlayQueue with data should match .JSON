@@ -26,7 +26,8 @@
         "displayArtist": "",
         "albumArtists": [],
         "displayAlbumArtist": "",
-        "contributors": []
+        "contributors": [],
+        "displayComposer": ""
       }
     ],
     "current": "111",
