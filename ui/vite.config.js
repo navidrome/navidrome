@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const frontendPort = parseInt(process.env.PORT) || 4533
-const backendPort = frontendPort + 100
+const BACKEND_URL = process.env.BACKEND_URL ?? ('http://localhost:' + (frontendPort + 100).toString());
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -24,7 +24,7 @@ export default defineConfig({
     host: true,
     port: frontendPort,
     proxy: {
-      '^/(auth|api|rest|backgrounds)/.*': 'http://localhost:' + backendPort,
+      '^/(auth|api|rest|backgrounds)/.*': BACKEND_URL,
     },
   },
   base: './',
