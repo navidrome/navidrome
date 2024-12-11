@@ -295,6 +295,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 		return nil, err
 	}
 	sel := r.selectMediaFile().
+		// BFR Optimize with `exists`?
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
 			Eq{"missing": true},

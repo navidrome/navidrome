@@ -132,20 +132,12 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	}
 	logF(p.ctx, "Scanner: Finished refreshing albums", "refreshed", refreshed, "skipped", skipped, err)
 	if !p.state.changesDetected.Load() {
-		log.Debug(p.ctx, "Scanner: No changes detected, skipping refreshing stats and annotations")
+		log.Debug(p.ctx, "Scanner: No changes detected, skipping refreshing annotations")
 		return nil
 	}
 	return p.ds.WithTx(func(tx model.DataStore) error {
-		// Refresh artist stats
-		start := time.Now()
-		stats, err := tx.Artist(p.ctx).RefreshStats()
-		if err != nil {
-			return fmt.Errorf("refreshing artist stats: %w", err)
-		}
-		log.Debug(p.ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
-
 		// Refresh album annotations
-		start = time.Now()
+		start := time.Now()
 		cnt, err := tx.Album(p.ctx).RefreshAnnotations()
 		if err != nil {
 			return fmt.Errorf("refreshing album annotations: %w", err)
