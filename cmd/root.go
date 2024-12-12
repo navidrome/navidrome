@@ -81,6 +81,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 	g.Go(startScanWatcher(ctx))
+	g.Go(runInitialScan(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 
 	if err := g.Wait(); err != nil {
@@ -145,13 +146,28 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		if err != nil {
 			log.Error("Error scheduling periodic scan", err)
 		}
+		return nil
+	}
+}
 
-		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
-		log.Debug("Executing initial scan")
-		if err := scanner.ScanAll(ctx, false); err != nil {
-			log.Error("Error executing initial scan", err)
+func runInitialScan(ctx context.Context) func() error {
+	return func() error {
+		ds := CreateDataStore()
+		inProgress, err := ds.Library(ctx).ScanInProgress()
+		if err != nil {
+			return err
 		}
-		log.Debug("Finished initial scan")
+		if inProgress || conf.Server.Scanner.ScanOnStartup {
+			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+			scanner := CreateScanner(ctx)
+			log.Info("Executing initial scan")
+			err := scanner.ScanAll(ctx, false)
+			if err != nil {
+				log.Error(ctx, "Initial Scan failed", err)
+			} else {
+				log.Info(ctx, "Initial Scan completed")
+			}
+		}
 		return nil
 	}
 }

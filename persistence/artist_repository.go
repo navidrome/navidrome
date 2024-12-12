@@ -306,7 +306,7 @@ artist_counters as (
 -- Update the artist table with the new counters
 update artist
 set stats = coalesce((select counters from artist_counters where artist_counters.id = artist.id), '{}'),
-    updated_at = current_timestamp
+    updated_at = datetime(current_timestamp, 'localtime')
 where id <> ''; -- always true, to avoid warnings`)
 	return r.executeSQL(query)
 }

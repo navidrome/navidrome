@@ -29,7 +29,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 	var jobs []*scanJob
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
-			err := ds.Library(ctx).BeginScan(lib.ID, state.fullScan)
+			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error updating last scan started at", "lib", lib.Name, err)
 				state.sendError(err)

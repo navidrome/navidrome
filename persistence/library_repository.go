@@ -116,7 +116,7 @@ func (r *libraryRepository) AddArtist(id int, artistID string) error {
 	return nil
 }
 
-func (r *libraryRepository) BeginScan(id int, fullScan bool) error {
+func (r *libraryRepository) ScanBegin(id int, fullScan bool) error {
 	sq := Update(r.tableName).
 		Set("last_scan_started_at", time.Now()).
 		Set("full_scan_in_progress", fullScan).
@@ -125,7 +125,7 @@ func (r *libraryRepository) BeginScan(id int, fullScan bool) error {
 	return err
 }
 
-func (r *libraryRepository) EndScan(id int) error {
+func (r *libraryRepository) ScanEnd(id int) error {
 	sq := Update(r.tableName).
 		Set("last_scan_at", time.Now()).
 		Set("full_scan_in_progress", false).
@@ -133,6 +133,12 @@ func (r *libraryRepository) EndScan(id int) error {
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
 	return err
+}
+
+func (r *libraryRepository) ScanInProgress() (bool, error) {
+	query := r.newSelect().Where(NotEq{"last_scan_started_at": time.Time{}})
+	count, err := r.count(query)
+	return count > 0, err
 }
 
 func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, error) {

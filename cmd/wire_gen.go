@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -32,6 +33,12 @@ import (
 )
 
 // Injectors from wire_injectors.go:
+
+func CreateDataStore() model.DataStore {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	return dataStore
+}
 
 func CreateServer() *server.Server {
 	sqlDB := db.Db()

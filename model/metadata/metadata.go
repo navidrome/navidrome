@@ -162,7 +162,7 @@ func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 	// first get just the year
 	match := dateRegex.FindStringSubmatch(tagValue)
 	if len(match) == 0 {
-		log.Warn("Error parsing date", "file", filePath, "tag", tagName, "date", tagValue)
+		log.Debug("Error parsing date", "file", filePath, "tag", tagName, "date", tagValue)
 		return ""
 	}
 
@@ -181,7 +181,7 @@ func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 			return tagValue
 		}
 	}
-	log.Warn("Error parsing month and day from date", "file", filePath, "tag", tagName, "date", tagValue)
+	log.Debug("Error parsing month and day from date", "file", filePath, "tag", tagName, "date", tagValue)
 	return match[1]
 }
 

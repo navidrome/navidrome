@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -36,6 +37,12 @@ var allProviders = wire.NewSet(
 	scanner.NewWatcher,
 	db.Db,
 )
+
+func CreateDataStore() model.DataStore {
+	panic(wire.Build(
+		allProviders,
+	))
+}
 
 func CreateServer() *server.Server {
 	panic(wire.Build(

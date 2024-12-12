@@ -27,6 +27,9 @@ type LibraryRepository interface {
 	Put(*Library) error
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error
-	BeginScan(id int, fullScan bool) error
-	EndScan(id int) error
+
+	// TODO These methods should be moved to a core service
+	ScanBegin(id int, fullScan bool) error
+	ScanEnd(id int) error
+	ScanInProgress() (bool, error)
 }

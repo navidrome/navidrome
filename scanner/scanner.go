@@ -145,7 +145,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 	return func() error {
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			for _, lib := range libs {
-				err := tx.Library(ctx).EndScan(lib.ID)
+				err := tx.Library(ctx).ScanEnd(lib.ID)
 				if err != nil {
 					state.sendError(fmt.Errorf("updating last scan completed: %w", err))
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)

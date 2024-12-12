@@ -26,7 +26,7 @@ func upSupportNewScanner(ctx context.Context, tx *sql.Tx) error {
 
 	return chain.RunSequentially(
 		upSupportNewScanner_CreateTableFolder(ctx, execute),
-		upSupportNewScanner_PopulateFolderTable(ctx, tx),
+		upSupportNewScanner_PopulateTableFolder(ctx, tx),
 		upSupportNewScanner_UpdateTableMediaFile(ctx, execute, addColumn),
 		upSupportNewScanner_UpdateTableAlbum(ctx, execute),
 		upSupportNewScanner_UpdateTableArtist(ctx, execute, addColumn),
@@ -86,6 +86,10 @@ drop table if exists album_genres;
 drop table if exists artist_genres;
 drop table if exists genre;
 `),
+		func() error {
+			notice(tx, "A full scan will be triggered to populate the new tables. This may take a while.")
+			return forceFullRescan(tx)
+		},
 	)
 }
 
@@ -105,8 +109,8 @@ create table if not exists folder(
 	num_playlists integer default 0 not null,
 	image_files jsonb default '[]' not null,
 	images_updated_at datetime default '0000-00-00 00:00:00' not null,
-	updated_at datetime default current_timestamp not null,
-	created_at datetime default current_timestamp not null
+	updated_at datetime default (datetime(current_timestamp, 'localtime')) not null,
+	created_at datetime default (datetime(current_timestamp, 'localtime')) not null
 );
 create index folder_parent_id on folder(parent_id);
 `)
@@ -115,7 +119,7 @@ create index folder_parent_id on folder(parent_id);
 // Use paths from `media_file` table to populate `folder` table. The `folder` table must contain all paths, including
 // the ones that do not contain any media_file. We can get all paths from the media_file table to populate a
 // fstest.MapFS{}, and then walk the filesystem to insert all folders into the DB, including empty parent ones.
-func upSupportNewScanner_PopulateFolderTable(ctx context.Context, tx *sql.Tx) execFunc {
+func upSupportNewScanner_PopulateTableFolder(ctx context.Context, tx *sql.Tx) execFunc {
 	return func() error {
 		// First, get all folder paths from media_file table
 		rows, err := tx.QueryContext(ctx, fmt.Sprintf(`

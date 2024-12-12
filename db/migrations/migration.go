@@ -23,14 +23,24 @@ NOTICE: %s
 }
 
 // Call this in migrations that requires a full rescan
-// BFR: This is a hack to force a full rescan. We now should use library.last_scan_started_at.
 func forceFullRescan(tx *sql.Tx) error {
 	_, err := tx.Exec(`
+update library set last_scan_started_at = datetime(current_timestamp, 'localtime'), full_scan_in_progress = 1;
+`)
+	if err != nil {
+		// Fallback to previous method
+		_, err = tx.Exec(`
 delete from property where id like 'LastScan%';
 update media_file set updated_at = '0001-01-01';
 `)
+	}
 	return err
 }
+
+// 	sq := Update(r.tableName).
+//		Set("last_scan_started_at", time.Now()).
+//		Set("full_scan_in_progress", fullScan).
+//		Where(Eq{"id": id})
 
 var (
 	once        sync.Once
