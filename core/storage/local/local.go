@@ -28,7 +28,7 @@ type localStorage struct {
 func newLocalStorage(u url.URL) storage.Storage {
 	newExtractor, ok := extractors[conf.Server.Scanner.Extractor]
 	if !ok || newExtractor == nil {
-		log.Fatal("Extractor not found: %s", conf.Server.Scanner.Extractor)
+		log.Fatal("Extractor not found", "path", conf.Server.Scanner.Extractor)
 	}
 	resolvedPath, err := filepath.EvalSymlinks(u.Path)
 	if err != nil {
