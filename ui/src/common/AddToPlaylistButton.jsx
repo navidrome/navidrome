@@ -10,14 +10,20 @@ import { IconButton } from '@material-ui/core'
 /**
  * @component
  * @param {{
-*  selectedIds: string[],
-*  resource?: string,
-*  className?: string,
-*  compact?: boolean
-*  disabled?: boolean
-* }}
-*/
-export const AddToPlaylistButton = ({ resource, selectedIds, className, compact, disabled }) => {
+ *  selectedIds: string[],
+ *  resource?: string,
+ *  className?: string,
+ *  compact?: boolean
+ *  disabled?: boolean
+ * }}
+ */
+export const AddToPlaylistButton = ({
+  resource,
+  selectedIds,
+  className,
+  compact,
+  disabled,
+}) => {
   const translate = useTranslate()
   const dispatch = useDispatch()
   const unselectAll = useUnselectAll()
@@ -34,15 +40,15 @@ export const AddToPlaylistButton = ({ resource, selectedIds, className, compact,
   if (compact) {
     return (
       <IconButton
-          aria-controls="simple-menu"
-          aria-haspopup="true"
-          size={'small'}
-          onClick={handleClick}
-          className={className}
-          label={translate('resources.song.actions.addToPlaylist')}
-          disabled={disabled}
-        >
-        <Add fontSize='small' />
+        aria-controls="simple-menu"
+        aria-haspopup="true"
+        size={'small'}
+        onClick={handleClick}
+        className={className}
+        label={translate('resources.song.actions.addToPlaylist')}
+        disabled={disabled}
+      >
+        <Add fontSize="small" />
       </IconButton>
     )
   }
@@ -66,5 +72,5 @@ AddToPlaylistButton.propTypes = {
   selectedIds: PropTypes.arrayOf(PropTypes.string).isRequired,
   className: PropTypes.string,
   compact: PropTypes.bool,
-  disabled: PropTypes.bool
+  disabled: PropTypes.bool,
 }

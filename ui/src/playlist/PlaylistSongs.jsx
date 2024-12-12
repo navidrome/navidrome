@@ -85,7 +85,8 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const listContext = useListContext()
-  const { data, ids, selectedIds, onUnselectItems, refetch, total } = listContext
+  const { data, ids, selectedIds, onUnselectItems, refetch, total } =
+    listContext
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -132,9 +133,9 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
 
   const onSongMoved = useCallback(
     /**
-     * 
-     * @param {string} from index 
-     * @param {string} to index 
+     *
+     * @param {string} from index
+     * @param {string} to index
      */
     (from, to) => {
       reorder(playlistId, from, to)
@@ -227,7 +228,11 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
-      <MoveToIndexDialog onSuccess={onSongMoved} max={total} playlistId={playlistId} />
+      <MoveToIndexDialog
+        onSuccess={onSongMoved}
+        max={total}
+        playlistId={playlistId}
+      />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )

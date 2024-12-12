@@ -41,12 +41,12 @@ export const closeAddToPlaylist = () => ({
 
 export const openMoveToIndexDialog = (record) => ({
   type: MOVE_TO_INDEX_OPEN,
-  record
+  record,
 })
 
 export const closeMoveToIndexDialog = (record) => ({
   type: MOVE_TO_INDEX_CLOSE,
-  record
+  record,
 })
 
 export const openDownloadMenu = (record, recordType) => {

@@ -7,26 +7,19 @@ import { makeStyles } from '@material-ui/styles'
 
 const useStyles = makeStyles({
   flexRow: {
-    display: "flex",
-    flexDirection: "row",
-    flexWrap: "nowrap",
-    gap: "0.5em"
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    gap: '0.5em',
   },
 })
 
 const Placeholder = () => {
-  const styles = useStyles();
+  const styles = useStyles()
   return (
     <div className={styles.flexRow}>
-      <AddToPlaylistButton 
-        selectedIds={[]}
-        disabled
-        compact
-      />
-      <LoveButton 
-        disabled={true}
-        resource={'song'}
-      />
+      <AddToPlaylistButton selectedIds={[]} disabled compact />
+      <LoveButton disabled={true} resource={'song'} />
     </div>
   )
 }
@@ -34,7 +27,7 @@ const Placeholder = () => {
 const Toolbar = ({ id }) => {
   const { data, loading } = useGetOne('song', id)
   const [toggleLove, toggling] = useToggleLove('song', data)
-  const styles = useStyles();
+  const styles = useStyles()
 
   const handlers = {
     TOGGLE_LOVE: useCallback(() => toggleLove(), [toggleLove]),
@@ -44,10 +37,7 @@ const Toolbar = ({ id }) => {
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       <div className={styles.flexRow}>
-        <AddToPlaylistButton 
-          selectedIds={[id]}
-          compact
-        />
+        <AddToPlaylistButton selectedIds={[id]} compact />
         <LoveButton
           record={data}
           resource={'song'}
