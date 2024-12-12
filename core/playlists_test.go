@@ -85,6 +85,10 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Rules.Limit).To(Equal(100))
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
 			})
+			It("returns an error if the playlist is not well-formed", func() {
+				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
+				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
+			})
 		})
 	})
 
