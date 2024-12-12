@@ -1,15 +1,13 @@
-import React, { useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch, useSelector } from 'react-redux'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import {
-  Box,
   Button,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   List,
   ListItem,
   TextField,
@@ -56,6 +54,43 @@ function CalculatePagination(listLength, targetIndex) {
   const pageNumber = Math.ceil(targetIndex / itemsPerPage)
   
   return { itemsPerPage, pageNumber };
+}
+
+/**
+ * @component
+ * @param {{
+ *  loading?: boolean,
+ *  valid?: boolean,
+ *  moveDirection: "no" | "up" | "down"
+ *  item: {
+ *    elem: import('ra-core').Record,
+ *    newIndex: number,
+ *    willMove: boolean
+ *  } | null
+ * }}
+ */
+const PreviewItem = ({loading, item, valid, moveDirection}) => {
+  if (loading) {
+    return (
+      <ListItem disableGutters>
+        Loading...
+      </ListItem>
+    )
+  }
+
+  if (!valid || !item) {
+    return (
+      <ListItem disableGutters>
+        ---
+      </ListItem>
+    )
+  }
+
+  return (
+    <ListItem disableGutters>
+      {item.newIndex}{item.willMove ? moveDirection == "up" ? "↑" : "↓" : null} - {item.elem.title} - {item.elem.album} - {item.elem.artist}
+    </ListItem>
+  )
 }
 
 /**
@@ -151,7 +186,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
       notify('ra.page.error', 'warning')
     })
 
-  }, 1500, {leading: false, trailing: true}))
+  }, 500, { leading: false, trailing: true }))
 
   React.useEffect(() => {
     if (validationError || !open) {
@@ -177,18 +212,22 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
 
   const fromNum = parseInt(record?.id ?? -1);
   const toNum = parseInt(to);
-  const moving = toNum == fromNum ? "no" : toNum > fromNum ? "up" : "down";
-  const changeRange = [Math.min(fromNum, toNum), Math.max(fromNum, toNum)];
-  const target = targetArea.findIndex(x => x.id == to);
-  const getItem = (index) => {
+  const moveDirection = toNum == fromNum ? "no" : toNum > fromNum ? "up" : "down";
+  const moveRange = useMemo(() => [Math.min(fromNum, toNum), Math.max(fromNum, toNum)], [fromNum, toNum]);
+  const targetIndex = targetArea.findIndex(x => x.id == to);
+
+  /**
+   * @param {number} index relative to the target index
+   */
+  const getItem = useCallback((index) => {
     if (!record)
       return null;
 
     const goingBackwards = index < 0;
-    const initialIndexModifier = goingBackwards ? (moving == "up" ? 1 : 0) : -(moving == "down" ? 1 : 0);
+    const initialIndexModifier = goingBackwards ? (moveDirection == "up" ? 1 : 0) : -(moveDirection == "down" ? 1 : 0);
 
     let resultItem;
-    for (let i = target + index + initialIndexModifier; goingBackwards ? i >= 0 : i < targetArea.length; goingBackwards ? i-- : i++) {
+    for (let i = targetIndex + index + initialIndexModifier; goingBackwards ? i >= 0 : i < targetArea.length; goingBackwards ? i-- : i++) {
       const elem = targetArea[i];
       if (!elem)
         return null;
@@ -205,10 +244,10 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
       return null;
 
     const elemID = parseInt(resultItem.id)
-    const willMove = elemID >= changeRange[0] && elemID <= changeRange[1];
+    const willMove = elemID >= moveRange[0] && elemID <= moveRange[1];
     let newIndex = elemID;
     if (willMove) {
-      newIndex = moving == "up" ? elemID - 1 : elemID + 1;
+      newIndex = moveDirection == "up" ? elemID - 1 : elemID + 1;
     }
 
     return {
@@ -216,12 +255,11 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
       newIndex,
       willMove
     };
-  }
+  }, [record, moveRange, moveDirection, targetArea, targetIndex])
 
-  const Minus2 = getItem(-2);
-  const Minus1 = getItem(-1);
-  const Plus1 = getItem(1);
-  const Plus2 = getItem(2);
+  const itemsToDisplay = useMemo(() => {
+    return [getItem(-2), getItem(-1), {newIndex: to, willMove: false, elem: record}, getItem(1), getItem(2)]
+  }, [getItem, record, to])
 
   return (
     <Dialog
@@ -241,44 +279,19 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
             helperText={validationError ?? `1 - ${max}`}
             error={!!validationError}
         />
-        {loading &&
-          <List>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
-              <ListItem disableGutters>
-                Loading...
-              </ListItem>
-          </List>
-        }
-        {(!validationError && targetArea && !loading) &&
-          <List>
-            <ListItem disableGutters>
-              {Minus2?.newIndex}{Minus2?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Minus2?.elem.title} - {Minus2?.elem.album} - {Minus2?.elem.artist}
-            </ListItem>
-            <ListItem disableGutters>
-              {Minus1?.newIndex}{Minus1?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Minus1?.elem.title} - {Minus1?.elem.album} - {Minus1?.elem.artist}
-            </ListItem>
-            <ListItem disableGutters selected>
-              {to} - {record?.title} - {record?.album} - {record?.artist}
-            </ListItem>
-            <ListItem disableGutters>
-              {Plus1?.newIndex}{Plus1?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Plus1?.elem.title} - {Plus1?.elem.album} - {Plus1?.elem.artist}
-            </ListItem>
-            <ListItem disableGutters>
-              {Plus2?.newIndex}{Plus2?.willMove ? moving == "up" ? "↑" : "↓" : null} - {Plus2?.elem.title} - {Plus2?.elem.album} - {Plus2?.elem.artist}
-            </ListItem>
-          </List>
-        }
+        <List>
+          {itemsToDisplay.map((item, i) => {
+            return (
+              <PreviewItem
+                key={item?.id ?? `index_${i}`}
+                loading={loading}
+                item={item}
+                moveDirection={moveDirection}
+                valid={!validationError}
+              />
+            )
+          })}
+        </List>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} color="primary">
