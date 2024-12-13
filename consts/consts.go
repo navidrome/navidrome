@@ -10,8 +10,9 @@ import (
 const (
 	AppName = "navidrome"
 
-	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
-	InitialSetupFlagKey = "InitialSetup"
+	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
+	InitialSetupFlagKey           = "InitialSetup"
+	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"

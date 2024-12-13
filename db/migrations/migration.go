@@ -24,16 +24,9 @@ NOTICE: %s
 
 // Call this in migrations that requires a full rescan
 func forceFullRescan(tx *sql.Tx) error {
-	_, err := tx.Exec(`
-update library set last_scan_started_at = datetime(current_timestamp, 'localtime'), full_scan_in_progress = 1;
-`)
-	if err != nil {
-		// Fallback to previous method
-		_, err = tx.Exec(`
-delete from property where id like 'LastScan%';
-update media_file set updated_at = '0001-01-01';
-`)
-	}
+	_, err := tx.Exec(fmt.Sprintf(`
+INSERT OR REPLACE into property (id, value) values ('%s', '1');
+`, consts.FullScanAfterMigrationFlagKey))
 	return err
 }
 

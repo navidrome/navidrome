@@ -52,7 +52,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	if !state.fullScan {
 		for _, lib := range libs {
 			if lib.FullScanInProgress {
-				log.Warn(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
+				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
 				state.fullScan = true
 				break
 			}

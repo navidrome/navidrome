@@ -153,19 +153,32 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
+		fullScanRequired, err := ds.Property(ctx).DefaultGet(consts.FullScanAfterMigrationFlagKey, "0")
+		if err != nil {
+			return err
+		}
 		inProgress, err := ds.Library(ctx).ScanInProgress()
 		if err != nil {
 			return err
 		}
-		if inProgress || conf.Server.Scanner.ScanOnStartup {
+		if inProgress || fullScanRequired == "1" || conf.Server.Scanner.ScanOnStartup {
 			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 			scanner := CreateScanner(ctx)
-			log.Info("Executing initial scan")
-			err := scanner.ScanAll(ctx, false)
+			switch {
+			case fullScanRequired == "1":
+				log.Warn("Full scan required after migration")
+				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
+			case inProgress:
+				log.Warn("Resuming interrupted scan")
+			default:
+				log.Info("Executing initial scan")
+			}
+
+			err = scanner.ScanAll(ctx, fullScanRequired == "1")
 			if err != nil {
-				log.Error(ctx, "Initial Scan failed", err)
+				log.Error(ctx, "Scan failed", err)
 			} else {
-				log.Info(ctx, "Initial Scan completed")
+				log.Info(ctx, "Scan completed")
 			}
 		}
 		return nil
