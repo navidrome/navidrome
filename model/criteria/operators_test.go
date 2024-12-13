@@ -10,9 +10,14 @@ import (
 	"github.com/onsi/gomega"
 )
 
+var _ = BeforeSuite(func() {
+	AddRoles([]string{"artist", "composer"})
+	AddTagNames([]string{"genre"})
+})
+
 var _ = Describe("Operators", func() {
-	rangeStart := Date(time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local))
-	rangeEnd := Date(time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local))
+	rangeStart := time.Date(2021, 10, 01, 0, 0, 0, 0, time.Local)
+	rangeEnd := time.Date(2021, 11, 01, 0, 0, 0, 0, time.Local)
 
 	DescribeTable("ToSQL",
 		func(op Expression, expectedSql string, expectedArgs ...any) {
@@ -31,11 +36,11 @@ var _ = Describe("Operators", func() {
 		Entry("startsWith", StartsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "Low Rider%"),
 		Entry("endsWith", EndsWith{"title": "Low Rider"}, "media_file.title LIKE ?", "%Low Rider"),
 		Entry("inTheRange [number]", InTheRange{"year": []int{1980, 1990}}, "(media_file.year >= ? AND media_file.year <= ?)", 1980, 1990),
-		Entry("inTheRange [date]", InTheRange{"lastPlayed": []Date{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
+		Entry("inTheRange [date]", InTheRange{"lastPlayed": []time.Time{rangeStart, rangeEnd}}, "(annotation.play_date >= ? AND annotation.play_date <= ?)", rangeStart, rangeEnd),
 		Entry("before", Before{"lastPlayed": rangeStart}, "annotation.play_date < ?", rangeStart),
 		Entry("after", After{"lastPlayed": rangeStart}, "annotation.play_date > ?", rangeStart),
 
-		// InPlaylis and NotInPlaylist are special cases
+		// InPlaylist and NotInPlaylist are special cases
 		Entry("inPlaylist", InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN "+
 			"(SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("notInPlaylist", NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN "+
@@ -54,6 +59,14 @@ var _ = Describe("Operators", func() {
 		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
 		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),
 		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
+
+		// Artist roles tests
+		Entry("role is [string]", Is{"artist": "u2"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name = ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "u2"),
+		Entry("role isNot [string]", IsNot{"artist": "u2"}, "not exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name = ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "u2"),
+		Entry("role contains [string]", Contains{"artist": "u2"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "%u2%"),
+		Entry("role not contains [string]", NotContains{"artist": "u2"}, "not exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "%u2%"),
+		Entry("role startsWith [string]", StartsWith{"composer": "John"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'composer')", "John%"),
+		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'composer')", "%Lennon"),
 	)
 
 	Describe("Custom Tags", func() {
@@ -65,8 +78,25 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.mood') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
 		})
-		It("returns errors for unknown tag names", func() {
+		It("skips unknown tag names", func() {
 			op := EndsWith{"unknown": "value"}
+			sql, args, _ := op.ToSql()
+			gomega.Expect(sql).To(gomega.BeEmpty())
+			gomega.Expect(args).To(gomega.BeEmpty())
+		})
+	})
+
+	Describe("Custom Roles", func() {
+		It("generates valid SQL", func() {
+			AddRoles([]string{"producer"})
+			op := EndsWith{"producer": "Eno"}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'producer')"))
+			gomega.Expect(args).To(gomega.HaveExactElements("%Eno"))
+		})
+		It("skips unknown roles", func() {
+			op := Contains{"groupie": "Penny Lane"}
 			sql, args, _ := op.ToSql()
 			gomega.Expect(sql).To(gomega.BeEmpty())
 			gomega.Expect(args).To(gomega.BeEmpty())

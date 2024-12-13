@@ -12,8 +12,6 @@ import (
 var fieldMap = map[string]*mappedField{
 	"title":           {field: "media_file.title"},
 	"album":           {field: "media_file.album"},
-	"artist":          {field: "media_file.artist"},
-	"albumartist":     {field: "media_file.album_artist"},
 	"hascoverart":     {field: "media_file.has_cover_art"},
 	"tracknumber":     {field: "media_file.track_number"},
 	"discnumber":      {field: "media_file.disc_number"},
@@ -53,13 +51,15 @@ var fieldMap = map[string]*mappedField{
 	// special fields
 	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
 	"value":  {field: "value"},               // pseudo-field for tag values
+	"name":   {field: "name"},                // pseudo-field for artists values
 }
 
 type mappedField struct {
-	field string
-	order string
-	isTag bool
-	alias string // name from `mappings.yml` that may differ from the name used in the smart playlist
+	field  string
+	order  string
+	isRole bool   // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
+	isTag  bool   // true if the field is a tag imported from the file metadata
+	alias  string // name from `mappings.yml` that may differ from the name used in the smart playlist
 }
 
 func mapFields(expr map[string]any) map[string]any {
@@ -74,22 +74,23 @@ func mapFields(expr map[string]any) map[string]any {
 	return m
 }
 
-func mapTagFields(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+// mapExpr maps a normal field expression to a specific type of expression (tag or role).
+// This is required because tags and roles are handled differently than other fields.
+func mapExpr(expr squirrel.Sqlizer, negate bool, keyName string, exprFunc func(string, squirrel.Sqlizer, bool) squirrel.Sqlizer) squirrel.Sqlizer {
 	rv := reflect.ValueOf(expr)
 	if rv.Kind() != reflect.Map || rv.Type().Key().Kind() != reflect.String {
 		log.Fatal(fmt.Sprintf("expr is not a map-based operator: %T", expr))
 	}
 
 	// Extract into a generic map
+	var k string
 	m := make(map[string]any, rv.Len())
 	for _, key := range rv.MapKeys() {
-		m[key.String()] = rv.MapIndex(key).Interface()
+		// Save the key to build the expression, and use the provided keyName as the key
+		k = key.String()
+		m[keyName] = rv.MapIndex(key).Interface()
+		break // only one key is expected (and supported)
 	}
-
-	// Modify the map
-	k, _ := firstKV(m)
-	m["value"] = m[k]
-	delete(m, k)
 
 	// Clear the original map
 	for _, key := range rv.MapKeys() {
@@ -101,7 +102,19 @@ func mapTagFields(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
 		rv.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(val))
 	}
 
-	return tagExpr(k, expr, negate)
+	return exprFunc(k, expr, negate)
+}
+
+// mapTagExpr maps a normal field expression to a tag expression. This is required because tags are
+// handled differently than other fields, as they are stored in a JSON column in the database.
+func mapTagExpr(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+	return mapExpr(expr, negate, "value", tagExpr)
+}
+
+// mapRoleExpr maps a normal field expression to a artist role expression. This is required because artists are
+// handled differently than other fields, as they require a join with the `media_file_artists` table.
+func mapRoleExpr(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+	return mapExpr(expr, negate, "name", roleExpr)
 }
 
 func isTagExpr(expr map[string]any) bool {
@@ -113,14 +126,16 @@ func isTagExpr(expr map[string]any) bool {
 	return false
 }
 
-func firstKV(expr map[string]any) (string, string) {
-	for k, v := range expr {
-		return k, fmt.Sprint(v)
+func isRoleExpr(expr map[string]any) bool {
+	for f := range expr {
+		if f2, ok := fieldMap[strings.ToLower(f)]; ok && f2.isRole {
+			return true
+		}
 	}
-	return "", ""
+	return false
 }
 
-func tagExpr(tag string, cond squirrel.Sqlizer, negate bool) tagCond {
+func tagExpr(tag string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
 	return tagCond{tag: tag, cond: cond, not: negate}
 }
 
@@ -138,6 +153,39 @@ func (e tagCond) ToSql() (string, []any, error) {
 		sql = "not " + sql
 	}
 	return sql, args, err
+}
+
+func roleExpr(role string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+	return roleCond{role: role, cond: cond, not: negate}
+}
+
+type roleCond struct {
+	role string
+	cond squirrel.Sqlizer
+	not  bool
+}
+
+func (e roleCond) ToSql() (string, []any, error) {
+	sql, args, err := e.cond.ToSql()
+	sql = fmt.Sprintf(`exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id `+
+		`where %s and mfa.media_file_id = media_file.id and mfa.role = '%s')`,
+		sql, e.role)
+	if e.not {
+		sql = "not " + sql
+	}
+	return sql, args, err
+}
+
+// AddRoles adds roles to the field map. This is used to add all artist roles to the field map, so they can be used in
+// smart playlists. If a role already exists in the field map, it is ignored, so calls to this function are idempotent.
+func AddRoles(roles []string) {
+	for _, role := range roles {
+		name := strings.ToLower(role)
+		if _, ok := fieldMap[name]; ok {
+			continue
+		}
+		fieldMap[name] = &mappedField{field: name, isRole: true}
+	}
 }
 
 // AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`

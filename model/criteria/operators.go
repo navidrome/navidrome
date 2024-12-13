@@ -48,8 +48,11 @@ type Is squirrel.Eq
 type Eq = Is
 
 func (is Is) ToSql() (sql string, args []any, err error) {
+	if isRoleExpr(is) {
+		return mapRoleExpr(is, false).ToSql()
+	}
 	if isTagExpr(is) {
-		return mapTagFields(is, false).ToSql()
+		return mapTagExpr(is, false).ToSql()
 	}
 	return squirrel.Eq(mapFields(is)).ToSql()
 }
@@ -61,8 +64,11 @@ func (is Is) MarshalJSON() ([]byte, error) {
 type IsNot squirrel.NotEq
 
 func (in IsNot) ToSql() (sql string, args []any, err error) {
+	if isRoleExpr(in) {
+		return mapRoleExpr(squirrel.Eq(in), true).ToSql()
+	}
 	if isTagExpr(in) {
-		return mapTagFields(squirrel.Eq(in), true).ToSql()
+		return mapTagExpr(squirrel.Eq(in), true).ToSql()
 	}
 	return squirrel.NotEq(mapFields(in)).ToSql()
 }
@@ -75,7 +81,7 @@ type Gt squirrel.Gt
 
 func (gt Gt) ToSql() (sql string, args []any, err error) {
 	if isTagExpr(gt) {
-		return mapTagFields(gt, false).ToSql()
+		return mapTagExpr(gt, false).ToSql()
 	}
 	return squirrel.Gt(mapFields(gt)).ToSql()
 }
@@ -88,7 +94,7 @@ type Lt squirrel.Lt
 
 func (lt Lt) ToSql() (sql string, args []any, err error) {
 	if isTagExpr(lt) {
-		return mapTagFields(squirrel.Lt(lt), false).ToSql()
+		return mapTagExpr(squirrel.Lt(lt), false).ToSql()
 	}
 	return squirrel.Lt(mapFields(lt)).ToSql()
 }
@@ -124,8 +130,11 @@ func (ct Contains) ToSql() (sql string, args []any, err error) {
 	for f, v := range mapFields(ct) {
 		lk[f] = fmt.Sprintf("%%%s%%", v)
 	}
+	if isRoleExpr(ct) {
+		return mapRoleExpr(lk, false).ToSql()
+	}
 	if isTagExpr(ct) {
-		return mapTagFields(lk, false).ToSql()
+		return mapTagExpr(lk, false).ToSql()
 	}
 	return lk.ToSql()
 }
@@ -141,8 +150,11 @@ func (nct NotContains) ToSql() (sql string, args []any, err error) {
 	for f, v := range mapFields(nct) {
 		lk[f] = fmt.Sprintf("%%%s%%", v)
 	}
+	if isRoleExpr(nct) {
+		return mapRoleExpr(squirrel.Like(lk), true).ToSql()
+	}
 	if isTagExpr(nct) {
-		return mapTagFields(squirrel.Like(lk), true).ToSql()
+		return mapTagExpr(squirrel.Like(lk), true).ToSql()
 	}
 	return lk.ToSql()
 }
@@ -158,8 +170,11 @@ func (sw StartsWith) ToSql() (sql string, args []any, err error) {
 	for f, v := range mapFields(sw) {
 		lk[f] = fmt.Sprintf("%s%%", v)
 	}
+	if isRoleExpr(sw) {
+		return mapRoleExpr(lk, false).ToSql()
+	}
 	if isTagExpr(sw) {
-		return mapTagFields(lk, false).ToSql()
+		return mapTagExpr(lk, false).ToSql()
 	}
 	return lk.ToSql()
 }
@@ -175,8 +190,11 @@ func (sw EndsWith) ToSql() (sql string, args []any, err error) {
 	for f, v := range mapFields(sw) {
 		lk[f] = fmt.Sprintf("%%%s", v)
 	}
+	if isRoleExpr(sw) {
+		return mapRoleExpr(lk, false).ToSql()
+	}
 	if isTagExpr(sw) {
-		return mapTagFields(lk, false).ToSql()
+		return mapTagExpr(lk, false).ToSql()
 	}
 	return lk.ToSql()
 }

@@ -66,11 +66,12 @@ var _ = Describe("Criteria", func() {
 		sql, args, err := goObj.ToSql()
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		gomega.Expect(sql).To(gomega.Equal(
-			"(media_file.title LIKE ? AND media_file.title NOT LIKE ? " +
-				"AND (media_file.artist <> ? OR media_file.album = ?) " +
-				"AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) " +
-				"AND not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))",
-		))
+			`(media_file.title LIKE ? AND media_file.title NOT LIKE ? AND ` +
+				`(not exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id ` +
+				`where name = ? and mfa.media_file_id = media_file.id and mfa.role = 'artist') OR media_file.album = ?) AND ` +
+				`(media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) AND ` +
+				`not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))`),
+		)
 		gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock"))
 	})
 

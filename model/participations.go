@@ -27,7 +27,7 @@ var (
 	RolePerformer   = Role{"performer"}
 )
 
-var allRoles = map[string]Role{
+var AllRoles = map[string]Role{
 	RoleArtist.role:      RoleArtist,
 	RoleAlbumArtist.role: RoleAlbumArtist,
 	RoleComposer.role:    RoleComposer,
@@ -66,7 +66,7 @@ func (r *Role) UnmarshalText(text []byte) error {
 }
 
 func RoleFromString(role string) Role {
-	if r, ok := allRoles[role]; ok {
+	if r, ok := AllRoles[role]; ok {
 		return r
 	}
 	return RoleInvalid

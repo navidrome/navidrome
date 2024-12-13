@@ -27,7 +27,6 @@ var roleMappings = map[model.Role]roleTags{
 	model.RoleMixer:     {name: model.TagMixer},
 	model.RoleRemixer:   {name: model.TagRemixer},
 	model.RoleDJMixer:   {name: model.TagDJMixer},
-	// TODO Performer (and Instruments)
 }
 
 func (md Metadata) mapParticipations() model.Participations {
