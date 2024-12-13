@@ -400,6 +400,7 @@ func (p *phaseFolders) finalize(err error) error {
 				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
 				return err
 			}
+			// BFR: Touch albums with missing folders
 		}
 		return nil
 	})

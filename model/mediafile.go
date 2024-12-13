@@ -174,6 +174,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	releaseDates := make([]string, 0, len(mfs))
 	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
 
+	a.Missing = true
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs in an album
 		a.ID = m.AlbumID
@@ -213,7 +214,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
-		a.Missing = a.Missing || m.Missing
+		a.Missing = a.Missing && m.Missing
 	}
 
 	a.SetTags(tags)
