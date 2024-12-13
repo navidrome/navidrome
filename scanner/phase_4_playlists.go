@@ -84,7 +84,7 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 	files, err := os.ReadDir(folder.AbsolutePath())
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error reading files", "folder", folder, err)
-		p.scanState.sendError(err)
+		p.scanState.sendWarning(err.Error())
 		return folder, nil
 	}
 	for _, f := range files {

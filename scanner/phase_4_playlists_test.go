@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -124,7 +123,7 @@ var _ = Describe("phasePlaylists", func() {
 			// But are reported
 			info := &ProgressInfo{}
 			Eventually(progress).Should(Receive(&info))
-			Expect(info.Err).To(MatchError(fs.ErrNotExist))
+			Expect(info.Warning).To(ContainSubstring("no such file or directory"))
 		})
 	})
 })

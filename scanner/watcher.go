@@ -58,7 +58,7 @@ func (w *watcher) Run(ctx context.Context) error {
 				continue
 			}
 			go func() {
-				err := w.scanner.ScanAll(ctx, false)
+				_, err := w.scanner.ScanAll(ctx, false)
 				if err != nil {
 					log.Error(ctx, "Watcher: Error scanning", err)
 				} else {

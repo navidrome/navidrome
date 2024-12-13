@@ -33,15 +33,19 @@ func (s *scanState) sendProgress(info *ProgressInfo) {
 	}
 }
 
+func (s *scanState) sendWarning(msg string) {
+	s.sendProgress(&ProgressInfo{Warning: msg})
+}
+
 func (s *scanState) sendError(err error) {
-	s.sendProgress(&ProgressInfo{Err: err.Error()})
+	s.sendProgress(&ProgressInfo{Error: err.Error()})
 }
 
 func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
 	state := scanState{progress: progress, fullScan: fullScan}
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		state.sendProgress(&ProgressInfo{Err: fmt.Sprintf("getting libraries: %s", err)})
+		state.sendWarning(fmt.Sprintf("getting libraries: %s", err))
 		return
 	}
 
@@ -84,7 +88,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		s.runRefreshArtistStats(ctx, &state),
 
 		// Update last_scan_completed_at for all libraries
-		s.runUpdateLibraries(ctx, libs, &state),
+		s.runUpdateLibraries(ctx, libs),
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
@@ -108,9 +112,8 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 				start := time.Now()
 				err := tx.GC(ctx)
 				if err != nil {
-					state.sendError(fmt.Errorf("running GC: %w", err))
 					log.Error(ctx, "Scanner: Error running GC", err)
-					return err
+					return fmt.Errorf("running GC: %w", err)
 				}
 				log.Debug(ctx, "Scanner: GC completed", "elapsed", time.Since(start))
 			} else {
@@ -128,9 +131,8 @@ func (s *scannerImpl) runRefreshArtistStats(ctx context.Context, state *scanStat
 				start := time.Now()
 				stats, err := tx.Artist(ctx).RefreshStats()
 				if err != nil {
-					state.sendError(fmt.Errorf("refreshing artists stats: %w", err))
 					log.Error(ctx, "Scanner: Error refreshing artists stats", err)
-					return err
+					return fmt.Errorf("refreshing artists stats: %w", err)
 				}
 				log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
 			} else {
@@ -141,15 +143,14 @@ func (s *scannerImpl) runRefreshArtistStats(ctx context.Context, state *scanStat
 	}
 }
 
-func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries, state *scanState) func() error {
+func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries) func() error {
 	return func() error {
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			for _, lib := range libs {
 				err := tx.Library(ctx).ScanEnd(lib.ID)
 				if err != nil {
-					state.sendError(fmt.Errorf("updating last scan completed: %w", err))
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
-					return err
+					return fmt.Errorf("updating last scan completed: %w", err)
 				}
 			}
 			return nil

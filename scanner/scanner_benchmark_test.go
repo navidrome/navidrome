@@ -75,7 +75,7 @@ func BenchmarkScan(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := s.ScanAll(context.Background(), true)
+		_, err := s.ScanAll(context.Background(), true)
 		if err != nil {
 			b.Fatal(err)
 		}

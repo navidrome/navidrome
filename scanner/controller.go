@@ -26,7 +26,7 @@ var (
 
 type Scanner interface {
 	// ScanAll starts a full scan of the music library. This is a blocking operation.
-	ScanAll(ctx context.Context, fullScan bool) error
+	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
 	Status(context.Context) (*StatusInfo, error)
 }
 
@@ -58,8 +58,9 @@ func (s *controller) getScanner() scanner {
 	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
 }
 
-// Scan starts a full scan of the music library. This is meant to be called from the command line (see cmd/scan.go).
-func Scan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
+// CallScan starts a in-process scan of the music library.
+// This is meant to be called from the command line (see cmd/scan.go).
+func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -83,7 +84,8 @@ type ProgressInfo struct {
 	Path            string
 	Phase           string
 	ChangesDetected bool
-	Err             string
+	Warning         string
+	Error           string
 }
 
 type scanner interface {
@@ -141,10 +143,10 @@ func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
 	return count, folderCount, nil
 }
 
-func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) error {
+func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]string, error) {
 	release, err := lockScan(requestCtx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer release()
 
@@ -163,27 +165,26 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) error {
 	}()
 
 	// Wait for the scan to finish, sending progress events to all connected clients
-	if err = s.trackProgress(ctx, progress); err != nil {
-		return err
+	scanWarnings, scanError := s.trackProgress(ctx, progress)
+	for _, w := range scanWarnings {
+		log.Warn(ctx, "Scan warning: %s", w)
 	}
-
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {
 		log.Debug(ctx, "Library changes imported. Sending refresh event")
 		s.broker.SendMessage(ctx, &events.RefreshResource{})
 	}
-
 	// Send the final scan status event, with totals
-	count, folderCount, err := s.getCounters(ctx)
-	if err != nil {
-		return err
+	if count, folderCount, err := s.getCounters(ctx); err != nil {
+		return scanWarnings, err
+	} else {
+		s.sendMessage(ctx, &events.ScanStatus{
+			Scanning:    false,
+			Count:       count,
+			FolderCount: folderCount,
+		})
 	}
-	s.sendMessage(ctx, &events.ScanStatus{
-		Scanning:    false,
-		Count:       count,
-		FolderCount: folderCount,
-	})
-	return nil
+	return scanWarnings, scanError
 }
 
 // This is a global variable that is used to prevent multiple scans from running at the same time.
@@ -200,15 +201,20 @@ func lockScan(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) error {
+func (s *controller) trackProgress(ctx context.Context, progress <-chan *ProgressInfo) ([]string, error) {
 	s.count.Store(0)
 	s.folderCount.Store(0)
 	s.changesDetected = false
 
+	var warnings []string
 	var errs []error
 	for p := range pl.ReadOrDone(ctx, progress) {
-		if p.Err != "" {
-			errs = append(errs, errors.New(p.Err))
+		if p.Error != "" {
+			errs = append(errs, errors.New(p.Error))
+			continue
+		}
+		if p.Warning != "" {
+			warnings = append(warnings, p.Warning)
 			continue
 		}
 		if p.ChangesDetected {
@@ -228,7 +234,7 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 			s.sendMessage(ctx, status)
 		}
 	}
-	return errors.Join(errs...)
+	return warnings, errors.Join(errs...)
 }
 
 func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {

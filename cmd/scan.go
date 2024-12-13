@@ -37,8 +37,11 @@ var scanCmd = &cobra.Command{
 
 func trackScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
 	for status := range pl.ReadOrDone(ctx, progress) {
-		if status.Err != "" {
-			log.Error(ctx, "Scan error", "error", status.Err)
+		if status.Warning != "" {
+			log.Warn(ctx, "Scan warning", "error", status.Warning)
+		}
+		if status.Error != "" {
+			log.Error(ctx, "Scan error", "error", status.Error)
 		}
 		// Discard the progress status, we only care about errors
 	}
@@ -66,7 +69,7 @@ func runScanner(ctx context.Context) {
 	ds := persistence.New(sqlDB)
 	pls := core.NewPlaylists(ds)
 
-	progress, err := scanner.Scan(ctx, ds, artwork.NoopCacheWarmer(), pls, fullScan)
+	progress, err := scanner.CallScan(ctx, ds, artwork.NoopCacheWarmer(), pls, fullScan)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}

@@ -27,7 +27,7 @@ func startSignaller(ctx context.Context) func() error {
 			case sig := <-sigChan:
 				log.Info(ctx, "Received signal, triggering a new scan", "signal", sig)
 				start := time.Now()
-				err := scanner.ScanAll(ctx, false)
+				_, err := scanner.ScanAll(ctx, false)
 				if err != nil {
 					log.Error(ctx, "Error scanning", err)
 				}

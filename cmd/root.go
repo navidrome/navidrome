@@ -132,7 +132,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.ScanSchedule
 		if schedule == "" {
-			log.Warn("Periodic scan is DISABLED")
+			log.Warn(ctx, "Periodic scan is DISABLED")
 			return nil
 		}
 
@@ -141,10 +141,13 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
 		err := schedulerInstance.Add(schedule, func() {
-			_ = scanner.ScanAll(ctx, false)
+			_, err := scanner.ScanAll(ctx, false)
+			if err != nil {
+				log.Error(ctx, "Error executing periodic scan", err)
+			}
 		})
 		if err != nil {
-			log.Error("Error scheduling periodic scan", err)
+			log.Error(ctx, "Error scheduling periodic scan", err)
 		}
 		return nil
 	}
@@ -166,15 +169,15 @@ func runInitialScan(ctx context.Context) func() error {
 			scanner := CreateScanner(ctx)
 			switch {
 			case fullScanRequired == "1":
-				log.Warn("Full scan required after migration")
+				log.Warn(ctx, "Full scan required after migration")
 				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
 			case inProgress:
-				log.Warn("Resuming interrupted scan")
+				log.Warn(ctx, "Resuming interrupted scan")
 			default:
 				log.Info("Executing initial scan")
 			}
 
-			err = scanner.ScanAll(ctx, fullScanRequired == "1")
+			_, err = scanner.ScanAll(ctx, fullScanRequired == "1")
 			if err != nil {
 				log.Error(ctx, "Scan failed", err)
 			} else {
@@ -204,7 +207,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.Backup.Schedule
 		if schedule == "" {
-			log.Warn("Periodic backup is DISABLED")
+			log.Warn(ctx, "Periodic backup is DISABLED")
 			return nil
 		}
 
