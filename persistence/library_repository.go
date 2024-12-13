@@ -132,6 +132,11 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		Set("last_scan_started_at", time.Time{}).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(sq)
+	if err != nil {
+		return err
+	}
+	// https://www.sqlite.org/pragma.html#pragma_optimize
+	_, err = r.executeSQL(rawSQL("PRAGMA optimize=0x10012;"))
 	return err
 }
 
