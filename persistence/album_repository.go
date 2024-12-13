@@ -190,15 +190,18 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	// Only update participations and tags if there are any. Not the best place to put this,
-	// but updating external metadata does not provide these fields.
-	// TODO Move external metadata to a separated table
 	if len(al.Participations) > 0 {
 		err = r.updateParticipations(al.ID, al.Participations)
 		if err != nil {
 			return err
 		}
 	}
+	return err
+}
+
+// TODO Move external metadata to a separated table
+func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
+	_, err := r.put(al.ID, &dbAlbum{Album: al})
 	return err
 }
 

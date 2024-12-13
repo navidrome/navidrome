@@ -17,40 +17,42 @@ type Album struct {
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
 	// BFR Rename to AlbumArtistDisplayName
-	AlbumArtist           string     `structs:"album_artist" json:"albumArtist"`
-	MaxYear               int        `structs:"max_year" json:"maxYear"`
-	MinYear               int        `structs:"min_year" json:"minYear"`
-	Date                  string     `structs:"date" json:"date,omitempty"`
-	MaxOriginalYear       int        `structs:"max_original_year" json:"maxOriginalYear"`
-	MinOriginalYear       int        `structs:"min_original_year" json:"minOriginalYear"`
-	OriginalDate          string     `structs:"original_date" json:"originalDate,omitempty"`
-	ReleaseDate           string     `structs:"release_date" json:"releaseDate,omitempty"`
-	Compilation           bool       `structs:"compilation" json:"compilation"`
-	Comment               string     `structs:"comment" json:"comment,omitempty"`
-	SongCount             int        `structs:"song_count" json:"songCount"`
-	Duration              float32    `structs:"duration" json:"duration"`
-	Size                  int64      `structs:"size" json:"size"`
-	Genre                 string     `structs:"genre" json:"genre" hash:"ignore"`
-	Genres                Genres     `structs:"-" json:"genres" hash:"ignore"`
-	Discs                 Discs      `structs:"discs" json:"discs,omitempty"`
-	SortAlbumName         string     `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
-	SortAlbumArtistName   string     `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
-	OrderAlbumName        string     `structs:"order_album_name" json:"orderAlbumName"`
-	OrderAlbumArtistName  string     `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
-	CatalogNum            string     `structs:"catalog_num" json:"catalogNum,omitempty"`
-	MbzAlbumID            string     `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
-	MbzAlbumArtistID      string     `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
-	MbzAlbumType          string     `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
-	MbzAlbumComment       string     `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
-	MbzReleaseGroupID     string     `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
+	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
+	MaxYear              int      `structs:"max_year" json:"maxYear"`
+	MinYear              int      `structs:"min_year" json:"minYear"`
+	Date                 string   `structs:"date" json:"date,omitempty"`
+	MaxOriginalYear      int      `structs:"max_original_year" json:"maxOriginalYear"`
+	MinOriginalYear      int      `structs:"min_original_year" json:"minOriginalYear"`
+	OriginalDate         string   `structs:"original_date" json:"originalDate,omitempty"`
+	ReleaseDate          string   `structs:"release_date" json:"releaseDate,omitempty"`
+	Compilation          bool     `structs:"compilation" json:"compilation"`
+	Comment              string   `structs:"comment" json:"comment,omitempty"`
+	SongCount            int      `structs:"song_count" json:"songCount"`
+	Duration             float32  `structs:"duration" json:"duration"`
+	Size                 int64    `structs:"size" json:"size"`
+	Discs                Discs    `structs:"discs" json:"discs,omitempty"`
+	SortAlbumName        string   `structs:"sort_album_name" json:"sortAlbumName,omitempty"`
+	SortAlbumArtistName  string   `structs:"sort_album_artist_name" json:"sortAlbumArtistName,omitempty"`
+	OrderAlbumName       string   `structs:"order_album_name" json:"orderAlbumName"`
+	OrderAlbumArtistName string   `structs:"order_album_artist_name" json:"orderAlbumArtistName"`
+	CatalogNum           string   `structs:"catalog_num" json:"catalogNum,omitempty"`
+	MbzAlbumID           string   `structs:"mbz_album_id" json:"mbzAlbumId,omitempty"`
+	MbzAlbumArtistID     string   `structs:"mbz_album_artist_id" json:"mbzAlbumArtistId,omitempty"`
+	MbzAlbumType         string   `structs:"mbz_album_type" json:"mbzAlbumType,omitempty"`
+	MbzAlbumComment      string   `structs:"mbz_album_comment" json:"mbzAlbumComment,omitempty"`
+	MbzReleaseGroupID    string   `structs:"mbz_release_group_id" json:"mbzReleaseGroupId,omitempty"`
+	FolderIDs            []string `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
+
+	// External metadata fields
 	Description           string     `structs:"description" json:"description,omitempty" hash:"ignore"`
 	SmallImageUrl         string     `structs:"small_image_url" json:"smallImageUrl,omitempty" hash:"ignore"`
 	MediumImageUrl        string     `structs:"medium_image_url" json:"mediumImageUrl,omitempty" hash:"ignore"`
 	LargeImageUrl         string     `structs:"large_image_url" json:"largeImageUrl,omitempty" hash:"ignore"`
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty" hash:"ignore"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt" hash:"ignore"`
-	FolderIDs             []string   `structs:"folder_ids" json:"-" hash:"set"` // All folders that contain media_files for this album
 
+	Genre          string         `structs:"genre" json:"genre" hash:"ignore"`                   // Easy access to the most common genre
+	Genres         Genres         `structs:"-" json:"genres" hash:"ignore"`                      // Easy access to all genres for this album
 	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags for this album
 	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this album
 
@@ -124,6 +126,7 @@ type AlbumRepository interface {
 	CountAll(...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(*Album) error
+	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
