@@ -41,6 +41,9 @@ const useStyles = makeStyles({
       },
     },
   },
+  missingRow: {
+    opacity: 0.3,
+  },
   headerStyle: {
     '& thead': {
       boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',
@@ -195,6 +198,11 @@ export const SongDatagridRow = ({
     return null
   }
 
+  const computedClasses = clsx(
+    className,
+    classes.row,
+    record.missing && classes.missingRow,
+  )
   const childCount = fields.length
   return (
     <>
@@ -220,7 +228,7 @@ export const SongDatagridRow = ({
         ref={dragSongRef}
         record={record}
         {...rest}
-        className={clsx(className, classes.row)}
+        className={computedClasses}
       >
         {fields}
       </PureDatagridRow>
