@@ -24,7 +24,12 @@ NOTICE: %s
 
 // Call this in migrations that requires a full rescan
 func forceFullRescan(tx *sql.Tx) error {
-	_, err := tx.Exec(fmt.Sprintf(`
+	// If a full scan is required, most probably the query optimizer is outdated, so we run `analyze`.
+	_, err := tx.Exec(`ANALYZE;`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(fmt.Sprintf(`
 INSERT OR REPLACE into property (id, value) values ('%s', '1');
 `, consts.FullScanAfterMigrationFlagKey))
 	return err
