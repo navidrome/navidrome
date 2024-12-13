@@ -83,7 +83,7 @@ type ProgressInfo struct {
 	Path            string
 	Phase           string
 	ChangesDetected bool
-	Err             error
+	Err             string
 }
 
 type scanner interface {
@@ -207,8 +207,8 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 
 	var errs []error
 	for p := range pl.ReadOrDone(ctx, progress) {
-		if p.Err != nil {
-			errs = append(errs, p.Err)
+		if p.Err != "" {
+			errs = append(errs, errors.New(p.Err))
 			continue
 		}
 		if p.ChangesDetected {

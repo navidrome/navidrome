@@ -37,8 +37,8 @@ var scanCmd = &cobra.Command{
 
 func trackScanInteractively(ctx context.Context, progress <-chan *scanner.ProgressInfo) {
 	for status := range pl.ReadOrDone(ctx, progress) {
-		if status.Err != nil {
-			log.Error(ctx, "Scan error", status.Err)
+		if status.Err != "" {
+			log.Error(ctx, "Scan error", "error", status.Err)
 		}
 		// Discard the progress status, we only care about errors
 	}

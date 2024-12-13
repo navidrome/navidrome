@@ -34,14 +34,14 @@ func (s *scanState) sendProgress(info *ProgressInfo) {
 }
 
 func (s *scanState) sendError(err error) {
-	s.sendProgress(&ProgressInfo{Err: err})
+	s.sendProgress(&ProgressInfo{Err: err.Error()})
 }
 
 func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
 	state := scanState{progress: progress, fullScan: fullScan}
 	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		state.sendProgress(&ProgressInfo{Err: fmt.Errorf("getting libraries: %w", err)})
+		state.sendProgress(&ProgressInfo{Err: fmt.Sprintf("getting libraries: %s", err)})
 		return
 	}
 

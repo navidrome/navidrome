@@ -26,7 +26,7 @@ type scannerExternal struct{}
 func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo) {
 	exe, err := os.Executable()
 	if err != nil {
-		progress <- &ProgressInfo{Err: fmt.Errorf("failed to get executable path: %w", err)}
+		progress <- &ProgressInfo{Err: fmt.Sprintf("failed to get executable path: %s", err)}
 		return
 	}
 	log.Debug(ctx, "Spawning external scanner process", "fullScan", fullScan, "path", exe)
@@ -42,7 +42,7 @@ func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress c
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Start(); err != nil {
-		progress <- &ProgressInfo{Err: fmt.Errorf("failed to start scanner process: %w", err)}
+		progress <- &ProgressInfo{Err: fmt.Sprintf("failed to start scanner process: %s", err)}
 		return
 	}
 	go s.wait(cmd, out)
@@ -52,7 +52,7 @@ func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress c
 		var p ProgressInfo
 		if err := decoder.Decode(&p); err != nil {
 			if !errors.Is(err, io.EOF) {
-				progress <- &ProgressInfo{Err: fmt.Errorf("failed to read status from scanner: %w", err)}
+				progress <- &ProgressInfo{Err: fmt.Sprintf("failed to read status from scanner: %s", err)}
 			}
 			break
 		}
