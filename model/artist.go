@@ -73,6 +73,7 @@ type ArtistRepository interface {
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(m *Artist, colsToUpdate ...string) error
+	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)

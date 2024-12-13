@@ -153,6 +153,12 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	return err
 }
 
+func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
+	dba := &dbArtist{Artist: a}
+	_, err := r.put(a.ID, &dba, "biography", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
+	return err
+}
+
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	sel := r.selectArtist().Where(Eq{"artist.id": id})
 	var dba dbArtists
