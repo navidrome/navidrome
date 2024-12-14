@@ -386,6 +386,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 func (p *phaseFolders) finalize(err error) error {
 	errF := p.ds.WithTx(func(tx model.DataStore) error {
 		for _, job := range p.jobs {
+			// Mark all folders that were not updated as missing
 			if len(job.lastUpdates) == 0 {
 				continue
 			}
@@ -400,7 +401,12 @@ func (p *phaseFolders) finalize(err error) error {
 				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
 				return err
 			}
-			// BFR: Touch albums with missing folders
+			// Touch all albums that have missing folders, so they get refreshed in later phases
+			_, err = tx.Album(p.ctx).TouchByMissingFolder()
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error touching albums with missing folders", "lib", job.lib.Name, err)
+				return err
+			}
 		}
 		return nil
 	})

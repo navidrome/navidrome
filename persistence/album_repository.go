@@ -252,6 +252,20 @@ func (r *albumRepository) Touch(ids ...string) error {
 	return nil
 }
 
+// TouchByMissingFolder touches all albums that have missing folders
+func (r *albumRepository) TouchByMissingFolder() (int64, error) {
+	upd := Update(r.tableName).Set("imported_at", time.Now()).
+		Where(And{
+			NotEq{"folder_ids": nil},
+			ConcatExpr("EXISTS (SELECT 1 FROM json_each(folder_ids) AS je JOIN main.folder AS f ON je.value = f.id WHERE f.missing = true)"),
+		})
+	c, err := r.executeSQL(upd)
+	if err != nil {
+		return 0, fmt.Errorf("error touching albums by missing folder: %w", err)
+	}
+	return c, nil
+}
+
 // GetTouchedAlbums returns all albums that were touched by the scanner for a given library, in the
 // current library scan run.
 // It does not need to load participations, as they are not used by the scanner.

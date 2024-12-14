@@ -130,6 +130,7 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	Touch(ids ...string) error
+	TouchByMissingFolder() (int64, error)
 	GetTouchedAlbums(libID int) (AlbumCursor, error)
 	RefreshAnnotations() (int64, error)
 	Search(q string, offset int, size int) (Albums, error)
