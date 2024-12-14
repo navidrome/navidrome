@@ -42,6 +42,7 @@ type configOptions struct {
 	EnableTranscodingConfig         bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
+	EnableInsightsCollector         bool
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
 	ImageCacheSize                  string
@@ -78,7 +79,6 @@ type configOptions struct {
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
 	GATrackingID                    string
-	EnableInsightsCollector         bool
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
 	AuthWindowLength                time.Duration
@@ -296,6 +296,7 @@ func parseIniFileConfiguration() {
 
 func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
+	Server.EnableInsightsCollector = false
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
 	Server.ListenBrainz.Enabled = false
