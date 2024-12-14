@@ -176,8 +176,6 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule
 	data.Config.BackupCount = conf.Server.Backup.Count
 	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
-	data.Config.DevAutoLoginUsernameSet = conf.Server.DevAutoLoginUsername != ""
-	data.Config.DevAutoCreateAdminPasswordSet = conf.Server.DevAutoCreateAdminPassword != ""
 
 	return data
 })
