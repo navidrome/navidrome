@@ -25,10 +25,10 @@ func getOSVersion() (string, string) {
 	distro := ""
 	for _, line := range lines {
 		if strings.HasPrefix(line, "VERSION_ID=") {
-			version = strings.ReplaceAll(strings.Trim(line, "VERSION_ID="), "\"", "")
+			version = strings.ReplaceAll(strings.TrimPrefix(line, "VERSION_ID="), "\"", "")
 		}
 		if strings.HasPrefix(line, "ID=") {
-			distro = strings.ReplaceAll(strings.Trim(line, "ID="), "\"", "")
+			distro = strings.ReplaceAll(strings.TrimPrefix(line, "ID="), "\"", "")
 		}
 	}
 	return version, distro
@@ -68,7 +68,7 @@ func getFilesystemType(path string) (string, error) {
 
 	fsType := fsStat.Type
 
-	fsName, exists := fsTypeMap[int64(fsType)]
+	fsName, exists := fsTypeMap[fsType]
 	if !exists {
 		fsName = fmt.Sprintf("unknown(0x%x)", fsType)
 	}
