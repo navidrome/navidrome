@@ -68,7 +68,7 @@ func getFilesystemType(path string) (string, error) {
 
 	fsType := fsStat.Type
 
-	fsName, exists := fsTypeMap[fsType]
+	fsName, exists := fsTypeMap[int64(fsType)]
 	if !exists {
 		fsName = fmt.Sprintf("unknown(0x%x)", fsType)
 	}
