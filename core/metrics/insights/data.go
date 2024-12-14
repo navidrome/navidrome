@@ -48,7 +48,6 @@ type Data struct {
 		ImageCacheSize          string        `json:"imageCacheSize,omitempty"`
 		EnableArtworkPrecache   bool          `json:"enableArtworkPrecache,omitempty"`
 		EnableDownloads         bool          `json:"enableDownloads,omitempty"`
-		EnableExternalServices  bool          `json:"enableExternalServices,omitempty"`
 		EnableSharing           bool          `json:"enableSharing,omitempty"`
 		EnableStarRating        bool          `json:"enableStarRating,omitempty"`
 		EnableLastFM            bool          `json:"enableLastFM,omitempty"`

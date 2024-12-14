@@ -157,7 +157,6 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
 	data.Config.EnableCoverAnimation = conf.Server.EnableCoverAnimation
 	data.Config.EnableDownloads = conf.Server.EnableDownloads
-	data.Config.EnableExternalServices = conf.Server.EnableExternalServices
 	data.Config.EnableSharing = conf.Server.EnableSharing
 	data.Config.EnableStarRating = conf.Server.EnableStarRating
 	data.Config.EnableLastFM = conf.Server.LastFM.Enabled
