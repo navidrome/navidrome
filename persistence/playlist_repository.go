@@ -379,7 +379,6 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadParticipations(&tracks)
 	return tracks.toModels(), err
 }
 

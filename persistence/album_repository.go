@@ -24,7 +24,7 @@ type albumRepository struct {
 type dbAlbum struct {
 	*model.Album   `structs:",flatten"`
 	Discs          string `structs:"-" json:"discs"`
-	ParticipantIDs string `structs:"-" json:"-"`
+	Participations string `structs:"-" json:"-"`
 	Tags           string `structs:"-" json:"-"`
 	FolderIDs      string `structs:"-" json:"-"`
 }
@@ -36,7 +36,7 @@ func (a *dbAlbum) PostScan() error {
 			return fmt.Errorf("parsing album discs from db: %w", err)
 		}
 	}
-	a.Album.Participations, err = unmarshalParticipations(a.ParticipantIDs)
+	a.Album.Participations, err = unmarshalParticipations(a.Participations)
 	if err != nil {
 		return fmt.Errorf("parsing album from db: %w", err)
 	}
@@ -64,8 +64,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	args["full_text"] = formatFullText(fullText...)
 
 	args["tags"] = marshalTags(a.Album.Tags)
-	args["participant_ids"] = marshalParticipantIDs(a.Album.Participations)
-	delete(args, "participations")
+	args["participations"] = marshalParticipations(a.Album.Participations)
 
 	folderIDs, err := json.Marshal(a.Album.FolderIDs)
 	if err != nil {
@@ -85,26 +84,6 @@ type dbAlbums []dbAlbum
 
 func (as dbAlbums) toModels() model.Albums {
 	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
-}
-
-func (as dbAlbums) getParticipantIDs() []string {
-	var ids []string
-	for _, a := range as {
-		ids = append(ids, a.Participations.AllIDs()...)
-	}
-	return slice.Unique(ids)
-}
-
-func (as dbAlbums) setParticipations(participantMap map[string]model.Artist) {
-	for i, a := range as {
-		for role, artists := range a.Album.Participations {
-			for j, artist := range artists {
-				if artist, ok := participantMap[artist.ID]; ok {
-					as[i].Album.Participations[role][j].Artist = artist
-				}
-			}
-		}
-	}
 }
 
 func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
@@ -165,11 +144,11 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 // BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		exists("json_tree(participant_ids, '$.albumArtist')", Eq{"value": value}),
-		exists("json_tree(participant_ids, '$.artist')", Eq{"value": value}),
+		exists("json_tree(participations, '$.albumArtist')", Eq{"value": value}),
+		exists("json_tree(participations, '$.artist')", Eq{"value": value}),
 	}
 	// For any role:
-	//return Like{"participant_ids": fmt.Sprintf(`%%"%s"%%`, value)}
+	//return Like{"participations": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -225,10 +204,6 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	sq := r.selectAlbum(options...)
 	var res dbAlbums
 	err := r.queryAll(sq, &res)
-	if err != nil {
-		return nil, err
-	}
-	err = r.loadParticipations(&res)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +300,6 @@ func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, 
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadParticipations(&res)
 	return res.toModels(), err
 }
 

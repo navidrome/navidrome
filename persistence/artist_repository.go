@@ -233,7 +233,7 @@ with play_counts as (
     select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
     join annotation on item_id = media_file.id
-    left join json_tree(participant_ids, '$.artist') as jt
+    left join json_tree(participations, '$.artist') as jt
     where atom is not null
     group by user_id, atom
 )
@@ -271,7 +271,7 @@ with artist_role_counters as (
            count(mf.id) as count,
            sum(size) as size
     from media_file mf
-             left join json_tree(participant_ids) jt
+             left join json_tree(participations) jt
     where atom is not null
     group by atom, jt.path
 ),

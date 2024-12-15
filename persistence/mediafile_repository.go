@@ -24,7 +24,7 @@ type mediaFileRepository struct {
 
 type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
-	ParticipantIDs   string `structs:"-" json:"-"`
+	Participations   string `structs:"-" json:"-"`
 	Tags             string `structs:"-" json:"-"`
 	// These are necessary to map the correct names (rg_*) to the correct fields (RG*)
 	// without using `db` struct tags in the model.MediaFile struct
@@ -40,7 +40,7 @@ func (m *dbMediaFile) PostScan() error {
 	m.RGAlbumGain = m.RgAlbumGain
 	m.RGAlbumPeak = m.RgAlbumPeak
 	var err error
-	m.MediaFile.Participations, err = unmarshalParticipations(m.ParticipantIDs)
+	m.MediaFile.Participations, err = unmarshalParticipations(m.Participations)
 	if err != nil {
 		return fmt.Errorf("parsing media_file from db: %w", err)
 	}
@@ -60,8 +60,7 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, m.MediaFile.Participations.AllNames()...)
 	args["full_text"] = formatFullText(fullText...)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
-	args["participant_ids"] = marshalParticipantIDs(m.MediaFile.Participations)
-	delete(args, "participations")
+	args["participations"] = marshalParticipations(m.MediaFile.Participations)
 	return nil
 }
 
@@ -69,26 +68,6 @@ type dbMediaFiles []dbMediaFile
 
 func (m dbMediaFiles) toModels() model.MediaFiles {
 	return slice.Map(m, func(mf dbMediaFile) model.MediaFile { return *mf.MediaFile })
-}
-
-func (m dbMediaFiles) getParticipantIDs() []string {
-	ids := make([]string, 0, len(m)*3)
-	for _, mf := range m {
-		ids = append(ids, mf.Participations.AllIDs()...)
-	}
-	return slice.Unique(ids)
-}
-
-func (m dbMediaFiles) setParticipations(participantMap map[string]model.Artist) {
-	for i, mf := range m {
-		for role, artists := range mf.MediaFile.Participations {
-			for j, artist := range artists {
-				if artist, ok := participantMap[artist.ID]; ok {
-					m[i].MediaFile.Participations[role][j].Artist = artist
-				}
-			}
-		}
-	}
 }
 
 func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFileRepository {
@@ -157,10 +136,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
-	if err != nil {
-		return nil, err
-	}
-	err = r.loadParticipations(&res)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +297,6 @@ func (r *mediaFileRepository) Search(q string, offset int, size int) (model.Medi
 	if err != nil {
 		return nil, err
 	}
-	err = r.loadParticipations(&results)
 	return results.toModels(), err
 }
 

@@ -39,26 +39,6 @@ func (t dbPlaylistTracks) toModels() model.PlaylistTracks {
 	})
 }
 
-func (t dbPlaylistTracks) getParticipantIDs() []string {
-	ids := make([]string, 0, len(t)*3)
-	for _, mf := range t {
-		ids = append(ids, mf.dbMediaFile.Participations.AllIDs()...)
-	}
-	return slice.Unique(ids)
-}
-
-func (t dbPlaylistTracks) setParticipations(participantMap map[string]model.Artist) {
-	for i, mf := range t {
-		for role, artists := range mf.dbMediaFile.Participations {
-			for j, artist := range artists {
-				if artist, ok := participantMap[artist.ID]; ok {
-					t[i].dbMediaFile.Participations[role][j].Artist = artist
-				}
-			}
-		}
-	}
-}
-
 func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool) model.PlaylistTrackRepository {
 	p := &playlistTrackRepository{}
 	p.playlistRepo = r
