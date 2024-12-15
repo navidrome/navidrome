@@ -61,12 +61,12 @@ var _ = Describe("Operators", func() {
 		Entry("tag endsWith", EndsWith{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock"),
 
 		// Artist roles tests
-		Entry("role is [string]", Is{"artist": "u2"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name = ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "u2"),
-		Entry("role isNot [string]", IsNot{"artist": "u2"}, "not exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name = ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "u2"),
-		Entry("role contains [string]", Contains{"artist": "u2"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "%u2%"),
-		Entry("role not contains [string]", NotContains{"artist": "u2"}, "not exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'artist')", "%u2%"),
-		Entry("role startsWith [string]", StartsWith{"composer": "John"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'composer')", "John%"),
-		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'composer')", "%Lennon"),
+		Entry("role is [string]", Is{"artist": "u2"}, "exists (select 1 from json_tree(participations, '$.artist') where key='name' and value = ?)", "u2"),
+		Entry("role isNot [string]", IsNot{"artist": "u2"}, "not exists (select 1 from json_tree(participations, '$.artist') where key='name' and value = ?)", "u2"),
+		Entry("role contains [string]", Contains{"artist": "u2"}, "exists (select 1 from json_tree(participations, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		Entry("role not contains [string]", NotContains{"artist": "u2"}, "not exists (select 1 from json_tree(participations, '$.artist') where key='name' and value LIKE ?)", "%u2%"),
+		Entry("role startsWith [string]", StartsWith{"composer": "John"}, "exists (select 1 from json_tree(participations, '$.composer') where key='name' and value LIKE ?)", "John%"),
+		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists (select 1 from json_tree(participations, '$.composer') where key='name' and value LIKE ?)", "%Lennon"),
 	)
 
 	Describe("Custom Tags", func() {
@@ -92,7 +92,7 @@ var _ = Describe("Operators", func() {
 			op := EndsWith{"producer": "Eno"}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(sql).To(gomega.Equal("exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id where name LIKE ? and mfa.media_file_id = media_file.id and mfa.role = 'producer')"))
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(participations, '$.producer') where key='name' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%Eno"))
 		})
 		It("skips unknown roles", func() {

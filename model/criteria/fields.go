@@ -50,8 +50,7 @@ var fieldMap = map[string]*mappedField{
 
 	// special fields
 	"random": {field: "", order: "random()"}, // pseudo-field for random sorting
-	"value":  {field: "value"},               // pseudo-field for tag values
-	"name":   {field: "name"},                // pseudo-field for artists values
+	"value":  {field: "value"},               // pseudo-field for tag and roles values
 }
 
 type mappedField struct {
@@ -75,8 +74,9 @@ func mapFields(expr map[string]any) map[string]any {
 }
 
 // mapExpr maps a normal field expression to a specific type of expression (tag or role).
-// This is required because tags and roles are handled differently than other fields.
-func mapExpr(expr squirrel.Sqlizer, negate bool, keyName string, exprFunc func(string, squirrel.Sqlizer, bool) squirrel.Sqlizer) squirrel.Sqlizer {
+// This is required because tags are handled differently than other fields,
+// as they are stored as a JSON column in the database.
+func mapExpr(expr squirrel.Sqlizer, negate bool, exprFunc func(string, squirrel.Sqlizer, bool) squirrel.Sqlizer) squirrel.Sqlizer {
 	rv := reflect.ValueOf(expr)
 	if rv.Kind() != reflect.Map || rv.Type().Key().Kind() != reflect.String {
 		log.Fatal(fmt.Sprintf("expr is not a map-based operator: %T", expr))
@@ -88,7 +88,7 @@ func mapExpr(expr squirrel.Sqlizer, negate bool, keyName string, exprFunc func(s
 	for _, key := range rv.MapKeys() {
 		// Save the key to build the expression, and use the provided keyName as the key
 		k = key.String()
-		m[keyName] = rv.MapIndex(key).Interface()
+		m["value"] = rv.MapIndex(key).Interface()
 		break // only one key is expected (and supported)
 	}
 
@@ -105,16 +105,14 @@ func mapExpr(expr squirrel.Sqlizer, negate bool, keyName string, exprFunc func(s
 	return exprFunc(k, expr, negate)
 }
 
-// mapTagExpr maps a normal field expression to a tag expression. This is required because tags are
-// handled differently than other fields, as they are stored in a JSON column in the database.
+// mapTagExpr maps a normal field expression to a tag expression.
 func mapTagExpr(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
-	return mapExpr(expr, negate, "value", tagExpr)
+	return mapExpr(expr, negate, tagExpr)
 }
 
-// mapRoleExpr maps a normal field expression to a artist role expression. This is required because artists are
-// handled differently than other fields, as they require a join with the `media_file_artists` table.
+// mapRoleExpr maps a normal field expression to an artist role expression.
 func mapRoleExpr(expr squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
-	return mapExpr(expr, negate, "name", roleExpr)
+	return mapExpr(expr, negate, roleExpr)
 }
 
 func isTagExpr(expr map[string]any) bool {
@@ -146,13 +144,13 @@ type tagCond struct {
 }
 
 func (e tagCond) ToSql() (string, []any, error) {
-	sql, args, err := e.cond.ToSql()
-	sql = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
-		e.tag, sql)
+	cond, args, err := e.cond.ToSql()
+	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
+		e.tag, cond)
 	if e.not {
-		sql = "not " + sql
+		cond = "not " + cond
 	}
-	return sql, args, err
+	return cond, args, err
 }
 
 func roleExpr(role string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
@@ -166,14 +164,13 @@ type roleCond struct {
 }
 
 func (e roleCond) ToSql() (string, []any, error) {
-	sql, args, err := e.cond.ToSql()
-	sql = fmt.Sprintf(`exists(select 1 from artist a join media_file_artists mfa on a.id = mfa.artist_id `+
-		`where %s and mfa.media_file_id = media_file.id and mfa.role = '%s')`,
-		sql, e.role)
+	cond, args, err := e.cond.ToSql()
+	cond = fmt.Sprintf(`exists (select 1 from json_tree(participations, '$.%s') where key='name' and %s)`,
+		e.role, cond)
 	if e.not {
-		sql = "not " + sql
+		cond = "not " + cond
 	}
-	return sql, args, err
+	return cond, args, err
 }
 
 // AddRoles adds roles to the field map. This is used to add all artist roles to the field map, so they can be used in

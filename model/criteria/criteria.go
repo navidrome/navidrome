@@ -35,6 +35,8 @@ func (c Criteria) OrderBy() string {
 			mapped = f.order
 		} else if f.isTag {
 			mapped = "COALESCE(json_extract(media_file.tags, '$." + sortField + "[0].value'), '')"
+		} else if f.isRole {
+			mapped = "COALESCE(json_extract(media_file.participations, '$." + sortField + "[0].name'), '')"
 		} else {
 			mapped = f.field
 		}
