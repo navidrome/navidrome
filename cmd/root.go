@@ -80,7 +80,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
-	g.Go(startInsightCollector(ctx))
+	g.Go(startInsightsCollector(ctx))
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -200,8 +200,8 @@ func startScheduler(ctx context.Context) func() error {
 	}
 }
 
-// startInsightCollector starts the Navidrome Insight Collector, if configured.
-func startInsightCollector(ctx context.Context) func() error {
+// startInsightsCollector starts the Navidrome Insight Collector, if configured.
+func startInsightsCollector(ctx context.Context) func() error {
 	return func() error {
 		if !conf.Server.EnableInsightsCollector {
 			return nil
