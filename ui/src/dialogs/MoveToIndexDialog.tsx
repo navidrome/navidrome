@@ -10,28 +10,57 @@ import {
   DialogTitle,
   List,
   ListItem,
+  ModalProps,
   TextField,
 } from '@material-ui/core'
-import { closeMoveToIndexDialog } from '../actions'
+import { closeMoveToIndexDialog } from '../actions/dialogs'
 import debounce from 'lodash.debounce'
+import type { Identifier, Record } from 'ra-core'
+
+interface PreviewItem {
+  elem: Record
+  newIndex: number
+  willMove: boolean
+}
+
+interface PreviewListItemProps {
+  loading?: boolean
+  valid?: boolean
+  moveDirection: 'no' | 'up' | 'down'
+  item: PreviewItem | null
+}
+
+const PreviewListItem: React.FC<PreviewListItemProps> = ({
+  loading,
+  item,
+  valid,
+  moveDirection,
+}) => {
+  if (loading) {
+    return <ListItem disableGutters>Loading...</ListItem>
+  }
+
+  if (!valid || !item) {
+    return <ListItem disableGutters>---</ListItem>
+  }
+
+  return (
+    <ListItem disableGutters>
+      {item.newIndex}
+      {item.willMove ? (moveDirection == 'up' ? '↑' : '↓') : null} -{' '}
+      {item.elem.title} - {item.elem.album} - {item.elem.artist}
+    </ListItem>
+  )
+}
 
 /**
  * Calculate the optimal number of page items and the page number
     to include targetIndex and its surrounding items.
- * @param {number} listLength - Total number of items in the list
- * @param {number} targetIndex - Index of the target item
- * @returns {{itemsPerPage: number, pageNumber: number}}
  */
-function CalculatePagination(listLength, targetIndex) {
-  /**
-   * Calculate the optimal number of page items and the page number
-   * to include targetIndex and its surrounding items.
-   *
-   * @param {number} listLength - Total number of items in the list
-   * @param {number} targetIndex - Index of the target item (0-based)
-   * @return {object} { itemsPerPage, pageNumber }
-   */
-
+function CalculatePagination(
+  listLength: number,
+  targetIndex: number,
+): { itemsPerPage: number; pageNumber: number } {
   // Ensure valid inputs
   if (targetIndex < 0 || targetIndex >= listLength) {
     throw new Error('targetIndex must be within the range of listLength.')
@@ -56,69 +85,27 @@ function CalculatePagination(listLength, targetIndex) {
   return { itemsPerPage, pageNumber }
 }
 
-/**
- * @component
- * @param {{
- *  loading?: boolean,
- *  valid?: boolean,
- *  moveDirection: "no" | "up" | "down"
- *  item: {
- *    elem: import('ra-core').Record,
- *    newIndex: number,
- *    willMove: boolean
- *  } | null
- * }}
- */
-const PreviewItem = ({ loading, item, valid, moveDirection }) => {
-  if (loading) {
-    return <ListItem disableGutters>Loading...</ListItem>
-  }
-
-  if (!valid || !item) {
-    return <ListItem disableGutters>---</ListItem>
-  }
-
-  return (
-    <ListItem disableGutters>
-      {item.newIndex}
-      {item.willMove ? (moveDirection == 'up' ? '↑' : '↓') : null} -{' '}
-      {item.elem.title} - {item.elem.album} - {item.elem.artist}
-    </ListItem>
-  )
+interface MoveToIndexDialogProps {
+  title?: string
+  onSuccess: (from: Identifier, to: string) => void
+  max: number
+  playlistId: string
 }
 
-/**
- * @component
- * @param {{
- *  title?: string,
- *  onSuccess: (from: string, to: string) => void,
- *  max: number,
- *  playlistId: string
- * }}
- */
-const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
-  /**
-   * @type {{open: boolean, record: import('ra-core').Record}}
-   */
+const MoveToIndexDialog: React.FC<MoveToIndexDialogProps> = ({
+  title,
+  onSuccess,
+  max,
+  playlistId,
+}) => {
   const { open, record } = useSelector((state) => state.moveToIndexDialog)
   const dispatch = useDispatch()
   const translate = useTranslate()
-  /**
-   * @type {ReturnType<typeof useState<string>>}
-   */
   const [to, setTo] = useState('1')
-  /**
-   * @type {ReturnType<typeof useState<string>>}
-   */
-  const [validationError, setValidationError] = useState()
-
-  /**
-   * @type {ReturnType<typeof useState<import('ra-core').Record[]>>}
-   */
-  const [targetArea, setTargetArea] = useState([])
+  const [validationError, setValidationError] = useState<string | undefined>()
+  const [targetArea, setTargetArea] = useState<Record[]>([])
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
-
   const dataProvider = useDataProvider()
 
   React.useEffect(() => {
@@ -146,10 +133,10 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     setValidationError(undefined)
   }, [to, max, translate])
 
-  const callback = React.useRef(
+  const getPreviewData = React.useRef(
     debounce(
-      (from, to, max, playlistId) => {
-        if (!to || parseInt(to) > max || parseInt < 1) {
+      (to: string, max: number, playlistId: string) => {
+        if (!to || parseInt(to) > max) {
           setLoading(false)
           return
         }
@@ -198,21 +185,28 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     }
 
     setLoading(true)
-    callback.current?.(record.id, to, max, playlistId)
+    getPreviewData.current?.(to, max, playlistId)
   }, [validationError, to, dataProvider, playlistId, max, open, notify, record])
 
-  const handleClose = (e) => {
+  const handleClose = (
+    event: // Ne easier way to extract the correct type here
+    | Parameters<Exclude<ModalProps['onClose'], undefined>>[0]
+      | React.MouseEvent<HTMLButtonElement>,
+  ) => {
     dispatch(closeMoveToIndexDialog())
-    e.stopPropagation()
+    if ('stopPropagation' in event) event.stopPropagation()
   }
 
-  const handleConfirm = (e) => {
+  const handleConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!record) return
+
     onSuccess(record.id, to)
     dispatch(closeMoveToIndexDialog())
     e.stopPropagation()
   }
 
-  const fromNum = parseInt(record?.id ?? -1)
+  const fromNum =
+    typeof record?.id === 'string' ? parseInt(record.id) : (record?.id ?? -1)
   const toNum = parseInt(to)
   const moveDirection =
     toNum == fromNum ? 'no' : toNum > fromNum ? 'up' : 'down'
@@ -226,7 +220,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
    * @param {number} index relative to the target index
    */
   const getItem = useCallback(
-    (index) => {
+    (index): PreviewItem | null => {
       if (!record) return null
 
       const goingBackwards = index < 0
@@ -236,7 +230,7 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
           : 0
         : -(moveDirection == 'down' ? 1 : 0)
 
-      let resultItem
+      let resultItem: Record | undefined
       for (
         let i = targetIndex + index + initialIndexModifier;
         goingBackwards ? i >= 0 : i < targetArea.length;
@@ -254,7 +248,10 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
 
       if (!resultItem) return null
 
-      const elemID = parseInt(resultItem.id)
+      const elemID =
+        typeof resultItem.id === 'string'
+          ? parseInt(resultItem.id)
+          : resultItem.id
       const willMove = elemID >= moveRange[0] && elemID <= moveRange[1]
       let newIndex = elemID
       if (willMove) {
@@ -270,11 +267,11 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
     [record, moveRange, moveDirection, targetArea, targetIndex],
   )
 
-  const itemsToDisplay = useMemo(() => {
+  const itemsToDisplay = useMemo((): (PreviewItem | null)[] => {
     return [
       getItem(-2),
       getItem(-1),
-      { newIndex: to, willMove: false, elem: record },
+      record ? { newIndex: parseInt(to), willMove: false, elem: record } : null,
       getItem(1),
       getItem(2),
     ]
@@ -301,8 +298,8 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
         <List>
           {itemsToDisplay.map((item, i) => {
             return (
-              <PreviewItem
-                key={item?.id ?? `index_${i}`}
+              <PreviewListItem
+                key={item?.elem.id ?? `index_${i}`}
                 loading={loading}
                 item={item}
                 moveDirection={moveDirection}
@@ -322,13 +319,6 @@ const MoveToIndexDialog = ({ title, onSuccess, max, playlistId }) => {
       </DialogActions>
     </Dialog>
   )
-}
-
-MoveToIndexDialog.propTypes = {
-  title: PropTypes.string,
-  onSuccess: PropTypes.func.isRequired,
-  max: PropTypes.number.isRequired,
-  playlistId: PropTypes.string.isRequired,
 }
 
 export default MoveToIndexDialog
