@@ -40,7 +40,7 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
 	mf.LibraryID = 1
 	mf.LibraryPath = "music" // Default folder
-	mf.Participations = model.Participations{}
+	mf.Participants = model.Participants{}
 	return mf
 }
 
@@ -48,7 +48,7 @@ func al(al model.Album) model.Album {
 	al.LibraryID = 1
 	al.Discs = model.Discs{}
 	al.Tags = model.Tags{}
-	al.Participations = model.Participations{}
+	al.Participants = model.Participants{}
 	return al
 }
 

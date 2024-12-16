@@ -9,12 +9,12 @@ import (
 var _ = Describe("fixAlbumArtist", func() {
 	var album Album
 	BeforeEach(func() {
-		album = Album{Participations: Participations{}}
+		album = Album{Participants: Participants{}}
 	})
 	Context("Non-Compilations", func() {
 		BeforeEach(func() {
 			album.Compilation = false
-			album.Participations.Add(RoleArtist, Artist{ID: "ar-123", Name: "Sparks"})
+			album.Participants.Add(RoleArtist, Artist{ID: "ar-123", Name: "Sparks"})
 		})
 		It("returns the track artist if no album artist is specified", func() {
 			fixAlbumArtist(&album)
@@ -38,15 +38,15 @@ var _ = Describe("fixAlbumArtist", func() {
 		})
 
 		It("returns VariousArtists if there's more than one album artist", func() {
-			album.Participations.Add(RoleAlbumArtist, Artist{ID: "ar-123", Name: "Sparks"})
-			album.Participations.Add(RoleAlbumArtist, Artist{ID: "ar-345", Name: "The Beach"})
+			album.Participants.Add(RoleAlbumArtist, Artist{ID: "ar-123", Name: "Sparks"})
+			album.Participants.Add(RoleAlbumArtist, Artist{ID: "ar-345", Name: "The Beach"})
 			fixAlbumArtist(&album)
 			Expect(album.AlbumArtistID).To(Equal(consts.VariousArtistsID))
 			Expect(album.AlbumArtist).To(Equal(consts.VariousArtists))
 		})
 
 		It("returns the sole album artist if they are the same", func() {
-			album.Participations.Add(RoleAlbumArtist, Artist{ID: "ar-000", Name: "The Beatles"})
+			album.Participants.Add(RoleAlbumArtist, Artist{ID: "ar-000", Name: "The Beatles"})
 			fixAlbumArtist(&album)
 			Expect(album.AlbumArtistID).To(Equal("ar-000"))
 			Expect(album.AlbumArtist).To(Equal("The Beatles"))

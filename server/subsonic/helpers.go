@@ -201,12 +201,12 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Moods = mf.Tags.Values(model.TagMood)
 	// BFR What if Child is an Album and not a Song?
 	child.DisplayArtist = mf.Artist
-	child.Artists = artistRefs(mf.Participations[model.RoleArtist])
+	child.Artists = artistRefs(mf.Participants[model.RoleArtist])
 	child.DisplayAlbumArtist = mf.AlbumArtist
-	child.AlbumArtists = artistRefs(mf.Participations[model.RoleAlbumArtist])
+	child.AlbumArtists = artistRefs(mf.Participants[model.RoleAlbumArtist])
 	var contributors []responses.Contributor
-	child.DisplayComposer = mf.Participations[model.RoleComposer].Join(" • ")
-	for role, participants := range mf.Participations {
+	child.DisplayComposer = mf.Participants[model.RoleComposer].Join(" • ")
+	for role, participants := range mf.Participants {
 		if role == model.RoleArtist || role == model.RoleAlbumArtist {
 			continue
 		}
@@ -225,7 +225,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	return child
 }
 
-func artistRefs(participants model.Participants) []responses.ArtistID3Ref {
+func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
 	return slice.Map(participants, func(p model.Participant) responses.ArtistID3Ref {
 		return responses.ArtistID3Ref{
 			Id:   p.ID,
@@ -281,7 +281,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
 	child.DisplayAlbumArtist = al.AlbumArtist
-	child.AlbumArtists = artistRefs(al.Participations[model.RoleAlbumArtist])
+	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	return child
 }
 
@@ -352,7 +352,7 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	})
 	dir.Moods = album.Tags.Values(model.TagMood)
 	dir.DisplayArtist = album.AlbumArtist
-	dir.Artists = artistRefs(album.Participations[model.RoleAlbumArtist])
+	dir.Artists = artistRefs(album.Participants[model.RoleAlbumArtist])
 
 	return dir
 }

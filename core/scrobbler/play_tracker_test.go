@@ -48,7 +48,7 @@ var _ = Describe("PlayTracker", func() {
 			TrackNumber:    1,
 			Duration:       180,
 			MbzRecordingID: "mbz-123",
-			Participations: map[model.Role]model.Participants{
+			Participants: map[model.Role]model.ParticipantList{
 				model.RoleArtist: []model.Participant{_p("ar-1", "Artist 1"), _p("ar-2", "Artist 2")},
 			},
 		}

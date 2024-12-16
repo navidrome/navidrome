@@ -24,7 +24,7 @@ type mediaFileRepository struct {
 
 type dbMediaFile struct {
 	*model.MediaFile `structs:",flatten"`
-	Participations   string `structs:"-" json:"-"`
+	Participants     string `structs:"-" json:"-"`
 	Tags             string `structs:"-" json:"-"`
 	// These are necessary to map the correct names (rg_*) to the correct fields (RG*)
 	// without using `db` struct tags in the model.MediaFile struct
@@ -40,7 +40,7 @@ func (m *dbMediaFile) PostScan() error {
 	m.RGAlbumGain = m.RgAlbumGain
 	m.RGAlbumPeak = m.RgAlbumPeak
 	var err error
-	m.MediaFile.Participations, err = unmarshalParticipations(m.Participations)
+	m.MediaFile.Participants, err = unmarshalParticipants(m.Participants)
 	if err != nil {
 		return fmt.Errorf("parsing media_file from db: %w", err)
 	}
@@ -57,10 +57,10 @@ func (m *dbMediaFile) PostScan() error {
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText := []string{m.Title, m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
-	fullText = append(fullText, m.MediaFile.Participations.AllNames()...)
+	fullText = append(fullText, m.MediaFile.Participants.AllNames()...)
 	args["full_text"] = formatFullText(fullText...)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
-	args["participations"] = marshalParticipations(m.MediaFile.Participations)
+	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 		return err
 	}
 	m.ID = id
-	return r.updateParticipations(m.ID, m.Participations)
+	return r.updateParticipants(m.ID, m.Participants)
 }
 
 func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) SelectBuilder {
@@ -258,7 +258,7 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
 // that were added/updated after the last scan started. The result is ordered by PID.
-// It does not need to load participations, as they are not used by the scanner.
+// It does not need to load participants, as they are not used by the scanner.
 func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	subQ := r.newSelect().Columns("pid").
 		Where(And{

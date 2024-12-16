@@ -82,8 +82,8 @@ type MediaFile struct {
 	RGTrackGain          float64 `structs:"rg_track_gain" json:"rgTrackGain"`
 	RGTrackPeak          float64 `structs:"rg_track_peak" json:"rgTrackPeak"`
 
-	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags from the original file
-	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this track
+	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags from the original file
+	Participants Participants `structs:"participants" json:"participants" hash:"ignore"` // All artists that participated in this track
 
 	Missing   bool      `structs:"missing" json:"missing" hash:"ignore"`      // If the file is not found in the library's FS
 	BirthTime time.Time `structs:"birth_time" json:"birthTime" hash:"ignore"` // Time of file creation (ctime)
@@ -132,7 +132,7 @@ func (mf MediaFile) Hash() string {
 	sum := md5.New()
 	sum.Write([]byte(fmt.Sprintf("%d", hash)))
 	sum.Write(mf.Tags.Hash())
-	sum.Write(mf.Participations.Hash())
+	sum.Write(mf.Participants.Hash())
 	return fmt.Sprintf("%x", sum.Sum(nil))
 }
 
@@ -159,7 +159,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	if len(mfs) == 0 {
 		return Album{}
 	}
-	a := Album{SongCount: len(mfs), Tags: make(Tags), Participations: make(Participations), Discs: Discs{1: ""}}
+	a := Album{SongCount: len(mfs), Tags: make(Tags), Participants: make(Participants), Discs: Discs{1: ""}}
 
 	// Sorting the mediafiles ensure the results will be consistent
 	slices.SortFunc(mfs, func(a, b MediaFile) int { return cmp.Compare(a.Path, b.Path) })
@@ -210,7 +210,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
 		tags = append(tags, m.Tags.FlattenAll()...)
-		a.Participations.Merge(m.Participations)
+		a.Participants.Merge(m.Participants)
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.BirthTime)
@@ -278,13 +278,13 @@ func older(t1, t2 time.Time) time.Time {
 func fixAlbumArtist(a *Album) {
 	if !a.Compilation {
 		if a.AlbumArtistID == "" {
-			artist := a.Participations.First(RoleArtist)
+			artist := a.Participants.First(RoleArtist)
 			a.AlbumArtistID = artist.ID
 			a.AlbumArtist = artist.Name
 		}
 		return
 	}
-	albumArtistIds := slice.Map(a.Participations[RoleAlbumArtist], func(p Participant) string { return p.ID })
+	albumArtistIds := slice.Map(a.Participants[RoleAlbumArtist], func(p Participant) string { return p.ID })
 	if len(slice.Unique(albumArtistIds)) > 1 {
 		a.AlbumArtist = consts.VariousArtists
 		a.AlbumArtistID = consts.VariousArtistsID

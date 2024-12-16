@@ -205,7 +205,7 @@ alter table media_file
 alter table media_file
 	add column tags jsonb default '{}' not null;
 alter table media_file
-	add column participations jsonb default '{}' not null;
+	add column participants jsonb default '{}' not null;
 alter table media_file 
     add column bit_depth integer default 0 not null;
 `),
@@ -247,7 +247,7 @@ alter table album
 alter table album
 	add column tags jsonb default '{}' not null;
 alter table album
-	add column participations jsonb default '{}' not null;
+	add column participants jsonb default '{}' not null;
 alter table album
 	drop column paths;
 alter table album

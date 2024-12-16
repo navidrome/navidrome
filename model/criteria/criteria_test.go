@@ -68,7 +68,7 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(
 				`(media_file.title LIKE ? AND media_file.title NOT LIKE ? ` +
-					`AND (not exists (select 1 from json_tree(participations, '$.artist') where key='name' and value = ?) ` +
+					`AND (not exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) ` +
 					`OR media_file.album = ?) AND (media_file.comment LIKE ? AND (media_file.year >= ? AND media_file.year <= ?) ` +
 					`AND not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)))`))
 			gomega.Expect(args).To(gomega.HaveExactElements("%love%", "%hate%", "u2", "best of", "this%", 1980, 1990, "Rock"))
@@ -104,7 +104,7 @@ var _ = Describe("Criteria", func() {
 				goObj.Sort = "artist"
 				gomega.Expect(goObj.OrderBy()).To(
 					gomega.Equal(
-						"COALESCE(json_extract(media_file.participations, '$.artist[0].name'), '') asc",
+						"COALESCE(json_extract(media_file.participants, '$.artist[0].name'), '') asc",
 					),
 				)
 			})
@@ -131,8 +131,8 @@ var _ = Describe("Criteria", func() {
 			sql, args, err := goObj.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			gomega.Expect(sql).To(gomega.Equal(
-				`(exists (select 1 from json_tree(participations, '$.artist') where key='name' and value = ?) AND ` +
-					`exists (select 1 from json_tree(participations, '$.composer') where key='name' and value LIKE ?))`,
+				`(exists (select 1 from json_tree(participants, '$.artist') where key='name' and value = ?) AND ` +
+					`exists (select 1 from json_tree(participants, '$.composer') where key='name' and value LIKE ?))`,
 			))
 			gomega.Expect(args).To(gomega.HaveExactElements("The Beatles", "%Lennon%"))
 		})

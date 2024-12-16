@@ -11,17 +11,17 @@ export const ArtistLinkField = withWidth()(({
   source,
 }) => {
   const artistLink = useGetHandleArtistClick(width)
-  const artists = record['participations']
-    ? record['participations'][source]
+  const artists = record['participants']
+    ? record['participants'][source]
     : [{ name: record[source], id: record[source + 'Id'] }]
 
   // When showing artists for a track, add any remixers to the list of artists
   if (
     source === 'artist' &&
-    record['participations'] &&
-    record['participations']['remixer']
+    record['participants'] &&
+    record['participants']['remixer']
   ) {
-    record['participations']['remixer'].forEach((remixer) => {
+    record['participants']['remixer'].forEach((remixer) => {
       artists.push(remixer)
     })
   }

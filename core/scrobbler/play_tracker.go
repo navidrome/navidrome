@@ -158,7 +158,7 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 		if err != nil {
 			return err
 		}
-		for _, artist := range track.Participations[model.RoleArtist] {
+		for _, artist := range track.Participants[model.RoleArtist] {
 			err = tx.Artist(ctx).IncPlayCount(artist.ID, timestamp)
 		}
 		return err

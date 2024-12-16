@@ -232,34 +232,34 @@ var _ = Describe("MediaFiles", func() {
 					})
 				})
 			})
-			Context("Participations", func() {
+			Context("Participants", func() {
 				var album Album
 				BeforeEach(func() {
 					mfs = MediaFiles{
 						{
 							Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist1",
 							DiscSubtitle: "DiscSubtitle1", SortAlbumName: "SortAlbumName1",
-							Participations: Participations{
-								RoleAlbumArtist: Participants{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
-								RoleArtist:      Participants{_p("A1", "Artist1", "SortArtistName1")},
+							Participants: Participants{
+								RoleAlbumArtist: ParticipantList{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
+								RoleArtist:      ParticipantList{_p("A1", "Artist1", "SortArtistName1")},
 							},
 						},
 						{
 							Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist2",
 							DiscSubtitle: "DiscSubtitle2", SortAlbumName: "SortAlbumName1",
-							Participations: Participations{
-								RoleAlbumArtist: Participants{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
-								RoleArtist:      Participants{_p("A2", "Artist2", "SortArtistName2")},
-								RoleComposer:    Participants{_p("C1", "Composer1")},
+							Participants: Participants{
+								RoleAlbumArtist: ParticipantList{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
+								RoleArtist:      ParticipantList{_p("A2", "Artist2", "SortArtistName2")},
+								RoleComposer:    ParticipantList{_p("C1", "Composer1")},
 							},
 						},
 					}
 					album = mfs.ToAlbum()
 				})
-				It("gets all participations from all tracks", func() {
-					Expect(album.Participations).To(HaveKeyWithValue(RoleAlbumArtist, Participants{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")}))
-					Expect(album.Participations).To(HaveKeyWithValue(RoleComposer, Participants{_p("C1", "Composer1")}))
-					Expect(album.Participations).To(HaveKeyWithValue(RoleArtist, Participants{
+				It("gets all participants from all tracks", func() {
+					Expect(album.Participants).To(HaveKeyWithValue(RoleAlbumArtist, ParticipantList{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")}))
+					Expect(album.Participants).To(HaveKeyWithValue(RoleComposer, ParticipantList{_p("C1", "Composer1")}))
+					Expect(album.Participants).To(HaveKeyWithValue(RoleArtist, ParticipantList{
 						_p("A1", "Artist1", "SortArtistName1"), _p("A2", "Artist2", "SortArtistName2"),
 					}))
 				})

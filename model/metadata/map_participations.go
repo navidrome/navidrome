@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"cmp"
+	"sync"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -29,12 +30,12 @@ var roleMappings = map[model.Role]roleTags{
 	model.RoleDJMixer:   {name: model.TagDJMixer},
 }
 
-func (md Metadata) mapParticipations() model.Participations {
-	participations := make(model.Participations)
+func (md Metadata) mapParticipations() model.Participants {
+	participants := make(model.Participants)
 
 	// Parse track artists
 	artists := md.parseArtists(model.TagTrackArtist, model.TagTrackArtists, model.TagTrackArtistSort, model.TagTrackArtistsSort, model.TagMusicBrainzArtistID)
-	participations.Add(model.RoleArtist, artists...)
+	participants.Add(model.RoleArtist, artists...)
 
 	// Parse album artists
 	albumArtists := md.parseArtists(model.TagAlbumArtist, model.TagAlbumArtists, model.TagAlbumArtistSort, model.TagAlbumArtistsSort, model.TagMusicBrainzAlbumArtistID)
@@ -45,7 +46,7 @@ func (md Metadata) mapParticipations() model.Participations {
 			albumArtists = artists
 		}
 	}
-	participations.Add(model.RoleAlbumArtist, albumArtists...)
+	participants.Add(model.RoleAlbumArtist, albumArtists...)
 
 	// Parse all other roles
 	for role, info := range roleMappings {
@@ -54,18 +55,17 @@ func (md Metadata) mapParticipations() model.Participations {
 			sorts := md.Strings(info.sort)
 			mbids := md.Strings(info.mbid)
 			artists := md.buildArtists(names, sorts, mbids)
-			participations.Add(role, artists...)
+			participants.Add(role, artists...)
 		}
 	}
 
 	// Parse performers
-	caser := cases.Title(language.Und)
 	for _, performer := range md.Pairs(model.TagPerformer) {
 		name := performer.Value()
 		id := md.artistID(name)
 		orderName := str.SanitizeFieldForSortingNoArticle(name)
-		subRole := caser.String(performer.Key())
-		participations.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
+		subRole := titleCaser().String(performer.Key())
+		participants.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
 			ID:              id,
 			Name:            name,
 			OrderArtistName: orderName,
@@ -74,7 +74,7 @@ func (md Metadata) mapParticipations() model.Participations {
 
 	// Create a map to store the MbzArtistID for each artist name
 	artistMbzIDMap := make(map[string]string)
-	for _, artist := range append(participations[model.RoleArtist], participations[model.RoleAlbumArtist]...) {
+	for _, artist := range append(participants[model.RoleArtist], participants[model.RoleAlbumArtist]...) {
 		if artist.MbzArtistID != "" {
 			artistMbzIDMap[artist.Name] = artist.MbzArtistID
 		}
@@ -83,19 +83,23 @@ func (md Metadata) mapParticipations() model.Participations {
 	if len(artistMbzIDMap) > 0 {
 		// For each artist in each role, try to figure out their MBID from the
 		// track/album artists (the only roles that have MBID in MusicBrainz)
-		for role, participants := range participations {
-			for i, participant := range participants {
+		for role, list := range participants {
+			for i, participant := range list {
 				if participant.MbzArtistID == "" {
 					if mbzID, found := artistMbzIDMap[participant.Name]; found {
-						participations[role][i].MbzArtistID = mbzID
+						participants[role][i].MbzArtistID = mbzID
 					}
 				}
 			}
 		}
 	}
 
-	return participations
+	return participants
 }
+
+var titleCaser = sync.OnceValue(func() cases.Caser {
+	return cases.Title(language.Und)
+})
 
 func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
 	nameValues := md.getArtistValues(name, names)
@@ -171,7 +175,7 @@ func (md Metadata) mapDisplayRole(mf model.MediaFile, role model.Role, tagNames 
 	artistNames := md.getTags(tagNames...)
 	values := []string{
 		"",
-		mf.Participations.First(role).Name,
+		mf.Participants.First(role).Name,
 		consts.UnknownArtist,
 	}
 	if len(artistNames) == 1 {

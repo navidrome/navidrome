@@ -155,7 +155,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums).ToNot(BeEmpty())
-				Expect(albums[0].Participations.First(model.RoleProducer).Name).To(BeEmpty())
+				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(BeEmpty())
 				Expect(albums[0].SongCount).To(Equal(3))
 
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
@@ -163,7 +163,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(albums[0].Participations.First(model.RoleProducer).Name).To(Equal("George Martin"))
+				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(Equal("George Martin"))
 				Expect(albums[0].SongCount).To(Equal(3))
 			})
 		})

@@ -271,9 +271,9 @@ func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albu
 }
 
 func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Artists {
-	participants := make(model.Participations, len(entry.tracks)*3) // preallocate ~3 artists per track
+	participants := make(model.Participants, len(entry.tracks)*3) // preallocate ~3 artists per track
 	for _, track := range entry.tracks {
-		participants.Merge(track.Participations)
+		participants.Merge(track.Participants)
 	}
 	return participants.AllArtists()
 }

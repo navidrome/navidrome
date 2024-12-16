@@ -165,7 +165,7 @@ type roleCond struct {
 
 func (e roleCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
-	cond = fmt.Sprintf(`exists (select 1 from json_tree(participations, '$.%s') where key='name' and %s)`,
+	cond = fmt.Sprintf(`exists (select 1 from json_tree(participants, '$.%s') where key='name' and %s)`,
 		e.role, cond)
 	if e.not {
 		cond = "not " + cond

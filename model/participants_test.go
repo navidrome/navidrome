@@ -8,93 +8,93 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Participations", func() {
+var _ = Describe("Participants", func() {
 	Describe("JSON Marshalling", func() {
 		When("we have a valid Albums object", func() {
-			var participations Participations
+			var participants Participants
 			BeforeEach(func() {
-				participations = Participations{
+				participants = Participants{
 					RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 					RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 				}
 			})
 
 			It("marshals correctly", func() {
-				data, err := json.Marshal(participations)
+				data, err := json.Marshal(participants)
 				Expect(err).To(BeNil())
 
-				var afterConversion Participations
+				var afterConversion Participants
 				err = json.Unmarshal(data, &afterConversion)
 				Expect(err).To(BeNil())
-				Expect(afterConversion).To(Equal(participations))
+				Expect(afterConversion).To(Equal(participants))
 			})
 
 			It("returns unmarshal error when the role is invalid", func() {
-				err := json.Unmarshal([]byte(`{"unknown": []}`), &participations)
+				err := json.Unmarshal([]byte(`{"unknown": []}`), &participants)
 				Expect(err).To(MatchError("invalid role: unknown"))
 			})
 		})
 	})
 
 	Describe("First", func() {
-		var participations Participations
+		var participants Participants
 		BeforeEach(func() {
-			participations = Participations{
+			participants = Participants{
 				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 			}
 		})
 		It("returns the first artist of the role", func() {
-			Expect(participations.First(RoleArtist)).To(Equal(Artist{ID: "1", Name: "Artist1"}))
+			Expect(participants.First(RoleArtist)).To(Equal(Artist{ID: "1", Name: "Artist1"}))
 		})
 		It("returns an empty artist when the role is not present", func() {
-			Expect(participations.First(RoleComposer)).To(Equal(Artist{}))
+			Expect(participants.First(RoleComposer)).To(Equal(Artist{}))
 		})
 	})
 
 	Describe("Add", func() {
-		var participations Participations
+		var participants Participants
 		BeforeEach(func() {
-			participations = Participations{
+			participants = Participants{
 				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}
 		})
 		It("adds the artist to the role", func() {
-			participations.Add(RoleArtist, Artist{ID: "5", Name: "Artist5"})
-			Expect(participations).To(Equal(Participations{
+			participants.Add(RoleArtist, Artist{ID: "5", Name: "Artist5"})
+			Expect(participants).To(Equal(Participants{
 				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2"), _p("5", "Artist5")},
 			}))
 		})
 		It("creates a new role if it doesn't exist", func() {
-			participations.Add(RoleComposer, Artist{ID: "5", Name: "Artist5"})
-			Expect(participations).To(Equal(Participations{
+			participants.Add(RoleComposer, Artist{ID: "5", Name: "Artist5"})
+			Expect(participants).To(Equal(Participants{
 				RoleArtist:   []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 				RoleComposer: []Participant{_p("5", "Artist5")},
 			}))
 		})
 		It("should not add duplicate artists", func() {
-			participations.Add(RoleArtist, Artist{ID: "1", Name: "Artist1"})
-			Expect(participations).To(Equal(Participations{
+			participants.Add(RoleArtist, Artist{ID: "1", Name: "Artist1"})
+			Expect(participants).To(Equal(Participants{
 				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}))
 		})
 	})
 
 	Describe("Merge", func() {
-		var participations1, participations2 Participations
+		var participations1, participations2 Participants
 		BeforeEach(func() {
-			participations1 = Participations{
+			participations1 = Participants{
 				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Duplicated Artist")},
 				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 			}
-			participations2 = Participations{
+			participations2 = Participants{
 				RoleArtist:      []Participant{_p("5", "Artist3"), _p("6", "Artist4"), _p("2", "Duplicated Artist")},
 				RoleAlbumArtist: []Participant{_p("7", "AlbumArtist3"), _p("8", "AlbumArtist4")},
 			}
 		})
 		It("merges correctly, skipping duplicated artists", func() {
 			participations1.Merge(participations2)
-			Expect(participations1).To(Equal(Participations{
+			Expect(participations1).To(Equal(Participants{
 				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Duplicated Artist"), _p("5", "Artist3"), _p("6", "Artist4")},
 				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2"), _p("7", "AlbumArtist3"), _p("8", "AlbumArtist4")},
 			}))
@@ -102,22 +102,22 @@ var _ = Describe("Participations", func() {
 	})
 
 	Describe("Hash", func() {
-		It("should return the same hash for the same participations", func() {
-			p1 := Participations{
+		It("should return the same hash for the same participants", func() {
+			p1 := Participants{
 				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 			}
-			p2 := Participations{
+			p2 := Participants{
 				RoleArtist:      []Participant{_p("2", "Artist2"), _p("1", "Artist1")},
 				RoleAlbumArtist: []Participant{_p("4", "AlbumArtist2"), _p("3", "AlbumArtist1")},
 			}
 			Expect(p1.Hash()).To(Equal(p2.Hash()))
 		})
-		It("should return different hashes for different participations", func() {
-			p1 := Participations{
+		It("should return different hashes for different participants", func() {
+			p1 := Participants{
 				RoleArtist: []Participant{_p("1", "Artist1")},
 			}
-			p2 := Participations{
+			p2 := Participants{
 				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}
 			Expect(p1.Hash()).ToNot(Equal(p2.Hash()))
@@ -125,9 +125,9 @@ var _ = Describe("Participations", func() {
 	})
 
 	Describe("All", func() {
-		var participations Participations
+		var participants Participants
 		BeforeEach(func() {
-			participations = Participations{
+			participants = Participants{
 				RoleArtist:      []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 				RoleAlbumArtist: []Participant{_p("3", "AlbumArtist1"), _p("4", "AlbumArtist2")},
 				RoleProducer:    []Participant{_p("5", "Producer", "SortProducerName")},
@@ -136,8 +136,8 @@ var _ = Describe("Participations", func() {
 		})
 
 		Describe("All", func() {
-			It("returns all artists found in the Participations", func() {
-				artists := participations.AllArtists()
+			It("returns all artists found in the Participants", func() {
+				artists := participants.AllArtists()
 				Expect(artists).To(ConsistOf(
 					Artist{ID: "1", Name: "Artist1"},
 					Artist{ID: "2", Name: "Artist2"},
@@ -149,15 +149,15 @@ var _ = Describe("Participations", func() {
 		})
 
 		Describe("AllIDs", func() {
-			It("returns all artist IDs found in the Participations", func() {
-				ids := participations.AllIDs()
+			It("returns all artist IDs found in the Participants", func() {
+				ids := participants.AllIDs()
 				Expect(ids).To(ConsistOf("1", "2", "3", "4", "5"))
 			})
 		})
 
 		Describe("AllNames", func() {
-			It("returns all artist names found in the Participations", func() {
-				names := participations.AllNames()
+			It("returns all artist names found in the Participants", func() {
+				names := participants.AllNames()
 				Expect(names).To(ConsistOf("Artist1", "Artist2", "AlbumArtist1", "AlbumArtist2",
 					"Producer", "SortProducerName"))
 			})
@@ -165,25 +165,25 @@ var _ = Describe("Participations", func() {
 	})
 })
 
-var _ = Describe("Participants", func() {
+var _ = Describe("ParticipantList", func() {
 	Describe("Join", func() {
 		It("joins the participants with the given separator", func() {
-			participants := Participants{
+			list := ParticipantList{
 				_p("1", "Artist 1"),
 				_p("3", "Artist 2"),
 			}
-			participants[0].SubRole = "SubRole"
-			Expect(participants.Join(", ")).To(Equal("Artist 1 (SubRole), Artist 2"))
+			list[0].SubRole = "SubRole"
+			Expect(list.Join(", ")).To(Equal("Artist 1 (SubRole), Artist 2"))
 		})
 
 		It("returns the sole participant if there is only one", func() {
-			participants := Participants{_p("1", "Artist 1")}
-			Expect(participants.Join(", ")).To(Equal("Artist 1"))
+			list := ParticipantList{_p("1", "Artist 1")}
+			Expect(list.Join(", ")).To(Equal("Artist 1"))
 		})
 
 		It("returns empty string if there are no participants", func() {
-			var participants Participants
-			Expect(participants.Join(", ")).To(Equal(""))
+			var list ParticipantList
+			Expect(list.Join(", ")).To(Equal(""))
 		})
 	})
 })

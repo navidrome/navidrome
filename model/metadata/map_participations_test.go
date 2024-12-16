@@ -14,7 +14,7 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-var _ = Describe("Participations", func() {
+var _ = Describe("Participants", func() {
 	var (
 		props               metadata.Info
 		md                  metadata.Metadata
@@ -49,11 +49,11 @@ var _ = Describe("Participations", func() {
 				Expect(mf.Artist).To(Equal("[Unknown Artist]"))
 			})
 
-			It("should add an Unknown Artist to participations", func() {
-				participations := mf.Participations
-				Expect(participations).To(HaveLen(2)) // ARTIST and ALBUMARTIST
+			It("should add an Unknown Artist to participants", func() {
+				participants := mf.Participants
+				Expect(participants).To(HaveLen(2)) // ARTIST and ALBUMARTIST
 
-				artist := participations[model.RoleArtist][0]
+				artist := participants[model.RoleArtist][0]
 				Expect(artist.ID).ToNot(BeEmpty())
 				Expect(artist.Name).To(Equal("[Unknown Artist]"))
 				Expect(artist.OrderArtistName).To(Equal("[unknown artist]"))
@@ -75,15 +75,15 @@ var _ = Describe("Participations", func() {
 				Expect(mf.Artist).To(Equal("Artist Name"))
 			})
 
-			It("should populate the participations", func() {
-				participations := mf.Participations
-				Expect(participations).To(HaveLen(2)) // ARTIST and ALBUMARTIST
-				Expect(participations).To(SatisfyAll(
+			It("should populate the participants", func() {
+				participants := mf.Participants
+				Expect(participants).To(HaveLen(2)) // ARTIST and ALBUMARTIST
+				Expect(participants).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleArtist, HaveLen(1)),
 				))
 				Expect(mf.Artist).To(Equal("Artist Name"))
 
-				artist := participations[model.RoleArtist][0]
+				artist := participants[model.RoleArtist][0]
 
 				Expect(artist.ID).ToNot(BeEmpty())
 				Expect(artist.Name).To(Equal("Artist Name"))
@@ -107,13 +107,13 @@ var _ = Describe("Participations", func() {
 				Expect(mf.SortArtistName).To(Equal("Name, Artist"))
 				Expect(mf.OrderArtistName).To(Equal("artist name"))
 
-				participations := mf.Participations
-				Expect(participations).To(SatisfyAll(
+				participants := mf.Participants
+				Expect(participants).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
 				))
 
-				By("adding the first artist to the participations")
-				artist0 := participations[model.RoleArtist][0]
+				By("adding the first artist to the participants")
+				artist0 := participants[model.RoleArtist][0]
 				Expect(artist0.ID).ToNot(BeEmpty())
 				Expect(artist0.Name).To(Equal("Artist Name"))
 				Expect(artist0.OrderArtistName).To(Equal("artist name"))
@@ -122,8 +122,8 @@ var _ = Describe("Participations", func() {
 				By("assuming the MBID is for the first artist")
 				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
-				By("adding the second artist to the participations")
-				artist1 := participations[model.RoleArtist][1]
+				By("adding the second artist to the participants")
+				artist1 := participants[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Someone Else"))
 				Expect(artist1.OrderArtistName).To(Equal("someone else"))
@@ -135,9 +135,9 @@ var _ = Describe("Participations", func() {
 					"ARTIST": {"John Doe /  / Jane Doe"},
 				})
 
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(model.RoleArtist, HaveLen(2)))
-				artists := participations[model.RoleArtist]
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RoleArtist, HaveLen(2)))
+				artists := participants[model.RoleArtist]
 				Expect(artists[0].Name).To(Equal("John Doe"))
 				Expect(artists[1].Name).To(Equal("Jane Doe"))
 			})
@@ -156,21 +156,21 @@ var _ = Describe("Participations", func() {
 				Expect(mf.Artist).To(Equal("First Artist"))
 			})
 
-			It("should populate the participations with all artists", func() {
-				participations := mf.Participations
-				Expect(participations).To(HaveLen(2)) // ARTIST and ALBUMARTIST
-				Expect(participations).To(SatisfyAll(
+			It("should populate the participants with all artists", func() {
+				participants := mf.Participants
+				Expect(participants).To(HaveLen(2)) // ARTIST and ALBUMARTIST
+				Expect(participants).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
 				))
 
-				artist0 := participations[model.RoleArtist][0]
+				artist0 := participants[model.RoleArtist][0]
 				Expect(artist0.ID).ToNot(BeEmpty())
 				Expect(artist0.Name).To(Equal("First Artist"))
 				Expect(artist0.OrderArtistName).To(Equal("first artist"))
 				Expect(artist0.SortArtistName).To(Equal("Name, First Artist"))
 				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
-				artist1 := participations[model.RoleArtist][1]
+				artist1 := participants[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Second Artist"))
 				Expect(artist1.OrderArtistName).To(Equal("second artist"))
@@ -195,19 +195,19 @@ var _ = Describe("Participations", func() {
 			})
 
 			It("should prioritize multi-valued tags over single-valued tags", func() {
-				participations := mf.Participations
-				Expect(participations).To(HaveLen(2)) // ARTIST and ALBUMARTIST
-				Expect(participations).To(SatisfyAll(
+				participants := mf.Participants
+				Expect(participants).To(HaveLen(2)) // ARTIST and ALBUMARTIST
+				Expect(participants).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
 				))
-				artist0 := participations[model.RoleArtist][0]
+				artist0 := participants[model.RoleArtist][0]
 				Expect(artist0.ID).ToNot(BeEmpty())
 				Expect(artist0.Name).To(Equal("First Artist"))
 				Expect(artist0.OrderArtistName).To(Equal("first artist"))
 				Expect(artist0.SortArtistName).To(Equal("Name, First Artist"))
 				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
-				artist1 := participations[model.RoleArtist][1]
+				artist1 := participants[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Second Artist"))
 				Expect(artist1.OrderArtistName).To(Equal("second artist"))
@@ -237,19 +237,19 @@ var _ = Describe("Participations", func() {
 			})
 
 			It("should prioritize ARTISTS tags", func() {
-				participations := mf.Participations
-				Expect(participations).To(HaveLen(2)) // ARTIST and ALBUMARTIST
-				Expect(participations).To(SatisfyAll(
+				participants := mf.Participants
+				Expect(participants).To(HaveLen(2)) // ARTIST and ALBUMARTIST
+				Expect(participants).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
 				))
-				artist0 := participations[model.RoleArtist][0]
+				artist0 := participants[model.RoleArtist][0]
 				Expect(artist0.ID).ToNot(BeEmpty())
 				Expect(artist0.Name).To(Equal("First Artist 2"))
 				Expect(artist0.OrderArtistName).To(Equal("first artist 2"))
 				Expect(artist0.SortArtistName).To(Equal("2, First Artist Name"))
 				Expect(artist0.MbzArtistID).To(Equal(mbid1))
 
-				artist1 := participations[model.RoleArtist][1]
+				artist1 := participants[model.RoleArtist][1]
 				Expect(artist1.ID).ToNot(BeEmpty())
 				Expect(artist1.Name).To(Equal("Second Artist 2"))
 				Expect(artist1.OrderArtistName).To(Equal("second artist 2"))
@@ -274,14 +274,14 @@ var _ = Describe("Participations", func() {
 					Expect(mf.AlbumArtist).To(Equal("Artist Name"))
 				})
 
-				It("should add the ARTIST to participations as ALBUMARTIST", func() {
-					participations := mf.Participations
-					Expect(participations).To(HaveLen(2))
-					Expect(participations).To(SatisfyAll(
+				It("should add the ARTIST to participants as ALBUMARTIST", func() {
+					participants := mf.Participants
+					Expect(participants).To(HaveLen(2))
+					Expect(participants).To(SatisfyAll(
 						HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)),
 					))
 
-					albumArtist := participations[model.RoleAlbumArtist][0]
+					albumArtist := participants[model.RoleAlbumArtist][0]
 					Expect(albumArtist.ID).ToNot(BeEmpty())
 					Expect(albumArtist.Name).To(Equal("Artist Name"))
 					Expect(albumArtist.OrderArtistName).To(Equal("artist name"))
@@ -301,14 +301,14 @@ var _ = Describe("Participations", func() {
 					Expect(mf.AlbumArtist).To(Equal("Various Artists"))
 				})
 
-				It("should add the Various Artists to participations as ALBUMARTIST", func() {
-					participations := mf.Participations
-					Expect(participations).To(HaveLen(2))
-					Expect(participations).To(SatisfyAll(
+				It("should add the Various Artists to participants as ALBUMARTIST", func() {
+					participants := mf.Participants
+					Expect(participants).To(HaveLen(2))
+					Expect(participants).To(SatisfyAll(
 						HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)),
 					))
 
-					albumArtist := participations[model.RoleAlbumArtist][0]
+					albumArtist := participants[model.RoleAlbumArtist][0]
 					Expect(albumArtist.ID).ToNot(BeEmpty())
 					Expect(albumArtist.Name).To(Equal("Various Artists"))
 					Expect(albumArtist.OrderArtistName).To(Equal("various artists"))
@@ -334,14 +334,14 @@ var _ = Describe("Participations", func() {
 				Expect(mf.AlbumArtist).To(Equal("Album Artist Name"))
 			})
 
-			It("should populate the participations with the ALBUMARTIST", func() {
-				participations := mf.Participations
-				Expect(participations).To(HaveLen(2))
-				Expect(participations).To(SatisfyAll(
+			It("should populate the participants with the ALBUMARTIST", func() {
+				participants := mf.Participants
+				Expect(participants).To(HaveLen(2))
+				Expect(participants).To(SatisfyAll(
 					HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(1)),
 				))
 
-				albumArtist := participations[model.RoleAlbumArtist][0]
+				albumArtist := participants[model.RoleAlbumArtist][0]
 				Expect(albumArtist.ID).ToNot(BeEmpty())
 				Expect(albumArtist.Name).To(Equal("Album Artist Name"))
 				Expect(albumArtist.OrderArtistName).To(Equal("album artist name"))
@@ -359,10 +359,10 @@ var _ = Describe("Participations", func() {
 					sortTag: {"Name, First", "Name, Second"},
 				})
 
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(role, HaveLen(2)))
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(role, HaveLen(2)))
 
-				p := participations[role]
+				p := participants[role]
 				Expect(p[0].ID).ToNot(BeEmpty())
 				Expect(p[0].Name).To(Equal("First Name"))
 				Expect(p[0].SortArtistName).To(Equal("Name, First"))
@@ -396,10 +396,10 @@ var _ = Describe("Participations", func() {
 					"PERFORMER:HAMMOND ORGAN": {"Tim Carmon"},
 				})
 
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(model.RolePerformer, HaveLen(4)))
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RolePerformer, HaveLen(4)))
 
-				p := participations[model.RolePerformer]
+				p := participants[model.RolePerformer]
 				Expect(p).To(ContainElements(
 					matchPerformer("Eric Clapton", "eric clapton", "Guitar"),
 					matchPerformer("B.B. King", "b.b. king", "Guitar"),
@@ -417,10 +417,10 @@ var _ = Describe("Participations", func() {
 					tag: {"John Doe", "Jane Doe"},
 				})
 
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(role, HaveLen(2)))
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(role, HaveLen(2)))
 
-				p := participations[role]
+				p := participants[role]
 				Expect(p[0].ID).ToNot(BeEmpty())
 				Expect(p[0].Name).To(Equal("John Doe"))
 				Expect(p[0].OrderArtistName).To(Equal("john doe"))
@@ -447,9 +447,9 @@ var _ = Describe("Participations", func() {
 					"COMPOSER": {"John Doe/Someone Else/The Album Artist"},
 				})
 
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
-				composers := participations[model.RoleComposer]
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
+				composers := participants[model.RoleComposer]
 				Expect(composers[0].Name).To(Equal("John Doe"))
 				Expect(composers[1].Name).To(Equal("Someone Else"))
 				Expect(composers[2].Name).To(Equal("The Album Artist"))
@@ -459,9 +459,9 @@ var _ = Describe("Participations", func() {
 					"COMPOSER": {"John Doe/"},
 				})
 
-				participations := mf.Participations
-				Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(1)))
-				composers := participations[model.RoleComposer]
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RoleComposer, HaveLen(1)))
+				composers := participants[model.RoleComposer]
 				Expect(composers[0].Name).To(Equal("John Doe"))
 			})
 		})
@@ -478,15 +478,15 @@ var _ = Describe("Participations", func() {
 				"PRODUCER":                  {"Jane Doe", "John Doe"},
 			})
 
-			participations := mf.Participations
-			Expect(participations).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
-			composers := participations[model.RoleComposer]
+			participants := mf.Participants
+			Expect(participants).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
+			composers := participants[model.RoleComposer]
 			Expect(composers[0].MbzArtistID).To(Equal(mbid1))
 			Expect(composers[1].MbzArtistID).To(BeEmpty())
 			Expect(composers[2].MbzArtistID).To(Equal(mbid3))
 
-			Expect(participations).To(HaveKeyWithValue(model.RoleProducer, HaveLen(2)))
-			producers := participations[model.RoleProducer]
+			Expect(participants).To(HaveKeyWithValue(model.RoleProducer, HaveLen(2)))
+			producers := participants[model.RoleProducer]
 			Expect(producers[0].MbzArtistID).To(Equal(mbid2))
 			Expect(producers[1].MbzArtistID).To(Equal(mbid1))
 		})

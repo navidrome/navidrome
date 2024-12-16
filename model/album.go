@@ -51,10 +51,10 @@ type Album struct {
 	ExternalUrl           string     `structs:"external_url" json:"externalUrl,omitempty" hash:"ignore"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt" hash:"ignore"`
 
-	Genre          string         `structs:"genre" json:"genre" hash:"ignore"`                   // Easy access to the most common genre
-	Genres         Genres         `structs:"-" json:"genres" hash:"ignore"`                      // Easy access to all genres for this album
-	Tags           Tags           `structs:"tags" json:"tags,omitempty" hash:"ignore"`           // All imported tags for this album
-	Participations Participations `structs:"participations" json:"participations" hash:"ignore"` // All artists that participated in this album
+	Genre        string       `structs:"genre" json:"genre" hash:"ignore"`               // Easy access to the most common genre
+	Genres       Genres       `structs:"-" json:"genres" hash:"ignore"`                  // Easy access to all genres for this album
+	Tags         Tags         `structs:"tags" json:"tags,omitempty" hash:"ignore"`       // All imported tags for this album
+	Participants Participants `structs:"participants" json:"participants" hash:"ignore"` // All artists that participated in this album
 
 	Missing    bool      `structs:"missing" json:"missing"`                      // If all file of the album ar missing
 	ImportedAt time.Time `structs:"imported_at" json:"importedAt" hash:"ignore"` // When this album was imported/updated

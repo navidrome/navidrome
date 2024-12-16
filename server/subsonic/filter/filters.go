@@ -53,7 +53,7 @@ func AlbumsByGenre(genre string) Options {
 func AlbumsByArtistID(artistId string) Options {
 	var filters squirrel.Sqlizer
 	if conf.Server.SubsonicArtistParticipations {
-		filters = squirrel.Like{"participations": fmt.Sprintf(`%%"%s"%%`, artistId)}
+		filters = squirrel.Like{"participants": fmt.Sprintf(`%%"%s"%%`, artistId)}
 	} else {
 		filters = squirrel.Eq{"album_artist_id": artistId}
 	}

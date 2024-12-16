@@ -68,7 +68,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.BirthTime = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
 
-	mf.Participations = md.mapParticipations()
+	mf.Participants = md.mapParticipations()
 	mf.Artist = md.mapDisplayArtist(mf)
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
@@ -78,14 +78,14 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 
 	// BFR These IDs will go away once the UI handle multiple participants.
 	// BFR For Legacy Subsonic compatibility, we will set them in the API handlers
-	mf.ArtistID = mf.Participations.First(model.RoleArtist).ID
-	mf.AlbumArtistID = mf.Participations.First(model.RoleAlbumArtist).ID
+	mf.ArtistID = mf.Participants.First(model.RoleArtist).ID
+	mf.AlbumArtistID = mf.Participants.First(model.RoleAlbumArtist).ID
 
 	// BFR What to do with sort/order artist names?
-	mf.OrderArtistName = mf.Participations.First(model.RoleArtist).OrderArtistName
-	mf.OrderAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).OrderArtistName
-	mf.SortArtistName = mf.Participations.First(model.RoleArtist).SortArtistName
-	mf.SortAlbumArtistName = mf.Participations.First(model.RoleAlbumArtist).SortArtistName
+	mf.OrderArtistName = mf.Participants.First(model.RoleArtist).OrderArtistName
+	mf.OrderAlbumArtistName = mf.Participants.First(model.RoleAlbumArtist).OrderArtistName
+	mf.SortArtistName = mf.Participants.First(model.RoleArtist).SortArtistName
+	mf.SortAlbumArtistName = mf.Participants.First(model.RoleAlbumArtist).SortArtistName
 
 	// Don't store tags that are first-class fields in the MediaFile struct
 	// BFR Automatically remove tags that were accessed in the steps above

@@ -77,9 +77,9 @@ type Participant struct {
 	SubRole string `json:"subRole,omitempty"`
 }
 
-type Participants []Participant
+type ParticipantList []Participant
 
-func (p Participants) Join(sep string) string {
+func (p ParticipantList) Join(sep string) string {
 	return strings.Join(slice.Map(p, func(p Participant) string {
 		if p.SubRole != "" {
 			return p.Name + " (" + p.SubRole + ")"
@@ -88,10 +88,10 @@ func (p Participants) Join(sep string) string {
 	}), sep)
 }
 
-type Participations map[Role]Participants
+type Participants map[Role]ParticipantList
 
 // Add adds the artists to the role, ignoring duplicates.
-func (p Participations) Add(role Role, artists ...Artist) {
+func (p Participants) Add(role Role, artists ...Artist) {
 	participants := slice.Map(artists, func(artist Artist) Participant {
 		return Participant{Artist: artist}
 	})
@@ -99,14 +99,14 @@ func (p Participations) Add(role Role, artists ...Artist) {
 }
 
 // AddWithSubRole adds the artists to the role, ignoring duplicates.
-func (p Participations) AddWithSubRole(role Role, subRole string, artists ...Artist) {
+func (p Participants) AddWithSubRole(role Role, subRole string, artists ...Artist) {
 	participants := slice.Map(artists, func(artist Artist) Participant {
 		return Participant{Artist: artist, SubRole: subRole}
 	})
 	p.add(role, participants...)
 }
 
-func (p Participations) Sort() {
+func (p Participants) Sort() {
 	for _, artists := range p {
 		slices.SortFunc(artists, func(a1, a2 Participant) int {
 			return cmp.Compare(a1.Name, a2.Name)
@@ -115,21 +115,21 @@ func (p Participations) Sort() {
 }
 
 // First returns the first artist for the role, or an empty artist if the role is not present.
-func (p Participations) First(role Role) Artist {
+func (p Participants) First(role Role) Artist {
 	if artists, ok := p[role]; ok && len(artists) > 0 {
 		return artists[0].Artist
 	}
 	return Artist{}
 }
 
-// Merge merges the other Participations into this one.
-func (p Participations) Merge(other Participations) {
+// Merge merges the other Participants into this one.
+func (p Participants) Merge(other Participants) {
 	for role, artists := range other {
 		p.add(role, artists...)
 	}
 }
 
-func (p Participations) add(role Role, participants ...Participant) {
+func (p Participants) add(role Role, participants ...Participant) {
 	seen := make(map[string]struct{}, len(p[role]))
 	for _, artist := range p[role] {
 		seen[artist.ID] = struct{}{}
@@ -142,8 +142,8 @@ func (p Participations) add(role Role, participants ...Participant) {
 	}
 }
 
-// AllArtists returns all artists found in the Participations.
-func (p Participations) AllArtists() []Artist {
+// AllArtists returns all artists found in the Participants.
+func (p Participants) AllArtists() []Artist {
 	// First count the total number of artists to avoid reallocations.
 	totalArtists := 0
 	for _, roleArtists := range p {
@@ -161,14 +161,14 @@ func (p Participations) AllArtists() []Artist {
 	})
 }
 
-// AllIDs returns all artist IDs found in the Participations.
-func (p Participations) AllIDs() []string {
+// AllIDs returns all artist IDs found in the Participants.
+func (p Participants) AllIDs() []string {
 	artists := p.AllArtists()
 	return slice.Map(artists, func(a Artist) string { return a.ID })
 }
 
-// AllNames returns all artist names found in the Participations, including SortArtistNames.
-func (p Participations) AllNames() []string {
+// AllNames returns all artist names found in the Participants, including SortArtistNames.
+func (p Participants) AllNames() []string {
 	names := make([]string, 0, len(p))
 	for _, artists := range p {
 		for _, artist := range artists {
@@ -181,7 +181,7 @@ func (p Participations) AllNames() []string {
 	return slice.Unique(names)
 }
 
-func (p Participations) Hash() []byte {
+func (p Participants) Hash() []byte {
 	flattened := make([]string, 0, len(p))
 	for role, artists := range p {
 		ids := slice.Map(artists, func(participant Participant) string { return participant.SubRole + ":" + participant.ID })

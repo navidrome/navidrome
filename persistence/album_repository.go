@@ -22,11 +22,11 @@ type albumRepository struct {
 }
 
 type dbAlbum struct {
-	*model.Album   `structs:",flatten"`
-	Discs          string `structs:"-" json:"discs"`
-	Participations string `structs:"-" json:"-"`
-	Tags           string `structs:"-" json:"-"`
-	FolderIDs      string `structs:"-" json:"-"`
+	*model.Album `structs:",flatten"`
+	Discs        string `structs:"-" json:"discs"`
+	Participants string `structs:"-" json:"-"`
+	Tags         string `structs:"-" json:"-"`
+	FolderIDs    string `structs:"-" json:"-"`
 }
 
 func (a *dbAlbum) PostScan() error {
@@ -36,7 +36,7 @@ func (a *dbAlbum) PostScan() error {
 			return fmt.Errorf("parsing album discs from db: %w", err)
 		}
 	}
-	a.Album.Participations, err = unmarshalParticipations(a.Participations)
+	a.Album.Participants, err = unmarshalParticipants(a.Participants)
 	if err != nil {
 		return fmt.Errorf("parsing album from db: %w", err)
 	}
@@ -59,12 +59,12 @@ func (a *dbAlbum) PostScan() error {
 
 func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText := []string{a.Name, a.SortAlbumName, a.AlbumArtist}
-	fullText = append(fullText, a.Album.Participations.AllNames()...)
+	fullText = append(fullText, a.Album.Participants.AllNames()...)
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
 	args["full_text"] = formatFullText(fullText...)
 
 	args["tags"] = marshalTags(a.Album.Tags)
-	args["participations"] = marshalParticipations(a.Album.Participations)
+	args["participants"] = marshalParticipants(a.Album.Participants)
 
 	folderIDs, err := json.Marshal(a.Album.FolderIDs)
 	if err != nil {
@@ -144,11 +144,11 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 // BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		exists("json_tree(participations, '$.albumArtist')", Eq{"value": value}),
-		exists("json_tree(participations, '$.artist')", Eq{"value": value}),
+		exists("json_tree(Participants, '$.albumArtist')", Eq{"value": value}),
+		exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
 	}
 	// For any role:
-	//return Like{"participations": fmt.Sprintf(`%%"%s"%%`, value)}
+	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
@@ -169,8 +169,8 @@ func (r *albumRepository) Put(al *model.Album) error {
 		return err
 	}
 	al.ID = id
-	if len(al.Participations) > 0 {
-		err = r.updateParticipations(al.ID, al.Participations)
+	if len(al.Participants) > 0 {
+		err = r.updateParticipants(al.ID, al.Participants)
 		if err != nil {
 			return err
 		}
@@ -243,7 +243,7 @@ func (r *albumRepository) TouchByMissingFolder() (int64, error) {
 
 // GetTouchedAlbums returns all albums that were touched by the scanner for a given library, in the
 // current library scan run.
-// It does not need to load participations, as they are not used by the scanner.
+// It does not need to load participants, as they are not used by the scanner.
 func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	query := r.selectAlbum().
 		Join("library on library.id = album.library_id").
