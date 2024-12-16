@@ -40,7 +40,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.0
 	github.com/pelletier/go-toml/v2 v2.2.3
-	github.com/pocketbase/dbx v1.10.1
+	github.com/pocketbase/dbx v1.11.0
 	github.com/pressly/goose/v3 v3.23.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/robfig/cron/v3 v3.0.1
