@@ -83,11 +83,9 @@ func (c insightsCollector) sendInsights(ctx context.Context) {
 		log.Trace(ctx, "Could not send Insights data", err)
 		return
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		log.Trace(ctx, "Could not send Insights data", "status", resp.Status)
-		return
-	}
+	log.Info(ctx, "Sent Insights data (for details see http://navidrome.org/docs/getting-started/insights", "data",
+		string(data), "server", consts.InsightsEndpoint, "status", resp.Status)
+	resp.Body.Close()
 }
 
 func buildInfo() (map[string]string, string) {
@@ -168,7 +166,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
 	data.Config.ImageCacheSize = conf.Server.ImageCacheSize
 	data.Config.ScanSchedule = conf.Server.ScanSchedule
-	data.Config.SessionTimeout = conf.Server.SessionTimeout
+	data.Config.SessionTimeout = conf.Server.SessionTimeout.String()
 	data.Config.SearchFullString = conf.Server.SearchFullString
 	data.Config.RecentlyAddedByModTime = conf.Server.RecentlyAddedByModTime
 	data.Config.PreferSortTags = conf.Server.PreferSortTags

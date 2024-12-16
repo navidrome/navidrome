@@ -204,6 +204,7 @@ func startScheduler(ctx context.Context) func() error {
 func startInsightsCollector(ctx context.Context) func() error {
 	return func() error {
 		if !conf.Server.EnableInsightsCollector {
+			log.Info(ctx, "Insight Collector is DISABLED")
 			return nil
 		}
 		log.Info(ctx, "Starting Insight Collector")

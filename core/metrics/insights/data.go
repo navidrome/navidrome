@@ -1,7 +1,5 @@
 package insights
 
-import "time"
-
 type Data struct {
 	InsightsID string `json:"id"`
 	Version    string `json:"version"`
@@ -40,31 +38,31 @@ type Data struct {
 		ActiveUsers int64 `json:"activeUsers"`
 	} `json:"library"`
 	Config struct {
-		LogLevel                string        `json:"logLevel,omitempty"`
-		LogFileConfigured       bool          `json:"logFileConfigured,omitempty"`
-		TLSConfigured           bool          `json:"tlsConfigured,omitempty"`
-		ScanSchedule            string        `json:"scanSchedule,omitempty"`
-		TranscodingCacheSize    string        `json:"transcodingCacheSize,omitempty"`
-		ImageCacheSize          string        `json:"imageCacheSize,omitempty"`
-		EnableArtworkPrecache   bool          `json:"enableArtworkPrecache,omitempty"`
-		EnableDownloads         bool          `json:"enableDownloads,omitempty"`
-		EnableSharing           bool          `json:"enableSharing,omitempty"`
-		EnableStarRating        bool          `json:"enableStarRating,omitempty"`
-		EnableLastFM            bool          `json:"enableLastFM,omitempty"`
-		EnableListenBrainz      bool          `json:"enableListenBrainz,omitempty"`
-		EnableMediaFileCoverArt bool          `json:"enableMediaFileCoverArt,omitempty"`
-		EnableSpotify           bool          `json:"enableSpotify,omitempty"`
-		EnableJukebox           bool          `json:"enableJukebox,omitempty"`
-		EnablePrometheus        bool          `json:"enablePrometheus,omitempty"`
-		EnableCoverAnimation    bool          `json:"enableCoverAnimation,omitempty"`
-		SessionTimeout          time.Duration `json:"sessionTimeout,omitempty"`
-		SearchFullString        bool          `json:"searchFullString,omitempty"`
-		RecentlyAddedByModTime  bool          `json:"recentlyAddedByModTime,omitempty"`
-		PreferSortTags          bool          `json:"preferSortTags,omitempty"`
-		BackupSchedule          string        `json:"backupSchedule,omitempty"`
-		BackupCount             int           `json:"backupCount,omitempty"`
-		DevActivityPanel        bool          `json:"devActivityPanel,omitempty"`
-		DefaultBackgroundURLSet bool          `json:"defaultBackgroundURL,omitempty"`
+		LogLevel                string `json:"logLevel,omitempty"`
+		LogFileConfigured       bool   `json:"logFileConfigured,omitempty"`
+		TLSConfigured           bool   `json:"tlsConfigured,omitempty"`
+		ScanSchedule            string `json:"scanSchedule,omitempty"`
+		TranscodingCacheSize    string `json:"transcodingCacheSize,omitempty"`
+		ImageCacheSize          string `json:"imageCacheSize,omitempty"`
+		EnableArtworkPrecache   bool   `json:"enableArtworkPrecache,omitempty"`
+		EnableDownloads         bool   `json:"enableDownloads,omitempty"`
+		EnableSharing           bool   `json:"enableSharing,omitempty"`
+		EnableStarRating        bool   `json:"enableStarRating,omitempty"`
+		EnableLastFM            bool   `json:"enableLastFM,omitempty"`
+		EnableListenBrainz      bool   `json:"enableListenBrainz,omitempty"`
+		EnableMediaFileCoverArt bool   `json:"enableMediaFileCoverArt,omitempty"`
+		EnableSpotify           bool   `json:"enableSpotify,omitempty"`
+		EnableJukebox           bool   `json:"enableJukebox,omitempty"`
+		EnablePrometheus        bool   `json:"enablePrometheus,omitempty"`
+		EnableCoverAnimation    bool   `json:"enableCoverAnimation,omitempty"`
+		SessionTimeout          string `json:"sessionTimeout,omitempty"`
+		SearchFullString        bool   `json:"searchFullString,omitempty"`
+		RecentlyAddedByModTime  bool   `json:"recentlyAddedByModTime,omitempty"`
+		PreferSortTags          bool   `json:"preferSortTags,omitempty"`
+		BackupSchedule          string `json:"backupSchedule,omitempty"`
+		BackupCount             int    `json:"backupCount,omitempty"`
+		DevActivityPanel        bool   `json:"devActivityPanel,omitempty"`
+		DefaultBackgroundURLSet bool   `json:"defaultBackgroundURL,omitempty"`
 	} `json:"config"`
 }
 
