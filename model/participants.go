@@ -13,7 +13,7 @@ import (
 var (
 	RoleInvalid     = Role{"invalid"}
 	RoleArtist      = Role{"artist"}
-	RoleAlbumArtist = Role{"albumArtist"}
+	RoleAlbumArtist = Role{"albumartist"}
 	RoleComposer    = Role{"composer"}
 	RoleConductor   = Role{"conductor"}
 	RoleLyricist    = Role{"lyricist"}
