@@ -280,6 +280,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.SortName = sortName(al.SortAlbumName, al.OrderAlbumName)
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
+	child.Moods = al.Tags.Values(model.TagMood)
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	return child
