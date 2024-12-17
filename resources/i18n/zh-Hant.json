@@ -15,18 +15,18 @@
                 "genre": "類型",
                 "compilation": "合輯",
                 "year": "發行年份",
-                "size": "文件大小",
+                "size": "檔案大小",
                 "updatedAt": "更新於",
                 "bitRate": "位元率",
-                "discSubtitle": "光盤字幕",
+                "discSubtitle": "字幕",
                 "starred": "收藏",
-                "comment": "註釋",
+                "comment": "註解",
                 "rating": "評分",
                 "quality": "品質",
                 "bpm": "BPM",
                 "playDate": "上次播放",
                 "channels": "聲道",
-                "createdAt": ""
+                "createdAt": "創建於"
             },
             "actions": {
                 "addToQueue": "加入至播放佇列",
@@ -35,7 +35,7 @@
                 "shuffleAll": "全部隨機播放",
                 "download": "下載",
                 "playNext": "下一首播放",
-                "info": "獲取信息"
+                "info": "取得資訊"
             }
         },
         "album": {
@@ -51,14 +51,14 @@
                 "compilation": "合輯",
                 "year": "發行年份",
                 "updatedAt": "更新於",
-                "comment": "註釋",
+                "comment": "註解",
                 "rating": "評分",
-                "createdAt": "",
-                "size": "",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "createdAt": "創建於",
+                "size": "檔案大小",
+                "originalDate": "原始日期",
+                "releaseDate": "發行日期",
+                "releases": "發行",
+                "released": "已發行"
             },
             "actions": {
                 "playAll": "立即播放",
@@ -67,8 +67,8 @@
                 "shuffle": "隨機播放",
                 "addToPlaylist": "加入播放清單",
                 "download": "下載",
-                "info": "獲取信息",
-                "share": ""
+                "info": "取得資訊",
+                "share": "分享"
             },
             "lists": {
                 "all": "所有",
@@ -89,15 +89,16 @@
                 "playCount": "播放次數",
                 "rating": "評分",
                 "genre": "類型",
-                "size": ""
+                "size": "檔案大小"
             }
         },
         "user": {
             "name": "使用者 |||| 使用者",
             "fields": {
-                "userName": "使用者",
+                "userName": "使用者名稱",
                 "isAdmin": "是否管理員",
                 "lastLoginAt": "上次登入",
+                "lastAccessAt": "上此訪問",
                 "updatedAt": "更新於",
                 "name": "名稱",
                 "password": "密碼",
@@ -160,8 +161,8 @@
                 "selectPlaylist": "選擇播放清單",
                 "addNewPlaylist": "創建 %{name}",
                 "export": "導出",
-                "makePublic": "設爲公開",
-                "makePrivate": "設爲私有"
+                "makePublic": "設為公開",
+                "makePrivate": "設為私人"
             },
             "message": {
                 "duplicate_song": "加入重複的歌曲",
@@ -169,43 +170,45 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "電台",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "名稱",
+                "streamUrl": "串流網址",
+                "homePageUrl": "首頁網址",
+                "updatedAt": "更新於",
+                "createdAt": "創建於"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "立即播放"
             }
         },
         "share": {
-            "name": "",
+            "name": "分享",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
-            }
+                "username": "使用者名稱",
+                "url": "網址",
+                "description": "描述",
+                "contents": "內容",
+                "expiresAt": "過期時間",
+                "lastVisitedAt": "上次訪問時間",
+                "visitCount": "訪問次數",
+                "format": "格式",
+                "maxBitRate": "最大位元率",
+                "updatedAt": "更新於",
+                "createdAt": "創建於",
+                "downloadable": "可下載"
+            },
+            "notifications": {},
+            "actions": {}
         }
     },
     "ra": {
         "auth": {
             "welcome1": "感謝您安裝 Navidrome！",
             "welcome2": "開始前，請創建一個管理員帳戶",
-            "confirmPassword": "確定密碼",
+            "confirmPassword": "確認密碼",
             "buttonCreateAdmin": "創建管理員",
-            "auth_check_error": "請登入訪問更多內容",
+            "auth_check_error": "請登入以訪問更多內容",
             "user_menu": "配置",
             "username": "使用者名稱",
             "password": "密碼",
@@ -215,18 +218,18 @@
         },
         "validation": {
             "invalidChars": "請使用字母和數字",
-            "passwordDoesNotMatch": "密碼不匹配",
+            "passwordDoesNotMatch": "密碼不相符",
             "required": "必填",
             "minLength": "必須不少於 %{min} 個字元",
             "maxLength": "必須不多於 %{max} 個字元",
             "minValue": "必須不小於 %{min}",
             "maxValue": "必須不大於 %{max}",
             "number": "必須為數字",
-            "email": "必須是有效的電子信箱",
+            "email": "必須是有效的電子郵件",
             "oneOf": "必須為: %{options}其中一項",
-            "regex": "必須符合指定的格式（正则表达式）：%{pattern}",
+            "regex": "必須符合指定的格式（正規表達式）：%{pattern}",
             "unique": "必須是唯一的",
-            "url": ""
+            "url": "網址"
         },
         "action": {
             "add_filter": "加入篩選",
@@ -240,13 +243,13 @@
             "create": "創建",
             "delete": "刪除",
             "edit": "編輯",
-            "export": "導出",
+            "export": "匯出",
             "list": "列表",
-            "refresh": "刷新",
+            "refresh": "重新整理",
             "remove_filter": "清除此條件",
             "remove": "清除",
             "save": "保存",
-            "search": "搜索",
+            "search": "搜尋",
             "show": "顯示",
             "sort": "排序",
             "undo": "撤銷",
@@ -256,9 +259,9 @@
             "close_menu": "關閉選單",
             "unselect": "未選擇",
             "skip": "略過",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "bulk_actions_mobile": "%{smart_count}",
+            "share": "分享",
+            "download": "下載"
         },
         "boolean": {
             "true": "是",
@@ -297,12 +300,12 @@
         },
         "message": {
             "about": "關於",
-            "are_you_sure": "你確定此操作？",
+            "are_you_sure": "確定進行此操作？",
             "bulk_delete_content": "您確定要刪除 %{name}？ |||| 您確定要刪除 %{smart_count} 項？",
             "bulk_delete_title": "刪除 %{name} |||| 刪除 %{smart_count} 項 %{name}",
             "delete_content": "您確定要刪除該項目？",
             "delete_title": "刪除 %{name} #%{id}",
-            "details": "詳情",
+            "details": "詳細資訊",
             "error": "發生一個用戶端錯誤，您的請求無法完成",
             "invalid_form": "提交內容無效，請檢查錯誤",
             "loading": "正在載入頁面，請稍候",
@@ -330,7 +333,7 @@
             "bad_item": "不確定的項",
             "item_doesnt_exist": "項不存在",
             "http_error": "伺服器通訊錯誤",
-            "data_provider_error": "數據來源錯誤，請檢查主控台的詳細訊息",
+            "data_provider_error": "資料來源錯誤，請檢查控制台的詳細資訊",
             "i18n_error": "無法載入所選語言",
             "canceled": "操作已取消",
             "logged_out": "您的會話已結束，請重新登入",
@@ -366,14 +369,14 @@
         "listenBrainzLinkFailure": "ListenBrainz 無法連接：%{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz 已無連接並停用音樂記錄",
         "listenBrainzUnlinkFailure": "ListenBrainz 無法取消連接",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "downloadOriginalFormat": "下載原始格式",
+        "shareOriginalFormat": "分享原始格式",
+        "shareDialogTitle": "分享",
+        "shareBatchDialogTitle": "批次分享",
+        "shareSuccess": "分享成功",
+        "shareFailure": "分享失敗",
+        "downloadDialogTitle": "下載",
+        "shareCopyToClipboard": "複製到剪貼簿"
     },
     "menu": {
         "library": "音樂庫",
@@ -381,7 +384,7 @@
         "version": "版本",
         "theme": "主題",
         "personal": {
-            "name": "個性化",
+            "name": "個人化",
             "options": {
                 "theme": "主題",
                 "language": "語言",
@@ -389,12 +392,12 @@
                 "desktop_notifications": "桌面通知",
                 "lastfmScrobbling": "啟用 Last.fm 音樂記錄",
                 "listenBrainzScrobbling": "啟用 ListenBrainz 音樂記錄",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "重播增益",
+                "preAmp": "前置放大器 (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "無",
+                    "album": "專輯增益",
+                    "track": "曲目增益"
                 }
             }
         },
@@ -419,7 +422,7 @@
         "destroyText": "關閉",
         "downloadText": "下載",
         "removeAudioListsText": "清空播放佇列",
-        "clickToDeleteText": "點擊删除 %{name}",
+        "clickToDeleteText": "點擊刪除 %{name}",
         "emptyLyricText": "無歌詞",
         "playModeText": {
             "order": "順序播放",
@@ -432,15 +435,15 @@
         "links": {
             "homepage": "主頁",
             "source": "原始碼",
-            "featureRequests": "功能要求"
+            "featureRequests": "功能請求"
         }
     },
     "activity": {
-        "title": "運行狀況",
+        "title": "運作狀況",
         "totalScanned": "已完成掃描的目錄",
         "quickScan": "快速掃描",
         "fullScan": "完全掃描",
-        "serverUptime": "伺服器已運行時間",
+        "serverUptime": "伺服器已運作時間",
         "serverDown": "伺服器離線"
     },
     "help": {
@@ -454,7 +457,7 @@
             "vol_up": "提高音量",
             "vol_down": "降低音量",
             "toggle_love": "添加或移除星標",
-            "current_song": ""
+            "current_song": "目前歌曲"
         }
     }
 }
