@@ -20,7 +20,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/singleton"
-	"golang.org/x/time/rate"
 )
 
 type Insights interface {
@@ -29,8 +28,7 @@ type Insights interface {
 }
 
 var (
-	insightsID    string
-	libraryUpdate = rate.Sometimes{Interval: 10 * time.Minute}
+	insightsID string
 )
 
 type insightsCollector struct {
@@ -199,17 +197,19 @@ var staticData = sync.OnceValue(func() insights.Data {
 func (c *insightsCollector) collect(ctx context.Context) []byte {
 	data := staticData()
 	data.Uptime = time.Since(consts.ServerStart).Milliseconds() / 1000
-	libraryUpdate.Do(func() {
-		data.Library.Tracks, _ = c.ds.MediaFile(ctx).CountAll()
-		data.Library.Albums, _ = c.ds.Album(ctx).CountAll()
-		data.Library.Artists, _ = c.ds.Artist(ctx).CountAll()
-		data.Library.Playlists, _ = c.ds.Playlist(ctx).Count()
-		data.Library.Shares, _ = c.ds.Share(ctx).CountAll()
-		data.Library.Radios, _ = c.ds.Radio(ctx).Count()
-		data.Library.ActiveUsers, _ = c.ds.User(ctx).CountAll(model.QueryOptions{
-			Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
-		})
+
+	// Library info
+	data.Library.Tracks, _ = c.ds.MediaFile(ctx).CountAll()
+	data.Library.Albums, _ = c.ds.Album(ctx).CountAll()
+	data.Library.Artists, _ = c.ds.Artist(ctx).CountAll()
+	data.Library.Playlists, _ = c.ds.Playlist(ctx).Count()
+	data.Library.Shares, _ = c.ds.Share(ctx).CountAll()
+	data.Library.Radios, _ = c.ds.Radio(ctx).Count()
+	data.Library.ActiveUsers, _ = c.ds.User(ctx).CountAll(model.QueryOptions{
+		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
+
+	// Memory info
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	data.Mem.Alloc = m.Alloc
