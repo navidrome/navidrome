@@ -42,6 +42,7 @@ type configOptions struct {
 	EnableTranscodingConfig         bool
 	EnableDownloads                 bool
 	EnableExternalServices          bool
+	EnableInsightsCollector         bool
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
 	ImageCacheSize                  string
@@ -295,6 +296,7 @@ func parseIniFileConfiguration() {
 
 func disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
+	Server.EnableInsightsCollector = false
 	Server.LastFM.Enabled = false
 	Server.Spotify.ID = ""
 	Server.ListenBrainz.Enabled = false
@@ -412,6 +414,7 @@ func init() {
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("gatrackingid", "")
+	viper.SetDefault("enableinsightscollector", true)
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
