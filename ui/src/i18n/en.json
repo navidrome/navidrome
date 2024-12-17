@@ -214,7 +214,8 @@
       "password": "Password",
       "sign_in": "Sign in",
       "sign_in_error": "Authentication failed, please retry",
-      "logout": "Logout"
+      "logout": "Logout",
+      "insightsCollectionNote": "Navidrome collects anonymous usage data to\nhelp improve the project. Click [here] to learn\nmore and to opt-out if you want"
     },
     "validation": {
       "invalidChars": "Please only use letters and numbers",
@@ -435,7 +436,8 @@
     "links": {
       "homepage": "Home page",
       "source": "Source code",
-      "featureRequests": "Feature requests"
+      "featureRequests": "Feature requests",
+      "lastInsightsCollection": "Last insights collection"
     }
   },
   "activity": {

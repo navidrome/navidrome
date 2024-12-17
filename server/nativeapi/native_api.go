@@ -3,11 +3,13 @@ package nativeapi
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 )
@@ -17,10 +19,11 @@ type Router struct {
 	ds        model.DataStore
 	share     core.Share
 	playlists core.Playlists
+	insights  metrics.Insights
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists}
+func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights}
 	r.Handler = r.routes()
 	return r
 }
@@ -54,6 +57,16 @@ func (n *Router) routes() http.Handler {
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
+		})
+
+		// Insights status endpoint
+		r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
+			last, success := n.insights.LastRun(r.Context())
+			if conf.Server.EnableInsightsCollector {
+				_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
+			} else {
+				_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
+			}
 		})
 	})
 

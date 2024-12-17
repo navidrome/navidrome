@@ -212,7 +212,8 @@
             "password": "Senha",
             "sign_in": "Entrar",
             "sign_in_error": "Erro na autenticação, tente novamente.",
-            "logout": "Sair"
+            "logout": "Sair",
+            "insightsCollectionNote": "Navidrome coleta dados de uso anônimos para\najudar a melhorar o projeto. Clique [aqui] para\nsaber mais e para desativar se desejar"
         },
         "validation": {
             "invalidChars": "Somente use letras e numeros",
@@ -433,7 +434,8 @@
         "links": {
             "homepage": "Website",
             "source": "Código fonte",
-            "featureRequests": "Solicitar funcionalidade"
+            "featureRequests": "Solicitar funcionalidade",
+            "lastInsightsCollection": "Última coleta de dados"
         }
     },
     "activity": {

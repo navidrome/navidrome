@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -27,14 +28,15 @@ import (
 )
 
 type Server struct {
-	router  chi.Router
-	ds      model.DataStore
-	appRoot string
-	broker  events.Broker
+	router   chi.Router
+	ds       model.DataStore
+	appRoot  string
+	broker   events.Broker
+	insights metrics.Insights
 }
 
-func New(ds model.DataStore, broker events.Broker) *Server {
-	s := &Server{ds: ds, broker: broker}
+func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *Server {
+	s := &Server{ds: ds, broker: broker, insights: insights}
 	initialSetup(ds)
 	auth.Init(s.ds)
 	s.initRoutes()

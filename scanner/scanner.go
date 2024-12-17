@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -209,10 +210,10 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	}
 	if hasError {
 		log.Error(ctx, "Errors while scanning media. Please check the logs")
-		core.WriteAfterScanMetrics(ctx, s.ds, false)
+		metrics.WriteAfterScanMetrics(ctx, s.ds, false)
 		return ErrScanError
 	}
-	core.WriteAfterScanMetrics(ctx, s.ds, true)
+	metrics.WriteAfterScanMetrics(ctx, s.ds, true)
 	return nil
 }
 
