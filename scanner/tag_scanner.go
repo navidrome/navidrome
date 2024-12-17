@@ -294,7 +294,7 @@ func (s *TagScanner) processChangedDir(ctx context.Context, refresher *refresher
 
 	// If track from folder is newer than the one in DB, select for update/insert in DB
 	log.Trace(ctx, "Processing changed folder", "dir", dir, "tracksInDB", len(currentTracks), "tracksInFolder", len(files))
-	var filesToUpdate []string
+	filesToUpdate := make([]string, 0, len(files))
 	for filePath, entry := range files {
 		c, inDB := currentTracks[filePath]
 		if !inDB || fullScan {

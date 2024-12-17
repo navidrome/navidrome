@@ -21,7 +21,7 @@ var _ = Describe("isSchemaEmpty", func() {
 	var db *sql.DB
 	BeforeEach(func() {
 		path := "file::memory:"
-		db, _ = sql.Open(Driver, path)
+		db, _ = sql.Open(Dialect, path)
 	})
 
 	It("returns false if the goose metadata table is found", func() {

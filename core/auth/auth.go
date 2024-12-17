@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"cmp"
 	"context"
+	"crypto/sha256"
 	"sync"
 	"time"
 
@@ -13,24 +15,33 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils"
 )
 
 var (
 	once      sync.Once
-	Secret    []byte
 	TokenAuth *jwtauth.JWTAuth
 )
 
+// Init creates a JWTAuth object from the secret stored in the DB.
+// If the secret is not found, it will create a new one and store it in the DB.
 func Init(ds model.DataStore) {
 	once.Do(func() {
+		ctx := context.TODO()
 		log.Info("Setting Session Timeout", "value", conf.Server.SessionTimeout)
-		secret, err := ds.Property(context.TODO()).Get(consts.JWTSecretKey)
+
+		secret, err := ds.Property(ctx).Get(consts.JWTSecretKey)
 		if err != nil || secret == "" {
-			log.Error("No JWT secret found in DB. Setting a temp one, but please report this error", err)
-			secret = uuid.NewString()
+			log.Info(ctx, "Creating new JWT secret, used for encrypting UI sessions")
+			secret = createNewSecret(ctx, ds)
+		} else {
+			if secret, err = utils.Decrypt(ctx, getEncKey(), secret); err != nil {
+				log.Error(ctx, "Could not decrypt JWT secret, creating a new one", err)
+				secret = createNewSecret(ctx, ds)
+			}
 		}
-		Secret = []byte(secret)
-		TokenAuth = jwtauth.New("HS256", Secret, nil)
+
+		TokenAuth = jwtauth.New("HS256", []byte(secret), nil)
 	})
 }
 
@@ -111,4 +122,26 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 
 	ctx = request.WithUsername(ctx, u.UserName)
 	return request.WithUser(ctx, *u)
+}
+
+func createNewSecret(ctx context.Context, ds model.DataStore) string {
+	secret := uuid.NewString()
+	encSecret, err := utils.Encrypt(ctx, getEncKey(), secret)
+	if err != nil {
+		log.Error(ctx, "Could not encrypt JWT secret", err)
+		return secret
+	}
+	if err := ds.Property(ctx).Put(consts.JWTSecretKey, encSecret); err != nil {
+		log.Error(ctx, "Could not save JWT secret in DB", err)
+	}
+	return secret
+}
+
+func getEncKey() []byte {
+	key := cmp.Or(
+		conf.Server.PasswordEncryptionKey,
+		consts.DefaultEncryptionKey,
+	)
+	sum := sha256.Sum256([]byte(key))
+	return sum[:]
 }
