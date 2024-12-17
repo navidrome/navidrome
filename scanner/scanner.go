@@ -9,6 +9,7 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chain"
@@ -93,7 +94,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
 		state.sendError(err)
-		core.WriteAfterScanMetrics(ctx, s.ds, false)
+		metrics.WriteAfterScanMetrics(ctx, s.ds, false)
 		return
 	}
 
@@ -101,7 +102,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
 	}
 
-	core.WriteAfterScanMetrics(ctx, s.ds, err == nil)
+	metrics.WriteAfterScanMetrics(ctx, s.ds, err == nil)
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 }
 

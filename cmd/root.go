@@ -12,7 +12,7 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -83,6 +83,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startScanWatcher(ctx))
 	g.Go(runInitialScan(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
+	g.Go(startInsightsCollector(ctx))
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)
@@ -114,7 +115,7 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Prometheus.Enabled {
 			// blocking call because takes <1ms but useful if fails
-			core.WriteInitialMetrics()
+			metrics.WriteInitialMetrics()
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 		}
 		if conf.Server.DevEnableProfiler {
@@ -244,6 +245,20 @@ func startScheduler(ctx context.Context) func() error {
 		log.Info(ctx, "Starting scheduler")
 		schedulerInstance := scheduler.GetInstance()
 		schedulerInstance.Run(ctx)
+		return nil
+	}
+}
+
+// startInsightsCollector starts the Navidrome Insight Collector, if configured.
+func startInsightsCollector(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.EnableInsightsCollector {
+			log.Info(ctx, "Insight Collector is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Starting Insight Collector")
+		ic := CreateInsights()
+		ic.Run(ctx)
 		return nil
 	}
 }

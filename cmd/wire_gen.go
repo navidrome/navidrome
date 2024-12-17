@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
@@ -44,7 +45,8 @@ func CreateServer() *server.Server {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
-	serverServer := server.New(dataStore, broker)
+	insights := metrics.GetInstance(dataStore)
+	serverServer := server.New(dataStore, broker, insights)
 	return serverServer
 }
 
@@ -53,7 +55,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
 	playlists := core.NewPlaylists(dataStore)
-	router := nativeapi.New(dataStore, share, playlists)
+	insights := metrics.GetInstance(dataStore)
+	router := nativeapi.New(dataStore, share, playlists, insights)
 	return router
 }
 
@@ -108,6 +111,13 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	dataStore := persistence.New(sqlDB)
 	router := listenbrainz.NewRouter(dataStore)
 	return router
+}
+
+func CreateInsights() metrics.Insights {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	insights := metrics.GetInstance(dataStore)
+	return insights
 }
 
 func CreateScanner(ctx context.Context) scanner.Scanner {

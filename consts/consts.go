@@ -91,6 +91,12 @@ const (
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
 )
 
+const (
+	InsightsIDKey          = "InsightsID"
+	InsightsEndpoint       = "https://insights.navidrome.org/collect"
+	InsightsUpdateInterval = 24 * time.Hour
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {
