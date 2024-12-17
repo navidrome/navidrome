@@ -181,6 +181,62 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
   )
 }
 
+const InsightsNotice = ({ url }) => {
+  const translate = useTranslate()
+  const classes = useStyles()
+
+  const anchorRegex = /\[(.+?)]/g
+  const originalMsg = translate('ra.auth.insightsCollectionNote')
+
+  // Split the entire message on newlines
+  const lines = originalMsg.split('\n')
+
+  const renderedLines = lines.map((line, lineIndex) => {
+    const segments = []
+    let lastIndex = 0
+    let match
+
+    // Find bracketed text in each line
+    while ((match = anchorRegex.exec(line)) !== null) {
+      // match.index is where "[something]" starts
+      // match[1] is the text inside the brackets
+      const bracketText = match[1]
+
+      // Push the text before the bracket
+      segments.push(line.slice(lastIndex, match.index))
+
+      // Push the <Link> component
+      segments.push(
+        <Link
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          key={`${lineIndex}-${match.index}`}
+          style={{ cursor: 'pointer' }}
+        >
+          {bracketText}
+        </Link>,
+      )
+
+      // Update lastIndex to the character right after the bracketed text
+      lastIndex = match.index + match[0].length
+    }
+
+    // Push the remaining text after the last bracket
+    segments.push(line.slice(lastIndex))
+
+    // Return this line’s parts, plus a <br/> if not the last line
+    return (
+      <React.Fragment key={lineIndex}>
+        {segments}
+        {lineIndex < lines.length - 1 && <br />}
+      </React.Fragment>
+    )
+  })
+
+  return <div className={classes.message}>{renderedLines}</div>
+}
+
 const FormSignUp = ({ loading, handleSubmit, validate }) => {
   const translate = useTranslate()
   const classes = useStyles()
@@ -245,21 +301,9 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   {translate('ra.auth.buttonCreateAdmin')}
                 </Button>
               </CardActions>
-              <div className={classes.message}>
-                Navidrome collects anonymous usage data to
-                <br />
-                help improve the project. Click{' '}
-                <Link
-                  href="https://navidrome.org/docs/getting-started/insights/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  here
-                </Link>{' '}
-                to learn
-                <br />
-                more and to opt-out if you want
-              </div>
+              <InsightsNotice
+                url={'https://navidrome.org/docs/getting-started/insights'}
+              />
             </Card>
             <Notification />
           </div>
@@ -268,6 +312,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
     />
   )
 }
+
 const Login = ({ location }) => {
   const [loading, setLoading] = useState(false)
   const translate = useTranslate()
