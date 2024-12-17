@@ -21,10 +21,10 @@ require (
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/structs v1.1.0
-	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/chi/v5 v5.2.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.14.1
-	github.com/go-chi/jwtauth/v5 v5.3.1
+	github.com/go-chi/jwtauth/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -38,10 +38,10 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.22.0
-	github.com/onsi/gomega v1.36.0
+	github.com/onsi/gomega v1.36.1
 	github.com/pelletier/go-toml/v2 v2.2.3
-	github.com/pocketbase/dbx v1.10.1
-	github.com/pressly/goose/v3 v3.23.0
+	github.com/pocketbase/dbx v1.11.0
+	github.com/pressly/goose/v3 v3.23.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.9.3
@@ -105,7 +105,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.30.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/tools v0.27.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
