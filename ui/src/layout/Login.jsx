@@ -87,7 +87,7 @@ const useStyles = makeStyles(
       padding: '0 1em 1em 1em',
       textAlign: 'center',
       wordBreak: 'break-word',
-      fontSize: '0.875em', // Adjust the font size here
+      fontSize: '0.875em',
     },
   }),
   { name: 'NDLogin' },
