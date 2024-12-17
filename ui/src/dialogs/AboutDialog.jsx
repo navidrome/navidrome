@@ -15,6 +15,7 @@ import { useGetOne, usePermissions, useTranslate } from 'react-admin'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
+import { INSIGHTS_DOC_URL } from '../consts.js'
 
 const links = {
   homepage: 'navidrome.org',
@@ -96,7 +97,7 @@ const AboutDialog = ({ open, onClose }) => {
                     {translate(`about.links.lastInsightsCollection`)}:
                   </TableCell>
                   <TableCell align="left">
-                    <Link href="https://navidrome.org/docs/getting-started/insights/">
+                    <Link href={INSIGHTS_DOC_URL}>
                       {(!loading && data?.lastRun) || 'N/A'}{' '}
                     </Link>
                   </TableCell>

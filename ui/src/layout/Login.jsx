@@ -25,6 +25,7 @@ import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
 import { retrieveTranslation } from '../i18n'
+import { INSIGHTS_DOC_URL } from '../consts.js'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -301,9 +302,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   {translate('ra.auth.buttonCreateAdmin')}
                 </Button>
               </CardActions>
-              <InsightsNotice
-                url={'https://navidrome.org/docs/getting-started/insights'}
-              />
+              <InsightsNotice url={INSIGHTS_DOC_URL} />
             </Card>
             <Notification />
           </div>
