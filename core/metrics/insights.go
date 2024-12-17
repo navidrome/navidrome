@@ -43,7 +43,7 @@ func GetInstance(ds model.DataStore) Insights {
 	return singleton.GetInstance(func() *insightsCollector {
 		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
 		if err != nil {
-			log.Trace("Could not get Insights ID from DB", err)
+			log.Trace("Could not get Insights ID from DB. Creating one", err)
 			id = uuid.NewString()
 			err = ds.Property(context.TODO()).Put(consts.InsightsIDKey, id)
 			if err != nil {
@@ -72,6 +72,15 @@ func (c *insightsCollector) LastRun(context.Context) (timestamp time.Time, succe
 }
 
 func (c *insightsCollector) sendInsights(ctx context.Context) {
+	count, err := c.ds.User(ctx).CountAll(model.QueryOptions{})
+	if err != nil {
+		log.Trace(ctx, "Could not check user count", err)
+		return
+	}
+	if count == 0 {
+		log.Trace(ctx, "No users found, skipping Insights data collection")
+		return
+	}
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
