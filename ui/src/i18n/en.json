@@ -435,7 +435,8 @@
     "links": {
       "homepage": "Home page",
       "source": "Source code",
-      "featureRequests": "Feature requests"
+      "featureRequests": "Feature requests",
+      "lastInsightsCollection": "Last insights collection"
     }
   },
   "activity": {

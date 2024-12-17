@@ -55,7 +55,7 @@ type Data struct {
 		EnableJukebox           bool   `json:"enableJukebox,omitempty"`
 		EnablePrometheus        bool   `json:"enablePrometheus,omitempty"`
 		EnableCoverAnimation    bool   `json:"enableCoverAnimation,omitempty"`
-		SessionTimeout          string `json:"sessionTimeout,omitempty"`
+		SessionTimeout          uint64 `json:"sessionTimeout,omitempty"`
 		SearchFullString        bool   `json:"searchFullString,omitempty"`
 		RecentlyAddedByModTime  bool   `json:"recentlyAddedByModTime,omitempty"`
 		PreferSortTags          bool   `json:"preferSortTags,omitempty"`

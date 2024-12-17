@@ -33,7 +33,8 @@ func CreateServer(musicFolder string) *server.Server {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
-	serverServer := server.New(dataStore, broker)
+	insights := metrics.GetInstance(dataStore)
+	serverServer := server.New(dataStore, broker, insights)
 	return serverServer
 }
 
@@ -42,7 +43,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	dataStore := persistence.New(sqlDB)
 	share := core.NewShare(dataStore)
 	playlists := core.NewPlaylists(dataStore)
-	router := nativeapi.New(dataStore, share, playlists)
+	insights := metrics.GetInstance(dataStore)
+	router := nativeapi.New(dataStore, share, playlists, insights)
 	return router
 }
 

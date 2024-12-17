@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"path/filepath"
 	"runtime"
@@ -24,6 +25,7 @@ import (
 
 type Insights interface {
 	Run(ctx context.Context)
+	LastRun(ctx context.Context) (timestamp time.Time, success bool)
 }
 
 var (
@@ -32,7 +34,9 @@ var (
 )
 
 type insightsCollector struct {
-	ds model.DataStore
+	ds         model.DataStore
+	lastRun    time.Time
+	lastStatus bool
 }
 
 func GetInstance(ds model.DataStore) Insights {
@@ -51,7 +55,7 @@ func GetInstance(ds model.DataStore) Insights {
 	})
 }
 
-func (c insightsCollector) Run(ctx context.Context) {
+func (c *insightsCollector) Run(ctx context.Context) {
 	for {
 		c.sendInsights(ctx)
 		select {
@@ -63,7 +67,11 @@ func (c insightsCollector) Run(ctx context.Context) {
 	}
 }
 
-func (c insightsCollector) sendInsights(ctx context.Context) {
+func (c *insightsCollector) LastRun(context.Context) (timestamp time.Time, success bool) {
+	return c.lastRun, c.lastStatus
+}
+
+func (c *insightsCollector) sendInsights(ctx context.Context) {
 	hc := &http.Client{
 		Timeout: consts.DefaultHttpClientTimeOut,
 	}
@@ -85,6 +93,8 @@ func (c insightsCollector) sendInsights(ctx context.Context) {
 	}
 	log.Info(ctx, "Sent Insights data (for details see http://navidrome.org/docs/getting-started/insights", "data",
 		string(data), "server", consts.InsightsEndpoint, "status", resp.Status)
+	c.lastRun = time.Now()
+	c.lastStatus = resp.StatusCode < 300
 	resp.Body.Close()
 }
 
@@ -166,7 +176,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
 	data.Config.ImageCacheSize = conf.Server.ImageCacheSize
 	data.Config.ScanSchedule = conf.Server.ScanSchedule
-	data.Config.SessionTimeout = conf.Server.SessionTimeout.String()
+	data.Config.SessionTimeout = uint64(math.Trunc(conf.Server.SessionTimeout.Seconds()))
 	data.Config.SearchFullString = conf.Server.SearchFullString
 	data.Config.RecentlyAddedByModTime = conf.Server.RecentlyAddedByModTime
 	data.Config.PreferSortTags = conf.Server.PreferSortTags
@@ -177,7 +187,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	return data
 })
 
-func (c insightsCollector) collect(ctx context.Context) []byte {
+func (c *insightsCollector) collect(ctx context.Context) []byte {
 	data := staticData()
 	data.Uptime = time.Since(consts.ServerStart).Milliseconds() / 1000
 	libraryUpdate.Do(func() {

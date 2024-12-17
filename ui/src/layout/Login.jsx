@@ -6,6 +6,7 @@ import Button from '@material-ui/core/Button'
 import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
+import Link from '@material-ui/core/Link'
 import TextField from '@material-ui/core/TextField'
 import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
 import {
@@ -80,6 +81,13 @@ const useStyles = makeStyles(
     button: {},
     systemNameLink: {
       textDecoration: 'none',
+    },
+    message: {
+      marginTop: '1em',
+      padding: '0 1em 1em 1em',
+      textAlign: 'center',
+      wordBreak: 'break-word',
+      fontSize: '0.875em', // Adjust the font size here
     },
   }),
   { name: 'NDLogin' },
@@ -237,6 +245,21 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   {translate('ra.auth.buttonCreateAdmin')}
                 </Button>
               </CardActions>
+              <div className={classes.message}>
+                Navidrome collects anonymous usage data to
+                <br />
+                help improve the project. Click{' '}
+                <Link
+                  href="https://navidrome.org/docs/getting-started/insights/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  here
+                </Link>{' '}
+                to learn
+                <br />
+                more and to opt-out if you want
+              </div>
             </Card>
             <Notification />
           </div>

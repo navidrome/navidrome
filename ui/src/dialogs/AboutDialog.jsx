@@ -11,7 +11,7 @@ import TableCell from '@material-ui/core/TableCell'
 import Paper from '@material-ui/core/Paper'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import inflection from 'inflection'
-import { useTranslate } from 'react-admin'
+import { useGetOne, usePermissions, useTranslate } from 'react-admin'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
@@ -51,6 +51,9 @@ const LinkToVersion = ({ version }) => {
 
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const { data, loading } = useGetOne('insights', 'insights_status')
+
   return (
     <Dialog onClose={onClose} aria-labelledby="about-dialog-title" open={open}>
       <DialogTitle id="about-dialog-title" onClose={onClose}>
@@ -87,6 +90,18 @@ const AboutDialog = ({ open, onClose }) => {
                   </TableRow>
                 )
               })}
+              {permissions === 'admin' ? (
+                <TableRow>
+                  <TableCell align="right" component="th" scope="row">
+                    {translate(`about.links.lastInsightsCollection`)}:
+                  </TableCell>
+                  <TableCell align="left">
+                    <Link href="https://navidrome.org/docs/getting-started/insights/">
+                      {(!loading && data?.lastRun) || 'N/A'}{' '}
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ) : null}
               <TableRow>
                 <TableCell align="right" component="th" scope="row">
                   <Link
