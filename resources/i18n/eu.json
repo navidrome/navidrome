@@ -1,4 +1,3 @@
-
 {
     "languageName": "Euskara",
     "resources": {
@@ -98,7 +97,8 @@
             "fields": {
                 "userName": "Erabiltzailearen izena",
                 "isAdmin": "Administratzailea da",
-                "lastLoginAt": "Azken sartze-data:",
+                "lastLoginAt": "Azken saio hasiera:",
+                "lastAccessAt": "Azken sarbidea",
                 "updatedAt": "Eguneratze-data:",
                 "name": "Izena",
                 "password": "Pasahitza",
@@ -198,10 +198,8 @@
                 "updatedAt": "Eguneratze-data:",
                 "createdAt": "Sortze-data:"
             },
-            "notifications": {
-            },
-            "actions": {
-            }
+            "notifications": {},
+            "actions": {}
         }
     },
     "ra": {
@@ -216,7 +214,7 @@
             "password": "Pasahitza",
             "sign_in": "Sartu",
             "sign_in_error": "Autentifikazioak huts egin du, saiatu berriro",
-            "logout": "Itxi saioa"
+            "logout": "Amaitu saioa"
         },
         "validation": {
             "invalidChars": "Erabili hizkiak eta zenbakiak bakarrik",
@@ -432,7 +430,6 @@
             "singleLoop": "Errepikatu bakarra",
             "shufflePlay": "Aleatorioa"
         }
-        
     },
     "about": {
         "links": {
