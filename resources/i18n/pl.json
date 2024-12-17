@@ -1,460 +1,461 @@
 {
-    "languageName": "Polski",
-    "resources": {
-        "song": {
-            "name": "Utwór |||| Utwory",
-            "fields": {
-                "albumArtist": "Album Wykonawcy",
-                "duration": "Czas trwania",
-                "trackNumber": "#",
-                "playCount": "Liczba odtworzeń",
-                "title": "Tytuł",
-                "artist": "Wykonawca",
-                "album": "Album",
-                "path": "Ścieżka pliku",
-                "genre": "Gatunek",
-                "compilation": "Kompilacja",
-                "year": "Rok",
-                "size": "Rozmiar pliku",
-                "updatedAt": "Zaktualizowano",
-                "bitRate": "Szybkość transmisji danych",
-                "discSubtitle": "Podtytuł Płyty",
-                "starred": "Ulubione",
-                "comment": "Komentarz",
-                "rating": "Ocena",
-                "quality": "Jakość",
-                "bpm": "BPM",
-                "playDate": "Ostatnio Odtwarzane",
-                "channels": "Kanały",
-                "createdAt": "Data dodania"
-            },
-            "actions": {
-                "addToQueue": "Odtwarzaj Później",
-                "playNow": "Odtwarzaj Teraz",
-                "addToPlaylist": "Dodaj do Playlisty",
-                "shuffleAll": "Losuj Wszystkie",
-                "download": "Pobierz",
-                "playNext": "Odtwarzaj Następny",
-                "info": "Zdobądź Informacje"
-            }
-        },
-        "album": {
-            "name": "Album |||| Albumy",
-            "fields": {
-                "albumArtist": "Album Artysty",
-                "artist": "Wykonawca",
-                "duration": "Czas trwania",
-                "songCount": "Liczba utworów",
-                "playCount": "Liczba odtworzeń",
-                "name": "Tytuł",
-                "genre": "Gatunek",
-                "compilation": "Kompilacja",
-                "year": "Rok",
-                "updatedAt": "Zaktualizowany",
-                "comment": "Komentarz",
-                "rating": "Ocena",
-                "createdAt": "Data dodania",
-                "size": "Rozmiar",
-                "originalDate": "Pierwotna Data",
-                "releaseDate": "Data Wydania",
-                "releases": "Wydanie |||| Wydania",
-                "released": "Wydany"
-            },
-            "actions": {
-                "playAll": "Odtwarzaj",
-                "playNext": "Odtwarzaj Następny",
-                "addToQueue": "Odtwarzaj Później",
-                "shuffle": "Losowo",
-                "addToPlaylist": "Dodaj do Playlisty",
-                "download": "Pobierz",
-                "info": "Zdobądź Informacje",
-                "share": "Udostępnij"
-            },
-            "lists": {
-                "all": "Wszystkie",
-                "random": "Losowo",
-                "recentlyAdded": "Ostatnio Dodane",
-                "recentlyPlayed": "Ostatnio Odtwarzane",
-                "mostPlayed": "Najczęściej Odtwarzane",
-                "starred": "Ulubione",
-                "topRated": "Najwyżej Oceniane"
-            }
-        },
-        "artist": {
-            "name": "Wykonawca |||| Wykonawcy",
-            "fields": {
-                "name": "Tytuł",
-                "albumCount": "Liczba Albumów",
-                "songCount": "Liczba Utworów",
-                "playCount": "Liczba Odtworzeń",
-                "rating": "Ocena",
-                "genre": "Gatunek",
-                "size": "Rozmiar"
-            }
-        },
-        "user": {
-            "name": "Użytkownik |||| Użytkownicy",
-            "fields": {
-                "userName": "Nazwa użytkownika",
-                "isAdmin": "Administrator",
-                "lastLoginAt": "Ostatnio zalogowany",
-                "updatedAt": "Zaktualizowano",
-                "name": "Imię",
-                "password": "Hasło",
-                "createdAt": "Dodany",
-                "changePassword": "Zmienić hasło?",
-                "currentPassword": "Obecne hasło",
-                "newPassword": "Nowe hasło",
-                "token": "Token"
-            },
-            "helperTexts": {
-                "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu"
-            },
-            "notifications": {
-                "created": "Dodano użytkownika",
-                "updated": "Zaktualizowano użytkownika",
-                "deleted": "Usunięto użytkownika"
-            },
-            "message": {
-                "listenBrainzToken": "Wprowadź swój token ListenBrainz.",
-                "clickHereForToken": "Kliknij tutaj, aby uzyskać token"
-            }
-        },
-        "player": {
-            "name": "Odtwarzacz |||| Odtwarzacze",
-            "fields": {
-                "name": "Nazwa",
-                "transcodingId": "Transkodowanie",
-                "maxBitRate": "Maks. Bit Rate",
-                "client": "Klient",
-                "userName": "Nazwa użytkownika",
-                "lastSeen": "Ostatnio Widziany",
-                "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę",
-                "scrobbleEnabled": "Scrobbluj do zewnętrznych serwisów"
-            }
-        },
-        "transcoding": {
-            "name": "Transkodowanie |||| Transkodowanie",
-            "fields": {
-                "name": "Nazwa",
-                "targetFormat": "Format Docelowy",
-                "defaultBitRate": "Domyślny Bit Rate",
-                "command": "Komenda"
-            }
-        },
-        "playlist": {
-            "name": "Playlista |||| Playlisty",
-            "fields": {
-                "name": "Nazwa",
-                "duration": "Czas trwania",
-                "ownerName": "Właściciel",
-                "public": "Publiczna",
-                "updatedAt": "Zaktualizowana",
-                "createdAt": "Stworzona",
-                "songCount": "Liczba utworów",
-                "comment": "Komentarz",
-                "sync": "Import automatyczny",
-                "path": "Zaimportuj z"
-            },
-            "actions": {
-                "selectPlaylist": "Wybierz playlistę:",
-                "addNewPlaylist": "Stwórz \"%{name}\"",
-                "export": "Wyeksportuj",
-                "makePublic": "Zmień na Publiczną",
-                "makePrivate": "Zmień na Prywatną"
-            },
-            "message": {
-                "duplicate_song": "Dodaj zduplikowane utwory",
-                "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
-            }
-        },
-        "radio": {
-            "name": "Radio |||| Radia",
-            "fields": {
-                "name": "Nazwa",
-                "streamUrl": "URL Strumienia",
-                "homePageUrl": "URL Strony Głównej",
-                "updatedAt": "Zaktualizowano",
-                "createdAt": "Stworzono"
-            },
-            "actions": {
-                "playNow": "Odtwarzaj"
-            }
-        },
-        "share": {
-            "name": "Udostępnienie |||| Udostępnienia",
-            "fields": {
-                "username": "Udostępnione Przez",
-                "url": "URL",
-                "description": "Opis",
-                "contents": "Zawartość",
-                "expiresAt": "Wygasa",
-                "lastVisitedAt": "Ostatnio Wyświetlone",
-                "visitCount": "Wyświetlenia",
-                "format": "Format",
-                "maxBitRate": "Maks. Bit Rate",
-                "updatedAt": "Zaktualizowano",
-                "createdAt": "Stworzono",
-                "downloadable": "Zezwolić Na Pobieranie?"
-            }
-        }
+  "languageName": "Polski",
+  "resources": {
+    "song": {
+      "name": "Utwór |||| Utwory",
+      "fields": {
+        "albumArtist": "Album Wykonawcy",
+        "duration": "Czas trwania",
+        "trackNumber": "#",
+        "playCount": "Liczba odtworzeń",
+        "title": "Tytuł",
+        "artist": "Wykonawca",
+        "album": "Album",
+        "path": "Ścieżka pliku",
+        "genre": "Gatunek",
+        "compilation": "Kompilacja",
+        "year": "Rok",
+        "size": "Rozmiar pliku",
+        "updatedAt": "Zaktualizowano",
+        "bitRate": "Szybkość transmisji danych",
+        "discSubtitle": "Podtytuł Płyty",
+        "starred": "Ulubione",
+        "comment": "Komentarz",
+        "rating": "Ocena",
+        "quality": "Jakość",
+        "bpm": "BPM",
+        "playDate": "Ostatnio Odtwarzane",
+        "channels": "Kanały",
+        "createdAt": "Data dodania"
+      },
+      "actions": {
+        "addToQueue": "Odtwarzaj Później",
+        "playNow": "Odtwarzaj Teraz",
+        "addToPlaylist": "Dodaj do Playlisty",
+        "shuffleAll": "Losuj Wszystkie",
+        "download": "Pobierz",
+        "playNext": "Odtwarzaj Następny",
+        "info": "Zdobądź Informacje"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Dziękujemy za zainstalowanie Navidrome!",
-            "welcome2": "Stwórz konto administratora, aby rozpocząć",
-            "confirmPassword": "Potwierdź Hasło",
-            "buttonCreateAdmin": "Stwórz Administratora",
-            "auth_check_error": "Proszę się zalogować, aby kontynuować",
-            "user_menu": "Profil",
-            "username": "Nazwa użytkownika",
-            "password": "Hasło",
-            "sign_in": "Zaloguj się",
-            "sign_in_error": "Uwierzytelnianie nie powiodło się, spróbuj ponownie",
-            "logout": "Wyloguj"
-        },
-        "validation": {
-            "invalidChars": "Proszę, używaj wyłącznie liter i cyfr",
-            "passwordDoesNotMatch": "Hasło nie pasuje",
-            "required": "Wymagane",
-            "minLength": "Powinno być minimalnie %{min} znaków",
-            "maxLength": "Powinno być %{max} lub mniej znaków",
-            "minValue": "Minimalna wartość to %{min}",
-            "maxValue": "Powinno być %{max} lub mniej",
-            "number": "Musi być liczbą",
-            "email": "Adres e-mail musi być poprawny",
-            "oneOf": "Musi być jedną z: %{options}",
-            "regex": "Musi pasować do określonego formatu (regexp): %{pattern}",
-            "unique": "Musi być unikalne",
-            "url": "Adres URL musi być poprawny"
-        },
-        "action": {
-            "add_filter": "Dodaj filtr",
-            "add": "Dodaj",
-            "back": "Wstecz",
-            "bulk_actions": "1 element wybrany |||| %{smart_count} wybranych elementów",
-            "cancel": "Anuluj",
-            "clear_input_value": "Wyczyść wartość",
-            "clone": "Sklonuj",
-            "confirm": "Potwierdź",
-            "create": "Stwórz",
-            "delete": "Usuń",
-            "edit": "Edytuj",
-            "export": "Wyeksportuj",
-            "list": "Lista",
-            "refresh": "Odśwież",
-            "remove_filter": "Usuń ten filtr",
-            "remove": "Usuń",
-            "save": "Zapisz",
-            "search": "Szukaj",
-            "show": "Pokaż",
-            "sort": "Sortuj",
-            "undo": "Cofnij",
-            "expand": "Rozwiń",
-            "close": "Zamknij",
-            "open_menu": "Otwórz menu",
-            "close_menu": "Zamknij menu",
-            "unselect": "Odznacz",
-            "skip": "Pomiń",
-            "bulk_actions_mobile": "1 |||| %{smart_count}",
-            "share": "Udostępnij",
-            "download": "Pobierz"
-        },
-        "boolean": {
-            "true": "Tak",
-            "false": "Nie"
-        },
-        "page": {
-            "create": "Stwórz %{name}",
-            "dashboard": "Panel Główny",
-            "edit": "%{name} #%{id}",
-            "error": "Coś poszło nie tak",
-            "list": "%{name}",
-            "loading": "Ładowanie",
-            "not_found": "Nie Znaleziono",
-            "show": "%{name} #%{id}\n",
-            "empty": "Brakuje elementu typu %{name}.",
-            "invite": "Czy chcesz dodać nowy?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Upuść kilka plików do przesłania lub kliknij, aby wybrać jeden.",
-                "upload_single": "Upuść plik do przesłania, lub kliknij, aby go wybrać."
-            },
-            "image": {
-                "upload_several": "Upuść kilka zdjęć do przesłania, lub kliknij, aby wybrać jedno.",
-                "upload_single": "Upuść zdjęcie do przesłania, lub kliknij, aby je wybrać."
-            },
-            "references": {
-                "all_missing": "Nie można znaleźć danych referencyjnych.",
-                "many_missing": "Co najmniej jedno z powiązanych odniesień nie jest już dostępne.",
-                "single_missing": "Wygląda na to, że powiązane odniesienie nie jest już dostępne."
-            },
-            "password": {
-                "toggle_visible": "Ukryj hasło",
-                "toggle_hidden": "Pokaż hasło"
-            }
-        },
-        "message": {
-            "about": "O aplikacji",
-            "are_you_sure": "Czy jesteś pewny?",
-            "bulk_delete_content": "Czy jesteś pewny, że chcesz usunąć %{name}? |||| Czy jesteś pewny, że chcesz usunąć %{smart_count} elementów?",
-            "bulk_delete_title": "Usuń %{name} |||| Usuń %{smart_count} %{name}",
-            "delete_content": "Czy jesteś pewny, że chcesz usunąć ten element?",
-            "delete_title": "Usuń %{name} #%{id}",
-            "details": "Szczegóły",
-            "error": "Wystąpił błąd po stronie klienta i Twoje żądanie nie może być zrealizowane.",
-            "invalid_form": "Formularz jest nieprawidłowy. Proszę sprawdź błędy",
-            "loading": "Ładowanie zawartości, proszę czekać",
-            "no": "Nie",
-            "not_found": "Wpisałeś zły adres URL, albo skorzystałeś ze złego linku.",
-            "yes": "Tak",
-            "unsaved_changes": "Niektóre z Twoich zmian nie zostały zapisane. Czy jesteś pewny, że chcesz je zignorować?"
-        },
-        "navigation": {
-            "no_results": "Brak wyników",
-            "no_more_results": "Strona o numerze %{page} jest poza granicami. Proszę spróbować poprzednią stronę.",
-            "page_out_of_boundaries": "Strona o numerze %{page} jest poza granicami",
-            "page_out_from_end": "Nie można przejść za ostatnią stronę",
-            "page_out_from_begin": "Nie można przejść przed 1 stronę",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
-            "page_rows_per_page": "Wierszy na stronie:",
-            "next": "Następna",
-            "prev": "Poprzednia",
-            "skip_nav": "Przejdź do treści"
-        },
-        "notification": {
-            "updated": "Element zaktualizowany |||| %{smart_count} zaktualizowanych elementów",
-            "created": "Element stworzony",
-            "deleted": "Element usunięty |||| %{smart_count} usuniętych elementów",
-            "bad_item": "Niepoprawny element",
-            "item_doesnt_exist": "Element nie istnieje",
-            "http_error": "Błąd komunikacji z serwerem",
-            "data_provider_error": "Błąd dostawcy danych. Sprawdź konsolę, aby uzyskać szczegółowe informacje.",
-            "i18n_error": "Nie można załadować tłumaczenia dla tego języka",
-            "canceled": "Akcja anulowana",
-            "logged_out": "Twoja sesja została zakończona, proszę o ponowne połączenie.",
-            "new_version": "Dostępna nowa wersja! Proszę odświeżyć okno przeglądarki."
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "Kolumny Do Wyświetlenia",
-            "layout": "Układ",
-            "grid": "Siatka",
-            "table": "Tabela"
-        }
+    "album": {
+      "name": "Album |||| Albumy",
+      "fields": {
+        "albumArtist": "Album Artysty",
+        "artist": "Wykonawca",
+        "duration": "Czas trwania",
+        "songCount": "Liczba utworów",
+        "playCount": "Liczba odtworzeń",
+        "name": "Tytuł",
+        "genre": "Gatunek",
+        "compilation": "Kompilacja",
+        "year": "Rok",
+        "updatedAt": "Zaktualizowany",
+        "comment": "Komentarz",
+        "rating": "Ocena",
+        "createdAt": "Data dodania",
+        "size": "Rozmiar",
+        "originalDate": "Pierwotna Data",
+        "releaseDate": "Data Wydania",
+        "releases": "Wydanie |||| Wydania",
+        "released": "Wydany"
+      },
+      "actions": {
+        "playAll": "Odtwarzaj",
+        "playNext": "Odtwarzaj Następny",
+        "addToQueue": "Odtwarzaj Później",
+        "shuffle": "Losowo",
+        "addToPlaylist": "Dodaj do Playlisty",
+        "download": "Pobierz",
+        "info": "Zdobądź Informacje",
+        "share": "Udostępnij"
+      },
+      "lists": {
+        "all": "Wszystkie",
+        "random": "Losowo",
+        "recentlyAdded": "Ostatnio Dodane",
+        "recentlyPlayed": "Ostatnio Odtwarzane",
+        "mostPlayed": "Najczęściej Odtwarzane",
+        "starred": "Ulubione",
+        "topRated": "Najwyżej Oceniane"
+      }
     },
-    "message": {
-        "note": "UWAGA",
-        "transcodingDisabled": "Zmiana ustawień transkodowania przez interfejs sieciowy jest zablokowana z powodów bezpieczeństwa. Jeśli chcesz zmienić (edytować lub dodawać) opcje transkodowania, uruchom ponownie serwer z %{config} opcją konfiguracji.",
-        "transcodingEnabled": "Navidrome aktualnie działa z %{config}, co umożliwia korzystanie z komend systemowych ustawień transkodowania poprzez interfejs sieciowy. Rekomendujemy wyłączenie tego ustawienia w celu zwiększenia bezpieczeństwa i aktywowanie go wyłącznie podczas konfiguracji transkodowania.",
-        "songsAddedToPlaylist": "Dodano 1 utwór do playlisty |||| Dodano %{smart_count} utworów do playlisty",
-        "noPlaylistsAvailable": "Niedostępne",
-        "delete_user_title": "Usuń użytkownika '%{name}'",
-        "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to playlisty oraz ustawienia)?",
-        "notifications_blocked": "Zablokowałeś Powiadomienia w ustawieniach swojej przeglądarki",
-        "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień",
-        "lastfmLinkSuccess": "Połączono Last.fm i włączono scrobblowanie",
-        "lastfmLinkFailure": "Nie można połączyć Last.fm",
-        "lastfmUnlinkSuccess": "Odłączono Last.fm i wyłączono scrobblowanie",
-        "lastfmUnlinkFailure": "Nie można odłączyć Last.fm",
-        "openIn": {
-            "lastfm": "Otwórz w Last.fm",
-            "musicbrainz": "Otwórz w MusicBrainz"
-        },
-        "lastfmLink": "Czytaj więcej...",
-        "listenBrainzLinkSuccess": "Połączono ListenBrainz i włączono scrobblowanie dla użytkownika: %{user}",
-        "listenBrainzLinkFailure": "ListenBrainz nie mógł zostać połączony: %{error}",
-        "listenBrainzUnlinkSuccess": "Odłączono ListenBrainz i wyłączono scrobblowanie",
-        "listenBrainzUnlinkFailure": "ListenBrainz nie może być odłączony",
-        "downloadOriginalFormat": "Pobierz w oryginalnym formacie",
-        "shareOriginalFormat": "Udostępnij w oryginalnym formacie",
-        "shareDialogTitle": "Udostępnij %{resource} '%{name}'",
-        "shareBatchDialogTitle": "Udostępnij 1 %{resource} |||| Udostępnij %{smart_count} %{resource}",
-        "shareSuccess": "Adres URL skopiowany do schowka: %{url}",
-        "shareFailure": "Błąd podczas kopiowania URL %{url} do schowka",
-        "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter"
+    "artist": {
+      "name": "Wykonawca |||| Wykonawcy",
+      "fields": {
+        "name": "Tytuł",
+        "albumCount": "Liczba Albumów",
+        "songCount": "Liczba Utworów",
+        "playCount": "Liczba Odtworzeń",
+        "rating": "Ocena",
+        "genre": "Gatunek",
+        "size": "Rozmiar"
+      }
     },
-    "menu": {
-        "library": "Biblioteka",
-        "settings": "Ustawienia",
-        "version": "Wersja",
-        "theme": "Wygląd",
-        "personal": {
-            "name": "Personalizacja",
-            "options": {
-                "theme": "Wygląd",
-                "language": "Język",
-                "defaultView": "Widok Podstawowy",
-                "desktop_notifications": "Powiadomienia",
-                "lastfmScrobbling": "Scrobbluj do Last.fm",
-                "listenBrainzScrobbling": "Scrobbluj do ListenBrainz",
-                "replaygain": "Tryb ReplayGain",
-                "preAmp": "ReplayGain PreAmp (dB)",
-                "gain": {
-                    "none": "Wyłączony",
-                    "album": "Użyj Wzmocnienia Albumu",
-                    "track": "Użyj Wzmocnienia Utworu"
-                }
-            }
-        },
-        "albumList": "Albumy",
-        "about": "O aplikacji",
-        "playlists": "Playlisty",
-        "sharedPlaylists": "Udostępnione Playlisty"
+    "user": {
+      "name": "Użytkownik |||| Użytkownicy",
+      "fields": {
+        "userName": "Nazwa użytkownika",
+        "isAdmin": "Administrator",
+        "lastLoginAt": "Ostatnio zalogowany",
+        "updatedAt": "Zaktualizowano",
+        "name": "Imię",
+        "password": "Hasło",
+        "createdAt": "Dodany",
+        "changePassword": "Zmienić hasło?",
+        "currentPassword": "Obecne hasło",
+        "newPassword": "Nowe hasło",
+        "token": "Token",
+        "lastAccessAt": "Ostatnia Aktywność"
+      },
+      "helperTexts": {
+        "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu"
+      },
+      "notifications": {
+        "created": "Dodano użytkownika",
+        "updated": "Zaktualizowano użytkownika",
+        "deleted": "Usunięto użytkownika"
+      },
+      "message": {
+        "listenBrainzToken": "Wprowadź swój token ListenBrainz.",
+        "clickHereForToken": "Kliknij tutaj, aby uzyskać token"
+      }
     },
     "player": {
-        "playListsText": "Kolejka Odtwarzania",
-        "openText": "Otwórz",
-        "closeText": "Zamknij",
-        "notContentText": "Brak muzyki",
-        "clickToPlayText": "Kliknij, aby odtworzyć",
-        "clickToPauseText": "Kliknij, aby zapauzować",
-        "nextTrackText": "Następny utwór",
-        "previousTrackText": "Poprzedni utwór",
-        "reloadText": "Przeładuj",
-        "volumeText": "Głośność",
-        "toggleLyricText": "Pokaż tekst utworu",
-        "toggleMiniModeText": "Zminimalizuj",
-        "destroyText": "Zniszcz",
-        "downloadText": "Pobierz",
-        "removeAudioListsText": "Usuń listy audio",
-        "clickToDeleteText": "Kliknij, aby usunąć %{name}",
-        "emptyLyricText": "Brak tekstu",
-        "playModeText": {
-            "order": "W kolejności",
-            "orderLoop": "Powtarzaj",
-            "singleLoop": "Powtórz Raz",
-            "shufflePlay": "Odtwarzaj losowo"
-        }
+      "name": "Odtwarzacz |||| Odtwarzacze",
+      "fields": {
+        "name": "Nazwa",
+        "transcodingId": "Transkodowanie",
+        "maxBitRate": "Maks. Bit Rate",
+        "client": "Klient",
+        "userName": "Nazwa użytkownika",
+        "lastSeen": "Ostatnio Widziany",
+        "reportRealPath": "Zgłoś Rzeczywistą Ścieżkę",
+        "scrobbleEnabled": "Scrobbluj do zewnętrznych serwisów"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Strona główna",
-            "source": "Kod źródłowy",
-            "featureRequests": "Prośby o nowe funkcjonalności"
-        }
+    "transcoding": {
+      "name": "Transkodowanie |||| Transkodowanie",
+      "fields": {
+        "name": "Nazwa",
+        "targetFormat": "Format Docelowy",
+        "defaultBitRate": "Domyślny Bit Rate",
+        "command": "Komenda"
+      }
     },
-    "activity": {
-        "title": "Aktywność",
-        "totalScanned": "Liczba Przeskanowanych Folderów",
-        "quickScan": "Szybkie Skanowanie",
-        "fullScan": "Pełne Skanowanie",
-        "serverUptime": "Czas Działania Serwera",
-        "serverDown": "NIEDOSTĘPNY"
+    "playlist": {
+      "name": "Playlista |||| Playlisty",
+      "fields": {
+        "name": "Nazwa",
+        "duration": "Czas trwania",
+        "ownerName": "Właściciel",
+        "public": "Publiczna",
+        "updatedAt": "Zaktualizowana",
+        "createdAt": "Stworzona",
+        "songCount": "Liczba utworów",
+        "comment": "Komentarz",
+        "sync": "Import automatyczny",
+        "path": "Zaimportuj z"
+      },
+      "actions": {
+        "selectPlaylist": "Wybierz playlistę:",
+        "addNewPlaylist": "Stwórz \"%{name}\"",
+        "export": "Wyeksportuj",
+        "makePublic": "Zmień na Publiczną",
+        "makePrivate": "Zmień na Prywatną"
+      },
+      "message": {
+        "duplicate_song": "Dodaj zduplikowane utwory",
+        "song_exist": "Do playlisty dodawane są duplikaty. Czy chcesz je dodać czy pominąć?"
+      }
     },
-    "help": {
-        "title": "Skróty Klawiszowe Navidrome",
-        "hotkeys": {
-            "show_help": "Wyświetl Pomoc",
-            "toggle_menu": "Pokaż Pasek Boczny",
-            "toggle_play": "Odtwórz / Wstrzymaj",
-            "prev_song": "Poprzedni Utwór",
-            "next_song": "Następny Utwór",
-            "vol_up": "Głośniej",
-            "vol_down": "Ciszej",
-            "toggle_love": "Dodaj ten utwór do ulubionych",
-            "current_song": "Przejdź do Bieżącego Utworu"
-        }
+    "radio": {
+      "name": "Radio |||| Radia",
+      "fields": {
+        "name": "Nazwa",
+        "streamUrl": "URL Strumienia",
+        "homePageUrl": "URL Strony Głównej",
+        "updatedAt": "Zaktualizowano",
+        "createdAt": "Stworzono"
+      },
+      "actions": {
+        "playNow": "Odtwarzaj"
+      }
+    },
+    "share": {
+      "name": "Udostępnienie |||| Udostępnienia",
+      "fields": {
+        "username": "Udostępnione Przez",
+        "url": "URL",
+        "description": "Opis",
+        "contents": "Zawartość",
+        "expiresAt": "Wygasa",
+        "lastVisitedAt": "Ostatnio Wyświetlone",
+        "visitCount": "Wyświetlenia",
+        "format": "Format",
+        "maxBitRate": "Maks. Bit Rate",
+        "updatedAt": "Zaktualizowano",
+        "createdAt": "Stworzono",
+        "downloadable": "Zezwolić Na Pobieranie?"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Dziękujemy za zainstalowanie Navidrome!",
+      "welcome2": "Stwórz konto administratora, aby rozpocząć",
+      "confirmPassword": "Potwierdź Hasło",
+      "buttonCreateAdmin": "Stwórz Administratora",
+      "auth_check_error": "Proszę się zalogować, aby kontynuować",
+      "user_menu": "Profil",
+      "username": "Nazwa użytkownika",
+      "password": "Hasło",
+      "sign_in": "Zaloguj się",
+      "sign_in_error": "Uwierzytelnianie nie powiodło się, spróbuj ponownie",
+      "logout": "Wyloguj"
+    },
+    "validation": {
+      "invalidChars": "Proszę, używaj wyłącznie liter i cyfr",
+      "passwordDoesNotMatch": "Hasło nie pasuje",
+      "required": "Wymagane",
+      "minLength": "Powinno być minimalnie %{min} znaków",
+      "maxLength": "Powinno być %{max} lub mniej znaków",
+      "minValue": "Minimalna wartość to %{min}",
+      "maxValue": "Powinno być %{max} lub mniej",
+      "number": "Musi być liczbą",
+      "email": "Adres e-mail musi być poprawny",
+      "oneOf": "Musi być jedną z: %{options}",
+      "regex": "Musi pasować do określonego formatu (regexp): %{pattern}",
+      "unique": "Musi być unikalne",
+      "url": "Adres URL musi być poprawny"
+    },
+    "action": {
+      "add_filter": "Dodaj filtr",
+      "add": "Dodaj",
+      "back": "Wstecz",
+      "bulk_actions": "1 element wybrany |||| %{smart_count} wybranych elementów",
+      "cancel": "Anuluj",
+      "clear_input_value": "Wyczyść wartość",
+      "clone": "Sklonuj",
+      "confirm": "Potwierdź",
+      "create": "Stwórz",
+      "delete": "Usuń",
+      "edit": "Edytuj",
+      "export": "Wyeksportuj",
+      "list": "Lista",
+      "refresh": "Odśwież",
+      "remove_filter": "Usuń ten filtr",
+      "remove": "Usuń",
+      "save": "Zapisz",
+      "search": "Szukaj",
+      "show": "Pokaż",
+      "sort": "Sortuj",
+      "undo": "Cofnij",
+      "expand": "Rozwiń",
+      "close": "Zamknij",
+      "open_menu": "Otwórz menu",
+      "close_menu": "Zamknij menu",
+      "unselect": "Odznacz",
+      "skip": "Pomiń",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Udostępnij",
+      "download": "Pobierz"
+    },
+    "boolean": {
+      "true": "Tak",
+      "false": "Nie"
+    },
+    "page": {
+      "create": "Stwórz %{name}",
+      "dashboard": "Panel Główny",
+      "edit": "%{name} #%{id}",
+      "error": "Coś poszło nie tak",
+      "list": "%{name}",
+      "loading": "Ładowanie",
+      "not_found": "Nie Znaleziono",
+      "show": "%{name} #%{id}\n",
+      "empty": "Brakuje elementu typu %{name}.",
+      "invite": "Czy chcesz dodać nowy?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Upuść kilka plików do przesłania lub kliknij, aby wybrać jeden.",
+        "upload_single": "Upuść plik do przesłania, lub kliknij, aby go wybrać."
+      },
+      "image": {
+        "upload_several": "Upuść kilka zdjęć do przesłania, lub kliknij, aby wybrać jedno.",
+        "upload_single": "Upuść zdjęcie do przesłania, lub kliknij, aby je wybrać."
+      },
+      "references": {
+        "all_missing": "Nie można znaleźć danych referencyjnych.",
+        "many_missing": "Co najmniej jedno z powiązanych odniesień nie jest już dostępne.",
+        "single_missing": "Wygląda na to, że powiązane odniesienie nie jest już dostępne."
+      },
+      "password": {
+        "toggle_visible": "Ukryj hasło",
+        "toggle_hidden": "Pokaż hasło"
+      }
+    },
+    "message": {
+      "about": "O aplikacji",
+      "are_you_sure": "Czy jesteś pewny?",
+      "bulk_delete_content": "Czy jesteś pewny, że chcesz usunąć %{name}? |||| Czy jesteś pewny, że chcesz usunąć %{smart_count} elementów?",
+      "bulk_delete_title": "Usuń %{name} |||| Usuń %{smart_count} %{name}",
+      "delete_content": "Czy jesteś pewny, że chcesz usunąć ten element?",
+      "delete_title": "Usuń %{name} #%{id}",
+      "details": "Szczegóły",
+      "error": "Wystąpił błąd po stronie klienta i Twoje żądanie nie może być zrealizowane.",
+      "invalid_form": "Formularz jest nieprawidłowy. Proszę sprawdź błędy",
+      "loading": "Ładowanie zawartości, proszę czekać",
+      "no": "Nie",
+      "not_found": "Wpisałeś zły adres URL, albo skorzystałeś ze złego linku.",
+      "yes": "Tak",
+      "unsaved_changes": "Niektóre z Twoich zmian nie zostały zapisane. Czy jesteś pewny, że chcesz je zignorować?"
+    },
+    "navigation": {
+      "no_results": "Brak wyników",
+      "no_more_results": "Strona o numerze %{page} jest poza granicami. Proszę spróbować poprzednią stronę.",
+      "page_out_of_boundaries": "Strona o numerze %{page} jest poza granicami",
+      "page_out_from_end": "Nie można przejść za ostatnią stronę",
+      "page_out_from_begin": "Nie można przejść przed 1 stronę",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} z %{total}",
+      "page_rows_per_page": "Wierszy na stronie:",
+      "next": "Następna",
+      "prev": "Poprzednia",
+      "skip_nav": "Przejdź do treści"
+    },
+    "notification": {
+      "updated": "Element zaktualizowany |||| %{smart_count} zaktualizowanych elementów",
+      "created": "Element stworzony",
+      "deleted": "Element usunięty |||| %{smart_count} usuniętych elementów",
+      "bad_item": "Niepoprawny element",
+      "item_doesnt_exist": "Element nie istnieje",
+      "http_error": "Błąd komunikacji z serwerem",
+      "data_provider_error": "Błąd dostawcy danych. Sprawdź konsolę, aby uzyskać szczegółowe informacje.",
+      "i18n_error": "Nie można załadować tłumaczenia dla tego języka",
+      "canceled": "Akcja anulowana",
+      "logged_out": "Twoja sesja została zakończona, proszę o ponowne połączenie.",
+      "new_version": "Dostępna nowa wersja! Proszę odświeżyć okno przeglądarki."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Kolumny Do Wyświetlenia",
+      "layout": "Układ",
+      "grid": "Siatka",
+      "table": "Tabela"
+    }
+  },
+  "message": {
+    "note": "UWAGA",
+    "transcodingDisabled": "Zmiana ustawień transkodowania przez interfejs sieciowy jest zablokowana z powodów bezpieczeństwa. Jeśli chcesz zmienić (edytować lub dodawać) opcje transkodowania, uruchom ponownie serwer z %{config} opcją konfiguracji.",
+    "transcodingEnabled": "Navidrome aktualnie działa z %{config}, co umożliwia korzystanie z komend systemowych ustawień transkodowania poprzez interfejs sieciowy. Rekomendujemy wyłączenie tego ustawienia w celu zwiększenia bezpieczeństwa i aktywowanie go wyłącznie podczas konfiguracji transkodowania.",
+    "songsAddedToPlaylist": "Dodano 1 utwór do playlisty |||| Dodano %{smart_count} utworów do playlisty",
+    "noPlaylistsAvailable": "Niedostępne",
+    "delete_user_title": "Usuń użytkownika '%{name}'",
+    "delete_user_content": "Czy jesteś pewien, że chcesz usunąć tego użytkownika oraz wszystkie jego dane (wliczając w to playlisty oraz ustawienia)?",
+    "notifications_blocked": "Zablokowałeś Powiadomienia w ustawieniach swojej przeglądarki",
+    "notifications_not_available": "Ta przeglądarka nie obsługuje powiadomień",
+    "lastfmLinkSuccess": "Połączono Last.fm i włączono scrobblowanie",
+    "lastfmLinkFailure": "Nie można połączyć Last.fm",
+    "lastfmUnlinkSuccess": "Odłączono Last.fm i wyłączono scrobblowanie",
+    "lastfmUnlinkFailure": "Nie można odłączyć Last.fm",
+    "openIn": {
+      "lastfm": "Otwórz w Last.fm",
+      "musicbrainz": "Otwórz w MusicBrainz"
+    },
+    "lastfmLink": "Czytaj więcej...",
+    "listenBrainzLinkSuccess": "Połączono ListenBrainz i włączono scrobblowanie dla użytkownika: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz nie mógł zostać połączony: %{error}",
+    "listenBrainzUnlinkSuccess": "Odłączono ListenBrainz i wyłączono scrobblowanie",
+    "listenBrainzUnlinkFailure": "ListenBrainz nie może być odłączony",
+    "downloadOriginalFormat": "Pobierz w oryginalnym formacie",
+    "shareOriginalFormat": "Udostępnij w oryginalnym formacie",
+    "shareDialogTitle": "Udostępnij %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Udostępnij 1 %{resource} |||| Udostępnij %{smart_count} %{resource}",
+    "shareSuccess": "Adres URL skopiowany do schowka: %{url}",
+    "shareFailure": "Błąd podczas kopiowania URL %{url} do schowka",
+    "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter"
+  },
+  "menu": {
+    "library": "Biblioteka",
+    "settings": "Ustawienia",
+    "version": "Wersja",
+    "theme": "Wygląd",
+    "personal": {
+      "name": "Personalizacja",
+      "options": {
+        "theme": "Wygląd",
+        "language": "Język",
+        "defaultView": "Widok Podstawowy",
+        "desktop_notifications": "Powiadomienia",
+        "lastfmScrobbling": "Scrobbluj do Last.fm",
+        "listenBrainzScrobbling": "Scrobbluj do ListenBrainz",
+        "replaygain": "Tryb ReplayGain",
+        "preAmp": "ReplayGain PreAmp (dB)",
+        "gain": {
+          "none": "Wyłączony",
+          "album": "Użyj Wzmocnienia Albumu",
+          "track": "Użyj Wzmocnienia Utworu"
+        }
+      }
+    },
+    "albumList": "Albumy",
+    "about": "O aplikacji",
+    "playlists": "Playlisty",
+    "sharedPlaylists": "Udostępnione Playlisty"
+  },
+  "player": {
+    "playListsText": "Kolejka Odtwarzania",
+    "openText": "Otwórz",
+    "closeText": "Zamknij",
+    "notContentText": "Brak muzyki",
+    "clickToPlayText": "Kliknij, aby odtworzyć",
+    "clickToPauseText": "Kliknij, aby zapauzować",
+    "nextTrackText": "Następny utwór",
+    "previousTrackText": "Poprzedni utwór",
+    "reloadText": "Przeładuj",
+    "volumeText": "Głośność",
+    "toggleLyricText": "Pokaż tekst utworu",
+    "toggleMiniModeText": "Zminimalizuj",
+    "destroyText": "Zniszcz",
+    "downloadText": "Pobierz",
+    "removeAudioListsText": "Usuń listy audio",
+    "clickToDeleteText": "Kliknij, aby usunąć %{name}",
+    "emptyLyricText": "Brak tekstu",
+    "playModeText": {
+      "order": "W kolejności",
+      "orderLoop": "Powtarzaj",
+      "singleLoop": "Powtórz Raz",
+      "shufflePlay": "Odtwarzaj losowo"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Strona główna",
+      "source": "Kod źródłowy",
+      "featureRequests": "Prośby o nowe funkcjonalności"
+    }
+  },
+  "activity": {
+    "title": "Aktywność",
+    "totalScanned": "Liczba Przeskanowanych Folderów",
+    "quickScan": "Szybkie Skanowanie",
+    "fullScan": "Pełne Skanowanie",
+    "serverUptime": "Czas Działania Serwera",
+    "serverDown": "NIEDOSTĘPNY"
+  },
+  "help": {
+    "title": "Skróty Klawiszowe Navidrome",
+    "hotkeys": {
+      "show_help": "Wyświetl Pomoc",
+      "toggle_menu": "Pokaż Pasek Boczny",
+      "toggle_play": "Odtwórz / Wstrzymaj",
+      "prev_song": "Poprzedni Utwór",
+      "next_song": "Następny Utwór",
+      "vol_up": "Głośniej",
+      "vol_down": "Ciszej",
+      "toggle_love": "Dodaj ten utwór do ulubionych",
+      "current_song": "Przejdź do Bieżącego Utworu"
+    }
+  }
 }
