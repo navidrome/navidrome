@@ -1,460 +1,461 @@
 {
-    "languageName": "Türkçe",
-    "resources": {
-        "song": {
-            "name": "Şarkı |||| Şarkılar",
-            "fields": {
-                "albumArtist": "Albüm sanatçısı",
-                "duration": "Süre",
-                "trackNumber": "Parça #",
-                "playCount": "Oynatma",
-                "title": "Isim",
-                "artist": "Sanatçı",
-                "album": "Albüm",
-                "path": "Dosya yolu",
-                "genre": "Tür",
-                "compilation": "Derleme",
-                "year": "Yıl",
-                "size": "Dosya boyutu",
-                "updatedAt": "Yüklendiği zaman",
-                "bitRate": "Bir sayısı",
-                "discSubtitle": "Disk Altyazısı",
-                "starred": "Yıldızlı",
-                "comment": "",
-                "rating": "",
-                "quality": "",
-                "bpm": "",
-                "playDate": "",
-                "channels": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "addToQueue": "Sonra çal",
-                "playNow": "Şimdi çal",
-                "addToPlaylist": "Çalma listesine ekle",
-                "shuffleAll": "Tümünü karıştır",
-                "download": "İndir",
-                "playNext": "Sonrakini çal",
-                "info": ""
-            }
-        },
-        "album": {
-            "name": "Albüm |||| Albümler",
-            "fields": {
-                "albumArtist": "Albüm sanatçısı",
-                "artist": "Sanatçı",
-                "duration": "Süre",
-                "songCount": "Şarkılar",
-                "playCount": "Oynatma",
-                "name": "Ad",
-                "genre": "Tür",
-                "compilation": "Derleme",
-                "year": "Yıl",
-                "updatedAt": "Güncellendi ",
-                "comment": "",
-                "rating": "",
-                "createdAt": "",
-                "size": "",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
-            },
-            "actions": {
-                "playAll": "Çaldır",
-                "playNext": "Sonrakini çal",
-                "addToQueue": "Sonra çal",
-                "shuffle": "Karıştır",
-                "addToPlaylist": "Playlist'e ekle",
-                "download": "İndir",
-                "info": "",
-                "share": ""
-            },
-            "lists": {
-                "all": "Hepsi",
-                "random": "Rasgele",
-                "recentlyAdded": "Son Eklenenler",
-                "recentlyPlayed": "Son oynatılan",
-                "mostPlayed": "En çok çalanlar",
-                "starred": "Yıldızlı",
-                "topRated": ""
-            }
-        },
-        "artist": {
-            "name": "Sanatçı |||| Sanatçılar",
-            "fields": {
-                "name": "Ad",
-                "albumCount": "Albüm Sayısı",
-                "songCount": "Şarkı sayısı",
-                "playCount": "Oynatma",
-                "rating": "",
-                "genre": "",
-                "size": ""
-            }
-        },
-        "user": {
-            "name": "Kullanıcı |||| Kullanıcılar",
-            "fields": {
-                "userName": "Kullanıcı adı",
-                "isAdmin": "Yönetici mi",
-                "lastLoginAt": "Son Giriş Tarihi",
-                "updatedAt": "Güncelleme Tarihi",
-                "name": "Ad",
-                "password": "Şifre",
-                "createdAt": "Oluşturuldu",
-                "changePassword": "",
-                "currentPassword": "",
-                "newPassword": "",
-                "token": ""
-            },
-            "helperTexts": {
-                "name": ""
-            },
-            "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
-            },
-            "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
-            }
-        },
-        "player": {
-            "name": "Çalar |||| Çalarlar",
-            "fields": {
-                "name": "Ad",
-                "transcodingId": "Kod dönüştürme kimliği",
-                "maxBitRate": "Maks. bit orani",
-                "client": "Cihaz",
-                "userName": "Kullanıcı adı",
-                "lastSeen": "Son Görülme",
-                "reportRealPath": "",
-                "scrobbleEnabled": ""
-            }
-        },
-        "transcoding": {
-            "name": "Transcoding |||| Transcodings",
-            "fields": {
-                "name": "Ad",
-                "targetFormat": "Hedef Formatı",
-                "defaultBitRate": "Varsayılan bit orani",
-                "command": "komut"
-            }
-        },
-        "playlist": {
-            "name": "Çalma listesi |||| Çalma listeler",
-            "fields": {
-                "name": "Isim",
-                "duration": "Süre",
-                "ownerName": "Sahibi",
-                "public": "Görülebilir",
-                "updatedAt": "Güncelleme tarihi:",
-                "createdAt": "Oluşturma tarihi:",
-                "songCount": "Şarkılar",
-                "comment": "Yorum",
-                "sync": "otomatik-aktarma",
-                "path": "'dan Aktar"
-            },
-            "actions": {
-                "selectPlaylist": "Bir çalma listesi seç:",
-                "addNewPlaylist": "Oluştur  \"%{name}\"",
-                "export": "Aktar",
-                "makePublic": "",
-                "makePrivate": ""
-            },
-            "message": {
-                "duplicate_song": "",
-                "song_exist": ""
-            }
-        },
-        "radio": {
-            "name": "",
-            "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "playNow": ""
-            }
-        },
-        "share": {
-            "name": "",
-            "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
-            }
-        }
+  "languageName": "Türkçe",
+  "resources": {
+    "song": {
+      "name": "Şarkı |||| Müzik",
+      "fields": {
+        "albumArtist": "Albüm Sanatçısı",
+        "duration": "Süre",
+        "trackNumber": "Şarkı No",
+        "playCount": "Oynatılma",
+        "title": "Başlık",
+        "artist": "Sanatçı",
+        "album": "Albüm",
+        "path": "Dosya yolu",
+        "genre": "Tür",
+        "compilation": "Derleme",
+        "year": "Yıl",
+        "size": "Dosya Boyutu",
+        "updatedAt": "Yüklendiği Tarih",
+        "bitRate": "Bitrate",
+        "discSubtitle": "Disk Altyazısı",
+        "starred": "Favori",
+        "comment": "Yorum",
+        "rating": "Derecelendirme",
+        "quality": "Kalite",
+        "bpm": "BPM",
+        "playDate": "Son Oynatılma",
+        "channels": "Kanal",
+        "createdAt": "Eklenme tarihi"
+      },
+      "actions": {
+        "addToQueue": "Oynatma Sırasına Ekle",
+        "playNow": "Şimdi Yürüt",
+        "addToPlaylist": "Çalma listesine ekle",
+        "shuffleAll": "Tümünü karıştır",
+        "download": "İndir",
+        "playNext": "Dinlenenden Sonra Oynat",
+        "info": "Bilgiler"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Navidrome'yi yüklediğiniz için teşekkürler!",
-            "welcome2": "Başlamak için bir yönetici kullanıcı oluştur",
-            "confirmPassword": "Şifreyi Onayla",
-            "buttonCreateAdmin": "Yönetici oluştur",
-            "auth_check_error": "Devam etmek için lütfen giriş yap",
-            "user_menu": "Profil",
-            "username": "Kullanıcı adı",
-            "password": "Parola",
-            "sign_in": "Giriş yap",
-            "sign_in_error": "Giriş başarısız. Lütfen tekrar deneyin",
-            "logout": "Çıkış"
-        },
-        "validation": {
-            "invalidChars": "Lütfen sadece harf ve rakam kullan",
-            "passwordDoesNotMatch": "Şifre eşleşmiyor",
-            "required": "Zorunlu alan",
-            "minLength": "En az %{min} karakter",
-            "maxLength": "En fazla %{max} karakter",
-            "minValue": "En az %{min} olmalı",
-            "maxValue": "En fazla %{max} olmali",
-            "number": "Sayısal bir değer olmalı",
-            "email": "E-posta geçerli değil",
-            "oneOf": "Bunlardan biri olmalı: %{options}",
-            "regex": "Belirli bir formatla eşleşmelidir (regexp): %{pattern}",
-            "unique": "",
-            "url": ""
-        },
-        "action": {
-            "add_filter": "Filtre ekle",
-            "add": "Ekle",
-            "back": "Geri Dön",
-            "bulk_actions": "1 seçildi |||| %{smart_count} seçildi",
-            "cancel": "İptal",
-            "clear_input_value": "Temizle",
-            "clone": "Klonla",
-            "confirm": "Onayla",
-            "create": "Oluştur",
-            "delete": "Sil",
-            "edit": "Düzenle",
-            "export": "Dışa aktar",
-            "list": "Listele",
-            "refresh": "Yenile",
-            "remove_filter": "Filtreyi kaldır",
-            "remove": "Kaldır",
-            "save": "Kaydet",
-            "search": "Ara",
-            "show": "Göster",
-            "sort": "Sırala",
-            "undo": "Geri al",
-            "expand": "Genişlettir",
-            "close": "Kapat",
-            "open_menu": "Menüyü aç",
-            "close_menu": "Menüyü kapat",
-            "unselect": "Seçimi kaldır",
-            "skip": "",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
-        },
-        "boolean": {
-            "true": "Evet",
-            "false": "Hayır"
-        },
-        "page": {
-            "create": "%{name} oluştur",
-            "dashboard": "Ana Sayfa",
-            "edit": "%{name} #%{id}",
-            "error": "Bazı şeyler yolunda değil",
-            "list": "%{name} listesi",
-            "loading": "Yükleniyor",
-            "not_found": "Sayfa bulunamadı",
-            "show": "%{name} #%{id}",
-            "empty": "Henüz %{name} yok.",
-            "invite": "Bir tane eklemek ister misin?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Yüklemek istediğiniz dosyaları buraya sürükleyin ya da seçmek için tıklayın.",
-                "upload_single": "Yüklemek istediğiniz dosyayı buraya sürükleyin ya da seçmek için tıklayın.."
-            },
-            "image": {
-                "upload_several": "Yüklemek istediğiniz resimleri buraya sürükleyin ya da seçmek için tıklayın.",
-                "upload_single": "Yüklemek istediğiniz resmi buraya sürükleyin ya da seçmek için tıklayın."
-            },
-            "references": {
-                "all_missing": "Referans verileri bulunamadı.",
-                "many_missing": "İlişkilendirilmiş referanslardan en az biri artık mevcut değil.",
-                "single_missing": "İlişkilendirilmiş referans artık mevcut değil."
-            },
-            "password": {
-                "toggle_visible": "Şifreyi gizle",
-                "toggle_hidden": "Şifreyi göster"
-            }
-        },
-        "message": {
-            "about": "Hakkında",
-            "are_you_sure": "Emin misiniz?",
-            "bulk_delete_content": "%{name} silmek istediğinizden emin misiniz? |||| %{smart_count} öğeyi silmek istediğinizden emin misiniz?",
-            "bulk_delete_title": "%{name} sil |||| %{smart_count} %{name} öğesi sil",
-            "delete_content": "Bu öğeyi silmek istediğinizden emin misiniz?",
-            "delete_title": "%{name} #%{id} Sil",
-            "details": "Detaylar",
-            "error": "Bir istemci hatası oluştu ve isteğiniz tamamlanamadı.",
-            "invalid_form": "Form geçerli değil. Lütfen hataları kontrol edin",
-            "loading": "Sayfa yükleniyor, lütfen bekleyiniz",
-            "no": "Hayır",
-            "not_found": "Hatalı bir URL girdiniz ya da yanlış bir linke tıkladınız",
-            "yes": "Evet",
-            "unsaved_changes": "Yaptığın değişikliklerin bazıları kaydedilmedi. Onları yoksaymak istediğinizden emin misin?"
-        },
-        "navigation": {
-            "no_results": "Kayıt bulunamadı",
-            "no_more_results": "%{page} sayfası mevcut değil. Önceki sayfayı deneyin.",
-            "page_out_of_boundaries": "%{page} sayfası mevcut değil",
-            "page_out_from_end": "Son sayfadan ileri gidemezsin",
-            "page_out_from_begin": "1. sayfadan geri gidemezsin",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} of %{total}",
-            "page_rows_per_page": "Sayfa başına kayıtlar",
-            "next": "Sonraki",
-            "prev": "Önceki",
-            "skip_nav": ""
-        },
-        "notification": {
-            "updated": "Öğe güncellendi |||| %{smart_count} öğe güncellendi",
-            "created": "Öğe oluşturuldu",
-            "deleted": "Öğe silindi |||| %{smart_count} öğe silindi",
-            "bad_item": "Hatalı öğe",
-            "item_doesnt_exist": "Öğe bulunamadı",
-            "http_error": "Sunucu iletişim hatası",
-            "data_provider_error": "dataProvider hatası. Detay için konsolu gözden geçir.",
-            "i18n_error": "Belirtilen dil için çeviriler yüklenemedi",
-            "canceled": "Eylem iptal edildi",
-            "logged_out": "Oturumunuz sona erdi, Lütfen yeniden bağlanın.",
-            "new_version": ""
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "",
-            "layout": "",
-            "grid": "",
-            "table": ""
-        }
+    "album": {
+      "name": "Albüm |||| Albümler",
+      "fields": {
+        "albumArtist": "Albüm sanatçısı",
+        "artist": "Sanatçı",
+        "duration": "Süre",
+        "songCount": "Şarkı",
+        "playCount": "Oynatılma",
+        "name": "Ad",
+        "genre": "Tür",
+        "compilation": "Derleme",
+        "year": "Yıl",
+        "updatedAt": "Güncellendi",
+        "comment": "Yorum",
+        "rating": "Derecelendirme",
+        "createdAt": "Eklenme tarihi",
+        "size": "Boyut",
+        "originalDate": "Orijinal",
+        "releaseDate": "Yayınlanma Tarihi: ",
+        "releases": "Yayınlanan |||| Yayınlananlar",
+        "released": "Yayınlandı"
+      },
+      "actions": {
+        "playAll": "Oynat",
+        "playNext": "Dinlenenden Sonra Oynat",
+        "addToQueue": "Oynatma Kuyruğuna Ekle",
+        "shuffle": "Karıştır",
+        "addToPlaylist": "Çalma Listesine Ekle",
+        "download": "İndir",
+        "info": "Bilgiler",
+        "share": "Paylaş"
+      },
+      "lists": {
+        "all": "Tümü",
+        "random": "Rasgele",
+        "recentlyAdded": "Son Eklenenler",
+        "recentlyPlayed": "Son Dinlenenler",
+        "mostPlayed": "En Çok Dinlenenler",
+        "starred": "Favorilenenler",
+        "topRated": "Yüksek Dereceliler"
+      }
     },
-    "message": {
-        "note": "NOT",
-        "transcodingDisabled": "Transcoding ayarlari  web arayüzü üzerinden değiştirilmesi güvenlik nedeniyle devre dışı bırakılmıştır.  Kod dönüştürme seçeneklerini değiştirmek (düzenlemek veya eklemek) istiyorsan, %{config} seçeneğiyle sunucuyu yeniden başlatın.",
-        "transcodingEnabled": "Navidrome şu anda %{config} ile çalışıyor, web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedeniyle devre dışı bırakmanızı ve yalnızca Kod Dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz.",
-        "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
-        "noPlaylistsAvailable": "Mevcut değil",
-        "delete_user_title": "'%{name}' kullanıcısını sil",
-        "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listesi ve tercihleri dahil) silmek istediğinden emin misin?",
-        "notifications_blocked": "",
-        "notifications_not_available": "",
-        "lastfmLinkSuccess": "",
-        "lastfmLinkFailure": "",
-        "lastfmUnlinkSuccess": "",
-        "lastfmUnlinkFailure": "",
-        "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        },
-        "lastfmLink": "",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": "",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+    "artist": {
+      "name": "Sanatçı |||| Sanatçılar",
+      "fields": {
+        "name": "İsim",
+        "albumCount": "Albüm Sayısı",
+        "songCount": "Şarkı Sayısı",
+        "playCount": "Oynatmalar",
+        "rating": "Derecelendirme",
+        "genre": "Tür",
+        "size": "Boyut"
+      }
     },
-    "menu": {
-        "library": "Müzik kütüphanesi",
-        "settings": "Ayarlar",
-        "version": "Sürüm",
-        "theme": "Tema",
-        "personal": {
-            "name": "Kişisel",
-            "options": {
-                "theme": "Tema",
-                "language": "Dil",
-                "defaultView": "Varsayılan görünüm",
-                "desktop_notifications": "",
-                "lastfmScrobbling": "",
-                "listenBrainzScrobbling": "",
-                "replaygain": "",
-                "preAmp": "",
-                "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
-                }
-            }
-        },
-        "albumList": "Albümler",
-        "about": "Hakkinda",
-        "playlists": "",
-        "sharedPlaylists": ""
+    "user": {
+      "name": "Kullanıcı |||| Kullanıcılar",
+      "fields": {
+        "userName": "Kullanıcı adı",
+        "isAdmin": "Yönetici",
+        "lastLoginAt": "Son Giriş Tarihi",
+        "updatedAt": "Güncelleme Tarihi",
+        "name": "İsim",
+        "password": "Şifre",
+        "createdAt": "Oluşturma Tarihi",
+        "changePassword": "Şifreyi Değiştir",
+        "currentPassword": "Mevcut Şifre",
+        "newPassword": "Yeni Şifre",
+        "token": "Token",
+        "lastAccessAt": "Son Erişim Tarihi"
+      },
+      "helperTexts": {
+        "name": "Adınızda yaptığımız değişikliğin geçerli olması için tekrar giriş yapmanız gerekmektedir"
+      },
+      "notifications": {
+        "created": "Kullanıcı oluşturuldu",
+        "updated": "Kullanıcı güncellendi",
+        "deleted": "Kullanıcı silindi"
+      },
+      "message": {
+        "listenBrainzToken": "ListenBrainz kullanıcı Token'ınızı girin.",
+        "clickHereForToken": "Token almak için buraya tıklayın"
+      }
     },
     "player": {
-        "playListsText": "Oynatma Sırası",
-        "openText": "Aç",
-        "closeText": "Kapat",
-        "notContentText": "Müzik yok",
-        "clickToPlayText": "Oynatmak için tıkla",
-        "clickToPauseText": "Duraklatmak için tıkla",
-        "nextTrackText": "Sonraki parça",
-        "previousTrackText": "Önceki parça",
-        "reloadText": "Tekrar yükle",
-        "volumeText": "Ses",
-        "toggleLyricText": "Şarkı sözü aç/kapat",
-        "toggleMiniModeText": "Küçült",
-        "destroyText": "Yık",
-        "downloadText": "İndir",
-        "removeAudioListsText": "Ses listelerini sil",
-        "clickToDeleteText": "%{name} silmek için tıkla",
-        "emptyLyricText": "Şarkı sözü yok",
-        "playModeText": {
-            "order": "Sırayla",
-            "orderLoop": "Tekrar et",
-            "singleLoop": "Birini tekrarla",
-            "shufflePlay": "Karıştır"
-        }
+      "name": "Cihaz |||| Cihazlar",
+      "fields": {
+        "name": "İsim",
+        "transcodingId": "Kod dönüştürme",
+        "maxBitRate": "Maks. Bit Oranı",
+        "client": "İstemci",
+        "userName": "Kullanıcı adı",
+        "lastSeen": "Son Görüldüğü Yer",
+        "reportRealPath": "Gerçek Yolu Bildir",
+        "scrobbleEnabled": "Skroplamaları harici servislere gönder"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Ana sayfa",
-            "source": "Kaynak kodu",
-            "featureRequests": "Özellik talepleri"
-        }
+    "transcoding": {
+      "name": "Kod Dönüştürme |||| Kod Dönüştürmeler",
+      "fields": {
+        "name": "İsim",
+        "targetFormat": "Dönüştürme Formatı",
+        "defaultBitRate": "Varsayılan BitRate",
+        "command": "Komut"
+      }
     },
-    "activity": {
-        "title": "",
-        "totalScanned": "",
-        "quickScan": "",
-        "fullScan": "",
-        "serverUptime": "",
-        "serverDown": ""
+    "playlist": {
+      "name": "Çalma Listesi |||| Çalma Listesi",
+      "fields": {
+        "name": "İsim",
+        "duration": "Süre",
+        "ownerName": "Sahibi",
+        "public": "Herkese Açık",
+        "updatedAt": "Güncelleme Tarihi",
+        "createdAt": "Oluşturma tarihi:",
+        "songCount": "Şarkı",
+        "comment": "Yorum",
+        "sync": "Otomatik Aktar\n",
+        "path": "İçe Aktar"
+      },
+      "actions": {
+        "selectPlaylist": "Bir Çalma Listesi Seç:",
+        "addNewPlaylist": "Oluştur  \"%{name}\"",
+        "export": "Aktar",
+        "makePublic": "Herkese Açık Yap",
+        "makePrivate": "Özel Yap"
+      },
+      "message": {
+        "duplicate_song": "Yinelenen şarkıları ekle",
+        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?"
+      }
     },
-    "help": {
-        "title": "",
-        "hotkeys": {
-            "show_help": "",
-            "toggle_menu": "",
-            "toggle_play": "",
-            "prev_song": "",
-            "next_song": "",
-            "vol_up": "",
-            "vol_down": "",
-            "toggle_love": "",
-            "current_song": ""
-        }
+    "radio": {
+      "name": "Radyo |||| Radyo",
+      "fields": {
+        "name": "İsim",
+        "streamUrl": "Akış URL'si",
+        "homePageUrl": "Web Site URL'si",
+        "updatedAt": "Güncellenme Tarihi",
+        "createdAt": "Oluşturulma Tarihi"
+      },
+      "actions": {
+        "playNow": "Şimdi Yürüt"
+      }
+    },
+    "share": {
+      "name": "Paylaş |||| Paylaşım",
+      "fields": {
+        "username": "Paylaşan",
+        "url": "URL",
+        "description": "Tanım",
+        "contents": "İçindekiler",
+        "expiresAt": "Sona Erme Tarihi",
+        "lastVisitedAt": "Son Ziyaret Tarihi",
+        "visitCount": "Ziyaretler",
+        "format": "Format",
+        "maxBitRate": "Maks. Bit Rate",
+        "updatedAt": "Güncelleme Tarihi",
+        "createdAt": "Oluşturma Tarihi",
+        "downloadable": "İndirmelere İzin Ver"
+      }
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Navidrome'yi yüklediğiniz için teşekkürler!",
+      "welcome2": "Başlamak için yönetici kullanıcısı oluştur",
+      "confirmPassword": "Şifreyi Onayla",
+      "buttonCreateAdmin": "Yönetici oluştur",
+      "auth_check_error": "Devam etmek için lütfen giriş yap",
+      "user_menu": "Profil",
+      "username": "Kullanıcı adı",
+      "password": "Parola",
+      "sign_in": "Giriş yap",
+      "sign_in_error": "Giriş başarısız. Lütfen tekrar deneyin",
+      "logout": "Çıkış"
+    },
+    "validation": {
+      "invalidChars": "Lütfen sadece harf ve rakam kullan",
+      "passwordDoesNotMatch": "Şifre eşleşmiyor",
+      "required": "Zorunlu alan",
+      "minLength": "En az %{min} karakter olmalıdır",
+      "maxLength": "En fazla %{max} karakter olmalıdır",
+      "minValue": "En az %{min} olmalı",
+      "maxValue": "En az %{min} olmalıdır",
+      "number": "Sayısal bir değer olmalı",
+      "email": "E-posta geçerli değil",
+      "oneOf": "Şunlardan biri olmalı: %{options}",
+      "regex": "Belirli bir formatla eşleşmelidir (regexp): %{pattern}",
+      "unique": "Benzersiz",
+      "url": "Geçerli bir URL olmalı"
+    },
+    "action": {
+      "add_filter": "Filtrele",
+      "add": "Ekle",
+      "back": "Geri Dön",
+      "bulk_actions": "1 öğe seçildi |||| %{smart_count} öğe seçildi",
+      "cancel": "Vazgeç",
+      "clear_input_value": "Değeri Temizle",
+      "clone": "Klonla",
+      "confirm": "Onayla",
+      "create": "Oluştur",
+      "delete": "Sil",
+      "edit": "Düzenle",
+      "export": "Dışa aktar",
+      "list": "Liste",
+      "refresh": "Yenile",
+      "remove_filter": "Filtreyi kaldır",
+      "remove": "Kaldır",
+      "save": "Kaydet",
+      "search": "Ara",
+      "show": "Göster",
+      "sort": "Sırala",
+      "undo": "Geri al",
+      "expand": "Genişlet",
+      "close": "Kapat",
+      "open_menu": "Menüyü aç",
+      "close_menu": "Menüyü kapat",
+      "unselect": "Seçimi kaldır",
+      "skip": "Atla",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Paylaş",
+      "download": "İndir"
+    },
+    "boolean": {
+      "true": "Evet",
+      "false": "Hayır"
+    },
+    "page": {
+      "create": "%{name} Oluştur",
+      "dashboard": "Ana Sayfa",
+      "edit": "%{name} #%{id}",
+      "error": "Bir şeyler ters gitti",
+      "list": "%{name}",
+      "loading": "Yükleniyor",
+      "not_found": "Bulunamadı",
+      "show": "%{name} #%{id}",
+      "empty": "Henüz %{name} Oluşturulmadı.",
+      "invite": "Bir tane oluşturmak ister misin?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Yüklemek istediğiniz dosyaları buraya sürükleyin ya da seçmek için tıklayın.",
+        "upload_single": "Yüklemek istediğiniz dosyayı buraya sürükleyin ya da seçmek için tıklayın.."
+      },
+      "image": {
+        "upload_several": "Yüklemek istediğiniz resimleri buraya sürükleyin ya da seçmek için tıklayın.",
+        "upload_single": "Yüklemek istediğiniz resmi buraya sürükleyin ya da seçmek için tıklayın."
+      },
+      "references": {
+        "all_missing": "Referans verileri bulunamadı.",
+        "many_missing": "İlgili referanslardan en az biri artık mevcut görünmüyor.",
+        "single_missing": "İlgili referanslardan en az biri artık mevcut görünmüyor."
+      },
+      "password": {
+        "toggle_visible": "Şifreyi gizle",
+        "toggle_hidden": "Şifreyi göster"
+      }
+    },
+    "message": {
+      "about": "Hakkında",
+      "are_you_sure": "Emin misiniz?",
+      "bulk_delete_content": "Bu %{name} öğesini silmek istediğinizden emin misiniz? |||| Bu %{smart_count} öğesini silmek istediğinizden emin misiniz?",
+      "bulk_delete_title": "%{name} öğesini sil |||| %{smart_count} %{name} öğesini sil",
+      "delete_content": "Bu öğeyi silmek istediğinizden emin misiniz?",
+      "delete_title": "%{name} #%{id} Sil",
+      "details": "Detaylar",
+      "error": "Bir istemci hatası oluştu ve isteğiniz tamamlanamadı.",
+      "invalid_form": "Form geçerli değil. Lütfen hataları kontrol edin",
+      "loading": "Sayfa yükleniyor, lütfen bekleyin",
+      "no": "Hayır",
+      "not_found": "Ya yanlış bir URL yazdınız ya da hatalı bir bağlantıya tıkladınız.",
+      "yes": "Evet",
+      "unsaved_changes": "Değişikliklerinizin bazıları kaydedilmedi. Bunları yoksaymak istediğinizden emin misiniz?"
+    },
+    "navigation": {
+      "no_results": "Kayıt bulunamadı",
+      "no_more_results": "Sayfa numarası %{page} sınırların dışında. Önceki sayfayı deneyin.",
+      "page_out_of_boundaries": "Sayfa numarası %{page} sınırların dışında",
+      "page_out_from_end": "Son sayfadan ilerisine gidelemez",
+      "page_out_from_begin": "1. sayfadan geri gidemezsin",
+      "page_range_info": "Listelenen %{offsetBegin} ile %{offsetEnd} arası. Toplam %{total} öğe.",
+      "page_rows_per_page": "Sayfa başına öğe:",
+      "next": "Sonraki",
+      "prev": "Önceki",
+      "skip_nav": "İçeriğe geç"
+    },
+    "notification": {
+      "updated": "Öğe güncellendi |||| %{smart_count} öğesi güncellendi",
+      "created": "Öğe oluşturuldu",
+      "deleted": "Öğe silindi |||| %{smart_count} öğesi silindi",
+      "bad_item": "Hatalı öğe",
+      "item_doesnt_exist": "Öğe bulunamadı",
+      "http_error": "Sunucu iletişim hatası",
+      "data_provider_error": "dataProvider hatası. Ayrıntılar için konsolu kontrol edin.",
+      "i18n_error": "Belirtilen dil için çeviriler yüklenemiyor",
+      "canceled": "Eylem iptal edildi",
+      "logged_out": "Oturumunuz sona erdi, lütfen tekrar bağlanın.",
+      "new_version": "Yeni sürüm mevcut! Lütfen bu pencereyi yenileyin."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Görüntülenecek Sütunlar",
+      "layout": "Görünüm",
+      "grid": "Izgara",
+      "table": "Liste"
+    }
+  },
+  "message": {
+    "note": "NOT",
+    "transcodingDisabled": "Güvenlik nedenleriyle, kod dönüştürme yapılandırmasını web arayüzü üzerinden değiştirmek devre dışıdır. Kod dönüştürme seçeneklerini değiştirmek (düzenlemek veya eklemek) isterseniz, sunucuyu %{config} yapılandırma seçeneğiyle yeniden başlatın.",
+    "transcodingEnabled": "Navidrome yapılandırmanızda \" %{config} \" etkin ve bu da web arayüzünü kullanarak kod dönüştürme ayarlarından sistem komutlarını çalıştırmayı mümkün kılıyor. Güvenlik nedenleriyle bunu devre dışı bırakmanızı ve yalnızca Kod dönüştürme seçeneklerini yapılandırırken etkinleştirmenizi öneririz.",
+    "songsAddedToPlaylist": "Çalma listesine 1 şarkı eklendi |||| Çalma listesine %{smart_count} şarkı eklendi",
+    "noPlaylistsAvailable": "Mevcut değil",
+    "delete_user_title": "'%{name}' kullanıcısını sil",
+    "delete_user_content": "Bu kullanıcıyı ve tüm verilerini (çalma listeleri ve tercihleri dahil) silmek istediğinden emin misin?",
+    "notifications_blocked": "Tarayıcınızın ayarlarında bu site için Bildirimleri engellediniz",
+    "notifications_not_available": "Bu tarayıcı masaüstü bildirimlerini desteklemiyor veya Navidrome'a ​​\"https://\" üzerinden erişmiyorsunuz",
+    "lastfmLinkSuccess": "Last.fm bağlantısı başarılı ve skroplama etkinleştirildi",
+    "lastfmLinkFailure": "Last.fm'e bağlanılamadı",
+    "lastfmUnlinkSuccess": "Last.fm bağlantısı kaldırıldı ve Skroplama devre dışı bırakıldı",
+    "lastfmUnlinkFailure": "Last.fm bağlantısı kaldırılamadı",
+    "openIn": {
+      "lastfm": "Last.fm'de aç",
+      "musicbrainz": "MusicBrainz'de aç"
+    },
+    "lastfmLink": "Devamını Oku...",
+    "listenBrainzLinkSuccess": "ListenBrainz bağlantısı başarılı ve skroplama %{user} tarafından etkinleştirildi",
+    "listenBrainzLinkFailure": "ListenBrainz'a bağlanılamadı: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz bağlantısı kaldırıldı ve skroplama devre dışı bırakıldı",
+    "listenBrainzUnlinkFailure": "ListenBrainz bağlantısı kaldırılamadı",
+    "downloadOriginalFormat": "Orijinal formatta indir",
+    "shareOriginalFormat": "Orijinal Formatta Paylaş",
+    "shareDialogTitle": "%{resource}: '%{name}' öğesini paylaş",
+    "shareBatchDialogTitle": "Paylaş 1 %{resource} |||| Paylaş %{smart_count} %{resource}",
+    "shareSuccess": "URL panoya kopyalandı: %{url}",
+    "shareFailure": "%{url} panoya kopyalanırken hata oluştu",
+    "downloadDialogTitle": "%{resource}: '%{name}' (%{size}) dosyasını indirin",
+    "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter"
+  },
+  "menu": {
+    "library": "Kütüphane",
+    "settings": "Ayarlar",
+    "version": "Versiyon",
+    "theme": "Tema",
+    "personal": {
+      "name": "Kişisel",
+      "options": {
+        "theme": "Tema",
+        "language": "Dil",
+        "defaultView": "Varsayılan Görünüm",
+        "desktop_notifications": "Masaüstü Bildirimleri",
+        "lastfmScrobbling": "Last.fm'e Skropla",
+        "listenBrainzScrobbling": "ListenBrainz'e skroplama yapın",
+        "replaygain": "Tekrar Kazanma Modu",
+        "preAmp": "Tekrar Kazanım Ön Amplifikatörü (dB)",
+        "gain": {
+          "none": "Devre dışı",
+          "album": "Albüm Kazancını Kullan",
+          "track": "Parça Kazancını Kullan"
+        }
+      }
+    },
+    "albumList": "Albümler",
+    "about": "Hakkında",
+    "playlists": "Çalma Listeleri",
+    "sharedPlaylists": "Paylaşılan Çalma Listeleri"
+  },
+  "player": {
+    "playListsText": "Oynatma Sırası",
+    "openText": "Aç",
+    "closeText": "Kapat",
+    "notContentText": "Müzik yok",
+    "clickToPlayText": "Oynatmak için tıkla",
+    "clickToPauseText": "Duraklatmak için tıkla",
+    "nextTrackText": "Sonraki Şarkı",
+    "previousTrackText": "Önceki Şarkı",
+    "reloadText": "Tekrar yükle",
+    "volumeText": "Ses",
+    "toggleLyricText": "Şarkı sözü aç/kapat",
+    "toggleMiniModeText": "Küçült",
+    "destroyText": "Sonlandır",
+    "downloadText": "İndir",
+    "removeAudioListsText": "Şarkı listelerini sil",
+    "clickToDeleteText": "%{name} silmek için tıkla",
+    "emptyLyricText": "Şarkı sözü yok",
+    "playModeText": {
+      "order": "Sırayla",
+      "orderLoop": "Tekrarla",
+      "singleLoop": "Oynatılanı tekrarla",
+      "shufflePlay": "Karıştır"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Ana sayfa",
+      "source": "Kaynak kodu",
+      "featureRequests": "Özellik talepleri"
+    }
+  },
+  "activity": {
+    "title": "Etkinlik",
+    "totalScanned": "Toplam Taranan Klasör Sayısı",
+    "quickScan": "Hızlı Tarama",
+    "fullScan": "Tam Tarama",
+    "serverUptime": "Sunucu Çalışma Süresi",
+    "serverDown": "ÇEVRİMDIŞI"
+  },
+  "help": {
+    "title": "Navidrome Kısayolları",
+    "hotkeys": {
+      "show_help": "Yardımı Göster",
+      "toggle_menu": "Menü Kenar Çubuğunu Aç/Kapat",
+      "toggle_play": "Oynat / Duraklat",
+      "prev_song": "Önceki Şarkı",
+      "next_song": "Sonraki Şarkı",
+      "vol_up": "Sesi Arttır",
+      "vol_down": "Sesi Azalt",
+      "toggle_love": "Bu şarkıyı favorilere ekle",
+      "current_song": "Mevcut Şarkıya Git"
+    }
+  }
 }
