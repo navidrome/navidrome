@@ -230,6 +230,12 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
+	data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
+		Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
+	})
+	if err != nil {
+		log.Trace(ctx, "Error reading active players count", err)
+	}
 
 	// Memory info
 	var m runtime.MemStats
