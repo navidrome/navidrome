@@ -199,15 +199,37 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	data.Uptime = time.Since(consts.ServerStart).Milliseconds() / 1000
 
 	// Library info
-	data.Library.Tracks, _ = c.ds.MediaFile(ctx).CountAll()
-	data.Library.Albums, _ = c.ds.Album(ctx).CountAll()
-	data.Library.Artists, _ = c.ds.Artist(ctx).CountAll()
-	data.Library.Playlists, _ = c.ds.Playlist(ctx).Count()
-	data.Library.Shares, _ = c.ds.Share(ctx).CountAll()
-	data.Library.Radios, _ = c.ds.Radio(ctx).Count()
-	data.Library.ActiveUsers, _ = c.ds.User(ctx).CountAll(model.QueryOptions{
+	var err error
+	data.Library.Tracks, err = c.ds.MediaFile(ctx).CountAll()
+	if err != nil {
+		log.Trace(ctx, "Error reading tracks count", err)
+	}
+	data.Library.Albums, err = c.ds.Album(ctx).CountAll()
+	if err != nil {
+		log.Trace(ctx, "Error reading albums count", err)
+	}
+	data.Library.Artists, err = c.ds.Artist(ctx).CountAll()
+	if err != nil {
+		log.Trace(ctx, "Error reading artists count", err)
+	}
+	data.Library.Playlists, err = c.ds.Playlist(ctx).Count()
+	if err != nil {
+		log.Trace(ctx, "Error reading playlists count", err)
+	}
+	data.Library.Shares, err = c.ds.Share(ctx).CountAll()
+	if err != nil {
+		log.Trace(ctx, "Error reading shares count", err)
+	}
+	data.Library.Radios, err = c.ds.Radio(ctx).Count()
+	if err != nil {
+		log.Trace(ctx, "Error reading radios count", err)
+	}
+	data.Library.ActiveUsers, err = c.ds.User(ctx).CountAll(model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
+	if err != nil {
+		log.Trace(ctx, "Error reading active users count", err)
+	}
 
 	// Memory info
 	var m runtime.MemStats
