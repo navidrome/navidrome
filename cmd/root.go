@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -47,8 +48,11 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 
 // Execute runs the root cobra command, which will start the Navidrome server by calling the runNavidrome function.
 func Execute() {
+	ctx, cancel := mainContext(context.Background())
+	defer cancel()
+
 	rootCmd.SetVersionTemplate(`{{println .Version}}`)
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -57,7 +61,7 @@ func preRun() {
 	if !noBanner {
 		println(resources.Banner())
 	}
-	conf.Load()
+	conf.Load(noBanner)
 }
 
 func postRun() {
@@ -70,15 +74,14 @@ func postRun() {
 func runNavidrome(ctx context.Context) {
 	defer db.Init()()
 
-	ctx, cancel := mainContext(ctx)
-	defer cancel()
-
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicScan(ctx))
+	g.Go(startScanWatcher(ctx))
+	g.Go(runInitialScan(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 
@@ -100,9 +103,9 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 // startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
 	return func() error {
-		a := CreateServer(conf.Server.MusicFolder)
+		a := CreateServer()
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter())
-		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter())
+		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
 		if conf.Server.LastFM.Enabled {
 			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
@@ -130,27 +133,73 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.ScanSchedule
 		if schedule == "" {
-			log.Warn("Periodic scan is DISABLED")
+			log.Warn(ctx, "Periodic scan is DISABLED")
 			return nil
 		}
 
-		scanner := GetScanner()
+		scanner := CreateScanner(ctx)
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
 		err := schedulerInstance.Add(schedule, func() {
-			_ = scanner.RescanAll(ctx, false)
+			_, err := scanner.ScanAll(ctx, false)
+			if err != nil {
+				log.Error(ctx, "Error executing periodic scan", err)
+			}
 		})
 		if err != nil {
-			log.Error("Error scheduling periodic scan", err)
+			log.Error(ctx, "Error scheduling periodic scan", err)
 		}
+		return nil
+	}
+}
 
-		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
-		log.Debug("Executing initial scan")
-		if err := scanner.RescanAll(ctx, false); err != nil {
-			log.Error("Error executing initial scan", err)
+func runInitialScan(ctx context.Context) func() error {
+	return func() error {
+		ds := CreateDataStore()
+		fullScanRequired, err := ds.Property(ctx).DefaultGet(consts.FullScanAfterMigrationFlagKey, "0")
+		if err != nil {
+			return err
 		}
-		log.Debug("Finished initial scan")
+		inProgress, err := ds.Library(ctx).ScanInProgress()
+		if err != nil {
+			return err
+		}
+		if inProgress || fullScanRequired == "1" || conf.Server.Scanner.ScanOnStartup {
+			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+			scanner := CreateScanner(ctx)
+			switch {
+			case fullScanRequired == "1":
+				log.Warn(ctx, "Full scan required after migration")
+				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
+			case inProgress:
+				log.Warn(ctx, "Resuming interrupted scan")
+			default:
+				log.Info("Executing initial scan")
+			}
+
+			_, err = scanner.ScanAll(ctx, fullScanRequired == "1")
+			if err != nil {
+				log.Error(ctx, "Scan failed", err)
+			} else {
+				log.Info(ctx, "Scan completed")
+			}
+		}
+		return nil
+	}
+}
+
+func startScanWatcher(ctx context.Context) func() error {
+	return func() error {
+		if conf.Server.Scanner.WatcherWait == 0 {
+			log.Debug("Folder watcher is DISABLED")
+			return nil
+		}
+		w := CreateScanWatcher(ctx)
+		err := w.Run(ctx)
+		if err != nil {
+			log.Error("Error starting watcher", err)
+		}
 		return nil
 	}
 }
@@ -159,7 +208,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.Backup.Schedule
 		if schedule == "" {
-			log.Warn("Periodic backup is DISABLED")
+			log.Warn(ctx, "Periodic backup is DISABLED")
 			return nil
 		}
 

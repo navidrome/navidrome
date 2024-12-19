@@ -11,21 +11,48 @@ export const ArtistLinkField = withWidth()(({
   source,
 }) => {
   const artistLink = useGetHandleArtistClick(width)
+  const artists = record['participants']
+    ? record['participants'][source]
+    : [{ name: record[source], id: record[source + 'Id'] }]
 
-  const id = record[source + 'Id']
+  // When showing artists for a track, add any remixers to the list of artists
+  if (
+    source === 'artist' &&
+    record['participants'] &&
+    record['participants']['remixer']
+  ) {
+    record['participants']['remixer'].forEach((remixer) => {
+      artists.push(remixer)
+    })
+  }
+
+  // Dedupe artists
+  const seen = new Set()
+  const dedupedArtists = []
+  artists?.forEach((artist) => {
+    if (!seen.has(artist.id)) {
+      seen.add(artist.id)
+      dedupedArtists.push(artist)
+    }
+  })
+
   return (
     <>
-      {id ? (
-        <Link
-          to={artistLink(id)}
-          onClick={(e) => e.stopPropagation()}
-          className={className}
-        >
-          {record[source]}
-        </Link>
-      ) : (
-        record[source]
-      )}
+      {dedupedArtists.map((artist, index) => {
+        const id = artist.id
+        return (
+          <>
+            <Link
+              to={artistLink(id)}
+              onClick={(e) => e.stopPropagation()}
+              className={className}
+            >
+              {artist.name}
+            </Link>
+            {index < dedupedArtists.length - 1 && ' • '}
+          </>
+        )
+      })}
     </>
   )
 })
