@@ -25,7 +25,7 @@ var _ = Describe("sqlRestful", func() {
 
 		It(`returns nil if tries a filter with fullTextExpr("'")`, func() {
 			r.filterMappings = map[string]filterFunc{
-				"name": fullTextFilter,
+				"name": fullTextFilter("table"),
 			}
 			options.Filters = map[string]interface{}{"name": "'"}
 			Expect(r.parseRestFilters(context.Background(), options)).To(BeEmpty())

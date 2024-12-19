@@ -1,12 +1,22 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
 	"time"
 	"unicode"
 )
+
+type eventCtxKey string
+
+const broadcastToAllKey eventCtxKey = "broadcastToAll"
+
+// BroadcastToAll is a context key that can be used to broadcast an event to all clients
+func BroadcastToAll(ctx context.Context) context.Context {
+	return context.WithValue(ctx, broadcastToAllKey, true)
+}
 
 type Event interface {
 	Name(Event) string

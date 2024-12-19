@@ -1,19 +1,19 @@
 package consts
 
 import (
-	"crypto/md5"
-	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/model/id"
 )
 
 const (
 	AppName = "navidrome"
 
-	DefaultDbPath       = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
-	InitialSetupFlagKey = "InitialSetup"
+	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
+	InitialSetupFlagKey           = "InitialSetup"
+	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
@@ -54,8 +54,8 @@ const (
 	ArtistInfoTimeToLive = 24 * time.Hour
 	AlbumInfoTimeToLive  = 7 * 24 * time.Hour
 
-	I18nFolder   = "i18n"
-	SkipScanFile = ".ndignore"
+	I18nFolder     = "i18n"
+	ScanIgnoreFile = ".ndignore"
 
 	PlaceholderArtistArt = "artist-placeholder.webp"
 	PlaceholderAlbumArt  = "placeholder.png"
@@ -66,8 +66,8 @@ const (
 	DefaultHttpClientTimeOut = 10 * time.Second
 
 	DefaultScannerExtractor = "taglib"
-
-	Zwsp = string('\u200b')
+	DefaultWatcherWait      = 5 * time.Second
+	Zwsp                    = string('\u200b')
 )
 
 // Cache options
@@ -85,6 +85,11 @@ const (
 const (
 	AlbumPlayCountModeAbsolute   = "absolute"
 	AlbumPlayCountModeNormalized = "normalized"
+)
+
+const (
+	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
+	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
 )
 
 const (
@@ -121,16 +126,16 @@ var (
 			Command:        "ffmpeg -i %s -ss %t -map 0:a:0 -b:a %bk -v 0 -c:a aac -f adts -",
 		},
 	}
-
-	DefaultPlaylistsPath = strings.Join([]string{".", "**/**"}, string(filepath.ListSeparator))
 )
 
 var (
-	VariousArtists      = "Various Artists"
-	VariousArtistsID    = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(VariousArtists))))
-	UnknownAlbum        = "[Unknown Album]"
-	UnknownArtist       = "[Unknown Artist]"
-	UnknownArtistID     = fmt.Sprintf("%x", md5.Sum([]byte(strings.ToLower(UnknownArtist))))
+	VariousArtists = "Various Artists"
+	// TODO This will be dynamic when using disambiguation
+	VariousArtistsID = id.NewHash(strings.ToLower(VariousArtists))
+	UnknownAlbum     = "[Unknown Album]"
+	UnknownArtist    = "[Unknown Artist]"
+	// TODO This will be dynamic when using disambiguation
+	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
 	ServerStart = time.Now()

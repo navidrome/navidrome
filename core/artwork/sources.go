@@ -53,13 +53,9 @@ func (f sourceFunc) String() string {
 	return name
 }
 
-func splitList(s string) []string {
-	return strings.Split(s, consts.Zwsp)
-}
-
-func fromExternalFile(ctx context.Context, files string, pattern string) sourceFunc {
+func fromExternalFile(ctx context.Context, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		for _, file := range splitList(files) {
+		for _, file := range files {
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
 			if err != nil {

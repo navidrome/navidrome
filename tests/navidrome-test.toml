@@ -1,6 +1,5 @@
 User = "deluan"
 Password = "wordpass"
 DbPath = "file::memory:?cache=shared"
-MusicFolder = "./tests/fixtures"
 DataFolder = "data/tests"
 ScanSchedule="0"
