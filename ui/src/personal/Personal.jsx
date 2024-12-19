@@ -27,9 +27,7 @@ const Personal = () => {
         <SelectDefaultView />
         {config.enableReplayGain && <ReplayGainToggle />}
         <NotificationsToggle />
-        {config.lastFMEnabled && localStorage.getItem('lastfm-apikey') && (
-          <LastfmScrobbleToggle />
-        )}
+        {config.lastFMEnabled && <LastfmScrobbleToggle />}
         {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}
       </SimpleForm>
     </Card>

@@ -22,7 +22,6 @@ function storeAuthenticationInfo(authInfo) {
   localStorage.setItem('role', authInfo.isAdmin ? 'admin' : 'regular')
   localStorage.setItem('subsonic-salt', authInfo.subsonicSalt)
   localStorage.setItem('subsonic-token', authInfo.subsonicToken)
-  localStorage.setItem('lastfm-apikey', authInfo.lastFMApiKey)
   localStorage.setItem('is-authenticated', 'true')
 }
 
@@ -104,7 +103,6 @@ const removeItems = () => {
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
-  localStorage.removeItem('lastfm-apikey')
   localStorage.removeItem('is-authenticated')
 }
 
