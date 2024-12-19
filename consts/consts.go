@@ -1,6 +1,7 @@
 package consts
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -139,3 +140,11 @@ var (
 
 	ServerStart = time.Now()
 )
+
+var InContainer = func() bool {
+	// Check if the /.nddockerenv file exists
+	if _, err := os.Stat("/.nddockerenv"); err == nil {
+		return true
+	}
+	return false
+}()

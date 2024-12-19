@@ -10,11 +10,12 @@ type Data struct {
 		GoVersion string            `json:"goVersion"`
 	} `json:"build"`
 	OS struct {
-		Type    string `json:"type"`
-		Distro  string `json:"distro,omitempty"`
-		Version string `json:"version,omitempty"`
-		Arch    string `json:"arch"`
-		NumCPU  int    `json:"numCPU"`
+		Type          string `json:"type"`
+		Distro        string `json:"distro,omitempty"`
+		Version       string `json:"version,omitempty"`
+		Containerized bool   `json:"containerized"`
+		Arch          string `json:"arch"`
+		NumCPU        int    `json:"numCPU"`
 	} `json:"os"`
 	Mem struct {
 		Alloc      uint64 `json:"alloc"`
@@ -36,7 +37,7 @@ type Data struct {
 		Shares        int64            `json:"shares"`
 		Radios        int64            `json:"radios"`
 		ActiveUsers   int64            `json:"activeUsers"`
-		ActivePlayers map[string]int64 `json:"activePlayers"`
+		ActivePlayers map[string]int64 `json:"activePlayers,omitempty"`
 	} `json:"library"`
 	Config struct {
 		LogLevel                string `json:"logLevel,omitempty"`
