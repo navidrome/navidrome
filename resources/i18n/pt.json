@@ -436,7 +436,11 @@
             "homepage": "Website",
             "source": "Código fonte",
             "featureRequests": "Solicitar funcionalidade",
-            "lastInsightsCollection": "Última coleta de dados"
+            "lastInsightsCollection": "Última coleta de dados",
+            "insights": {
+                "disabled": "Desligado",
+                "waiting": "Aguardando"
+            }
         }
     },
     "activity": {
