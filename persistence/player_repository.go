@@ -74,8 +74,33 @@ func (r *playerRepository) addRestriction(sql ...Sqlizer) Sqlizer {
 	return append(s, Eq{"user_id": u.ID})
 }
 
+func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {
+	sel := r.newSelect(options...).
+		Columns(
+			"case when client = 'NavidromeUI' then name else client end as player",
+			"count(*) as count",
+		).GroupBy("client")
+	var res []struct {
+		Player string
+		Count  int64
+	}
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(res))
+	for _, c := range res {
+		counts[c.Player] = c.Count
+	}
+	return counts, nil
+}
+
+func (r *playerRepository) CountAll(options ...model.QueryOptions) (int64, error) {
+	return r.count(r.newRestSelect(), options...)
+}
+
 func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(r.newRestSelect(), r.parseRestOptions(r.ctx, options...))
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playerRepository) Read(id string) (interface{}, error) {

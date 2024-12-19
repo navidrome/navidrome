@@ -29,13 +29,14 @@ type Data struct {
 		Backup *FSInfo `json:"backup,omitempty"`
 	} `json:"fs"`
 	Library struct {
-		Tracks      int64 `json:"tracks"`
-		Albums      int64 `json:"albums"`
-		Artists     int64 `json:"artists"`
-		Playlists   int64 `json:"playlists"`
-		Shares      int64 `json:"shares"`
-		Radios      int64 `json:"radios"`
-		ActiveUsers int64 `json:"activeUsers"`
+		Tracks        int64            `json:"tracks"`
+		Albums        int64            `json:"albums"`
+		Artists       int64            `json:"artists"`
+		Playlists     int64            `json:"playlists"`
+		Shares        int64            `json:"shares"`
+		Radios        int64            `json:"radios"`
+		ActiveUsers   int64            `json:"activeUsers"`
+		ActivePlayers map[string]int64 `json:"activePlayers"`
 	} `json:"library"`
 	Config struct {
 		LogLevel                string `json:"logLevel,omitempty"`

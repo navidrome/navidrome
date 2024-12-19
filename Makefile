@@ -25,11 +25,11 @@ setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and
 .PHONY: setup
 
 dev: check_env   ##@Development Start Navidrome in development mode, with hot-reload for both frontend and backend
-	npx foreman -j Procfile.dev -p 4533 start
+	ND_ENABLEINSIGHTSCOLLECTOR="false" npx foreman -j Procfile.dev -p 4533 start
 .PHONY: dev
 
 server: check_go_env buildjs ##@Development Start the backend in development mode
-	@go run github.com/cespare/reflex@latest -d none -c reflex.conf
+	@ND_ENABLEINSIGHTSCOLLECTOR="false" go run github.com/cespare/reflex@latest -d none -c reflex.conf
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)

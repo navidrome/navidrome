@@ -114,6 +114,8 @@ type configOptions struct {
 	DevArtworkThrottleBacklogTimeout time.Duration
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
+	DevInsightsInitialDelay          time.Duration
+	DevEnablePlayerInsights          bool
 }
 
 type scannerOptions struct {
@@ -489,6 +491,8 @@ func init() {
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
+	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
+	viper.SetDefault("devenableplayerinsights", true)
 }
 
 func InitConfig(cfgFile string) {
