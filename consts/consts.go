@@ -58,7 +58,7 @@ const (
 	SkipScanFile = ".ndignore"
 
 	PlaceholderArtistArt = "artist-placeholder.webp"
-	PlaceholderAlbumArt  = "placeholder.png"
+	PlaceholderAlbumArt  = "album-placeholder.webp"
 	PlaceholderAvatar    = "logo-192x192.png"
 	UICoverArtSize       = 300
 	DefaultUIVolume      = 100
