@@ -389,6 +389,7 @@
                 "language": "Língua",
                 "defaultView": "Tela inicial",
                 "desktop_notifications": "Notificações",
+                "lastfmNotConfigured": "A API-Key do Last.fm não está configurada",
                 "lastfmScrobbling": "Enviar scrobbles para Last.fm",
                 "listenBrainzScrobbling": "Enviar scrobbles para ListenBrainz",
                 "replaygain": "Modo ReplayGain",
