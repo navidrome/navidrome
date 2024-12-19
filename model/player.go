@@ -26,5 +26,7 @@ type PlayerRepository interface {
 	Get(id string) (*Player, error)
 	FindMatch(userId, client, userAgent string) (*Player, error)
 	Put(p *Player) error
+	CountAll(...QueryOptions) (int64, error)
+	CountByClient(...QueryOptions) (map[string]int64, error)
 	// TODO: Add CountAll method. Useful at least for metrics.
 }

@@ -95,6 +95,7 @@ const (
 	InsightsIDKey          = "InsightsID"
 	InsightsEndpoint       = "https://insights.navidrome.org/collect"
 	InsightsUpdateInterval = 24 * time.Hour
+	InsightsInitialDelay   = 30 * time.Minute
 )
 
 var (

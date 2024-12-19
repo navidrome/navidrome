@@ -118,6 +118,8 @@ type configOptions struct {
 	DevAlbumInfoTimeToLive           time.Duration
 	DevExternalScanner               bool
 	DevScannerThreads                uint
+	DevInsightsInitialDelay          time.Duration
+	DevEnablePlayerInsights          bool
 }
 
 type scannerOptions struct {
@@ -502,6 +504,8 @@ func init() {
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", false)
 	viper.SetDefault("devscannerthreads", 5)
+	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
+	viper.SetDefault("devenableplayerinsights", true)
 }
 
 func InitConfig(cfgFile string) {
