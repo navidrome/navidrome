@@ -208,8 +208,7 @@ func startInsightsCollector(ctx context.Context) func() error {
 			return nil
 		}
 		log.Info(ctx, "Starting Insight Collector")
-		// Wait 30 minutes before starting the first run, to avoid 429 errors from the Insights server
-		time.Sleep(30 * time.Minute)
+		time.Sleep(conf.Server.DevInsightsInitialDelay)
 		ic := CreateInsights()
 		ic.Run(ctx)
 		return nil

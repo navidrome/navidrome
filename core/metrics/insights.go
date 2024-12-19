@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/metrics/insights"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -54,6 +55,7 @@ func GetInstance(ds model.DataStore) Insights {
 }
 
 func (c *insightsCollector) Run(ctx context.Context) {
+	ctx = auth.WithAdminUser(ctx, c.ds)
 	for {
 		c.sendInsights(ctx)
 		select {
@@ -212,7 +214,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading artists count", err)
 	}
-	data.Library.Playlists, err = c.ds.Playlist(ctx).Count()
+	data.Library.Playlists, err = c.ds.Playlist(ctx).CountAll()
 	if err != nil {
 		log.Trace(ctx, "Error reading playlists count", err)
 	}
