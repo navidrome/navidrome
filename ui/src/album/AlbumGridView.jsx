@@ -20,6 +20,7 @@ import {
   RangeDoubleField,
 } from '../common'
 import { DraggableTypes } from '../consts'
+import clsx from 'clsx'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -54,6 +55,9 @@ const useStyles = makeStyles(
       overflow: 'hidden',
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
+    },
+    missingAlbum: {
+      opacity: 0.3,
     },
     albumVersion: {
       fontSize: '12px',
@@ -142,8 +146,12 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   if (!record) {
     return null
   }
+  const computedClasses = clsx(
+    classes.albumContainer,
+    record.missing && classes.missingAlbum,
+  )
   return (
-    <div className={classes.albumContainer}>
+    <div className={computedClasses}>
       <Link
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
