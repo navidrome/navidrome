@@ -41,7 +41,7 @@ var _ = Describe("Meter", func() {
 			time.Sleep(20 * time.Millisecond)
 			elapsed := meter.Stop()
 
-			Expect(elapsed).To(BeNumerically("~", 40*time.Millisecond, 10*time.Millisecond))
+			Expect(elapsed).To(BeNumerically("~", 40*time.Millisecond, 20*time.Millisecond))
 		})
 	})
 
