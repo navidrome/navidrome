@@ -208,6 +208,7 @@ func startInsightsCollector(ctx context.Context) func() error {
 			return nil
 		}
 		log.Info(ctx, "Starting Insight Collector")
+		time.Sleep(conf.Server.DevInsightsInitialDelay)
 		ic := CreateInsights()
 		ic.Run(ctx)
 		return nil
