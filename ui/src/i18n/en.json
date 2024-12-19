@@ -438,7 +438,11 @@
       "homepage": "Home page",
       "source": "Source code",
       "featureRequests": "Feature requests",
-      "lastInsightsCollection": "Last insights collection"
+      "lastInsightsCollection": "Last insights collection",
+      "insights": {
+        "disabled": "Disabled",
+        "waiting": "Waiting"
+      }
     }
   },
   "activity": {

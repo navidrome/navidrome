@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -34,8 +35,8 @@ var (
 
 type insightsCollector struct {
 	ds         model.DataStore
-	lastRun    time.Time
-	lastStatus bool
+	lastRun    atomic.Int64
+	lastStatus atomic.Bool
 }
 
 func GetInstance(ds model.DataStore) Insights {
@@ -68,7 +69,8 @@ func (c *insightsCollector) Run(ctx context.Context) {
 }
 
 func (c *insightsCollector) LastRun(context.Context) (timestamp time.Time, success bool) {
-	return c.lastRun, c.lastStatus
+	t := c.lastRun.Load()
+	return time.UnixMilli(t), c.lastStatus.Load()
 }
 
 func (c *insightsCollector) sendInsights(ctx context.Context) {
@@ -102,8 +104,8 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 	}
 	log.Info(ctx, "Sent Insights data (for details see http://navidrome.org/docs/getting-started/insights", "data",
 		string(data), "server", consts.InsightsEndpoint, "status", resp.Status)
-	c.lastRun = time.Now()
-	c.lastStatus = resp.StatusCode < 300
+	c.lastRun.Store(time.Now().UnixMilli())
+	c.lastStatus.Store(resp.StatusCode < 300)
 	resp.Body.Close()
 }
 

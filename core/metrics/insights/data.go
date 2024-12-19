@@ -36,7 +36,7 @@ type Data struct {
 		Shares        int64            `json:"shares"`
 		Radios        int64            `json:"radios"`
 		ActiveUsers   int64            `json:"activeUsers"`
-		ActivePlayers map[string]int64 `json:"activePlayers"`
+		ActivePlayers map[string]int64 `json:"activePlayers,omitempty"`
 	} `json:"library"`
 	Config struct {
 		LogLevel                string `json:"logLevel,omitempty"`
