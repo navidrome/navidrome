@@ -11,13 +11,14 @@ export const ArtistLinkField = withWidth()(({
   source,
 }) => {
   const artistLink = useGetHandleArtistClick(width)
+  const role = source.toLowerCase()
   const artists = record['participants']
-    ? record['participants'][source]
+    ? record['participants'][role]
     : [{ name: record[source], id: record[source + 'Id'] }]
 
   // When showing artists for a track, add any remixers to the list of artists
   if (
-    source === 'artist' &&
+    role === 'artist' &&
     record['participants'] &&
     record['participants']['remixer']
   ) {
@@ -26,11 +27,11 @@ export const ArtistLinkField = withWidth()(({
     })
   }
 
-  // Dedupe artists
+  // Dedupe artists, only shows the first 3
   const seen = new Set()
   const dedupedArtists = []
   artists?.forEach((artist) => {
-    if (!seen.has(artist.id)) {
+    if (!seen.has(artist.id) && dedupedArtists.length < 3) {
       seen.add(artist.id)
       dedupedArtists.push(artist)
     }
