@@ -391,6 +391,7 @@
         "language": "Language",
         "defaultView": "Default View",
         "desktop_notifications": "Desktop Notifications",
+        "lastfmNotConfigured": "Last.fm API-Key is not configured",
         "lastfmScrobbling": "Scrobble to Last.fm",
         "listenBrainzScrobbling": "Scrobble to ListenBrainz",
         "replaygain": "ReplayGain Mode",
