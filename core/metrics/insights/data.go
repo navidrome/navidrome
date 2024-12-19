@@ -10,11 +10,12 @@ type Data struct {
 		GoVersion string            `json:"goVersion"`
 	} `json:"build"`
 	OS struct {
-		Type    string `json:"type"`
-		Distro  string `json:"distro,omitempty"`
-		Version string `json:"version,omitempty"`
-		Arch    string `json:"arch"`
-		NumCPU  int    `json:"numCPU"`
+		Type          string `json:"type"`
+		Distro        string `json:"distro,omitempty"`
+		Version       string `json:"version,omitempty"`
+		Containerized bool   `json:"containerized"`
+		Arch          string `json:"arch"`
+		NumCPU        int    `json:"numCPU"`
 	} `json:"os"`
 	Mem struct {
 		Alloc      uint64 `json:"alloc"`

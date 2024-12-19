@@ -151,6 +151,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 
 	// Build info
 	data.Build.Settings, data.Build.GoVersion = buildInfo()
+	data.OS.Containerized = consts.InContainer
 
 	// OS info
 	data.OS.Type = runtime.GOOS

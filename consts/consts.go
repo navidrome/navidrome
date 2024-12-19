@@ -3,6 +3,7 @@ package consts
 import (
 	"crypto/md5"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -134,3 +135,11 @@ var (
 
 	ServerStart = time.Now()
 )
+
+var InContainer = func() bool {
+	// Check if the /.nddockerenv file exists
+	if _, err := os.Stat("/.nddockerenv"); err == nil {
+		return true
+	}
+	return false
+}()
