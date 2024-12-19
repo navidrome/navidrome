@@ -3,6 +3,7 @@ import { useNotify, useTranslate } from 'react-admin'
 import {
   FormControl,
   FormControlLabel,
+  FormHelperText,
   LinearProgress,
   Switch,
   Tooltip,
@@ -102,38 +103,31 @@ export const LastfmScrobbleToggle = (props) => {
 
   return (
     <FormControl>
-      {apiKey ? (
-        <FormControlLabel
-          control={
-            <Switch
-              id={'lastfm'}
-              color="primary"
-              checked={linked || checkingLink}
-              disabled={linked === null || checkingLink}
-              onChange={toggleScrobble}
-            />
-          }
-          label={
-            <span>{translate('menu.personal.options.lastfmScrobbling')}</span>
-          }
-        />
-      ) : (
-        <Tooltip title={translate('menu.personal.options.lastfmNotConfigured')}>
-          <FormControlLabel
-            disabled={true}
-            control={<Switch id={'lastfm'} color="primary" />}
-            label={
-              <span>{translate('menu.personal.options.lastfmScrobbling')}</span>
-            }
+      <FormControlLabel
+        control={
+          <Switch
+            id={'lastfm'}
+            color="primary"
+            checked={linked || checkingLink}
+            disabled={!apiKey || linked === null || checkingLink}
+            onChange={toggleScrobble}
           />
-        </Tooltip>
-      )}
+        }
+        label={
+          <span>{translate('menu.personal.options.lastfmScrobbling')}</span>
+        }
+      />
       {checkingLink && (
         <Progress
           setLinked={setLinked}
           setCheckingLink={setCheckingLink}
           apiKey={apiKey}
         />
+      )}
+      {!apiKey && (
+        <FormHelperText id="scrobble-lastfm-disabled-helper-text">
+          {translate('menu.personal.options.lastfmNotConfigured')}
+        </FormHelperText>
       )}
     </FormControl>
   )
