@@ -22,6 +22,9 @@ type CacheWarmer interface {
 	PreCache(artID model.ArtworkID)
 }
 
+// NewCacheWarmer creates a new CacheWarmer instance. The CacheWarmer will pre-cache Artwork images in the background
+// to speed up the response time when the image is requested by the UI. The cache is pre-populated with the original
+// image size, as well as the size defined in the UICoverArtSize constant.
 func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 	// If image cache is disabled, return a NOOP implementation
 	if conf.Server.ImageCacheSize == "0" || !conf.Server.EnableArtworkPrecache {
@@ -49,15 +52,7 @@ type cacheWarmer struct {
 	wakeSignal chan struct{}
 }
 
-var ignoredIds = map[string]struct{}{
-	consts.VariousArtistsID: {},
-	consts.UnknownArtistID:  {},
-}
-
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
-	if _, shouldIgnore := ignoredIds[artID.ID]; shouldIgnore {
-		return
-	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	a.buffer[artID] = struct{}{}
@@ -104,14 +99,8 @@ func (a *cacheWarmer) run(ctx context.Context) {
 }
 
 func (a *cacheWarmer) waitSignal(ctx context.Context, timeout time.Duration) {
-	var to <-chan time.Time
-	if !a.cache.Available(ctx) {
-		tmr := time.NewTimer(timeout)
-		defer tmr.Stop()
-		to = tmr.C
-	}
 	select {
-	case <-to:
+	case <-time.After(timeout):
 	case <-a.wakeSignal:
 	case <-ctx.Done():
 	}
@@ -140,6 +129,10 @@ func (a *cacheWarmer) doCacheImage(ctx context.Context, id model.ArtworkID) erro
 		return err
 	}
 	return nil
+}
+
+func NoopCacheWarmer() CacheWarmer {
+	return &noopCacheWarmer{}
 }
 
 type noopCacheWarmer struct{}
