@@ -15,7 +15,10 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 # Taglib version to use in cross-compilation, from https://github.com/navidrome/cross-taglib
-CROSS_TAGLIB_VERSION ?= 2.0.2-1
+CROSS_TAGLIB_VERSION ?= $(file < release/crosstaglib.version)
+
+#FFmpeg to be used in Windows msi package
+FFMPEG_VERSION ?= $(file < release/ffmpeg.version)
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -139,7 +142,7 @@ docker-msi: ##@Cross_Compilation Build MSI installer for Windows
 	make docker-build PLATFORMS=windows/386,windows/amd64
 	DOCKER_CLI_HINTS=false docker build -q -t navidrome-msi-builder -f release/wix/msitools.dockerfile .
 	@rm -rf binaries/msi
-	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries -e GIT_TAG=${GIT_TAG} \
+	docker run -it --rm -v $(PWD):/workspace -v $(PWD)/binaries:/workspace/binaries -e GIT_TAG=${GIT_TAG} -e FFMPEG_VERSION=${FFMPEG_VERSION} \
 		navidrome-msi-builder sh -c "release/wix/build_msi.sh /workspace 386 && release/wix/build_msi.sh /workspace amd64"
 	@du -h binaries/msi/*.msi
 .PHONY: docker-msi
