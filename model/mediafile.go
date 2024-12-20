@@ -37,6 +37,7 @@ type MediaFile struct {
 	// BFR Rename to AlbumArtistDisplayName
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
+	ExplicitStatus       string  `structs:"explicit_status" json:"explicitStatus"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
 	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
@@ -174,6 +175,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 	releaseDates := make([]string, 0, len(mfs))
 	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
 
+	a.ExplicitStatus = ""
 	a.Missing = true
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs in an album
@@ -211,6 +213,12 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participants.Merge(m.Participants)
+
+		if m.ExplicitStatus == "c" && a.ExplicitStatus != "e" {
+			a.ExplicitStatus = "clean"
+		} else if m.ExplicitStatus == "e" {
+			a.ExplicitStatus = "explicit"
+		}
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.BirthTime)

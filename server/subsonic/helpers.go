@@ -222,6 +222,14 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		}
 	}
 	child.Contributors = contributors
+	switch mf.ExplicitStatus {
+	case "c":
+		child.ExplicitStatus = "clean"
+	case "e":
+		child.ExplicitStatus = "explicit"
+	default:
+		child.ExplicitStatus = ""
+	}
 	return child
 }
 
@@ -283,6 +291,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Moods = al.Tags.Values(model.TagMood)
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
+	child.ExplicitStatus = al.ExplicitStatus
 	return child
 }
 
