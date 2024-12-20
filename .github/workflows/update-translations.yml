@@ -27,6 +27,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PAT }}
+          author: "navidrome-bot <navidrome-bot@navidrome.org>"
           commit-message: "fix(ui): update translations from POEditor"
           title: "fix(ui): update ${{ steps.poeditor.outputs.title }} translations from POEditor"
           branch: update-translations
