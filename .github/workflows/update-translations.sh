@@ -42,3 +42,12 @@ for file in ${I18N_DIR}/*.json; do
   echo "Downloading $lang ($code)"
   check_lang_diff "$code"
 done
+
+
+# List changed languages to stderr
+languages=""
+for file in $(git diff --name-only --exit-code | grep json); do
+  lang=$(jq -r .languageName < "$file")
+  languages="${languages}$(echo $lang | tr -d '\n'), "
+done
+echo "${languages%??}" 1>&2

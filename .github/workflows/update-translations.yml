@@ -10,11 +10,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Get updated translations
+        id: poeditor
         env:
           POEDITOR_PROJECTID: ${{ secrets.POEDITOR_PROJECTID }}
           POEDITOR_APIKEY: ${{ secrets.POEDITOR_APIKEY }}
         run: |
-          .github/workflows/update-translations.sh
+          .github/workflows/update-translations.sh 2> title.tmp
+          title=$(cat title.tmp)
+          echo "::set-output name=title::$title"
+          rm title.tmp
       - name: Show changes, if any
         run: |
           git status --porcelain
@@ -23,6 +27,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PAT }}
+          author: "navidrome-bot <navidrome-bot@navidrome.org>"
           commit-message: "fix(ui): update translations from POEditor"
-          title: "fix(ui): update translations from POEditor"
+          title: "fix(ui): update ${{ steps.poeditor.outputs.title }} translations from POEditor"
           branch: update-translations
