@@ -56,7 +56,7 @@
         "createdAt": "Eklenme tarihi",
         "size": "Boyut",
         "originalDate": "Orijinal",
-        "releaseDate": "Yayınlanma Tarihi: ",
+        "releaseDate": "Yayınlanma Tarihi",
         "releases": "Yayınlanan |||| Yayınlananlar",
         "released": "Yayınlandı"
       },
@@ -212,7 +212,8 @@
       "password": "Parola",
       "sign_in": "Giriş yap",
       "sign_in_error": "Giriş başarısız. Lütfen tekrar deneyin",
-      "logout": "Çıkış"
+      "logout": "Çıkış",
+      "insightsCollectionNote": "Navidrome, projenin iyileştirilmesine yardımcı\nolmak için anonim kullanım verileri toplar.\nDaha fazla bilgi edinmek ve isterseniz\ndevre dışı bırakmak için [buraya] tıklayın"
     },
     "validation": {
       "invalidChars": "Lütfen sadece harf ve rakam kullan",
@@ -396,7 +397,8 @@
           "none": "Devre dışı",
           "album": "Albüm Kazancını Kullan",
           "track": "Parça Kazancını Kullan"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API Anahtarı yapılandırılmadı\n"
       }
     },
     "albumList": "Albümler",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Ana sayfa",
       "source": "Kaynak kodu",
-      "featureRequests": "Özellik talepleri"
+      "featureRequests": "Özellik talepleri",
+      "lastInsightsCollection": "Son içgörü koleksiyonu",
+      "insights": {
+        "disabled": "Pasif",
+        "waiting": "Bekle"
+      }
     }
   },
   "activity": {
