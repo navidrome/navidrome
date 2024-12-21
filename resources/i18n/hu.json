@@ -212,7 +212,8 @@
             "password": "Jelszó",
             "sign_in": "Bejelentkezés",
             "sign_in_error": "A hitelesítés sikertelen. Kérjük, próbáld újra!",
-            "logout": "Kijelentkezés"
+            "logout": "Kijelentkezés",
+            "insightsCollectionNote": "A Navidrome anonim metrikűkat gyűjt \na projekt fejlesztéséhez. Kattints [ide],\n információkért és az adatgyűjtésből kilépésért."
         },
         "validation": {
             "invalidChars": "Kérlek, csak betűket és számokat használj!",
@@ -388,6 +389,7 @@
                 "language": "Nyelv",
                 "defaultView": "Alapértelmezett nézet",
                 "desktop_notifications": "Asztali értesítések",
+                "lastfmNotConfigured": "Last.fm API kulcs nincs beállítva",
                 "lastfmScrobbling": "Halgatott számok küldése a Last.fm-nek",
                 "listenBrainzScrobbling": "Halgatott számok küldése a ListenBrainz-nek",
                 "replaygain": "ReplayGain mód",
@@ -433,7 +435,12 @@
         "links": {
             "homepage": "Honlap",
             "source": "Forráskód",
-            "featureRequests": "Funkciókérések"
+            "featureRequests": "Funkciókérések",
+            "lastInsightsCollection": "Legutóbb gyűjtött metrikák",
+            "insights": {
+                "disabled": "Kikapcsolva",
+                "waiting": "Várakozás"
+            }
         }
     },
     "activity": {
