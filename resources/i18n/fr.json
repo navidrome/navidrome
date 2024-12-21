@@ -212,7 +212,8 @@
       "password": "Mot de passe",
       "sign_in": "Connexion",
       "sign_in_error": "Échec de l'authentification, merci de réessayer",
-      "logout": "Déconnexion"
+      "logout": "Déconnexion",
+      "insightsCollectionNote": "Navidrome collecte des données de façon anonyme\nafin d'améliorer le projet. Cliquez [ici] pour en savoir\nplus ou pour désactiver la télémétrie"
     },
     "validation": {
       "invalidChars": "Merci de n'utiliser que des chiffres et des lettres",
@@ -396,7 +397,8 @@
           "none": "Désactivé",
           "album": "Utiliser le gain de l'album",
           "track": "Utiliser le gain des pistes"
-        }
+        },
+        "lastfmNotConfigured": "La clef API de Last.fm n'est pas configurée"
       }
     },
     "albumList": "Albums",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Page d'accueil",
       "source": "Code source",
-      "featureRequests": "Demande de fonctionnalités"
+      "featureRequests": "Demande de fonctionnalités",
+      "lastInsightsCollection": "Dernière collection des données",
+      "insights": {
+        "disabled": "Désactivée",
+        "waiting": "En attente"
+      }
     }
   },
   "activity": {
