@@ -225,7 +225,7 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 	isLastFMError := errors.As(err, &lfErr)
 
 	if mbid != "" && (isLastFMError && lfErr.Code == 6) {
-		log.Warn(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
+		log.Debug(ctx, "LastFM/album.getInfo could not find album by mbid, trying again", "album", name, "mbid", mbid)
 		return l.callAlbumGetInfo(ctx, name, artist, "")
 	}
 
@@ -246,7 +246,7 @@ func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid s
 	isLastFMError := errors.As(err, &lfErr)
 
 	if mbid != "" && ((err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
-		log.Warn(ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
+		log.Debug(ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetInfo(ctx, name, "")
 	}
 
@@ -262,7 +262,7 @@ func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, mbi
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 	if mbid != "" && ((err == nil && s.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
-		log.Warn(ctx, "LastFM/artist.getSimilar could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
+		log.Debug(ctx, "LastFM/artist.getSimilar could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
 		return l.callArtistGetSimilar(ctx, name, "", limit)
 	}
 	if err != nil {
@@ -277,7 +277,7 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mb
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 	if mbid != "" && ((err == nil && t.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
-		log.Warn(ctx, "LastFM/artist.getTopTracks could not find artist by mbid, trying again", "artist", artistName, "mbid", mbid)
+		log.Debug(ctx, "LastFM/artist.getTopTracks could not find artist by mbid, trying again", "artist", artistName, "mbid", mbid)
 		return l.callArtistGetTopTracks(ctx, artistName, "", count)
 	}
 	if err != nil {
