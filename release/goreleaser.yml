@@ -26,6 +26,7 @@ archives:
   - format_overrides:
       - goos: windows
         format: zip
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
@@ -36,6 +37,7 @@ snapshot:
 nfpms:
   - id: navidrome
     package_name: navidrome
+    file_name_template: '{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
     homepage: https://navidrome.org
     description: |-
