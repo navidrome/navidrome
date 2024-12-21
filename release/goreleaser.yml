@@ -6,8 +6,8 @@ builds:
   - id: navidrome
     # Instead of compiling the binary with goreleaser, we just copy it from `binaries` folder
     # This is because we need to compile the binaries with our Dockerfile, and to avoid having to
-    # compile it twice, we just copy the docker build output.env. The xxgo script handles this for us
-    gobinary: "./release/xxgo"
+    # compile it twice, we just copy the docker build output. The xxgo script handles this for us
+    tool: "./release/xxgo"
 
     # All available targets compiled by the Dockerfile
     targets:
@@ -31,7 +31,7 @@ checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  version_template: "{{ .Tag }}-SNAPSHOT"
+  version_template: "{{ .Version }}-SNAPSHOT"
 
 nfpms:
   - id: navidrome

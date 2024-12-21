@@ -380,14 +380,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: packages
-          path: dist/navidrome_v*
+          path: dist/navidrome_0*
 
       - id: set-package-list
         name: Export list of generated packages
         run: |
           cd dist
           set +x
-          ITEMS=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_linux_//' | jq -R -s -c 'split("\n")[:-1]')
+          ITEMS=$(ls navidrome_0* | sed 's/^navidrome_0[^_]*_linux_//' | jq -R -s -c 'split("\n")[:-1]')
           echo $ITEMS
           echo "package_list=${ITEMS}" >> $GITHUB_OUTPUT
 
@@ -409,7 +409,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: navidrome_linux_${{ matrix.item }}
-          path: dist/navidrome_v*_linux_${{ matrix.item }}
+          path: dist/navidrome_0*_linux_${{ matrix.item }}
 
 #  delete-artifacts:
 #    name: Delete unused artifacts
