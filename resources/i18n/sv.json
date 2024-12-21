@@ -212,7 +212,8 @@
       "password": "Lösenord",
       "sign_in": "Logga in",
       "sign_in_error": "Felaktig inloggning, försök igen",
-      "logout": "Logga ut"
+      "logout": "Logga ut",
+      "insightsCollectionNote": "Navidrome samlar anonym användardata för att\nhjälpa projektet att bli bättre. Klicka [här]\nför att läsa mer och avaktivera om du vill"
     },
     "validation": {
       "invalidChars": "Använd enbart bokstäver och siffror",
@@ -396,7 +397,8 @@
           "none": "Inaktiverad",
           "album": "Använd gain för album",
           "track": "Använd gain für låtar"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API-nyckel är inte konfigurerad"
       }
     },
     "albumList": "Album",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Hemsida",
       "source": "Källkod",
-      "featureRequests": "Funktionalitetförfrågan"
+      "featureRequests": "Funktionalitetförfrågan",
+      "lastInsightsCollection": "Senaste Insights-kollektion",
+      "insights": {
+        "disabled": "Inaktiverad",
+        "waiting": "Väntar"
+      }
     }
   },
   "activity": {
