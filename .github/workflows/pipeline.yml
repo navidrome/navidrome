@@ -35,14 +35,16 @@ jobs:
           echo "git describe (dirty): $(git describe --dirty --always --tags)"
           echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
+          echo "github_ref: $GITHUB_REF"
           git tag -l
-
       - name: Determine git current SHA and latest tag
         id: git-version
         run: |
           GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
           if [ -n "$GIT_TAG" ]; then
-            GIT_TAG=${GIT_TAG}-SNAPSHOT
+            if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+              GIT_TAG=${GIT_TAG}-SNAPSHOT
+            fi
             echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
           fi
           GIT_SHA=$(git rev-parse --short HEAD)
