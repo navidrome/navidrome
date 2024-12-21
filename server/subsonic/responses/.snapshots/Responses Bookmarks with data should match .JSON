@@ -28,7 +28,8 @@
           "albumArtists": [],
           "displayAlbumArtist": "",
           "contributors": [],
-          "displayComposer": ""
+          "displayComposer": "",
+          "explicitStatus": ""
         },
         "position": 123,
         "username": "user2",

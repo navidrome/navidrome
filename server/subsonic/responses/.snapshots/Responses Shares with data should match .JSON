@@ -32,7 +32,8 @@
             "albumArtists": [],
             "displayAlbumArtist": "",
             "contributors": [],
-            "displayComposer": ""
+            "displayComposer": "",
+            "explicitStatus": ""
           },
           {
             "id": "2",
@@ -58,7 +59,8 @@
             "albumArtists": [],
             "displayAlbumArtist": "",
             "contributors": [],
-            "displayComposer": ""
+            "displayComposer": "",
+            "explicitStatus": ""
           }
         ],
         "id": "ABC123",

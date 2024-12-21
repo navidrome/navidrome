@@ -185,7 +185,7 @@ type Child struct {
 	DisplayAlbumArtist string              `xml:"displayAlbumArtist,attr" json:"displayAlbumArtist"`
 	Contributors       Array[Contributor]  `xml:"contributors"            json:"contributors"`
 	DisplayComposer    string              `xml:"displayComposer,attr"    json:"displayComposer"`
-	ExplicitStatus     string              `xml:"explicitStatus"          json:"explicitStatus"`
+	ExplicitStatus     string              `xml:"explicitStatus,attr"     json:"explicitStatus"`
 }
 
 type Songs struct {
@@ -269,7 +269,7 @@ type AlbumID3 struct {
 	Moods               Array[string]       `xml:"moods"                 json:"moods"`
 	Artists             Array[ArtistID3Ref] `xml:"artists"               json:"artists"`
 	DisplayArtist       string              `xml:"displayArtist,attr"    json:"displayArtist"`
-	ExplicitStatus      string              `xml:"explicitStatus"        json:"explicitStatus"`
+	ExplicitStatus      string              `xml:"explicitStatus,attr"        json:"explicitStatus"`
 }
 
 type ArtistWithAlbumsID3 struct {

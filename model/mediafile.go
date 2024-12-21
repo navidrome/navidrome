@@ -37,7 +37,6 @@ type MediaFile struct {
 	// BFR Rename to AlbumArtistDisplayName
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
-	ExplicitStatus       string  `structs:"explicit_status" json:"explicitStatus"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
 	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
@@ -69,6 +68,7 @@ type MediaFile struct {
 	Comment              string  `structs:"comment" json:"comment,omitempty"`
 	Lyrics               string  `structs:"lyrics" json:"lyrics"`
 	BPM                  int     `structs:"bpm" json:"bpm,omitempty"`
+	ExplicitStatus       string  `structs:"explicit_status" json:"explicitStatus"`
 	CatalogNum           string  `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzRecordingID       string  `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
 	MbzReleaseTrackID    string  `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty"`
