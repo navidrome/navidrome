@@ -436,7 +436,7 @@
             "homepage": "Honlap",
             "source": "Forráskód",
             "featureRequests": "Funkciókérések",
-            "lastInsightsCollection": "Legutóbbi gyűjtött metrikák",
+            "lastInsightsCollection": "Legutóbb gyűjtött metrikák",
             "insights": {
                 "disabled": "Kikapcsolva",
                 "waiting": "Várakozás"
