@@ -36,6 +36,7 @@ jobs:
           echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
           echo "github_ref: $GITHUB_REF"
+          echo "github_head_sha: ${{ github.event.pull_request.head.sha }}"
           git tag -l
       - name: Determine git current SHA and latest tag
         id: git-version
