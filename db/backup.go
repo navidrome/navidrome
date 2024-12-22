@@ -34,17 +34,17 @@ func backupPath(t time.Time) string {
 
 func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
-	backupDb, err := sql.Open(Driver, path)
-	if err != nil {
-		return err
-	}
-	defer backupDb.Close()
-
 	existingConn, err := Db().Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer existingConn.Close()
+
+	backupDb, err := sql.Open(Driver, path)
+	if err != nil {
+		return err
+	}
+	defer backupDb.Close()
 
 	backupConn, err := backupDb.Conn(ctx)
 	if err != nil {
