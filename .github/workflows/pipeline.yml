@@ -51,6 +51,7 @@ jobs:
           GIT_SHA=$(git rev-parse --short HEAD)
           PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           if [[ $PR_NUM != "null" ]]; then
+            GIT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-8)
             GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
           fi
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
