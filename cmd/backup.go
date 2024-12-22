@@ -33,7 +33,7 @@ func init() {
 
 	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "path of backup database to restore")
 	restoreCommand.Flags().BoolVarP(&force, "force", "f", false, "bypass restore warning")
-	_ = restoreCommand.MarkFlagRequired("backup-path")
+	_ = restoreCommand.MarkFlagRequired("backup-file")
 	backupRoot.AddCommand(restoreCommand)
 }
 
@@ -118,7 +118,7 @@ func runPrune(ctx context.Context) {
 		_, err := fmt.Scanln(&input)
 
 		if input != "YES" || err != nil {
-			log.Warn("Restore cancelled")
+			log.Warn("Prune cancelled")
 			return
 		}
 	}
@@ -178,7 +178,7 @@ func runRestore(ctx context.Context) {
 	start := time.Now()
 	err := db.Restore(ctx, restorePath)
 	if err != nil {
-		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error restoring database", "backup path", conf.Server.BasePath, err)
 	}
 
 	elapsed := time.Since(start)
