@@ -118,7 +118,7 @@ func runPrune(ctx context.Context) {
 		_, err := fmt.Scanln(&input)
 
 		if input != "YES" || err != nil {
-			log.Warn("Restore cancelled")
+			log.Warn("Prune cancelled")
 			return
 		}
 	}
