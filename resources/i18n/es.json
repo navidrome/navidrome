@@ -212,7 +212,8 @@
       "password": "Contraseña",
       "sign_in": "Acceder",
       "sign_in_error": "La autenticación falló, por favor, vuelva a intentarlo",
-      "logout": "Cerrar sesión"
+      "logout": "Cerrar sesión",
+      "insightsCollectionNote": "Navidrome recopila datos de uso anónimos para\nayudar a mejorar el proyecto. Haz clic [aquí] para \nobtener más información y optar por no\nparticipar si lo deseas"
     },
     "validation": {
       "invalidChars": "Por favor use solo letras y números",
@@ -396,7 +397,8 @@
           "none": "Ninguno",
           "album": "Álbum",
           "track": "Pista"
-        }
+        },
+        "lastfmNotConfigured": "La clave API de Last.fm no está configurada"
       }
     },
     "albumList": "Álbumes",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Página de inicio",
       "source": "Código fuente",
-      "featureRequests": "Pedir funcionalidad"
+      "featureRequests": "Pedir funcionalidad",
+      "lastInsightsCollection": "Última recopilación de datos",
+      "insights": {
+        "disabled": "Deshabilitado",
+        "waiting": "Esperando"
+      }
     }
   },
   "activity": {
