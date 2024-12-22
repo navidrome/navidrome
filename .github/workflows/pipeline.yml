@@ -36,6 +36,7 @@ jobs:
           echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
           echo "github_ref: $GITHUB_REF"
+          echo "github_head_sha: ${{ github.event.pull_request.head.sha }}"
           git tag -l
       - name: Determine git current SHA and latest tag
         id: git-version
@@ -50,6 +51,7 @@ jobs:
           GIT_SHA=$(git rev-parse --short HEAD)
           PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           if [[ $PR_NUM != "null" ]]; then
+            GIT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-8)
             GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
           fi
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
