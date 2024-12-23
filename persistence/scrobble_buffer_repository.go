@@ -15,6 +15,20 @@ type scrobbleBufferRepository struct {
 	sqlRepository
 }
 
+type dbScrobbleBuffer struct {
+	dbMediaFile
+	*model.ScrobbleEntry `structs:",flatten"`
+}
+
+func (t *dbScrobbleBuffer) PostScan() error {
+	if err := t.dbMediaFile.PostScan(); err != nil {
+		return err
+	}
+	t.ScrobbleEntry.MediaFile = *t.dbMediaFile.MediaFile
+	t.ScrobbleEntry.MediaFile.ID = t.MediaFileID
+	return nil
+}
+
 func NewScrobbleBufferRepository(ctx context.Context, db dbx.Builder) model.ScrobbleBufferRepository {
 	r := &scrobbleBufferRepository{}
 	r.ctx = ctx
@@ -60,16 +74,15 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 		}).
 		OrderBy("play_time", "s.rowid").Limit(1)
 
-	res := &model.ScrobbleEntry{}
-	err := r.queryOne(sql, res)
+	var res dbScrobbleBuffer
+	err := r.queryOne(sql, &res)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	res.MediaFile.ID = res.MediaFileID
-	return res, nil
+	return res.ScrobbleEntry, nil
 }
 
 func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {
