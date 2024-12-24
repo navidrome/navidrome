@@ -208,11 +208,10 @@ func startInsightsCollector(ctx context.Context) func() error {
 			return nil
 		}
 		log.Info(ctx, "Starting Insight Collector")
-		t := time.After(consts.InsightsUpdateInterval)
 		select {
+		case <-time.After(conf.Server.DevInsightsInitialDelay):
 		case <-ctx.Done():
 			return nil
-		case <-t:
 		}
 		ic := CreateInsights()
 		ic.Run(ctx)
