@@ -8,7 +8,7 @@ replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0
-	github.com/andybalholm/cascadia v1.3.2
+	github.com/andybalholm/cascadia v1.3.3
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
 	github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
