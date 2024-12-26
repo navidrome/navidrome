@@ -135,6 +135,14 @@ var _ = Describe("MediaFiles", func() {
 					Expect(album.MaxYear).To(Equal(1985))
 				})
 			})
+			DescribeTable("explicitStatus",
+				func(mfs MediaFiles, status string) {
+					Expect(mfs.ToAlbum().ExplicitStatus).To(Equal(status))
+				},
+				Entry("sets the album to clean when a clean song is present", MediaFiles{{ExplicitStatus: ""}, {ExplicitStatus: "c"}, {ExplicitStatus: ""}}, "c"),
+				Entry("sets the album to explicit when an explicit song is present", MediaFiles{{ExplicitStatus: ""}, {ExplicitStatus: "e"}, {ExplicitStatus: ""}}, "e"),
+				Entry("takes precedence of explicit songs over clean ones", MediaFiles{{ExplicitStatus: "e"}, {ExplicitStatus: "c"}, {ExplicitStatus: ""}}, "e"),
+			)
 		})
 		Context("Calculated attributes", func() {
 			Context("Discs", func() {
