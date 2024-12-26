@@ -175,7 +175,6 @@ func (mfs MediaFiles) ToAlbum() Album {
 	releaseDates := make([]string, 0, len(mfs))
 	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
 
-	a.ExplicitStatus = ""
 	a.Missing = true
 	for _, m := range mfs {
 		// We assume these attributes are all the same for all songs in an album
@@ -215,9 +214,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.Participants.Merge(m.Participants)
 
 		if m.ExplicitStatus == "c" && a.ExplicitStatus != "e" {
-			a.ExplicitStatus = "clean"
+			a.ExplicitStatus = "c"
 		} else if m.ExplicitStatus == "e" {
-			a.ExplicitStatus = "explicit"
+			a.ExplicitStatus = "e"
 		}
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
