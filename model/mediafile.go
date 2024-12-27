@@ -31,6 +31,7 @@ type MediaFile struct {
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`
+	IsDuplicate          bool    `structs:"is_duplicate" json:"isDuplicate"`
 	TrackNumber          int     `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int     `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string  `structs:"disc_subtitle" json:"discSubtitle,omitempty"`

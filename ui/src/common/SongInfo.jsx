@@ -43,6 +43,7 @@ export const SongInfo = (props) => {
       <FunctionField render={(r) => r.genres?.map((g) => g.name).join(', ')} />
     ),
     compilation: <BooleanField source="compilation" />,
+    isDuplicate: <BooleanField source="isDuplicate" />,
     bitRate: <BitrateField source="bitRate" />,
     channels: <NumberField source="channels" />,
     size: <SizeField source="size" />,

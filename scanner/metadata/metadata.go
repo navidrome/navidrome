@@ -148,6 +148,7 @@ func (t Tags) DiscSubtitle() string {
 func (t Tags) CatalogNum() string { return t.getFirstTagValue("catalognumber") }
 func (t Tags) Bpm() int           { return (int)(math.Round(t.getFloat("tbpm", "bpm", "fbpm"))) }
 func (t Tags) HasPicture() bool   { return t.getFirstTagValue("has_picture") != "" }
+func (t Tags) IsDuplicate() bool   { return t.getFirstTagValue("dup") == "1" }
 
 // MusicBrainz Identifiers
 

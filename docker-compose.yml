@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   navidrome:
-    image: navidrome:latest
+    image: laker93/neodrome:latest
     restart: unless-stopped
     container_name: "${NAME}"
     user: "501:20"

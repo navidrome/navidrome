@@ -52,6 +52,7 @@ func (s MediaFileMapper) ToMediaFile(md metadata.Tags) model.MediaFile {
 	mf.Suffix = md.Suffix()
 	mf.Size = md.Size()
 	mf.HasCoverArt = md.HasPicture()
+	mf.IsDuplicate = md.IsDuplicate()
 	mf.SortTitle = md.SortTitle()
 	mf.SortAlbumName = md.SortAlbum()
 	mf.SortArtistName = md.SortArtist()

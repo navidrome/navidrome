@@ -210,7 +210,7 @@ func getBeetTrack(ds model.DataStore) http.HandlerFunc {
 		log.Info("mediafile", "mf", mf)
 		// todo set this base from env variable
 		//baseUrl := "http://127.0.0.1:8337"
-		baseUrl := fmt.Sprintf("http://beets%s:8337", user)
+		baseUrl := fmt.Sprintf("http://beets:8337")
 		queryEndPoint := "/item/query/"
 		queryStr := fmt.Sprintf("artist:%s/title:%s/user:%s", mf.Artist, mf.Title, user)
 		url := baseUrl + queryEndPoint + queryStr

@@ -12,6 +12,7 @@ var fieldMap = map[string]*mappedField{
 	"artist":          {field: "media_file.artist"},
 	"albumartist":     {field: "media_file.album_artist"},
 	"hascoverart":     {field: "media_file.has_cover_art"},
+	"isduplicate":     {field: "media_file.is_duplicate"},
 	"tracknumber":     {field: "media_file.track_number"},
 	"discnumber":      {field: "media_file.disc_number"},
 	"year":            {field: "media_file.year"},

@@ -29,6 +29,8 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) *mediaFileRepos
 		"title":    fullTextFilter,
 		"starred":  booleanFilter,
 		"genre_id": eqFilter,
+		"is_duplicate": booleanFilter,
+		"isduplicate": booleanFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"title":      "order_title",
