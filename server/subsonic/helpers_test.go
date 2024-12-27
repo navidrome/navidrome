@@ -108,9 +108,9 @@ var _ = Describe("helpers", func() {
 		Entry("", "", responses.ItemDate{}),
 	)
 
-	DescribeTable("setExplicitStatus",
+	DescribeTable("mapExplicitStatus",
 		func(explicitStatus string, expected string) {
-			Expect(setExplicitStatus(explicitStatus)).To(Equal(expected))
+			Expect(mapExplicitStatus(explicitStatus)).To(Equal(expected))
 		},
 		Entry("returns \"clean\" when the db value is \"c\"", "c", "clean"),
 		Entry("returns \"explicit\" when the db value is \"e\"", "e", "explicit"),
