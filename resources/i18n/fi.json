@@ -212,7 +212,8 @@
       "password": "Salasana",
       "sign_in": "Kirjaudu",
       "sign_in_error": "Autentikointi epäonnistui. Yritä uudelleen",
-      "logout": "Kirjaudu ulos"
+      "logout": "Kirjaudu ulos",
+      "insightsCollectionNote": "Navidrome kerää anonyymejä käyttötietoja auttaakseen parantamaan\nprojektia. Paina [tästä] saadaksesi lisätietoa\nja halutessasi kieltäytyä"
     },
     "validation": {
       "invalidChars": "Käytä vain kirjaimia ja numeroita",
@@ -396,7 +397,8 @@
           "none": "Pois käytöstä",
           "album": "Käytä albumin äänen normalisointia",
           "track": "Käytä kappaleen äänen normalisointia"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API-avainta ei ole määritetty"
       }
     },
     "albumList": "Albumit",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Kotisivu",
       "source": "Lähdekoodi",
-      "featureRequests": "Ominaisuuspyynnöt"
+      "featureRequests": "Ominaisuuspyynnöt",
+      "lastInsightsCollection": "Viimeisin tietojenkeruu",
+      "insights": {
+        "disabled": "Ei käytössä",
+        "waiting": "Odottaa"
+      }
     }
   },
   "activity": {
