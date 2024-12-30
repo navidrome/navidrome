@@ -68,6 +68,7 @@ type MediaFile struct {
 	Comment              string  `structs:"comment" json:"comment,omitempty"`
 	Lyrics               string  `structs:"lyrics" json:"lyrics"`
 	BPM                  int     `structs:"bpm" json:"bpm,omitempty"`
+	ExplicitStatus       string  `structs:"explicit_status" json:"explicitStatus"`
 	CatalogNum           string  `structs:"catalog_num" json:"catalogNum,omitempty"`
 	MbzRecordingID       string  `structs:"mbz_recording_id" json:"mbzRecordingID,omitempty"`
 	MbzReleaseTrackID    string  `structs:"mbz_release_track_id" json:"mbzReleaseTrackId,omitempty"`
@@ -211,6 +212,12 @@ func (mfs MediaFiles) ToAlbum() Album {
 		}
 		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participants.Merge(m.Participants)
+
+		if m.ExplicitStatus == "c" && a.ExplicitStatus != "e" {
+			a.ExplicitStatus = "c"
+		} else if m.ExplicitStatus == "e" {
+			a.ExplicitStatus = "e"
+		}
 
 		a.UpdatedAt = newer(a.UpdatedAt, m.UpdatedAt)
 		a.CreatedAt = older(a.CreatedAt, m.BirthTime)

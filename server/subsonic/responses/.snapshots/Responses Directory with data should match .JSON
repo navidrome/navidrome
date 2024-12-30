@@ -27,7 +27,8 @@
         "albumArtists": [],
         "displayAlbumArtist": "",
         "contributors": [],
-        "displayComposer": ""
+        "displayComposer": "",
+        "explicitStatus": ""
       }
     ],
     "id": "1",

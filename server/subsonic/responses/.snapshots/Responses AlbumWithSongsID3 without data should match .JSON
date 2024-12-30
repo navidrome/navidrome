@@ -19,6 +19,7 @@
     "recordLabels": [],
     "moods": [],
     "artists": [],
-    "displayArtist": ""
+    "displayArtist": "",
+    "explicitStatus": ""
   }
 }

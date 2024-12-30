@@ -107,4 +107,13 @@ var _ = Describe("helpers", func() {
 		Entry("19940201", "", responses.ItemDate{}),
 		Entry("", "", responses.ItemDate{}),
 	)
+
+	DescribeTable("mapExplicitStatus",
+		func(explicitStatus string, expected string) {
+			Expect(mapExplicitStatus(explicitStatus)).To(Equal(expected))
+		},
+		Entry("returns \"clean\" when the db value is \"c\"", "c", "clean"),
+		Entry("returns \"explicit\" when the db value is \"e\"", "e", "explicit"),
+		Entry("returns an empty string when the db value is \"\"", "", ""),
+		Entry("returns an empty string when there are unexpected values on the db", "abc", ""))
 })

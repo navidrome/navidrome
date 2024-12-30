@@ -184,6 +184,7 @@ const (
 	TagMedia          TagName = "media"
 	TagCatalogNumber  TagName = "catalognumber"
 	TagBPM            TagName = "bpm"
+	TagExplicitStatus TagName = "explicitstatus"
 
 	// Dates and years
 

@@ -149,6 +149,8 @@ main:
   performer:
     aliases: [PERFORMER]
     type: pair
+  explicitstatus:
+    aliases: [ ITUNESADVISORY, rtng ]
 
 # Additional tags. You can add new tags without the need to modify the code. They will be available as fields
 # for smart playlists

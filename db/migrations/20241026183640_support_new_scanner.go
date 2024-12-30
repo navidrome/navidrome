@@ -208,6 +208,8 @@ alter table media_file
 	add column participants jsonb default '{}' not null;
 alter table media_file 
     add column bit_depth integer default 0 not null;
+alter table media_file
+	add column explicit_status varchar default '' not null;
 `),
 			addColumn("media_file", "birth_time", "datetime", "current_timestamp", "created_at"),
 			execute(`	
@@ -254,6 +256,8 @@ alter table album
 	drop column image_files;
 alter table album
 	add column folder_ids jsonb default '[]' not null;
+alter table album
+	add column explicit_status varchar default '' not null; 
 create index if not exists album_imported_at
 	on album (imported_at);
 create index if not exists album_mbz_release_group_id
