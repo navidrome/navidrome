@@ -9,25 +9,24 @@ import (
 var _ = Describe("fixAlbumArtist", func() {
 	var album Album
 	BeforeEach(func() {
-		album = Album{}
+		album = Album{Participants: Participants{}}
 	})
 	Context("Non-Compilations", func() {
 		BeforeEach(func() {
 			album.Compilation = false
-			album.Artist = "Sparks"
-			album.ArtistID = "ar-123"
+			album.Participants.Add(RoleArtist, Artist{ID: "ar-123", Name: "Sparks"})
 		})
 		It("returns the track artist if no album artist is specified", func() {
-			al := fixAlbumArtist(album, nil)
-			Expect(al.AlbumArtistID).To(Equal("ar-123"))
-			Expect(al.AlbumArtist).To(Equal("Sparks"))
+			fixAlbumArtist(&album)
+			Expect(album.AlbumArtistID).To(Equal("ar-123"))
+			Expect(album.AlbumArtist).To(Equal("Sparks"))
 		})
 		It("returns the album artist if it is specified", func() {
 			album.AlbumArtist = "Sparks Brothers"
 			album.AlbumArtistID = "ar-345"
-			al := fixAlbumArtist(album, nil)
-			Expect(al.AlbumArtistID).To(Equal("ar-345"))
-			Expect(al.AlbumArtist).To(Equal("Sparks Brothers"))
+			fixAlbumArtist(&album)
+			Expect(album.AlbumArtistID).To(Equal("ar-345"))
+			Expect(album.AlbumArtist).To(Equal("Sparks Brothers"))
 		})
 	})
 	Context("Compilations", func() {
@@ -39,15 +38,18 @@ var _ = Describe("fixAlbumArtist", func() {
 		})
 
 		It("returns VariousArtists if there's more than one album artist", func() {
-			al := fixAlbumArtist(album, []string{"ar-123", "ar-345"})
-			Expect(al.AlbumArtistID).To(Equal(consts.VariousArtistsID))
-			Expect(al.AlbumArtist).To(Equal(consts.VariousArtists))
+			album.Participants.Add(RoleAlbumArtist, Artist{ID: "ar-123", Name: "Sparks"})
+			album.Participants.Add(RoleAlbumArtist, Artist{ID: "ar-345", Name: "The Beach"})
+			fixAlbumArtist(&album)
+			Expect(album.AlbumArtistID).To(Equal(consts.VariousArtistsID))
+			Expect(album.AlbumArtist).To(Equal(consts.VariousArtists))
 		})
 
 		It("returns the sole album artist if they are the same", func() {
-			al := fixAlbumArtist(album, []string{"ar-000", "ar-000"})
-			Expect(al.AlbumArtistID).To(Equal("ar-000"))
-			Expect(al.AlbumArtist).To(Equal("The Beatles"))
+			album.Participants.Add(RoleAlbumArtist, Artist{ID: "ar-000", Name: "The Beatles"})
+			fixAlbumArtist(&album)
+			Expect(album.AlbumArtistID).To(Equal("ar-000"))
+			Expect(album.AlbumArtist).To(Equal("The Beatles"))
 		})
 	})
 })

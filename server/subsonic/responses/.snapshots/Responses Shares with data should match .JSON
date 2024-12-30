@@ -24,7 +24,15 @@
             "genres": [],
             "replayGain": {},
             "channelCount": 0,
-            "samplingRate": 0
+            "samplingRate": 0,
+            "bitDepth": 0,
+            "moods": [],
+            "artists": [],
+            "displayArtist": "",
+            "albumArtists": [],
+            "displayAlbumArtist": "",
+            "contributors": [],
+            "displayComposer": ""
           },
           {
             "id": "2",
@@ -42,7 +50,15 @@
             "genres": [],
             "replayGain": {},
             "channelCount": 0,
-            "samplingRate": 0
+            "samplingRate": 0,
+            "bitDepth": 0,
+            "moods": [],
+            "artists": [],
+            "displayArtist": "",
+            "albumArtists": [],
+            "displayAlbumArtist": "",
+            "contributors": [],
+            "displayComposer": ""
           }
         ],
         "id": "ABC123",

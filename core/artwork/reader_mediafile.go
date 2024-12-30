@@ -54,9 +54,10 @@ func (a *mediafileArtworkReader) LastUpdated() time.Time {
 func (a *mediafileArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	var ff []sourceFunc
 	if a.mediafile.CoverArtID().Kind == model.KindMediaFileArtwork {
+		path := a.mediafile.AbsolutePath()
 		ff = []sourceFunc{
-			fromTag(ctx, a.mediafile.Path),
-			fromFFmpegTag(ctx, a.a.ffmpeg, a.mediafile.Path),
+			fromTag(ctx, path),
+			fromFFmpegTag(ctx, a.a.ffmpeg, path),
 		}
 	}
 	ff = append(ff, fromAlbum(ctx, a.a, a.mediafile.AlbumCoverArtID()))

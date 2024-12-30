@@ -144,7 +144,7 @@ func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum
 		}
 	}
 
-	err = e.ds.Album(ctx).Put(&album.Album)
+	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
 	if err != nil {
 		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", album.Name,
 			"elapsed", time.Since(start), err)
@@ -236,7 +236,7 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArt
 	}
 
 	artist.ExternalInfoUpdatedAt = P(time.Now())
-	err := e.ds.Artist(ctx).Put(&artist.Artist)
+	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artist.Name,
 			"elapsed", time.Since(start), err)
