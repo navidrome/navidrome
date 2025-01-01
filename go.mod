@@ -82,6 +82,9 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/atombender/go-jsonschema v0.20.0 // indirect
+	github.com/anacrolix/dms v1.7.1 // indirect
+	github.com/anacrolix/generics v0.0.1 // indirect
+	github.com/anacrolix/log v0.15.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/reflex v0.3.1 // indirect

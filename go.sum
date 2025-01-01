@@ -12,6 +12,12 @@ github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kk
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/atombender/go-jsonschema v0.20.0 h1:AHg0LeI0HcjQ686ALwUNqVJjNRcSXpIR6U+wC2J0aFY=
 github.com/atombender/go-jsonschema v0.20.0/go.mod h1:ZmbuR11v2+cMM0PdP6ySxtyZEGFBmhgF4xa4J6Hdls8=
+github.com/anacrolix/dms v1.7.1 h1:XVOpT3eoO5Ds34B1X+TE3R2ApfqGGeqotEoCVNP8BaI=
+github.com/anacrolix/dms v1.7.1/go.mod h1:excFJW5MKBhn5yt5ZMyeE9iFVqnO6tEGQl7YG/2tUoQ=
+github.com/anacrolix/generics v0.0.1 h1:4WVhK6iLb3UAAAQP6I3uYlMOHcp9FqJC9j4n81Wv9Ks=
+github.com/anacrolix/generics v0.0.1/go.mod h1:ff2rHB/joTV03aMSSn/AZNnaIpUw0h3njetGsaXcMy8=
+github.com/anacrolix/log v0.15.2 h1:LTSf5Wm6Q4GNWPFMBP7NPYV6UBVZzZLKckL+/Lj72Oo=
+github.com/anacrolix/log v0.15.2/go.mod h1:m0poRtlr41mriZlXBQ9SOVZ8yZBkLjOkDhd5Li5pITA=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
