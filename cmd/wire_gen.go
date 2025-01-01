@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/dlna"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -36,6 +37,14 @@ func CreateServer(musicFolder string) *server.Server {
 	insights := metrics.GetInstance(dataStore)
 	serverServer := server.New(dataStore, broker, insights)
 	return serverServer
+}
+
+func CreateDLNAServer() *dlna.DLNAServer {
+	dbDB := db.Db()
+	dataStore := persistence.New(dbDB)
+	broker := events.GetBroker()
+	dlnaServer := dlna.New(dataStore, broker)
+	return dlnaServer
 }
 
 func CreateNativeAPIRouter() *nativeapi.Router {
@@ -132,4 +141,4 @@ func GetPlaybackServer() playback.PlaybackServer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, dlna.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db)
