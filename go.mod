@@ -61,6 +61,9 @@ require (
 )
 
 require (
+	github.com/anacrolix/dms v1.7.1 // indirect
+	github.com/anacrolix/generics v0.0.1 // indirect
+	github.com/anacrolix/log v0.15.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
