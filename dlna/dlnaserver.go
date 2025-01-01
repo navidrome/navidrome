@@ -55,6 +55,7 @@ type SSDPServer struct {
 func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	s := &DLNAServer{ds: ds, broker: broker, ssdp: SSDPServer{}}
 	s.ssdp.Interfaces = listInterfaces()
+	s.ssdp.AnnounceInterval = time.Duration(30) * time.Second
 
 	return s
 }
