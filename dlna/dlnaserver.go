@@ -60,7 +60,21 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 }
 
 // Run starts the server with the given address, and if specified, with TLS enabled.
-func (s *DLNAServer) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) error {
+func (s *DLNAServer) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) (err error) {
+
+	if s.ssdp.HTTPConn == nil {
+		network := "tcp4"
+		if strings.Count(s.ssdp.httpListenAddr, ":") > 1 {
+			network = "tcp"
+		}
+		s.ssdp.HTTPConn, err = net.Listen(network, s.ssdp.httpListenAddr)
+		if err != nil {
+			return
+		}
+	}
+	go func() {
+		s.ssdp.startSSDP()
+	}()
 	return nil
 }
 
