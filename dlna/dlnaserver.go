@@ -93,7 +93,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 		withHeader("Cache-Control", "public, max-age=86400",
 			http.FileServer(http.Dir("/tmp"))))) //TODO
 
-	s.ssdp.handler = logging(withHeader("Server", serverField, r))
+	s.ssdp.handler = r
 
 	return s
 }
@@ -375,48 +375,4 @@ func withHeader(name string, value string, next http.Handler) http.Handler {
 // serveError returns an http.StatusInternalServerError and logs the error
 func serveError(what interface{}, w http.ResponseWriter, text string, err error) {
 	http.Error(w, text+".", http.StatusInternalServerError)
-}
-
-type loggingResponseWriter struct {
-	http.ResponseWriter
-	request   *http.Request
-	committed bool
-}
-
-func (lrw *loggingResponseWriter) logRequest(code int, err interface{}) {
-	// Choose appropriate log level based on response status code.
-
-	if err == nil {
-		err = ""
-	}
-
-	log.Printf("%s %s %d %s %s",
-		lrw.request.RemoteAddr, lrw.request.Method, code,
-		lrw.request.Header.Get("SOAPACTION"), err)
-}
-
-func (lrw *loggingResponseWriter) WriteHeader(code int) {
-	lrw.committed = true
-	lrw.logRequest(code, nil)
-	lrw.ResponseWriter.WriteHeader(code)
-}
-
-// HTTP handler that logs requests and any errors or panics.
-func logging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lrw := &loggingResponseWriter{ResponseWriter: w, request: r}
-		defer func() {
-			err := recover()
-			if err != nil {
-				if !lrw.committed {
-					lrw.logRequest(http.StatusInternalServerError, err)
-					http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
-				} else {
-					// Too late to send the error to client, but at least log it.
-					log.Printf("Recovered panic: %v", err)
-				}
-			}
-		}()
-		next.ServeHTTP(lrw, r)
-	})
 }
