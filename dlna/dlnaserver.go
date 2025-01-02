@@ -1,6 +1,7 @@
 package dlna
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/xml"
@@ -10,9 +11,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
+	dms_dlna "github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/soap"
 	"github.com/anacrolix/dms/ssdp"
 	"github.com/anacrolix/dms/upnp"
@@ -88,7 +91,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 
 	r.Handle("/static/", http.StripPrefix("/static/",
 		withHeader("Cache-Control", "public, max-age=86400",
-			http.FileServer(data.Assets))))
+			http.FileServer(http.Dir("/tmp")))))	//TODO
 	
 	//s.handler = logging(withHeader("Server", serverField, r))
 
@@ -254,15 +257,9 @@ func isAppropriatelyConfigured(intf net.Interface) bool {
 }
 
 func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
-	remotePath := r.URL.Path
+	//remotePath := r.URL.Path
 	
-	node, err := s.vfs.Stat(r.URL.Path)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-
-	w.Header().Set("Content-Length", strconv.FormatInt(node.Size(), 10))
+	w.Header().Set("Content-Length", strconv.FormatInt(1024, 10))	//TODO
 
 	// add some DLNA specific headers
 	if r.Header.Get("getContentFeatures.dlna.org") != "" {
@@ -272,16 +269,63 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("transferMode.dlna.org", "Streaming")
 
-	file := node.(*vfs.File)
-	in, err := file.Open(os.O_RDONLY)
+	//http.ServeContent(w, r, remotePath, time.Now(), in)
+}
+
+
+
+func (s *SSDPServer) rootDescHandler(w http.ResponseWriter, r *http.Request) {
+
+	buffer := new(bytes.Buffer)
+
+	w.Header().Set("content-type", `text/xml; charset="utf-8"`)
+	w.Header().Set("cache-control", "private, max-age=60")
+	w.Header().Set("content-length", strconv.FormatInt(int64(buffer.Len()), 10))
+	buffer.WriteTo(w)
+}
+
+// Handle a service control HTTP request.
+func (s *SSDPServer) serviceControlHandler(w http.ResponseWriter, r *http.Request) {
+	soapActionString := r.Header.Get("SOAPACTION")
+	soapAction, err := upnp.ParseActionHTTPHeader(soapActionString)
 	if err != nil {
-		serveError(node, w, "Could not open resource", err)
+		serveError(s, w, "Could not parse SOAPACTION header", err)
 		return
 	}
-	defer fs.CheckClose(in, &err)
+	var env soap.Envelope
+	if err := xml.NewDecoder(r.Body).Decode(&env); err != nil {
+		serveError(s, w, "Could not parse SOAP request body", err)
+		return
+	}
 
-	http.ServeContent(w, r, remotePath, node.ModTime(), in)
+	w.Header().Set("Content-Type", `text/xml; charset="utf-8"`)
+	w.Header().Set("Ext", "")
+	soapRespXML, code := func() ([]byte, int) {
+		respArgs, err := s.soapActionResponse(soapAction, env.Body.Action, r)
+		if err != nil {
+			fmt.Printf("Error invoking %v: %v", soapAction, err)
+			upnpErr := upnp.ConvertError(err)
+			return mustMarshalXML(soap.NewFault("UPnPError", upnpErr)), http.StatusInternalServerError
+		}
+		return marshalSOAPResponse(soapAction, respArgs), http.StatusOK
+	}()
+	bodyStr := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8" standalone="yes"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body>%s</s:Body></s:Envelope>`, soapRespXML)
+	w.WriteHeader(code)
+	if _, err := w.Write([]byte(bodyStr)); err != nil {
+		fmt.Printf("Error writing response: %v", err)
+	}
 }
+
+// Handle a SOAP request and return the response arguments or UPnP error.
+func (s *SSDPServer) soapActionResponse(sa upnp.SoapAction, actionRequestXML []byte, r *http.Request) (map[string]string, error) {
+	service, ok := s.services[sa.Type]
+	if !ok {
+		// TODO: What's the invalid service error?
+		return nil, upnp.Errorf(upnp.InvalidActionErrorCode, "Invalid service: %s", sa.Type)
+	}
+	return service.Handle(sa.Action, actionRequestXML, r)
+}
+
 
 func didlLite(chardata string) string {
 	return `<DIDL-Lite` +
@@ -321,4 +365,18 @@ func makeDeviceUUID(unique string) string {
 	}
 	buf := h.Sum(nil)
 	return upnp.FormatUUID(buf)
+}
+
+
+// HTTP handler that sets headers.
+func withHeader(name string, value string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(name, value)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// serveError returns an http.StatusInternalServerError and logs the error
+func serveError(what interface{}, w http.ResponseWriter, text string, err error) {
+	http.Error(w, text+".", http.StatusInternalServerError)
 }
