@@ -79,6 +79,19 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 		},
 	}
 
+	//setup dedicated HTTP server for UPNP
+	r := http.NewServeMux()
+	r.Handle(resPath, http.StripPrefix(resPath, http.HandlerFunc(s.ssdp.resourceHandler)))
+	
+	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
+	r.HandleFunc(serviceControlURL, s.ssdp.serviceControlHandler)
+
+	r.Handle("/static/", http.StripPrefix("/static/",
+		withHeader("Cache-Control", "public, max-age=86400",
+			http.FileServer(data.Assets))))
+	
+	//s.handler = logging(withHeader("Server", serverField, r))
+
 	return s
 }
 
@@ -238,6 +251,36 @@ func listInterfaces() []net.Interface {
 }
 func isAppropriatelyConfigured(intf net.Interface) bool {
 	return intf.Flags&net.FlagUp != 0 && intf.Flags&net.FlagMulticast != 0 && intf.MTU > 0
+}
+
+func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
+	remotePath := r.URL.Path
+	
+	node, err := s.vfs.Stat(r.URL.Path)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Length", strconv.FormatInt(node.Size(), 10))
+
+	// add some DLNA specific headers
+	if r.Header.Get("getContentFeatures.dlna.org") != "" {
+		w.Header().Set("contentFeatures.dlna.org", dms_dlna.ContentFeatures{
+			SupportRange: true,
+		}.String())
+	}
+	w.Header().Set("transferMode.dlna.org", "Streaming")
+
+	file := node.(*vfs.File)
+	in, err := file.Open(os.O_RDONLY)
+	if err != nil {
+		serveError(node, w, "Could not open resource", err)
+		return
+	}
+	defer fs.CheckClose(in, &err)
+
+	http.ServeContent(w, r, remotePath, node.ModTime(), in)
 }
 
 func didlLite(chardata string) string {
