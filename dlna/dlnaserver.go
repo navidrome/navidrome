@@ -57,6 +57,18 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	s.ssdp.Interfaces = listInterfaces()
 	s.ssdp.AnnounceInterval = time.Duration(30) * time.Second
 
+	s.ssdp.services = map[string]UPnPService {
+		"ContentDirectory": &contentDirectoryService{
+			server: s,
+		},
+		"ConnectionManager": &connectionManagerService{
+			server: s,
+		},
+		"X_MS_MediaReceiverRegistrar": &mediaReceiverRegistrarService{
+			server: s,
+		},
+	}
+
 	return s
 }
 
