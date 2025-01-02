@@ -59,18 +59,18 @@ type SSDPServer struct {
 
 func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	s := &DLNAServer{
-		ds: ds, 
-		broker: broker, 
+		ds:     ds,
+		broker: broker,
 		ssdp: SSDPServer{
 			AnnounceInterval: time.Duration(30) * time.Second,
-			Interfaces: listInterfaces(),
-			FriendlyName: "Navidrome",
-			RootDeviceUUID: makeDeviceUUID("Navidrome"),
-			waitChan: make(chan struct{}),
+			Interfaces:       listInterfaces(),
+			FriendlyName:     "Navidrome",
+			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
+			waitChan:         make(chan struct{}),
 		},
 	}
 
-	s.ssdp.services = map[string]UPnPService {
+	s.ssdp.services = map[string]UPnPService{
 		"ContentDirectory": &contentDirectoryService{
 			DLNAServer: s,
 		},
@@ -85,15 +85,15 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	//setup dedicated HTTP server for UPNP
 	r := http.NewServeMux()
 	r.Handle(resPath, http.StripPrefix(resPath, http.HandlerFunc(s.ssdp.resourceHandler)))
-	
+
 	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
 	r.HandleFunc(serviceControlURL, s.ssdp.serviceControlHandler)
 
 	r.Handle("/static/", http.StripPrefix("/static/",
 		withHeader("Cache-Control", "public, max-age=86400",
-			http.FileServer(http.Dir("/tmp")))))	//TODO
-	
-	//s.handler = logging(withHeader("Server", serverField, r))
+			http.FileServer(http.Dir("/tmp"))))) //TODO
+
+	s.ssdp.handler = logging(withHeader("Server", serverField, r))
 
 	return s
 }
@@ -258,8 +258,8 @@ func isAppropriatelyConfigured(intf net.Interface) bool {
 
 func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	//remotePath := r.URL.Path
-	
-	w.Header().Set("Content-Length", strconv.FormatInt(1024, 10))	//TODO
+
+	w.Header().Set("Content-Length", strconv.FormatInt(1024, 10)) //TODO
 
 	// add some DLNA specific headers
 	if r.Header.Get("getContentFeatures.dlna.org") != "" {
@@ -271,8 +271,6 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 
 	//http.ServeContent(w, r, remotePath, time.Now(), in)
 }
-
-
 
 func (s *SSDPServer) rootDescHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -326,7 +324,6 @@ func (s *SSDPServer) soapActionResponse(sa upnp.SoapAction, actionRequestXML []b
 	return service.Handle(sa.Action, actionRequestXML, r)
 }
 
-
 func didlLite(chardata string) string {
 	return `<DIDL-Lite` +
 		` xmlns:dc="http://purl.org/dc/elements/1.1/"` +
@@ -367,7 +364,6 @@ func makeDeviceUUID(unique string) string {
 	return upnp.FormatUUID(buf)
 }
 
-
 // HTTP handler that sets headers.
 func withHeader(name string, value string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -379,4 +375,48 @@ func withHeader(name string, value string, next http.Handler) http.Handler {
 // serveError returns an http.StatusInternalServerError and logs the error
 func serveError(what interface{}, w http.ResponseWriter, text string, err error) {
 	http.Error(w, text+".", http.StatusInternalServerError)
+}
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	request   *http.Request
+	committed bool
+}
+
+func (lrw *loggingResponseWriter) logRequest(code int, err interface{}) {
+	// Choose appropriate log level based on response status code.
+
+	if err == nil {
+		err = ""
+	}
+
+	log.Printf("%s %s %d %s %s",
+		lrw.request.RemoteAddr, lrw.request.Method, code,
+		lrw.request.Header.Get("SOAPACTION"), err)
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.committed = true
+	lrw.logRequest(code, nil)
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
+// HTTP handler that logs requests and any errors or panics.
+func logging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lrw := &loggingResponseWriter{ResponseWriter: w, request: r}
+		defer func() {
+			err := recover()
+			if err != nil {
+				if !lrw.committed {
+					lrw.logRequest(http.StatusInternalServerError, err)
+					http.Error(w, fmt.Sprint(err), http.StatusInternalServerError)
+				} else {
+					// Too late to send the error to client, but at least log it.
+					log.Printf("Recovered panic: %v", err)
+				}
+			}
+		}()
+		next.ServeHTTP(lrw, r)
+	})
 }
