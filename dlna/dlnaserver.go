@@ -2,8 +2,10 @@ package dlna
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -53,9 +55,17 @@ type SSDPServer struct {
 }
 
 func New(ds model.DataStore, broker events.Broker) *DLNAServer {
-	s := &DLNAServer{ds: ds, broker: broker, ssdp: SSDPServer{}}
-	s.ssdp.Interfaces = listInterfaces()
-	s.ssdp.AnnounceInterval = time.Duration(30) * time.Second
+	s := &DLNAServer{
+		ds: ds, 
+		broker: broker, 
+		ssdp: SSDPServer{
+			AnnounceInterval: time.Duration(30) * time.Second,
+			Interfaces: listInterfaces(),
+			FriendlyName: "Navidrome",
+			RootDeviceUUID: makeDeviceUUID("Navidrome"),
+			waitChan: make(chan struct{}),
+		},
+	}
 
 	s.ssdp.services = map[string]UPnPService {
 		"ContentDirectory": &contentDirectoryService{
@@ -259,4 +269,13 @@ func marshalSOAPResponse(sa upnp.SoapAction, args map[string]string) []byte {
 	}
 	return []byte(fmt.Sprintf(`<u:%[1]sResponse xmlns:u="%[2]s">%[3]s</u:%[1]sResponse>`,
 		sa.Action, sa.ServiceURN.String(), mustMarshalXML(soapArgs)))
+}
+
+func makeDeviceUUID(unique string) string {
+	h := md5.New()
+	if _, err := io.WriteString(h, unique); err != nil {
+		log.Panicf("makeDeviceUUID write failed: %s", err)
+	}
+	buf := h.Sum(nil)
+	return upnp.FormatUUID(buf)
 }
