@@ -59,13 +59,13 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 
 	s.ssdp.services = map[string]UPnPService {
 		"ContentDirectory": &contentDirectoryService{
-			server: s,
+			DLNAServer: s,
 		},
 		"ConnectionManager": &connectionManagerService{
-			server: s,
+			DLNAServer: s,
 		},
 		"X_MS_MediaReceiverRegistrar": &mediaReceiverRegistrarService{
-			server: s,
+			DLNAServer: s,
 		},
 	}
 
