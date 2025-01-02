@@ -3,9 +3,7 @@
 package dlna
 
 import (
-	"context"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,10 +12,11 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
+	"time"
 
 	"github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/upnp"
+	"github.com/navidrome/navidrome/dlna/upnpav"
 )
 
 type contentDirectoryService struct {
@@ -33,49 +32,25 @@ var mediaMimeTypeRegexp = regexp.MustCompile("^(video|audio|image)/")
 
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
-func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, fileInfo vfs.Node, resources vfs.Nodes, host string) (ret interface{}, err error) {
+func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, host string) (ret interface{}, err error) {
 	obj := upnpav.Object{
 		ID:         cdsObject.ID(),
 		Restricted: 1,
 		ParentID:   cdsObject.ParentID(),
 	}
 
-	if fileInfo.IsDir() {
-		defaultChildCount := 1
-		obj.Class = "object.container.storageFolder"
-		obj.Title = fileInfo.Name()
-		return upnpav.Container{
-			Object:     obj,
-			ChildCount: &defaultChildCount,
-		}, nil
-	}
-
-	if !fileInfo.Mode().IsRegular() {
-		return
-	}
-
 	// Read the mime type from the fs.Object if possible,
 	// otherwise fall back to working out what it is from the file path.
-	var mimeType string
-	if o, ok := fileInfo.DirEntry().(fs.Object); ok {
-		mimeType = fs.MimeType(context.TODO(), o)
-		// If backend doesn't know what the mime type is then
-		// try getting it from the file name
-		if mimeType == "application/octet-stream" {
-			mimeType = fs.MimeTypeFromName(fileInfo.Name())
-		}
-	} else {
-		mimeType = fs.MimeTypeFromName(fileInfo.Name())
-	}
-
+	var mimeType = "audio/mp3" //TODO
+	
 	mediaType := mediaMimeTypeRegexp.FindStringSubmatch(mimeType)
 	if mediaType == nil {
 		return
 	}
 
 	obj.Class = "object.item." + mediaType[1] + "Item"
-	obj.Title = fileInfo.Name()
-	obj.Date = upnpav.Timestamp{Time: fileInfo.ModTime()}
+	obj.Title = "TITLE"
+	obj.Date = upnpav.Timestamp{Time: time.Now()}
 
 	item := upnpav.Item{
 		Object: obj,
@@ -91,20 +66,8 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, fi
 		ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 			SupportRange: true,
 		}.String()),
-		Size: uint64(fileInfo.Size()),
+		Size: uint64(1048576), //TODO
 	})
-
-	for _, resource := range resources {
-		subtitleURL := (&url.URL{
-			Scheme: "http",
-			Host:   host,
-			Path:   path.Join(resPath, resource.Path()),
-		}).String()
-		item.Res = append(item.Res, upnpav.Resource{
-			URL:          subtitleURL,
-			ProtocolInfo: fmt.Sprintf("http-get:*:%s:*", "text/srt"),
-		})
-	}
 
 	ret = item
 	return
@@ -112,90 +75,8 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, fi
 
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
-	node, err := cds.vfs.Stat(o.Path)
-	if err != nil {
-		return
-	}
-
-	if !node.IsDir() {
-		err = errors.New("not a directory")
-		return
-	}
-
-	dir := node.(*vfs.Dir)
-	dirEntries, err := dir.ReadDirAll()
-	if err != nil {
-		err = errors.New("failed to list directory")
-		return
-	}
-
-	dirEntries, mediaResources := mediaWithResources(dirEntries)
-	for _, de := range dirEntries {
-		child := object{
-			path.Join(o.Path, de.Name()),
-		}
-		obj, err := cds.cdsObjectToUpnpavObject(child, de, mediaResources[de], host)
-		if err != nil {
-			fs.Errorf(cds, "error with %s: %s", child.FilePath(), err)
-			continue
-		}
-		if obj == nil {
-			fs.Debugf(cds, "unrecognized file type: %s", de)
-			continue
-		}
-		ret = append(ret, obj)
-	}
 
 	return
-}
-
-// Given a list of nodes, separate them into potential media items and any associated resources (external subtitles,
-// for example.)
-//
-// The result is a slice of potential media nodes (in their original order) and a map containing associated
-// resources nodes of each media node, if any.
-func mediaWithResources(nodes vfs.Nodes) (vfs.Nodes, map[vfs.Node]vfs.Nodes) {
-	media, mediaResources := vfs.Nodes{}, make(map[vfs.Node]vfs.Nodes)
-
-	// First, separate out the subtitles and media into maps, keyed by their lowercase base names.
-	mediaByName, subtitlesByName := make(map[string]vfs.Nodes), make(map[string]vfs.Node)
-	for _, node := range nodes {
-		baseName, ext := splitExt(strings.ToLower(node.Name()))
-		switch ext {
-		case ".srt", ".ass", ".ssa", ".sub", ".idx", ".sup", ".jss", ".txt", ".usf", ".cue", ".vtt", ".css":
-			// .idx should be with .sub, .css should be with vtt otherwise they should be culled,
-			// and their mimeTypes are not consistent, but anyway these negatives don't throw errors.
-			subtitlesByName[baseName] = node
-		default:
-			mediaByName[baseName] = append(mediaByName[baseName], node)
-			media = append(media, node)
-		}
-	}
-
-	// Find the associated media file for each subtitle
-	for baseName, node := range subtitlesByName {
-		// Find a media file with the same basename (video.mp4 for video.srt)
-		mediaNodes, found := mediaByName[baseName]
-		if !found {
-			// Or basename of the basename (video.mp4 for video.en.srt)
-			baseName, _ = splitExt(baseName)
-			mediaNodes, found = mediaByName[baseName]
-		}
-
-		// Just advise if no match found
-		if !found {
-			fs.Infof(node, "could not find associated media for subtitle: %s", node.Name())
-			continue
-		}
-
-		// Associate with all potential media nodes
-		fs.Debugf(mediaNodes, "associating subtitle: %s", node.Name())
-		for _, mediaNode := range mediaNodes {
-			mediaResources[mediaNode] = append(mediaResources[mediaNode], node)
-		}
-	}
-
-	return media, mediaResources
 }
 
 type browse struct {
@@ -272,21 +153,9 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 				"UpdateID":       cds.updateIDString(),
 			}, nil
 		case "BrowseMetadata":
-			node, err := cds.vfs.Stat(obj.Path)
-			if err != nil {
-				return nil, err
-			}
-			// TODO: External subtitles won't appear in the metadata here, but probably should.
-			upnpObject, err := cds.cdsObjectToUpnpavObject(obj, node, vfs.Nodes{}, host)
-			if err != nil {
-				return nil, err
-			}
-			result, err := xml.Marshal(upnpObject)
-			if err != nil {
-				return nil, err
-			}
+			//TODO
 			return map[string]string{
-				"Result": didlLite(string(result)),
+				"Result": didlLite(string("result")),
 			}, nil
 		default:
 			return nil, upnp.Errorf(upnp.ArgumentValueInvalidErrorCode, "unhandled browse flag: %v", browse.BrowseFlag)
