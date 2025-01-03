@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"text/template"
 
 	dms_dlna "github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/soap"
@@ -91,7 +92,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 
 	r.Handle("/static/", http.StripPrefix("/static/",
 		withHeader("Cache-Control", "public, max-age=86400",
-			http.FileServer(http.Dir("/tmp"))))) //TODO
+			http.FileServer(http.Dir("/tmp"))))) //TODO, is /static needed?
 
 	s.ssdp.handler = r
 
@@ -275,9 +276,12 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	//http.ServeContent(w, r, remotePath, time.Now(), in)
 }
 
+// returns content for /rootDesc.xml
 func (s *SSDPServer) rootDescHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, _ := GetTemplate()
 
 	buffer := new(bytes.Buffer)
+	_ = tmpl.Execute(buffer, s)
 
 	w.Header().Set("content-type", `text/xml; charset="utf-8"`)
 	w.Header().Set("cache-control", "private, max-age=60")
@@ -391,4 +395,83 @@ func withHeader(name string, value string, next http.Handler) http.Handler {
 // serveError returns an http.StatusInternalServerError and logs the error
 func serveError(what interface{}, w http.ResponseWriter, text string, err error) {
 	http.Error(w, text+".", http.StatusInternalServerError)
+}
+
+func GetTemplate() (tpl *template.Template, err error) {
+
+	templateBytes := `<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0"
+      xmlns:dlna="urn:schemas-dlna-org:device-1-0"
+      xmlns:sec="http://www.sec.co.kr/dlna">
+  <specVersion>
+    <major>1</major>
+    <minor>0</minor>
+  </specVersion>
+  <device>
+    <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
+    <friendlyName>{{.FriendlyName}}</friendlyName>
+    <manufacturer>rclone (rclone.org)</manufacturer>
+    <manufacturerURL>https://rclone.org/</manufacturerURL>
+    <modelDescription>rclone</modelDescription>
+    <modelName>rclone</modelName>
+    <modelNumber>{{.ModelNumber}}</modelNumber>
+    <modelURL>https://rclone.org/</modelURL>
+    <serialNumber>00000000</serialNumber>
+    <UDN>{{.RootDeviceUUID}}</UDN>
+    <dlna:X_DLNACAP/>
+    <dlna:X_DLNADOC>DMS-1.50</dlna:X_DLNADOC>
+    <dlna:X_DLNADOC>M-DMS-1.50</dlna:X_DLNADOC>
+    <sec:ProductCap>smi,DCM10,getMediaInfo.sec,getCaptionInfo.sec</sec:ProductCap>
+    <sec:X_ProductCap>smi,DCM10,getMediaInfo.sec,getCaptionInfo.sec</sec:X_ProductCap>
+    <iconList>
+      <icon>
+        <mimetype>image/png</mimetype>
+        <width>48</width>
+        <height>48</height>
+        <depth>8</depth>
+        <url>/static/rclone-48x48.png</url>
+      </icon>
+      <icon>
+        <mimetype>image/png</mimetype>
+        <width>120</width>
+        <height>120</height>
+        <depth>8</depth>
+        <url>/static/rclone-120x120.png</url>
+      </icon>
+    </iconList>
+    <serviceList>
+      <service>
+        <serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:ContentDirectory</serviceId>
+        <SCPDURL>/static/ContentDirectory.xml</SCPDURL>
+        <controlURL>/ctl</controlURL>
+        <eventSubURL></eventSubURL>
+      </service>
+      <service>
+        <serviceType>urn:schemas-upnp-org:service:ConnectionManager:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:ConnectionManager</serviceId>
+        <SCPDURL>/static/ConnectionManager.xml</SCPDURL>
+        <controlURL>/ctl</controlURL>
+        <eventSubURL></eventSubURL>
+      </service>
+      <service>
+        <serviceType>urn:microsoft.com:service:X_MS_MediaReceiverRegistrar:1</serviceType>
+        <serviceId>urn:microsoft.com:serviceId:X_MS_MediaReceiverRegistrar</serviceId>
+        <SCPDURL>/static/X_MS_MediaReceiverRegistrar.xml</SCPDURL>
+        <controlURL>/ctl</controlURL>
+        <eventSubURL></eventSubURL>
+      </service>
+    </serviceList>
+    <presentationURL>/</presentationURL>
+  </device>
+</root>`
+
+	var templateString = string(templateBytes)
+
+	tpl, err = template.New("rootDesc").Parse(templateString)
+	if err != nil {
+		return nil, fmt.Errorf("get template parse: %w", err)
+	}
+
+	return
 }
