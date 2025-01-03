@@ -92,7 +92,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	r := http.NewServeMux()
 	r.Handle(resPath, http.StripPrefix(resPath, http.HandlerFunc(s.ssdp.resourceHandler)))
 	
-	r.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
+	r.Handle("/static/", http.FileServer(http.FS(staticContent)))
 	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
 	r.HandleFunc(serviceControlURL, s.ssdp.serviceControlHandler)
 
