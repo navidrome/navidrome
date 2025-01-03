@@ -50,6 +50,7 @@ type SSDPServer struct {
 	RootDeviceUUID string
 
 	FriendlyName string
+	ModelNumber string
 
 	// For waiting on the listener to close
 	waitChan chan struct{}
@@ -66,6 +67,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 			AnnounceInterval: time.Duration(30) * time.Second,
 			Interfaces:       listInterfaces(),
 			FriendlyName:     "Navidrome",
+			ModelNumber:      "0.0.1",	//TODO
 			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
 			waitChan:         make(chan struct{}),
 		},
