@@ -86,6 +86,7 @@ type browse struct {
 
 // ContentDirectory object from ObjectID.
 func (cds *contentDirectoryService) objectFromID(id string) (o object, err error) {
+	log.Printf("objectFromID Called: %+v", id)
 	o.Path, err = url.QueryUnescape(id)
 	if err != nil {
 		return
