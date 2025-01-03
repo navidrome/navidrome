@@ -114,6 +114,9 @@ func (s *DLNAServer) Run(ctx context.Context, addr string, port int, tlsCert str
 	go func() {
 		s.ssdp.startSSDP()
 	}()
+	go func() {
+		s.ssdp.serveHTTP()
+	}()
 	return nil
 }
 
@@ -322,6 +325,19 @@ func (s *SSDPServer) soapActionResponse(sa upnp.SoapAction, actionRequestXML []b
 		return nil, upnp.Errorf(upnp.InvalidActionErrorCode, "Invalid service: %s", sa.Type)
 	}
 	return service.Handle(sa.Action, actionRequestXML, r)
+}
+
+func (s *SSDPServer) serveHTTP() error {
+	srv := &http.Server{
+		Handler: s.handler,
+	}
+	err := srv.Serve(s.HTTPConn)
+	select {
+	case <-s.waitChan:
+		return nil
+	default:
+		return err
+	}
 }
 
 func didlLite(chardata string) string {
