@@ -410,12 +410,12 @@ func GetTemplate() (tpl *template.Template, err error) {
   <device>
     <deviceType>urn:schemas-upnp-org:device:MediaServer:1</deviceType>
     <friendlyName>{{.FriendlyName}}</friendlyName>
-    <manufacturer>rclone (rclone.org)</manufacturer>
-    <manufacturerURL>https://rclone.org/</manufacturerURL>
-    <modelDescription>rclone</modelDescription>
-    <modelName>rclone</modelName>
+    <manufacturer>Navidrome</manufacturer>
+    <manufacturerURL>https://www.navidrome.org/</manufacturerURL>
+    <modelDescription>Navidrome</modelDescription>
+    <modelName>Navidrome</modelName>
     <modelNumber>{{.ModelNumber}}</modelNumber>
-    <modelURL>https://rclone.org/</modelURL>
+    <modelURL>https://www.navidrome.org/</modelURL>
     <serialNumber>00000000</serialNumber>
     <UDN>{{.RootDeviceUUID}}</UDN>
     <dlna:X_DLNACAP/>
@@ -423,22 +423,6 @@ func GetTemplate() (tpl *template.Template, err error) {
     <dlna:X_DLNADOC>M-DMS-1.50</dlna:X_DLNADOC>
     <sec:ProductCap>smi,DCM10,getMediaInfo.sec,getCaptionInfo.sec</sec:ProductCap>
     <sec:X_ProductCap>smi,DCM10,getMediaInfo.sec,getCaptionInfo.sec</sec:X_ProductCap>
-    <iconList>
-      <icon>
-        <mimetype>image/png</mimetype>
-        <width>48</width>
-        <height>48</height>
-        <depth>8</depth>
-        <url>/static/rclone-48x48.png</url>
-      </icon>
-      <icon>
-        <mimetype>image/png</mimetype>
-        <width>120</width>
-        <height>120</height>
-        <depth>8</depth>
-        <url>/static/rclone-120x120.png</url>
-      </icon>
-    </iconList>
     <serviceList>
       <service>
         <serviceType>urn:schemas-upnp-org:service:ContentDirectory:1</serviceType>
