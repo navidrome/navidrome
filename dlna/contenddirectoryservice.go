@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"time"
 
 	"github.com/anacrolix/dms/dlna"
@@ -28,8 +27,6 @@ func (cds *contentDirectoryService) updateIDString() string {
 	return fmt.Sprintf("%d", uint32(os.Getpid()))
 }
 
-var mediaMimeTypeRegexp = regexp.MustCompile("^(video|audio|image)/")
-
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
 func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, host string) (ret interface{}, err error) {
@@ -43,13 +40,8 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, ho
 	// otherwise fall back to working out what it is from the file path.
 	var mimeType = "audio/mp3" //TODO
 	
-	mediaType := mediaMimeTypeRegexp.FindStringSubmatch(mimeType)
-	if mediaType == nil {
-		return
-	}
-
-	obj.Class = "object.item." + mediaType[1] + "Item"
-	obj.Title = "TITLE"
+	obj.Class = "object.item.audioItem"
+	obj.Title = cdsObject.Path
 	obj.Date = upnpav.Timestamp{Time: time.Now()}
 
 	item := upnpav.Item{
@@ -75,7 +67,12 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, ho
 
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
-
+	switch o.Path {
+	case "/":
+		newObject := object{Path: "/Music",}
+		thisObject, _ := cds.cdsObjectToUpnpavObject(newObject, host)
+		ret = append(ret, thisObject)
+	}
 	return
 }
 
