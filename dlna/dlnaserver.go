@@ -91,11 +91,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 
 	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
 	r.HandleFunc(serviceControlURL, s.ssdp.serviceControlHandler)
-
-	r.Handle("/static/", http.StripPrefix("/static/",
-		withHeader("Cache-Control", "public, max-age=86400",
-			http.FileServer(http.Dir("/tmp"))))) //TODO, is /static needed?
-
+	
 	s.ssdp.handler = r
 
 	return s
@@ -262,6 +258,7 @@ func isAppropriatelyConfigured(intf net.Interface) bool {
 	return intf.Flags&net.FlagUp != 0 && intf.Flags&net.FlagMulticast != 0 && intf.MTU > 0
 }
 
+//handler for all paths under `/r`
 func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	//remotePath := r.URL.Path
 
@@ -278,7 +275,7 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	//http.ServeContent(w, r, remotePath, time.Now(), in)
 }
 
-// returns content for /rootDesc.xml
+// returns /rootDesc.xml templated
 func (s *SSDPServer) rootDescHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, _ := GetTemplate()
 
