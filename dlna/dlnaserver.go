@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"embed"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -13,8 +14,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 	"text/template"
+	"time"
 
 	dms_dlna "github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/soap"
@@ -30,6 +31,8 @@ const (
 	resPath           = "/r/"
 	serviceControlURL = "/ctl"
 )
+//go:embed static/*
+var staticContent embed.FS
 
 type DLNAServer struct {
 	ds     model.DataStore
@@ -88,10 +91,11 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	//setup dedicated HTTP server for UPNP
 	r := http.NewServeMux()
 	r.Handle(resPath, http.StripPrefix(resPath, http.HandlerFunc(s.ssdp.resourceHandler)))
-
+	
+	r.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
 	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
 	r.HandleFunc(serviceControlURL, s.ssdp.serviceControlHandler)
-	
+
 	s.ssdp.handler = r
 
 	return s
