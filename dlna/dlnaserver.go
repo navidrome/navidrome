@@ -41,6 +41,7 @@ type DLNAServer struct {
 	ds     model.DataStore
 	broker events.Broker
 	ssdp   SSDPServer
+	ctx context.Context
 }
 
 type SSDPServer struct {
@@ -104,9 +105,9 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	return s
 }
 
-// Run starts the server with the given address, and if specified, with TLS enabled.
-func (s *DLNAServer) Run(ctx context.Context, addr string, port int, tlsCert string, tlsKey string) (err error) {
-
+// Run starts the DLNA server (both SSDP and HTTP) with the given address
+func (s *DLNAServer) Run(ctx context.Context, addr string, port int) (err error) {
+	s.ctx = ctx
 	if s.ssdp.HTTPConn == nil {
 		network := "tcp4"
 		if strings.Count(s.ssdp.httpListenAddr, ":") > 1 {
