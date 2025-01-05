@@ -33,7 +33,7 @@ func (cds *contentDirectoryService) updateIDString() string {
 // returned if the entry is not of interest.
 func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, isContainer bool, host string) (ret interface{}, err error) {
 	obj := upnpav.Object{
-		ID:         cdsObject.ID(),
+		ID:		 cdsObject.ID(),
 		Restricted: 1,
 		ParentID:   cdsObject.ParentID(),
 		Title: filepath.Base(cdsObject.Path),
@@ -43,7 +43,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 		defaultChildCount := 1
 		obj.Class = "object.container.storageFolder"
 		return upnpav.Container{
-			Object:     obj,
+			Object:	 obj,
 			ChildCount: &defaultChildCount,
 		}, nil
 	}
@@ -56,7 +56,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 
 	item := upnpav.Item{
 		Object: obj,
-		Res:    make([]upnpav.Resource, 0, 1),
+		Res:	make([]upnpav.Resource, 0, 1),
 	}
 
 	item.Res = append(item.Res, upnpav.Resource{
@@ -78,7 +78,8 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
 	log.Printf("ReadContainer called with : %+v", o)
-	//TODO implement HTTP routing in a way that isn't awful
+
+	//TODO implement HTTP routing rather than this
 	switch o.Path {
 	case "/":
 		newObject := object{Path: "/Music"}
@@ -91,7 +92,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		ret = append(ret, thisObject)
 		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host)
 		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genre"}, true, host)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host)
 		ret = append(ret, thisObject)
 		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host)
 		ret = append(ret, thisObject)
@@ -107,10 +108,60 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			ret = append(ret, convObj)
 		}
 	case "/Music/Artists":
-
+		indexes,err := cds.ds.Artist(cds.ctx).GetIndex()
+		if err!= nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				path.Join(o.Path, indexes[indexItem].Artists[0].Name),	//TODO handle multiple artists here, fold it into some sort of unique list
+			}
+			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+			ret = append(ret, convObj)
+		}
 	case "/Music/Albums":
-
+		indexes,err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
+		if err!= nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				path.Join(o.Path, indexes[indexItem].Name),
+			}
+			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+			ret = append(ret, convObj)
+		}
+	case "/Music/Genres":
+		indexes,err := cds.ds.Genre(cds.ctx).GetAll()
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				path.Join(o.Path, indexes[indexItem].Name),
+			}
+			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+			ret = append(ret, convObj)
+		}
+	case "/Music/Playlists":
+		indexes,err := cds.ds.Playlist(cds.ctx).GetAll()
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				path.Join(o.Path, indexes[indexItem].Name),
+			}
+			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+			ret = append(ret, convObj)
+		}
 	}
+
+
 
 	if strings.HasPrefix(o.Path, "/Music/Files/") {
 		libraryPath,_ := strings.CutPrefix(o.Path, "/Music/Files")
@@ -128,9 +179,9 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 }
 
 type browse struct {
-	ObjectID       string
-	BrowseFlag     string
-	Filter         string
+	ObjectID	   string
+	BrowseFlag	 string
+	Filter		 string
 	StartingIndex  int
 	RequestedCount int
 }
@@ -198,8 +249,8 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 			return map[string]string{
 				"TotalMatches":   fmt.Sprint(totalMatches),
 				"NumberReturned": fmt.Sprint(len(objs)),
-				"Result":         didlLite(string(result)),
-				"UpdateID":       cds.updateIDString(),
+				"Result":		 didlLite(string(result)),
+				"UpdateID":	   cds.updateIDString(),
 			}, nil
 		case "BrowseMetadata":
 			//TODO

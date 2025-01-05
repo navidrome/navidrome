@@ -138,7 +138,7 @@ func startServer(ctx context.Context) func() error {
 func startDLNAServer(ctx context.Context) func() error {
 	return func() error {
 		a := CreateDLNAServer()
-		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
+		return a.Run(ctx, conf.Server.Address, conf.Server.Port)
 	}
 }
 
