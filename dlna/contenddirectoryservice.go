@@ -35,11 +35,12 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 		ID:         cdsObject.ID(),
 		Restricted: 1,
 		ParentID:   cdsObject.ParentID(),
+		Title: filepath.Base(cdsObject.Path),
 	}
+
 	if isContainer {
 		defaultChildCount := 1
 		obj.Class = "object.container.storageFolder"
-		obj.Title = cdsObject.Path
 		return upnpav.Container{
 			Object:     obj,
 			ChildCount: &defaultChildCount,
@@ -50,7 +51,6 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 	var mimeType = "audio/mp3" //TODO
 
 	obj.Class = "object.item.audioItem"
-	obj.Title = cdsObject.Path
 	obj.Date = upnpav.Timestamp{Time: time.Now()}
 
 	item := upnpav.Item{
@@ -76,14 +76,24 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
+	log.Printf("ReadContainer called with : %+v", o)
 	switch o.Path {
 	case "/":
 		newObject := object{Path: "/Music"}
 		thisObject, _ := cds.cdsObjectToUpnpavObject(newObject, true, host)
 		ret = append(ret, thisObject)
-	case "/Music/":
-
-		files, _ := os.ReadDir(conf.Server.MusicFolder) //TODO
+	case "/Music":
+		thisObject, _ := cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host)
+		ret = append(ret, thisObject)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host)
+		ret = append(ret, thisObject)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host)
+		ret = append(ret, thisObject)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Tracks"}, true, host)
+		ret = append(ret, thisObject)
+	case "/Music/Files":
+		log.Printf("calling for /Music/Files")
+		files, _ := os.ReadDir(conf.Server.MusicFolder)
 		for _, file := range files {
 			child := object{
 				path.Join(o.Path, file.Name()),
@@ -91,6 +101,9 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			convObj, _ := cds.cdsObjectToUpnpavObject(child, file.IsDir(), host)
 			ret = append(ret, convObj)
 		}
+	case "/Music/Artists":
+	case "/Music/Albums":
+	case "/Music/Tracks":
 	}
 	return
 }
