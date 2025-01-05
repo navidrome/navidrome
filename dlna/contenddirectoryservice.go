@@ -89,10 +89,13 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		ret = append(ret, thisObject)
 		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host)
 		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Tracks"}, true, host)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genre"}, true, host)
+		ret = append(ret, thisObject)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host)
+		ret = append(ret, thisObject)
+		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host)
 		ret = append(ret, thisObject)
 	case "/Music/Files":
-		log.Printf("calling for /Music/Files")
 		files, _ := os.ReadDir(conf.Server.MusicFolder)
 		for _, file := range files {
 			child := object{
@@ -102,8 +105,9 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			ret = append(ret, convObj)
 		}
 	case "/Music/Artists":
+
 	case "/Music/Albums":
-	case "/Music/Tracks":
+
 	}
 	return
 }
