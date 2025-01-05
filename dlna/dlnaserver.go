@@ -12,6 +12,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"text/template"
@@ -21,6 +23,7 @@ import (
 	"github.com/anacrolix/dms/soap"
 	"github.com/anacrolix/dms/ssdp"
 	"github.com/anacrolix/dms/upnp"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 )
@@ -264,9 +267,19 @@ func isAppropriatelyConfigured(intf net.Interface) bool {
 
 //handler for all paths under `/r`
 func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
-	//remotePath := r.URL.Path
+	remotePath := r.URL.Path
 
-	w.Header().Set("Content-Length", strconv.FormatInt(1024, 10)) //TODO
+	localFile,_ := strings.CutPrefix(remotePath,"Music/Files/")
+	localFilePath := path.Join(conf.Server.MusicFolder, localFile)
+	
+	log.Printf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath)
+
+	fileStats,err := os.Stat(localFilePath)
+	if err != nil {
+		http.NotFound(w,r)
+		return
+	}
+	w.Header().Set("Content-Length", strconv.FormatInt(fileStats.Size(), 10))
 
 	// add some DLNA specific headers
 	if r.Header.Get("getContentFeatures.dlna.org") != "" {
@@ -276,7 +289,15 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("transferMode.dlna.org", "Streaming")
 
-	//http.ServeContent(w, r, remotePath, time.Now(), in)
+	os.Open(localFilePath)
+	fileHandle,err := os.Open(localFilePath)
+	if err != nil { 
+		fmt.Printf("file streaming error: %+v\n", err)
+		return
+	}
+	defer fileHandle.Close()
+
+	http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
 }
 
 // returns /rootDesc.xml templated
