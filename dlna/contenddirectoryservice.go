@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anacrolix/dms/dlna"
@@ -77,6 +78,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
 	log.Printf("ReadContainer called with : %+v", o)
+	//TODO implement HTTP routing in a way that isn't awful
 	switch o.Path {
 	case "/":
 		newObject := object{Path: "/Music"}
@@ -109,6 +111,19 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 	case "/Music/Albums":
 
 	}
+
+	if strings.HasPrefix(o.Path, "/Music/Files/") {
+		libraryPath,_ := strings.CutPrefix(o.Path, "/Music/Files")
+		log.Printf("library path: %s", libraryPath)
+		files, _ := os.ReadDir(path.Join(conf.Server.MusicFolder, libraryPath))
+		for _, file := range files {
+			child := object{
+				path.Join(o.Path, file.Name()),
+			}
+			convObj, _ := cds.cdsObjectToUpnpavObject(child, file.IsDir(), host)
+			ret = append(ret, convObj)
+		}
+	}
 	return
 }
 
@@ -140,7 +155,7 @@ func (cds *contentDirectoryService) objectFromID(id string) (o object, err error
 
 func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *http.Request) (map[string]string, error) {
 	host := r.Host
-
+	log.Printf("Handle called with action: %s", action)
 	switch action {
 	case "GetSystemUpdateID":
 		return map[string]string{
