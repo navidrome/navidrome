@@ -15,6 +15,7 @@ import (
 
 	"github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/upnp"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/dlna/upnpav"
 )
 
@@ -29,17 +30,25 @@ func (cds *contentDirectoryService) updateIDString() string {
 
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
-func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, host string) (ret interface{}, err error) {
+func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, isContainer bool, host string) (ret interface{}, err error) {
 	obj := upnpav.Object{
 		ID:         cdsObject.ID(),
 		Restricted: 1,
 		ParentID:   cdsObject.ParentID(),
 	}
-
+	if isContainer {
+		defaultChildCount := 1
+		obj.Class = "object.container.storageFolder"
+		obj.Title = cdsObject.Path
+		return upnpav.Container{
+			Object:     obj,
+			ChildCount: &defaultChildCount,
+		}, nil
+	}
 	// Read the mime type from the fs.Object if possible,
 	// otherwise fall back to working out what it is from the file path.
 	var mimeType = "audio/mp3" //TODO
-	
+
 	obj.Class = "object.item.audioItem"
 	obj.Title = cdsObject.Path
 	obj.Date = upnpav.Timestamp{Time: time.Now()}
@@ -69,9 +78,19 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, ho
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
 	switch o.Path {
 	case "/":
-		newObject := object{Path: "/Music",}
-		thisObject, _ := cds.cdsObjectToUpnpavObject(newObject, host)
+		newObject := object{Path: "/Music"}
+		thisObject, _ := cds.cdsObjectToUpnpavObject(newObject, true, host)
 		ret = append(ret, thisObject)
+	case "/Music/":
+
+		files, _ := os.ReadDir(conf.Server.MusicFolder) //TODO
+		for _, file := range files {
+			child := object{
+				path.Join(o.Path, file.Name()),
+			}
+			convObj, _ := cds.cdsObjectToUpnpavObject(child, file.IsDir(), host)
+			ret = append(ret, convObj)
+		}
 	}
 	return
 }
