@@ -16,12 +16,47 @@
 #include <tpropertymap.h>
 #include <vorbisfile.h>
 #include <wavfile.h>
+#include <fstream>
+#include <regex>
 
 #include "taglib_wrapper.h"
 
 char has_cover(const TagLib::FileRef f);
 
 static char TAGLIB_VERSION[16];
+
+// Parses an .lrc file and extracts the lyrics with timestamps
+bool parse_lrc(const std::string& lrcFileName, unsigned long id) {
+    std::ifstream lrcFile(lrcFileName);
+    if (!lrcFile.is_open()) {
+        return false; // .lrc file not found
+    }
+
+    std::string line;
+    std::regex timeRegex(R"(\[([0-9]{2}):([0-9]{2})(?:\.([0-9]{2,3}))?\](.*))");
+    std::smatch match;
+    bool hasLyrics = false;
+
+    while (std::getline(lrcFile, line)) {
+        if (std::regex_match(line, match, timeRegex)) {
+            int minutes = std::stoi(match[1].str());
+            int seconds = std::stoi(match[2].str());
+            int milliseconds = match[3].matched ? std::stoi(match[3].str()) : 0;
+
+            int timeInMs = (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
+            std::string lyricsText = match[4].str();
+
+            // Add each lyric line to the Go map
+            if (!lyricsText.empty()) {
+                go_map_put_lyric_line(id, "lrc", (char*)lyricsText.c_str(), timeInMs);
+                hasLyrics = true;
+            }
+        }
+    }
+
+    lrcFile.close();
+    return hasLyrics;
+}
 
 char* taglib_version() {
     snprintf((char *)TAGLIB_VERSION, 16, "%d.%d.%d", TAGLIB_MAJOR_VERSION, TAGLIB_MINOR_VERSION, TAGLIB_PATCH_VERSION);
@@ -188,9 +223,14 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
     }
   }
 
-  // Cover art has to be handled separately
-  if (has_cover(f)) {
-    go_map_put_str(id, (char *)"has_picture", (char *)"true");
+  
+  // Attempt to load lyrics from a matching .lrc file
+  std::string audioFileName(filename);
+  std::string lrcFileName = audioFileName + ".lrc"; // Assuming .lrc has the same base name
+  bool hasLrcLyrics = parse_lrc(lrcFileName, id);
+
+  if (hasLrcLyrics) {
+      go_map_put_str(id, (char *)"has_lrc_lyrics", (char *)"true");
   }
 
   return 0;
