@@ -202,33 +202,54 @@ func (t Tags) BirthTime() time.Time {
 
 func (t Tags) Lyrics() string {
 	lyricList := model.LyricList{}
-	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
 
+	// First check for a matching .lrc file
+	dir := path.Dir(t.filePath)
+	base := strings.TrimSuffix(path.Base(t.filePath), path.Ext(t.filePath))
+	lrcPath := path.Join(dir, base+".lrc")
+
+	log.Debug("Checking for .lrc file", "audioFile", t.filePath, "lrcPath", lrcPath)
+	if lrcData, err := os.ReadFile(lrcPath); err == nil {
+		log.Debug("Found .lrc file", "path", lrcPath, "size", len(lrcData))
+		if lyrics, err := model.ToLyrics("xxx", string(lrcData)); err == nil {
+			log.Debug("Successfully parsed .lrc file", "path", lrcPath, "synced", lyrics.Synced, "lineCount", len(lyrics.Line))
+			lyricList = append(lyricList, *lyrics)
+		} else {
+			log.Warn("Error parsing .lrc file", "file", lrcPath, "error", err)
+		}
+	} else {
+		log.Debug("No .lrc file found", "audioFile", t.filePath, "error", err)
+	}
+
+	// Then check embedded lyrics tags
+	basicLyrics := t.getAllTagValues("lyrics", "unsynced_lyrics", "unsynced lyrics", "unsyncedlyrics")
+	log.Debug("Found embedded lyrics tags", "audioFile", t.filePath, "count", len(basicLyrics))
 	for _, value := range basicLyrics {
 		lyrics, err := model.ToLyrics("xxx", value)
 		if err != nil {
-			log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+			log.Warn("Error parsing embedded lyrics", "file", t.filePath, "error", err)
 			continue
 		}
-
+		log.Debug("Successfully parsed embedded lyrics", "file", t.filePath, "synced", lyrics.Synced, "lineCount", len(lyrics.Line))
 		lyricList = append(lyricList, *lyrics)
 	}
 
+	// Finally check language-specific lyrics tags
 	for tag, value := range t.Tags {
 		if strings.HasPrefix(tag, "lyrics-") {
 			language := strings.TrimSpace(strings.TrimPrefix(tag, "lyrics-"))
-
 			if language == "" {
 				language = "xxx"
 			}
+			log.Debug("Found language-specific lyrics tag", "audioFile", t.filePath, "language", language, "count", len(value))
 
 			for _, text := range value {
 				lyrics, err := model.ToLyrics(language, text)
 				if err != nil {
-					log.Warn("Unexpected failure occurred when parsing lyrics", "file", t.filePath, "error", err)
+					log.Warn("Error parsing language-specific lyrics", "file", t.filePath, "language", language, "error", err)
 					continue
 				}
-
+				log.Debug("Successfully parsed language-specific lyrics", "file", t.filePath, "language", language, "synced", lyrics.Synced, "lineCount", len(lyrics.Line))
 				lyricList = append(lyricList, *lyrics)
 			}
 		}
