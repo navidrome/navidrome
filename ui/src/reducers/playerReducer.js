@@ -45,27 +45,60 @@ const mapToAudioLists = (item) => {
       isRadio: true,
     }
   }
-
-  const { lyrics } = item
-  let lyricText = ''
-
+  const { lyrics } = item;
+  let lyricText = '';
+  
   if (lyrics) {
-    const structured = JSON.parse(lyrics)
+    const structured = JSON.parse(lyrics);
     for (const structuredLyric of structured) {
       if (structuredLyric.synced) {
         for (const line of structuredLyric.line) {
-          let time = Math.floor(line.start / 10)
-          const ms = time % 100
-          time = Math.floor(time / 100)
-          const sec = time % 60
-          time = Math.floor(time / 60)
-          const min = time % 60
-
-          ms.toString()
-          lyricText += `[${pad(min)}:${pad(sec)}.${pad(ms)}] ${line.value}\n`
+          let time = Math.floor(line.start / 10);
+          const ms = time % 100;
+          time = Math.floor(time / 100);
+          const sec = time % 60;
+          time = Math.floor(time / 60);
+          const min = time % 60;
+  
+          lyricText += `[${pad(min)}:${pad(sec)}.${pad(ms)}] ${line.value}\n`;
         }
       }
     }
+  } else {
+    fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(item.artist)}%20${encodeURIComponent(item.name)}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch lyrics');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          const firstResult = data[0]; // Assuming the first result is the most relevant
+          return fetch(firstResult.url); // Fetch the actual lyrics file
+        } else {
+          throw new Error('No lyrics found');
+        }
+      })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch lyrics file');
+        }
+        return response.text();
+      })
+      .then((lyricContent) => {
+        console.log('Fetched lyrics:', lyricContent);
+        // Process the fetched lyrics if needed
+        lyricText = lyricContent;
+      })
+      .catch((error) => {
+        console.error('Error fetching lyrics:', error);
+      });
+  }
+  
+  // Helper function for padding time values
+  function pad(num) {
+    return num.toString().padStart(2, '0');
   }
 
   return {
