@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -37,7 +36,7 @@ func (api *Router) buildShare(r *http.Request, share model.Share) responses.Shar
 		Username:    share.Username,
 		Created:     share.CreatedAt,
 		Expires:     share.ExpiresAt,
-		LastVisited: V(share.LastVisitedAt),
+		LastVisited: share.LastVisitedAt,
 		VisitCount:  int32(share.VisitCount),
 	}
 	if resp.Description == "" {

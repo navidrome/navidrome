@@ -49,9 +49,9 @@
         "url": "http://localhost/p/ABC123",
         "description": "Check it out!",
         "username": "deluan",
-        "created": "0001-01-01T00:00:00Z",
-        "expires": "0001-01-01T00:00:00Z",
-        "lastVisited": "0001-01-01T00:00:00Z",
+        "created": "2016-03-02T20:30:00Z",
+        "expires": "2016-03-02T20:30:00Z",
+        "lastVisited": "2016-03-02T20:30:00Z",
         "visitCount": 2
       }
     ]

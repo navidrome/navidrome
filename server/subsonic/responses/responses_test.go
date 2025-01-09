@@ -671,9 +671,28 @@ var _ = Describe("Responses", func() {
 			})
 		})
 
+		Context("with only required fields", func() {
+			BeforeEach(func() {
+				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
+				response.Shares.Share = []Share{{
+					ID:         "ABC123",
+					Url:        "http://localhost/s/ABC123",
+					Username:   "johndoe",
+					Created:    t,
+					VisitCount: 1,
+				}}
+			})
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
+
 		Context("with data", func() {
 			BeforeEach(func() {
-				t := time.Time{}
+				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				share := Share{
 					ID:          "ABC123",
 					Url:         "http://localhost/p/ABC123",
@@ -681,7 +700,7 @@ var _ = Describe("Responses", func() {
 					Username:    "deluan",
 					Created:     t,
 					Expires:     &t,
-					LastVisited: t,
+					LastVisited: &t,
 					VisitCount:  2,
 				}
 				share.Entry = make([]Child, 2)
