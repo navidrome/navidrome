@@ -1,0 +1,18 @@
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "shares": {
+    "share": [
+      {
+        "id": "ABC123",
+        "url": "http://localhost/s/ABC123",
+        "username": "johndoe",
+        "created": "2016-03-02T20:30:00Z",
+        "visitCount": 1
+      }
+    ]
+  }
+}
