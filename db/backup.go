@@ -36,19 +36,19 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
 	existingConn, err := Db().Conn(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting existing connection: %w", err)
 	}
 	defer existingConn.Close()
 
 	backupDb, err := sql.Open(Driver, path)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening backup database in '%s': %w", path, err)
 	}
 	defer backupDb.Close()
 
 	backupConn, err := backupDb.Conn(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting backup connection: %w", err)
 	}
 	defer backupConn.Close()
 
@@ -102,6 +102,7 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 
 func Backup(ctx context.Context) (string, error) {
 	destPath := backupPath(time.Now())
+	log.Debug(ctx, "Creating backup", "path", destPath)
 	err := backupOrRestore(ctx, true, destPath)
 	if err != nil {
 		return "", err
@@ -111,6 +112,7 @@ func Backup(ctx context.Context) (string, error) {
 }
 
 func Restore(ctx context.Context, path string) error {
+	log.Debug(ctx, "Restoring backup", "path", path)
 	return backupOrRestore(ctx, false, path)
 }
 
