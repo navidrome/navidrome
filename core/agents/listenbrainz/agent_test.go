@@ -32,14 +32,15 @@ var _ = Describe("listenBrainzAgent", func() {
 		agent = listenBrainzConstructor(ds)
 		agent.client = newClient("http://localhost:8080", httpClient)
 		track = &model.MediaFile{
-			ID:             "123",
-			Title:          "Track Title",
-			Album:          "Track Album",
-			Artist:         "Track Artist",
-			TrackNumber:    1,
-			MbzRecordingID: "mbz-123",
-			MbzAlbumID:     "mbz-456",
-			Duration:       142.2,
+			ID:                "123",
+			Title:             "Track Title",
+			Album:             "Track Album",
+			Artist:            "Track Artist",
+			TrackNumber:       1,
+			MbzRecordingID:    "mbz-123",
+			MbzAlbumID:        "mbz-456",
+			MbzReleaseGroupID: "mbz-789",
+			Duration:          142.2,
 			Participants: map[model.Role]model.ParticipantList{
 				model.RoleArtist: []model.Participant{
 					{Artist: model.Artist{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"}},
@@ -62,9 +63,10 @@ var _ = Describe("listenBrainzAgent", func() {
 						"SubmissionClient":        Equal(consts.AppName),
 						"SubmissionClientVersion": Equal(consts.Version),
 						"TrackNumber":             Equal(track.TrackNumber),
-						"RecordingMbzID":          Equal(track.MbzRecordingID),
-						"ReleaseMbID":             Equal(track.MbzAlbumID),
-						"ArtistMbzIDs":            ConsistOf("mbz-111", "mbz-222"),
+						"RecordingMBID":           Equal(track.MbzRecordingID),
+						"ReleaseMBID":             Equal(track.MbzAlbumID),
+						"ReleaseGroupMBID":        Equal(track.MbzReleaseGroupID),
+						"ArtistMBIDs":             ConsistOf("mbz-111", "mbz-222"),
 						"DurationMs":              Equal(142200),
 					}),
 				}),

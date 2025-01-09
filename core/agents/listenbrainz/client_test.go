@@ -74,11 +74,11 @@ var _ = Describe("client", func() {
 					TrackName:   "Track Title",
 					ReleaseName: "Track Album",
 					AdditionalInfo: additionalInfo{
-						TrackNumber:    1,
-						RecordingMbzID: "mbz-123",
-						ArtistMbzIDs:   []string{"mbz-789"},
-						ReleaseMbID:    "mbz-456",
-						DurationMs:     142200,
+						TrackNumber:   1,
+						RecordingMBID: "mbz-123",
+						ArtistMBIDs:   []string{"mbz-789"},
+						ReleaseMBID:   "mbz-456",
+						DurationMs:    142200,
 					},
 				},
 			}
