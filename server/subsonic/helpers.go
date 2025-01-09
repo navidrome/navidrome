@@ -222,6 +222,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		}
 	}
 	child.Contributors = contributors
+	child.ExplicitStatus = mapExplicitStatus(mf.ExplicitStatus)
 	return child
 }
 
@@ -283,6 +284,8 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Moods = al.Tags.Values(model.TagMood)
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
+	child.ExplicitStatus = al.ExplicitStatus
+	child.ExplicitStatus = mapExplicitStatus(al.ExplicitStatus)
 	return child
 }
 
@@ -354,8 +357,19 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir.Moods = album.Tags.Values(model.TagMood)
 	dir.DisplayArtist = album.AlbumArtist
 	dir.Artists = artistRefs(album.Participants[model.RoleAlbumArtist])
+	dir.ExplicitStatus = mapExplicitStatus(album.ExplicitStatus)
 
 	return dir
+}
+
+func mapExplicitStatus(explicitStatus string) string {
+	switch explicitStatus {
+	case "c":
+		return "clean"
+	case "e":
+		return "explicit"
+	}
+	return ""
 }
 
 func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics) responses.StructuredLyric {
