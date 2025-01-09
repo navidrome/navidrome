@@ -30,7 +30,7 @@ var roleMappings = map[model.Role]roleTags{
 	model.RoleDJMixer:   {name: model.TagDJMixer},
 }
 
-func (md Metadata) mapParticipations() model.Participants {
+func (md Metadata) mapParticipants() model.Participants {
 	participants := make(model.Participants)
 
 	// Parse track artists
