@@ -64,7 +64,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
-	mf, err := p.ds.MediaFile(ctx).Get(trackId)
+	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(trackId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
 		return err

@@ -298,6 +298,7 @@ type MediaFileRepository interface {
 	Exists(id string) (bool, error)
 	Put(m *MediaFile) error
 	Get(id string) (*MediaFile, error)
+	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Search(q string, offset int, size int) (MediaFiles, error)

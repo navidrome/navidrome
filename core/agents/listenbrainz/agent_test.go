@@ -39,17 +39,18 @@ var _ = Describe("listenBrainzAgent", func() {
 			TrackNumber:    1,
 			MbzRecordingID: "mbz-123",
 			MbzAlbumID:     "mbz-456",
-			MbzArtistID:    "mbz-789",
 			Duration:       142.2,
+			Participants: map[model.Role]model.ParticipantList{
+				model.RoleArtist: []model.Participant{
+					{Artist: model.Artist{ID: "ar-1", Name: "Artist 1", MbzArtistID: "mbz-111"}},
+					{Artist: model.Artist{ID: "ar-2", Name: "Artist 2", MbzArtistID: "mbz-222"}},
+				},
+			},
 		}
 	})
 
 	Describe("formatListen", func() {
 		It("constructs the listenInfo properly", func() {
-			var idArtistId = func(element interface{}) string {
-				return element.(string)
-			}
-
 			lr := agent.formatListen(track)
 			Expect(lr).To(MatchAllFields(Fields{
 				"ListenedAt": Equal(0),
@@ -63,10 +64,8 @@ var _ = Describe("listenBrainzAgent", func() {
 						"TrackNumber":             Equal(track.TrackNumber),
 						"RecordingMbzID":          Equal(track.MbzRecordingID),
 						"ReleaseMbID":             Equal(track.MbzAlbumID),
-						"ArtistMbzIDs": MatchAllElements(idArtistId, Elements{
-							"mbz-789": Equal(track.MbzArtistID),
-						}),
-						"DurationMs": Equal(142200),
+						"ArtistMbzIDs":            ConsistOf("mbz-111", "mbz-222"),
+						"DurationMs":              Equal(142200),
 					}),
 				}),
 			}))
