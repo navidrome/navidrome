@@ -23,14 +23,15 @@ var (
 	outputFormat string
 )
 
-type DisplayPlaylist struct {
+type displayPlaylist struct {
 	Id        string `json:"id"`
 	Name      string `json:"name"`
 	OwnerName string `json:"ownerName"`
 	OwnerId   string `json:"ownerId"`
+	Public    bool   `json:"public"`
 }
 
-type DisplayPlaylists []DisplayPlaylist
+type displayPlaylists []displayPlaylist
 
 func init() {
 	plsCmd.Flags().StringVarP(&playlistID, "playlist", "p", "", "playlist name or ID")
@@ -38,7 +39,7 @@ func init() {
 	_ = plsCmd.MarkFlagRequired("playlist")
 	rootCmd.AddCommand(plsCmd)
 
-	listCommand.Flags().StringVarP(&userID, "user", "u", "", "user name or ID")
+	listCommand.Flags().StringVarP(&userID, "user", "u", "", "username or ID")
 	listCommand.Flags().StringVarP(&outputFormat, "format", "f", "plain", "output format [supported values: json, plain]")
 	plsCmd.AddCommand(listCommand)
 }
@@ -131,17 +132,18 @@ func runList() {
 	}
 
 	if outputFormat == "plain" {
-		println("playlist name|playlist id|owner name|owner id")
+		println("playlist id|playlist name|owner id|owner name|public")
 		for _, playlist := range playlists {
-			fmt.Printf("%s|%s|%s|%s\n", playlist.Name, playlist.ID, playlist.OwnerName, playlist.OwnerID)
+			fmt.Printf("%s|%s|%s|%s|%t\n", playlist.ID, playlist.Name, playlist.OwnerID, playlist.OwnerName, playlist.Public)
 		}
 	} else {
-		display := make(DisplayPlaylists, len(playlists))
+		display := make(displayPlaylists, len(playlists))
 		for idx, playlist := range playlists {
 			display[idx].Id = playlist.ID
 			display[idx].Name = playlist.Name
 			display[idx].OwnerId = playlist.OwnerID
 			display[idx].OwnerName = playlist.OwnerName
+			display[idx].Public = playlist.Public
 		}
 
 		j, _ := json.Marshal(display)
