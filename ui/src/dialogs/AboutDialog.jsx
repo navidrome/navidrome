@@ -55,6 +55,16 @@ const AboutDialog = ({ open, onClose }) => {
   const { permissions } = usePermissions()
   const { data, loading } = useGetOne('insights', 'insights_status')
 
+  const lastRun = !loading && data?.lastRun
+  let insightsStatus = 'N/A'
+  if (lastRun === 'disabled') {
+    insightsStatus = translate('about.links.insights.disabled')
+  } else if (lastRun && lastRun?.startsWith('1969-12-31')) {
+    insightsStatus = translate('about.links.insights.waiting')
+  } else if (lastRun) {
+    insightsStatus = lastRun
+  }
+
   return (
     <Dialog onClose={onClose} aria-labelledby="about-dialog-title" open={open}>
       <DialogTitle id="about-dialog-title" onClose={onClose}>
@@ -97,9 +107,7 @@ const AboutDialog = ({ open, onClose }) => {
                     {translate(`about.links.lastInsightsCollection`)}:
                   </TableCell>
                   <TableCell align="left">
-                    <Link href={INSIGHTS_DOC_URL}>
-                      {(!loading && data?.lastRun) || 'N/A'}{' '}
-                    </Link>
+                    <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
                   </TableCell>
                 </TableRow>
               ) : null}

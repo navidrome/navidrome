@@ -1,6 +1,7 @@
 package consts
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -57,7 +58,7 @@ const (
 	ScanIgnoreFile = ".ndignore"
 
 	PlaceholderArtistArt = "artist-placeholder.webp"
-	PlaceholderAlbumArt  = "placeholder.png"
+	PlaceholderAlbumArt  = "album-placeholder.webp"
 	PlaceholderAvatar    = "logo-192x192.png"
 	UICoverArtSize       = 300
 	DefaultUIVolume      = 100
@@ -139,3 +140,11 @@ var (
 
 	ServerStart = time.Now()
 )
+
+var InContainer = func() bool {
+	// Check if the /.nddockerenv file exists
+	if _, err := os.Stat("/.nddockerenv"); err == nil {
+		return true
+	}
+	return false
+}()

@@ -53,6 +53,16 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	return nil, model.ErrNotFound
 }
 
+func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
+	if m.err {
+		return nil, errors.New("error")
+	}
+	if d, ok := m.data[id]; ok {
+		return d, nil
+	}
+	return nil, model.ErrNotFound
+}
+
 func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
 	if m.err {
 		return nil, errors.New("error")

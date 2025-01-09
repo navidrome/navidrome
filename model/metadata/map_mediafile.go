@@ -69,7 +69,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.BirthTime = md.BirthTime()
 	mf.UpdatedAt = md.ModTime()
 
-	mf.Participants = md.mapParticipations()
+	mf.Participants = md.mapParticipants()
 	mf.Artist = md.mapDisplayArtist(mf)
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 

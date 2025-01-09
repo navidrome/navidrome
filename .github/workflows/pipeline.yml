@@ -35,19 +35,23 @@ jobs:
           echo "git describe (dirty): $(git describe --dirty --always --tags)"
           echo "git describe --tags: $(git describe --tags `git rev-list --tags --max-count=1`)"
           echo "git tag: $(git tag --sort=-committerdate | head -n 1)"
+          echo "github_ref: $GITHUB_REF"
+          echo "github_head_sha: ${{ github.event.pull_request.head.sha }}"
           git tag -l
-
       - name: Determine git current SHA and latest tag
         id: git-version
         run: |
           GIT_TAG=$(git tag --sort=-committerdate | head -n 1)
           if [ -n "$GIT_TAG" ]; then
-            GIT_TAG=${GIT_TAG}-SNAPSHOT
+            if [[ "$GITHUB_REF" != refs/tags/* ]]; then
+              GIT_TAG=${GIT_TAG}-SNAPSHOT
+            fi
             echo "GIT_TAG=$GIT_TAG" >> $GITHUB_OUTPUT
           fi
           GIT_SHA=$(git rev-parse --short HEAD)
           PR_NUM=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
           if [[ $PR_NUM != "null" ]]; then
+            GIT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-8)
             GIT_SHA="pr-${PR_NUM}/${GIT_SHA}"
           fi
           echo "GIT_SHA=$GIT_SHA" >> $GITHUB_OUTPUT
@@ -380,14 +384,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: packages
-          path: dist/navidrome_v*
+          path: dist/navidrome_0*
 
       - id: set-package-list
         name: Export list of generated packages
         run: |
           cd dist
           set +x
-          ITEMS=$(ls navidrome_v* | sed 's/^navidrome_v[^_]*_linux_//' | jq -R -s -c 'split("\n")[:-1]')
+          ITEMS=$(ls navidrome_0* | sed 's/^navidrome_0[^_]*_linux_//' | jq -R -s -c 'split("\n")[:-1]')
           echo $ITEMS
           echo "package_list=${ITEMS}" >> $GITHUB_OUTPUT
 
@@ -409,7 +413,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: navidrome_linux_${{ matrix.item }}
-          path: dist/navidrome_v*_linux_${{ matrix.item }}
+          path: dist/navidrome_0*_linux_${{ matrix.item }}
 
 #  delete-artifacts:
 #    name: Delete unused artifacts

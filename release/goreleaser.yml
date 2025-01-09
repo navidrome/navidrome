@@ -6,8 +6,8 @@ builds:
   - id: navidrome
     # Instead of compiling the binary with goreleaser, we just copy it from `binaries` folder
     # This is because we need to compile the binaries with our Dockerfile, and to avoid having to
-    # compile it twice, we just copy the docker build output.env. The xxgo script handles this for us
-    gobinary: "./release/xxgo"
+    # compile it twice, we just copy the docker build output. The xxgo script handles this for us
+    tool: "./release/xxgo"
 
     # All available targets compiled by the Dockerfile
     targets:
@@ -26,16 +26,18 @@ archives:
   - format_overrides:
       - goos: windows
         format: zip
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
 checksum:
   name_template: "{{ .ProjectName }}_checksums.txt"
 
 snapshot:
-  version_template: "{{ .Tag }}-SNAPSHOT"
+  version_template: "{{ .Version }}-SNAPSHOT"
 
 nfpms:
   - id: navidrome
     package_name: navidrome
+    file_name_template: '{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
     homepage: https://navidrome.org
     description: |-
@@ -96,11 +98,12 @@ release:
     This release is only possible thanks to the support of some **awesome people**!
 
     Want to be one of them?
-    You can [sponsor](https://github.com/sponsors/deluan), pay me a [Ko-fi](https://ko-fi.com/deluan) or [contribute with code](https://www.navidrome.org/docs/developers/).
+    You can [sponsor](https://github.com/sponsors/deluan), pay me a [Ko-fi](https://ko-fi.com/deluan), or [contribute with code](https://www.navidrome.org/docs/developers/).
 
     ## Where to go next?
 
     * Read installation instructions on our [website](https://www.navidrome.org/docs/installation/).
+    * Host Navidrome on [PikaPods](https://www.pikapods.com/pods/navidrome) for a simple cloud solution.
     * Reach out on [Discord](https://discord.gg/xh7j7yF), [Reddit](https://www.reddit.com/r/navidrome/) and [Twitter](https://twitter.com/navidrome)!
 
   # Add the MSI installers to the release

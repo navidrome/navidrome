@@ -212,7 +212,8 @@
       "password": "Hasło",
       "sign_in": "Zaloguj się",
       "sign_in_error": "Uwierzytelnianie nie powiodło się, spróbuj ponownie",
-      "logout": "Wyloguj"
+      "logout": "Wyloguj",
+      "insightsCollectionNote": "Navidrome zbiera anonimowe dane dotyczące użytkowania, aby\npomóc ulepszyć projekt. Kliknij [tutaj], jeśli chcesz dowiedzieć się więcej lub zrezygnować"
     },
     "validation": {
       "invalidChars": "Proszę, używaj wyłącznie liter i cyfr",
@@ -396,7 +397,8 @@
           "none": "Wyłączony",
           "album": "Użyj Wzmocnienia Albumu",
           "track": "Użyj Wzmocnienia Utworu"
-        }
+        },
+        "lastfmNotConfigured": "Klucz-API Last.fm jest nieskonfigurowany"
       }
     },
     "albumList": "Albumy",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Strona główna",
       "source": "Kod źródłowy",
-      "featureRequests": "Prośby o nowe funkcjonalności"
+      "featureRequests": "Prośby o nowe funkcjonalności",
+      "lastInsightsCollection": "Ostatnie zebranie statystyk",
+      "insights": {
+        "disabled": "Wyłączone",
+        "waiting": "Oczekujące"
+      }
     }
   },
   "activity": {

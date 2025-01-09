@@ -212,7 +212,8 @@
       "password": "Passwort",
       "sign_in": "Anmelden",
       "sign_in_error": "Fehler bei der Anmeldung",
-      "logout": "Abmelden"
+      "logout": "Abmelden",
+      "insightsCollectionNote": "Navidrome sammelt anonyme Statistiken \num die Entwicklung des Projekts zu unterstützen. \n[here] klicken für mehr Informationen oder um \"Insights\" abzuschalten"
     },
     "validation": {
       "invalidChars": "Bitte nur Buchstaben und Zahlen verwenden",
@@ -396,7 +397,8 @@
           "none": "Deaktiviert",
           "album": "Album Gain verwenden",
           "track": "Titel Gain verwenden"
-        }
+        },
+        "lastfmNotConfigured": "Last.fm API-Key ist nicht konfiguriert"
       }
     },
     "albumList": "Alben",
@@ -433,7 +435,12 @@
     "links": {
       "homepage": "Startseite",
       "source": "Quellcode",
-      "featureRequests": "Feature-Request"
+      "featureRequests": "Feature-Request",
+      "lastInsightsCollection": "Letzte \"Insights\" Erfassung",
+      "insights": {
+        "disabled": "Deaktiviert",
+        "waiting": "Warten"
+      }
     }
   },
   "activity": {

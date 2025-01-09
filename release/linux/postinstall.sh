@@ -19,6 +19,9 @@ if [ ! -f "$postinstall_flag" ]; then
     # The primary reason why this would fail is if the service was already installed AND
     # someone manually removed the .installed flag. In this case, ignore the error
     navidrome service install --user navidrome --working-directory /var/lib/navidrome --configfile /etc/navidrome/navidrome.toml || :
+    # Any `navidrome` command will make a cache. Make sure that this is properly owned by the Navidrome user
+    # and not by root
+    chown navidrome:navidrome /var/lib/navidrome/cache
     touch "$postinstall_flag"
 fi
 
