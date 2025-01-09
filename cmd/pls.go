@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/auth"
@@ -40,7 +42,7 @@ func init() {
 	rootCmd.AddCommand(plsCmd)
 
 	listCommand.Flags().StringVarP(&userID, "user", "u", "", "username or ID")
-	listCommand.Flags().StringVarP(&outputFormat, "format", "f", "plain", "output format [supported values: json, plain]")
+	listCommand.Flags().StringVarP(&outputFormat, "format", "f", "csv", "output format [supported values: csv, json]")
 	plsCmd.AddCommand(listCommand)
 }
 
@@ -99,8 +101,8 @@ func runExporter() {
 }
 
 func runList() {
-	if outputFormat != "plain" && outputFormat != "json" {
-		log.Fatal("Invalid output format. Must be one of plain, json", "format", outputFormat)
+	if outputFormat != "csv" && outputFormat != "json" {
+		log.Fatal("Invalid output format. Must be one of csv, json", "format", outputFormat)
 	}
 
 	sqlDB := db.Db()
@@ -131,11 +133,13 @@ func runList() {
 		log.Fatal(ctx, "Failed to retrieve playlists", err)
 	}
 
-	if outputFormat == "plain" {
-		println("playlist id|playlist name|owner id|owner name|public")
+	if outputFormat == "csv" {
+		w := csv.NewWriter(os.Stdout)
+		_ = w.Write([]string{"playlist id", "playlist name", "owner id", "owner name", "public"})
 		for _, playlist := range playlists {
-			fmt.Printf("%s|%s|%s|%s|%t\n", playlist.ID, playlist.Name, playlist.OwnerID, playlist.OwnerName, playlist.Public)
+			_ = w.Write([]string{playlist.ID, playlist.Name, playlist.OwnerID, playlist.OwnerName, strconv.FormatBool(playlist.Public)})
 		}
+		w.Flush()
 	} else {
 		display := make(displayPlaylists, len(playlists))
 		for idx, playlist := range playlists {
