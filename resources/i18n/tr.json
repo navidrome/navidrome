@@ -390,7 +390,7 @@
         "defaultView": "Varsayılan Görünüm",
         "desktop_notifications": "Masaüstü Bildirimleri",
         "lastfmScrobbling": "Last.fm'e Skropla",
-        "listenBrainzScrobbling": "ListenBrainz'e skroplama yapın",
+        "listenBrainzScrobbling": "ListenBrainz'e Skropla",
         "replaygain": "Tekrar Kazanma Modu",
         "preAmp": "Tekrar Kazanım Ön Amplifikatörü (dB)",
         "gain": {
@@ -436,7 +436,7 @@
       "homepage": "Ana sayfa",
       "source": "Kaynak kodu",
       "featureRequests": "Özellik talepleri",
-      "lastInsightsCollection": "Son içgörü koleksiyonu",
+      "lastInsightsCollection": "Son Veri Toplama",
       "insights": {
         "disabled": "Pasif",
         "waiting": "Bekle"

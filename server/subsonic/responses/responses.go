@@ -423,7 +423,7 @@ type Share struct {
 	Username    string     `xml:"username,attr"               json:"username"`
 	Created     time.Time  `xml:"created,attr"                json:"created"`
 	Expires     *time.Time `xml:"expires,omitempty,attr"      json:"expires,omitempty"`
-	LastVisited time.Time  `xml:"lastVisited,omitempty,attr"  json:"lastVisited"`
+	LastVisited *time.Time `xml:"lastVisited,omitempty,attr"  json:"lastVisited,omitempty"`
 	VisitCount  int32      `xml:"visitCount,attr"             json:"visitCount"`
 }
 

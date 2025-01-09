@@ -8,7 +8,7 @@ import (
 )
 
 // Ex: Microsoft Windows [Version 10.0.26100.1742]
-var winVerRegex = regexp.MustCompile(`Microsoft Windows \[Version ([\d\.]+)\]`)
+var winVerRegex = regexp.MustCompile(`Microsoft Windows \[.+\s([\d\.]+)\]`)
 
 func getOSVersion() (version string, _ string) {
 	cmd := exec.Command("cmd", "/c", "ver")
