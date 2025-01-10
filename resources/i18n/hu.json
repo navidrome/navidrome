@@ -213,7 +213,7 @@
             "sign_in": "Bejelentkezés",
             "sign_in_error": "A hitelesítés sikertelen. Kérjük, próbáld újra!",
             "logout": "Kijelentkezés",
-            "insightsCollectionNote": "A Navidrome anonim metrikűkat gyűjt \na projekt fejlesztéséhez. Kattints [ide],\n információkért és az adatgyűjtésből kilépésért."
+            "insightsCollectionNote": "A Navidrome anonim metrikákat gyűjt \na projekt fejlesztéséhez. Kattints [ide],\n információkért és az adatgyűjtésből kilépésért."
         },
         "validation": {
             "invalidChars": "Kérlek, csak betűket és számokat használj!",
