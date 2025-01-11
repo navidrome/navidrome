@@ -8,7 +8,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -24,6 +23,7 @@ import (
 	"github.com/anacrolix/dms/ssdp"
 	"github.com/anacrolix/dms/upnp"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
 )
@@ -34,6 +34,7 @@ const (
 	resPath           = "/r/"
 	serviceControlURL = "/ctl"
 )
+
 //go:embed static/*
 var staticContent embed.FS
 
@@ -41,7 +42,7 @@ type DLNAServer struct {
 	ds     model.DataStore
 	broker events.Broker
 	ssdp   SSDPServer
-	ctx context.Context
+	ctx    context.Context
 }
 
 type SSDPServer struct {
@@ -57,7 +58,7 @@ type SSDPServer struct {
 	RootDeviceUUID string
 
 	FriendlyName string
-	ModelNumber string
+	ModelNumber  string
 
 	// For waiting on the listener to close
 	waitChan chan struct{}
@@ -74,7 +75,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 			AnnounceInterval: time.Duration(30) * time.Second,
 			Interfaces:       listInterfaces(),
 			FriendlyName:     "Navidrome",
-			ModelNumber:      "0.0.1",	//TODO
+			ModelNumber:      "0.0.1", //TODO
 			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
 			waitChan:         make(chan struct{}),
 		},
@@ -95,7 +96,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 	//setup dedicated HTTP server for UPNP
 	r := http.NewServeMux()
 	r.Handle(resPath, http.StripPrefix(resPath, http.HandlerFunc(s.ssdp.resourceHandler)))
-	
+
 	r.Handle("/static/", http.FileServer(http.FS(staticContent)))
 	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
 	r.HandleFunc(serviceControlURL, s.ssdp.serviceControlHandler)
@@ -107,6 +108,8 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 
 // Run starts the DLNA server (both SSDP and HTTP) with the given address
 func (s *DLNAServer) Run(ctx context.Context, addr string, port int) (err error) {
+	log.Warn("Starting DLNA Server")
+
 	s.ctx = ctx
 	if s.ssdp.HTTPConn == nil {
 		network := "tcp4"
@@ -194,7 +197,7 @@ func (s *SSDPServer) ssdpInterface(intf net.Interface) {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("Started SSDP on %v", intf.Name)
+	log.Info(fmt.Sprintf("Started SSDP on %v", intf.Name))
 
 	// Note that the devices and services advertised here via SSDP should be
 	// in agreement with the rootDesc XML descriptor that is defined above.
@@ -227,16 +230,18 @@ func (s *SSDPServer) ssdpInterface(intf net.Interface) {
 			// good.
 			return
 		}
-		log.Printf("Error creating ssdp server on %s: %s", intf.Name, err)
+		log.Error(fmt.Sprintf("Error creating ssdp server on %s: %s", intf.Name), err)
 		return
 	}
 	defer ssdpServer.Close()
-	log.Printf("Started SSDP on %v", intf.Name)
+
+	log.Info(fmt.Sprintf("Started SSDP on %v", intf.Name))
 	stopped := make(chan struct{})
 	go func() {
 		defer close(stopped)
 		if err := ssdpServer.Serve(); err != nil {
-			log.Printf("%q: %q\n", intf.Name, err)
+			log.Error(fmt.Sprintf("Err %q", intf.Name), err)
+
 		}
 	}()
 	select {
@@ -250,7 +255,6 @@ func (s *SSDPServer) ssdpInterface(intf net.Interface) {
 func listInterfaces() []net.Interface {
 	ifs, err := net.Interfaces()
 	if err != nil {
-		log.Println("list network interfaces: %v", err)
 		return []net.Interface{}
 	}
 
@@ -266,18 +270,18 @@ func isAppropriatelyConfigured(intf net.Interface) bool {
 	return intf.Flags&net.FlagUp != 0 && intf.Flags&net.FlagMulticast != 0 && intf.MTU > 0
 }
 
-//handler for all paths under `/r`
+// handler for all paths under `/r`
 func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	remotePath := r.URL.Path
 
-	localFile,_ := strings.CutPrefix(remotePath,"Music/Files/")
+	localFile, _ := strings.CutPrefix(remotePath, "Music/Files/")
 	localFilePath := path.Join(conf.Server.MusicFolder, localFile)
-	
-	log.Printf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath)
 
-	fileStats,err := os.Stat(localFilePath)
+	log.Info(fmt.Sprintf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath))
+
+	fileStats, err := os.Stat(localFilePath)
 	if err != nil {
-		http.NotFound(w,r)
+		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Length", strconv.FormatInt(fileStats.Size(), 10))
@@ -291,8 +295,8 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("transferMode.dlna.org", "Streaming")
 
 	os.Open(localFilePath)
-	fileHandle,err := os.Open(localFilePath)
-	if err != nil { 
+	fileHandle, err := os.Open(localFilePath)
+	if err != nil {
 		fmt.Printf("file streaming error: %+v\n", err)
 		return
 	}
@@ -382,7 +386,7 @@ func didlLite(chardata string) string {
 func mustMarshalXML(value interface{}) []byte {
 	ret, err := xml.MarshalIndent(value, "", "  ")
 	if err != nil {
-		log.Panicf("mustMarshalXML failed to marshal %v: %s", value, err)
+		log.Fatal(fmt.Sprintf("mustMarshalXML failed to marshal %v: %s $s", value, err))
 	}
 	return ret
 }
@@ -403,7 +407,7 @@ func marshalSOAPResponse(sa upnp.SoapAction, args map[string]string) []byte {
 func makeDeviceUUID(unique string) string {
 	h := md5.New()
 	if _, err := io.WriteString(h, unique); err != nil {
-		log.Panicf("makeDeviceUUID write failed: %s", err)
+		log.Fatal(fmt.Sprintf("makeDeviceUUID write failed: %s", err))
 	}
 	buf := h.Sum(nil)
 	return upnp.FormatUUID(buf)
@@ -420,6 +424,7 @@ func withHeader(name string, value string, next http.Handler) http.Handler {
 // serveError returns an http.StatusInternalServerError and logs the error
 func serveError(what interface{}, w http.ResponseWriter, text string, err error) {
 	http.Error(w, text+".", http.StatusInternalServerError)
+	log.Error(fmt.Sprintf("serveError: %s, %s, %s", what, text), err)
 }
 
 func GetTemplate() (tpl *template.Template, err error) {
