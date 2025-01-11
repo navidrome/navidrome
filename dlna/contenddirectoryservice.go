@@ -5,7 +5,6 @@ package dlna
 import (
 	"encoding/xml"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,6 +17,7 @@ import (
 	"github.com/anacrolix/dms/upnp"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/dlna/upnpav"
+	"github.com/navidrome/navidrome/log"
 )
 
 type contentDirectoryService struct {
@@ -77,7 +77,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
-	log.Printf("ReadContainer called with : %+v", o)
+	log.Info(fmt.Sprintf("ReadContainer called with : %+v", o))
 
 	//TODO implement HTTP routing rather than this
 	switch o.Path {
@@ -163,7 +163,6 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 
 	if strings.HasPrefix(o.Path, "/Music/Files/") {
 		libraryPath, _ := strings.CutPrefix(o.Path, "/Music/Files")
-		log.Printf("library path: %s", libraryPath)
 		files, _ := os.ReadDir(path.Join(conf.Server.MusicFolder, libraryPath))
 		for _, file := range files {
 			child := object{
@@ -186,7 +185,8 @@ type browse struct {
 
 // ContentDirectory object from ObjectID.
 func (cds *contentDirectoryService) objectFromID(id string) (o object, err error) {
-	log.Printf("objectFromID Called: %+v", id)
+	log.Info(fmt.Sprintf("objectFromID called with : %+v", id))
+
 	o.Path, err = url.QueryUnescape(id)
 	if err != nil {
 		return
@@ -204,7 +204,8 @@ func (cds *contentDirectoryService) objectFromID(id string) (o object, err error
 
 func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *http.Request) (map[string]string, error) {
 	host := r.Host
-	log.Printf("Handle called with action: %s", action)
+	log.Info(fmt.Sprintf("Handle called with action: %s", action))
+
 	switch action {
 	case "GetSystemUpdateID":
 		return map[string]string{
@@ -293,7 +294,7 @@ func (o *object) FilePath() string {
 // Returns the ObjectID for the object. This is used in various ContentDirectory actions.
 func (o object) ID() string {
 	if !path.IsAbs(o.Path) {
-		log.Panicf("Relative object path: %s", o.Path)
+		log.Fatal(fmt.Sprintf("Relative object path used with ID: $s", o.Path))
 	}
 	if len(o.Path) == 1 {
 		return "0"
