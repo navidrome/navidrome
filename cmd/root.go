@@ -11,7 +11,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
@@ -112,7 +111,7 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Prometheus.Enabled {
 			// blocking call because takes <1ms but useful if fails
-			metrics.WriteInitialMetrics()
+			GetPrometheus().WriteInitialMetrics(ctx)
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
 		}
 		if conf.Server.DevEnableProfiler {

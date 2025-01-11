@@ -64,7 +64,8 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	playlists := core.NewPlaylists(dataStore)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker)
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
 	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer)
@@ -119,7 +120,8 @@ func GetScanner() scanner.Scanner {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker)
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker, metricsMetrics)
 	return scannerScanner
 }
 
@@ -130,6 +132,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 	return playbackServer
 }
 
+func GetPrometheus() metrics.Metrics {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	return metricsMetrics
+}
+
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db, metrics.GetPrometheusInstance)

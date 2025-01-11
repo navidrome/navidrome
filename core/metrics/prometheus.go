@@ -9,15 +9,35 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func WriteInitialMetrics() {
-	getPrometheusMetrics().versionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
+type Metrics interface {
+	WriteInitialMetrics(ctx context.Context)
+	WriteAfterScanMetrics(ctx context.Context, success bool)
 }
 
-func WriteAfterScanMetrics(ctx context.Context, dataStore model.DataStore, success bool) {
-	processSqlAggregateMetrics(ctx, dataStore, getPrometheusMetrics().dbTotal)
+type metrics struct {
+	ds model.DataStore
+}
+
+func GetPrometheusInstance(ds model.DataStore) Metrics {
+	return singleton.GetInstance(func() *metrics {
+		m := &metrics{
+			ds: ds,
+		}
+		return m
+	})
+}
+
+func (m *metrics) WriteInitialMetrics(ctx context.Context) {
+	getPrometheusMetrics().versionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
+	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
+}
+
+func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
+	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
 
 	scanLabels := prometheus.Labels{"success": strconv.FormatBool(success)}
 	getPrometheusMetrics().lastMediaScan.With(scanLabels).SetToCurrentTime()
