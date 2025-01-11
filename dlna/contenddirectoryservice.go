@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -194,13 +195,11 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 }
 
 func (cds *contentDirectoryService) doFiles(ret []interface{}, oPath string, host string) ([]interface{}, error) {
-	pathUnderFiles := strings.TrimPrefix(oPath, "/Music/Files")
-	//TODO make not terrible
-	if(strings.Contains(pathUnderFiles, "/..")) {
+	pathComponents := strings.Split(strings.TrimPrefix(oPath, "/Music/Files"), "/")
+	if(slices.Contains(pathComponents, "..") || slices.Contains(pathComponents, ".")) {
+		log.Error("Attempt to use .. or . detected", oPath, host)
 		return ret, nil
 	}
-
-	pathComponents := strings.Split(pathUnderFiles, "/")
 	totalPathArrayBits := append([]string{conf.Server.MusicFolder}, pathComponents...)
 	localFilePath := filepath.Join(totalPathArrayBits...)
 	
