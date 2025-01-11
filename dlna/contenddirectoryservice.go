@@ -14,11 +14,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/upnp"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/dlna/upnpav"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 )
 
 type contentDirectoryService struct {
@@ -111,7 +113,6 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				return cds.doFiles(ret, o.Path, host)
 			case "Artists":
 				indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
-				log.Debug(fmt.Sprintf("Artist indexes: %+v", indexes))
 				if err != nil {
 					fmt.Printf("Error retrieving Indexes: %+v", err)
 					return nil, err
@@ -121,7 +122,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 						artistId := indexes[letterIndex].Artists[artist].ID
 						child := object{
 							Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name), 
-							Id: artistId,
+							Id: path.Join(o.Path, artistId),
 						}
 						ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 					}
@@ -136,7 +137,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				for indexItem := range indexes {
 					child := object{
 						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id: indexes[indexItem].ID,
+						Id: path.Join(o.Path, indexes[indexItem].ID),
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -150,7 +151,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				for indexItem := range indexes {
 					child := object{
 						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id: indexes[indexItem].ID,
+						Id: path.Join(o.Path, indexes[indexItem].ID),
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -164,7 +165,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				for indexItem := range indexes {
 					child := object{
 						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id: indexes[indexItem].ID,
+						Id: path.Join(o.Path, indexes[indexItem].ID),
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -172,22 +173,43 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			}
 		}
 	default:
+
+/*
+		deluan
+ — 
+Today at 18:30
+ds.Album(ctx).GetAll(FIlter: Eq{"albumArtistId": artistID})
+Or something like that 😛
+Mintsoft
+ — 
+Today at 18:30
+For other examples, how do I know what the right magic string for "albumArtistId" is?
+kgarner7
+ — 
+Today at 18:31
+album_artist_id
+Look at the model structs names
+deluan
+ — 
+Today at 18:31
+This is a limitation of Squirrel. It is string based. YOu have to use the name of the columns in the DB 
+		*/
 		if(len(pathComponents) >= 4) {
 			switch(pathComponents[2]) {
 			case "Files":
 				return cds.doFiles(ret, o.Path, host)
 			case "Artists":
-				x, xerr := cds.ds.Artist(cds.ctx).Get(pathComponents[3])
-				log.Debug(x, xerr)
+				allAlbumsForThisArtist, getErr := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": pathComponents[3]}})
+				log.Debug(fmt.Sprintf("AllAlbums: %+v", allAlbumsForThisArtist),getErr)
 			case "Albums":
 				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
-				log.Debug(x, xerr)
+				log.Debug(fmt.Sprintf("Album: %+v", x), xerr)
 			case "Genres":
 				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
-				log.Debug(x, xerr)
+				log.Debug(fmt.Sprintf("Genre: %+v", x), xerr)
 			case "Playlists":
 				x, xerr := cds.ds.Playlist(cds.ctx).Get(pathComponents[3])
-				log.Debug(x, xerr)
+				log.Debug(fmt.Sprintf("Playlist: %+v", x), xerr)
 			}
 		}
 	}
@@ -334,6 +356,9 @@ func (o *object) FilePath() string {
 
 // Returns the ObjectID for the object. This is used in various ContentDirectory actions.
 func (o object) ID() string {
+	if o.Id != "" {
+		return o.Id
+	}
 	if !path.IsAbs(o.Path) {
 		log.Fatal(fmt.Sprintf("Relative object path used with ID: $s", o.Path))
 	}
