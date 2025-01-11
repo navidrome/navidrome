@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"context"
-	"crypto/subtle"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -18,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -98,36 +95,6 @@ func mainContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	)
 }
 
-// This is to mimic middleware.BasicAuth.
-// For some _bizarre_ reason, the authorization header is always empty
-func BasicAuth(password string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, pass, ok := r.BasicAuth()
-
-			// DO NOT KEEP THIS IN LONG-TERM
-			log.Error(r.Context(), "Basic auth", "pass", pass, "password", password, "ok", ok, "header", r.Header)
-
-			if !ok {
-				basicAuthFailed(w)
-				return
-			}
-
-			if subtle.ConstantTimeCompare([]byte(pass), []byte(password)) != 1 {
-				basicAuthFailed(w)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func basicAuthFailed(w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
-	http.Error(w, "Unauthorized", http.StatusUnauthorized)
-}
-
 // startServer starts the Navidrome web server, adding all the necessary routers.
 func startServer(ctx context.Context) func() error {
 	return func() error {
@@ -142,16 +109,10 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
 		if conf.Server.Prometheus.Enabled {
-			// blocking call because takes <1ms but useful if fails
-			CreatePrometheus().WriteInitialMetrics(ctx)
-
-			handler := promhttp.Handler()
-
-			if conf.Server.Prometheus.Password != "" {
-				handler = BasicAuth(conf.Server.Prometheus.Password)(handler)
-			}
-
-			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, handler)
+			p := CreatePrometheus()
+			// blocking call because takes <100ms but useful if fails
+			p.WriteInitialMetrics(ctx)
+			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
 		}
 		if conf.Server.DevEnableProfiler {
 			a.MountRouter("Profiling", "/debug", middleware.Profiler())

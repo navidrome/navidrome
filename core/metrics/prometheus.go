@@ -3,18 +3,24 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Metrics interface {
 	WriteInitialMetrics(ctx context.Context)
 	WriteAfterScanMetrics(ctx context.Context, success bool)
+	GetHandler() http.Handler
 }
 
 type metrics struct {
@@ -36,6 +42,21 @@ func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
 	scanLabels := prometheus.Labels{"success": strconv.FormatBool(success)}
 	getPrometheusMetrics().lastMediaScan.With(scanLabels).SetToCurrentTime()
 	getPrometheusMetrics().mediaScansCounter.With(scanLabels).Inc()
+}
+
+func (m *metrics) GetHandler() http.Handler {
+	r := chi.NewRouter()
+
+	r.Group(func(r chi.Router) {
+		if conf.Server.Prometheus.Password != "" {
+			r.Use(middleware.BasicAuth("metrics", map[string]string{
+				"navidrome": conf.Server.Prometheus.Password,
+			}))
+		}
+		r.Handle("/", promhttp.Handler())
+	})
+
+	return r
 }
 
 type prometheusMetrics struct {
