@@ -77,99 +77,108 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 
 // Returns all the upnpav objects in a directory.
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
-	log.Info(fmt.Sprintf("ReadContainer called with : %+v", o))
+	log.Debug(fmt.Sprintf("ReadContainer called '%s'", o))
 
-	//TODO implement HTTP routing rather than this
-	switch o.Path {
-	case "/":
+	if(o.Path == "/" || o.Path == "") {
+		log.Debug("ReadContainer default route");
 		newObject := object{Path: "/Music"}
 		thisObject, _ := cds.cdsObjectToUpnpavObject(newObject, true, host)
 		ret = append(ret, thisObject)
-	case "/Music":
-		thisObject, _ := cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host)
-		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host)
-		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host)
-		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host)
-		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host)
-		ret = append(ret, thisObject)
-		thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host)
-		ret = append(ret, thisObject)
-	case "/Music/Files":
-		files, _ := os.ReadDir(conf.Server.MusicFolder)
-		for _, file := range files {
-			child := object{
-				path.Join(o.Path, file.Name()),
-			}
-			convObj, _ := cds.cdsObjectToUpnpavObject(child, file.IsDir(), host)
-			ret = append(ret, convObj)
-		}
-	case "/Music/Artists":
-		indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
-		}
-		for indexItem := range indexes {
-			child := object{
-				path.Join(o.Path, indexes[indexItem].Artists[0].Name), //TODO handle multiple artists here, fold it into some sort of unique list
-			}
-			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
-			ret = append(ret, convObj)
-		}
-	case "/Music/Albums":
-		indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
-		}
-		for indexItem := range indexes {
-			child := object{
-				path.Join(o.Path, indexes[indexItem].Name),
-			}
-			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
-			ret = append(ret, convObj)
-		}
-	case "/Music/Genres":
-		indexes, err := cds.ds.Genre(cds.ctx).GetAll()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
-		}
-		for indexItem := range indexes {
-			child := object{
-				path.Join(o.Path, indexes[indexItem].Name),
-			}
-			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
-			ret = append(ret, convObj)
-		}
-	case "/Music/Playlists":
-		indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
-		}
-		for indexItem := range indexes {
-			child := object{
-				path.Join(o.Path, indexes[indexItem].Name),
-			}
-			convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
-			ret = append(ret, convObj)
-		}
+		return ret, nil 
 	}
+	
+	pathComponents := strings.Split(o.Path, "/")
+	log.Debug(fmt.Sprintf("ReadContainer pathComponents %+v %d", pathComponents, len(pathComponents)))
 
-	if strings.HasPrefix(o.Path, "/Music/Files/") {
-		libraryPath, _ := strings.CutPrefix(o.Path, "/Music/Files")
-		files, _ := os.ReadDir(path.Join(conf.Server.MusicFolder, libraryPath))
-		for _, file := range files {
-			child := object{
-				path.Join(o.Path, file.Name()),
+	//TODO something other than this. 
+	switch pathComponents[1] {
+	case "":
+		log.Fatal("This should never happen?");
+	case "Music":
+
+		if( len(pathComponents) == 2) {
+			thisObject, _ := cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host)
+			ret = append(ret, thisObject)
+			thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host)
+			ret = append(ret, thisObject)
+			thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host)
+			ret = append(ret, thisObject)
+			thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host)
+			ret = append(ret, thisObject)
+			thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host)
+			ret = append(ret, thisObject)
+			thisObject, _ = cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host)
+			ret = append(ret, thisObject)
+			return ret, nil
+		}
+
+		switch pathComponents[2] {
+		case "Files":
+			files, _ := os.ReadDir(conf.Server.MusicFolder)
+			for _, file := range files {
+				child := object{
+					path.Join(o.Path, file.Name()),
+				}
+				convObj, _ := cds.cdsObjectToUpnpavObject(child, file.IsDir(), host)
+				ret = append(ret, convObj)
+				return ret, nil
 			}
-			convObj, _ := cds.cdsObjectToUpnpavObject(child, file.IsDir(), host)
-			ret = append(ret, convObj)
+		case "Artists":
+			indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					path.Join(o.Path, indexes[indexItem].Artists[0].Name), //TODO handle multiple artists here, fold it into some sort of unique list
+				}
+				convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+				ret = append(ret, convObj)
+			}
+			return ret, nil
+		case "Albums":
+			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					path.Join(o.Path, indexes[indexItem].Name),
+				}
+				convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+				ret = append(ret, convObj)
+			}
+			return ret, nil
+		case "Genres":
+			indexes, err := cds.ds.Genre(cds.ctx).GetAll()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					path.Join(o.Path, indexes[indexItem].Name),
+				}
+				convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+				ret = append(ret, convObj)
+			}
+			return ret, nil
+		case "Playlists":
+			indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					path.Join(o.Path, indexes[indexItem].Name),
+				}
+				convObj, _ := cds.cdsObjectToUpnpavObject(child, true, host)
+				ret = append(ret, convObj)
+			}
+			return ret, nil
 		}
 	}
 	return
