@@ -201,6 +201,7 @@ This is a limitation of Squirrel. It is string based. YOu have to use the name o
 			case "Artists":
 				allAlbumsForThisArtist, getErr := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": pathComponents[3]}})
 				log.Debug(fmt.Sprintf("AllAlbums: %+v", allAlbumsForThisArtist),getErr)
+
 			case "Albums":
 				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
 				log.Debug(fmt.Sprintf("Album: %+v", x), xerr)
@@ -247,7 +248,7 @@ type browse struct {
 
 // ContentDirectory object from ObjectID.
 func (cds *contentDirectoryService) objectFromID(id string) (o object, err error) {
-	log.Info(fmt.Sprintf("objectFromID called with : %+v", id))
+	log.Debug("objectFromID called","id", id)
 
 	o.Path, err = url.QueryUnescape(id)
 	if err != nil {
