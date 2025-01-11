@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/dlna"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -24,6 +25,7 @@ var allProviders = wire.NewSet(
 	core.Set,
 	artwork.Set,
 	server.New,
+	dlna.New,
 	subsonic.New,
 	nativeapi.New,
 	public.New,
@@ -36,6 +38,12 @@ var allProviders = wire.NewSet(
 )
 
 func CreateServer(musicFolder string) *server.Server {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateDLNAServer() *dlna.DLNAServer {
 	panic(wire.Build(
 		allProviders,
 	))

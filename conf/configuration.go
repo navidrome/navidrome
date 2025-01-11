@@ -90,6 +90,7 @@ type configOptions struct {
 	Scanner                         scannerOptions
 	Jukebox                         jukeboxOptions
 	Backup                          backupOptions
+	DLNAServer                      dlnaServerOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -162,6 +163,10 @@ type backupOptions struct {
 	Count    int
 	Path     string
 	Schedule string
+}
+
+type dlnaServerOptions struct {
+	Enabled bool
 }
 
 var (
@@ -452,6 +457,8 @@ func init() {
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")
 	viper.SetDefault("backup.count", 0)
+
+	viper.SetDefault("dlnaserver.enabled", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
