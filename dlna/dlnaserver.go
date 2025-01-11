@@ -23,6 +23,7 @@ import (
 	"github.com/anacrolix/dms/ssdp"
 	"github.com/anacrolix/dms/upnp"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -75,7 +76,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 			AnnounceInterval: time.Duration(30) * time.Second,
 			Interfaces:       listInterfaces(),
 			FriendlyName:     "Navidrome",
-			ModelNumber:      "0.0.1", //TODO
+			ModelNumber:      consts.Version,
 			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
 			waitChan:         make(chan struct{}),
 		},
