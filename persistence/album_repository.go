@@ -144,8 +144,8 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 // BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		exists("json_tree(Participants, '$.albumArtist')", Eq{"value": value}),
-		exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
+		Exists("json_tree(Participants, '$.albumArtist')", Eq{"value": value}),
+		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
 	}
 	// For any role:
 	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}

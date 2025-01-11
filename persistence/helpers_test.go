@@ -64,9 +64,9 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("exists", func() {
+	Describe("Exists", func() {
 		It("constructs the correct EXISTS query", func() {
-			e := exists("album", squirrel.Eq{"id": 1})
+			e := Exists("album", squirrel.Eq{"id": 1})
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(ConsistOf(1))
@@ -74,9 +74,9 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("notExists", func() {
+	Describe("NotExists", func() {
 		It("constructs the correct NOT EXISTS query", func() {
-			e := notExists("artist", squirrel.ConcatExpr("id = artist_id"))
+			e := NotExists("artist", squirrel.ConcatExpr("id = artist_id"))
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
 			Expect(args).To(BeEmpty())

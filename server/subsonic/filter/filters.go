@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 )
 
 type Options = model.QueryOptions
@@ -33,21 +34,6 @@ func AlbumsByName() Options {
 
 func AlbumsByArtist() Options {
 	return Options{Sort: "artist"}
-}
-
-func AlbumsByStarred() Options {
-	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
-}
-
-func AlbumsByRating() Options {
-	return Options{Sort: "Rating", Order: "desc", Filters: squirrel.Gt{"rating": 0}}
-}
-
-func AlbumsByGenre(genre string) Options {
-	return Options{
-		Sort:    "genre.name asc, name asc",
-		Filters: squirrel.Eq{"genre.name": genre},
-	}
 }
 
 func AlbumsByArtistID(artistId string) Options {
@@ -84,13 +70,6 @@ func AlbumsByYear(fromYear, toYear int) Options {
 	}
 }
 
-func SongsByGenre(genre string) Options {
-	return Options{
-		Sort:    "genre.name asc, title asc",
-		Filters: squirrel.Eq{"genre.name": genre},
-	}
-}
-
 func SongsByAlbum(albumId string) Options {
 	return Options{
 		Filters: squirrel.Eq{"album_id": albumId},
@@ -116,14 +95,28 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	return options
 }
 
-func Starred() Options {
-	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
-}
-
 func SongsWithLyrics(artist, title string) Options {
 	return Options{
 		Sort:    "updated_at",
 		Order:   "desc",
 		Filters: squirrel.And{squirrel.Eq{"artist": artist, "title": title}, squirrel.NotEq{"lyrics": ""}},
 	}
+}
+
+func ByGenre(genre string) Options {
+	return Options{
+		Sort: "name asc",
+		Filters: persistence.Exists("json_tree(tags)", squirrel.And{
+			squirrel.Like{"value": genre},
+			squirrel.NotEq{"atom": nil},
+		}),
+	}
+}
+
+func ByRating() Options {
+	return Options{Sort: "rating", Order: "desc", Filters: squirrel.Gt{"rating": 0}}
+}
+
+func ByStarred() Options {
+	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
 }
