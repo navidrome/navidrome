@@ -49,6 +49,9 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 	artistMBIDs := slice.Map(track.Participants[model.RoleArtist], func(p model.Participant) string {
 		return p.MbzArtistID
 	})
+	artistNames := slice.Map(track.Participants[model.RoleArtist], func(p model.Participant) string {
+		return p.Name
+	})
 	li := listenInfo{
 		TrackMetadata: trackMetadata{
 			ArtistName:  track.Artist,
@@ -58,6 +61,7 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 				SubmissionClient:        consts.AppName,
 				SubmissionClientVersion: consts.Version,
 				TrackNumber:             track.TrackNumber,
+				ArtistNames:             artistNames,
 				ArtistMBIDs:             artistMBIDs,
 				RecordingMBID:           track.MbzRecordingID,
 				ReleaseMBID:             track.MbzAlbumID,

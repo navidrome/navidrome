@@ -75,8 +75,9 @@ var _ = Describe("client", func() {
 					ReleaseName: "Track Album",
 					AdditionalInfo: additionalInfo{
 						TrackNumber:   1,
+						ArtistNames:   []string{"Artist 1", "Artist 2"},
+						ArtistMBIDs:   []string{"mbz-789", "mbz-012"},
 						RecordingMBID: "mbz-123",
-						ArtistMBIDs:   []string{"mbz-789"},
 						ReleaseMBID:   "mbz-456",
 						DurationMs:    142200,
 					},
