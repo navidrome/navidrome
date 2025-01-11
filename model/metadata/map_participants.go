@@ -137,7 +137,7 @@ func (md Metadata) getRoleValues(role model.TagName) []string {
 	if len(values) == 0 {
 		return nil
 	}
-	if conf := rolesConf(); len(conf.Split) > 0 {
+	if conf := model.TagRolesConf(); len(conf.Split) > 0 {
 		values = split(values, conf.Split)
 		return removeDuplicatedAndEmpty(values)
 	}
@@ -154,7 +154,7 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 	if len(vSingle) != 1 {
 		return vSingle
 	}
-	conf := artistsConf()
+	conf := model.TagArtistsConf()
 	if len(conf.Split) > 0 {
 		vSingle = split(vSingle, conf.Split)
 		return removeDuplicatedAndEmpty(vSingle)

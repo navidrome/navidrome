@@ -88,31 +88,14 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.SortArtistName = mf.Participants.First(model.RoleArtist).SortArtistName
 	mf.SortAlbumArtistName = mf.Participants.First(model.RoleAlbumArtist).SortArtistName
 
-	// Don't store tags that are first-class fields in the MediaFile struct
-	// BFR Automatically remove tags that were accessed in the steps above
-	tagsToIgnore := []model.TagName{
-		model.TagAlbum, model.TagTitle, model.TagTrackNumber, model.TagDiscNumber, model.TagDiscSubtitle,
-		model.TagComment, model.TagAlbumSort, model.TagTitleSort, model.TagCompilation,
-		model.TagLyrics, model.TagCatalogNumber, model.TagBPM, model.TagOriginalDate,
-		model.TagReleaseDate, model.TagRecordingDate, model.TagExplicitStatus,
-
-		// MusicBrainz IDs
-		model.TagMusicBrainzRecordingID, model.TagMusicBrainzTrackID, model.TagMusicBrainzAlbumID,
-		model.TagMusicBrainzReleaseGroupID, model.TagMusicBrainzAlbumArtistID, model.TagMusicBrainzArtistID,
-
-		// ReplayGain
-		model.TagReplayGainAlbumPeak, model.TagReplayGainAlbumGain, model.TagReplayGainTrackPeak, model.TagReplayGainTrackGain,
-		model.TagR128AlbumGain, model.TagR128TrackGain,
-
-		// Roles
-		model.TagComposer, model.TagConductor, model.TagArranger, model.TagLyricist, model.TagRemixer,
-		model.TagEngineer, model.TagMixer, model.TagProducer, model.TagDirector, model.TagDJMixer,
-		model.TagPerformer, model.TagAlbumArtist, model.TagAlbumArtists, model.TagAlbumArtistSort,
-		model.TagAlbumArtistsSort, model.TagTrackArtist, model.TagTrackArtists, model.TagTrackArtistSort,
-		model.TagTrackArtistsSort, model.TagComposerSort,
-	}
-	for _, tag := range tagsToIgnore {
-		delete(mf.Tags, tag)
+	// Don't store tags that are first-class fields (and are not album-level tags) in the
+	// MediaFile struct. This is to avoid redundancy in the DB
+	//
+	// Remove all tags from the main section that are not flagged as album tags
+	for tag, conf := range model.TagMainMappings() {
+		if !conf.Album {
+			delete(mf.Tags, tag)
+		}
 	}
 
 	return mf

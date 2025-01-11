@@ -74,24 +74,29 @@ main:
     aliases: [ TSOA, ALBUMSORT, soal, WM/AlbumSortOrder ]
   albumversion:
     aliases: [ALBUMVERSION, MUSICBRAINZ_ALBUMCOMMENT, MUSICBRAINZ ALBUM COMMENT, VERSION]
+    album: true
   genre:
     aliases: [ TCON, GENRE, ©gen, WM/Genre, IGNR ]
     split: [ ";", "/", "," ]
+    album: true
   mood:
     aliases: [ TMOO, MOOD, ----:com.apple.iTunes:MOOD, WM/Mood ]
     split: [ ";", "/", "," ]
+    album: true
   compilation:
     aliases: [ TCMP, COMPILATION, cpil, WM/IsCompilation ]
   track:
     aliases: [ TRACK, TRCK, TRACKNUMBER, trkn, WM/TrackNumber, ITRK ]
   tracktotal:
     aliases: [ TRACKTOTAL, TOTALTRACKS ]
+    album: true
   subtitle:
     aliases: [ TIT3, SUBTITLE, ----:com.apple.iTunes:SUBTITLE, WM/SubTitle ]
   disc:
     aliases: [ TPOS, DISC, DISCNUMBER, disk, WM/PartOfSet ]
   disctotal:
     aliases: [ DISCTOTAL, TOTALDISCS ]
+    album: true
   discsubtitle:
     aliases: [ TSST, DISCSUBTITLE, ----:com.apple.iTunes:DISCSUBTITLE, WM/SetSubTitle ]
   bpm:
@@ -134,6 +139,7 @@ main:
     type: uuid
   releasetype:
     aliases: [ TXXX:MusicBrainz Album Type, RELEASETYPE, MUSICBRAINZ_ALBUMTYPE, ----:com.apple.iTunes:MusicBrainz Album Type, MusicBrainz/Album Type ]
+    album: true
   replaygain_album_gain:
     aliases: [ TXXX:REPLAYGAIN_ALBUM_GAIN, REPLAYGAIN_ALBUM_GAIN, ----:com.apple.iTunes:REPLAYGAIN_ALBUM_GAIN ]
   replaygain_album_peak:
@@ -167,6 +173,7 @@ additional:
     aliases: [ TSSE, ENCODERSETTINGS, ----:com.apple.iTunes:ENCODERSETTINGS, WM/EncodingSettings ]
   grouping:
     aliases: [ GRP1, GROUPING, ©grp, WM/ContentGroupDescription ]
+    album: true
   key:
     aliases: [ TKEY, KEY, ----:com.apple.iTunes:initialkey, WM/InitialKey ]
   isrc:
@@ -177,6 +184,7 @@ additional:
     aliases: [ WCOP, TXXX:LICENSE, LICENSE, ----:com.apple.iTunes:LICENSE ]
   media:
     aliases: [ TMED, MEDIA, ----:com.apple.iTunes:MEDIA, WM/Media, IMED ]
+    album: true
   movementname:
     aliases: [ MVNM, MOVEMENTNAME, ©mvn ]
   movementtotal:
@@ -185,6 +193,7 @@ additional:
     aliases: [ MVIN, MOVEMENT, mvi ]
   recordlabel:
     aliases: [ TPUB, LABEL, PUBLISHER, ----:com.apple.iTunes:LABEL, WM/Publisher ]
+    album: true
   musicbrainz_discid:
     aliases: [ TXXX:MusicBrainz Disc Id, MUSICBRAINZ_DISCID, MUSICBRAINZ DISC ID, ----:com.apple.iTunes:MusicBrainz Disc Id, MusicBrainz/Disc Id ]
     type: uuid
@@ -193,8 +202,10 @@ additional:
     type: uuid
   releasecountry:
     aliases: [ TXXX:MusicBrainz Album Release Country, RELEASECOUNTRY, ----:com.apple.iTunes:MusicBrainz Album Release Country, MusicBrainz/Album Release Country, ICNT ]
+    album: true
   releasestatus:
     aliases: [ TXXX:MusicBrainz Album Status, RELEASESTATUS, MUSICBRAINZ_ALBUMSTATUS, ----:com.apple.iTunes:MusicBrainz Album Status, MusicBrainz/Album Status ]
+    album: true
   script:
     aliases: [ TXXX:SCRIPT, SCRIPT, ----:com.apple.iTunes:SCRIPT, WM/Script ]
   website:
