@@ -143,7 +143,7 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Prometheus.Enabled {
 			// blocking call because takes <1ms but useful if fails
-			GetPrometheus().WriteInitialMetrics(ctx)
+			CreatePrometheus().WriteInitialMetrics(ctx)
 
 			handler := promhttp.Handler()
 

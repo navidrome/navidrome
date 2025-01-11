@@ -64,7 +64,7 @@ func CreateSubsonicAPIRouter() *subsonic.Router {
 	playlists := core.NewPlaylists(dataStore)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
 	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
@@ -109,6 +109,13 @@ func CreateInsights() metrics.Insights {
 	return insights
 }
 
+func CreatePrometheus() metrics.Metrics {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	return metricsMetrics
+}
+
 func GetScanner() scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
@@ -120,7 +127,7 @@ func GetScanner() scanner.Scanner {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
-	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
 	scannerScanner := scanner.GetInstance(dataStore, playlists, cacheWarmer, broker, metricsMetrics)
 	return scannerScanner
 }
@@ -132,13 +139,6 @@ func GetPlaybackServer() playback.PlaybackServer {
 	return playbackServer
 }
 
-func GetPrometheus() metrics.Metrics {
-	sqlDB := db.Db()
-	dataStore := persistence.New(sqlDB)
-	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	return metricsMetrics
-}
-
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db, metrics.GetPrometheusInstance)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, db.Db, metrics.NewPrometheusInstance)
