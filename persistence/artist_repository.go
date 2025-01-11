@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -28,8 +27,13 @@ type artistRepository struct {
 
 type dbArtist struct {
 	*model.Artist  `structs:",flatten"`
-	SimilarArtists string `structs:"-" json:"similarArtists"`
+	SimilarArtists string `structs:"-" json:"-"`
 	Stats          string `structs:"-" json:"-"`
+}
+
+type dbSimilarArtist struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 func (a *dbArtist) PostScan() error {
@@ -58,26 +62,25 @@ func (a *dbArtist) PostScan() error {
 	if a.SimilarArtists == "" {
 		return nil
 	}
-	// BFR: Save similar artists as JSONB in the DB
-	for _, s := range strings.Split(a.SimilarArtists, ";") {
-		fields := strings.Split(s, ":")
-		if len(fields) != 2 {
-			continue
-		}
-		name, _ := url.QueryUnescape(fields[1])
+	var sa []dbSimilarArtist
+	if err := json.Unmarshal([]byte(a.SimilarArtists), &sa); err != nil {
+		return fmt.Errorf("parsing similar artists from db: %w", err)
+	}
+	for _, s := range sa {
 		a.Artist.SimilarArtists = append(a.Artist.SimilarArtists, model.Artist{
-			ID:   fields[0],
-			Name: name,
+			ID:   s.ID,
+			Name: s.Name,
 		})
 	}
 	return nil
 }
+
 func (a *dbArtist) PostMapArgs(m map[string]any) error {
-	var sa []string
+	sa := make([]dbSimilarArtist, 0)
 	for _, s := range a.Artist.SimilarArtists {
-		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
+		sa = append(sa, dbSimilarArtist{ID: s.ID, Name: s.Name})
 	}
-	m["similar_artists"] = strings.Join(sa, ";")
+	m["similar_artists"], _ = json.Marshal(sa)
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
@@ -155,7 +158,9 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 
 func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 	dba := &dbArtist{Artist: a}
-	_, err := r.put(a.ID, &dba, "biography", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
+	_, err := r.put(a.ID, dba,
+		"biography", "small_image_url", "medium_image_url", "large_image_url",
+		"similar_artists", "external_url", "external_info_updated_at")
 	return err
 }
 

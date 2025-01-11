@@ -265,22 +265,6 @@ create index if not exists album_mbz_release_group_id
 `)
 }
 
-// BFR: Convert ZWSP separated strings to jsonb:
-/*
-WITH RECURSIVE split(value, rest) AS (
-    SELECT '', my_column || ';' FROM (select "abc;def" as my_column)
-    UNION ALL
-    SELECT
-        substr(rest, 0, instr(rest, ';')),
-        substr(rest, instr(rest, ';') + 1)
-    FROM split
-    WHERE rest <> ''
-)
-SELECT json_group_array(value) AS json_array
-FROM split
-WHERE value <> '';
-*/
-
 func upSupportNewScanner_UpdateTableArtist(_ context.Context, execute execStmtFunc, addColumn addColumnFunc) execFunc {
 	return func() error {
 		return chain.RunSequentially(
@@ -294,10 +278,15 @@ alter table artist
 	drop column size;
 alter table artist
 	add column stats jsonb default '{}' not null;
+alter table artist
+	drop column similar_artists;
+alter table artist
+	add column similar_artists jsonb default '[]' not null;
 `),
 			addColumn("artist", "updated_at", "datetime", "current_time", "(select min(album.updated_at) from album where album_artist_id = artist.id)"),
 			addColumn("artist", "created_at", "datetime", "current_time", "(select min(album.created_at) from album where album_artist_id = artist.id)"),
 			execute(`create index if not exists artist_updated_at on artist (updated_at);`),
+			execute(`update artist set external_info_updated_at = '0000-00-00 00:00:00';`),
 		)
 	}
 }

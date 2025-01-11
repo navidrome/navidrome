@@ -186,7 +186,7 @@ var _ = Describe("ArtistRepository", func() {
 				}
 				statsJSON, _ := json.Marshal(stats)
 				dba.Stats = string(statsJSON)
-				dba.SimilarArtists = "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"
+				dba.SimilarArtists = `[{"id":"2","Name":"AC/DC"},{"name":"Test;With:Sep,Chars"}]`
 
 				err := dba.PostScan()
 				Expect(err).ToNot(HaveOccurred())
@@ -200,7 +200,7 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(dba.Artist.SimilarArtists).To(HaveLen(2))
 				Expect(dba.Artist.SimilarArtists[0].ID).To(Equal("2"))
 				Expect(dba.Artist.SimilarArtists[0].Name).To(Equal("AC/DC"))
-				Expect(dba.Artist.SimilarArtists[1].ID).To(Equal("-1"))
+				Expect(dba.Artist.SimilarArtists[1].ID).To(BeEmpty())
 				Expect(dba.Artist.SimilarArtists[1].Name).To(Equal("Test;With:Sep,Chars"))
 			})
 		})
@@ -210,18 +210,18 @@ var _ = Describe("ArtistRepository", func() {
 				m := make(map[string]any)
 				err := dba.PostMapArgs(m)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(m).To(HaveKeyWithValue("similar_artists", ""))
+				Expect(m).To(HaveKeyWithValue("similar_artists", []byte("[]")))
 			})
 
 			It("maps similar artists and full text correctly", func() {
 				artist.SimilarArtists = []model.Artist{
 					{ID: "2", Name: "AC/DC"},
-					{ID: "-1", Name: "Test;With:Sep,Chars"},
+					{Name: "Test;With:Sep,Chars"},
 				}
 				m := make(map[string]any)
 				err := dba.PostMapArgs(m)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(m).To(HaveKeyWithValue("similar_artists", "2:AC%2FDC;-1:Test%3BWith%3ASep%2CChars"))
+				Expect(m).To(HaveKeyWithValue("similar_artists", []byte(`[{"id":"2","name":"AC/DC"},{"name":"Test;With:Sep,Chars"}]`)))
 				Expect(m).To(HaveKeyWithValue("full_text", " eddie halen van"))
 			})
 
