@@ -76,7 +76,10 @@ func runNavidrome(ctx context.Context) {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
-	g.Go(startDLNAServer(ctx))
+	if conf.Server.DLNAServer.Enabled {
+		g.Go(startDLNAServer(ctx))
+
+	}
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
@@ -372,6 +375,8 @@ func init() {
 	rootCmd.Flags().Bool("prometheus.enabled", viper.GetBool("prometheus.enabled"), "enable/disable prometheus metrics endpoint`")
 	rootCmd.Flags().String("prometheus.metricspath", viper.GetString("prometheus.metricspath"), "http endpoint for prometheus metrics")
 
+	rootCmd.Flags().Bool("dlnaserver.enabled", viper.GetBool("dlnaserver.enabled"), "enable/disable DLNA server")
+
 	_ = viper.BindPFlag("address", rootCmd.Flags().Lookup("address"))
 	_ = viper.BindPFlag("port", rootCmd.Flags().Lookup("port"))
 	_ = viper.BindPFlag("tlscert", rootCmd.Flags().Lookup("tlscert"))
@@ -385,6 +390,8 @@ func init() {
 
 	_ = viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
 	_ = viper.BindPFlag("prometheus.metricspath", rootCmd.Flags().Lookup("prometheus.metricspath"))
+
+	_ = viper.BindPFlag("dlnaserver.enabled", rootCmd.Flags().Lookup("dlnaserver.enabled"))
 
 	_ = viper.BindPFlag("enabletranscodingconfig", rootCmd.Flags().Lookup("enabletranscodingconfig"))
 	_ = viper.BindPFlag("transcodingcachesize", rootCmd.Flags().Lookup("transcodingcachesize"))
