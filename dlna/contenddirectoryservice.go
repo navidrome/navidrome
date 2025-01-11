@@ -111,15 +111,20 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				return cds.doFiles(ret, o.Path, host)
 			case "Artists":
 				indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
+				log.Debug(fmt.Sprintf("Artist indexes: %+v", indexes))
 				if err != nil {
 					fmt.Printf("Error retrieving Indexes: %+v", err)
 					return nil, err
 				}
-				for indexItem := range indexes {
-					child := object{
-						path.Join(o.Path, indexes[indexItem].Artists[0].Name), //TODO handle multiple artists here, fold it into some sort of unique list
+				for letterIndex := range indexes {
+					for artist := range indexes[letterIndex].Artists {
+						artistId := indexes[letterIndex].Artists[artist].ID
+						child := object{
+							Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name), 
+							Id: artistId,
+						}
+						ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 					}
-					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
 				return ret, nil
 			case "Albums":
@@ -130,7 +135,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				}
 				for indexItem := range indexes {
 					child := object{
-						path.Join(o.Path, indexes[indexItem].Name),
+						Path: path.Join(o.Path, indexes[indexItem].Name),
+						Id: indexes[indexItem].ID,
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -143,7 +149,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				}
 				for indexItem := range indexes {
 					child := object{
-						path.Join(o.Path, indexes[indexItem].Name),
+						Path: path.Join(o.Path, indexes[indexItem].Name),
+						Id: indexes[indexItem].ID,
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -156,7 +163,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				}
 				for indexItem := range indexes {
 					child := object{
-						path.Join(o.Path, indexes[indexItem].Name),
+						Path: path.Join(o.Path, indexes[indexItem].Name),
+						Id: indexes[indexItem].ID,
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -169,13 +177,17 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			case "Files":
 				return cds.doFiles(ret, o.Path, host)
 			case "Artists":
-				
+				x, xerr := cds.ds.Artist(cds.ctx).Get(pathComponents[3])
+				log.Debug(x, xerr)
 			case "Albums":
-			
+				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
+				log.Debug(x, xerr)
 			case "Genres":
-			
+				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
+				log.Debug(x, xerr)
 			case "Playlists":
-			
+				x, xerr := cds.ds.Playlist(cds.ctx).Get(pathComponents[3])
+				log.Debug(x, xerr)
 			}
 		}
 	}
@@ -195,7 +207,8 @@ func (cds *contentDirectoryService) doFiles(ret []interface{}, oPath string, hos
 	files, _ := os.ReadDir(localFilePath)
 	for _, file := range files {
 		child := object{
-			path.Join(oPath, file.Name()),
+			Path: path.Join(oPath, file.Name()),
+			Id: path.Join(oPath, file.Name()),
 		}
 		ret = append(ret, cds.cdsObjectToUpnpavObject(child, file.IsDir(), host))
 	}
@@ -311,6 +324,7 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 // Represents a ContentDirectory object.
 type object struct {
 	Path string // The cleaned, absolute path for the object relative to the server.
+	Id string
 }
 
 // Returns the actual local filesystem path for the object.
