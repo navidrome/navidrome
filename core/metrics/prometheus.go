@@ -115,22 +115,29 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 	return instance
 })
 
-func processSqlAggregateMetrics(ctx context.Context, dataStore model.DataStore, targetGauge *prometheus.GaugeVec) {
-	albumsCount, err := dataStore.Album(ctx).CountAll()
+func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
+	albumsCount, err := ds.Album(ctx).CountAll()
 	if err != nil {
 		log.Warn("album CountAll error", err)
 		return
 	}
 	targetGauge.With(prometheus.Labels{"model": "album"}).Set(float64(albumsCount))
 
-	songsCount, err := dataStore.MediaFile(ctx).CountAll()
+	artistCount, err := ds.Artist(ctx).CountAll()
+	if err != nil {
+		log.Warn("artist CountAll error", err)
+		return
+	}
+	targetGauge.With(prometheus.Labels{"model": "artist"}).Set(float64(artistCount))
+
+	songsCount, err := ds.MediaFile(ctx).CountAll()
 	if err != nil {
 		log.Warn("media CountAll error", err)
 		return
 	}
 	targetGauge.With(prometheus.Labels{"model": "media"}).Set(float64(songsCount))
 
-	usersCount, err := dataStore.User(ctx).CountAll()
+	usersCount, err := ds.User(ctx).CountAll()
 	if err != nil {
 		log.Warn("user CountAll error", err)
 		return
