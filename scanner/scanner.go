@@ -53,6 +53,7 @@ type scanner struct {
 	pls         core.Playlists
 	broker      events.Broker
 	cacheWarmer artwork.CacheWarmer
+	metrics     metrics.Metrics
 }
 
 type scanStatus struct {
@@ -62,7 +63,7 @@ type scanStatus struct {
 	lastUpdate  time.Time
 }
 
-func GetInstance(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker) Scanner {
+func GetInstance(ds model.DataStore, playlists core.Playlists, cacheWarmer artwork.CacheWarmer, broker events.Broker, metrics metrics.Metrics) Scanner {
 	return singleton.GetInstance(func() *scanner {
 		s := &scanner{
 			ds:          ds,
@@ -73,6 +74,7 @@ func GetInstance(ds model.DataStore, playlists core.Playlists, cacheWarmer artwo
 			status:      map[string]*scanStatus{},
 			lock:        &sync.RWMutex{},
 			cacheWarmer: cacheWarmer,
+			metrics:     metrics,
 		}
 		s.loadFolders()
 		return s
@@ -210,10 +212,10 @@ func (s *scanner) RescanAll(ctx context.Context, fullRescan bool) error {
 	}
 	if hasError {
 		log.Error(ctx, "Errors while scanning media. Please check the logs")
-		metrics.WriteAfterScanMetrics(ctx, s.ds, false)
+		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return ErrScanError
 	}
-	metrics.WriteAfterScanMetrics(ctx, s.ds, true)
+	s.metrics.WriteAfterScanMetrics(ctx, true)
 	return nil
 }
 

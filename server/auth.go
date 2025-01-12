@@ -266,7 +266,16 @@ func authHeaderMapper(next http.Handler) http.Handler {
 }
 
 func jwtVerifier(next http.Handler) http.Handler {
-	return jwtauth.Verify(auth.TokenAuth, jwtauth.TokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
+	return jwtauth.Verify(auth.TokenAuth, tokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
+}
+
+func tokenFromHeader(r *http.Request) string {
+	// Get token from authorization header.
+	bearer := r.Header.Get(consts.UIAuthorizationHeader)
+	if len(bearer) > 7 && strings.ToUpper(bearer[0:6]) == "BEARER" {
+		return bearer[7:]
+	}
+	return ""
 }
 
 func UsernameFromToken(r *http.Request) string {

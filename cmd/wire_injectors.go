@@ -33,6 +33,7 @@ var allProviders = wire.NewSet(
 	events.GetBroker,
 	scanner.GetInstance,
 	db.Db,
+	metrics.NewPrometheusInstance,
 )
 
 func CreateServer(musicFolder string) *server.Server {
@@ -72,6 +73,12 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 }
 
 func CreateInsights() metrics.Insights {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreatePrometheus() metrics.Metrics {
 	panic(wire.Build(
 		allProviders,
 	))
