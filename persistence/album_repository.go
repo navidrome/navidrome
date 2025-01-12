@@ -274,10 +274,13 @@ with play_counts as (
              join annotation on item_id = media_file.id
     group by user_id, album_id
 )
-insert or replace into annotation
-(item_id, item_type, play_count, play_date, user_id)
-select album_id, 'album', total_play_count, last_play_date, user_id
-from play_counts;
+insert into annotation (user_id, item_id, item_type, play_count, play_date)
+select user_id, album_id, 'album', total_play_count, last_play_date
+from play_counts
+where total_play_count > 0
+on conflict (user_id, item_id, item_type) do update
+    set play_count = excluded.play_count,
+        play_date  = excluded.play_date;
 `)
 	return r.executeSQL(query)
 }
