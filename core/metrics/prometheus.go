@@ -28,7 +28,10 @@ type metrics struct {
 }
 
 func NewPrometheusInstance(ds model.DataStore) Metrics {
-	return &metrics{ds: ds}
+	if conf.Server.Prometheus.Enabled {
+		return &metrics{ds: ds}
+	}
+	return noopMetrics{}
 }
 
 func (m *metrics) WriteInitialMetrics(ctx context.Context) {
@@ -144,3 +147,12 @@ func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetG
 	}
 	targetGauge.With(prometheus.Labels{"model": "user"}).Set(float64(usersCount))
 }
+
+type noopMetrics struct {
+}
+
+func (n noopMetrics) WriteInitialMetrics(context.Context) {}
+
+func (n noopMetrics) WriteAfterScanMetrics(context.Context, bool) {}
+
+func (n noopMetrics) GetHandler() http.Handler { return nil }
