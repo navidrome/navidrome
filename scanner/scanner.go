@@ -18,12 +18,13 @@ import (
 )
 
 type scannerImpl struct {
-	ds  model.DataStore
-	cw  artwork.CacheWarmer
-	pls core.Playlists
+	ds      model.DataStore
+	cw      artwork.CacheWarmer
+	pls     core.Playlists
+	metrics metrics.Metrics
 }
 
-// scanState holds the state of a in-progress scan, to be passed to the various phases
+// scanState holds the state of an in-progress scan, to be passed to the various phases
 type scanState struct {
 	progress        chan<- *ProgressInfo
 	fullScan        bool
@@ -96,7 +97,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
 		state.sendError(err)
-		metrics.WriteAfterScanMetrics(ctx, s.ds, false)
+		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return
 	}
 
@@ -104,7 +105,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
 	}
 
-	metrics.WriteAfterScanMetrics(ctx, s.ds, err == nil)
+	s.metrics.WriteAfterScanMetrics(ctx, err == nil)
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 }
 
@@ -188,9 +189,9 @@ func runPhase[T any](ctx context.Context, phaseNum int, phase phase[T]) func() e
 
 		var err error
 		if log.IsGreaterOrEqualTo(log.LevelDebug) {
-			var metrics *ppl.Metrics
-			metrics, err = ppl.Measure(producer, stages...)
-			log.Info(ctx, "Scanner: "+metrics.String(), err)
+			var m *ppl.Metrics
+			m, err = ppl.Measure(producer, stages...)
+			log.Info(ctx, "Scanner: "+m.String(), err)
 		} else {
 			err = ppl.Do(producer, stages...)
 		}

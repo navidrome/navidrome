@@ -12,13 +12,11 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -114,9 +112,10 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
 		if conf.Server.Prometheus.Enabled {
-			// blocking call because takes <1ms but useful if fails
-			metrics.WriteInitialMetrics()
-			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
+			p := CreatePrometheus()
+			// blocking call because takes <100ms but useful if fails
+			p.WriteInitialMetrics(ctx)
+			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
 		}
 		if conf.Server.DevEnableProfiler {
 			a.MountRouter("Profiling", "/debug", middleware.Profiler())
