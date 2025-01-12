@@ -90,6 +90,7 @@ const (
 const (
 	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
+	PIDHashKey      = "PIDHash"
 )
 
 const (

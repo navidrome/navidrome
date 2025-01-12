@@ -165,7 +165,13 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		if inProgress || fullScanRequired == "1" || conf.Server.Scanner.ScanOnStartup {
+		currentPIDHash, err := ds.Property(ctx).DefaultGet(consts.PIDHashKey, "")
+		if err != nil {
+			return err
+		}
+		pidHashChanged := currentPIDHash != conf.Server.PID.Hash()
+		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHashChanged
+		if scanNeeded {
 			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 			scanner := CreateScanner(ctx)
 			switch {
@@ -174,6 +180,9 @@ func runInitialScan(ctx context.Context) func() error {
 				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
 			case inProgress:
 				log.Warn(ctx, "Resuming interrupted scan")
+			case pidHashChanged:
+				log.Warn(ctx, "PID config changed, performing full scan")
+				fullScanRequired = "1"
 			default:
 				log.Info("Executing initial scan")
 			}

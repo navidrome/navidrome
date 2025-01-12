@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"cmp"
-	"sync"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -59,12 +58,14 @@ func (md Metadata) mapParticipants() model.Participants {
 		}
 	}
 
+	titleCaser := cases.Title(language.Und)
+
 	// Parse performers
 	for _, performer := range md.Pairs(model.TagPerformer) {
 		name := performer.Value()
 		id := md.artistID(name)
 		orderName := str.SanitizeFieldForSortingNoArticle(name)
-		subRole := titleCaser().String(performer.Key())
+		subRole := titleCaser.String(performer.Key())
 		participants.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
 			ID:              id,
 			Name:            name,
@@ -96,10 +97,6 @@ func (md Metadata) mapParticipants() model.Participants {
 
 	return participants
 }
-
-var titleCaser = sync.OnceValue(func() cases.Caser {
-	return cases.Title(language.Und)
-})
 
 func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
 	nameValues := md.getArtistValues(name, names)

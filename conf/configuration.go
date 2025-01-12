@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"crypto/md5"
 	"fmt"
 	"net/url"
 	"os"
@@ -175,6 +176,10 @@ type backupOptions struct {
 type pidOptions struct {
 	Track string
 	Album string
+}
+
+func (p pidOptions) Hash() string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(p.Album+consts.Zwsp+p.Track)))
 }
 
 var (

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -152,6 +154,12 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 				if err != nil {
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 					return fmt.Errorf("updating last scan completed: %w", err)
+				}
+				newHash := conf.Server.PID.Hash()
+				err = tx.Property(ctx).Put(consts.PIDHashKey, newHash)
+				if err != nil {
+					log.Error(ctx, "Scanner: Error updating PID hash", err)
+					return fmt.Errorf("updating PID hash: %w", err)
 				}
 			}
 			return nil
