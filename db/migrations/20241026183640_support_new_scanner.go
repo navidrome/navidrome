@@ -85,6 +85,10 @@ drop table if exists media_file_genres;
 drop table if exists album_genres;
 drop table if exists artist_genres;
 drop table if exists genre;
+
+-- Add PID config to properties
+insert into property (id, value) values ('PIDTrack', 'track_legacy') on conflict do nothing;
+insert into property (id, value) values ('PIDAlbum', 'album_legacy') on conflict do nothing;
 `),
 		func() error {
 			notice(tx, "A full scan will be triggered to populate the new tables. This may take a while.")

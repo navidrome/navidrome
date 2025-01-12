@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
@@ -153,6 +154,18 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
+func pidHashChanged(ds model.DataStore) (bool, error) {
+	pidAlbum, err := ds.Property(context.Background()).DefaultGet(consts.PIDAlbumKey, "")
+	if err != nil {
+		return false, err
+	}
+	pidTrack, err := ds.Property(context.Background()).DefaultGet(consts.PIDTrackKey, "")
+	if err != nil {
+		return false, err
+	}
+	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
+}
+
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
@@ -164,22 +177,21 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		currentPIDHash, err := ds.Property(ctx).DefaultGet(consts.PIDHashKey, "")
+		pidHasChanged, err := pidHashChanged(ds)
 		if err != nil {
 			return err
 		}
-		pidHashChanged := currentPIDHash != conf.Server.PID.Hash()
-		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHashChanged
+		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
 		if scanNeeded {
 			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 			scanner := CreateScanner(ctx)
 			switch {
+			case inProgress:
+				log.Warn(ctx, "Resuming interrupted scan")
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
 				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
-			case inProgress:
-				log.Warn(ctx, "Resuming interrupted scan")
-			case pidHashChanged:
+			case pidHasChanged:
 				log.Warn(ctx, "PID config changed, performing full scan")
 				fullScanRequired = "1"
 			default:

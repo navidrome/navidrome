@@ -156,11 +156,15 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 					return fmt.Errorf("updating last scan completed: %w", err)
 				}
-				newHash := conf.Server.PID.Hash()
-				err = tx.Property(ctx).Put(consts.PIDHashKey, newHash)
+				err = tx.Property(ctx).Put(consts.PIDTrackKey, conf.Server.PID.Track)
 				if err != nil {
-					log.Error(ctx, "Scanner: Error updating PID hash", err)
-					return fmt.Errorf("updating PID hash: %w", err)
+					log.Error(ctx, "Scanner: Error updating track PID conf", err)
+					return fmt.Errorf("updating track PID conf: %w", err)
+				}
+				err = tx.Property(ctx).Put(consts.PIDAlbumKey, conf.Server.PID.Album)
+				if err != nil {
+					log.Error(ctx, "Scanner: Error updating album PID conf", err)
+					return fmt.Errorf("updating album PID conf: %w", err)
 				}
 			}
 			return nil

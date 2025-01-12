@@ -97,7 +97,8 @@ const (
 	DefaultAlbumPID = "album_legacy"
 	// BFR? DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
-	PIDHashKey      = "PIDHash"
+	PIDAlbumKey     = "PIDAlbum"
+	PIDTrackKey     = "PIDTrack"
 )
 
 const (
