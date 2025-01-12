@@ -47,14 +47,12 @@ func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
 func (m *metrics) GetHandler() http.Handler {
 	r := chi.NewRouter()
 
-	r.Group(func(r chi.Router) {
-		if conf.Server.Prometheus.Password != "" {
-			r.Use(middleware.BasicAuth("metrics", map[string]string{
-				consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
-			}))
-		}
-		r.Handle("/", promhttp.Handler())
-	})
+	if conf.Server.Prometheus.Password != "" {
+		r.Use(middleware.BasicAuth("metrics", map[string]string{
+			consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
+		}))
+	}
+	r.Handle("/", promhttp.Handler())
 
 	return r
 }
