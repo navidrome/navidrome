@@ -82,21 +82,21 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
 	log.Debug(fmt.Sprintf("ReadContainer called '%s'", o))
 
-	if(o.Path == "/" || o.Path == "") {
-		log.Debug("ReadContainer default route");
+	if o.Path == "/" || o.Path == "" {
+		log.Debug("ReadContainer default route")
 		newObject := object{Path: "/Music"}
 		ret = append(ret, cds.cdsObjectToUpnpavObject(newObject, true, host))
-		return ret, nil 
+		return ret, nil
 	}
-	
+
 	pathComponents := strings.Split(o.Path, "/")
 	log.Debug(fmt.Sprintf("ReadContainer pathComponents %+v %d", pathComponents, len(pathComponents)))
 
 	//TODO: something other than this
-	switch(len(pathComponents)) {
+	switch len(pathComponents) {
 	case 2:
-		switch(pathComponents[1]) {
-		case "Music": 
+		switch pathComponents[1] {
+		case "Music":
 			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
 			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host))
 			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host))
@@ -106,9 +106,9 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	case 3:
-		switch(pathComponents[1]) {
+		switch pathComponents[1] {
 		case "Music":
-			switch(pathComponents[2]) {
+			switch pathComponents[2] {
 			case "Files":
 				return cds.doFiles(ret, o.Path, host)
 			case "Artists":
@@ -121,8 +121,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 					for artist := range indexes[letterIndex].Artists {
 						artistId := indexes[letterIndex].Artists[artist].ID
 						child := object{
-							Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name), 
-							Id: path.Join(o.Path, artistId),
+							Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
+							Id:   path.Join(o.Path, artistId),
 						}
 						ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 					}
@@ -137,7 +137,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				for indexItem := range indexes {
 					child := object{
 						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id: path.Join(o.Path, indexes[indexItem].ID),
+						Id:   path.Join(o.Path, indexes[indexItem].ID),
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -151,7 +151,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				for indexItem := range indexes {
 					child := object{
 						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id: path.Join(o.Path, indexes[indexItem].ID),
+						Id:   path.Join(o.Path, indexes[indexItem].ID),
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -165,7 +165,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				for indexItem := range indexes {
 					child := object{
 						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id: path.Join(o.Path, indexes[indexItem].ID),
+						Id:   path.Join(o.Path, indexes[indexItem].ID),
 					}
 					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 				}
@@ -174,37 +174,36 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		}
 	default:
 
-/*
-		deluan
- — 
-Today at 18:30
-ds.Album(ctx).GetAll(FIlter: Eq{"albumArtistId": artistID})
-Or something like that 😛
-Mintsoft
- — 
-Today at 18:30
-For other examples, how do I know what the right magic string for "albumArtistId" is?
-kgarner7
- — 
-Today at 18:31
-album_artist_id
-Look at the model structs names
-deluan
- — 
-Today at 18:31
-This is a limitation of Squirrel. It is string based. YOu have to use the name of the columns in the DB 
+		/*
+		   		deluan
+		    —
+		   Today at 18:30
+		   ds.Album(ctx).GetAll(FIlter: Eq{"albumArtistId": artistID})
+		   Or something like that 😛
+		   Mintsoft
+		    —
+		   Today at 18:30
+		   For other examples, how do I know what the right magic string for "albumArtistId" is?
+		   kgarner7
+		    —
+		   Today at 18:31
+		   album_artist_id
+		   Look at the model structs names
+		   deluan
+		    —
+		   Today at 18:31
+		   This is a limitation of Squirrel. It is string based. YOu have to use the name of the columns in the DB
 		*/
-		if(len(pathComponents) >= 4) {
-			switch(pathComponents[2]) {
+		if len(pathComponents) >= 4 {
+			switch pathComponents[2] {
 			case "Files":
 				return cds.doFiles(ret, o.Path, host)
 			case "Artists":
-				allAlbumsForThisArtist, getErr := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": pathComponents[3]}})
-				log.Debug(fmt.Sprintf("AllAlbums: %+v", allAlbumsForThisArtist),getErr)
-
+				allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": pathComponents[3]}})
+				return cds.doAlbums(allAlbumsForThisArtist, ret, host)
 			case "Albums":
-				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
-				log.Debug(fmt.Sprintf("Album: %+v", x), xerr)
+				x, _ := cds.ds.Album(cds.ctx).Get(pathComponents[3])
+				return cds.doAlbum(x, ret, host)
 			case "Genres":
 				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
 				log.Debug(fmt.Sprintf("Genre: %+v", x), xerr)
@@ -218,20 +217,36 @@ This is a limitation of Squirrel. It is string based. YOu have to use the name o
 	return
 }
 
+func (cds *contentDirectoryService) doAlbum(x *model.Album, ret []interface{}, host string) ([]interface{}, error) {
+	//TODO 
+	return ret, nil
+}
+
+func (cds *contentDirectoryService) doAlbums(albums model.Albums, ret []interface{}, host string) ([]interface{}, error) {
+	for _, album := range albums {
+		child := object {
+			Path: path.Join("/Music/Albums", album.Name),
+			Id: album.ID,
+		}
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+	}
+	return ret, nil
+}
+
 func (cds *contentDirectoryService) doFiles(ret []interface{}, oPath string, host string) ([]interface{}, error) {
 	pathComponents := strings.Split(strings.TrimPrefix(oPath, "/Music/Files"), "/")
-	if(slices.Contains(pathComponents, "..") || slices.Contains(pathComponents, ".")) {
+	if slices.Contains(pathComponents, "..") || slices.Contains(pathComponents, ".") {
 		log.Error("Attempt to use .. or . detected", oPath, host)
 		return ret, nil
 	}
 	totalPathArrayBits := append([]string{conf.Server.MusicFolder}, pathComponents...)
 	localFilePath := filepath.Join(totalPathArrayBits...)
-	
+
 	files, _ := os.ReadDir(localFilePath)
 	for _, file := range files {
 		child := object{
 			Path: path.Join(oPath, file.Name()),
-			Id: path.Join(oPath, file.Name()),
+			Id:   path.Join(oPath, file.Name()),
 		}
 		ret = append(ret, cds.cdsObjectToUpnpavObject(child, file.IsDir(), host))
 	}
@@ -248,7 +263,7 @@ type browse struct {
 
 // ContentDirectory object from ObjectID.
 func (cds *contentDirectoryService) objectFromID(id string) (o object, err error) {
-	log.Debug("objectFromID called","id", id)
+	log.Debug("objectFromID called", "id", id)
 
 	o.Path, err = url.QueryUnescape(id)
 	if err != nil {
@@ -347,7 +362,7 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 // Represents a ContentDirectory object.
 type object struct {
 	Path string // The cleaned, absolute path for the object relative to the server.
-	Id string
+	Id   string
 }
 
 // Returns the actual local filesystem path for the object.
