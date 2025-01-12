@@ -174,7 +174,6 @@ func (s *Server) initRoutes() {
 		clientUniqueIDMiddleware,
 		compressMiddleware(),
 		loggerInjector,
-		authHeaderMapper,
 		jwtVerifier,
 	}
 

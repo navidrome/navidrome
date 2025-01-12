@@ -147,6 +147,7 @@ type secureOptions struct {
 type prometheusOptions struct {
 	Enabled     bool
 	MetricsPath string
+	Password    string
 }
 
 type AudioDeviceDefinition []string
@@ -426,7 +427,8 @@ func init() {
 	viper.SetDefault("reverseproxywhitelist", "")
 
 	viper.SetDefault("prometheus.enabled", false)
-	viper.SetDefault("prometheus.metricspath", "/metrics")
+	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
+	viper.SetDefault("prometheus.password", "")
 
 	viper.SetDefault("jukebox.enabled", false)
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
