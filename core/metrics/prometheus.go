@@ -50,7 +50,7 @@ func (m *metrics) GetHandler() http.Handler {
 	r.Group(func(r chi.Router) {
 		if conf.Server.Prometheus.Password != "" {
 			r.Use(middleware.BasicAuth("metrics", map[string]string{
-				"navidrome": conf.Server.Prometheus.Password,
+				consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
 			}))
 		}
 		r.Handle("/", promhttp.Handler())

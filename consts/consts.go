@@ -70,6 +70,12 @@ const (
 	Zwsp = string('\u200b')
 )
 
+// Prometheus options
+const (
+	PrometheusDefaultPath = "/metrics"
+	PrometheusAuthUser    = "navidrome"
+)
+
 // Cache options
 const (
 	TranscodingCacheDir             = "transcoding"
