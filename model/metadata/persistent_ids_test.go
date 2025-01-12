@@ -3,6 +3,8 @@ package metadata
 import (
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -60,6 +62,10 @@ var _ = Describe("getPID", func() {
 		})
 	})
 	Context("calculated attributes", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.PID.Album = "musicbrainz_albumid|albumartistid,album,version,releasedate"
+		})
 		When("field is title", func() {
 			It("should return the pid", func() {
 				spec := "title|folder"
