@@ -33,6 +33,7 @@ type folderEntry struct {
 	imagesUpdatedAt time.Time
 	tracks          model.MediaFiles
 	albums          model.Albums
+	albumIDMap      map[string]string
 	artists         model.Artists
 	tags            model.TagList
 	missingTracks   []*model.MediaFile
@@ -65,6 +66,7 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		path:       path,
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
+		albumIDMap: make(map[string]string),
 		updTime:    job.popLastUpdate(id),
 	}
 	f.elapsed.Start()

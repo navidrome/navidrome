@@ -2,11 +2,13 @@ package metadata
 
 import (
 	"encoding/json"
+	"maps"
 	"math"
 	"strconv"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -14,7 +16,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf := model.MediaFile{
 		LibraryID: libID,
 		FolderID:  folderID,
-		Tags:      md.tags,
+		Tags:      maps.Clone(md.tags),
 	}
 
 	// Title and Album
@@ -99,6 +101,11 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	}
 
 	return mf
+}
+
+func (md Metadata) AlbumID(mf model.MediaFile, pidConf string) string {
+	getPID := createGetPID(id.NewHash)
+	return getPID(mf, md, pidConf)
 }
 
 func (md Metadata) mapGain(rg, r128 model.TagName) float64 {

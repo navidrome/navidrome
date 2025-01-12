@@ -182,18 +182,18 @@ func runInitialScan(ctx context.Context) func() error {
 			return err
 		}
 		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
+		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		if scanNeeded {
-			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 			scanner := CreateScanner(ctx)
 			switch {
-			case inProgress:
-				log.Warn(ctx, "Resuming interrupted scan")
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
 				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
 			case pidHasChanged:
 				log.Warn(ctx, "PID config changed, performing full scan")
 				fullScanRequired = "1"
+			case inProgress:
+				log.Warn(ctx, "Resuming interrupted scan")
 			default:
 				log.Info("Executing initial scan")
 			}
@@ -204,6 +204,8 @@ func runInitialScan(ctx context.Context) func() error {
 			} else {
 				log.Info(ctx, "Scan completed")
 			}
+		} else {
+			log.Debug(ctx, "Initial scan not needed")
 		}
 		return nil
 	}
