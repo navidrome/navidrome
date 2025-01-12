@@ -63,7 +63,8 @@ func (s *controller) getScanner() scanner {
 
 // CallScan starts an in-process scan of the music library.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists,
+	metrics metrics.Metrics, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -74,7 +75,7 @@ func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, p
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls}
+		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls, metrics: metrics}
 		scanner.scanAll(ctx, fullScan, progress)
 	}()
 	return progress, nil

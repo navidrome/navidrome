@@ -34,6 +34,10 @@ func NewPrometheusInstance(ds model.DataStore) Metrics {
 	return noopMetrics{}
 }
 
+func NewNoopInstance() Metrics {
+	return noopMetrics{}
+}
+
 func (m *metrics) WriteInitialMetrics(ctx context.Context) {
 	getPrometheusMetrics().versionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
 	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
