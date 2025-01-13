@@ -45,6 +45,34 @@
       "month": 5,
       "day": 10
     },
+    "releaseTypes": [
+      "album",
+      "live"
+    ],
+    "recordLabels": [
+      {
+        "name": "label1"
+      },
+      {
+        "name": "label2"
+      }
+    ],
+    "moods": [
+      "happy",
+      "sad"
+    ],
+    "artists": [
+      {
+        "id": "1",
+        "name": "artist1"
+      },
+      {
+        "id": "2",
+        "name": "artist2"
+      }
+    ],
+    "displayArtist": "artist1 \u0026 artist2",
+    "explicitStatus": "",
     "song": [
       {
         "id": "1",
@@ -87,7 +115,53 @@
           "fallbackGain": 6
         },
         "channelCount": 0,
-        "samplingRate": 0
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [
+          "happy",
+          "sad"
+        ],
+        "artists": [
+          {
+            "id": "1",
+            "name": "artist1"
+          },
+          {
+            "id": "2",
+            "name": "artist2"
+          }
+        ],
+        "displayArtist": "artist1 \u0026 artist2",
+        "albumArtists": [
+          {
+            "id": "1",
+            "name": "album artist1"
+          },
+          {
+            "id": "2",
+            "name": "album artist2"
+          }
+        ],
+        "displayAlbumArtist": "album artist1 \u0026 album artist2",
+        "contributors": [
+          {
+            "role": "role1",
+            "artist": {
+              "id": "1",
+              "name": "artist1"
+            }
+          },
+          {
+            "role": "role2",
+            "subRole": "subrole4",
+            "artist": {
+              "id": "2",
+              "name": "artist2"
+            }
+          }
+        ],
+        "displayComposer": "",
+        "explicitStatus": ""
       }
     ]
   }

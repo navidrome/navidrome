@@ -61,16 +61,6 @@ const ArtistFilter = (props) => {
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
-      <ReferenceInput
-        label={translate('resources.artist.fields.genre')}
-        source="genre_id"
-        reference="genre"
-        perPage={0}
-        sort={{ field: 'name', order: 'ASC' }}
-        filterToQuery={(searchText) => ({ name: [searchText] })}
-      >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"

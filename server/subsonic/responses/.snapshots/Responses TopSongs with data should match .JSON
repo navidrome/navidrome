@@ -19,7 +19,16 @@
         "genres": [],
         "replayGain": {},
         "channelCount": 0,
-        "samplingRate": 0
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [],
+        "artists": [],
+        "displayArtist": "",
+        "albumArtists": [],
+        "displayAlbumArtist": "",
+        "contributors": [],
+        "displayComposer": "",
+        "explicitStatus": ""
       }
     ]
   }

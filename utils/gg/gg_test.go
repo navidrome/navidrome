@@ -39,4 +39,24 @@ var _ = Describe("GG", func() {
 			Expect(gg.V(v)).To(Equal(0))
 		})
 	})
+
+	Describe("If", func() {
+		It("returns the first value if the condition is true", func() {
+			Expect(gg.If(true, 1, 2)).To(Equal(1))
+		})
+
+		It("returns the second value if the condition is false", func() {
+			Expect(gg.If(false, 1, 2)).To(Equal(2))
+		})
+
+		It("works with string values", func() {
+			Expect(gg.If(true, "a", "b")).To(Equal("a"))
+			Expect(gg.If(false, "a", "b")).To(Equal("b"))
+		})
+
+		It("works with different types", func() {
+			Expect(gg.If(true, 1.1, 2.2)).To(Equal(1.1))
+			Expect(gg.If(false, 1.1, 2.2)).To(Equal(2.2))
+		})
+	})
 })

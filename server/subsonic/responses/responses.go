@@ -57,8 +57,9 @@ type Subsonic struct {
 	JukeboxStatus   *JukeboxStatus   `xml:"jukeboxStatus,omitempty"                       json:"jukeboxStatus,omitempty"`
 	JukeboxPlaylist *JukeboxPlaylist `xml:"jukeboxPlaylist,omitempty"                     json:"jukeboxPlaylist,omitempty"`
 
+	// OpenSubsonic extensions
 	OpenSubsonicExtensions *OpenSubsonicExtensions `xml:"openSubsonicExtensions,omitempty"  json:"openSubsonicExtensions,omitempty"`
-	LyricsList             *LyricsList             `xml:"lyricsList,omitempty" json:"lyricsList,omitempty"`
+	LyricsList             *LyricsList             `xml:"lyricsList,omitempty"              json:"lyricsList,omitempty"`
 }
 
 const (
@@ -166,16 +167,25 @@ type Child struct {
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/
 	// OpenSubsonic extensions
-	Played        *time.Time `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	Bpm           int32      `xml:"bpm,attr"                json:"bpm"`
-	Comment       string     `xml:"comment,attr"            json:"comment"`
-	SortName      string     `xml:"sortName,attr"           json:"sortName"`
-	MediaType     MediaType  `xml:"mediaType,attr"          json:"mediaType"`
-	MusicBrainzId string     `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
-	Genres        ItemGenres `xml:"genres"                  json:"genres"`
-	ReplayGain    ReplayGain `xml:"replayGain"              json:"replayGain"`
-	ChannelCount  int32      `xml:"channelCount,attr"       json:"channelCount"`
-	SamplingRate  int32      `xml:"samplingRate,attr"       json:"samplingRate"`
+	Played             *time.Time          `xml:"played,attr,omitempty"   json:"played,omitempty"`
+	BPM                int32               `xml:"bpm,attr"                json:"bpm"`
+	Comment            string              `xml:"comment,attr"            json:"comment"`
+	SortName           string              `xml:"sortName,attr"           json:"sortName"`
+	MediaType          MediaType           `xml:"mediaType,attr"          json:"mediaType"`
+	MusicBrainzId      string              `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
+	Genres             Array[ItemGenre]    `xml:"genres"                  json:"genres"`
+	ReplayGain         ReplayGain          `xml:"replayGain"              json:"replayGain"`
+	ChannelCount       int32               `xml:"channelCount,attr"       json:"channelCount"`
+	SamplingRate       int32               `xml:"samplingRate,attr"       json:"samplingRate"`
+	BitDepth           int32               `xml:"bitDepth,attr"           json:"bitDepth"`
+	Moods              Array[string]       `xml:"moods"                   json:"moods"`
+	Artists            Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
+	DisplayArtist      string              `xml:"displayArtist,attr"      json:"displayArtist"`
+	AlbumArtists       Array[ArtistID3Ref] `xml:"albumArtists"            json:"albumArtists"`
+	DisplayAlbumArtist string              `xml:"displayAlbumArtist,attr" json:"displayAlbumArtist"`
+	Contributors       Array[Contributor]  `xml:"contributors"            json:"contributors"`
+	DisplayComposer    string              `xml:"displayComposer,attr"    json:"displayComposer"`
+	ExplicitStatus     string              `xml:"explicitStatus,attr"     json:"explicitStatus"`
 }
 
 type Songs struct {
@@ -208,6 +218,13 @@ type Directory struct {
 	*/
 }
 
+// ArtistID3Ref is a reference to an artist, a simplified version of ArtistID3. This is used to resolve the
+// documentation conflict in OpenSubsonic: https://github.com/opensubsonic/open-subsonic-api/discussions/120
+type ArtistID3Ref struct {
+	Id   string `xml:"id,attr"   json:"id"`
+	Name string `xml:"name,attr" json:"name"`
+}
+
 type ArtistID3 struct {
 	Id             string     `xml:"id,attr"                            json:"id"`
 	Name           string     `xml:"name,attr"                          json:"name"`
@@ -218,8 +235,9 @@ type ArtistID3 struct {
 	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
 
 	// OpenSubsonic extensions
-	MusicBrainzId string `xml:"musicBrainzId,attr" json:"musicBrainzId"`
-	SortName      string `xml:"sortName,attr"      json:"sortName"`
+	MusicBrainzId string        `xml:"musicBrainzId,attr" json:"musicBrainzId"`
+	SortName      string        `xml:"sortName,attr"      json:"sortName"`
+	Roles         Array[string] `xml:"roles"              json:"roles"`
 }
 
 type AlbumID3 struct {
@@ -237,15 +255,21 @@ type AlbumID3 struct {
 	Genre     string     `xml:"genre,attr,omitempty"               json:"genre,omitempty"`
 
 	// OpenSubsonic extensions
-	Played              *time.Time `xml:"played,attr,omitempty" json:"played,omitempty"`
-	UserRating          int32      `xml:"userRating,attr"       json:"userRating"`
-	Genres              ItemGenres `xml:"genres"                json:"genres"`
-	MusicBrainzId       string     `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
-	IsCompilation       bool       `xml:"isCompilation,attr"    json:"isCompilation"`
-	SortName            string     `xml:"sortName,attr"         json:"sortName"`
-	DiscTitles          DiscTitles `xml:"discTitles"            json:"discTitles"`
-	OriginalReleaseDate ItemDate   `xml:"originalReleaseDate"   json:"originalReleaseDate"`
-	ReleaseDate         ItemDate   `xml:"releaseDate"           json:"releaseDate"`
+	Played              *time.Time          `xml:"played,attr,omitempty" json:"played,omitempty"`
+	UserRating          int32               `xml:"userRating,attr"       json:"userRating"`
+	Genres              Array[ItemGenre]    `xml:"genres"                json:"genres"`
+	MusicBrainzId       string              `xml:"musicBrainzId,attr"    json:"musicBrainzId"`
+	IsCompilation       bool                `xml:"isCompilation,attr"    json:"isCompilation"`
+	SortName            string              `xml:"sortName,attr"         json:"sortName"`
+	DiscTitles          Array[DiscTitle]    `xml:"discTitles"            json:"discTitles"`
+	OriginalReleaseDate ItemDate            `xml:"originalReleaseDate"   json:"originalReleaseDate"`
+	ReleaseDate         ItemDate            `xml:"releaseDate"           json:"releaseDate"`
+	ReleaseTypes        Array[string]       `xml:"releaseTypes"          json:"releaseTypes"`
+	RecordLabels        Array[RecordLabel]  `xml:"recordLabels"          json:"recordLabels"`
+	Moods               Array[string]       `xml:"moods"                 json:"moods"`
+	Artists             Array[ArtistID3Ref] `xml:"artists"               json:"artists"`
+	DisplayArtist       string              `xml:"displayArtist,attr"    json:"displayArtist"`
+	ExplicitStatus      string              `xml:"explicitStatus,attr"        json:"explicitStatus"`
 }
 
 type ArtistWithAlbumsID3 struct {
@@ -497,13 +521,6 @@ type ItemGenre struct {
 	Name string `xml:"name,attr" json:"name"`
 }
 
-// ItemGenres holds a list of genres (OpenSubsonic). If it is null, it must be marshalled as an empty array.
-type ItemGenres []ItemGenre
-
-func (i ItemGenres) MarshalJSON() ([]byte, error) {
-	return marshalJSONArray(i)
-}
-
 type ReplayGain struct {
 	TrackGain    float64 `xml:"trackGain,omitempty,attr"    json:"trackGain,omitempty"`
 	AlbumGain    float64 `xml:"albumGain,omitempty,attr"    json:"albumGain,omitempty"`
@@ -518,10 +535,27 @@ type DiscTitle struct {
 	Title string `xml:"title,attr" json:"title"`
 }
 
-type DiscTitles []DiscTitle
+type ItemDate struct {
+	Year  int32 `xml:"year,attr,omitempty" json:"year,omitempty"`
+	Month int32 `xml:"month,attr,omitempty" json:"month,omitempty"`
+	Day   int32 `xml:"day,attr,omitempty" json:"day,omitempty"`
+}
 
-func (d DiscTitles) MarshalJSON() ([]byte, error) {
-	return marshalJSONArray(d)
+type RecordLabel struct {
+	Name string `xml:"name,attr" json:"name"`
+}
+
+type Contributor struct {
+	Role    string       `xml:"role,attr" json:"role"`
+	SubRole string       `xml:"subRole,attr,omitempty" json:"subRole,omitempty"`
+	Artist  ArtistID3Ref `xml:"artist" json:"artist"`
+}
+
+// Array is a generic type for marshalling slices to JSON. It is used to avoid marshalling empty slices as null.
+type Array[T any] []T
+
+func (a Array[T]) MarshalJSON() ([]byte, error) {
+	return marshalJSONArray(a)
 }
 
 // marshalJSONArray marshals a slice of any type to JSON. If the slice is empty, it is marshalled as an
@@ -530,12 +564,5 @@ func marshalJSONArray[T any](v []T) ([]byte, error) {
 	if len(v) == 0 {
 		return json.Marshal([]T{})
 	}
-	a := v
-	return json.Marshal(a)
-}
-
-type ItemDate struct {
-	Year  int32 `xml:"year,attr,omitempty" json:"year,omitempty"`
-	Month int32 `xml:"month,attr,omitempty" json:"month,omitempty"`
-	Day   int32 `xml:"day,attr,omitempty" json:"day,omitempty"`
+	return json.Marshal(v)
 }

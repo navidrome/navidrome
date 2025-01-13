@@ -23,6 +23,7 @@ import {
 } from '../common'
 import config from '../config'
 import { DraggableTypes } from '../consts'
+import clsx from 'clsx'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -40,6 +41,9 @@ const useStyles = makeStyles({
       },
     },
   },
+  missingRow: {
+    opacity: 0.3,
+  },
   tableCell: {
     width: '17.5%',
   },
@@ -52,7 +56,8 @@ const useStyles = makeStyles({
 })
 
 const AlbumDatagridRow = (props) => {
-  const { record } = props
+  const { record, className } = props
+  const classes = useStyles()
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
@@ -61,7 +66,14 @@ const AlbumDatagridRow = (props) => {
     }),
     [record],
   )
-  return <DatagridRow ref={dragAlbumRef} {...props} />
+  const computedClasses = clsx(
+    className,
+    classes.row,
+    record.missing && classes.missingRow,
+  )
+  return (
+    <DatagridRow ref={dragAlbumRef} {...props} className={computedClasses} />
+  )
 }
 
 const AlbumDatagridBody = (props) => (
