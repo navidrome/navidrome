@@ -22,8 +22,8 @@ type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
 
-	ID          string `structs:"id" json:"id" hash:"ignore"`
-	PID         string `structs:"pid"  json:"pid" hash:"ignore"`
+	ID          string `structs:"id"  json:"id" hash:"ignore"`
+	PID         string `structs:"pid" json:"-" hash:"ignore"`
 	LibraryID   int    `structs:"library_id" json:"libraryId" hash:"ignore"`
 	LibraryPath string `structs:"-" json:"-" hash:"-"`
 	FolderID    string `structs:"folder_id" json:"folderId" hash:"ignore"`
