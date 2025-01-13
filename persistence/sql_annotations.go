@@ -105,7 +105,10 @@ func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
 	if prevID == newID || prevID == "" || newID == "" {
 		return nil
 	}
-	upd := Update(annotationTable).Where(r.annId(prevID)).Set("item_id", newID)
+	upd := Update(annotationTable).Where(And{
+		Eq{annotationTable + ".item_type": r.tableName},
+		Eq{annotationTable + ".item_id": prevID},
+	}).Set("item_id", newID)
 	_, err := r.executeSQL(upd)
 	return err
 }

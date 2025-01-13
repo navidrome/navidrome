@@ -172,7 +172,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	// Wait for the scan to finish, sending progress events to all connected clients
 	scanWarnings, scanError := s.trackProgress(ctx, progress)
 	for _, w := range scanWarnings {
-		log.Warn(ctx, "Scan warning: %s", w)
+		log.Warn(ctx, fmt.Sprintf("Scan warning: %s", w))
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {

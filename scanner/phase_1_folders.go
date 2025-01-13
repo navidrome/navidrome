@@ -214,7 +214,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			info, err := af.Info()
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
-				p.state.sendWarning(err.Error())
+				p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
 				return entry, nil
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
@@ -232,7 +232,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		err = p.loadTagsFromFiles(entry, filesToImport)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error loading tags from files. Skipping", "folder", entry.path, err)
-			p.state.sendWarning(err.Error())
+			p.state.sendWarning(fmt.Sprintf("Error loading tags from files in %s: %v", entry.path, err))
 			return entry, nil
 		}
 
@@ -401,7 +401,8 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 		return nil
 	}
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
-		return fmt.Errorf("reassigning annotations from %s to %s: %w", prevID, a.ID, err)
+		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, err)
+		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s: %v", prevID, a.ID, err))
 	}
 	// Don't keep track of this mapping anymore
 	delete(idMap, a.ID)
