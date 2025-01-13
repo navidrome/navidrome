@@ -66,6 +66,7 @@ var _ = Describe("listenBrainzAgent", func() {
 						"RecordingMBID":           Equal(track.MbzRecordingID),
 						"ReleaseMBID":             Equal(track.MbzAlbumID),
 						"ReleaseGroupMBID":        Equal(track.MbzReleaseGroupID),
+						"ArtistNames":             ConsistOf("Artist 1", "Artist 2"),
 						"ArtistMBIDs":             ConsistOf("mbz-111", "mbz-222"),
 						"DurationMs":              Equal(142200),
 					}),

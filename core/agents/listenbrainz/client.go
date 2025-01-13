@@ -76,8 +76,9 @@ type additionalInfo struct {
 	SubmissionClient        string   `json:"submission_client,omitempty"`
 	SubmissionClientVersion string   `json:"submission_client_version,omitempty"`
 	TrackNumber             int      `json:"tracknumber,omitempty"`
-	RecordingMBID           string   `json:"recording_mbid,omitempty"`
+	ArtistNames             []string `json:"artist_names,omitempty"`
 	ArtistMBIDs             []string `json:"artist_mbids,omitempty"`
+	RecordingMBID           string   `json:"recording_mbid,omitempty"`
 	ReleaseMBID             string   `json:"release_mbid,omitempty"`
 	ReleaseGroupMBID        string   `json:"release_group_mbid,omitempty"`
 	DurationMs              int      `json:"duration_ms,omitempty"`
