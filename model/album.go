@@ -129,10 +129,13 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+	Search(q string, offset int, size int) (Albums, error)
+
+	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error
 	TouchByMissingFolder() (int64, error)
 	GetTouchedAlbums(libID int) (AlbumCursor, error)
 	RefreshAnnotations() (int64, error)
-	Search(q string, offset int, size int) (Albums, error)
+
 	AnnotatedRepository
 }

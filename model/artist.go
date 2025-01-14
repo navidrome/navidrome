@@ -78,7 +78,10 @@ type ArtistRepository interface {
 	GetAll(options ...QueryOptions) (Artists, error)
 	Search(q string, offset int, size int) (Artists, error)
 	GetIndex() (ArtistIndexes, error)
+
+	// The following methods are used exclusively by the scanner:
 	RefreshAnnotations() (int64, error)
 	RefreshStats() (int64, error)
+
 	AnnotatedRepository
 }

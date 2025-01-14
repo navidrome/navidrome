@@ -3,12 +3,8 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -196,58 +192,8 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 	return res.toModels(), nil
 }
 
-func cleanPath(path string) string {
-	path = filepath.Clean(path)
-	if !strings.HasSuffix(path, string(os.PathSeparator)) {
-		path += string(os.PathSeparator)
-	}
-	return path
-}
-
-func pathStartsWith(path string) Eq {
-	substr := fmt.Sprintf("substr(path, 1, %d)", utf8.RuneCountInString(path))
-	return Eq{substr: path}
-}
-
-// FindAllByPath only return mediafiles that are direct children of requested path
-func (r *mediaFileRepository) FindAllByPath(path string) (model.MediaFiles, error) {
-	// Query by path based on https://stackoverflow.com/a/13911906/653632
-	path = cleanPath(path)
-	pathLen := utf8.RuneCountInString(path)
-	sel0 := r.newSelect().Columns("media_file.*", fmt.Sprintf("substr(path, %d) AS item", pathLen+2)).
-		Where(pathStartsWith(path))
-	sel := r.newSelect().Columns("*", "item NOT GLOB '*"+string(os.PathSeparator)+"*' AS isLast").
-		Where(Eq{"isLast": 1}).FromSelect(sel0, "sel0")
-
-	res := dbMediaFiles{}
-	err := r.queryAll(sel, &res)
-	return res.toModels(), err
-}
-
-// FindPathsRecursively returns a list of all subfolders of basePath, recursively
-func (r *mediaFileRepository) FindPathsRecursively(basePath string) ([]string, error) {
-	path := cleanPath(basePath)
-	// Query based on https://stackoverflow.com/a/38330814/653632
-	sel := r.newSelect().Columns(fmt.Sprintf("distinct rtrim(path, replace(path, '%s', ''))", string(os.PathSeparator))).
-		Where(pathStartsWith(path))
-	var res []string
-	err := r.queryAllSlice(sel, &res)
-	return res, err
-}
-
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
-}
-
-// DeleteByPath delete from the DB all mediafiles that are direct children of path
-func (r *mediaFileRepository) DeleteByPath(basePath string) (int64, error) {
-	path := cleanPath(basePath)
-	pathLen := utf8.RuneCountInString(path)
-	del := Delete(r.tableName).
-		Where(And{pathStartsWith(path),
-			Eq{fmt.Sprintf("substr(path, %d) glob '*%s*'", pathLen+2, string(os.PathSeparator)): 0}})
-	log.Debug(r.ctx, "Deleting mediafiles by path", "path", path)
-	return r.executeSQL(del)
 }
 
 func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...*model.MediaFile) error {

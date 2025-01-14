@@ -311,15 +311,11 @@ type MediaFileRepository interface {
 	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	FindByPaths(paths []string) (MediaFiles, error)
+
+	// The following methods are used exclusively by the scanner:
 	MarkMissing(bool, ...*MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
 	GetMissingAndMatching(libId int) (MediaFileCursor, error)
-
-	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
-
-	FindAllByPath(path string) (MediaFiles, error)
-	FindPathsRecursively(basePath string) ([]string, error)
-	DeleteByPath(path string) (int64, error)
 
 	AnnotatedRepository
 	BookmarkableRepository
