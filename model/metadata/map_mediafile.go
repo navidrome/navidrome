@@ -141,7 +141,9 @@ func (md Metadata) mapLyrics() string {
 			log.Warn("Unexpected failure occurred when parsing lyrics", "file", md.filePath, err)
 			continue
 		}
-		lyricList = append(lyricList, *lyrics)
+		if !lyrics.IsEmpty() {
+			lyricList = append(lyricList, *lyrics)
+		}
 	}
 
 	res, err := json.Marshal(lyricList)
