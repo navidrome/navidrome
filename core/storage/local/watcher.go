@@ -21,7 +21,6 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 	output := make(chan string, 1)
 
 	started := make(chan struct{})
-	defer close(started)
 	go func() {
 		defer close(input)
 		defer close(output)
@@ -34,7 +33,7 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 			return
 		}
 		defer notify.Stop(input)
-		started <- struct{}{}
+		close(started) // signals the main goroutine we have started
 
 		for {
 			select {
@@ -51,7 +50,6 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 		}
 	}()
 	select {
-	case <-input: // In case of failure to start notify.Watch
 	case <-started:
 	case <-ctx.Done():
 	}
