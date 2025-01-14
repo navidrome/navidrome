@@ -140,7 +140,7 @@ var (
 var (
 	VariousArtists = "Various Artists"
 	// TODO This will be dynamic when using disambiguation
-	VariousArtistsID = id.NewHash(strings.ToLower(VariousArtists))
+	VariousArtistsID = "63sqASlAfjbGMuLP4JhnZU"
 	UnknownAlbum     = "[Unknown Album]"
 	UnknownArtist    = "[Unknown Artist]"
 	// TODO This will be dynamic when using disambiguation
