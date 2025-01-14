@@ -106,7 +106,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			updatedAt = f.ImagesUpdatedAt
 		}
 		for _, img := range f.ImageFiles {
-			imgFiles = append(imgFiles, filepath.Join(path, f.Name, img))
+			imgFiles = append(imgFiles, filepath.Join(path, img))
 		}
 	}
 	lcp := str.LongestCommonPrefix(paths)
