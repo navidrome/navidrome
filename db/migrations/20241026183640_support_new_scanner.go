@@ -86,6 +86,11 @@ drop table if exists album_genres;
 drop table if exists artist_genres;
 drop table if exists genre;
 
+-- Drop full_text indexes, as they are not being used by SQLite
+drop index if exists media_file_full_text;
+drop index if exists album_full_text;
+drop index if exists artist_full_text;
+
 -- Add PID config to properties
 insert into property (id, value) values ('PIDTrack', 'track_legacy') on conflict do nothing;
 insert into property (id, value) values ('PIDAlbum', 'album_legacy') on conflict do nothing;
