@@ -464,6 +464,18 @@ var _ = Describe("Participants", func() {
 				composers := participants[model.RoleComposer]
 				Expect(composers[0].Name).To(Equal("John Doe"))
 			})
+			It("should trim the values", func() {
+				mf = toMediaFile(map[string][]string{
+					"COMPOSER": {"John Doe / Someone Else / The Album Artist"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RoleComposer, HaveLen(3)))
+				composers := participants[model.RoleComposer]
+				Expect(composers[0].Name).To(Equal("John Doe"))
+				Expect(composers[1].Name).To(Equal("Someone Else"))
+				Expect(composers[2].Name).To(Equal("The Album Artist"))
+			})
 		})
 	})
 

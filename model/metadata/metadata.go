@@ -249,7 +249,7 @@ func split(values []string, sep []string) []string {
 			return consts.Zwsp
 		})
 	}
-	return strings.Split(tag, consts.Zwsp)
+	return slice.Map(strings.Split(tag, consts.Zwsp), strings.TrimSpace)
 }
 
 func removeDuplicatedAndEmpty(values []string) []string {
