@@ -176,6 +176,10 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	}
 	return func(yield func(model.MediaFile, error) bool) {
 		for m, err := range cursor {
+			if m.MediaFile == nil {
+				yield(model.MediaFile{}, fmt.Errorf("unexpected nil mediafile: %v", m))
+				return
+			}
 			if !yield(*m.MediaFile, err) || err != nil {
 				return
 			}

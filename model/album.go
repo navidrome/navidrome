@@ -136,6 +136,7 @@ type AlbumRepository interface {
 	TouchByMissingFolder() (int64, error)
 	GetTouchedAlbums(libID int) (AlbumCursor, error)
 	RefreshAnnotations() (int64, error)
+	CopyAttributes(fromID, toID string, columns ...string) error
 
 	AnnotatedRepository
 }

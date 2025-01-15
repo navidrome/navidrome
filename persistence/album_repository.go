@@ -210,6 +210,20 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res.toModels(), err
 }
 
+func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	var from dbx.NullStringMap
+	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	if err != nil {
+		return fmt.Errorf("getting album to copy fields from: %w", err)
+	}
+	to := make(map[string]interface{})
+	for _, col := range columns {
+		to[col] = from[col]
+	}
+	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
+	return err
+}
+
 // Touch flags an album as being scanned by the scanner, but not necessarily updated.
 // This is used for when missing tracks are detected for an album during scan.
 func (r *albumRepository) Touch(ids ...string) error {
@@ -257,6 +271,10 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 	}
 	return func(yield func(model.Album, error) bool) {
 		for a, err := range cursor {
+			if a.Album == nil {
+				yield(model.Album{}, fmt.Errorf("unexpected nil album: %v", a))
+				return
+			}
 			if !yield(*a.Album, err) || err != nil {
 				return
 			}

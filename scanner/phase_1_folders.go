@@ -395,7 +395,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	if err := repo.Put(a); err != nil {
 		return fmt.Errorf("persisting album %s: %w", a.ID, err)
 	}
-	// Reassign annotation to new album id
+	// Reassign annotation from previous album to new album
 	prevID, ok := idMap[a.ID]
 	if !ok {
 		return nil
@@ -403,6 +403,14 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s: %v", prevID, a.ID, err))
+	}
+	// Keep created_at field from previous instance of the album
+	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
+		// Silently ignore when the previous album is not found
+		if !errors.Is(err, model.ErrNotFound) {
+			log.Warn(p.ctx, "Scanner: Could not copy fields", "from", prevID, "to", a.ID, err)
+			p.state.sendWarning(fmt.Sprintf("Could not copy fields from %s to %s: %v", prevID, a.ID, err))
+		}
 	}
 	// Don't keep track of this mapping anymore
 	delete(idMap, a.ID)
