@@ -28,7 +28,7 @@ const parseAndReplaceArtists = (
   let result = []
   let lastIndex = 0
 
-  albumArtists.forEach((artist) => {
+  albumArtists?.forEach((artist) => {
     const index = displayAlbumArtist.indexOf(artist.name, lastIndex)
     if (index !== -1) {
       // Add text before the artist name
