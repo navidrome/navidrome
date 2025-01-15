@@ -25,6 +25,7 @@ types:
   .m3u: audio/x-mpegurl 
   .pls: audio/x-scpls 
   .dsf: audio/x-dsf
+  .dff: audio/x-dff
   .wv: audio/x-wavpack 
   .wvp: audio/x-wavpack 
   .tak: audio/tak 
@@ -45,6 +46,7 @@ lossless:
   - .ape
   - .shn
   - .dsf
+  - .dff
   - .wv
   - .wvp
   - .tak
