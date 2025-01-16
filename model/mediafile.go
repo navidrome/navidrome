@@ -308,7 +308,6 @@ type MediaFileRepository interface {
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
-	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	FindByPaths(paths []string) (MediaFiles, error)
 
@@ -319,4 +318,5 @@ type MediaFileRepository interface {
 
 	AnnotatedRepository
 	BookmarkableRepository
+	SearchableRepository[MediaFiles]
 }

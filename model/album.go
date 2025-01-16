@@ -129,7 +129,6 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
-	Search(q string, offset int, size int) (Albums, error)
 
 	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error
@@ -139,4 +138,5 @@ type AlbumRepository interface {
 	CopyAttributes(fromID, toID string, columns ...string) error
 
 	AnnotatedRepository
+	SearchableRepository[Albums]
 }
