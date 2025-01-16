@@ -68,6 +68,7 @@ const ArtistFilter = (props) => {
     })
     return acc
   }, [])
+  roles?.sort((a, b) => a.name.localeCompare(b.name))
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
