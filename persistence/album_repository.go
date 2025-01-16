@@ -315,9 +315,9 @@ func (r *albumRepository) purgeEmpty() error {
 	return nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
+func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool) (model.Albums, error) {
 	var res dbAlbums
-	err := r.doSearch(q, offset, size, &res, "name")
+	err := r.doSearch(q, offset, size, includeMissing, &res, "name")
 	if err != nil {
 		return nil, err
 	}

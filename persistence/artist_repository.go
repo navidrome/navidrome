@@ -325,9 +325,9 @@ where id <> ''; -- always true, to avoid warnings`)
 	return r.executeSQL(query)
 }
 
-func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
+func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
 	var dba dbArtists
-	err := r.doSearch(q, offset, size, &dba, "name")
+	err := r.doSearch(q, offset, size, includeMissing, &dba, "name")
 	if err != nil {
 		return nil, err
 	}
