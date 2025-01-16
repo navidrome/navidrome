@@ -210,7 +210,7 @@ var _ = Describe("ArtistRepository", func() {
 				m := make(map[string]any)
 				err := dba.PostMapArgs(m)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(m).To(HaveKeyWithValue("similar_artists", []byte("[]")))
+				Expect(m).To(HaveKeyWithValue("similar_artists", "[]"))
 			})
 
 			It("maps similar artists and full text correctly", func() {
@@ -221,7 +221,7 @@ var _ = Describe("ArtistRepository", func() {
 				m := make(map[string]any)
 				err := dba.PostMapArgs(m)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(m).To(HaveKeyWithValue("similar_artists", []byte(`[{"id":"2","name":"AC/DC"},{"name":"Test;With:Sep,Chars"}]`)))
+				Expect(m).To(HaveKeyWithValue("similar_artists", `[{"id":"2","name":"AC/DC"},{"name":"Test;With:Sep,Chars"}]`))
 				Expect(m).To(HaveKeyWithValue("full_text", " eddie halen van"))
 			})
 
