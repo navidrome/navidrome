@@ -204,8 +204,15 @@ func (r *artistRepository) getIndexKey(a model.Artist) string {
 }
 
 // TODO Cache the index (recalculate when there are changes to the DB)
-func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	artists, err := r.GetAll(model.QueryOptions{Sort: "name"})
+func (r *artistRepository) GetIndex(roles ...model.Role) (model.ArtistIndexes, error) {
+	options := model.QueryOptions{Sort: "name"}
+	if len(roles) > 0 {
+		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
+			return roleFilter("role", r)
+		})
+		options.Filters = And(roleFilters)
+	}
+	artists, err := r.GetAll(options)
 	if err != nil {
 		return nil, err
 	}

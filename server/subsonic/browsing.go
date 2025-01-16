@@ -38,7 +38,7 @@ func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Ti
 
 	var indexes model.ArtistIndexes
 	if lib.LastScanAt.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex()
+		indexes, err = api.ds.Artist(ctx).GetIndex(model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
