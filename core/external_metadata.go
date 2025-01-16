@@ -391,7 +391,10 @@ func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents
 func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
 	if mbid != "" {
 		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.Eq{"mbz_recording_id": mbid},
+			Filters: squirrel.And{
+				squirrel.Eq{"mbz_recording_id": mbid},
+				squirrel.Eq{"missing": false},
+			},
 		})
 		if err == nil && len(mfs) > 0 {
 			return &mfs[0], nil
@@ -405,6 +408,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 				squirrel.Eq{"album_artist_id": artistID},
 			},
 			squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
+			squirrel.Eq{"missing": false},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc ",
 		Max:  1,
@@ -466,6 +470,7 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.Arti
 	artist.SimilarArtists = sa
 }
 
+// TODO: Optimize to avoid multiple queries
 func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agents.Artist, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
 	var notPresent []string

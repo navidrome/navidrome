@@ -270,7 +270,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 			return fmt.Errorf("%w: playlist '%s'", model.ErrNotFound, playlistID)
 		}
 		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistID, true)
+			pls, err = repo.GetWithTracks(playlistID, true, false)
 			pls.RemoveTracks(idxToRemove)
 			pls.AddTracks(idsToAdd)
 		} else {

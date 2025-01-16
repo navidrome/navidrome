@@ -146,7 +146,7 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
-func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool) (*model.Playlist, error) {
+func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*model.Playlist, error) {
 	pls, err := r.Get(id)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,9 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool)
 	if refreshSmartPlaylist {
 		r.refreshSmartPlaylist(pls)
 	}
-	tracks, err := r.loadTracks(Select().From("playlist_tracks").OrderBy("playlist_tracks.id"), id)
+	tracks, err := r.loadTracks(Select().From("playlist_tracks").
+		Where(Eq{"missing": false}).
+		OrderBy("playlist_tracks.id"), id)
 	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err

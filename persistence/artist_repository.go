@@ -80,7 +80,8 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	for _, s := range a.Artist.SimilarArtists {
 		sa = append(sa, dbSimilarArtist{ID: s.ID, Name: s.Name})
 	}
-	m["similar_artists"], _ = json.Marshal(sa)
+	similarArtists, _ := json.Marshal(sa)
+	m["similar_artists"] = string(similarArtists)
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
