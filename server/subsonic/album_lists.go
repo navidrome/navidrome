@@ -111,12 +111,12 @@ func (api *Router) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*respo
 
 func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	options := filter.ByStarred()
-	artists, err := api.ds.Artist(ctx).GetAll(options)
+	artists, err := api.ds.Artist(ctx).GetAll(filter.ArtistsByStarred())
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
+	options := filter.ByStarred()
 	albums, err := api.ds.Album(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", err)
