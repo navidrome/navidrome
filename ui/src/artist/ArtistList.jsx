@@ -1,14 +1,13 @@
 import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
-  AutocompleteInput,
   Datagrid,
   DatagridBody,
   DatagridRow,
   Filter,
   NumberField,
-  ReferenceInput,
   SearchInput,
+  SelectInput,
   TextField,
   useTranslate,
 } from 'react-admin'
@@ -31,6 +30,7 @@ import {
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import { DraggableTypes } from '../consts'
+import en from '../i18n/en.json'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -58,9 +58,20 @@ const useStyles = makeStyles({
 
 const ArtistFilter = (props) => {
   const translate = useTranslate()
+  const rolesObj = en?.resources?.artist?.roles
+  const roles = Object.keys(rolesObj).reduce((acc, role) => {
+    acc.push({
+      id: role,
+      name: translate(`resources.artist.roles.${role}`, {
+        smart_count: 2,
+      }),
+    })
+    return acc
+  }, [])
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
+      <SelectInput source="role" choices={roles} alwaysOn />
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
@@ -161,6 +172,7 @@ const ArtistList = (props) => {
         exporter={false}
         bulkActionButtons={false}
         filters={<ArtistFilter />}
+        filterDefaultValues={{ role: 'albumartist' }}
         actions={<ArtistListActions />}
       >
         <ArtistListView {...props} />
