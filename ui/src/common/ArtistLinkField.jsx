@@ -36,10 +36,14 @@ const parseAndReplaceArtists = (
         result.push(displayAlbumArtist.slice(lastIndex, index))
       }
       // Add the artist link
-      result.push(<ALink artist={artist} className={className}></ALink>)
+      result.push(<ALink artist={artist} className={className} />)
       lastIndex = index + artist.name.length
     }
   })
+
+  if (lastIndex === 0) {
+    return []
+  }
 
   // Add any remaining text after the last artist name
   if (lastIndex < displayAlbumArtist.length) {
@@ -67,11 +71,14 @@ export const ArtistLinkField = ({ record, className, source }) => {
   }
 
   if (role === 'albumartist') {
-    return (
-      <div className={className}>
-        {parseAndReplaceArtists(record[source], artists, className)}
-      </div>
+    const artistsLinks = parseAndReplaceArtists(
+      record[source],
+      artists,
+      className,
     )
+    if (artistsLinks.length > 0) {
+      return <div className={className}>{artistsLinks}</div>
+    }
   }
 
   // Dedupe artists, only shows the first 3
