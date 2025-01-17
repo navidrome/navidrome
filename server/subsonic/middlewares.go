@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"cmp"
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -88,6 +89,10 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 			if username := server.UsernameFromReverseProxyHeader(r); username != "" {
 				usr, err = ds.User(ctx).FindByUsername(username)
+				if errors.Is(err, context.Canceled) {
+					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "reverse-proxy", "username", username, "remoteAddr", r.RemoteAddr, err)
+					return
+				}
 				if errors.Is(err, model.ErrNotFound) {
 					log.Warn(ctx, "API: Invalid login", "auth", "reverse-proxy", "username", username, "remoteAddr", r.RemoteAddr, err)
 				} else if err != nil {
@@ -102,6 +107,10 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				jwt, _ := p.String("jwt")
 
 				usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
+				if errors.Is(err, context.Canceled) {
+					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+					return
+				}
 				if errors.Is(err, model.ErrNotFound) {
 					log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 				} else if err != nil {
