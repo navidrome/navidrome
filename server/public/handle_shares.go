@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -38,6 +39,26 @@ func (pub *Router) handleShares(w http.ResponseWriter, r *http.Request) {
 	server.IndexWithShare(pub.ds, ui.BuildAssets(), s)(w, r)
 }
 
+func (pub *Router) handleM3U(w http.ResponseWriter, r *http.Request) {
+	id, err := req.Params(r).String(":id")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// If it is not, consider it a share ID
+	s, err := pub.share.Load(r.Context(), id)
+	if err != nil {
+		checkShareError(r.Context(), w, err, id)
+		return
+	}
+
+	s = pub.mapShareToM3U(r, *s)
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "audio/x-mpegurl")
+	_, _ = w.Write([]byte(s.ToM3U8()))
+}
+
 func checkShareError(ctx context.Context, w http.ResponseWriter, err error, id string) {
 	switch {
 	case errors.Is(err, model.ErrExpired):
@@ -60,6 +81,14 @@ func (pub *Router) mapShareInfo(r *http.Request, s model.Share) *model.Share {
 	s.ImageURL = ImageURL(r, s.CoverArtID(), consts.UICoverArtSize)
 	for i := range s.Tracks {
 		s.Tracks[i].ID = encodeMediafileShare(s, s.Tracks[i].ID)
+	}
+	return &s
+}
+
+func (pub *Router) mapShareToM3U(r *http.Request, s model.Share) *model.Share {
+	for i := range s.Tracks {
+		id := encodeMediafileShare(s, s.Tracks[i].ID)
+		s.Tracks[i].Path = publicURL(r, path.Join(consts.URLPathPublic, "s", id), nil)
 	}
 	return &s
 }

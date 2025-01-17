@@ -1,6 +1,8 @@
 package model
 
 import (
+	"cmp"
+	"fmt"
 	"strings"
 	"time"
 
@@ -47,6 +49,19 @@ func (s Share) CoverArtID() ArtworkID {
 }
 
 type Shares []Share
+
+// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
+// https://docs.fileformat.com/audio/m3u/#extended-m3u
+func (s Share) ToM3U8() string {
+	buf := strings.Builder{}
+	buf.WriteString("#EXTM3U\n")
+	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", cmp.Or(s.Description, s.ID)))
+	for _, t := range s.Tracks {
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		buf.WriteString(t.Path + "\n")
+	}
+	return buf.String()
+}
 
 type ShareRepository interface {
 	Exists(id string) (bool, error)
