@@ -79,7 +79,7 @@ type ArtistRepository interface {
 	GetIndex(roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:
-	RefreshAnnotations() (int64, error)
+	RefreshPlayCounts() (int64, error)
 	RefreshStats() (int64, error)
 
 	AnnotatedRepository

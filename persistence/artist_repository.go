@@ -238,19 +238,19 @@ func (r *artistRepository) purgeEmpty() error {
 	return nil
 }
 
-// RefreshAnnotations updates the play count and last play date annotations for all artists, based
+// RefreshPlayCounts updates the play count and last play date annotations for all artists, based
 // on the media files associated with them.
-func (r *artistRepository) RefreshAnnotations() (int64, error) {
+func (r *artistRepository) RefreshPlayCounts() (int64, error) {
 	query := rawSQL(`
 with play_counts as (
     select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
     join annotation on item_id = media_file.id
     left join json_tree(participants, '$.artist') as jt
-    where atom is not null
+    where atom is not null and key = 'id'
     group by user_id, atom
 )
-insert into annotation (item_id, item_type, play_count, play_date, user_id)
+insert into annotation (user_id, item_id, item_type, play_count, play_date)
 select user_id, artist_id, 'artist', total_play_count, last_play_date
 from play_counts
 where total_play_count > 0
