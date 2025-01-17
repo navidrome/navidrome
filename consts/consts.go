@@ -94,8 +94,8 @@ const (
 )
 
 const (
-	DefaultAlbumPID = "album_legacy"
-	// BFR? DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
+	//DefaultAlbumPID = "album_legacy"
+	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
 	PIDAlbumKey     = "PIDAlbum"
 	PIDTrackKey     = "PIDTrack"
