@@ -50,7 +50,7 @@ func SanitizeFieldForSorting(originalValue string) string {
 
 func SanitizeFieldForSortingNoArticle(originalValue string) string {
 	v := strings.TrimSpace(sanitize.Accents(originalValue))
-	return Clear(strings.ToLower(RemoveArticle(v)))
+	return Clear(strings.ToLower(strings.TrimSpace(RemoveArticle(v))))
 }
 
 func RemoveArticle(name string) string {
