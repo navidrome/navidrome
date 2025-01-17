@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/andybalholm/cascadia"
 	"github.com/navidrome/navidrome/conf"
@@ -31,12 +32,13 @@ var ignoredBiographies = []string{
 }
 
 type lastfmAgent struct {
-	ds          model.DataStore
-	sessionKeys *agents.SessionKeys
-	apiKey      string
-	secret      string
-	lang        string
-	client      *client
+	ds           model.DataStore
+	sessionKeys  *agents.SessionKeys
+	apiKey       string
+	secret       string
+	lang         string
+	client       *client
+	getInfoMutex sync.Mutex
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
@@ -184,11 +186,12 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 var artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
+	log.Debug(ctx, "Getting artist images from Last.fm", "name", name, "mbid", mbid)
 	a, err := l.callArtistGetInfo(ctx, name, mbid)
 	if err != nil {
 		return nil, fmt.Errorf("get artist info: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodGet, a.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.URL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create artist image request: %w", err)
 	}
@@ -241,13 +244,16 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 }
 
 func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {
+	l.getInfoMutex.Lock()
+	defer l.getInfoMutex.Unlock()
+
 	a, err := l.client.artistGetInfo(ctx, name, mbid)
 	var lfErr *lastFMError
 	isLastFMError := errors.As(err, &lfErr)
 
 	if mbid != "" && ((err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Debug(ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
-		return l.callArtistGetInfo(ctx, name, "")
+		a, err = l.client.artistGetInfo(ctx, name, mbid)
 	}
 
 	if err != nil {
