@@ -13,12 +13,8 @@ import (
 // Use this in migrations that need to communicate something important (breaking changes, forced reindexes, etc...)
 func notice(tx *sql.Tx, msg string) {
 	if isDBInitialized(tx) {
-		fmt.Printf(`
-*************************************************************************************
-NOTICE: %s
-*************************************************************************************
-
-`, msg)
+		line := strings.Repeat("*", len(msg)+8)
+		fmt.Printf("\n%s\nNOTICE: %s\n%s\n\n", line, msg, line)
 	}
 }
 
