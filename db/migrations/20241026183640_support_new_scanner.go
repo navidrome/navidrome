@@ -80,6 +80,14 @@ create table if not exists tag(
 		unique (tag_name, tag_value)
 );
 
+create table if not exists tag_counts (
+	tag_id varchar not null primary key
+		references tag (id)
+			on delete cascade,
+	media_file_count integer default 0 not null,
+  	album_count integer default 0 not null
+);
+
 -- Genres are now stored in the tag table
 drop table if exists media_file_genres;
 drop table if exists album_genres;

@@ -12,9 +12,11 @@ import (
 )
 
 type Tag struct {
-	ID       string
-	TagName  TagName
-	TagValue string
+	ID             string
+	TagName        TagName
+	TagValue       string
+	AlbumCount     int
+	MediaFileCount int
 }
 
 type TagList []Tag
@@ -148,6 +150,7 @@ func (t Tags) Add(name TagName, v string) {
 
 type TagRepository interface {
 	Add(...Tag) error
+	UpdateCounts() error
 }
 
 type TagName string

@@ -88,8 +88,8 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
 		s.runGC(ctx, &state),
 
-		// Refresh artist stats and roles
-		s.runRefreshArtistStats(ctx, &state),
+		// Refresh artist and tags stats
+		s.runRefreshStats(ctx, &state),
 
 		// Update last_scan_completed_at for all libraries
 		s.runUpdateLibraries(ctx, libs),
@@ -128,20 +128,28 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 	}
 }
 
-func (s *scannerImpl) runRefreshArtistStats(ctx context.Context, state *scanState) func() error {
+func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) func() error {
 	return func() error {
+		if !state.changesDetected.Load() {
+			log.Debug(ctx, "Scanner: No changes detected, skipping refreshing stats")
+			return nil
+		}
 		return s.ds.WithTx(func(tx model.DataStore) error {
-			if state.changesDetected.Load() {
-				start := time.Now()
-				stats, err := tx.Artist(ctx).RefreshStats()
-				if err != nil {
-					log.Error(ctx, "Scanner: Error refreshing artists stats", err)
-					return fmt.Errorf("refreshing artists stats: %w", err)
-				}
-				log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
-			} else {
-				log.Debug(ctx, "Scanner: No changes detected, skipping refreshing stats")
+			start := time.Now()
+			stats, err := tx.Artist(ctx).RefreshStats()
+			if err != nil {
+				log.Error(ctx, "Scanner: Error refreshing artists stats", err)
+				return fmt.Errorf("refreshing artists stats: %w", err)
 			}
+			log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
+
+			start = time.Now()
+			err = tx.Tag(ctx).UpdateCounts()
+			if err != nil {
+				log.Error(ctx, "Scanner: Error updating tag counts", err)
+				return fmt.Errorf("updating tag counts: %w", err)
+			}
+			log.Debug(ctx, "Scanner: Updated tag counts", "elapsed", time.Since(start))
 			return nil
 		})
 	}
