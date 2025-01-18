@@ -108,26 +108,22 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 	} else if _, err := filesRegex.Groups(o.Path); err == nil {
 		return cds.doFiles(ret, o.Path, host)
 	} else if matchResults, err := artistRegex.Groups(o.Path); err == nil {
-		log.Debug(fmt.Sprintf("Artist MATCH: %+v", matchResults))
 		if matchResults["ArtistAlbumTrack"] != "" {
 			//TODO
 			log.Debug("Artist Get a track ")
 		} else if matchResults["ArtistAlbum"] != "" {
-			log.Debug("Artist Get an album ")
-			album := matchResults["ArtistAlbum"]
-
-			albumResponse, _ := cds.ds.Album(cds.ctx).Get(album)
-			log.Debug(fmt.Sprintf("Album Returned: %+v for %s", albumResponse, album))
 			basePath := path.Join("/Music/Artists", matchResults["Artist"], matchResults["ArtistAlbum"])
 
-			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": albumResponse.ID}})
+			//albumResponse, _ := cds.ds.Album(cds.ctx).Get(matchResults["ArtistAlbum"])
+			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
 
 			return cds.doMediaFiles(tracks, basePath, ret, host)
 
 		} else if matchResults["Artist"] != "" {
-			log.Debug(fmt.Sprintf("Artist Get an Artist: %s", matchResults["Artist"]))
-			allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
 			basePath := path.Join("/Music/Artists", matchResults["Artist"])
+
+			allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
+		
 			return cds.doAlbums(allAlbumsForThisArtist, basePath, ret, host)
 
 		} else {
@@ -149,18 +145,15 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	} else if matchResults, err := albumRegex.Groups(o.Path); err == nil {
-		log.Debug("Album MATCH")
 		if matchResults["AlbumTrack"] != "" {
-			log.Debug("AlbumTrack MATCH")
-			//TODO
+			log.Debug("TODO AlbumTrack MATCH")
 		} else if matchResults["AlbumTitle"] != "" {
-			log.Debug("AlbumTitle MATCH")
-			albumResponse, _ := cds.ds.Album(cds.ctx).Get(matchResults["AlbumTitle"])
 			basePath := path.Join("/Music/Albums", matchResults["AlbumTitle"])
-			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": albumResponse.ID}})
+
+			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
+
 			return cds.doMediaFiles(tracks, basePath, ret, host)
 		} else {
-			log.Debug("albumRegex else MATCH")
 			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
 			if err != nil {
 				fmt.Printf("Error retrieving Indexes: %+v", err)
@@ -177,18 +170,14 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		}
 	} else if matchResults, err := genresRegex.Groups(o.Path); err == nil {
 		log.Debug("Genre MATCH")
-		if _, exists := matchResults["GenreTrack"]; exists {
-			log.Debug("GenreTrack MATCH")
-			//TODO
-		} else if _, exists := matchResults["GenreArtist"]; exists {
-			log.Debug("GenreArtist MATCH")
-			//TODO
-		} else if genre, exists := matchResults["Genre"]; exists {
-			log.Debug("Genre only MATCH")
-			x, xerr := cds.ds.Album(cds.ctx).Get(genre)
-			log.Debug(fmt.Sprintf("Genre: %+v", x), xerr)
+		if matchResults["GenreTrack"] != "" {
+			log.Debug("TODO GenreTrack MATCH")
+		} else if matchResults["GenreArtist"] != "" {
+			log.Debug("TODO GenreArtist MATCH")
+		} else if matchResults["Genre"] != "" {
+			//x, xerr := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{}})
+			log.Debug("TODO Get albums for Genre X")
 		} else {
-			log.Debug("Genre else MATCH")
 			indexes, err := cds.ds.Genre(cds.ctx).GetAll()
 			if err != nil {
 				fmt.Printf("Error retrieving Indexes: %+v", err)
@@ -204,16 +193,16 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	} else if matchResults, err := recentRegex.Groups(o.Path); err == nil {
-		log.Debug("recent MATCH")
+		log.Debug("TODO recent MATCH")
 		fmt.Printf("%+v", matchResults)
 	} else if matchResults, err := playlistRegex.Groups(o.Path); err == nil {
-		log.Debug("Playlist MATCH")
-		if _, exists := matchResults["PlaylistTrack"]; exists {
-			log.Debug("PlaylistTrack MATCH")
-		} else if playlist, exists := matchResults["Playlist"]; exists {
+		log.Debug("TODO Playlist MATCH")
+		if matchResults["PlaylistTrack"] != "" {
+			log.Debug("TODO PlaylistTrack MATCH")
+		} else if matchResults["Playlist"] != "" {
 			log.Debug("Playlist only MATCH")
-			x, xerr := cds.ds.Playlist(cds.ctx).Get(playlist)
-			log.Debug(fmt.Sprintf("Playlist: %+v", x), xerr)
+			x, xerr := cds.ds.Playlist(cds.ctx).Get(matchResults["Playlist"])
+			log.Debug(fmt.Sprintf("TODO Playlist: %+v", x), xerr)
 		} else {
 			log.Debug("Playlist else MATCH")
 			indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
@@ -231,26 +220,6 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	}
-	/*
-	   		deluan
-	    —
-	   Today at 18:30
-	   ds.Album(ctx).GetAll(FIlter: Eq{"albumArtistId": artistID})
-	   Or something like that 😛
-	   Mintsoft
-	    —
-	   Today at 18:30
-	   For other examples, how do I know what the right magic string for "albumArtistId" is?
-	   kgarner7
-	    —
-	   Today at 18:31
-	   album_artist_id
-	   Look at the model structs names
-	   deluan
-	    —
-	   Today at 18:31
-	   This is a limitation of Squirrel. It is string based. YOu have to use the name of the columns in the DB
-	*/
 	return
 }
 
@@ -269,6 +238,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 
 func (cds *contentDirectoryService) doAlbum(album *model.Album, basepath string, ret []interface{}, host string) ([]interface{}, error) {
 	log.Debug(fmt.Sprintf("TODO: doAlbum Called with : '%+v', '%s'", album, basepath))
+	panic("doAlbum Called!")
 	return ret, nil
 }
 
