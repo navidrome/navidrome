@@ -29,6 +29,22 @@ type contentDirectoryService struct {
 	upnp.Eventing
 }
 
+var filesRegex *regroup.ReGroup
+var artistRegex *regroup.ReGroup
+var albumRegex *regroup.ReGroup
+var genresRegex *regroup.ReGroup
+var recentRegex *regroup.ReGroup
+var playlistRegex *regroup.ReGroup
+
+func init() {
+	filesRegex = regroup.MustCompile("\\/Music\\/Files[\\/]?((?P<Path>.+))?")
+	artistRegex = regroup.MustCompile("\\/Music\\/Artists[\\/]?(?P<Artist>[^\\/]+)?[\\/]?(?<ArtistAlbum>[^\\/]+)?[\\/]?(?<ArtistAlbumTrack>[^\\/]+)?")
+	albumRegex = regroup.MustCompile("\\/Music\\/Albums[\\/]?(?P<AlbumTitle>[^\\/]+)?[\\/]?(?<AlbumTrack>[^\\/]+)?")
+	genresRegex = regroup.MustCompile("\\/Music\\/Genres[\\/]?(?P<Genre>[^\\/]+)?[\\/]?(?P<GenreArtist>[^/]+)?[\\/]?(?P<GenreTrack>[^\\/]+)?")
+	recentRegex = regroup.MustCompile("\\/Music\\/Recently Added[\\/]?(?P<RecentTrack>[^\\/]+)?")
+	playlistRegex = regroup.MustCompile("\\/Music\\/Playlist[\\/]?(?P<Playlist>[^\\/]+)?[\\/]?(?P<PlaylistTrack>[^\\/]+)?")
+}
+
 func (cds *contentDirectoryService) updateIDString() string {
 	return fmt.Sprintf("%d", uint32(os.Getpid()))
 }
@@ -89,13 +105,6 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		ret = append(ret, cds.cdsObjectToUpnpavObject(newObject, true, host))
 		return ret, nil
 	}
-
-	filesRegex := regroup.MustCompile("\\/Music\\/Files[\\/]?((?P<Path>.+))?")
-	artistRegex := regroup.MustCompile("\\/Music\\/Artists[\\/]?(?P<Artist>[^\\/]+)?[\\/]?(?<ArtistAlbum>[^\\/]+)?[\\/]?(?<ArtistAlbumTrack>[^\\/]+)?")
-	albumRegex := regroup.MustCompile("\\/Music\\/Albums[\\/]?(?P<AlbumTitle>[^\\/]+)?[\\/]?(?<AlbumTrack>[^\\/]+)?")
-	genresRegex := regroup.MustCompile("\\/Music\\/Genres[\\/]?(?P<Genre>[^\\/]+)?[\\/]?(?P<GenreArtist>[^/]+)?[\\/]?(?P<GenreTrack>[^\\/]+)?")
-	recentRegex := regroup.MustCompile("\\/Music\\/Recently Added[\\/]?(?P<RecentTrack>[^\\/]+)?")
-	playlistRegex := regroup.MustCompile("\\/Music\\/Playlist[\\/]?(?P<Playlist>[^\\/]+)?[\\/]?(?P<PlaylistTrack>[^\\/]+)?")
 
 	if o.Path == "/Music" {
 		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
