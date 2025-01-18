@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/dlna/upnpav"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/oriser/regroup"
 )
 
 type contentDirectoryService struct {
@@ -89,91 +90,143 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		return ret, nil
 	}
 
-	pathComponents := strings.Split(o.Path, "/")
-	log.Debug(fmt.Sprintf("ReadContainer pathComponents %+v %d", pathComponents, len(pathComponents)))
+	filesRegex := regroup.MustCompile("\\/Music\\/Files[\\/]?((?P<Path>.+))?")
+	artistRegex := regroup.MustCompile("\\/Music\\/Artists[\\/]?(?P<Artist>[^\\/]+)?[\\/]?(?<ArtistAlbum>[^\\/]+)?[\\/]?(?<ArtistAlbumTrack>[^\\/]+)?")
+	albumRegex := regroup.MustCompile("\\/Music\\/Albums[\\/]?(?P<AlbumTitle>[^\\/]+)?[\\/]?(?<AlbumTrack>[^\\/]+)?")
+	genresRegex := regroup.MustCompile("\\/Music\\/Genres[\\/]?(?P<Genre>[^\\/]+)?[\\/]?(?P<GenreArtist>[^/]+)?[\\/]?(?P<GenreTrack>[^\\/]+)?")
+	recentRegex := regroup.MustCompile("\\/Music\\/Recently Added[\\/]?(?P<RecentTrack>[^\\/]+)?")
+	playlistRegex := regroup.MustCompile("\\/Music\\/Playlist[\\/]?(?P<Playlist>[^\\/]+)?[\\/]?(?P<PlaylistTrack>[^\\/]+)?")
 
-	//TODO: something other than this
-	switch len(pathComponents) {
-	case 2:
-		switch pathComponents[1] {
-		case "Music":
-			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
-			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host))
-			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host))
-			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host))
-			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host))
-			ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host))
+	if o.Path == "/Music" {
+		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host))
+		return ret, nil
+	} else if _, err := filesRegex.Groups(o.Path); err == nil {
+		return cds.doFiles(ret, o.Path, host)
+	} else if matchResults, err := artistRegex.Groups(o.Path); err == nil {
+		log.Debug(fmt.Sprintf("Artist MATCH: %+v", matchResults))
+		if matchResults["ArtistAlbumTrack"] != "" {
+			//TODO
+			log.Debug("Artist Get a track ")
+		} else if matchResults["ArtistAlbum"] != "" {
+			log.Debug("Artist Get an album ")
+			album := matchResults["ArtistAlbum"]
+
+			albumResponse, _ := cds.ds.Album(cds.ctx).Get(album)
+			log.Debug(fmt.Sprintf("Album Returned: %+v for %s", albumResponse, album))
+			basePath := path.Join("/Music/Artists", matchResults["Artist"], matchResults["ArtistAlbum"])
+			return cds.doAlbum(albumResponse, basePath, ret, host)
+
+		} else if matchResults["Artist"] != "" {
+			log.Debug(fmt.Sprintf("Artist Get an Artist: %s", matchResults["Artist"]))
+			allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
+			basePath := path.Join("/Music/Artists", matchResults["Artist"])
+			return cds.doAlbums(allAlbumsForThisArtist, basePath, ret, host)
+
+		} else {
+			indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for letterIndex := range indexes {
+				for artist := range indexes[letterIndex].Artists {
+					artistId := indexes[letterIndex].Artists[artist].ID
+					child := object{
+						Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
+						Id:   path.Join(o.Path, artistId),
+					}
+					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+				}
+			}
 			return ret, nil
 		}
-	case 3:
-		switch pathComponents[1] {
-		case "Music":
-			switch pathComponents[2] {
-			case "Files":
-				return cds.doFiles(ret, o.Path, host)
-			case "Artists":
-				indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
-				if err != nil {
-					fmt.Printf("Error retrieving Indexes: %+v", err)
-					return nil, err
-				}
-				for letterIndex := range indexes {
-					for artist := range indexes[letterIndex].Artists {
-						artistId := indexes[letterIndex].Artists[artist].ID
-						child := object{
-							Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
-							Id:   path.Join(o.Path, artistId),
-						}
-						ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-					}
-				}
-				return ret, nil
-			case "Albums":
-				indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
-				if err != nil {
-					fmt.Printf("Error retrieving Indexes: %+v", err)
-					return nil, err
-				}
-				for indexItem := range indexes {
-					child := object{
-						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id:   path.Join(o.Path, indexes[indexItem].ID),
-					}
-					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-				}
-				return ret, nil
-			case "Genres":
-				indexes, err := cds.ds.Genre(cds.ctx).GetAll()
-				if err != nil {
-					fmt.Printf("Error retrieving Indexes: %+v", err)
-					return nil, err
-				}
-				for indexItem := range indexes {
-					child := object{
-						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id:   path.Join(o.Path, indexes[indexItem].ID),
-					}
-					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-				}
-				return ret, nil
-			case "Playlists":
-				indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
-				if err != nil {
-					fmt.Printf("Error retrieving Indexes: %+v", err)
-					return nil, err
-				}
-				for indexItem := range indexes {
-					child := object{
-						Path: path.Join(o.Path, indexes[indexItem].Name),
-						Id:   path.Join(o.Path, indexes[indexItem].ID),
-					}
-					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-				}
-				return ret, nil
+	} else if matchResults, err := albumRegex.Groups(o.Path); err == nil {
+		log.Debug("Album MATCH")
+		if matchResults["AlbumTrack"] != "" {
+			log.Debug("AlbumTrack MATCH")
+			//TODO
+		} else if matchResults["AlbumTitle"] != "" {
+			log.Debug("AlbumTitle MATCH")
+			x, _ := cds.ds.Album(cds.ctx).Get(matchResults["AlbumTitle"])
+			basePath := "/Music/Albums"
+			return cds.doAlbum(x, basePath, ret, host)
+		} else {
+			log.Debug("albumRegex else MATCH")
+			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
 			}
+			for indexItem := range indexes {
+				child := object{
+					Path: path.Join(o.Path, indexes[indexItem].Name),
+					Id:   path.Join(o.Path, indexes[indexItem].ID),
+				}
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			}
+			return ret, nil
 		}
-	default:
-
+	} else if matchResults, err := genresRegex.Groups(o.Path); err == nil {
+		log.Debug("Genre MATCH")
+		if _, exists := matchResults["GenreTrack"]; exists {
+			log.Debug("GenreTrack MATCH")
+			//TODO
+		} else if _, exists := matchResults["GenreArtist"]; exists {
+			log.Debug("GenreArtist MATCH")
+			//TODO
+		} else if genre, exists := matchResults["Genre"]; exists {
+			log.Debug("Genre only MATCH")
+			x, xerr := cds.ds.Album(cds.ctx).Get(genre)
+			log.Debug(fmt.Sprintf("Genre: %+v", x), xerr)
+		} else {
+			log.Debug("Genre else MATCH")
+			indexes, err := cds.ds.Genre(cds.ctx).GetAll()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					Path: path.Join(o.Path, indexes[indexItem].Name),
+					Id:   path.Join(o.Path, indexes[indexItem].ID),
+				}
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			}
+			return ret, nil
+		}
+	} else if matchResults, err := recentRegex.Groups(o.Path); err == nil {
+		log.Debug("recent MATCH")
+		fmt.Printf("%+v",matchResults)
+	} else if matchResults, err := playlistRegex.Groups(o.Path); err == nil {
+		log.Debug("Playlist MATCH")
+		if _, exists := matchResults["PlaylistTrack"]; exists {
+			log.Debug("PlaylistTrack MATCH")
+		} else if playlist, exists := matchResults["Playlist"]; exists {
+			log.Debug("Playlist only MATCH")
+			x, xerr := cds.ds.Playlist(cds.ctx).Get(playlist)
+				log.Debug(fmt.Sprintf("Playlist: %+v", x), xerr)
+		} else {
+			log.Debug("Playlist else MATCH")
+			indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					Path: path.Join(o.Path, indexes[indexItem].Name),
+					Id:   path.Join(o.Path, indexes[indexItem].ID),
+				}
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			}
+			return ret, nil
+		}
+	}
 		/*
 		   		deluan
 		    —
@@ -194,39 +247,19 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		   Today at 18:31
 		   This is a limitation of Squirrel. It is string based. YOu have to use the name of the columns in the DB
 		*/
-		if len(pathComponents) >= 4 {
-			switch pathComponents[2] {
-			case "Files":
-				return cds.doFiles(ret, o.Path, host)
-			case "Artists":
-				allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": pathComponents[3]}})
-				return cds.doAlbums(allAlbumsForThisArtist, ret, host)
-			case "Albums":
-				x, _ := cds.ds.Album(cds.ctx).Get(pathComponents[3])
-				return cds.doAlbum(x, ret, host)
-			case "Genres":
-				x, xerr := cds.ds.Album(cds.ctx).Get(pathComponents[3])
-				log.Debug(fmt.Sprintf("Genre: %+v", x), xerr)
-			case "Playlists":
-				x, xerr := cds.ds.Playlist(cds.ctx).Get(pathComponents[3])
-				log.Debug(fmt.Sprintf("Playlist: %+v", x), xerr)
-			}
-		}
-	}
-
-	return
+		return
 }
 
-func (cds *contentDirectoryService) doAlbum(x *model.Album, ret []interface{}, host string) ([]interface{}, error) {
-	//TODO 
+func (cds *contentDirectoryService) doAlbum(album *model.Album, basepath string, ret []interface{}, host string) ([]interface{}, error) {
+	log.Debug(fmt.Sprintf("TODO: doAlbum Called with : '%+v', '%s'", album, basepath))
 	return ret, nil
 }
 
-func (cds *contentDirectoryService) doAlbums(albums model.Albums, ret []interface{}, host string) ([]interface{}, error) {
+func (cds *contentDirectoryService) doAlbums(albums model.Albums, basepath string, ret []interface{}, host string) ([]interface{}, error) {
 	for _, album := range albums {
 		child := object {
-			Path: path.Join("/Music/Albums", album.Name),
-			Id: album.ID,
+			Path: path.Join(basepath, album.Name),
+			Id: path.Join(basepath, album.ID),
 		}
 		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 	}
