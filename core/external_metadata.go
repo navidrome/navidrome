@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/random"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
 )
@@ -470,19 +471,36 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.Arti
 	artist.SimilarArtists = sa
 }
 
-// TODO: Optimize to avoid multiple queries
 func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agents.Artist, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
 	var notPresent []string
 
-	// First select artists that are present.
+	artistNames := slice.Map(similar, func(artist agents.Artist) string { return artist.Name })
+
+	// Query all artists at once
+	clauses := slice.Map(artistNames, func(name string) squirrel.Sqlizer {
+		return squirrel.Like{"artist.name": name}
+	})
+	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Or(clauses),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map for quick lookup
+	artistMap := make(map[string]model.Artist)
+	for _, artist := range artists {
+		artistMap[artist.Name] = artist
+	}
+
+	// Process the similar artists
 	for _, s := range similar {
-		sa, err := e.findArtistByName(ctx, s.Name)
-		if err != nil {
+		if artist, found := artistMap[s.Name]; found {
+			result = append(result, artist)
+		} else {
 			notPresent = append(notPresent, s.Name)
-			continue
 		}
-		result = append(result, sa.Artist)
 	}
 
 	// Then fill up with non-present artists
