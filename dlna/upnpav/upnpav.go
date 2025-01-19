@@ -50,9 +50,9 @@ type Object struct {
 	Album       string    `xml:"upnp:album,omitempty"`
 	Genre       string    `xml:"upnp:genre,omitempty"`
 	AlbumArtURI string    `xml:"upnp:albumArtURI,omitempty"`
-	Searchable  int       `xml:"searchable,attr"`
+	Searchable  int       `xml:"searchable,attr"`	//
+	OriginalTrackNumber int `xml:"originalTrackNumber,omitempty"`
 }
-
 // Timestamp wraps time.Time for formatting purposes
 type Timestamp struct {
 	time.Time
