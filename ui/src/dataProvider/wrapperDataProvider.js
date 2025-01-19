@@ -22,6 +22,8 @@ const mapResource = (resource, params) => {
       }
       return [`playlist/${plsId}/tracks`, params]
     }
+    case 'missing':
+      return ['song', params]
     case 'album':
     case 'song': {
       if (params.filter && !isAdmin()) {
