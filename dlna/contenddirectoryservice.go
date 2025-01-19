@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -256,10 +257,10 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 		}
 		title := track.Title
 		artist := track.Artist
-		//date := track.Date //TODO
 		album := track.Album
 		genre := track.Genre
 		trackNo := track.TrackNumber
+		trackDuration := strconv.FormatFloat(float64(track.Duration), 'f', -1, 64)
 
 		obj := upnpav.Object{
 			ID:         child.Id,
@@ -271,7 +272,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 		var mimeType = "audio/mp3" //TODO
 
 		obj.Class = "object.item.audioItem.musicTrack"
-		obj.Date = upnpav.Timestamp{Time: time.Now()}
+		obj.Date = upnpav.Timestamp{Time:time.Now()} //TODO
 		obj.Artist = artist
 		obj.Album = album
 		obj.Genre = genre
@@ -291,7 +292,8 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 				SupportRange: false,
 			}.String()),
-			Size: uint64(1048576), //TODO TRACKSIZE
+			Size: uint64(track.Size),
+			Duration: trackDuration,
 		})
 		ret = append(ret, item)
 	}
@@ -403,6 +405,7 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 				objs = objs[:browse.RequestedCount]
 			}
 			result, err := xml.Marshal(objs)
+			log.Debug(fmt.Sprintf("XMLResponse: '%s'", result))
 			if err != nil {
 				return nil, err
 			}
