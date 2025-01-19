@@ -11,7 +11,7 @@ import (
 const (
 	AppName = "navidrome"
 
-	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on"
+	DefaultDbPath                 = "navidrome.db?cache=shared&_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
 	InitialSetupFlagKey           = "InitialSetup"
 	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
 
@@ -51,8 +51,9 @@ const (
 
 	ServerReadHeaderTimeout = 3 * time.Second
 
-	ArtistInfoTimeToLive = 24 * time.Hour
-	AlbumInfoTimeToLive  = 7 * 24 * time.Hour
+	ArtistInfoTimeToLive      = 24 * time.Hour
+	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
+	UpdateLastAccessFrequency = time.Minute
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"

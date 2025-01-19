@@ -302,9 +302,8 @@ func URLParamsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-var userAccessLimiter idLimiterMap
-
 func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http.Handler {
+	userAccessLimiter := idLimiterMap{Interval: consts.UpdateLastAccessFrequency}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -333,10 +332,15 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 // idLimiterMap is a thread-safe map that stores rate.Sometimes limiters for each user ID.
 // Used to make the map type and thread safe.
 type idLimiterMap struct {
-	sm sync.Map
+	Interval time.Duration
+	sm       sync.Map
 }
 
 func (m *idLimiterMap) Do(id string, f func()) {
-	limiter, _ := m.sm.LoadOrStore(id, &rate.Sometimes{Interval: 2 * time.Second})
+	interval := cmp.Or(
+		m.Interval,
+		time.Minute, // Default every 1 minute
+	)
+	limiter, _ := m.sm.LoadOrStore(id, &rate.Sometimes{Interval: interval})
 	limiter.(*rate.Sometimes).Do(f)
 }
