@@ -71,7 +71,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 	// otherwise fall back to working out what it is from the file path.
 	var mimeType = "audio/mp3" //TODO
 
-	obj.Class = "object.item.audioItem"
+	obj.Class = "object.item.audioItem.musicTrack"
 	obj.Date = upnpav.Timestamp{Time: time.Now()}
 
 	item := upnpav.Item{
@@ -237,16 +237,16 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 	/*
   <item id="1$7$455$1" parentID="1$7$455" restricted="1" refID="64$15A$0$1">
     <dc:title>Love Takes Time</dc:title>
-    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
     <dc:description/>
     <dc:creator>Mariah Carey</dc:creator>
     <dc:date>2000-01-01</dc:date>
-    <upnp:artist>Mariah Carey</upnp:artist>
+    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+	<upnp:artist>Mariah Carey</upnp:artist>
     <upnp:album>#1's</upnp:album>
     <upnp:genre>Pop</upnp:genre>
     <upnp:originalTrackNumber>2</upnp:originalTrackNumber>
-    <res size="8861869" duration="0:04:36.160" bitrate="256000" sampleFrequency="44100" nrAudioChannels="2" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://172.30.0.4:8200/MediaItems/17759.mp3</res>
     <upnp:albumArtURI xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" dlna:profileID="JPEG_TN">http://172.30.0.4:8200/AlbumArt/24179-17759.jpg</upnp:albumArtURI>
+	<res size="8861869" duration="0:04:36.160" bitrate="256000" sampleFrequency="44100" nrAudioChannels="2" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://172.30.0.4:8200/MediaItems/17759.mp3</res>
   </item>
 	*/
 	for _, track := range tracks {
@@ -254,7 +254,46 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			Path: path.Join(basePath, track.Title),
 			Id: path.Join(basePath, track.ID),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, false, host))
+		title := track.Title
+		artist := track.Artist
+		//date := track.Date //TODO
+		album := track.Album
+		genre := track.Genre
+		trackNo := track.TrackNumber
+
+		obj := upnpav.Object{
+			ID:         child.Id,
+			Restricted: 1,
+			ParentID:   child.ParentID(),
+			Title:      title,
+		}
+
+		var mimeType = "audio/mp3" //TODO
+
+		obj.Class = "object.item.audioItem.musicTrack"
+		obj.Date = upnpav.Timestamp{Time: time.Now()}
+		obj.Artist = artist
+		obj.Album = album
+		obj.Genre = genre
+		obj.OriginalTrackNumber = trackNo
+
+		item := upnpav.Item{
+			Object: obj,
+			Res:    make([]upnpav.Resource, 0, 1),
+		}
+
+		item.Res = append(item.Res, upnpav.Resource{
+			URL: (&url.URL{
+				Scheme: "http",
+				Host:   host,
+				Path:   path.Join(resPath, child.Path),
+			}).String(),
+			ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
+				SupportRange: false,
+			}.String()),
+			Size: uint64(1048576), //TODO TRACKSIZE
+		})
+		ret = append(ret, item)
 	}
 
 	return ret, nil
