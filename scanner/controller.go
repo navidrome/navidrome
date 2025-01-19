@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -37,13 +38,15 @@ type StatusInfo struct {
 	FolderCount uint32
 }
 
-func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker, pls core.Playlists) Scanner {
+func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
+	pls core.Playlists, m metrics.Metrics) Scanner {
 	c := &controller{
 		rootCtx: rootCtx,
 		ds:      ds,
 		cw:      cw,
 		broker:  broker,
 		pls:     pls,
+		metrics: m,
 	}
 	if !conf.Server.DevExternalScanner {
 		c.limiter = P(rate.Sometimes{Interval: conf.Server.DevActivityPanelUpdateRate})
@@ -55,12 +58,13 @@ func (s *controller) getScanner() scanner {
 	if conf.Server.DevExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
+	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls, metrics: s.metrics}
 }
 
-// CallScan starts a in-process scan of the music library.
+// CallScan starts an in-process scan of the music library.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists,
+	metrics metrics.Metrics, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -71,7 +75,7 @@ func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, p
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls}
+		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls, metrics: metrics}
 		scanner.scanAll(ctx, fullScan, progress)
 	}()
 	return progress, nil
@@ -98,6 +102,7 @@ type controller struct {
 	ds              model.DataStore
 	cw              artwork.CacheWarmer
 	broker          events.Broker
+	metrics         metrics.Metrics
 	pls             core.Playlists
 	limiter         *rate.Sometimes
 	count           atomic.Uint32
@@ -167,7 +172,7 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	// Wait for the scan to finish, sending progress events to all connected clients
 	scanWarnings, scanError := s.trackProgress(ctx, progress)
 	for _, w := range scanWarnings {
-		log.Warn(ctx, "Scan warning: %s", w)
+		log.Warn(ctx, fmt.Sprintf("Scan warning: %s", w))
 	}
 	// If changes were detected, send a refresh event to all clients
 	if s.changesDetected {

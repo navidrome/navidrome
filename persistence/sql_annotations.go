@@ -101,6 +101,18 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	return err
 }
 
+func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
+	if prevID == newID || prevID == "" || newID == "" {
+		return nil
+	}
+	upd := Update(annotationTable).Where(And{
+		Eq{annotationTable + ".item_type": r.tableName},
+		Eq{annotationTable + ".item_id": prevID},
+	}).Set("item_id", newID)
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r sqlRepository) cleanAnnotations() error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)

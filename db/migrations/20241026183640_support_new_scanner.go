@@ -80,11 +80,28 @@ create table if not exists tag(
 		unique (tag_name, tag_value)
 );
 
+create table if not exists tag_counts (
+	tag_id varchar not null primary key
+		references tag (id)
+			on delete cascade,
+	media_file_count integer default 0 not null,
+  	album_count integer default 0 not null
+);
+
 -- Genres are now stored in the tag table
 drop table if exists media_file_genres;
 drop table if exists album_genres;
 drop table if exists artist_genres;
 drop table if exists genre;
+
+-- Drop full_text indexes, as they are not being used by SQLite
+drop index if exists media_file_full_text;
+drop index if exists album_full_text;
+drop index if exists artist_full_text;
+
+-- Add PID config to properties
+insert into property (id, value) values ('PIDTrack', 'track_legacy') on conflict do nothing;
+insert into property (id, value) values ('PIDAlbum', 'album_legacy') on conflict do nothing;
 `),
 		func() error {
 			notice(tx, "A full scan will be triggered to populate the new tables. This may take a while.")
@@ -265,22 +282,6 @@ create index if not exists album_mbz_release_group_id
 `)
 }
 
-// BFR: Convert ZWSP separated strings to jsonb:
-/*
-WITH RECURSIVE split(value, rest) AS (
-    SELECT '', my_column || ';' FROM (select "abc;def" as my_column)
-    UNION ALL
-    SELECT
-        substr(rest, 0, instr(rest, ';')),
-        substr(rest, instr(rest, ';') + 1)
-    FROM split
-    WHERE rest <> ''
-)
-SELECT json_group_array(value) AS json_array
-FROM split
-WHERE value <> '';
-*/
-
 func upSupportNewScanner_UpdateTableArtist(_ context.Context, execute execStmtFunc, addColumn addColumnFunc) execFunc {
 	return func() error {
 		return chain.RunSequentially(
@@ -293,11 +294,18 @@ drop index if exists artist_size;
 alter table artist
 	drop column size;
 alter table artist
+	add column missing boolean default false not null;
+alter table artist
 	add column stats jsonb default '{}' not null;
+alter table artist
+	drop column similar_artists;
+alter table artist
+	add column similar_artists jsonb default '[]' not null;
 `),
 			addColumn("artist", "updated_at", "datetime", "current_time", "(select min(album.updated_at) from album where album_artist_id = artist.id)"),
 			addColumn("artist", "created_at", "datetime", "current_time", "(select min(album.created_at) from album where album_artist_id = artist.id)"),
 			execute(`create index if not exists artist_updated_at on artist (updated_at);`),
+			execute(`update artist set external_info_updated_at = '0000-00-00 00:00:00';`),
 		)
 	}
 }

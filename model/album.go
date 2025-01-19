@@ -3,6 +3,7 @@ package model
 import (
 	"iter"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/gohugoio/hashstructure"
@@ -83,25 +84,23 @@ func (a Album) Equals(other Album) bool {
 	return hash1 == hash2
 }
 
-// This is the list of tags that are not "first-class citizens" in the Album struct, but are
-// still stored in the database.
-var albumLevelTags = map[TagName]struct{}{
-	TagGenre:          {},
-	TagMood:           {},
-	TagMedia:          {},
-	TagGrouping:       {},
-	TagAlbumVersion:   {},
-	TagRecordLabel:    {},
-	TagReleaseCountry: {},
-	TagReleaseType:    {},
-	TagTotalTracks:    {},
-	TagTotalDiscs:     {},
-}
+// Tags marked as `album: true` in the mappings.yml file are not "first-class citizens" in
+// the Album struct, but are still stored in the album table, in the `tags` column.
+var albumLevelTags = sync.OnceValue(func() map[TagName]struct{} {
+	tags := make(map[TagName]struct{})
+	m := TagMappings()
+	for t, conf := range m {
+		if conf.Album {
+			tags[t] = struct{}{}
+		}
+	}
+	return tags
+})
 
 func (a *Album) SetTags(tags TagList) {
 	a.Tags = tags.GroupByFrequency()
 	for k := range a.Tags {
-		if _, ok := albumLevelTags[k]; !ok {
+		if _, ok := albumLevelTags()[k]; !ok {
 			delete(a.Tags, k)
 		}
 	}
@@ -130,10 +129,14 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
+
+	// The following methods are used exclusively by the scanner:
 	Touch(ids ...string) error
 	TouchByMissingFolder() (int64, error)
 	GetTouchedAlbums(libID int) (AlbumCursor, error)
-	RefreshAnnotations() (int64, error)
-	Search(q string, offset int, size int) (Albums, error)
+	RefreshPlayCounts() (int64, error)
+	CopyAttributes(fromID, toID string, columns ...string) error
+
 	AnnotatedRepository
+	SearchableRepository[Albums]
 }

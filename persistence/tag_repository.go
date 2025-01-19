@@ -39,6 +39,30 @@ func (r *tagRepository) Add(tags ...model.Tag) error {
 	return nil
 }
 
+// UpdateCounts updates the album_count and media_file_count columns in the tag_counts table.
+// Only genres are being updated for now.
+func (r *tagRepository) UpdateCounts() error {
+	template := `
+insert into tag_counts (tag_id, %[1]s_count)
+select jt.value, count(distinct (%[1]s.id))
+from %[1]s
+         join json_tree(tags, '$.genre') as jt
+where atom is not null
+  and key = 'id'
+group by jt.value
+on conflict (tag_id) do update
+    set %[1]s_count = excluded.%[1]s_count;
+`
+	for _, table := range []string{"album", "media_file"} {
+		query := rawSQL(fmt.Sprintf(template, table))
+		_, err := r.executeSQL(query)
+		if err != nil {
+			return fmt.Errorf("updating %s tag counts: %w", table, err)
+		}
+	}
+	return nil
+}
+
 func (r *tagRepository) purgeNonUsed() error {
 	del := Delete(r.tableName).Where(`	not exists 
 (select 1 from media_file left join json_tree(media_file.tags, '$') where atom is not null and key = 'id')

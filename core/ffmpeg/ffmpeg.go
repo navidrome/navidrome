@@ -39,6 +39,10 @@ func (e *ffmpeg) Transcode(ctx context.Context, command, path string, maxBitRate
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
+	// First make sure the file exists
+	if err := fileExists(path); err != nil {
+		return nil, err
+	}
 	args := createFFmpegCommand(command, path, maxBitRate, offset)
 	return e.start(ctx, args)
 }
@@ -47,8 +51,23 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 	if _, err := ffmpegCmd(); err != nil {
 		return nil, err
 	}
+	// First make sure the file exists
+	if err := fileExists(path); err != nil {
+		return nil, err
+	}
 	args := createFFmpegCommand(extractImageCmd, path, 0, 0)
 	return e.start(ctx, args)
+}
+
+func fileExists(path string) error {
+	s, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if s.IsDir() {
+		return fmt.Errorf("'%s' is a directory", path)
+	}
+	return nil
 }
 
 func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {

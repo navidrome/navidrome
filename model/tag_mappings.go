@@ -1,4 +1,4 @@
-package metadata
+package model
 
 import (
 	"maps"
@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/resources"
 	"gopkg.in/yaml.v3"
@@ -16,17 +15,18 @@ import (
 type mappingsConf struct {
 	Main       tagMappings `yaml:"main"`
 	Additional tagMappings `yaml:"additional"`
-	Roles      tagConf     `yaml:"roles"`
-	Artists    tagConf     `yaml:"artists"`
+	Roles      TagConf     `yaml:"roles"`
+	Artists    TagConf     `yaml:"artists"`
 }
 
-type tagMappings map[model.TagName]tagConf
+type tagMappings map[TagName]TagConf
 
-type tagConf struct {
+type TagConf struct {
 	Aliases   []string `yaml:"aliases"`
 	Type      TagType  `yaml:"type"`
 	MaxLength int      `yaml:"maxLength"`
 	Split     []string `yaml:"split"`
+	Album     bool     `yaml:"album"`
 }
 
 type TagType string
@@ -39,22 +39,27 @@ const (
 	TagTypePair    TagType = "pair"
 )
 
-func mappings() map[model.TagName]tagConf {
+func TagMappings() map[TagName]TagConf {
 	mappings, _ := parseMappings()
 	return mappings
 }
 
-func rolesConf() tagConf {
+func TagRolesConf() TagConf {
 	_, conf := parseMappings()
 	return conf.Roles
 }
 
-func artistsConf() tagConf {
+func TagArtistsConf() TagConf {
 	_, conf := parseMappings()
 	return conf.Artists
 }
 
-var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, mappingsConf) {
+func TagMainMappings() map[TagName]TagConf {
+	_, mappings := parseMappings()
+	return mappings.Main
+}
+
+var parseMappings = sync.OnceValues(func() (map[TagName]TagConf, mappingsConf) {
 	mappingsFile, err := resources.FS().Open("mappings.yaml")
 	if err != nil {
 		log.Error("Error opening mappings.yaml", err)
@@ -68,13 +73,26 @@ var parseMappings = sync.OnceValues(func() (map[model.TagName]tagConf, mappingsC
 	if len(mappings.Main) == 0 {
 		log.Error("No tag mappings found in mappings.yaml, check the format")
 	}
+
 	normalized := tagMappings{}
 	collectTags(mappings.Main, normalized)
+	mappings.Main = normalized
+
+	normalized = tagMappings{}
 	collectTags(mappings.Additional, normalized)
+	mappings.Additional = normalized
+
+	// Merge main and additional mappings, log an error if a tag is found in both
+	for k, v := range mappings.Main {
+		if _, ok := mappings.Additional[k]; ok {
+			log.Error("Tag found in both main and additional mappings", "tag", k)
+		}
+		normalized[k] = v
+	}
 	return normalized, mappings
 })
 
-func collectTags(tagMappings, normalized map[model.TagName]tagConf) {
+func collectTags(tagMappings, normalized map[TagName]TagConf) {
 	for k, v := range tagMappings {
 		var aliases []string
 		for _, val := range v.Aliases {
@@ -84,12 +102,13 @@ func collectTags(tagMappings, normalized map[model.TagName]tagConf) {
 			log.Error("Tag splitting only available for string types", "tag", k, "split", v.Split, "type", v.Type)
 			v.Split = nil
 		}
-		normalized[k.ToLower()] = tagConf{Aliases: aliases, Type: v.Type, MaxLength: v.MaxLength, Split: v.Split}
+		v.Aliases = aliases
+		normalized[k.ToLower()] = v
 	}
 }
 
 func tagNames() []string {
-	mappings := mappings()
+	mappings := TagMappings()
 	names := make([]string, 0, len(mappings))
 	for k := range mappings {
 		names = append(names, string(k))
@@ -100,6 +119,6 @@ func tagNames() []string {
 // This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be used in
 // smart playlists
 func init() {
-	criteria.AddRoles(slices.Collect(maps.Keys(model.AllRoles)))
+	criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
 	criteria.AddTagNames(tagNames())
 }

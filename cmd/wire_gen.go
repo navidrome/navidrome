@@ -76,7 +76,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
-	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
 	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer)
@@ -120,6 +121,13 @@ func CreateInsights() metrics.Insights {
 	return insights
 }
 
+func CreatePrometheus() metrics.Metrics {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	return metricsMetrics
+}
+
 func CreateScanner(ctx context.Context) scanner.Scanner {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
@@ -131,7 +139,8 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
-	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	return scannerScanner
 }
 
@@ -146,7 +155,8 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
-	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	watcher := scanner.NewWatcher(dataStore, scannerScanner)
 	return watcher
 }
@@ -160,4 +170,4 @@ func GetPlaybackServer() playback.PlaybackServer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, metrics.NewPrometheusInstance, db.Db)

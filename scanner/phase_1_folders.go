@@ -111,10 +111,11 @@ func (j *scanJob) popLastUpdate(folderID string) time.Time {
 // The phaseFolders struct implements the phase interface, providing methods to produce
 // folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
-	jobs  []*scanJob
-	ds    model.DataStore
-	ctx   context.Context
-	state *scanState
+	jobs             []*scanJob
+	ds               model.DataStore
+	ctx              context.Context
+	state            *scanState
+	prevAlbumPIDConf string
 }
 
 func (p *phaseFolders) description() string {
@@ -123,6 +124,12 @@ func (p *phaseFolders) description() string {
 
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
+		var err error
+		p.prevAlbumPIDConf, err = p.ds.Property(p.ctx).DefaultGet(consts.PIDAlbumKey, "")
+		if err != nil {
+			return fmt.Errorf("getting album PID conf: %w", err)
+		}
+
 		// TODO Parallelize multiple job when we have multiple libraries
 		var total int64
 		var totalChanged int64
@@ -207,7 +214,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			info, err := af.Info()
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
-				p.state.sendWarning(err.Error())
+				p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
 				return entry, nil
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
@@ -222,15 +229,15 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 
 	// Load metadata from files that need to be imported
 	if len(filesToImport) > 0 {
-		entry.tracks, entry.tags, err = p.loadTagsFromFiles(entry, filesToImport)
+		err = p.loadTagsFromFiles(entry, filesToImport)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error loading tags from files. Skipping", "folder", entry.path, err)
-			p.state.sendWarning(err.Error())
+			p.state.sendWarning(fmt.Sprintf("Error loading tags from files in %s: %v", entry.path, err))
 			return entry, nil
 		}
 
-		entry.albums = p.createAlbumsFromMediaFiles(entry)
-		entry.artists = p.createArtistsFromMediaFiles(entry)
+		p.createAlbumsFromMediaFiles(entry)
+		p.createArtistsFromMediaFiles(entry)
 	}
 
 	return entry, nil
@@ -238,14 +245,16 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 
 const filesBatchSize = 200
 
-func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) (model.MediaFiles, model.TagList, error) {
+// loadTagsFromFiles reads metadata from the files in the given list and populates
+// the entry's tracks and tags with the results.
+func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) error {
 	tracks := make([]model.MediaFile, 0, len(toImport))
 	uniqueTags := make(map[string]model.Tag, len(toImport))
 	for chunk := range slices.Chunk(toImport, filesBatchSize) {
 		allInfo, err := entry.job.fs.ReadTags(chunk...)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error extracting metadata from files. Skipping", "folder", entry.path, err)
-			return nil, nil, err
+			return err
 		}
 		for filePath, info := range allInfo {
 			md := metadata.New(filePath, info)
@@ -254,12 +263,21 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) 
 			for _, t := range track.Tags.FlattenAll() {
 				uniqueTags[t.ID] = t
 			}
+
+			// Keep track of any album ID changes, to reassign annotations later
+			prevID := md.AlbumID(track, p.prevAlbumPIDConf)
+			if prevID != track.AlbumID {
+				entry.albumIDMap[track.AlbumID] = prevID
+			}
 		}
 	}
-	return tracks, slices.Collect(maps.Values(uniqueTags)), nil
+	entry.tracks = tracks
+	entry.tags = slices.Collect(maps.Values(uniqueTags))
+	return nil
 }
 
-func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albums {
+// createAlbumsFromMediaFiles groups the entry's tracks by album ID and creates albums
+func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) {
 	grouped := slice.Group(entry.tracks, func(mf model.MediaFile) string { return mf.AlbumID })
 	albums := make(model.Albums, 0, len(grouped))
 	for _, group := range grouped {
@@ -267,15 +285,16 @@ func (p *phaseFolders) createAlbumsFromMediaFiles(entry *folderEntry) model.Albu
 		album := songs.ToAlbum()
 		albums = append(albums, album)
 	}
-	return albums
+	entry.albums = albums
 }
 
-func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) model.Artists {
+// createArtistsFromMediaFiles creates artists from the entry's tracks
+func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) {
 	participants := make(model.Participants, len(entry.tracks)*3) // preallocate ~3 artists per track
 	for _, track := range entry.tracks {
 		participants.Merge(track.Participants)
 	}
-	return participants.AllArtists()
+	entry.artists = participants.AllArtists()
 }
 
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
@@ -325,7 +344,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
-			err = albumRepo.Put(&entry.albums[i])
+			err = p.persistAlbum(albumRepo, &entry.albums[i], entry.albumIDMap)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
@@ -369,6 +388,33 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
 	}
 	return entry, err
+}
+
+// persistAlbum persists the given album to the database, and reassigns annotations from the previous album ID
+func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, idMap map[string]string) error {
+	if err := repo.Put(a); err != nil {
+		return fmt.Errorf("persisting album %s: %w", a.ID, err)
+	}
+	// Reassign annotation from previous album to new album
+	prevID, ok := idMap[a.ID]
+	if !ok {
+		return nil
+	}
+	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
+		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, err)
+		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s: %v", prevID, a.ID, err))
+	}
+	// Keep created_at field from previous instance of the album
+	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
+		// Silently ignore when the previous album is not found
+		if !errors.Is(err, model.ErrNotFound) {
+			log.Warn(p.ctx, "Scanner: Could not copy fields", "from", prevID, "to", a.ID, err)
+			p.state.sendWarning(fmt.Sprintf("Could not copy fields from %s to %s: %v", prevID, a.ID, err))
+		}
+	}
+	// Don't keep track of this mapping anymore
+	delete(idMap, a.ID)
+	return nil
 }
 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {

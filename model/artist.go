@@ -76,9 +76,12 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
-	Search(q string, offset int, size int) (Artists, error)
-	GetIndex() (ArtistIndexes, error)
-	RefreshAnnotations() (int64, error)
+	GetIndex(roles ...Role) (ArtistIndexes, error)
+
+	// The following methods are used exclusively by the scanner:
+	RefreshPlayCounts() (int64, error)
 	RefreshStats() (int64, error)
+
 	AnnotatedRepository
+	SearchableRepository[Artists]
 }

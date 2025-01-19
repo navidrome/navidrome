@@ -43,6 +43,7 @@ func (w *watcher) Run(ctx context.Context) error {
 
 	trigger := time.NewTimer(w.triggerWait)
 	trigger.Stop()
+	waiting := false
 	for {
 		select {
 		case <-trigger.C:
@@ -57,6 +58,7 @@ func (w *watcher) Run(ctx context.Context) error {
 				trigger.Reset(w.triggerWait * 3)
 				continue
 			}
+			waiting = false
 			go func() {
 				_, err := w.scanner.ScanAll(ctx, false)
 				if err != nil {
@@ -68,6 +70,11 @@ func (w *watcher) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-watcherChan:
+			if !waiting {
+				log.Debug(ctx, "Watcher: Detected changes. Waiting for more changes before triggering scan")
+				waiting = true
+			}
+
 			trigger.Reset(w.triggerWait)
 		}
 	}
@@ -109,7 +116,7 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 				log.Trace(ctx, "Watcher: Ignoring change", "library", lib.ID, "path", path)
 				continue
 			}
-			log.Debug(ctx, "Watcher: Detected change", "library", lib.ID, "path", path)
+			log.Trace(ctx, "Watcher: Detected change", "library", lib.ID, "path", path)
 			watchChan <- struct{}{}
 		}
 	}

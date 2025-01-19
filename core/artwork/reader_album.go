@@ -45,7 +45,11 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 		rootFolder: core.AbsolutePath(ctx, artwork.ds, al.LibraryID, ""),
 	}
 	a.cacheKey.artID = artID
-	a.cacheKey.lastUpdate = al.UpdatedAt
+	if a.updatedAt != nil && a.updatedAt.After(al.UpdatedAt) {
+		a.cacheKey.lastUpdate = *a.updatedAt
+	} else {
+		a.cacheKey.lastUpdate = al.UpdatedAt
+	}
 	return a, nil
 }
 
@@ -106,7 +110,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			updatedAt = f.ImagesUpdatedAt
 		}
 		for _, img := range f.ImageFiles {
-			imgFiles = append(imgFiles, filepath.Join(path, f.Name, img))
+			imgFiles = append(imgFiles, filepath.Join(path, img))
 		}
 	}
 	lcp := str.LongestCommonPrefix(paths)

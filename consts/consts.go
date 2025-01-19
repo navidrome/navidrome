@@ -70,6 +70,12 @@ const (
 	Zwsp                    = string('\u200b')
 )
 
+// Prometheus options
+const (
+	PrometheusDefaultPath = "/metrics"
+	PrometheusAuthUser    = "navidrome"
+)
+
 // Cache options
 const (
 	TranscodingCacheDir             = "transcoding"
@@ -88,8 +94,11 @@ const (
 )
 
 const (
+	//DefaultAlbumPID = "album_legacy"
 	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
+	PIDAlbumKey     = "PIDAlbum"
+	PIDTrackKey     = "PIDTrack"
 )
 
 const (
@@ -131,7 +140,7 @@ var (
 var (
 	VariousArtists = "Various Artists"
 	// TODO This will be dynamic when using disambiguation
-	VariousArtistsID = id.NewHash(strings.ToLower(VariousArtists))
+	VariousArtistsID = "63sqASlAfjbGMuLP4JhnZU"
 	UnknownAlbum     = "[Unknown Album]"
 	UnknownArtist    = "[Unknown Artist]"
 	// TODO This will be dynamic when using disambiguation

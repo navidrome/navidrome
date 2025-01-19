@@ -146,7 +146,7 @@ func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
 	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
-func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool) (*model.Playlist, error) {
+func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*model.Playlist, error) {
 	pls, err := r.Get(id)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,9 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist bool)
 	if refreshSmartPlaylist {
 		r.refreshSmartPlaylist(pls)
 	}
-	tracks, err := r.loadTracks(Select().From("playlist_tracks").OrderBy("playlist_tracks.id"), id)
+	tracks, err := r.loadTracks(Select().From("playlist_tracks").
+		Where(Eq{"missing": false}).
+		OrderBy("playlist_tracks.id"), id)
 	if err != nil {
 		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
@@ -449,7 +451,7 @@ func (r *playlistRepository) removeOrphans() error {
 	var pls []struct{ Id, Name string }
 	err := r.queryAll(sel, &pls)
 	if err != nil {
-		return fmt.Errorf("error fetching playlists with orphan tracks: %w", err)
+		return fmt.Errorf("fetching playlists with orphan tracks: %w", err)
 	}
 
 	for _, pl := range pls {
@@ -460,13 +462,13 @@ func (r *playlistRepository) removeOrphans() error {
 		})
 		n, err := r.executeSQL(del)
 		if n == 0 || err != nil {
-			return fmt.Errorf("error deleting orphan tracks from playlist %s: %w", pl.Name, err)
+			return fmt.Errorf("deleting orphan tracks from playlist %s: %w", pl.Name, err)
 		}
 		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
 
 		// Renumber the playlist if any track was removed
 		if err := r.renumber(pl.Id); err != nil {
-			return fmt.Errorf("error renumbering playlist %s: %w", pl.Name, err)
+			return fmt.Errorf("renumbering playlist %s: %w", pl.Name, err)
 		}
 	}
 	return nil

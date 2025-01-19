@@ -228,7 +228,7 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 			return 0, err
 		}
 	}
-	return res.RowsAffected()
+	return c, err
 }
 
 var placeholderRegex = regexp.MustCompile(`\?`)

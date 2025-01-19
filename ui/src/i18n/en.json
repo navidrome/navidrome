@@ -89,7 +89,22 @@
         "size": "Size",
         "playCount": "Plays",
         "rating": "Rating",
-        "genre": "Genre"
+        "genre": "Genre",
+        "role": "Role"
+      },
+      "roles": {
+        "albumartist": "Album Artist |||| Album Artists",
+        "artist": "Artist |||| Artists",
+        "composer": "Composer |||| Composers",
+        "conductor": "Conductor |||| Conductors",
+        "lyricist": "Lyricist |||| Lyricists",
+        "arranger": "Arranger |||| Arrangers",
+        "producer": "Producer |||| Producers",
+        "director": "Director |||| Directors",
+        "engineer": "Engineer |||| Engineers",
+        "mixer": "Mixer |||| Mixers",
+        "remixer": "Remixer |||| Remixers",
+        "djmixer": "DJ Mixer |||| DJ Mixers"
       }
     },
     "user": {
@@ -200,6 +215,17 @@
       },
       "notifications": {},
       "actions": {}
+    },
+    "missing": {
+      "name": "Missing File|||| Missing Files",
+      "fields": {
+        "path": "Path",
+        "size": "Size",
+        "updatedAt": "Disappeared on"
+      },
+      "actions": {
+        "remove": "Remove"
+      }
     }
   },
   "ra": {

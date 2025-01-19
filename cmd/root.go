@@ -12,13 +12,12 @@ import (
 	_ "github.com/navidrome/navidrome/adapters/taglib"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -114,9 +113,10 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
 		if conf.Server.Prometheus.Enabled {
-			// blocking call because takes <1ms but useful if fails
-			metrics.WriteInitialMetrics()
-			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, promhttp.Handler())
+			p := CreatePrometheus()
+			// blocking call because takes <100ms but useful if fails
+			p.WriteInitialMetrics(ctx)
+			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
 		}
 		if conf.Server.DevEnableProfiler {
 			a.MountRouter("Profiling", "/debug", middleware.Profiler())
@@ -154,6 +154,18 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
+func pidHashChanged(ds model.DataStore) (bool, error) {
+	pidAlbum, err := ds.Property(context.Background()).DefaultGet(consts.PIDAlbumKey, "")
+	if err != nil {
+		return false, err
+	}
+	pidTrack, err := ds.Property(context.Background()).DefaultGet(consts.PIDTrackKey, "")
+	if err != nil {
+		return false, err
+	}
+	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
+}
+
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
@@ -165,13 +177,21 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		if inProgress || fullScanRequired == "1" || conf.Server.Scanner.ScanOnStartup {
-			time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+		pidHasChanged, err := pidHashChanged(ds)
+		if err != nil {
+			return err
+		}
+		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
+		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
+		if scanNeeded {
 			scanner := CreateScanner(ctx)
 			switch {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
 				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
+			case pidHasChanged:
+				log.Warn(ctx, "PID config changed, performing full scan")
+				fullScanRequired = "1"
 			case inProgress:
 				log.Warn(ctx, "Resuming interrupted scan")
 			default:
@@ -184,6 +204,8 @@ func runInitialScan(ctx context.Context) func() error {
 			} else {
 				log.Info(ctx, "Scan completed")
 			}
+		} else {
+			log.Debug(ctx, "Initial scan not needed")
 		}
 		return nil
 	}

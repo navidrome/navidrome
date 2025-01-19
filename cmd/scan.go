@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/persistence"
@@ -69,7 +70,7 @@ func runScanner(ctx context.Context) {
 	ds := persistence.New(sqlDB)
 	pls := core.NewPlaylists(ds)
 
-	progress, err := scanner.CallScan(ctx, ds, artwork.NoopCacheWarmer(), pls, fullScan)
+	progress, err := scanner.CallScan(ctx, ds, artwork.NoopCacheWarmer(), pls, metrics.NewNoopInstance(), fullScan)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}

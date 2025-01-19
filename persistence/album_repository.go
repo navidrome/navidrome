@@ -101,6 +101,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
 		"genre_id":        tagIDFilter,
+		"missing":         booleanFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":           "order_album_name, order_album_artist_name",
@@ -144,8 +145,8 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 // BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		exists("json_tree(Participants, '$.albumArtist')", Eq{"value": value}),
-		exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
+		Exists("json_tree(Participants, '$.albumartist')", Eq{"value": value}),
+		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
 	}
 	// For any role:
 	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
@@ -210,6 +211,20 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 	return res.toModels(), err
 }
 
+func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	var from dbx.NullStringMap
+	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	if err != nil {
+		return fmt.Errorf("getting album to copy fields from: %w", err)
+	}
+	to := make(map[string]interface{})
+	for _, col := range columns {
+		to[col] = from[col]
+	}
+	_, err = r.executeSQL(Update(r.tableName).SetMap(to).Where(Eq{"id": toID}))
+	return err
+}
+
 // Touch flags an album as being scanned by the scanner, but not necessarily updated.
 // This is used for when missing tracks are detected for an album during scan.
 func (r *albumRepository) Touch(ids ...string) error {
@@ -257,6 +272,10 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 	}
 	return func(yield func(model.Album, error) bool) {
 		for a, err := range cursor {
+			if a.Album == nil {
+				yield(model.Album{}, fmt.Errorf("unexpected nil album: %v", a))
+				return
+			}
 			if !yield(*a.Album, err) || err != nil {
 				return
 			}
@@ -264,9 +283,9 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 	}, nil
 }
 
-// RefreshAnnotations updates the play count and last play date annotations for all albums, based
+// RefreshPlayCounts updates the play count and last play date annotations for all albums, based
 // on the media files associated with them.
-func (r *albumRepository) RefreshAnnotations() (int64, error) {
+func (r *albumRepository) RefreshPlayCounts() (int64, error) {
 	query := rawSQL(`
 with play_counts as (
     select user_id, album_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
@@ -274,10 +293,13 @@ with play_counts as (
              join annotation on item_id = media_file.id
     group by user_id, album_id
 )
-insert or replace into annotation
-(item_id, item_type, play_count, play_date, user_id)
-select album_id, 'album', total_play_count, last_play_date, user_id
-from play_counts;
+insert into annotation (user_id, item_id, item_type, play_count, play_date)
+select user_id, album_id, 'album', total_play_count, last_play_date
+from play_counts
+where total_play_count > 0
+on conflict (user_id, item_id, item_type) do update
+    set play_count = excluded.play_count,
+        play_date  = excluded.play_date;
 `)
 	return r.executeSQL(query)
 }
@@ -294,9 +316,9 @@ func (r *albumRepository) purgeEmpty() error {
 	return nil
 }
 
-func (r *albumRepository) Search(q string, offset int, size int) (model.Albums, error) {
+func (r *albumRepository) Search(q string, offset int, size int, includeMissing bool) (model.Albums, error) {
 	var res dbAlbums
-	err := r.doSearch(q, offset, size, &res, "name")
+	err := r.doSearch(q, offset, size, includeMissing, &res, "name")
 	if err != nil {
 		return nil, err
 	}

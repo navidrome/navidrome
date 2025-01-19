@@ -47,7 +47,7 @@ func marshalTags(tags model.Tags) string {
 
 func tagIDFilter(name string, idValue any) Sqlizer {
 	name = strings.TrimSuffix(name, "_id")
-	return exists(
+	return Exists(
 		fmt.Sprintf(`json_tree(tags, "$.%s")`, name),
 		And{
 			NotEq{"json_tree.atom": nil},

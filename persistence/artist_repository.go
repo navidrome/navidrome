@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -28,8 +27,13 @@ type artistRepository struct {
 
 type dbArtist struct {
 	*model.Artist  `structs:",flatten"`
-	SimilarArtists string `structs:"-" json:"similarArtists"`
+	SimilarArtists string `structs:"-" json:"-"`
 	Stats          string `structs:"-" json:"-"`
+}
+
+type dbSimilarArtist struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 func (a *dbArtist) PostScan() error {
@@ -58,26 +62,26 @@ func (a *dbArtist) PostScan() error {
 	if a.SimilarArtists == "" {
 		return nil
 	}
-	// BFR: Save similar artists as JSONB in the DB
-	for _, s := range strings.Split(a.SimilarArtists, ";") {
-		fields := strings.Split(s, ":")
-		if len(fields) != 2 {
-			continue
-		}
-		name, _ := url.QueryUnescape(fields[1])
+	var sa []dbSimilarArtist
+	if err := json.Unmarshal([]byte(a.SimilarArtists), &sa); err != nil {
+		return fmt.Errorf("parsing similar artists from db: %w", err)
+	}
+	for _, s := range sa {
 		a.Artist.SimilarArtists = append(a.Artist.SimilarArtists, model.Artist{
-			ID:   fields[0],
-			Name: name,
+			ID:   s.ID,
+			Name: s.Name,
 		})
 	}
 	return nil
 }
+
 func (a *dbArtist) PostMapArgs(m map[string]any) error {
-	var sa []string
+	sa := make([]dbSimilarArtist, 0)
 	for _, s := range a.Artist.SimilarArtists {
-		sa = append(sa, fmt.Sprintf("%s:%s", s.ID, url.QueryEscape(s.Name)))
+		sa = append(sa, dbSimilarArtist{ID: s.ID, Name: s.Name})
 	}
-	m["similar_artists"] = strings.Join(sa, ";")
+	similarArtists, _ := json.Marshal(sa)
+	m["similar_artists"] = string(similarArtists)
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
@@ -155,7 +159,9 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 
 func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 	dba := &dbArtist{Artist: a}
-	_, err := r.put(a.ID, &dba, "biography", "small_image_url", "medium_image_url", "large_image_url", "external_url", "external_info_updated_at")
+	_, err := r.put(a.ID, dba,
+		"biography", "small_image_url", "medium_image_url", "large_image_url",
+		"similar_artists", "external_url", "external_info_updated_at")
 	return err
 }
 
@@ -198,8 +204,15 @@ func (r *artistRepository) getIndexKey(a model.Artist) string {
 }
 
 // TODO Cache the index (recalculate when there are changes to the DB)
-func (r *artistRepository) GetIndex() (model.ArtistIndexes, error) {
-	artists, err := r.GetAll(model.QueryOptions{Sort: "name"})
+func (r *artistRepository) GetIndex(roles ...model.Role) (model.ArtistIndexes, error) {
+	options := model.QueryOptions{Sort: "name"}
+	if len(roles) > 0 {
+		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
+			return roleFilter("role", r)
+		})
+		options.Filters = And(roleFilters)
+	}
+	artists, err := r.GetAll(options)
 	if err != nil {
 		return nil, err
 	}
@@ -225,22 +238,25 @@ func (r *artistRepository) purgeEmpty() error {
 	return nil
 }
 
-// RefreshAnnotations updates the play count and last play date annotations for all artists, based
+// RefreshPlayCounts updates the play count and last play date annotations for all artists, based
 // on the media files associated with them.
-func (r *artistRepository) RefreshAnnotations() (int64, error) {
+func (r *artistRepository) RefreshPlayCounts() (int64, error) {
 	query := rawSQL(`
 with play_counts as (
     select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
     join annotation on item_id = media_file.id
     left join json_tree(participants, '$.artist') as jt
-    where atom is not null
+    where atom is not null and key = 'id'
     group by user_id, atom
 )
-insert or replace into annotation
-(item_id, item_type, play_count, play_date, user_id)
-select artist_id, 'artist', total_play_count, last_play_date, user_id
-from play_counts;
+insert into annotation (user_id, item_id, item_type, play_count, play_date)
+select user_id, artist_id, 'artist', total_play_count, last_play_date
+from play_counts
+where total_play_count > 0
+on conflict (user_id, item_id, item_type) do update
+    set play_count = excluded.play_count,
+        play_date  = excluded.play_date;
 `)
 	return r.executeSQL(query)
 }
@@ -317,9 +333,9 @@ where id <> ''; -- always true, to avoid warnings`)
 	return r.executeSQL(query)
 }
 
-func (r *artistRepository) Search(q string, offset int, size int) (model.Artists, error) {
+func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
 	var dba dbArtists
-	err := r.doSearch(q, offset, size, &dba, "name")
+	err := r.doSearch(q, offset, size, includeMissing, &dba, "name")
 	if err != nil {
 		return nil, err
 	}

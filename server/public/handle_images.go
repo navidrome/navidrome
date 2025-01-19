@@ -25,12 +25,14 @@ func (pub *Router) handleImages(w http.ResponseWriter, r *http.Request) {
 	p := req.Params(r)
 	id, _ := p.String(":id")
 	if id == "" {
+		log.Warn(r, "No id provided")
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
 	artId, err := decodeArtworkID(id)
 	if err != nil {
+		log.Error(r, "Error decoding artwork id", "id", id, err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

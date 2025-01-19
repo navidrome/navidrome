@@ -65,11 +65,11 @@ func (r rawSQL) ToSql() (string, []interface{}, error) {
 	return string(r), nil, nil
 }
 
-func exists(subTable string, cond squirrel.Sqlizer) existsCond {
+func Exists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: false}
 }
 
-func notExists(subTable string, cond squirrel.Sqlizer) existsCond {
+func NotExists(subTable string, cond squirrel.Sqlizer) existsCond {
 	return existsCond{subTable: subTable, cond: cond, not: true}
 }
 

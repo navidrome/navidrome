@@ -22,8 +22,8 @@ type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
 
-	ID          string `structs:"id" json:"id" hash:"ignore"`
-	PID         string `structs:"pid"  json:"pid" hash:"ignore"`
+	ID          string `structs:"id"  json:"id" hash:"ignore"`
+	PID         string `structs:"pid" json:"-" hash:"ignore"`
 	LibraryID   int    `structs:"library_id" json:"libraryId" hash:"ignore"`
 	LibraryPath string `structs:"-" json:"-" hash:"-"`
 	FolderID    string `structs:"folder_id" json:"folderId" hash:"ignore"`
@@ -308,19 +308,15 @@ type MediaFileRepository interface {
 	GetWithParticipants(id string) (*MediaFile, error)
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
-	Search(q string, offset int, size int) (MediaFiles, error)
 	Delete(id string) error
 	FindByPaths(paths []string) (MediaFiles, error)
+
+	// The following methods are used exclusively by the scanner:
 	MarkMissing(bool, ...*MediaFile) error
 	MarkMissingByFolder(missing bool, folderIDs ...string) error
 	GetMissingAndMatching(libId int) (MediaFileCursor, error)
 
-	// Queries by path to support the scanner, no Annotations or Bookmarks required in the response
-
-	FindAllByPath(path string) (MediaFiles, error)
-	FindPathsRecursively(basePath string) ([]string, error)
-	DeleteByPath(path string) (int64, error)
-
 	AnnotatedRepository
 	BookmarkableRepository
+	SearchableRepository[MediaFiles]
 }

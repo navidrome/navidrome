@@ -14,7 +14,7 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
-func (r sqlRepository) doSearch(q string, offset, size int, results any, orderBys ...string) error {
+func (r sqlRepository) doSearch(q string, offset, size int, includeMissing bool, results any, orderBys ...string) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
 	if len(q) < 2 {
@@ -32,6 +32,9 @@ func (r sqlRepository) doSearch(q string, offset, size int, results any, orderBy
 		// If the filter is empty, we sort by id.
 		// This is to speed up the results of `search3?query=""`, for OpenSubsonic
 		sq = sq.OrderBy("id")
+	}
+	if !includeMissing {
+		sq = sq.Where(Eq{r.tableName + ".missing": false})
 	}
 	sq = sq.Limit(uint64(size)).Offset(uint64(offset))
 	return r.queryAll(sq, results, model.QueryOptions{Offset: offset})

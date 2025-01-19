@@ -6,7 +6,6 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -32,12 +31,10 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 		Columns(
 			"tag.id",
 			"tag.tag_value as name",
-			// BFR: Update counts on scan?
-			"0 as album_count",
-			"0 as song_count",
+			"tag_counts.album_count",
+			"tag_counts.media_file_count as song_count",
 		).
-		//LeftJoin("(select it.tag_id, count(it.item_id) as album_count from item_tags it where item_type = 'album' group by it.tag_id) a on a.tag_id = tag.id").
-		//LeftJoin("(select it.tag_id, count(it.item_id) as song_count from item_tags it where item_type = 'media_file' group by it.tag_id) m on m.tag_id = tag.id").
+		LeftJoin("tag_counts ON tag.id = tag_counts.tag_id").
 		Where(Eq{"tag.tag_name": model.TagGenre})
 }
 
@@ -46,24 +43,6 @@ func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error
 	res := model.Genres{}
 	err := r.queryAll(sq, &res)
 	return res, err
-}
-
-// BFR Remove
-// Put is an Upsert operation, based on the name of the genre: If the name already exists, returns its ID, or else
-// insert the new genre in the DB and returns its new created ID.
-func (r *genreRepository) Put(m *model.Genre) error {
-	if m.ID == "" {
-		m.ID = id.NewRandom()
-	}
-	sql := Insert("genre").Columns("id", "name").Values(m.ID, m.Name).
-		Suffix("on conflict (name) do update set name=excluded.name returning id")
-	resp := model.Genre{}
-	err := r.queryOne(sql, &resp)
-	if err != nil {
-		return err
-	}
-	m.ID = resp.ID
-	return nil
 }
 
 func (r *genreRepository) Count(options ...rest.QueryOptions) (int64, error) {

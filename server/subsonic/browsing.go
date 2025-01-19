@@ -38,7 +38,7 @@ func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Ti
 
 	var indexes model.ArtistIndexes
 	if lib.LastScanAt.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex()
+		indexes, err = api.ds.Artist(ctx).GetIndex(model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
@@ -295,6 +295,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
 		similar := toArtist(r, s)
+		if s.ID == "" {
+			similar.Id = "-1"
+		}
 		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
 	}
 	return response, nil

@@ -194,11 +194,11 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 		lowered[model.TagName(strings.ToLower(k))] = v
 	}
 
-	mappings := mappings()
+	mappings := model.TagMappings()
 	cleaned := make(model.Tags, len(mappings))
 	for name, mapping := range mappings {
 		for _, k := range mapping.Aliases {
-			if mapping.Type == TagTypePair {
+			if mapping.Type == model.TagTypePair {
 				prefix := name + ":"
 				for tagKey, tagValues := range lowered {
 					if strings.HasPrefix(string(tagKey), string(prefix)) {
@@ -249,7 +249,7 @@ func split(values []string, sep []string) []string {
 			return consts.Zwsp
 		})
 	}
-	return strings.Split(tag, consts.Zwsp)
+	return slice.Map(strings.Split(tag, consts.Zwsp), strings.TrimSpace)
 }
 
 func removeDuplicatedAndEmpty(values []string) []string {
@@ -271,7 +271,7 @@ func removeDuplicatedAndEmpty(values []string) []string {
 func sanitizeAll(filePath string, tags model.Tags) model.Tags {
 	cleaned := model.Tags{}
 	for k, v := range tags {
-		tag, found := mappings()[k]
+		tag, found := model.TagMappings()[k]
 		if !found {
 			continue
 		}
@@ -292,7 +292,7 @@ func sanitizeAll(filePath string, tags model.Tags) model.Tags {
 
 const defaultMaxTagLength = 1024
 
-func sanitize(filePath string, tagName model.TagName, tag tagConf, value string) string {
+func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value string) string {
 	// First truncate the value to the maximum length
 	maxLength := cmp.Or(tag.MaxLength, defaultMaxTagLength)
 	if len(value) > maxLength {
@@ -301,24 +301,24 @@ func sanitize(filePath string, tagName model.TagName, tag tagConf, value string)
 	}
 
 	switch tag.Type {
-	case TagTypeDate:
+	case model.TagTypeDate:
 		value = parseDate(filePath, tagName, value)
 		if value == "" {
 			log.Trace("Invalid date tag value", "tag", tagName, "value", value)
 		}
-	case TagTypeInteger:
+	case model.TagTypeInteger:
 		_, err := strconv.Atoi(value)
 		if err != nil {
 			log.Trace("Invalid integer tag value", "tag", tagName, "value", value)
 			return ""
 		}
-	case TagTypeFloat:
+	case model.TagTypeFloat:
 		_, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			log.Trace("Invalid float tag value", "tag", tagName, "value", value)
 			return ""
 		}
-	case TagTypeUUID:
+	case model.TagTypeUUID:
 		_, err := uuid.Parse(value)
 		if err != nil {
 			log.Trace("Invalid UUID tag value", "tag", tagName, "value", value)
