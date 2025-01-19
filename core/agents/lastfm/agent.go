@@ -187,6 +187,9 @@ var artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
 	log.Debug(ctx, "Getting artist images from Last.fm", "name", name, "mbid", mbid)
+	hc := http.Client{
+		Timeout: consts.DefaultHttpClientTimeOut,
+	}
 	a, err := l.callArtistGetInfo(ctx, name, mbid)
 	if err != nil {
 		return nil, fmt.Errorf("get artist info: %w", err)
@@ -195,7 +198,7 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	if err != nil {
 		return nil, fmt.Errorf("create artist image request: %w", err)
 	}
-	resp, err := l.client.hc.Do(req)
+	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get artist url: %w", err)
 	}
@@ -253,7 +256,7 @@ func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid s
 
 	if mbid != "" && ((err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
 		log.Debug(ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
-		a, err = l.client.artistGetInfo(ctx, name, mbid)
+		a, err = l.client.artistGetInfo(ctx, name, "")
 	}
 
 	if err != nil {
