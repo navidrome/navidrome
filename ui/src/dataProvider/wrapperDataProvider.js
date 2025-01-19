@@ -22,8 +22,6 @@ const mapResource = (resource, params) => {
       }
       return [`playlist/${plsId}/tracks`, params]
     }
-    case 'missing':
-      return ['song', params]
     case 'album':
     case 'song': {
       if (params.filter && !isAdmin()) {
@@ -80,7 +78,7 @@ const wrapperDataProvider = {
   },
   deleteMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)
-    if (r.endsWith('/tracks')) {
+    if (r.endsWith('/tracks') || resource === 'missing') {
       return callDeleteMany(r, p)
     }
     return dataProvider.deleteMany(r, p)

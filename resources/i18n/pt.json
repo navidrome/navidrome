@@ -213,6 +213,20 @@
         "createdAt": "Data de Criação",
         "downloadable": "Permitir Baixar?"
       }
+    },
+    "missing": {
+      "name": "Arquivo ausente |||| Arquivos ausentes",
+      "fields": {
+        "path": "Caminho",
+        "size": "Tamanho",
+        "updatedAt": "Desaparecido em"
+      },
+      "actions": {
+        "remove": "Remover"
+      },
+      "notifications": {
+        "removed": "Arquivo(s) ausente(s) removido(s)"
+      }
     }
   },
   "ra": {
@@ -261,7 +275,7 @@
       "list": "Listar",
       "refresh": "Atualizar",
       "remove_filter": "Cancelar filtro",
-      "remove": "Excluir",
+      "remove": "Remover",
       "save": "Salvar",
       "search": "Buscar",
       "show": "Exibir",
@@ -368,6 +382,8 @@
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
     "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
+    "remove_missing_title": "Remover arquivos ausentes",
+    "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
     "notifications_blocked": "Você bloqueou notificações para este site nas configurações do seu browser",
     "notifications_not_available": "Este navegador não suporta notificações",
     "lastfmLinkSuccess": "Sua conta no Last.fm foi conectada com sucesso",
