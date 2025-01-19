@@ -76,16 +76,10 @@ create table if not exists tag(
   	id varchar not null primary key,
   	tag_name varchar default '' not null,
   	tag_value varchar default '' not null,
+  	album_count integer default 0 not null,
+  	media_file_count integer default 0 not null,
   	constraint tags_name_value
 		unique (tag_name, tag_value)
-);
-
-create table if not exists tag_counts (
-	tag_id varchar not null primary key
-		references tag (id)
-			on delete cascade,
-	media_file_count integer default 0 not null,
-  	album_count integer default 0 not null
 );
 
 -- Genres are now stored in the tag table

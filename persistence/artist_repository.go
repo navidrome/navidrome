@@ -335,7 +335,7 @@ where id <> ''; -- always true, to avoid warnings`)
 
 func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
 	var dba dbArtists
-	err := r.doSearch(q, offset, size, includeMissing, &dba, "name")
+	err := r.doSearch(q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
 	if err != nil {
 		return nil, err
 	}

@@ -29,12 +29,11 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(opt...).
 		Columns(
-			"tag.id",
-			"tag.tag_value as name",
-			"tag_counts.album_count",
-			"tag_counts.media_file_count as song_count",
+			"id",
+			"tag_value as name",
+			"album_count",
+			"media_file_count as song_count",
 		).
-		LeftJoin("tag_counts ON tag.id = tag_counts.tag_id").
 		Where(Eq{"tag.tag_name": model.TagGenre})
 }
 
