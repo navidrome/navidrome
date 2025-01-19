@@ -72,7 +72,10 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 }
 
 func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.count(Select().Where(Eq{"playlist_id": r.playlistId}), r.parseRestOptions(r.ctx, options...))
+	query := Select().
+		LeftJoin("media_file f on f.id = media_file_id").
+		Where(Eq{"playlist_id": r.playlistId})
+	return r.count(query, r.parseRestOptions(r.ctx, options...))
 }
 
 func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
