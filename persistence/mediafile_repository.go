@@ -76,6 +76,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"title":    fullTextFilter(r.tableName),
 		"starred":  booleanFilter,
 		"genre_id": tagIDFilter,
+		"missing":  booleanFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"title":        "order_title",

@@ -101,6 +101,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"starred":         booleanFilter,
 		"has_rating":      hasRatingFilter,
 		"genre_id":        tagIDFilter,
+		"missing":         booleanFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":           "order_album_name, order_album_artist_name",
