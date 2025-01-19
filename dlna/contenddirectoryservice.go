@@ -234,6 +234,21 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 
 func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePath string, ret []interface{}, host string) ([]interface{}, error) {
 	//TODO flesh object out with actually useful metadata about the track
+	/*
+  <item id="1$7$455$1" parentID="1$7$455" restricted="1" refID="64$15A$0$1">
+    <dc:title>Love Takes Time</dc:title>
+    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+    <dc:description/>
+    <dc:creator>Mariah Carey</dc:creator>
+    <dc:date>2000-01-01</dc:date>
+    <upnp:artist>Mariah Carey</upnp:artist>
+    <upnp:album>#1's</upnp:album>
+    <upnp:genre>Pop</upnp:genre>
+    <upnp:originalTrackNumber>2</upnp:originalTrackNumber>
+    <res size="8861869" duration="0:04:36.160" bitrate="256000" sampleFrequency="44100" nrAudioChannels="2" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://172.30.0.4:8200/MediaItems/17759.mp3</res>
+    <upnp:albumArtURI xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" dlna:profileID="JPEG_TN">http://172.30.0.4:8200/AlbumArt/24179-17759.jpg</upnp:albumArtURI>
+  </item>
+	*/
 	for _, track := range tracks {
 		child := object{
 			Path: path.Join(basePath, track.Title),
