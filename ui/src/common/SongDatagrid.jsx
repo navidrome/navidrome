@@ -42,6 +42,7 @@ const useStyles = makeStyles({
     },
   },
   missingRow: {
+    cursor: 'inherit',
     opacity: 0.3,
   },
   headerStyle: {
@@ -198,6 +199,8 @@ export const SongDatagridRow = ({
     return null
   }
 
+  const rowClick = record.missing ? undefined : rest.rowClick
+
   const computedClasses = clsx(
     className,
     classes.row,
@@ -228,6 +231,7 @@ export const SongDatagridRow = ({
         ref={dragSongRef}
         record={record}
         {...rest}
+        rowClick={rowClick}
         className={computedClasses}
       >
         {fields}
@@ -270,7 +274,12 @@ const SongDatagridBody = ({
       } else {
         idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
       }
-      dispatch(playTracks(data, idsToPlay))
+      dispatch(
+        playTracks(
+          data,
+          idsToPlay?.filter((id) => !data[id].missing),
+        ),
+      )
     },
     [dispatch, data, ids],
   )
@@ -351,6 +360,7 @@ export const SongDatagrid = ({
   return (
     <Datagrid
       className={classes.headerStyle}
+      isRowSelectable={(record) => !record.missing}
       {...rest}
       body={
         <SongDatagridBody

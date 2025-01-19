@@ -160,11 +160,13 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={
-            <PlayButton
-              className={classes.albumPlayButton}
-              record={record}
-              size="small"
-            />
+            !record.missing && (
+              <PlayButton
+                className={classes.albumPlayButton}
+                record={record}
+                size="small"
+              />
+            )
           }
           actionIcon={<AlbumContextMenu record={record} color={'white'} />}
         />

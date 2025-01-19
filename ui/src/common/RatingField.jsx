@@ -54,6 +54,7 @@ export const RatingField = ({
         )}
         value={rating}
         size={size}
+        disabled={record?.missing}
         emptyIcon={<StarBorderIcon fontSize="inherit" />}
         onChange={(e, newValue) => handleRating(e, newValue)}
       />

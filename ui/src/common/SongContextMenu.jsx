@@ -5,6 +5,7 @@ import { useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
+import { MdQuestionMark } from 'react-icons/md'
 import clsx from 'clsx'
 import {
   playNext,
@@ -25,6 +26,24 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
   },
 })
+
+const MoreButton = ({ record, onClick, info }) => {
+  const handleClick = record.missing
+    ? (e) => {
+        info.action(record)
+        e.stopPropagation()
+      }
+    : onClick
+  return (
+    <IconButton onClick={handleClick} size={'small'}>
+      {record?.missing ? (
+        <MdQuestionMark fontSize={'large'} />
+      ) : (
+        <MoreVertIcon fontSize={'small'} />
+      )}
+    </IconButton>
+  )
+}
 
 export const SongContextMenu = ({
   resource,
@@ -109,16 +128,20 @@ export const SongContextMenu = ({
 
   const open = Boolean(anchorEl)
 
+  if (!record) {
+    return null
+  }
+
+  const present = !record.missing
+
   return (
     <span className={clsx(classes.noWrap, className)}>
       <LoveButton
         record={record}
         resource={resource}
-        visible={config.enableFavourites && showLove}
+        visible={config.enableFavourites && showLove && present}
       />
-      <IconButton onClick={handleClick} size={'small'}>
-        <MoreVertIcon fontSize={'small'} />
-      </IconButton>
+      <MoreButton record={record} onClick={handleClick} info={options.info} />
       <Menu
         id={'menu' + record.id}
         anchorEl={anchorEl}
