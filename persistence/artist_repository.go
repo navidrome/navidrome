@@ -272,63 +272,62 @@ func (r *artistRepository) RefreshStats() (int64, error) {
 	query := rawSQL(`
 -- CTE to get counters for each artist, grouped by role
 with artist_role_counters as (
-   -- Get counters for each artist, grouped by role 
-   -- (remove the index from the role: composer[0] => composer
-    select atom,
+    -- Get counters for each artist, grouped by role
+    -- (remove the index from the role: composer[0] => composer
+    select atom as artist_id,
            substr(
-               replace(jt.path, '$.', ''),
-               1,
-               case when instr(replace(jt.path, '$.', ''), '[') > 0
-                    then instr(replace(jt.path, '$.', ''), '[') - 1
-                    else length(replace(jt.path, '$.', ''))
-               end
-           ) as path,
+                   replace(jt.path, '$.', ''),
+                   1,
+                   case when instr(replace(jt.path, '$.', ''), '[') > 0
+                            then instr(replace(jt.path, '$.', ''), '[') - 1
+                        else length(replace(jt.path, '$.', ''))
+                       end
+           ) as role,
            count(distinct album_id) as album_count,
            count(mf.id) as count,
            sum(size) as size
     from media_file mf
              left join json_tree(participants) jt
-    where atom is not null
-    group by atom, jt.path
+    group by atom, role
 ),
 
 -- CTE to get the totals for each artist
 artist_total_counters as (
-    select mfa.artist_id as atom,
-           'total' as path,
-           count(distinct mf.album) as album_count,
-           count(distinct mf.id) as count,
-           sum(mf.size) as size
-    from (select distinct artist_id, media_file_id
-          from main.media_file_artists) as mfa
-             join main.media_file mf on mfa.media_file_id = mf.id
-    group by mfa.artist_id
+	select mfa.artist_id,
+		   'total' as role,
+		   count(distinct mf.album) as album_count,
+		   count(distinct mf.id) as count,
+		   sum(mf.size) as size
+	from (select distinct artist_id, media_file_id
+		  from main.media_file_artists) as mfa
+			 join main.media_file mf on mfa.media_file_id = mf.id
+	group by mfa.artist_id
 ),
 
 -- CTE to combine role and total counters
 combined_counters as (
-    select atom, path, album_count, count, size
-    from artist_role_counters
-    union
-    select atom, path, album_count, count, size
-    from artist_total_counters
+	select artist_id, role, album_count, count, size
+	from artist_role_counters
+	union
+	select artist_id, role, album_count, count, size
+	from artist_total_counters
 ),
 
 -- CTE to format the counters in a JSON object
 artist_counters as (
-    select atom as id,
-           json_group_object(
-               replace(path, '"', ''),
-               json_object('a', album_count, 'm', count, 's', size)
-           ) as counters
-    from combined_counters
-    group by atom
+	select artist_id as id,
+		   json_group_object(
+				   replace(role, '"', ''),
+				   json_object('a', album_count, 'm', count, 's', size)
+		   ) as counters
+	from combined_counters
+	group by artist_id
 )
 
 -- Update the artist table with the new counters
 update artist
 set stats = coalesce((select counters from artist_counters where artist_counters.id = artist.id), '{}'),
-    updated_at = datetime(current_timestamp, 'localtime')
+   updated_at = datetime(current_timestamp, 'localtime')
 where id <> ''; -- always true, to avoid warnings`)
 	return r.executeSQL(query)
 }
