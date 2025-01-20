@@ -284,7 +284,6 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Moods = al.Tags.Values(model.TagMood)
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
-	child.ExplicitStatus = al.ExplicitStatus
 	child.ExplicitStatus = mapExplicitStatus(al.ExplicitStatus)
 	return child
 }
