@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -21,8 +20,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/unrolled/secure"
-	"golang.org/x/time/rate"
 )
 
 func requestLogger(next http.Handler) http.Handler {
@@ -303,7 +302,7 @@ func URLParamsMiddleware(next http.Handler) http.Handler {
 }
 
 func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http.Handler {
-	userAccessLimiter := idLimiterMap{Interval: consts.UpdateLastAccessFrequency}
+	userAccessLimiter := utils.Limiter{Interval: consts.UpdateLastAccessFrequency}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -327,20 +326,4 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-// idLimiterMap is a thread-safe map that stores rate.Sometimes limiters for each user ID.
-// Used to make the map type and thread safe.
-type idLimiterMap struct {
-	Interval time.Duration
-	sm       sync.Map
-}
-
-func (m *idLimiterMap) Do(id string, f func()) {
-	interval := cmp.Or(
-		m.Interval,
-		time.Minute, // Default every 1 minute
-	)
-	limiter, _ := m.sm.LoadOrStore(id, &rate.Sometimes{Interval: interval})
-	limiter.(*rate.Sometimes).Do(f)
 }

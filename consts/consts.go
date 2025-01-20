@@ -54,6 +54,7 @@ const (
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
+	UpdatePlayerFrequency     = time.Minute
 
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
