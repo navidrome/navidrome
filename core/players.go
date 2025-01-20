@@ -61,9 +61,12 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 	plr.IP = ip
 	plr.LastSeen = time.Now()
 	p.limiter.Do(plr.ID, func() {
+		ctx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+
 		err = p.ds.Player(ctx).Put(plr)
 		if err != nil {
-			log.Error(ctx, "Could not save player", "id", plr.ID, "client", client, "username", username, "type", userAgent, err)
+			log.Warn(ctx, "Could not save player", "id", plr.ID, "client", client, "username", username, "type", userAgent, err)
 		}
 	})
 	if plr.TranscodingId != "" {
