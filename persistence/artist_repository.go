@@ -288,6 +288,7 @@ with artist_role_counters as (
            sum(size) as size
     from media_file mf
              left join json_tree(participants) jt
+    where atom is not null and key = 'id'
     group by atom, role
 ),
 
