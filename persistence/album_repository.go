@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -91,21 +92,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r.ctx = ctx
 	r.db = db
 	r.tableName = "album"
-	r.registerModel(&model.Album{}, map[string]filterFunc{
-		"id":              idFilter(r.tableName),
-		"name":            fullTextFilter(r.tableName),
-		"compilation":     booleanFilter,
-		"artist_id":       artistFilter,
-		"year":            yearFilter,
-		"recently_played": recentlyPlayedFilter,
-		"starred":         booleanFilter,
-		"has_rating":      hasRatingFilter,
-		"missing":         booleanFilter,
-		"genre_id":        tagIDFilter,
-		"recordlabel_id":  tagIDFilter,
-		"releasetype_id":  tagIDFilter,
-		"grouping_id":     tagIDFilter,
-	})
+	r.registerModel(&model.Album{}, albumFilters())
 	r.setSortMappings(map[string]string{
 		"name":           "order_album_name, order_album_artist_name",
 		"artist":         "compilation, order_album_artist_name, order_album_name",
@@ -115,9 +102,28 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"recently_added": recentlyAddedSort(),
 		"starred_at":     "starred, starred_at",
 	})
-
 	return r
 }
+
+var albumFilters = sync.OnceValue(func() map[string]filterFunc {
+	filters := map[string]filterFunc{
+		"id":              idFilter("album"),
+		"name":            fullTextFilter("album"),
+		"compilation":     booleanFilter,
+		"artist_id":       artistFilter,
+		"year":            yearFilter,
+		"recently_played": recentlyPlayedFilter,
+		"starred":         booleanFilter,
+		"has_rating":      hasRatingFilter,
+		"missing":         booleanFilter,
+		"genre_id":        tagIDFilter,
+	}
+	// Add all tags remaining album tags as filters
+	for tag := range model.AlbumLevelTags() {
+		filters[string(tag)] = tagIDFilter
+	}
+	return filters
+})
 
 func recentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {

@@ -57,7 +57,7 @@ const AlbumFilter = (props) => {
       </ReferenceInput>
       <ReferenceInput
         label={translate('resources.album.fields.recordLabel')}
-        source="recordlabel_id"
+        source="recordlabel"
         reference="tag"
         perPage={0}
         sort={{ field: 'tagValue', order: 'ASC' }}
@@ -70,7 +70,7 @@ const AlbumFilter = (props) => {
       </ReferenceInput>
       <ReferenceInput
         label={translate('resources.album.fields.grouping')}
-        source="grouping_id"
+        source="grouping"
         reference="tag"
         perPage={0}
         sort={{ field: 'tagValue', order: 'ASC' }}
@@ -83,7 +83,7 @@ const AlbumFilter = (props) => {
       </ReferenceInput>
       <ReferenceInput
         label={translate('resources.album.fields.releaseType')}
-        source="releasetype_id"
+        source="releasetype"
         reference="tag"
         perPage={0}
         sort={{ field: 'tagValue', order: 'ASC' }}
