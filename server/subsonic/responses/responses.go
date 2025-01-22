@@ -166,26 +166,30 @@ type Child struct {
 	/*
 	   <xs:attribute name="averageRating" type="sub:AverageRating" use="optional"/>  <!-- Added in 1.6.0 -->
 	*/
+	*OpenSubsonicChild `xml:",omitempty" json:",omitempty"`
+}
+
+type OpenSubsonicChild struct {
 	// OpenSubsonic extensions
-	Played             *time.Time          `xml:"played,attr,omitempty"   json:"played,omitempty"`
-	BPM                int32               `xml:"bpm,attr"                json:"bpm"`
-	Comment            string              `xml:"comment,attr"            json:"comment"`
-	SortName           string              `xml:"sortName,attr"           json:"sortName"`
-	MediaType          MediaType           `xml:"mediaType,attr"          json:"mediaType"`
-	MusicBrainzId      string              `xml:"musicBrainzId,attr"      json:"musicBrainzId"`
-	Genres             Array[ItemGenre]    `xml:"genres"                  json:"genres"`
-	ReplayGain         ReplayGain          `xml:"replayGain"              json:"replayGain"`
-	ChannelCount       int32               `xml:"channelCount,attr"       json:"channelCount"`
-	SamplingRate       int32               `xml:"samplingRate,attr"       json:"samplingRate"`
-	BitDepth           int32               `xml:"bitDepth,attr"           json:"bitDepth"`
-	Moods              Array[string]       `xml:"moods"                   json:"moods"`
-	Artists            Array[ArtistID3Ref] `xml:"artists"                 json:"artists"`
-	DisplayArtist      string              `xml:"displayArtist,attr"      json:"displayArtist"`
-	AlbumArtists       Array[ArtistID3Ref] `xml:"albumArtists"            json:"albumArtists"`
-	DisplayAlbumArtist string              `xml:"displayAlbumArtist,attr" json:"displayAlbumArtist"`
-	Contributors       Array[Contributor]  `xml:"contributors"            json:"contributors"`
-	DisplayComposer    string              `xml:"displayComposer,attr"    json:"displayComposer"`
-	ExplicitStatus     string              `xml:"explicitStatus,attr"     json:"explicitStatus"`
+	Played             *time.Time          `xml:"played,attr,omitempty"             json:"played,omitempty"`
+	BPM                int32               `xml:"bpm,attr,omitempty"                json:"bpm"`
+	Comment            string              `xml:"comment,attr,omitempty"            json:"comment"`
+	SortName           string              `xml:"sortName,attr,omitempty"           json:"sortName"`
+	MediaType          MediaType           `xml:"mediaType,attr,omitempty"          json:"mediaType"`
+	MusicBrainzId      string              `xml:"musicBrainzId,attr,omitempty"      json:"musicBrainzId"`
+	Genres             Array[ItemGenre]    `xml:"genres,omitempty"                  json:"genres"`
+	ReplayGain         ReplayGain          `xml:"replayGain,omitempty"              json:"replayGain"`
+	ChannelCount       int32               `xml:"channelCount,attr,omitempty"       json:"channelCount"`
+	SamplingRate       int32               `xml:"samplingRate,attr,omitempty"       json:"samplingRate"`
+	BitDepth           int32               `xml:"bitDepth,attr,omitempty"           json:"bitDepth"`
+	Moods              Array[string]       `xml:"moods,omitempty"                   json:"moods"`
+	Artists            Array[ArtistID3Ref] `xml:"artists,omitempty"                 json:"artists"`
+	DisplayArtist      string              `xml:"displayArtist,attr,omitempty"      json:"displayArtist"`
+	AlbumArtists       Array[ArtistID3Ref] `xml:"albumArtists,omitempty"            json:"albumArtists"`
+	DisplayAlbumArtist string              `xml:"displayAlbumArtist,attr,omitempty" json:"displayAlbumArtist"`
+	Contributors       Array[Contributor]  `xml:"contributors,omitempty"            json:"contributors"`
+	DisplayComposer    string              `xml:"displayComposer,attr,omitempty"    json:"displayComposer"`
+	ExplicitStatus     string              `xml:"explicitStatus,attr,omitempty"     json:"explicitStatus"`
 }
 
 type Songs struct {
@@ -528,6 +532,14 @@ type ReplayGain struct {
 	AlbumPeak    float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
 	BaseGain     float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
 	FallbackGain float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
+}
+
+func (r ReplayGain) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	if r.TrackGain == 0 && r.AlbumGain == 0 && r.TrackPeak == 0 && r.AlbumPeak == 0 && r.BaseGain == 0 && r.FallbackGain == 0 {
+		return nil
+	}
+	type replayGain ReplayGain
+	return e.EncodeElement(replayGain(r), start)
 }
 
 type DiscTitle struct {

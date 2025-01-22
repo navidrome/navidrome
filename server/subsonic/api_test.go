@@ -89,10 +89,9 @@ var _ = Describe("sendResponse", func() {
 
 	When("an error occurs during marshalling", func() {
 		It("should return a fail response", func() {
-			payload.Song = &responses.Child{
-				// An +Inf value will cause an error when marshalling to JSON
-				ReplayGain: responses.ReplayGain{TrackGain: math.Inf(1)},
-			}
+			payload.Song = &responses.Child{OpenSubsonicChild: &responses.OpenSubsonicChild{}}
+			// An +Inf value will cause an error when marshalling to JSON
+			payload.Song.ReplayGain = responses.ReplayGain{TrackGain: math.Inf(1)}
 			q := r.URL.Query()
 			q.Add("f", "json")
 			r.URL.RawQuery = q.Encode()

@@ -150,7 +150,6 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.Year = int32(mf.Year)
 	child.Artist = mf.Artist
 	child.Genre = mf.Genre
-	child.Genres = toItemGenres(mf.Genres)
 	child.Track = int32(mf.TrackNumber)
 	child.Duration = int32(mf.Duration)
 	child.Size = mf.Size
@@ -170,9 +169,6 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ArtistId = mf.ArtistID
 	child.Type = "music"
 	child.PlayCount = mf.PlayCount
-	if mf.PlayCount > 0 {
-		child.Played = mf.PlayDate
-	}
 	if mf.Starred {
 		child.Starred = mf.StarredAt
 	}
@@ -185,6 +181,19 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
 	child.Comment = mf.Comment
+	child.OpenSubsonicChild = osChildFromMediaFile(ctx, mf)
+	return child
+}
+
+func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
+	player, _ := request.PlayerFrom(ctx)
+	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+		return nil
+	}
+	child := responses.OpenSubsonicChild{}
+	if mf.PlayCount > 0 {
+		child.Played = mf.PlayDate
+	}
 	child.SortName = sortName(mf.SortTitle, mf.OrderTitle)
 	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
@@ -198,6 +207,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ChannelCount = int32(mf.Channels)
 	child.SamplingRate = int32(mf.SampleRate)
 	child.BitDepth = int32(mf.BitDepth)
+	child.Genres = toItemGenres(mf.Genres)
 	child.Moods = mf.Tags.Values(model.TagMood)
 	// BFR What if Child is an Album and not a Song?
 	child.DisplayArtist = mf.Artist
@@ -223,7 +233,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	}
 	child.Contributors = contributors
 	child.ExplicitStatus = mapExplicitStatus(mf.ExplicitStatus)
-	return child
+	return &child
 }
 
 func artistRefs(participants model.ParticipantList) []responses.ArtistID3Ref {
@@ -263,7 +273,6 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	child.Artist = al.AlbumArtist
 	child.Year = int32(al.MaxYear)
 	child.Genre = al.Genre
-	child.Genres = toItemGenres(al.Genres)
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
 	child.Parent = al.AlbumArtistID
@@ -274,18 +283,29 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 		child.Starred = al.StarredAt
 	}
 	child.PlayCount = al.PlayCount
+	child.UserRating = int32(al.Rating)
+	return child
+}
+
+func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubsonicChild {
+	player, _ := request.PlayerFrom(ctx)
+	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+		return nil
+	}
+	child := responses.OpenSubsonicChild{}
 	if al.PlayCount > 0 {
 		child.Played = al.PlayDate
 	}
-	child.UserRating = int32(al.Rating)
-	child.SortName = sortName(al.SortAlbumName, al.OrderAlbumName)
 	child.MediaType = responses.MediaTypeAlbum
 	child.MusicBrainzId = al.MbzAlbumID
+	child.Genres = toItemGenres(al.Genres)
 	child.Moods = al.Tags.Values(model.TagMood)
+	child.DisplayArtist = al.AlbumArtist
+	child.Artists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	child.ExplicitStatus = mapExplicitStatus(al.ExplicitStatus)
-	return child
+	return &child
 }
 
 // toItemDate converts a string date in the formats 'YYYY-MM-DD', 'YYYY-MM' or 'YYYY' to an OS ItemDate

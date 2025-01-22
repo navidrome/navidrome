@@ -114,9 +114,9 @@
           "baseGain": 5,
           "fallbackGain": 6
         },
-        "channelCount": 0,
-        "samplingRate": 0,
-        "bitDepth": 0,
+        "channelCount": 2,
+        "samplingRate": 44100,
+        "bitDepth": 16,
         "moods": [
           "happy",
           "sad"
@@ -160,8 +160,8 @@
             }
           }
         ],
-        "displayComposer": "",
-        "explicitStatus": ""
+        "displayComposer": "composer 1 \u0026 composer 2",
+        "explicitStatus": "clean"
       }
     ]
   }
