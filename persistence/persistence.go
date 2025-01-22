@@ -111,6 +111,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Radio(ctx).(model.ResourceRepository)
 	case model.Share:
 		return s.Share(ctx).(model.ResourceRepository)
+	case model.Tag:
+		return s.Tag(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil

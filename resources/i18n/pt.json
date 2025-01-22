@@ -58,7 +58,8 @@
         "originalDate": "Original",
         "releaseDate": "Data de Lançamento",
         "releases": "Versão||||Versões",
-        "released": "Lançado"
+        "released": "Lançado",
+        "recordLabel": "Selo"
       },
       "actions": {
         "playAll": "Tocar",

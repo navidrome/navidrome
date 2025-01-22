@@ -58,7 +58,8 @@
         "updatedAt": "Updated at",
         "comment": "Comment",
         "rating": "Rating",
-        "createdAt": "Date added"
+        "createdAt": "Date added",
+        "recordLabel": "Record Label"
       },
       "actions": {
         "playAll": "Play",

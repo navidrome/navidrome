@@ -9,6 +9,7 @@ import {
   BooleanField,
   ChipField,
   DateField,
+  FunctionField,
   SingleFieldList,
   TextField,
   useRecordContext,
@@ -36,6 +37,12 @@ const AlbumInfo = (props) => {
           <ChipField source={'name'} />
         </SingleFieldList>
       </ArrayField>
+    ),
+    recordLabel: (
+      <FunctionField
+        source={'recordLabel'}
+        render={(record) => record.tags?.recordlabel?.join(', ')}
+      />
     ),
     compilation: <BooleanField source={'compilation'} />,
     updatedAt: <DateField source={'updatedAt'} showTime />,

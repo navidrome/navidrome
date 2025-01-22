@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -82,3 +83,31 @@ func (r *tagRepository) purgeNonUsed() error {
 	}
 	return err
 }
+
+func (r *tagRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.count(r.newSelect(), r.parseRestOptions(r.ctx, options...))
+}
+
+func (r *tagRepository) Read(id string) (interface{}, error) {
+	query := r.newSelect().Columns("*").Where(Eq{"id": id})
+	var res model.Tag
+	err := r.queryOne(query, &res)
+	return &res, err
+}
+
+func (r *tagRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	query := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
+	var res model.TagList
+	err := r.queryAll(query, &res)
+	return res, err
+}
+
+func (r *tagRepository) EntityName() string {
+	return "tag"
+}
+
+func (r *tagRepository) NewInstance() interface{} {
+	return model.Tag{}
+}
+
+var _ model.ResourceRepository = &tagRepository{}

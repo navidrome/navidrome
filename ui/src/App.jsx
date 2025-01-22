@@ -131,6 +131,7 @@ const Admin = (props) => {
 
         <Resource name="translation" />,
         <Resource name="genre" />,
+        <Resource name="tag" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Resource name="insights" />,

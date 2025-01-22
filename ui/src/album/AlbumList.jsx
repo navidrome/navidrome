@@ -54,6 +54,19 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" />
       </ReferenceInput>
+      <ReferenceInput
+        label={translate('resources.album.fields.recordLabel')}
+        source="recordlabel_id"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'recordlabel' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
+      </ReferenceInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />
       {config.enableFavourites && (
