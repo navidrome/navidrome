@@ -29,6 +29,7 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import inflection from 'inflection'
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
@@ -66,6 +67,26 @@ const AlbumFilter = (props) => {
         })}
       >
         <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
+      </ReferenceInput>
+      <ReferenceInput
+        label={translate('resources.album.fields.releaseType')}
+        source="releasetype_id"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'releasetype' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteInput
+          emptyText="-- None --"
+          optionText={(record) =>
+            record?.tagValue
+              ? inflection.humanize(record?.tagValue)
+              : '-- None --'
+          }
+        />
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />

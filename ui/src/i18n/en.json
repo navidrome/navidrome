@@ -59,7 +59,8 @@
         "comment": "Comment",
         "rating": "Rating",
         "createdAt": "Date added",
-        "recordLabel": "Record Label"
+        "recordLabel": "Record Label",
+        "releaseType": "Type"
       },
       "actions": {
         "playAll": "Play",

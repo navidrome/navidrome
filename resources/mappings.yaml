@@ -140,6 +140,7 @@ main:
   releasetype:
     aliases: [ TXXX:MusicBrainz Album Type, RELEASETYPE, MUSICBRAINZ_ALBUMTYPE, ----:com.apple.iTunes:MusicBrainz Album Type, MusicBrainz/Album Type ]
     album: true
+    split: [ "," ]
   replaygain_album_gain:
     aliases: [ TXXX:REPLAYGAIN_ALBUM_GAIN, REPLAYGAIN_ALBUM_GAIN, ----:com.apple.iTunes:REPLAYGAIN_ALBUM_GAIN ]
   replaygain_album_peak:

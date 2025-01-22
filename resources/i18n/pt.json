@@ -59,7 +59,8 @@
         "releaseDate": "Data de Lançamento",
         "releases": "Versão||||Versões",
         "released": "Lançado",
-        "recordLabel": "Selo"
+        "recordLabel": "Selo",
+        "releaseType": "Tipo"
       },
       "actions": {
         "playAll": "Tocar",

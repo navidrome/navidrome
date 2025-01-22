@@ -44,6 +44,12 @@ const AlbumInfo = (props) => {
         render={(record) => record.tags?.recordlabel?.join(', ')}
       />
     ),
+    releaseType: (
+      <FunctionField
+        source={'releaseType'}
+        render={(record) => record.tags?.releasetype?.join(', ')}
+      />
+    ),
     compilation: <BooleanField source={'compilation'} />,
     updatedAt: <DateField source={'updatedAt'} showTime />,
     comment: <MultiLineTextField source={'comment'} />,
