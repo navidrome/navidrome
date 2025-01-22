@@ -69,6 +69,19 @@ const AlbumFilter = (props) => {
         <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
       </ReferenceInput>
       <ReferenceInput
+        label={translate('resources.album.fields.grouping')}
+        source="grouping_id"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'grouping' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
+      </ReferenceInput>
+      <ReferenceInput
         label={translate('resources.album.fields.releaseType')}
         source="releasetype_id"
         reference="tag"

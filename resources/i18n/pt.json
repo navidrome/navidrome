@@ -60,7 +60,8 @@
         "releases": "Versão||||Versões",
         "released": "Lançado",
         "recordLabel": "Selo",
-        "releaseType": "Tipo"
+        "releaseType": "Tipo",
+        "grouping": "Agrupamento"
       },
       "actions": {
         "playAll": "Tocar",

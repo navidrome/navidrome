@@ -60,7 +60,8 @@
         "rating": "Rating",
         "createdAt": "Date added",
         "recordLabel": "Record Label",
-        "releaseType": "Type"
+        "releaseType": "Type",
+        "grouping": "Grouping"
       },
       "actions": {
         "playAll": "Play",
