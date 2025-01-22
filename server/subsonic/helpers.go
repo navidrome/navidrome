@@ -100,14 +100,25 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
-		MusicBrainzId:  a.MbzArtistID,
-		SortName:       sortName(a.SortArtistName, a.OrderArtistName),
 	}
-	artist.Roles = slice.Map(a.Roles(), func(r model.Role) string { return r.String() })
 	if a.Starred {
 		artist.Starred = a.StarredAt
 	}
+	artist.OpenSubsonicArtistID3 = toOSArtistID3(r.Context(), a)
 	return artist
+}
+
+func toOSArtistID3(ctx context.Context, a model.Artist) *responses.OpenSubsonicArtistID3 {
+	player, _ := request.PlayerFrom(ctx)
+	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+		return nil
+	}
+	artist := responses.OpenSubsonicArtistID3{
+		MusicBrainzId: a.MbzArtistID,
+		SortName:      sortName(a.SortArtistName, a.OrderArtistName),
+	}
+	artist.Roles = slice.Map(a.Roles(), func(r model.Role) string { return r.String() })
+	return &artist
 }
 
 func toGenres(genres model.Genres) *responses.Genres {

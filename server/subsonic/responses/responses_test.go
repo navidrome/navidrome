@@ -159,7 +159,7 @@ var _ = Describe("Responses", func() {
 			})
 		})
 
-		Context("with data and MBID and Sort Name", func() {
+		Context("with OpenSubsonic data", func() {
 			BeforeEach(func() {
 				artists := make([]ArtistID3, 1)
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
@@ -170,10 +170,13 @@ var _ = Describe("Responses", func() {
 					UserRating:     3,
 					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
-					MusicBrainzId:  "1234",
-					SortName:       "sort name",
-					Roles:          []string{"role1", "role2"},
 				}
+				artists[0].OpenSubsonicArtistID3 = &OpenSubsonicArtistID3{
+					MusicBrainzId: "1234",
+					SortName:      "sort name",
+					Roles:         []string{"role1", "role2"},
+				}
+
 				index := make([]IndexID3, 1)
 				index[0] = IndexID3{Name: "A", Artists: artists}
 				response.Artist.Index = index

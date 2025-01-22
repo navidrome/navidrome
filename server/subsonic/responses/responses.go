@@ -230,18 +230,21 @@ type ArtistID3Ref struct {
 }
 
 type ArtistID3 struct {
-	Id             string     `xml:"id,attr"                            json:"id"`
-	Name           string     `xml:"name,attr"                          json:"name"`
-	CoverArt       string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
-	AlbumCount     int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
-	Starred        *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
-	UserRating     int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
-	ArtistImageUrl string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
+	Id                     string     `xml:"id,attr"                            json:"id"`
+	Name                   string     `xml:"name,attr"                          json:"name"`
+	CoverArt               string     `xml:"coverArt,attr,omitempty"            json:"coverArt,omitempty"`
+	AlbumCount             int32      `xml:"albumCount,attr,omitempty"          json:"albumCount,omitempty"`
+	Starred                *time.Time `xml:"starred,attr,omitempty"             json:"starred,omitempty"`
+	UserRating             int32      `xml:"userRating,attr,omitempty"          json:"userRating,omitempty"`
+	ArtistImageUrl         string     `xml:"artistImageUrl,attr,omitempty"      json:"artistImageUrl,omitempty"`
+	*OpenSubsonicArtistID3 `xml:",omitempty" json:",omitempty"`
+}
 
+type OpenSubsonicArtistID3 struct {
 	// OpenSubsonic extensions
-	MusicBrainzId string        `xml:"musicBrainzId,attr" json:"musicBrainzId"`
-	SortName      string        `xml:"sortName,attr"      json:"sortName"`
-	Roles         Array[string] `xml:"roles"              json:"roles"`
+	MusicBrainzId string        `xml:"musicBrainzId,attr,omitempty" json:"musicBrainzId"`
+	SortName      string        `xml:"sortName,attr,omitempty"      json:"sortName"`
+	Roles         Array[string] `xml:"roles,omitempty"              json:"roles"`
 }
 
 type AlbumID3 struct {
