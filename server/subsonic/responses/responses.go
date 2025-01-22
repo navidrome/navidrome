@@ -556,6 +556,14 @@ type ItemDate struct {
 	Day   int32 `xml:"day,attr,omitempty" json:"day,omitempty"`
 }
 
+func (d ItemDate) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	if d.Year == 0 && d.Month == 0 && d.Day == 0 {
+		return nil
+	}
+	type itemDate ItemDate
+	return e.EncodeElement(itemDate(d), start)
+}
+
 type RecordLabel struct {
 	Name string `xml:"name,attr" json:"name"`
 }

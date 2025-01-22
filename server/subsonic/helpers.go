@@ -180,7 +180,6 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.TranscodedContentType = mime.TypeByExtension("." + format)
 	}
 	child.BookmarkPosition = mf.BookmarkPosition
-	child.Comment = mf.Comment
 	child.OpenSubsonicChild = osChildFromMediaFile(ctx, mf)
 	return child
 }
@@ -194,6 +193,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	if mf.PlayCount > 0 {
 		child.Played = mf.PlayDate
 	}
+	child.Comment = mf.Comment
 	child.SortName = sortName(mf.SortTitle, mf.OrderTitle)
 	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
@@ -263,7 +263,7 @@ func sanitizeSlashes(target string) string {
 	return strings.ReplaceAll(target, "/", "_")
 }
 
-func childFromAlbum(_ context.Context, al model.Album) responses.Child {
+func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child := responses.Child{}
 	child.Id = al.ID
 	child.IsDir = true
@@ -284,7 +284,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	}
 	child.PlayCount = al.PlayCount
 	child.UserRating = int32(al.Rating)
-	child.OpenSubsonicChild = osChildFromAlbum(context.Background(), al)
+	child.OpenSubsonicChild = osChildFromAlbum(ctx, al)
 	return child
 }
 

@@ -267,11 +267,11 @@ var _ = Describe("Responses", func() {
 			It("should match .JSON", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
-			It("should match .XML", func() {
+			It("should match OpenSubsonic .XML", func() {
 				response.AlbumWithSongsID3.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{}
 				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
-			It("should match .JSON", func() {
+			It("should match OpenSubsonic .JSON", func() {
 				response.AlbumWithSongsID3.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{}
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
