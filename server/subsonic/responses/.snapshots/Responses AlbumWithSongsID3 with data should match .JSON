@@ -9,7 +9,7 @@
     "name": "album",
     "artist": "artist",
     "genre": "rock",
-    "userRating": 0,
+    "userRating": 4,
     "genres": [
       {
         "name": "rock"
@@ -72,7 +72,7 @@
       }
     ],
     "displayArtist": "artist1 \u0026 artist2",
-    "explicitStatus": "",
+    "explicitStatus": "clean",
     "song": [
       {
         "id": "1",

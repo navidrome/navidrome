@@ -267,13 +267,24 @@ var _ = Describe("Responses", func() {
 			It("should match .JSON", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
+			It("should match .XML", func() {
+				response.AlbumWithSongsID3.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{}
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				response.AlbumWithSongsID3.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{}
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
 		})
 
 		Context("with data", func() {
 			BeforeEach(func() {
 				album := AlbumID3{
 					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+				}
+				album.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+					UserRating:    4,
 					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
 					DiscTitles:          Array[DiscTitle]{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
@@ -286,6 +297,7 @@ var _ = Describe("Responses", func() {
 						{Id: "1", Name: "artist1"},
 						{Id: "2", Name: "artist2"},
 					},
+					ExplicitStatus: "clean",
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{

@@ -284,6 +284,7 @@ func childFromAlbum(_ context.Context, al model.Album) responses.Child {
 	}
 	child.PlayCount = al.PlayCount
 	child.UserRating = int32(al.Rating)
+	child.OpenSubsonicChild = osChildFromAlbum(context.Background(), al)
 	return child
 }
 
@@ -340,7 +341,7 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	return discTitles
 }
 
-func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
+func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir := responses.AlbumID3{}
 	dir.Id = album.ID
 	dir.Name = album.Name
@@ -350,35 +351,45 @@ func buildAlbumID3(_ context.Context, album model.Album) responses.AlbumID3 {
 	dir.SongCount = int32(album.SongCount)
 	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount
-	if album.PlayCount > 0 {
-		dir.Played = album.PlayDate
-	}
 	dir.Year = int32(album.MaxYear)
 	dir.Genre = album.Genre
-	dir.Genres = toItemGenres(album.Genres)
-	dir.DiscTitles = buildDiscSubtitles(album)
-	dir.UserRating = int32(album.Rating)
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt
 	}
 	if album.Starred {
 		dir.Starred = album.StarredAt
 	}
-	dir.MusicBrainzId = album.MbzAlbumID
-	dir.IsCompilation = album.Compilation
-	dir.SortName = sortName(album.SortAlbumName, album.OrderAlbumName)
-	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
-	dir.ReleaseDate = toItemDate(album.ReleaseDate)
-	dir.ReleaseTypes = album.Tags.Values(model.TagReleaseType)
+	dir.OpenSubsonicAlbumID3 = buildOSAlbumID3(ctx, album)
+	return dir
+}
+
+func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubsonicAlbumID3 {
+	player, _ := request.PlayerFrom(ctx)
+	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+		return nil
+	}
+	dir := responses.OpenSubsonicAlbumID3{}
+	if album.PlayCount > 0 {
+		dir.Played = album.PlayDate
+	}
+	dir.UserRating = int32(album.Rating)
 	dir.RecordLabels = slice.Map(album.Tags.Values(model.TagRecordLabel), func(s string) responses.RecordLabel {
 		return responses.RecordLabel{Name: s}
 	})
-	dir.Moods = album.Tags.Values(model.TagMood)
-	dir.DisplayArtist = album.AlbumArtist
+	dir.MusicBrainzId = album.MbzAlbumID
+	dir.Genres = toItemGenres(album.Genres)
 	dir.Artists = artistRefs(album.Participants[model.RoleAlbumArtist])
+	dir.DisplayArtist = album.AlbumArtist
+	dir.ReleaseTypes = album.Tags.Values(model.TagReleaseType)
+	dir.Moods = album.Tags.Values(model.TagMood)
+	dir.SortName = sortName(album.SortAlbumName, album.OrderAlbumName)
+	dir.OriginalReleaseDate = toItemDate(album.OriginalDate)
+	dir.ReleaseDate = toItemDate(album.ReleaseDate)
+	dir.IsCompilation = album.Compilation
+	dir.DiscTitles = buildDiscSubtitles(album)
 	dir.ExplicitStatus = mapExplicitStatus(album.ExplicitStatus)
 
-	return dir
+	return &dir
 }
 
 func mapExplicitStatus(explicitStatus string) string {
