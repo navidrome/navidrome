@@ -70,8 +70,6 @@ create index if not exists album_artists_album_id
 create index if not exists album_artists_role
 	on album_artists (role);
 
--- BFR Add link all existing artists with role "album_artist"
-
 create table if not exists tag(
   	id varchar not null primary key,
   	tag_name varchar default '' not null,
@@ -154,7 +152,7 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 				return err
 			}
 
-			// TODO Windows
+			// BFR Windows!!
 			path = filepath.Clean(path)
 			path, _ = filepath.Rel("/", path)
 			fsys[path] = &fstest.MapFile{Mode: fs.ModeDir}
@@ -166,7 +164,7 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return nil
 		}
 
-		// Finally, walk the filesystem and insert all folders into the DB.
+		// Finally, walk the in-mem filesystem and insert all folders into the DB.
 		stmt, err := tx.PrepareContext(ctx, "insert into folder (id, library_id, path, name, parent_id) values (?, ?, ?, ?, ?)")
 		if err != nil {
 			return err
