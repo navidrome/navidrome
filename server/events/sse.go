@@ -139,7 +139,6 @@ func (b *broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache, no-transform")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	// Tells Nginx to not buffer this response. See https://stackoverflow.com/a/33414096
 	w.Header().Set("X-Accel-Buffering", "no")
 
