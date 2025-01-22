@@ -59,7 +59,7 @@
         "comment": "Comment",
         "rating": "Rating",
         "createdAt": "Date added",
-        "recordLabel": "Record Label",
+        "recordLabel": "Label",
         "releaseType": "Type",
         "grouping": "Grouping"
       },
