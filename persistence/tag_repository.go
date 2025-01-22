@@ -70,9 +70,12 @@ where tag.id = updated_values.id;
 	return nil
 }
 
-func (r *tagRepository) purgeNonUsed() error {
-	del := Delete(r.tableName).Where(`	not exists 
-(select 1 from media_file left join json_tree(media_file.tags, '$') where atom is not null and key = 'id')
+func (r *tagRepository) purgeUnused() error {
+	del := Delete(r.tableName).Where(`	
+	id not in (select jt.value
+	from album left join json_tree(album.tags, '$') as jt
+	where atom is not null
+	  and key = 'id')
 `)
 	c, err := r.executeSQL(del)
 	if err != nil {
