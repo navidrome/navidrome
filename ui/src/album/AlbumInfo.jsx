@@ -9,6 +9,7 @@ import {
   BooleanField,
   ChipField,
   DateField,
+  FunctionField,
   SingleFieldList,
   TextField,
   useRecordContext,
@@ -37,6 +38,30 @@ const AlbumInfo = (props) => {
         </SingleFieldList>
       </ArrayField>
     ),
+    recordLabel: (
+      <FunctionField
+        source={'recordLabel'}
+        render={(record) => record.tags?.recordlabel?.join(', ')}
+      />
+    ),
+    releaseType: (
+      <FunctionField
+        source={'releaseType'}
+        render={(record) => record.tags?.releasetype?.join(', ')}
+      />
+    ),
+    grouping: (
+      <FunctionField
+        source={'grouping'}
+        render={(record) => record.tags?.grouping?.join(', ')}
+      />
+    ),
+    mood: (
+      <FunctionField
+        source={'mood'}
+        render={(record) => record.tags?.mood?.join(', ')}
+      />
+    ),
     compilation: <BooleanField source={'compilation'} />,
     updatedAt: <DateField source={'updatedAt'} showTime />,
     comment: <MultiLineTextField source={'comment'} />,
@@ -45,6 +70,11 @@ const AlbumInfo = (props) => {
   const optionalFields = ['comment', 'genre']
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
+  })
+
+  const optionalTags = ['releaseType', 'recordLabel', 'grouping', 'mood']
+  optionalTags.forEach((field) => {
+    !record?.tags?.[field.toLowerCase()] && delete data[field]
   })
 
   return (

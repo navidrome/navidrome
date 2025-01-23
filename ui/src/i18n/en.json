@@ -58,7 +58,10 @@
         "updatedAt": "Updated at",
         "comment": "Comment",
         "rating": "Rating",
-        "createdAt": "Date added"
+        "createdAt": "Date added",
+        "recordLabel": "Label",
+        "releaseType": "Type",
+        "grouping": "Grouping"
       },
       "actions": {
         "playAll": "Play",
@@ -225,6 +228,9 @@
       },
       "actions": {
         "remove": "Remove"
+      },
+      "notifications": {
+        "removed": "Missing file(s) removed"
       }
     }
   },
@@ -381,6 +387,8 @@
     "noPlaylistsAvailable": "None available",
     "delete_user_title": "Delete user '%{name}'",
     "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?",
+    "remove_missing_title": "Remove missing files",
+    "remove_missing_content": "Are you sure you want to remove the selected missing files from the database? This will remove permanently any references to them, including their play counts and ratings.",
     "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
     "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https",
     "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",

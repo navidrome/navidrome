@@ -36,7 +36,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.Comment = md.String(model.TagComment)
 	mf.BPM = int(math.Round(md.Float(model.TagBPM)))
 	mf.Lyrics = md.mapLyrics()
-	mf.ExplicitStatus = md.mapExplicitStatus()
+	mf.ExplicitStatus = md.mapExplicitStatusTag()
 
 	// Dates
 	origDate := md.Date(model.TagOriginalDate)
@@ -154,7 +154,7 @@ func (md Metadata) mapLyrics() string {
 	return string(res)
 }
 
-func (md Metadata) mapExplicitStatus() string {
+func (md Metadata) mapExplicitStatusTag() string {
 	switch md.first(model.TagExplicitStatus) {
 	case "1", "4":
 		return "e"

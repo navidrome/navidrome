@@ -114,22 +114,7 @@ func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		var resp []byte
-		if len(ids) == 1 {
-			resp = []byte(`{"id":"` + ids[0] + `"}`)
-		} else {
-			resp, err = json.Marshal(&struct {
-				Ids []string `json:"ids"`
-			}{Ids: ids})
-			if err != nil {
-				log.Error(r.Context(), "Error marshaling delete response", "playlistId", playlistId, "ids", ids, err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		}
-		_, err = w.Write(resp)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		writeDeleteManyResponse(w, r, ids)
 	}
 }
 

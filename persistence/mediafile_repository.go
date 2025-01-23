@@ -201,6 +201,19 @@ func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }
 
+func (r *mediaFileRepository) DeleteMissing(ids []string) error {
+	user := loggedUser(r.ctx)
+	if !user.IsAdmin {
+		return rest.ErrPermissionDenied
+	}
+	return r.delete(
+		And{
+			Eq{"missing": true},
+			Eq{"id": ids},
+		},
+	)
+}
+
 func (r *mediaFileRepository) MarkMissing(missing bool, mfs ...*model.MediaFile) error {
 	ids := slice.SeqFunc(mfs, func(m *model.MediaFile) string { return m.ID })
 	for chunk := range slice.CollectChunks(ids, 200) {

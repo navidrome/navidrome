@@ -120,12 +120,13 @@ type configOptions struct {
 	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
+	DevOpenSubsonicDisabledClients   string
 }
 
 type scannerOptions struct {
-	Extractor string
-	// Deprecated
-	GenreSeparators    string
+	Enabled            bool
+	Extractor          string
+	GenreSeparators    string // Deprecated: BFR Update docs
 	GroupAlbumReleases bool
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
@@ -463,6 +464,7 @@ func init() {
 	viper.SetDefault("jukebox.default", "")
 	viper.SetDefault("jukebox.adminonly", true)
 
+	viper.SetDefault("scanner.enabled", true)
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.genreseparators", ";/,")
 	viper.SetDefault("scanner.groupalbumreleases", false)
@@ -508,6 +510,7 @@ func init() {
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
+	viper.SetDefault("devopensubsonicdisabledclients", "DSub")
 }
 
 func InitConfig(cfgFile string) {

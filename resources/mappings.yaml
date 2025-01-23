@@ -10,7 +10,7 @@
 # Applies to single valued ARTIST and ALBUMARTIST tags. Won't be applied if the tag is multivalued or the multivalued
 # versions are available (ARTISTS and ALBUMARTISTS)
 artists:
-  split: [" / ", " feat. ", " feat ", " ft. ", " ft "]
+  split: [" / ", " feat. ", " feat ", " ft. ", " ft ", "; "]
 # Applies to all remaining single-valued role tags (composer, lyricist, arranger...)
 roles:
   split: ["/", ";"]
@@ -140,6 +140,7 @@ main:
   releasetype:
     aliases: [ TXXX:MusicBrainz Album Type, RELEASETYPE, MUSICBRAINZ_ALBUMTYPE, ----:com.apple.iTunes:MusicBrainz Album Type, MusicBrainz/Album Type ]
     album: true
+    split: [ "," ]
   replaygain_album_gain:
     aliases: [ TXXX:REPLAYGAIN_ALBUM_GAIN, REPLAYGAIN_ALBUM_GAIN, ----:com.apple.iTunes:REPLAYGAIN_ALBUM_GAIN ]
   replaygain_album_peak:

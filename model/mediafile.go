@@ -309,6 +309,7 @@ type MediaFileRepository interface {
 	GetAll(options ...QueryOptions) (MediaFiles, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
+	DeleteMissing(ids []string) error
 	FindByPaths(paths []string) (MediaFiles, error)
 
 	// The following methods are used exclusively by the scanner:

@@ -360,7 +360,7 @@ export const SongDatagrid = ({
   return (
     <Datagrid
       className={classes.headerStyle}
-      isRowSelectable={(record) => !record.missing}
+      isRowSelectable={(r) => !r?.missing}
       {...rest}
       body={
         <SongDatagridBody

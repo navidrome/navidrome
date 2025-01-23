@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -43,19 +45,24 @@ func (r *tagRepository) Add(tags ...model.Tag) error {
 // Only genres are being updated for now.
 func (r *tagRepository) UpdateCounts() error {
 	template := `
-insert into tag_counts (tag_id, %[1]s_count)
-select jt.value, count(distinct (%[1]s.id))
-from %[1]s
-         join json_tree(tags, '$.genre') as jt
-where atom is not null
-  and key = 'id'
-group by jt.value
-on conflict (tag_id) do update
-    set %[1]s_count = excluded.%[1]s_count;
+with updated_values as (
+    select jt.value as id, count(distinct %[1]s.id) as %[1]s_count
+    from %[1]s
+             join json_tree(tags, '$.genre') as jt
+    where atom is not null
+      and key = 'id'
+    group by jt.value
+)
+update tag
+set %[1]s_count = updated_values.%[1]s_count
+from updated_values
+where tag.id = updated_values.id;
 `
 	for _, table := range []string{"album", "media_file"} {
+		start := time.Now()
 		query := rawSQL(fmt.Sprintf(template, table))
-		_, err := r.executeSQL(query)
+		c, err := r.executeSQL(query)
+		log.Debug(r.ctx, "Updated tag counts", "table", table, "elapsed", time.Since(start), "updated", c)
 		if err != nil {
 			return fmt.Errorf("updating %s tag counts: %w", table, err)
 		}
@@ -63,9 +70,12 @@ on conflict (tag_id) do update
 	return nil
 }
 
-func (r *tagRepository) purgeNonUsed() error {
-	del := Delete(r.tableName).Where(`	not exists 
-(select 1 from media_file left join json_tree(media_file.tags, '$') where atom is not null and key = 'id')
+func (r *tagRepository) purgeUnused() error {
+	del := Delete(r.tableName).Where(`	
+	id not in (select jt.value
+	from album left join json_tree(album.tags, '$') as jt
+	where atom is not null
+	  and key = 'id')
 `)
 	c, err := r.executeSQL(del)
 	if err != nil {
@@ -76,3 +86,31 @@ func (r *tagRepository) purgeNonUsed() error {
 	}
 	return err
 }
+
+func (r *tagRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.count(r.newSelect(), r.parseRestOptions(r.ctx, options...))
+}
+
+func (r *tagRepository) Read(id string) (interface{}, error) {
+	query := r.newSelect().Columns("*").Where(Eq{"id": id})
+	var res model.Tag
+	err := r.queryOne(query, &res)
+	return &res, err
+}
+
+func (r *tagRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	query := r.newSelect(r.parseRestOptions(r.ctx, options...)).Columns("*")
+	var res model.TagList
+	err := r.queryAll(query, &res)
+	return res, err
+}
+
+func (r *tagRepository) EntityName() string {
+	return "tag"
+}
+
+func (r *tagRepository) NewInstance() interface{} {
+	return model.Tag{}
+}
+
+var _ model.ResourceRepository = &tagRepository{}

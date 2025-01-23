@@ -78,11 +78,15 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
-	g.Go(schedulePeriodicScan(ctx))
-	g.Go(startScanWatcher(ctx))
-	g.Go(runInitialScan(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
+	if conf.Server.Scanner.Enabled {
+		g.Go(runInitialScan(ctx))
+		g.Go(startScanWatcher(ctx))
+		g.Go(schedulePeriodicScan(ctx))
+	} else {
+		log.Warn(ctx, "Automatic Scanning is DISABLED")
+	}
 
 	if err := g.Wait(); err != nil {
 		log.Error("Fatal error in Navidrome. Aborting", err)

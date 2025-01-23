@@ -84,9 +84,9 @@ func (a Album) Equals(other Album) bool {
 	return hash1 == hash2
 }
 
-// Tags marked as `album: true` in the mappings.yml file are not "first-class citizens" in
-// the Album struct, but are still stored in the album table, in the `tags` column.
-var albumLevelTags = sync.OnceValue(func() map[TagName]struct{} {
+// AlbumLevelTags contains all Tags marked as `album: true` in the mappings.yml file. They are not
+// "first-class citizens" in the Album struct, but are still stored in the album table, in the `tags` column.
+var AlbumLevelTags = sync.OnceValue(func() map[TagName]struct{} {
 	tags := make(map[TagName]struct{})
 	m := TagMappings()
 	for t, conf := range m {
@@ -100,7 +100,7 @@ var albumLevelTags = sync.OnceValue(func() map[TagName]struct{} {
 func (a *Album) SetTags(tags TagList) {
 	a.Tags = tags.GroupByFrequency()
 	for k := range a.Tags {
-		if _, ok := albumLevelTags()[k]; !ok {
+		if _, ok := AlbumLevelTags()[k]; !ok {
 			delete(a.Tags, k)
 		}
 	}
