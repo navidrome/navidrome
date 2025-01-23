@@ -7,7 +7,7 @@ import ListItemSecondaryAction from '@material-ui/core/ListItemSecondaryAction'
 import ListItemText from '@material-ui/core/ListItemText'
 import { makeStyles } from '@material-ui/core/styles'
 import { sanitizeListRestProps } from 'react-admin'
-import { ArtistContextMenu, RatingField } from './index'
+import { ArtistContextMenu, RatingField } from '../common'
 import config from '../config'
 
 const useStyles = makeStyles(
@@ -26,7 +26,7 @@ const useStyles = makeStyles(
   { name: 'RaArtistSimpleList' },
 )
 
-export const ArtistSimpleList = ({
+const ArtistSimpleList = ({
   linkType,
   className,
   classes: classesOverride,
@@ -89,3 +89,5 @@ ArtistSimpleList.defaultProps = {
   hasBulkActions: false,
   selectedIds: [],
 }
+
+export default ArtistSimpleList

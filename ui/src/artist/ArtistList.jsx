@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
   DatagridBody,
   DatagridRow,
   Filter,
+  FunctionField,
   NumberField,
   SearchInput,
   SelectInput,
@@ -21,7 +22,6 @@ import {
   List,
   QuickFilter,
   useGetHandleArtistClick,
-  ArtistSimpleList,
   RatingField,
   useSelectedFields,
   useResourceRefresh,
@@ -29,6 +29,7 @@ import {
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
+import ArtistSimpleList from './ArtistSimpleList'
 import { DraggableTypes } from '../consts'
 import en from '../i18n/en.json'
 
@@ -106,17 +107,22 @@ const ArtistDatagrid = (props) => (
 )
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
+  const { filterValues } = rest
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   useResourceRefresh('artist')
 
-  const toggleableFields = useMemo(() => {
-    return {
-      albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
-      songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
-      size: !isXsmall && <SizeField source="size" />,
+  const role = filterValues?.role
+  const getCounter = (record, counter) =>
+    role ? record?.stats[role]?.[counter] : record?.[counter]
+  const getAlbumCount = (record) => getCounter(record, 'albumCount')
+  const getSongCount = (record) => getCounter(record, 'songCount')
+  const getSize = (record) => getCounter(record, 'size')
+
+  const toggleableFields = useMemo(
+    () => ({
       playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
       rating: config.enableStarRating && (
         <RatingField
@@ -126,16 +132,14 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
           className={classes.ratingField}
         />
       ),
-    }
-  }, [classes.ratingField, isXsmall])
-
-  const columns = useSelectedFields(
-    {
-      resource: 'artist',
-      columns: toggleableFields,
-    },
-    ['size'],
+    }),
+    [classes.ratingField],
   )
+
+  const columns = useSelectedFields({
+    resource: 'artist',
+    columns: toggleableFields,
+  })
 
   return isXsmall ? (
     <ArtistSimpleList
@@ -145,6 +149,17 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   ) : (
     <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
       <TextField source="name" />
+      <FunctionField
+        source="albumCount"
+        sortByOrder={'DESC'}
+        render={getAlbumCount}
+      />
+      <FunctionField
+        source="songCount"
+        sortByOrder={'DESC'}
+        render={getSongCount}
+      />
+      <FunctionField source="size" sortByOrder={'DESC'} render={getSize} />
       {columns}
       <ArtistContextMenu
         source={'starred_at'}

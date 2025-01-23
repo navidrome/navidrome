@@ -118,9 +118,8 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"role":    roleFilter,
 	})
 	r.setSortMappings(map[string]string{
-		"name":       "order_artist_name",
-		"starred_at": "starred, starred_at",
-		// BFR: Can be dynamic (by role) if we allow functions when sorting
+		"name":        "order_artist_name",
+		"starred_at":  "starred, starred_at",
 		"song_count":  "stats->>'total'->>'m'",
 		"album_count": "stats->>'total'->>'a'",
 		"size":        "stats->>'total'->>'s'",
@@ -351,6 +350,15 @@ func (r *artistRepository) Read(id string) (interface{}, error) {
 }
 
 func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	role := "total"
+	if len(options) > 0 {
+		if v, ok := options[0].Filters["role"].(string); ok {
+			role = v
+		}
+	}
+	r.sortMappings["song_count"] = "stats->>'" + role + "'->>'m'"
+	r.sortMappings["album_count"] = "stats->>'" + role + "'->>'a'"
+	r.sortMappings["size"] = "stats->>'" + role + "'->>'s'"
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
