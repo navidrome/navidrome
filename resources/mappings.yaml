@@ -90,8 +90,6 @@ main:
   tracktotal:
     aliases: [ TRACKTOTAL, TOTALTRACKS ]
     album: true
-  subtitle:
-    aliases: [ TIT3, SUBTITLE, ----:com.apple.iTunes:SUBTITLE, WM/SubTitle ]
   disc:
     aliases: [ TPOS, DISC, DISCNUMBER, disk, WM/PartOfSet ]
   disctotal:
@@ -209,6 +207,8 @@ additional:
     album: true
   script:
     aliases: [ TXXX:SCRIPT, SCRIPT, ----:com.apple.iTunes:SCRIPT, WM/Script ]
+  subtitle:
+    aliases: [ TIT3, SUBTITLE, ----:com.apple.iTunes:SUBTITLE, WM/SubTitle ]
   website:
     aliases: [ WOAR, WEBSITE, Weblink, WM/AuthorURL ]
   work:
