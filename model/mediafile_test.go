@@ -210,6 +210,19 @@ var _ = Describe("MediaFiles", func() {
 						Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Chill", "Happy"}))
 					})
 				})
+				When("we have tags with mismatching case", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{Tags: Tags{"genre": []string{"synthwave"}}},
+							{Tags: Tags{"genre": []string{"Synthwave"}}},
+						}
+					})
+					It("normalizes the tags in just one", func() {
+						album := mfs.ToAlbum()
+						Expect(album.Tags).To(HaveLen(1))
+						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Synthwave"}))
+					})
+				})
 			})
 			Context("Comments", func() {
 				When("we have only one Comment", func() {

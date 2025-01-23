@@ -23,27 +23,29 @@ type TagList []Tag
 
 func (l TagList) GroupByFrequency() Tags {
 	grouped := map[string]map[string]int{}
+	values := map[string]string{}
 	for _, t := range l {
 		if m, ok := grouped[string(t.TagName)]; !ok {
-			grouped[string(t.TagName)] = map[string]int{t.TagValue: 0}
+			grouped[string(t.TagName)] = map[string]int{t.ID: 1}
 		} else {
-			m[t.TagValue]++
+			m[t.ID]++
 		}
+		values[t.ID] = t.TagValue
 	}
 
 	tags := Tags{}
-	for name, values := range grouped {
-		valueList := make([]string, 0, len(values))
-		for value := range values {
-			valueList = append(valueList, value)
+	for name, counts := range grouped {
+		idList := make([]string, 0, len(counts))
+		for tid := range counts {
+			idList = append(idList, tid)
 		}
-		slices.SortFunc(valueList, func(a, b string) int {
+		slices.SortFunc(idList, func(a, b string) int {
 			return cmp.Or(
-				cmp.Compare(values[b], values[a]),
-				cmp.Compare(a, b),
+				cmp.Compare(counts[b], counts[a]),
+				cmp.Compare(values[a], values[b]),
 			)
 		})
-		tags[TagName(name)] = valueList
+		tags[TagName(name)] = slice.Map(idList, func(id string) string { return values[id] })
 	}
 	return tags
 }

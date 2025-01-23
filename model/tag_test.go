@@ -89,8 +89,8 @@ var _ = Describe("Tag", func() {
 
 				groupedTags := tagList.GroupByFrequency()
 
-				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), ConsistOf("Rock", "Pop", "Jazz")))
-				Expect(groupedTags).To(HaveKeyWithValue(TagName("artist"), ConsistOf("The Beatles", "The Rolling Stones")))
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), []string{"Rock", "Jazz", "Pop"}))
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("artist"), []string{"The Beatles", "The Rolling Stones"}))
 			})
 
 			It("should sort tags by name when frequency is the same", func() {
@@ -103,7 +103,17 @@ var _ = Describe("Tag", func() {
 
 				groupedTags := tagList.GroupByFrequency()
 
-				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), ConsistOf("Alternative", "Jazz", "Pop", "Rock")))
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), []string{"Alternative", "Jazz", "Pop", "Rock"}))
+			})
+			It("should normalize casing", func() {
+				tagList := TagList{
+					NewTag("genre", "Synthwave"),
+					NewTag("genre", "synthwave"),
+				}
+
+				groupedTags := tagList.GroupByFrequency()
+
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), []string{"synthwave"}))
 			})
 		})
 	})
