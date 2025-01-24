@@ -3,11 +3,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/scanner/metadata_old"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
@@ -15,13 +17,11 @@ import (
 )
 
 var (
-	extractor string
-	format    string
+	format string
 )
 
 func init() {
-	inspectCmd.Flags().StringVarP(&extractor, "extractor", "x", "", "extractor to use (ffmpeg or taglib, default: auto)")
-	inspectCmd.Flags().StringVarP(&format, "format", "f", "pretty", "output format (pretty, toml, yaml, json, jsonindent)")
+	inspectCmd.Flags().StringVarP(&format, "format", "f", "jsonindent", "output format (pretty, toml, yaml, json, jsonindent)")
 	rootCmd.AddCommand(inspectCmd)
 }
 
@@ -65,31 +65,39 @@ type inspectorOutput struct {
 }
 
 func runInspector(args []string) {
-	if extractor != "" {
-		conf.Server.Scanner.Extractor = extractor
-	}
-	log.Info("Using extractor", "extractor", conf.Server.Scanner.Extractor)
-	md, err := metadata_old.Extract(args...)
-	if err != nil {
-		log.Fatal("Error extracting tags", err)
-	}
-	// BFR mapper := scanner_old.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
 	marshal := marshalers[format]
 	if marshal == nil {
 		log.Fatal("Invalid format", "format", format)
 	}
 	var out []inspectorOutput
-	for k, v := range md {
-		if !model.IsAudioFile(k) {
+	for _, filePath := range args {
+		if !model.IsAudioFile(filePath) {
+			log.Warn("Not an audio file", "file", filePath)
 			continue
 		}
-		if len(v.Tags) == 0 {
+		path, file := filepath.Split(filePath)
+		s, err := storage.For(path)
+		if err != nil {
+			log.Fatal("Error creating storage", err)
+		}
+		fs, err := s.FS()
+		if err != nil {
+			log.Fatal("Error creating FS", err)
+		}
+		tags, err := fs.ReadTags(file)
+		if err != nil {
+			log.Warn("Error reading tags", "file", file, "err", err)
 			continue
 		}
+		if len(tags[file].Tags) == 0 {
+			log.Warn("No tags found", "file", file)
+			continue
+		}
+		md := metadata.New(file, tags[file])
 		out = append(out, inspectorOutput{
-			File:    k,
-			RawTags: v.Tags,
-			// BFR MappedTags: mapper.ToMediaFile(v),
+			File:       file,
+			RawTags:    tags[file].Tags,
+			MappedTags: md.ToMediaFile(1, ""),
 		})
 	}
 	data, _ := marshal(out)
