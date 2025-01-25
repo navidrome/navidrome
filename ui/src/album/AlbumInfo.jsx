@@ -50,6 +50,12 @@ const AlbumInfo = (props) => {
         render={(record) => record.tags?.releasetype?.join(', ')}
       />
     ),
+    media: (
+      <FunctionField
+        source={'media'}
+        render={(record) => record.tags?.media?.join(', ')}
+      />
+    ),
     grouping: (
       <FunctionField
         source={'grouping'}
@@ -72,7 +78,13 @@ const AlbumInfo = (props) => {
     !record[field] && delete data[field]
   })
 
-  const optionalTags = ['releaseType', 'recordLabel', 'grouping', 'mood']
+  const optionalTags = [
+    'releaseType',
+    'recordLabel',
+    'grouping',
+    'mood',
+    'media',
+  ]
   optionalTags.forEach((field) => {
     !record?.tags?.[field.toLowerCase()] && delete data[field]
   })

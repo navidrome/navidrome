@@ -61,7 +61,8 @@
         "createdAt": "Date added",
         "recordLabel": "Label",
         "releaseType": "Type",
-        "grouping": "Grouping"
+        "grouping": "Grouping",
+        "media": "Media"
       },
       "actions": {
         "playAll": "Play",

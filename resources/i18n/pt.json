@@ -61,7 +61,8 @@
         "released": "Lançado",
         "recordLabel": "Selo",
         "releaseType": "Tipo",
-        "grouping": "Agrupamento"
+        "grouping": "Agrupamento",
+        "media": "Mídia"
       },
       "actions": {
         "playAll": "Tocar",
