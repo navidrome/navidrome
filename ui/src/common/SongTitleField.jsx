@@ -47,7 +47,7 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
       return (
         <>
           {name}
-          <span className={classes.subtitle}>{' • ' + subtitle}</span>
+          <span className={classes.subtitle}>{' (' + subtitle + ')'}</span>
         </>
       )
     }
