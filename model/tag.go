@@ -174,6 +174,7 @@ const (
 	TagTotalTracks    TagName = "tracktotal"
 	TagTotalDiscs     TagName = "disctotal"
 	TagDiscSubtitle   TagName = "discsubtitle"
+	TagSubtitle       TagName = "subtitle"
 	TagGenre          TagName = "genre"
 	TagMood           TagName = "mood"
 	TagComment        TagName = "comment"

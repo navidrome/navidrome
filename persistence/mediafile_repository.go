@@ -51,7 +51,7 @@ func (m *dbMediaFile) PostScan() error {
 }
 
 func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
-	fullText := []string{m.Title, m.Album, m.Artist, m.AlbumArtist,
+	fullText := []string{m.FullTitle(), m.Album, m.Artist, m.AlbumArtist,
 		m.SortTitle, m.SortAlbumName, m.SortArtistName, m.SortAlbumArtistName, m.DiscSubtitle}
 	fullText = append(fullText, m.MediaFile.Participants.AllNames()...)
 	args["full_text"] = formatFullText(fullText...)

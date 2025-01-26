@@ -154,7 +154,7 @@ func getTranscoding(ctx context.Context) (format string, bitRate int) {
 func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child {
 	child := responses.Child{}
 	child.Id = mf.ID
-	child.Title = mf.Title
+	child.Title = mf.FullTitle()
 	child.IsDir = false
 	child.Parent = mf.AlbumID
 	child.Album = mf.Album
@@ -266,7 +266,7 @@ func fakePath(mf model.MediaFile) string {
 	if mf.TrackNumber != 0 {
 		builder.WriteString(fmt.Sprintf("%02d - ", mf.TrackNumber))
 	}
-	builder.WriteString(fmt.Sprintf("%s.%s", sanitizeSlashes(mf.Title), mf.Suffix))
+	builder.WriteString(fmt.Sprintf("%s.%s", sanitizeSlashes(mf.FullTitle()), mf.Suffix))
 	return builder.String()
 }
 

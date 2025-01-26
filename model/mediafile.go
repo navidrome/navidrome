@@ -92,6 +92,13 @@ type MediaFile struct {
 	UpdatedAt time.Time `structs:"updated_at" json:"updatedAt" hash:"ignore"` // Time of file last update (mtime)
 }
 
+func (mf MediaFile) FullTitle() string {
+	if mf.Tags[TagSubtitle] == nil {
+		return mf.Title
+	}
+	return fmt.Sprintf("%s (%s)", mf.Title, mf.Tags[TagSubtitle][0])
+}
+
 func (mf MediaFile) ContentType() string {
 	return mime.TypeByExtension("." + mf.Suffix)
 }
