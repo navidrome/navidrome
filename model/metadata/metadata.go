@@ -240,7 +240,7 @@ func split(values []string, sep []string) []string {
 	}
 	tag := values[0]
 	for _, s := range sep {
-		re, err := regexp.Compile(regexp.QuoteMeta(s))
+		re, err := regexp.Compile(`(?i)` + regexp.QuoteMeta(s))
 		if err != nil {
 			log.Error("Error compiling regexp", "sep", s, err)
 			continue

@@ -130,6 +130,21 @@ var _ = Describe("Participants", func() {
 				Expect(artist1.SortArtistName).To(Equal("Else, Someone"))
 				Expect(artist1.MbzArtistID).To(BeEmpty())
 			})
+			It("should split the tag using case-insensitive separators", func() {
+				mf = toMediaFile(map[string][]string{
+					"ARTIST": {"A1 FEAT. A2"},
+				})
+				participants := mf.Participants
+				Expect(participants).To(SatisfyAll(
+					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
+				))
+
+				artist1 := participants[model.RoleArtist][0]
+				Expect(artist1.Name).To(Equal("A1"))
+				artist2 := participants[model.RoleArtist][1]
+				Expect(artist2.Name).To(Equal("A2"))
+			})
+
 			It("should not add an empty artist after split", func() {
 				mf = toMediaFile(map[string][]string{
 					"ARTIST": {"John Doe /  / Jane Doe"},
