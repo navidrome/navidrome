@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/resources"
@@ -119,6 +120,8 @@ func tagNames() []string {
 // This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be used in
 // smart playlists
 func init() {
-	criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
-	criteria.AddTagNames(tagNames())
+	conf.AddHook(func() {
+		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
+		criteria.AddTagNames(tagNames())
+	})
 }
