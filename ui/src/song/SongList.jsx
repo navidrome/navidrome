@@ -1,10 +1,10 @@
 import React from 'react'
 import {
-  AutocompleteInput,
+  AutocompleteArrayInput,
   Filter,
   FunctionField,
   NumberField,
-  ReferenceInput,
+  ReferenceArrayInput,
   SearchInput,
   TextField,
   useTranslate,
@@ -59,12 +59,20 @@ const useStyles = makeStyles({
   },
 })
 
+const inputStyle = makeStyles({
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
+})
+
 const SongFilter = (props) => {
   const translate = useTranslate()
+  const classes = inputStyle()
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.song.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -72,8 +80,8 @@ const SongFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
