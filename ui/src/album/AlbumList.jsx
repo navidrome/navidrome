@@ -2,11 +2,13 @@ import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
   AutocompleteInput,
+  AutocompleteArrayInput,
   Filter,
   NullableBooleanInput,
   NumberInput,
   Pagination,
   ReferenceInput,
+  ReferenceArrayInput,
   SearchInput,
   useRefresh,
   useTranslate,
@@ -29,9 +31,19 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import React from 'react'
+import { makeStyles } from '@material-ui/core/styles'
+
+const inputStyle = makeStyles({
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
+})
 
 const AlbumFilter = (props) => {
   const translate = useTranslate()
+  const classes = inputStyle()
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
@@ -44,7 +56,7 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" />
       </ReferenceInput>
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.album.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -52,8 +64,8 @@ const AlbumFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />
       {config.enableFavourites && (

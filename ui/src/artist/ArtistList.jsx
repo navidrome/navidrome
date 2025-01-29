@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
-  AutocompleteInput,
+  AutocompleteArrayInput,
   Datagrid,
   DatagridBody,
   DatagridRow,
   Filter,
   NumberField,
-  ReferenceInput,
+  ReferenceArrayInput,
   SearchInput,
   TextField,
   useTranslate,
@@ -56,12 +56,21 @@ const useStyles = makeStyles({
   },
 })
 
+const inputStyle = makeStyles({
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
+})
+
 const ArtistFilter = (props) => {
   const translate = useTranslate()
+  const classes = inputStyle()
+
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.artist.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -69,8 +78,8 @@ const ArtistFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
