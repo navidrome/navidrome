@@ -400,7 +400,7 @@ func init() {
 	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
 	viper.SetDefault("scaninterval", -1)
-	viper.SetDefault("scanschedule", "@every 1m")
+	viper.SetDefault("scanschedule", "0")
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
 	viper.SetDefault("tlskey", "")
