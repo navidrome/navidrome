@@ -97,7 +97,7 @@ const (
 
 const (
 	//DefaultAlbumPID = "album_legacy"
-	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,version,releasedate"
+	DefaultAlbumPID = "musicbrainz_albumid|albumartistid,album,albumversion,releasedate"
 	DefaultTrackPID = "musicbrainz_trackid|albumid,discnumber,tracknumber,title"
 	PIDAlbumKey     = "PIDAlbum"
 	PIDTrackKey     = "PIDTrack"
