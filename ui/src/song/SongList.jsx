@@ -1,10 +1,10 @@
-import React from 'react'
+import { useMemo } from 'react'
 import {
-  AutocompleteInput,
+  AutocompleteArrayInput,
   Filter,
   FunctionField,
   NumberField,
-  ReferenceInput,
+  ReferenceArrayInput,
   SearchInput,
   TextField,
   useTranslate,
@@ -57,14 +57,19 @@ const useStyles = makeStyles({
   ratingField: {
     visibility: 'hidden',
   },
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
 })
 
 const SongFilter = (props) => {
+  const classes = useStyles()
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.song.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -72,8 +77,8 @@ const SongFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
@@ -96,7 +101,7 @@ const SongList = (props) => {
     dispatch(setTrack(record))
   }
 
-  const toggleableFields = React.useMemo(() => {
+  const toggleableFields = useMemo(() => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
