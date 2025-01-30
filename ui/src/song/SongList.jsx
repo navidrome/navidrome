@@ -1,4 +1,4 @@
-import React from 'react'
+import { useMemo } from 'react'
 import {
   AutocompleteArrayInput,
   Filter,
@@ -57,9 +57,6 @@ const useStyles = makeStyles({
   ratingField: {
     visibility: 'hidden',
   },
-})
-
-const inputStyle = makeStyles({
   chip: {
     margin: 0,
     height: '24px',
@@ -67,8 +64,8 @@ const inputStyle = makeStyles({
 })
 
 const SongFilter = (props) => {
+  const classes = useStyles()
   const translate = useTranslate()
-  const classes = inputStyle()
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
@@ -104,7 +101,7 @@ const SongList = (props) => {
     dispatch(setTrack(record))
   }
 
-  const toggleableFields = React.useMemo(() => {
+  const toggleableFields = useMemo(() => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,

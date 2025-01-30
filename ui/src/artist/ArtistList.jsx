@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
   Datagrid,
@@ -25,7 +25,6 @@ import {
   RatingField,
   useSelectedFields,
   useResourceRefresh,
-  SizeField,
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'

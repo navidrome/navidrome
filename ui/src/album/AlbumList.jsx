@@ -1,11 +1,13 @@
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
+  AutocompleteArrayInput,
   AutocompleteInput,
   Filter,
   NullableBooleanInput,
   NumberInput,
   Pagination,
+  ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
   useRefresh,
@@ -30,8 +32,17 @@ import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import inflection from 'inflection'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles({
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
+})
 
 const AlbumFilter = (props) => {
+  const classes = useStyles()
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
@@ -45,7 +56,7 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" />
       </ReferenceInput>
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.album.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -53,8 +64,8 @@ const AlbumFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
       <ReferenceInput
         label={translate('resources.album.fields.recordLabel')}
         source="recordlabel"
