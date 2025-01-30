@@ -288,7 +288,7 @@ alter table artist
 alter table artist
 	add column missing boolean default false not null;
 alter table artist
-	add column stats jsonb default '{}' not null;
+	add column stats jsonb default '{"albumartist":{}}' not null;
 alter table artist
 	drop column similar_artists;
 alter table artist
