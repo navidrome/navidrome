@@ -135,11 +135,11 @@
       }
     },
     "transcoding": {
-      "name": "Транскодирование  |||| Транскодирование",
+      "name": "Транскодирование |||| Транскодирование",
       "fields": {
         "name": "Название",
         "targetFormat": "Целевой формат",
-        "defaultBitRate": "Битрейт по умолчанию",
+        "defaultBitRate": "Стандартный битрейт",
         "command": "Команда"
       }
     },
@@ -183,9 +183,9 @@
       }
     },
     "share": {
-      "name": "Общий доступ |||| Общий доступ",
+      "name": "Ссылка доступа |||| Ссылки доступа",
       "fields": {
-        "username": "Поделился",
+        "username": "Кто поделился",
         "url": "Ссылка",
         "description": "Описание",
         "contents": "Содержание",
@@ -194,9 +194,9 @@
         "visitCount": "Посещения",
         "format": "Формат",
         "maxBitRate": "Макс. Битрейт",
-        "updatedAt": "Обновлено в",
+        "updatedAt": "Обновлено",
         "createdAt": "Создано",
-        "downloadable": "Разрешить загрузку?"
+        "downloadable": "Разрешить скачивание?"
       }
     }
   },
@@ -212,7 +212,8 @@
       "password": "Пароль",
       "sign_in": "Войти",
       "sign_in_error": "Ошибка аутентификации, попробуйте снова",
-      "logout": "Выйти"
+      "logout": "Выйти",
+      "insightsCollectionNote": "Navidrome собирает анонимные данные об использовании для\nулучшения проекта. Нажмите [здесь], чтобы\nузнать больше или отказаться"
     },
     "validation": {
       "invalidChars": "Пожалуйста, используйте только буквы и цифры",
@@ -388,6 +389,7 @@
         "language": "Язык",
         "defaultView": "Вид по умолчанию",
         "desktop_notifications": "Уведомления на рабочем столе",
+        "lastfmNotConfigured": "API-ключ Last.fm не настроен",
         "lastfmScrobbling": "Скробблинг Last.fm",
         "listenBrainzScrobbling": "Скробблинг ListenBrainz",
         "replaygain": "ReplayGain режим",
@@ -434,6 +436,11 @@
       "homepage": "Главная",
       "source": "Код",
       "featureRequests": "Предложения"
+    },
+    "lastInsightsCollection": "Последний сбор данных",
+    "insights": {
+      "disabled": "Отключено",
+      "waiting": "Пока нет"
     }
   },
   "activity": {
