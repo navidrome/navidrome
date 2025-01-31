@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -71,13 +72,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 	r.ctx = ctx
 	r.db = db
 	r.tableName = "media_file"
-	r.registerModel(&model.MediaFile{}, map[string]filterFunc{
-		"id":       idFilter(r.tableName),
-		"title":    fullTextFilter(r.tableName),
-		"starred":  booleanFilter,
-		"genre_id": tagIDFilter,
-		"missing":  booleanFilter,
-	})
+	r.registerModel(&model.MediaFile{}, mediaFileFilter())
 	r.setSortMappings(map[string]string{
 		"title":        "order_title",
 		"artist":       "order_artist_name, order_album_name, release_date, disc_number, track_number",
@@ -89,6 +84,21 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 	})
 	return r
 }
+
+var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
+	filters := map[string]filterFunc{
+		"id":       idFilter("media_file"),
+		"title":    fullTextFilter("media_file"),
+		"starred":  booleanFilter,
+		"genre_id": tagIDFilter,
+		"missing":  booleanFilter,
+	}
+	// Add all album tags as filters
+	for tag := range model.TagMappings() {
+		filters[string(tag)] = tagIDFilter
+	}
+	return filters
+})
 
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()

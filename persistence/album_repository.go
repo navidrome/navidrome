@@ -118,7 +118,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
 	}
-	// Add all tags remaining album tags as filters
+	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
 		filters[string(tag)] = tagIDFilter
 	}

@@ -26,7 +26,9 @@
         "bpm": "BPM",
         "playDate": "Últ. Execução",
         "channels": "Canais",
-        "createdAt": "Adiconado em"
+        "createdAt": "Adiconado em",
+        "grouping": "Agrupamento",
+        "mood": "Mood"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -62,7 +64,8 @@
         "recordLabel": "Selo",
         "releaseType": "Tipo",
         "grouping": "Agrupamento",
-        "media": "Mídia"
+        "media": "Mídia",
+        "mood": "Mood"
       },
       "actions": {
         "playAll": "Tocar",

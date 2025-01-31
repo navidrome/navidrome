@@ -79,7 +79,7 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
       </ReferenceInput>
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.album.fields.grouping')}
         source="grouping"
         reference="tag"
@@ -90,8 +90,29 @@ const AlbumFilter = (props) => {
           tag_value: [searchText],
         })}
       >
-        <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
-      </ReferenceInput>
+        <AutocompleteArrayInput
+          emptyText="-- None --"
+          classes={classes}
+          optionText="tagValue"
+        />
+      </ReferenceArrayInput>
+      <ReferenceArrayInput
+        label={translate('resources.album.fields.mood')}
+        source="mood"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'mood' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteArrayInput
+          emptyText="-- None --"
+          classes={classes}
+          optionText="tagValue"
+        />
+      </ReferenceArrayInput>
       <ReferenceInput
         label={translate('resources.album.fields.media')}
         source="media"
