@@ -9,6 +9,7 @@ import {
   useNotify,
   useDeleteMany,
   useRefresh,
+  useUnselectAll,
 } from 'react-admin'
 
 const useStyles = makeStyles(
@@ -30,6 +31,7 @@ const useStyles = makeStyles(
 const DeleteMissingFilesButton = (props) => {
   const { selectedIds, className } = props
   const [open, setOpen] = useState(false)
+  const unselectAll = useUnselectAll()
   const refresh = useRefresh()
   const notify = useNotify()
 
@@ -37,6 +39,7 @@ const DeleteMissingFilesButton = (props) => {
     onSuccess: () => {
       notify('resources.missing.notifications.removed')
       refresh()
+      unselectAll('missing')
     },
     onFailure: (error) =>
       notify('Error: missing files not deleted', { type: 'warning' }),
