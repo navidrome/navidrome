@@ -95,7 +95,9 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
-		filters[string(tag)] = tagIDFilter
+		if _, exists := filters[string(tag)]; !exists {
+			filters[string(tag)] = tagIDFilter
+		}
 	}
 	return filters
 })
