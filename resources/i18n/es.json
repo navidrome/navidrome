@@ -73,8 +73,8 @@
       "lists": {
         "all": "Todos",
         "random": "Aleatorio",
-        "recentlyAdded": "Recientes",
-        "recentlyPlayed": "Recientes",
+        "recentlyAdded": "Añadidos recientemente",
+        "recentlyPlayed": "Reproducidos recientemente",
         "mostPlayed": "Más reproducidos",
         "starred": "Favoritos",
         "topRated": "Los mejores calificados"
