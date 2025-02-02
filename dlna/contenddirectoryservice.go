@@ -261,35 +261,23 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
   </item>
 	*/
 	for _, track := range tracks {
-		child := object{
-			Path: path.Join(basePath, track.ID),
-			Id: path.Join(basePath, track.ID),
-		}
-		title := track.Title
-		artist := track.Artist
-		album := track.Album
-		genre := track.Genre
-		trackNo := track.TrackNumber
-
-		trackDurStr := floatToDurationString(track.Duration)
+		trackDateAsTimeObject, _ := time.Parse(time.DateOnly, track.Date)
 
 		obj := upnpav.Object{
-			ID:         child.Id,
+			ID:         path.Join(basePath, track.ID),
 			Restricted: 1,
 			ParentID:   basePath,
-			Title:      title,
+			Title:      track.Title,
+			Class: "object.item.audioItem.musicTrack",
+			Artist: track.Artist,
+			Album: track.Album,
+			Genre: track.Genre,
+			OriginalTrackNumber: track.TrackNumber,
+			Date: upnpav.Timestamp{Time:trackDateAsTimeObject},
 		}
  		
 		//TODO figure out how this fits with transcoding etc
 		var mimeType = "audio/mp3"
-		obj.Class = "object.item.audioItem.musicTrack"
-
-		trackDate, _ := time.Parse(time.DateOnly, track.Date)
-		obj.Date = upnpav.Timestamp{Time:trackDate}
-		obj.Artist = artist
-		obj.Album = album
-		obj.Genre = genre
-		obj.OriginalTrackNumber = trackNo
 
 		item := upnpav.Item{
 			Object: obj,
@@ -309,7 +297,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 				SupportRange: false,
 			}.String()),
 			Size: uint64(track.Size),
-			Duration: trackDurStr,
+			Duration: floatToDurationString(track.Duration),
 		})
 		ret = append(ret, item)
 	}
