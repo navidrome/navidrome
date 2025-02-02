@@ -192,7 +192,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				fmt.Printf("Error retrieving tracks for artist and genre: %+v", err)
 				return nil, err
 			}
-
+			return cds.doMediaFiles(tracks, o.Path, ret, host)
+			/*
 			//TODO do the metadata and stuff here
 			for trackIndex := range tracks {
 				child := object {
@@ -200,7 +201,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 					Id: path.Join(o.Path, tracks[trackIndex].ID),
 				}
 				ret = append(ret, cds.cdsObjectToUpnpavObject(child, false, host))
-			}
+			}*/
 		} else if matchResults["Genre"] != "" {
 			if matchResults["GenreArtist"] == "" {
 				artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{ "genre.id": matchResults["Genre"]}})
@@ -281,7 +282,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 	*/
 	for _, track := range tracks {
 		child := object{
-			Path: path.Join(basePath, track.Title),
+			Path: path.Join(basePath, track.ID),
 			Id: path.Join(basePath, track.ID),
 		}
 		title := track.Title
