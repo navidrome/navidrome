@@ -123,14 +123,10 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			log.Debug("Artist Get a track ")
 		} else if matchResults["ArtistAlbum"] != "" {
 			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
-
 			return cds.doMediaFiles(tracks, o.Path, ret, host)
-
 		} else if matchResults["Artist"] != "" {
 			allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
-		
 			return cds.doAlbums(allAlbumsForThisArtist, o.Path, ret, host)
-
 		} else {
 			indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
 			if err != nil {
@@ -185,15 +181,6 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 				return nil, err
 			}
 			return cds.doMediaFiles(tracks, o.Path, ret, host)
-			/*
-			//TODO do the metadata and stuff here
-			for trackIndex := range tracks {
-				child := object {
-					Path: path.Join(o.Path, tracks[trackIndex].Title),
-					Id: path.Join(o.Path, tracks[trackIndex].ID),
-				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, false, host))
-			}*/
 		} else if matchResults["Genre"] != "" {
 			if matchResults["GenreArtist"] == "" {
 				artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{ "genre.id": matchResults["Genre"]}})
