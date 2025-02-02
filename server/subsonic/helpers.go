@@ -170,7 +170,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.ContentType = mf.ContentType()
 	player, ok := request.PlayerFrom(ctx)
 	if ok && player.ReportRealPath {
-		child.Path = mf.Path
+		child.Path = mf.AbsolutePath()
 	} else {
 		child.Path = fakePath(mf)
 	}
