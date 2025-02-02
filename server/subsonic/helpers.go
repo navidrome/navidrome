@@ -399,6 +399,9 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 	dir.IsCompilation = album.Compilation
 	dir.DiscTitles = buildDiscSubtitles(album)
 	dir.ExplicitStatus = mapExplicitStatus(album.ExplicitStatus)
+	if len(album.Tags.Values(model.TagAlbumVersion)) > 0 {
+		dir.Version = album.Tags.Values(model.TagAlbumVersion)[0]
+	}
 
 	return &dir
 }

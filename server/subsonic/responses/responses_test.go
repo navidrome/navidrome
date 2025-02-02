@@ -301,6 +301,7 @@ var _ = Describe("Responses", func() {
 						{Id: "2", Name: "artist2"},
 					},
 					ExplicitStatus: "clean",
+					Version:        "Deluxe Edition",
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
