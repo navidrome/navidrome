@@ -299,7 +299,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 
 func (r *mediaFileRepository) Search(q string, offset int, size int, includeMissing bool) (model.MediaFiles, error) {
 	results := dbMediaFiles{}
-	err := r.doSearch(q, offset, size, includeMissing, &results, "title")
+	err := r.doSearch(r.selectMediaFile(), q, offset, size, includeMissing, &results, "title")
 	if err != nil {
 		return nil, err
 	}

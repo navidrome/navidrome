@@ -14,16 +14,16 @@ func formatFullText(text ...string) string {
 	return " " + fullText
 }
 
-func (r sqlRepository) doSearch(q string, offset, size int, includeMissing bool, results any, orderBys ...string) error {
+func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, includeMissing bool, results any, orderBys ...string) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
 	if len(q) < 2 {
 		return nil
 	}
 
-	sq := r.newSelect().Columns(r.tableName + ".*")
-	sq = r.withAnnotation(sq, r.tableName+".id")
-	sq = r.withBookmark(sq, r.tableName+".id")
+	//sq := r.newSelect().Columns(r.tableName + ".*")
+	//sq = r.withAnnotation(sq, r.tableName+".id")
+	//sq = r.withBookmark(sq, r.tableName+".id")
 	filter := fullTextExpr(r.tableName, q)
 	if filter != nil {
 		sq = sq.Where(filter)
