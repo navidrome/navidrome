@@ -183,19 +183,38 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		if matchResults["GenreTrack"] != "" {
 			log.Debug("TODO GenreTrack MATCH")
 		} else if matchResults["GenreArtist"] != "" {
-			log.Debug("TODO GenreArtist MATCH")
-		} else if matchResults["Genre"] != "" {
-			artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{ "genre.id": matchResults["Genre"]}})
+			tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{ 
+				squirrel.Eq{"genre.id": matchResults["Genre"],},
+				squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
+			  },
+			})
 			if err != nil {
-				fmt.Printf("Error retrieving artists for genre: %+v", err)
+				fmt.Printf("Error retrieving tracks for artist and genre: %+v", err)
 				return nil, err
 			}
-			for artistIndex := range artists {
-				child := object{
-					Path: path.Join(o.Path, artists[artistIndex].Name),
-					Id: path.Join(o.Path, artists[artistIndex].ID),
+
+			//TODO do the metadata and stuff here
+			for trackIndex := range tracks {
+				child := object {
+					Path: path.Join(o.Path, tracks[trackIndex].Title),
+					Id: path.Join(o.Path, tracks[trackIndex].ID),
 				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, false, host))
+			}
+		} else if matchResults["Genre"] != "" {
+			if matchResults["GenreArtist"] == "" {
+				artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{ "genre.id": matchResults["Genre"]}})
+				if err != nil {
+					fmt.Printf("Error retrieving artists for genre: %+v", err)
+					return nil, err
+				}
+				for artistIndex := range artists {
+					child := object{
+						Path: path.Join(o.Path, artists[artistIndex].Name),
+						Id: path.Join(o.Path, artists[artistIndex].ID),
+					}
+					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+				}
 			}
 		} else {
 			indexes, err := cds.ds.Genre(cds.ctx).GetAll()
