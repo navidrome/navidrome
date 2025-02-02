@@ -336,10 +336,10 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) err
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
 	if options.Offset > conf.Server.DevOffsetOptimize {
 		sq = sq.RemoveOffset()
-		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
-		oidSq = oidSq.Limit(uint64(options.Offset))
-		oidSql, args, _ := oidSq.ToSql()
-		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
+		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
+		rowidSq = rowidSq.Limit(uint64(options.Offset))
+		rowidSql, args, _ := rowidSq.ToSql()
+		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
 	}
 	return sq
 }
