@@ -84,7 +84,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 		URL: (&url.URL{
 			Scheme: "http",
 			Host:   host,
-			Path:   path.Join(resPath, cdsObject.Path),
+			Path:   path.Join(resourcePath, cdsObject.Path),
 		}).String(),
 		ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 			SupportRange: true,
@@ -119,7 +119,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		return cds.doFiles(ret, o.Path, host)
 	} else if matchResults, err := artistRegex.Groups(o.Path); err == nil {
 		if matchResults["ArtistAlbumTrack"] != "" {
-			//TODO
+			//This is never hit as the URL is direct to the resourcePath
 			log.Debug("Artist Get a track ")
 		} else if matchResults["ArtistAlbum"] != "" {
 			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
@@ -148,6 +148,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 	} else if matchResults, err := albumRegex.Groups(o.Path); err == nil {
 		if matchResults["AlbumTrack"] != "" {
 			log.Debug("TODO AlbumTrack MATCH")
+			//This is never hit as the URL is direct to the resourcePath
 		} else if matchResults["AlbumTitle"] != "" {
 			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
 			return cds.doMediaFiles(tracks, o.Path, ret, host)
@@ -278,11 +279,13 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			ParentID:   basePath,
 			Title:      title,
 		}
-
-		var mimeType = "audio/mp3" //TODO
-
+ 		
+		//TODO figure out how this fits with transcoding etc
+		var mimeType = "audio/mp3"
 		obj.Class = "object.item.audioItem.musicTrack"
-		obj.Date = upnpav.Timestamp{Time:time.Now()} //TODO
+
+		trackDate, _ := time.Parse(time.DateOnly, track.Date)
+		obj.Date = upnpav.Timestamp{Time:trackDate}
 		obj.Artist = artist
 		obj.Album = album
 		obj.Genre = genre
@@ -293,11 +296,14 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			Res:    make([]upnpav.Resource, 0, 1),
 		}
 
+		//TODO replace this with a streaming path
+		directFileAccessPath := path.Join(resourcePath, strings.TrimPrefix(track.Path, conf.Server.MusicFolder))
+
 		item.Res = append(item.Res, upnpav.Resource{
 			URL: (&url.URL{
 				Scheme: "http",
 				Host:   host,
-				Path:   child.Path,
+				Path:   directFileAccessPath,
 			}).String(),
 			ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 				SupportRange: false,

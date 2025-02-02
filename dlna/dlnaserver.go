@@ -32,7 +32,7 @@ import (
 const (
 	serverField       = "Linux/3.4 DLNADOC/1.50 UPnP/1.0 DMS/1.0"
 	rootDescPath      = "/rootDesc.xml"
-	resPath           = "/r/"
+	resourcePath           = "/r/"
 	serviceControlURL = "/ctl"
 )
 
@@ -96,7 +96,7 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 
 	//setup dedicated HTTP server for UPNP
 	r := http.NewServeMux()
-	r.Handle(resPath, http.StripPrefix(resPath, http.HandlerFunc(s.ssdp.resourceHandler)))
+	r.Handle(resourcePath, http.StripPrefix(resourcePath, http.HandlerFunc(s.ssdp.resourceHandler)))
 
 	r.Handle("/static/", http.FileServer(http.FS(staticContent)))
 	r.HandleFunc(rootDescPath, s.ssdp.rootDescHandler)
