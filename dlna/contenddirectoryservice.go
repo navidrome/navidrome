@@ -275,7 +275,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 		obj := upnpav.Object{
 			ID:         child.Id,
 			Restricted: 1,
-			ParentID:   child.ParentID(),
+			ParentID:   basePath,
 			Title:      title,
 		}
 
@@ -297,7 +297,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			URL: (&url.URL{
 				Scheme: "http",
 				Host:   host,
-				Path:   path.Join(resPath, child.Path),
+				Path:   child.Path,
 			}).String(),
 			ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 				SupportRange: false,
