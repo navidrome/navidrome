@@ -116,7 +116,7 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		return nil
 	case "media_file":
 		mfRepo := NewMediaFileRepository(r.ctx, r.db)
-		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"id": ids})})
+		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"media_file.id": ids})})
 		share.Tracks = sortByIdPosition(tracks, ids)
 		return err
 	}
