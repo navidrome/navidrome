@@ -122,19 +122,14 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			//TODO
 			log.Debug("Artist Get a track ")
 		} else if matchResults["ArtistAlbum"] != "" {
-			basePath := path.Join("/Music/Artists", matchResults["Artist"], matchResults["ArtistAlbum"])
-
-			//albumResponse, _ := cds.ds.Album(cds.ctx).Get(matchResults["ArtistAlbum"])
 			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
 
-			return cds.doMediaFiles(tracks, basePath, ret, host)
+			return cds.doMediaFiles(tracks, o.Path, ret, host)
 
 		} else if matchResults["Artist"] != "" {
-			basePath := path.Join("/Music/Artists", matchResults["Artist"])
-
 			allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
 		
-			return cds.doAlbums(allAlbumsForThisArtist, basePath, ret, host)
+			return cds.doAlbums(allAlbumsForThisArtist, o.Path, ret, host)
 
 		} else {
 			indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
@@ -158,11 +153,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		if matchResults["AlbumTrack"] != "" {
 			log.Debug("TODO AlbumTrack MATCH")
 		} else if matchResults["AlbumTitle"] != "" {
-			basePath := path.Join("/Music/Albums", matchResults["AlbumTitle"])
-
 			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
-
-			return cds.doMediaFiles(tracks, basePath, ret, host)
+			return cds.doMediaFiles(tracks, o.Path, ret, host)
 		} else {
 			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
 			if err != nil {
