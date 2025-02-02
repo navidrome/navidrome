@@ -185,8 +185,18 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		} else if matchResults["GenreArtist"] != "" {
 			log.Debug("TODO GenreArtist MATCH")
 		} else if matchResults["Genre"] != "" {
-			//x, xerr := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{}})
-			log.Debug("TODO Get albums for Genre X")
+			artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{ "genre.id": matchResults["Genre"]}})
+			if err != nil {
+				fmt.Printf("Error retrieving artists for genre: %+v", err)
+				return nil, err
+			}
+			for artistIndex := range artists {
+				child := object{
+					Path: path.Join(o.Path, artists[artistIndex].Name),
+					Id: path.Join(o.Path, artists[artistIndex].ID),
+				}
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			}
 		} else {
 			indexes, err := cds.ds.Genre(cds.ctx).GetAll()
 			if err != nil {
