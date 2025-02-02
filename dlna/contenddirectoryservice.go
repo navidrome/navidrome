@@ -5,13 +5,13 @@ package dlna
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -260,7 +260,8 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 		album := track.Album
 		genre := track.Genre
 		trackNo := track.TrackNumber
-		trackDuration := strconv.FormatFloat(float64(track.Duration), 'f', -1, 64)
+
+		trackDurStr := floatToDurationString(track.Duration)
 
 		obj := upnpav.Object{
 			ID:         child.Id,
@@ -293,12 +294,25 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 				SupportRange: false,
 			}.String()),
 			Size: uint64(track.Size),
-			Duration: trackDuration,
+			Duration: trackDurStr,
 		})
 		ret = append(ret, item)
 	}
 
 	return ret, nil
+}
+
+func floatToDurationString(totalSeconds32 float32) string {
+	totalSeconds := float64(totalSeconds32)
+	secondsInAnHour := float64(60*60)
+	secondsInAMinute := float64(60)
+
+	hours := int(math.Floor(totalSeconds / secondsInAnHour))
+	minutes :=  int(math.Floor(math.Mod(totalSeconds, secondsInAnHour) / secondsInAMinute))
+	seconds := int(math.Floor(math.Mod(totalSeconds, secondsInAMinute)))
+	ms := int(math.Floor(math.Mod(totalSeconds,1) * 1000))
+
+	return fmt.Sprintf("%02d:%02d:%02d.%03d", hours, minutes, seconds, ms)
 }
 
 func (cds *contentDirectoryService) doAlbum(album *model.Album, basepath string, ret []interface{}, host string) ([]interface{}, error) {
