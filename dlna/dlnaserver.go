@@ -33,6 +33,8 @@ const (
 	serverField       = "Linux/3.4 DLNADOC/1.50 UPnP/1.0 DMS/1.0"
 	rootDescPath      = "/rootDesc.xml"
 	resourcePath           = "/r/"
+	resourceFilePath	   = "f"
+	resourceStreamPath = "s"
 	serviceControlURL = "/ctl"
 )
 
@@ -275,35 +277,44 @@ func isAppropriatelyConfigured(intf net.Interface) bool {
 func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 	remotePath := r.URL.Path
 
-	localFile, _ := strings.CutPrefix(remotePath, "Music/Files/")
-	localFilePath := path.Join(conf.Server.MusicFolder, localFile)
+	components := strings.Split(remotePath, "/")
+	switch components[0] {
+		case resourceFilePath:
+			localFile, _ := strings.CutPrefix(remotePath, path.Join(resourceFilePath,"Music/Files"))
+			localFilePath := path.Join(conf.Server.MusicFolder, localFile)
 
-	log.Info(fmt.Sprintf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath))
+			log.Info(fmt.Sprintf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath))
 
-	fileStats, err := os.Stat(localFilePath)
-	if err != nil {
-		http.NotFound(w, r)
-		return
+			fileStats, err := os.Stat(localFilePath)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Length", strconv.FormatInt(fileStats.Size(), 10))
+
+			// add some DLNA specific headers
+			if r.Header.Get("getContentFeatures.dlna.org") != "" {
+				w.Header().Set("contentFeatures.dlna.org", dms_dlna.ContentFeatures{
+					SupportRange: true,
+				}.String())
+			}
+			w.Header().Set("transferMode.dlna.org", "Streaming")
+
+			os.Open(localFilePath)
+			fileHandle, err := os.Open(localFilePath)
+			if err != nil {
+				fmt.Printf("file streaming error: %+v\n", err)
+				return
+			}
+			defer fileHandle.Close()
+
+			http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
+		break;	
+		case resourceStreamPath:
+			//TODO streaming endpoint
+			log.Debug(fmt.Sprintf("TODO IMPLEMENT THIS: %+v", r))
+		break;
 	}
-	w.Header().Set("Content-Length", strconv.FormatInt(fileStats.Size(), 10))
-
-	// add some DLNA specific headers
-	if r.Header.Get("getContentFeatures.dlna.org") != "" {
-		w.Header().Set("contentFeatures.dlna.org", dms_dlna.ContentFeatures{
-			SupportRange: true,
-		}.String())
-	}
-	w.Header().Set("transferMode.dlna.org", "Streaming")
-
-	os.Open(localFilePath)
-	fileHandle, err := os.Open(localFilePath)
-	if err != nil {
-		fmt.Printf("file streaming error: %+v\n", err)
-		return
-	}
-	defer fileHandle.Close()
-
-	http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
 }
 
 // returns /rootDesc.xml templated
