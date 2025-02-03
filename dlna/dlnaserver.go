@@ -24,6 +24,8 @@ import (
 	"github.com/anacrolix/dms/upnp"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/events"
@@ -35,6 +37,7 @@ const (
 	resourcePath           = "/r/"
 	resourceFilePath	   = "f"
 	resourceStreamPath = "s"
+	resourceArtPath = "a"
 	serviceControlURL = "/ctl"
 )
 
@@ -46,6 +49,8 @@ type DLNAServer struct {
 	broker events.Broker
 	ssdp   SSDPServer
 	ctx    context.Context
+	ms core.MediaStreamer
+	art	artwork.Artwork
 }
 
 type SSDPServer struct {
@@ -68,9 +73,12 @@ type SSDPServer struct {
 
 	// Time interval between SSPD announces
 	AnnounceInterval time.Duration
+
+	ms core.MediaStreamer
+	art	artwork.Artwork
 }
 
-func New(ds model.DataStore, broker events.Broker) *DLNAServer {
+func New(ds model.DataStore, broker events.Broker, mediastreamer core.MediaStreamer, artwork artwork.Artwork) *DLNAServer {
 	s := &DLNAServer{
 		ds:     ds,
 		broker: broker,
@@ -82,6 +90,8 @@ func New(ds model.DataStore, broker events.Broker) *DLNAServer {
 			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
 			waitChan:         make(chan struct{}),
 		},
+		ms: mediastreamer,
+		art: artwork,
 	}
 
 	s.ssdp.services = map[string]UPnPService{
@@ -313,6 +323,49 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 		case resourceStreamPath:
 			//TODO streaming endpoint
 			log.Debug(fmt.Sprintf("TODO IMPLEMENT THIS: %+v", r))
+
+			//Copypasta stream.go:52
+
+			id := components[1]
+
+			ctx := r.Context()
+			/*
+			maxBitRate := p.IntOr("maxBitRate", 0)
+			format, _ := p.String("format")
+			timeOffset := p.IntOr("timeOffset", 0)
+*/			//TODO figure out format, bitrate 
+log.Debug(fmt.Sprintf("1 %+v | comp: %+v",id, components))
+			stream, err := s.ms.NewStream(ctx, id, "mp3", 0, 0)
+			if err != nil {
+				//eturn nil, err
+			}
+			log.Debug("2")
+			// Make sure the stream will be closed at the end, to avoid leakage
+			defer func() {
+				if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
+					log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
+				}
+			}()
+			log.Debug("3")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
+			log.Debug("4")
+			http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
+			log.Debug("5")
+		break;
+			case resourceArtPath:
+				log.Debug("1a")
+				//copy pasta handle_images.go:39
+				artId, _ := model.ParseArtworkID(components[1])
+				imgReader, lastUpdate, _ := s.art.Get(r.Context(), artId, 250, true)
+				log.Debug("2a")
+				defer imgReader.Close()
+				log.Debug("3a")
+				w.Header().Set("Cache-Control", "public, max-age=315360000")
+				w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
+				log.Debug("4a")
+				io.Copy(w, imgReader)
+				log.Debug("5a")
 		break;
 	}
 }
