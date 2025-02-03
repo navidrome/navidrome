@@ -84,7 +84,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 		URL: (&url.URL{
 			Scheme: "http",
 			Host:   host,
-			Path:   path.Join(resourcePath, cdsObject.Path),
+			Path:   path.Join(resourcePath, resourceFilePath, cdsObject.Path),
 		}).String(),
 		ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 			SupportRange: true,
@@ -285,13 +285,13 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 		}
 
 		//TODO replace this with a streaming path
-		directFileAccessPath := path.Join(resourcePath, strings.TrimPrefix(track.Path, conf.Server.MusicFolder))
-
+		//directFileAccessPath := path.Join(resourcePath, resourceFilePath, "Music/Files", strings.TrimPrefix(track.Path, conf.Server.MusicFolder))
+		streamAccessPath := path.Join(resourcePath, resourceStreamPath, track.ID)
 		item.Res = append(item.Res, upnpav.Resource{
 			URL: (&url.URL{
 				Scheme: "http",
 				Host:   host,
-				Path:   directFileAccessPath,
+				Path:   streamAccessPath,
 			}).String(),
 			ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 				SupportRange: false,
