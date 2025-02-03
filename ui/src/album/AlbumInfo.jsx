@@ -16,7 +16,11 @@ import {
   useTranslate,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { MultiLineTextField } from '../common'
+import {
+  ArtistLinkField,
+  MultiLineTextField,
+  ParticipantsInfo,
+} from '../common'
 
 const useStyles = makeStyles({
   tableCell: {
@@ -30,7 +34,9 @@ const AlbumInfo = (props) => {
   const record = useRecordContext(props)
   const data = {
     album: <TextField source={'name'} />,
-    albumArtist: <TextField source={'albumArtist'} />,
+    albumArtist: (
+      <ArtistLinkField source="albumArtist" record={record} limit={Infinity} />
+    ),
     genre: (
       <ArrayField source={'genres'}>
         <SingleFieldList linkType={false}>
@@ -110,6 +116,7 @@ const AlbumInfo = (props) => {
               </TableRow>
             )
           })}
+          <ParticipantsInfo record={record} classes={classes} />
         </TableBody>
       </Table>
     </TableContainer>

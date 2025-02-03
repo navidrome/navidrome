@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -68,6 +69,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"enableExternalServices":    conf.Server.EnableExternalServices,
 			"enableReplayGain":          conf.Server.EnableReplayGain,
 			"defaultDownsamplingFormat": conf.Server.DefaultDownsamplingFormat,
+			"separator":                 os.PathSeparator,
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			appConfig["loginBackgroundURL"] = path.Join(conf.Server.BasePath, conf.Server.UILoginBackgroundURL)

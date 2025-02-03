@@ -28,7 +28,9 @@
         "playDate": "Last Played",
         "createdAt": "Date added",
         "grouping": "Grouping",
-        "mood": "Mood"
+        "mood": "Mood",
+        "participants": "Additional participants",
+        "tags": "Additional Tags"
       },
       "actions": {
         "addToQueue": "Play Later",
