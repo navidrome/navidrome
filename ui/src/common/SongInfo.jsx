@@ -14,10 +14,17 @@ import {
   useRecordContext,
 } from 'react-admin'
 import inflection from 'inflection'
-import { BitrateField, SizeField } from './index'
+import {
+  ArtistLinkField,
+  BitrateField,
+  ParticipantsInfo,
+  PathField,
+  SizeField,
+} from './index'
 import { MultiLineTextField } from './MultiLineTextField'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
+import { AlbumLinkField } from '../song/AlbumLinkField'
 
 const useStyles = makeStyles({
   gain: {
@@ -35,10 +42,17 @@ export const SongInfo = (props) => {
   const translate = useTranslate()
   const record = useRecordContext(props)
   const data = {
-    path: <TextField source="path" />,
-    album: <TextField source="album" />,
+    path: <PathField />,
+    album: (
+      <AlbumLinkField source="album" sortByOrder={'ASC'} record={record} />
+    ),
     discSubtitle: <TextField source="discSubtitle" />,
-    albumArtist: <TextField source="albumArtist" />,
+    albumArtist: (
+      <ArtistLinkField source="albumArtist" record={record} limit={Infinity} />
+    ),
+    artist: (
+      <ArtistLinkField source="artist" record={record} limit={Infinity} />
+    ),
     genre: (
       <FunctionField render={(r) => r.genres?.map((g) => g.name).join(', ')} />
     ),
@@ -50,6 +64,15 @@ export const SongInfo = (props) => {
     playCount: <TextField source="playCount" />,
     bpm: <NumberField source="bpm" />,
     comment: <MultiLineTextField source="comment" />,
+  }
+
+  const roles = []
+
+  for (const name of Object.keys(record.participants)) {
+    if (name === 'albumartist' || name === 'artist') {
+      continue
+    }
+    roles.push([name, record.participants[name].length])
   }
 
   const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre']
@@ -86,6 +109,21 @@ export const SongInfo = (props) => {
               </TableRow>
             )
           })}
+          <ParticipantsInfo classes={classes} record={record} />
+          <TableRow key={`${record.id}-separator`}>
+            <TableCell scope="row" className={classes.tableCell}></TableCell>
+            <TableCell align="left">
+              <h4>{translate(`resources.song.fields.tags`)}</h4>
+            </TableCell>
+          </TableRow>
+          {Object.entries(record.tags ?? {}).map(([name, values]) => (
+            <TableRow key={`${record.id}-tag-${name}`}>
+              <TableCell scope="row" className={classes.tableCell}>
+                {name}:
+              </TableCell>
+              <TableCell align="left">{values.join(' • ')}</TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </TableContainer>

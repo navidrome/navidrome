@@ -24,6 +24,7 @@ import {
   RatingField,
   useResourceRefresh,
   ArtistLinkField,
+  PathField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
@@ -168,7 +169,7 @@ const SongList = (props) => {
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
       comment: <TextField source="comment" />,
-      path: <TextField source="path" />,
+      path: <PathField />,
       createdAt: <DateField source="createdAt" showTime />,
     }
   }, [isDesktop, classes.ratingField])
