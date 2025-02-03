@@ -280,6 +280,7 @@ type OpenSubsonicAlbumID3 struct {
 	Artists             Array[ArtistID3Ref] `xml:"artists,omitempty"             json:"artists"`
 	DisplayArtist       string              `xml:"displayArtist,attr,omitempty"  json:"displayArtist"`
 	ExplicitStatus      string              `xml:"explicitStatus,attr,omitempty" json:"explicitStatus"`
+	Version             string              `xml:"version,attr,omitempty"        json:"version"`
 }
 
 type ArtistWithAlbumsID3 struct {

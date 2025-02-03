@@ -20,6 +20,7 @@
     "moods": [],
     "artists": [],
     "displayArtist": "",
-    "explicitStatus": ""
+    "explicitStatus": "",
+    "version": ""
   }
 }
