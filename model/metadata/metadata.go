@@ -189,52 +189,64 @@ func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 // combine equivalent tags and remove duplicated values.
 // It keeps the order of the tags names as they are defined in the mappings.
 func clean(filePath string, tags map[string][]string) model.Tags {
+	lowered := lowerTags(tags)
+	mappings := model.TagMappings()
+	cleaned := make(model.Tags, len(mappings))
+
+	for name, mapping := range mappings {
+		cleaned[name] = processMapping(name, mapping, lowered)
+	}
+
+	return sanitizeAll(filePath, removeEmptyTags(cleaned))
+}
+
+func lowerTags(tags map[string][]string) model.Tags {
 	lowered := make(model.Tags, len(tags))
 	for k, v := range tags {
 		lowered[model.TagName(strings.ToLower(k))] = v
 	}
+	return lowered
+}
 
-	mappings := model.TagMappings()
-	cleaned := make(model.Tags, len(mappings))
-	for name, mapping := range mappings {
-		for _, k := range mapping.Aliases {
-			if mapping.Type == model.TagTypePair {
-				if v, ok := lowered[model.TagName(k)]; ok {
-					cleaned[name] = parseVorbisPairs(v)
-					continue
-				}
-				prefix := name + ":"
-				for tagKey, tagValues := range lowered {
-					if strings.HasPrefix(string(tagKey), string(prefix)) {
-						key := strings.TrimPrefix(string(tagKey), string(prefix))
-						for _, value := range tagValues {
-							cleaned[name] = append(cleaned[name], NewPair(key, value))
-						}
-					}
-				}
-			} else if v, ok := lowered[model.TagName(k)]; ok {
-				v = split(v, mapping.Split)
-				if len(v) > 0 {
-					if existing, exists := cleaned[name]; exists {
-						cleaned[name] = append(existing, v...)
-					} else {
-						cleaned[name] = v
-					}
-				}
+func processMapping(name model.TagName, mapping model.TagConf, lowered model.Tags) []string {
+	var result []string
+	for _, k := range mapping.Aliases {
+		if mapping.Type == model.TagTypePair {
+			result = append(result, processPairTags(name, k, lowered)...)
+		} else if v, ok := lowered[model.TagName(k)]; ok {
+			result = append(result, split(v, mapping.Split)...)
+		}
+	}
+	return result
+}
+
+func processPairTags(name model.TagName, alias string, lowered model.Tags) []string {
+	if v, ok := lowered[model.TagName(alias)]; ok {
+		return parseVorbisPairs(v)
+	}
+	var result []string
+	prefix := name + ":"
+	for tagKey, tagValues := range lowered {
+		if strings.HasPrefix(string(tagKey), string(prefix)) {
+			key := strings.TrimPrefix(string(tagKey), string(prefix))
+			for _, value := range tagValues {
+				result = append(result, NewPair(key, value))
 			}
 		}
 	}
+	return result
+}
 
-	for k, v := range cleaned {
+func removeEmptyTags(tags model.Tags) model.Tags {
+	for k, v := range tags {
 		clean := removeDuplicatedAndEmpty(v)
 		if len(clean) == 0 {
-			delete(cleaned, k)
+			delete(tags, k)
 		} else {
-			cleaned[k] = clean
+			tags[k] = clean
 		}
 	}
-
-	return sanitizeAll(filePath, cleaned)
+	return tags
 }
 
 // parseVorbisPairs, from
@@ -245,7 +257,7 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 //
 //	"drums (drum set) and organ" -> "Salaam Remi",
 func parseVorbisPairs(values []string) []string {
-	var pairs []string
+	pairs := make([]string, 0, len(values))
 	for _, value := range values {
 		re := regexp.MustCompile(`\(([^()]+(?:\([^()]*\)[^()]*)*)\)`)
 		matches := re.FindAllStringSubmatch(value, -1)
@@ -281,7 +293,7 @@ func split(values []string, sep []string) []string {
 }
 
 func removeDuplicatedAndEmpty(values []string) []string {
-	seen := map[string]struct{}{}
+	seen := make(map[string]struct{}, len(values))
 	var result []string
 	for _, v := range values {
 		if v == "" {
