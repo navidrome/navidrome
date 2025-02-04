@@ -199,6 +199,10 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	for name, mapping := range mappings {
 		for _, k := range mapping.Aliases {
 			if mapping.Type == model.TagTypePair {
+				if v, ok := lowered[model.TagName(k)]; ok {
+					cleaned[name] = parseVorbisPairs(v)
+					continue
+				}
 				prefix := name + ":"
 				for tagKey, tagValues := range lowered {
 					if strings.HasPrefix(string(tagKey), string(prefix)) {
@@ -231,6 +235,30 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	}
 
 	return sanitizeAll(filePath, cleaned)
+}
+
+// parseVorbisPairs, from
+//
+//	"Salaam Remi (drums (drum set) and organ)",
+//
+// to
+//
+//	"drums (drum set) and organ" -> "Salaam Remi",
+func parseVorbisPairs(values []string) []string {
+	var pairs []string
+	for _, value := range values {
+		re := regexp.MustCompile(`\(([^()]+(?:\([^()]*\)[^()]*)*)\)`)
+		matches := re.FindAllStringSubmatch(value, -1)
+		if len(matches) == 0 {
+			log.Error("Invalid vorbis pair", "value", value)
+			continue
+		}
+		key := strings.TrimSpace(matches[0][1])
+		key = strings.ToLower(key)
+		valueWithoutKey := strings.TrimSpace(strings.Replace(value, "("+matches[0][1]+")", "", 1))
+		pairs = append(pairs, NewPair(key, valueWithoutKey))
+	}
+	return pairs
 }
 
 // split a tag value by the given separators, but only if it has a single value.

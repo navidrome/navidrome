@@ -163,22 +163,51 @@ var _ = Describe("Metadata", func() {
 		)
 
 		Describe("Performers", func() {
-			BeforeEach(func() {
-				props.Tags = map[string][]string{
-					"PERFORMER:GUITAR":            {"Guitarist 1", "Guitarist 2"},
-					"PERFORMER:BACKGROUND VOCALS": {"Backing Singer"},
-				}
+			Describe("ID3", func() {
+				BeforeEach(func() {
+					props.Tags = map[string][]string{
+						"PERFORMER:GUITAR":            {"Guitarist 1", "Guitarist 2"},
+						"PERFORMER:BACKGROUND VOCALS": {"Backing Singer"},
+					}
+				})
+
+				It("should return the performers", func() {
+					md = metadata.New(filePath, props)
+
+					Expect(md.All()).To(HaveKey(model.TagPerformer))
+					Expect(md.Strings(model.TagPerformer)).To(ConsistOf(
+						metadata.NewPair("guitar", "Guitarist 1"),
+						metadata.NewPair("guitar", "Guitarist 2"),
+						metadata.NewPair("background vocals", "Backing Singer"),
+					))
+				})
 			})
 
-			It("should return the performers", func() {
-				md = metadata.New(filePath, props)
+			Describe("Vorbis", func() {
+				BeforeEach(func() {
+					props.Tags = map[string][]string{
+						"PERFORMER": {
+							"John Adams (Rhodes piano)",
+							"Vincent Henry (alto saxophone, baritone saxophone and tenor saxophone)",
+							"Salaam Remi (drums (drum set) and organ)",
+							"Amy Winehouse (guitar)",
+							"Amy Winehouse (vocals)",
+						},
+					}
+				})
 
-				Expect(md.All()).To(HaveKey(model.TagPerformer))
-				Expect(md.Strings(model.TagPerformer)).To(ContainElements(
-					metadata.NewPair("guitar", "Guitarist 1"),
-					metadata.NewPair("guitar", "Guitarist 2"),
-					metadata.NewPair("background vocals", "Backing Singer"),
-				))
+				It("should return the performers", func() {
+					md = metadata.New(filePath, props)
+
+					Expect(md.All()).To(HaveKey(model.TagPerformer))
+					Expect(md.Strings(model.TagPerformer)).To(ConsistOf(
+						metadata.NewPair("rhodes piano", "John Adams"),
+						metadata.NewPair("alto saxophone, baritone saxophone and tenor saxophone", "Vincent Henry"),
+						metadata.NewPair("drums (drum set) and organ", "Salaam Remi"),
+						metadata.NewPair("guitar", "Amy Winehouse"),
+						metadata.NewPair("vocals", "Amy Winehouse"),
+					))
+				})
 			})
 		})
 
