@@ -114,5 +114,8 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 		}
 	}
 	lcp := str.LongestCommonPrefix(paths)
+	if !strings.HasSuffix(lcp, string(filepath.Separator)) {
+		lcp, _ = filepath.Split(lcp)
+	}
 	return lcp, imgFiles, &updatedAt, nil
 }
