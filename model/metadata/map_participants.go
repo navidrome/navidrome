@@ -17,16 +17,16 @@ type roleTags struct {
 }
 
 var roleMappings = map[model.Role]roleTags{
-	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort},
-	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort},
-	model.RoleConductor: {name: model.TagConductor},
-	model.RoleArranger:  {name: model.TagArranger},
-	model.RoleDirector:  {name: model.TagDirector},
-	model.RoleProducer:  {name: model.TagProducer},
-	model.RoleEngineer:  {name: model.TagEngineer},
-	model.RoleMixer:     {name: model.TagMixer},
-	model.RoleRemixer:   {name: model.TagRemixer},
-	model.RoleDJMixer:   {name: model.TagDJMixer},
+	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort, mbid: model.TagMusicBrainzComposerID},
+	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort, mbid: model.TagMusicBrainzLyricistID},
+	model.RoleConductor: {name: model.TagConductor, mbid: model.TagMusicBrainzConductorID},
+	model.RoleArranger:  {name: model.TagArranger, mbid: model.TagMusicBrainzArrangerID},
+	model.RoleDirector:  {name: model.TagDirector, mbid: model.TagMusicBrainzDirectorID},
+	model.RoleProducer:  {name: model.TagProducer, mbid: model.TagMusicBrainzProducerID},
+	model.RoleEngineer:  {name: model.TagEngineer, mbid: model.TagMusicBrainzEngineerID},
+	model.RoleMixer:     {name: model.TagMixer, mbid: model.TagMusicBrainzMixerID},
+	model.RoleRemixer:   {name: model.TagRemixer, mbid: model.TagMusicBrainzRemixerID},
+	model.RoleDJMixer:   {name: model.TagDJMixer, mbid: model.TagMusicBrainzDJMixerID},
 }
 
 func (md Metadata) mapParticipants() model.Participants {
