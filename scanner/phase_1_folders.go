@@ -400,6 +400,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	if !ok {
 		return nil
 	}
+	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
