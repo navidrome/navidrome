@@ -113,7 +113,8 @@
         "engineer": "Engineer |||| Engineers",
         "mixer": "Mixer |||| Mixers",
         "remixer": "Remixer |||| Remixers",
-        "djmixer": "DJ Mixer |||| DJ Mixers"
+        "djmixer": "DJ Mixer |||| DJ Mixers",
+        "performer": "Performer |||| Performers"
       }
     },
     "user": {
