@@ -255,7 +255,7 @@ var _ = Describe("Extractor", func() {
 
 		Context("when the TIPL string is populated", func() {
 			It("correctly parses roles and names", func() {
-				tags["tipl"] = []string{"arranger Andrew Powell dj-mix François Kevorkian engineer Chris Blair"}
+				tags["tipl"] = []string{"arranger Andrew Powell Dj-mix François Kevorkian engineer Chris Blair"}
 				parseTIPL(tags)
 				Expect(tags["arranger"]).To(ConsistOf("Andrew Powell"))
 				Expect(tags["engineer"]).To(ConsistOf("Chris Blair"))
