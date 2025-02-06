@@ -54,7 +54,6 @@ var _ = Describe("Extractor", func() {
 			toP("dia", "", "f943187f-73de-4794-be47-88c66f0fd0f4"),
 			toP("dib", "", "bceb75da-1853-4b3d-b399-b27f0cafc389"),
 		}},
-
 		{model.RoleEngineer, model.ParticipantList{
 			toP("ea", "", "f634bf6d-d66a-425d-888a-28ad39392759"),
 			toP("eb", "", "243d64ae-d514-44e1-901a-b918d692baee"),
@@ -104,17 +103,11 @@ var _ = Describe("Extractor", func() {
 				Expect(actual).To(HaveLen(len(artists)))
 
 				for i := range artists {
-					expectedArtist := artists[i]
 					actualArtist := actual[i]
+					expectedArtist := artists[i]
 
 					Expect(actualArtist.Name).To(Equal(expectedArtist.Name))
-					if role == model.RoleLyricist {
-						if format == "wma" {
-							Expect(actualArtist.SortArtistName).To(Equal(""))
-						} else {
-							Expect(actualArtist.SortArtistName).To(Equal(expectedArtist.SortArtistName))
-						}
-					}
+					Expect(actualArtist.SortArtistName).To(Equal(expectedArtist.SortArtistName))
 					Expect(actualArtist.MbzArtistID).To(Equal(expectedArtist.MbzArtistID))
 				}
 			}
@@ -124,16 +117,9 @@ var _ = Describe("Extractor", func() {
 			Entry("OGG format", "ogg"),
 			Entry("WMA format", "wv"),
 
-			// Picard doesn't do DJMixer/Mixer nicely for ID3
 			Entry("MP3 format", "mp3"),
 			Entry("WAV format", "wav"),
 			Entry("AIFF format", "aiff"),
-
-			// These are out of order???
-			// FEntry("WMA format", "wma"),
-
-			// Doesn't parse _any_ of the roles. New mapping probably
-			// FEntry("TAK format", "tak"),
 		)
 	})
 })
