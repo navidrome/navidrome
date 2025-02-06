@@ -285,22 +285,43 @@ func parseVorbisPairs(values []string) []string {
 }
 
 // split a tag value by the given separators, but only if it has a single value.
-func split(values []string, sep []string) []string {
-	if len(values) != 1 || len(sep) == 0 {
+func split(values []string, seps []string) []string {
+	// If there's not exactly one value or no separators, return early.
+	if len(values) != 1 || len(seps) == 0 {
 		return values
 	}
 	tag := values[0]
-	for _, s := range sep {
-		re, err := regexp.Compile(`(?i)` + regexp.QuoteMeta(s))
-		if err != nil {
-			log.Error("Error compiling regexp", "sep", s, err)
+
+	// Build a list of escaped, non-empty separators.
+	var escaped []string
+	for _, s := range seps {
+		if s == "" {
 			continue
 		}
-		tag = re.ReplaceAllStringFunc(tag, func(_ string) string {
-			return consts.Zwsp
-		})
+		escaped = append(escaped, regexp.QuoteMeta(s))
 	}
-	return slice.Map(strings.Split(tag, consts.Zwsp), strings.TrimSpace)
+	// If no valid separators remain, return the original value.
+	if len(escaped) == 0 {
+		return values
+	}
+
+	// Create one regex that matches any of the separators (case-insensitive).
+	pattern := "(?i)(" + strings.Join(escaped, "|") + ")"
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		log.Error("Error compiling regexp", "pattern", pattern, "err", err)
+		return values
+	}
+
+	// Replace all occurrences of any separator with the zero-width space.
+	tag = re.ReplaceAllString(tag, consts.Zwsp)
+
+	// Split by the zero-width space and trim each substring.
+	parts := strings.Split(tag, consts.Zwsp)
+	for i, part := range parts {
+		parts[i] = strings.TrimSpace(part)
+	}
+	return parts
 }
 
 func filterEmptyTags(tags model.Tags) model.Tags {
