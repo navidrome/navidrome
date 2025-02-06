@@ -212,7 +212,7 @@ func processRegularMapping(mapping model.TagConf, lowered model.Tags) []string {
 	var values []string
 	for _, alias := range mapping.Aliases {
 		if vs, ok := lowered[model.TagName(alias)]; ok {
-			splitValues := split(vs, mapping.Split)
+			splitValues := mapping.SplitTagValue(vs)
 			values = append(values, splitValues...)
 		}
 	}
@@ -282,46 +282,6 @@ func parseVorbisPairs(values []string) []string {
 		pairs = append(pairs, NewPair(key, valueWithoutKey))
 	}
 	return pairs
-}
-
-// split a tag value by the given separators, but only if it has a single value.
-func split(values []string, seps []string) []string {
-	// If there's not exactly one value or no separators, return early.
-	if len(values) != 1 || len(seps) == 0 {
-		return values
-	}
-	tag := values[0]
-
-	// Build a list of escaped, non-empty separators.
-	var escaped []string
-	for _, s := range seps {
-		if s == "" {
-			continue
-		}
-		escaped = append(escaped, regexp.QuoteMeta(s))
-	}
-	// If no valid separators remain, return the original value.
-	if len(escaped) == 0 {
-		return values
-	}
-
-	// Create one regex that matches any of the separators (case-insensitive).
-	pattern := "(?i)(" + strings.Join(escaped, "|") + ")"
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		log.Error("Error compiling regexp", "pattern", pattern, "err", err)
-		return values
-	}
-
-	// Replace all occurrences of any separator with the zero-width space.
-	tag = re.ReplaceAllString(tag, consts.Zwsp)
-
-	// Split by the zero-width space and trim each substring.
-	parts := strings.Split(tag, consts.Zwsp)
-	for i, part := range parts {
-		parts[i] = strings.TrimSpace(part)
-	}
-	return parts
 }
 
 func filterEmptyTags(tags model.Tags) model.Tags {
