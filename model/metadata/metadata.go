@@ -229,6 +229,9 @@ func processPairTags(name model.TagName, alias string, lowered model.Tags) []str
 	for tagKey, tagValues := range lowered {
 		if strings.HasPrefix(string(tagKey), string(prefix)) {
 			key := strings.TrimPrefix(string(tagKey), string(prefix))
+			if strings.EqualFold(key, string(name)) {
+				key = ""
+			}
 			for _, value := range tagValues {
 				result = append(result, NewPair(key, value))
 			}
@@ -262,7 +265,7 @@ func parseVorbisPairs(values []string) []string {
 		re := regexp.MustCompile(`\(([^()]+(?:\([^()]*\)[^()]*)*)\)`)
 		matches := re.FindAllStringSubmatch(value, -1)
 		if len(matches) == 0 {
-			log.Error("Invalid vorbis pair", "value", value)
+			pairs = append(pairs, NewPair("", value))
 			continue
 		}
 		key := strings.TrimSpace(matches[0][1])
