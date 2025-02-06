@@ -28,7 +28,9 @@
         "channels": "Canais",
         "createdAt": "Adiconado em",
         "grouping": "Agrupamento",
-        "mood": "Mood"
+        "mood": "Mood",
+        "participants": "Outros Participantes",
+        "tags": "Outras Tags"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -111,7 +113,8 @@
         "engineer": "Engenheiro |||| Engenheiros",
         "mixer": "Mixador |||| Mixadores",
         "remixer": "Remixador |||| Remixadores",
-        "djmixer": "DJ Mixer |||| DJ Mixers"
+        "djmixer": "DJ Mixer |||| DJ Mixers",
+        "performer": "Músico |||| Músicos"
       }
     },
     "user": {

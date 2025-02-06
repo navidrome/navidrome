@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -392,14 +393,16 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 // persistAlbum persists the given album to the database, and reassigns annotations from the previous album ID
 func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, idMap map[string]string) error {
+	prevID := idMap[a.ID]
+	log.Trace(p.ctx, "Persisting album", "album", a.Name, "albumArtist", a.AlbumArtist, "id", a.ID, "prevID", cmp.Or(prevID, "nil"))
 	if err := repo.Put(a); err != nil {
 		return fmt.Errorf("persisting album %s: %w", a.ID, err)
 	}
-	// Reassign annotation from previous album to new album
-	prevID, ok := idMap[a.ID]
-	if !ok {
+	if prevID == "" {
 		return nil
 	}
+	// Reassign annotation from previous album to new album
+	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
 	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))

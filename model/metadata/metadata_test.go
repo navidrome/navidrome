@@ -168,6 +168,7 @@ var _ = Describe("Metadata", func() {
 					props.Tags = map[string][]string{
 						"PERFORMER:GUITAR":            {"Guitarist 1", "Guitarist 2"},
 						"PERFORMER:BACKGROUND VOCALS": {"Backing Singer"},
+						"PERFORMER:PERFORMER":         {"Wonderlove", "Lovewonder"},
 					}
 				})
 
@@ -179,6 +180,8 @@ var _ = Describe("Metadata", func() {
 						metadata.NewPair("guitar", "Guitarist 1"),
 						metadata.NewPair("guitar", "Guitarist 2"),
 						metadata.NewPair("background vocals", "Backing Singer"),
+						metadata.NewPair("", "Wonderlove"),
+						metadata.NewPair("", "Lovewonder"),
 					))
 				})
 			})
@@ -192,6 +195,7 @@ var _ = Describe("Metadata", func() {
 							"Salaam Remi (drums (drum set) and organ)",
 							"Amy Winehouse (guitar)",
 							"Amy Winehouse (vocals)",
+							"Wonderlove",
 						},
 					}
 				})
@@ -206,6 +210,7 @@ var _ = Describe("Metadata", func() {
 						metadata.NewPair("drums (drum set) and organ", "Salaam Remi"),
 						metadata.NewPair("guitar", "Amy Winehouse"),
 						metadata.NewPair("vocals", "Amy Winehouse"),
+						metadata.NewPair("", "Wonderlove"),
 					))
 				})
 			})
