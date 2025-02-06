@@ -194,10 +194,29 @@ func clean(filePath string, tags map[string][]string) model.Tags {
 	cleaned := make(model.Tags, len(mappings))
 
 	for name, mapping := range mappings {
-		cleaned[name] = processMapping(name, mapping, lowered)
+		var values []string
+		switch mapping.Type {
+		case model.TagTypePair:
+			values = processPairMapping(name, mapping, lowered)
+		default:
+			values = processRegularMapping(mapping, lowered)
+		}
+		cleaned[name] = values
 	}
 
-	return sanitizeAll(filePath, removeEmptyTags(cleaned))
+	cleaned = filterEmptyTags(cleaned)
+	return sanitizeAll(filePath, cleaned)
+}
+
+func processRegularMapping(mapping model.TagConf, lowered model.Tags) []string {
+	var values []string
+	for _, alias := range mapping.Aliases {
+		if vs, ok := lowered[model.TagName(alias)]; ok {
+			splitValues := split(vs, mapping.Split)
+			values = append(values, splitValues...)
+		}
+	}
+	return values
 }
 
 func lowerTags(tags map[string][]string) model.Tags {
@@ -208,49 +227,39 @@ func lowerTags(tags map[string][]string) model.Tags {
 	return lowered
 }
 
-func processMapping(name model.TagName, mapping model.TagConf, lowered model.Tags) []string {
-	var result []string
-	for _, k := range mapping.Aliases {
-		if mapping.Type == model.TagTypePair {
-			result = append(result, processPairTags(name, k, lowered)...)
-		} else if v, ok := lowered[model.TagName(k)]; ok {
-			result = append(result, split(v, mapping.Split)...)
+func processPairMapping(name model.TagName, mapping model.TagConf, lowered model.Tags) []string {
+	var aliasValues []string
+	for _, alias := range mapping.Aliases {
+		if vs, ok := lowered[model.TagName(alias)]; ok {
+			aliasValues = append(aliasValues, vs...)
 		}
 	}
-	return result
+
+	if len(aliasValues) > 0 {
+		return parseVorbisPairs(aliasValues)
+	}
+	return parseID3Pairs(name, lowered)
 }
 
-func processPairTags(name model.TagName, alias string, lowered model.Tags) []string {
-	if v, ok := lowered[model.TagName(alias)]; ok {
-		return parseVorbisPairs(v)
-	}
-	var result []string
-	prefix := name + ":"
+func parseID3Pairs(name model.TagName, lowered model.Tags) []string {
+	var pairs []string
+	prefix := string(name) + ":"
 	for tagKey, tagValues := range lowered {
-		if strings.HasPrefix(string(tagKey), string(prefix)) {
-			key := strings.TrimPrefix(string(tagKey), string(prefix))
-			if strings.EqualFold(key, string(name)) {
-				key = ""
+		keyStr := string(tagKey)
+		if strings.HasPrefix(keyStr, prefix) {
+			keyPart := strings.TrimPrefix(keyStr, prefix)
+			if keyPart == string(name) {
+				keyPart = ""
 			}
-			for _, value := range tagValues {
-				result = append(result, NewPair(key, value))
+			for _, v := range tagValues {
+				pairs = append(pairs, NewPair(keyPart, v))
 			}
 		}
 	}
-	return result
+	return pairs
 }
 
-func removeEmptyTags(tags model.Tags) model.Tags {
-	for k, v := range tags {
-		clean := removeDuplicatedAndEmpty(v)
-		if len(clean) == 0 {
-			delete(tags, k)
-		} else {
-			tags[k] = clean
-		}
-	}
-	return tags
-}
+var vorbisPairRegex = regexp.MustCompile(`\(([^()]+(?:\([^()]*\)[^()]*)*)\)`)
 
 // parseVorbisPairs, from
 //
@@ -262,8 +271,7 @@ func removeEmptyTags(tags model.Tags) model.Tags {
 func parseVorbisPairs(values []string) []string {
 	pairs := make([]string, 0, len(values))
 	for _, value := range values {
-		re := regexp.MustCompile(`\(([^()]+(?:\([^()]*\)[^()]*)*)\)`)
-		matches := re.FindAllStringSubmatch(value, -1)
+		matches := vorbisPairRegex.FindAllStringSubmatch(value, -1)
 		if len(matches) == 0 {
 			pairs = append(pairs, NewPair("", value))
 			continue
@@ -295,7 +303,19 @@ func split(values []string, sep []string) []string {
 	return slice.Map(strings.Split(tag, consts.Zwsp), strings.TrimSpace)
 }
 
-func removeDuplicatedAndEmpty(values []string) []string {
+func filterEmptyTags(tags model.Tags) model.Tags {
+	for k, v := range tags {
+		clean := filterDuplicatedOrEmptyValues(v)
+		if len(clean) == 0 {
+			delete(tags, k)
+		} else {
+			tags[k] = clean
+		}
+	}
+	return tags
+}
+
+func filterDuplicatedOrEmptyValues(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	var result []string
 	for _, v := range values {
