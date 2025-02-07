@@ -60,17 +60,58 @@ func (md Metadata) mapParticipants() model.Participants {
 
 	titleCaser := cases.Title(language.Und)
 
-	// Parse performers
-	for _, performer := range md.Pairs(model.TagPerformer) {
-		name := performer.Value()
-		id := md.artistID(name)
-		orderName := str.SanitizeFieldForSortingNoArticle(name)
-		subRole := titleCaser.String(performer.Key())
-		participants.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
-			ID:              id,
-			Name:            name,
-			OrderArtistName: orderName,
-		})
+	rolesMbzIdMap := make(map[string][]string)
+
+	for _, performerMbid := range md.Pairs(model.TagMusicBrainzPerformerID) {
+		id := performerMbid.Value()
+		role := titleCaser.String(performerMbid.Key())
+		rolesMbzIdMap[role] = append(rolesMbzIdMap[role], id)
+	}
+
+	if len(rolesMbzIdMap) > 0 {
+		roleIdx := make(map[string]int, len(rolesMbzIdMap))
+		for role := range rolesMbzIdMap {
+			roleIdx[role] = 0
+		}
+
+		// Parse performers
+		for _, performer := range md.Pairs(model.TagPerformer) {
+			name := performer.Value()
+			id := md.artistID(name)
+			orderName := str.SanitizeFieldForSortingNoArticle(name)
+			subRole := titleCaser.String(performer.Key())
+
+			mbids, ok := rolesMbzIdMap[subRole]
+
+			var mbid string
+
+			if ok && roleIdx[subRole] < len(mbids) {
+				mbid = mbids[roleIdx[subRole]]
+				roleIdx[subRole] += 1
+			} else {
+				mbid = ""
+			}
+
+			participants.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
+				ID:              id,
+				MbzArtistID:     mbid,
+				Name:            name,
+				OrderArtistName: orderName,
+			})
+		}
+	} else {
+		// Parse performers
+		for _, performer := range md.Pairs(model.TagPerformer) {
+			name := performer.Value()
+			id := md.artistID(name)
+			orderName := str.SanitizeFieldForSortingNoArticle(name)
+			subRole := titleCaser.String(performer.Key())
+			participants.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
+				ID:              id,
+				Name:            name,
+				OrderArtistName: orderName,
+			})
+		}
 	}
 
 	// Create a map to store the MbzArtistID for each artist name

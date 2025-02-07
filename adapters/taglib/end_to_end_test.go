@@ -111,6 +111,35 @@ var _ = Describe("Extractor", func() {
 					Expect(actualArtist.MbzArtistID).To(Equal(expectedArtist.MbzArtistID))
 				}
 			}
+
+			if format != "m4a" {
+				performers := mf.Participants[model.RolePerformer]
+				Expect(performers).To(HaveLen(8))
+
+				rules := map[string][]string{
+					"pgaa": {"2fd0b311-9fa8-4ff9-be5d-f6f3d16b835e", "Guitar"},
+					"pgbb": {"223d030b-bf97-4c2a-ad26-b7f7bbe25c93", "Guitar", ""},
+					"pvaa": {"cb195f72-448f-41c8-b962-3f3c13d09d38", "Vocals"},
+					"pvbb": {"60a1f832-8ca2-49f6-8660-84d57f07b520", "Vocals", "Flute"},
+					"pfaa": {"51fb40c-0305-4bf9-a11b-2ee615277725", "", "Flute"},
+				}
+
+				for name, rule := range rules {
+					mbid := rule[0]
+					for i := 1; i < len(rule); i++ {
+						found := false
+
+						for _, mapped := range performers {
+							if mapped.Name == name && mapped.MbzArtistID == mbid && mapped.SubRole == rule[i] {
+								found = true
+								break
+							}
+						}
+
+						Expect(found).To(BeTrue(), "Could not find matching artist")
+					}
+				}
+			}
 		},
 			Entry("FLAC format", "flac"),
 			Entry("M4a format", "m4a"),

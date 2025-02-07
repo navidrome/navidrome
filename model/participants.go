@@ -132,11 +132,12 @@ func (p Participants) Merge(other Participants) {
 func (p Participants) add(role Role, participants ...Participant) {
 	seen := make(map[string]struct{}, len(p[role]))
 	for _, artist := range p[role] {
-		seen[artist.ID] = struct{}{}
+		seen[artist.ID+artist.SubRole] = struct{}{}
 	}
 	for _, participant := range participants {
-		if _, ok := seen[participant.ID]; !ok {
-			seen[participant.ID] = struct{}{}
+		key := participant.ID + participant.SubRole
+		if _, ok := seen[key]; !ok {
+			seen[key] = struct{}{}
 			p[role] = append(p[role], participant)
 		}
 	}
