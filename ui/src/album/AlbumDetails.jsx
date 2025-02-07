@@ -110,7 +110,7 @@ const useGetHandleGenreClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
 
   return (id) => {
-    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+    return `/album?filter={"genre_id":["${id}"]}&order=ASC&sort=name&perPage=${perPage}`
   }
 }
 
