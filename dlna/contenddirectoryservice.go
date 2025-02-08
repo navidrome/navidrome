@@ -142,23 +142,21 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 	} else if matchResults["Artist"] != "" {
 		allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
 		return cds.doAlbums(allAlbumsForThisArtist, o.Path, ret, host)
-	} else {
-		indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
-		}
-		for letterIndex := range indexes {
-			for artist := range indexes[letterIndex].Artists {
-				artistId := indexes[letterIndex].Artists[artist].ID
-				child := object{
-					Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
-					Id:   path.Join(o.Path, artistId),
-				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+	}
+	indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
+	if err != nil {
+		fmt.Printf("Error retrieving Indexes: %+v", err)
+		return nil, err
+	}
+	for letterIndex := range indexes {
+		for artist := range indexes[letterIndex].Artists {
+			artistId := indexes[letterIndex].Artists[artist].ID
+			child := object{
+				Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
+				Id:   path.Join(o.Path, artistId),
 			}
+			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 		}
-		return ret, nil
 	}
 	return ret, nil
 }
