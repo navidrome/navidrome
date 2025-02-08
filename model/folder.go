@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"iter"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -37,11 +38,17 @@ func (f Folder) String() string {
 	return f.AbsolutePath()
 }
 
+// FolderID generates a unique ID for a folder in a library.
+// The ID is generated based on the library ID and the folder path relative to the library root.
+// Any leading or trailing slashes are removed from the folder path.
 func FolderID(lib Library, path string) string {
 	path = strings.TrimPrefix(path, lib.Path)
+	path = strings.TrimPrefix(path, string(os.PathSeparator))
+	path = filepath.Clean(path)
 	key := fmt.Sprintf("%d:%s", lib.ID, path)
 	return id.NewHash(key)
 }
+
 func NewFolder(lib Library, folderPath string) *Folder {
 	newID := FolderID(lib, folderPath)
 	dir, name := path.Split(folderPath)

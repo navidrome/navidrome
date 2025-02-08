@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -18,26 +19,63 @@ var _ = Describe("Folder", func() {
 	BeforeEach(func() {
 		lib = model.Library{
 			ID:   1,
-			Path: "/music",
+			Path: filepath.FromSlash("/music"),
 		}
 	})
 
 	Describe("FolderID", func() {
-		It("should generate a consistent ID for a given library and path", func() {
-			folderPath := "/music/rock"
-			expectedID := id.NewHash("1:/rock")
-			Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+		When("the folder path is the library root", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := lib.Path
+				expectedID := id.NewHash("1:.")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
 		})
 
-		It("should trim the library path prefix from the folder path", func() {
-			folderPath := "/music/rock"
-			Expect(model.FolderID(lib, folderPath)).To(Equal(id.NewHash("1:/rock")))
+		When("the folder path is '.' (library root)", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := "."
+				expectedID := id.NewHash("1:.")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
+		When("the folder path is relative", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := "rock"
+				expectedID := id.NewHash("1:rock")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
+		When("the folder path starts with '.'", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := "./rock"
+				expectedID := id.NewHash("1:rock")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
+		When("the folder path is absolute", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := filepath.FromSlash("/music/rock")
+				expectedID := id.NewHash("1:rock")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
+		When("the folder has multiple subdirs", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := filepath.FromSlash("/music/rock/metal")
+				expectedID := id.NewHash("1:rock/metal")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
 		})
 	})
 
 	Describe("NewFolder", func() {
 		It("should create a new SubFolder with the correct attributes", func() {
-			folderPath := "rock/metal"
+			folderPath := filepath.FromSlash("rock/metal")
 			folder := model.NewFolder(lib, folderPath)
 
 			Expect(folder.LibraryID).To(Equal(lib.ID))

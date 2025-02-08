@@ -3,7 +3,6 @@ package artwork
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -59,11 +58,11 @@ var _ = Describe("artistReader", func() {
 		When("artist has only one album", func() {
 			It("returns the parent folder", func() {
 				paths = []string{
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "album1"),
+					filepath.FromSlash("/music/artist/album1"),
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/tmp/artist"))
+				Expect(folder).To(Equal("/music/artist"))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
@@ -71,12 +70,12 @@ var _ = Describe("artistReader", func() {
 		When("the artist have multiple albums", func() {
 			It("returns the common prefix for the albums paths", func() {
 				paths = []string{
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "one"),
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "two"),
+					filepath.FromSlash("/music/library/artist/one"),
+					filepath.FromSlash("/music/library/artist/two"),
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/tmp/artist"))
+				Expect(folder).To(Equal(filepath.FromSlash("/music/library/artist")))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
@@ -84,12 +83,12 @@ var _ = Describe("artistReader", func() {
 		When("the album paths contain same prefix", func() {
 			It("returns the common prefix", func() {
 				paths = []string{
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "album1"),
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "album2"),
+					filepath.FromSlash("/music/artist/album1"),
+					filepath.FromSlash("/music/artist/album2"),
 				}
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(folder).To(Equal("/tmp/artist"))
+				Expect(folder).To(Equal("/music/artist"))
 				Expect(upd).To(Equal(expectedUpdTime))
 			})
 		})
@@ -97,8 +96,8 @@ var _ = Describe("artistReader", func() {
 		When("ds.Folder().GetAll returns an error", func() {
 			It("returns an error", func() {
 				paths = []string{
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "album1"),
-					filepath.Join(string(os.PathSeparator), "tmp", "artist", "album2"),
+					filepath.FromSlash("/music/artist/album1"),
+					filepath.FromSlash("/music/artist/album2"),
 				}
 				repo.err = errors.New("fake error")
 				folder, upd, err := loadArtistFolder(ctx, fds, albums, paths)
@@ -134,7 +133,7 @@ func stubCoreAbsolutePath() func() {
 	// Override core.AbsolutePath to return a fixed string during tests.
 	original := core.AbsolutePath
 	core.AbsolutePath = func(_ context.Context, ds model.DataStore, libID int, p string) string {
-		return "libPath"
+		return filepath.FromSlash("/music")
 	}
 	return func() {
 		core.AbsolutePath = original
