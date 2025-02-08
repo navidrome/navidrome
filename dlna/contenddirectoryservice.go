@@ -256,7 +256,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	}
-	return
+	return ret, nil
 }
 
 func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePath string, ret []interface{}, host string) ([]interface{}, error) {
