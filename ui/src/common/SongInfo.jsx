@@ -103,6 +103,10 @@ export const SongInfo = (props) => {
     )
   }
 
+  const tags = Object.entries(record.tags ?? {}).filter(
+    (tag) => !excludedTags.includes(tag[0]),
+  )
+
   return (
     <TableContainer>
       <Table aria-label="song details" size="small">
@@ -121,13 +125,15 @@ export const SongInfo = (props) => {
             )
           })}
           <ParticipantsInfo classes={classes} record={record} />
-          <TableRow key={`${record.id}-separator`}>
-            <TableCell scope="row" className={classes.tableCell}></TableCell>
-            <TableCell align="left">
-              <h4>{translate(`resources.song.fields.tags`)}</h4>
-            </TableCell>
-          </TableRow>
-          {Object.entries(record.tags ?? {}).map(([name, values]) =>
+          {tags.length > 0 && (
+            <TableRow key={`${record.id}-separator`}>
+              <TableCell scope="row" className={classes.tableCell}></TableCell>
+              <TableCell align="left">
+                <h4>{translate(`resources.song.fields.tags`)}</h4>
+              </TableCell>
+            </TableRow>
+          )}
+          {tags.map(([name, values]) =>
             excludedTags.includes(name) ? null : (
               <TableRow key={`${record.id}-tag-${name}`}>
                 <TableCell scope="row" className={classes.tableCell}>
