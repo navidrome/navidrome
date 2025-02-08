@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/str"
 )
 
 type albumArtworkReader struct {
@@ -91,14 +90,14 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 	return ff
 }
 
-func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...model.Album) (string, []string, *time.Time, error) {
+func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...model.Album) ([]string, []string, *time.Time, error) {
 	var folderIDs []string
 	for _, album := range albums {
 		folderIDs = append(folderIDs, album.FolderIDs...)
 	}
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, nil, err
 	}
 	var paths []string
 	var imgFiles []string
@@ -113,9 +112,5 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			imgFiles = append(imgFiles, filepath.Join(path, img))
 		}
 	}
-	lcp := str.LongestCommonPrefix(paths)
-	if !strings.HasSuffix(lcp, string(filepath.Separator)) {
-		lcp, _ = filepath.Split(lcp)
-	}
-	return lcp, imgFiles, &updatedAt, nil
+	return paths, imgFiles, &updatedAt, nil
 }

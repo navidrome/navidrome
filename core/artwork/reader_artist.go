@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type artistReader struct {
@@ -32,16 +33,21 @@ func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkI
 	if err != nil {
 		return nil, err
 	}
-	// BFR Only get albums where the artist is the sole album artist.
-	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": artID.ID}})
+	// Only consider albums where the artist is the sole album artist.
+	als, err := artwork.ds.Album(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Eq{"album_artist_id": artID.ID},
+			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
-	artistFolder, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, als...)
+	albumPaths, imgFiles, imagesUpdatedAt, err := loadAlbumFoldersPaths(ctx, artwork.ds, als...)
 	if err != nil {
 		return nil, err
 	}
-	artistFolderLastUpdate, err := loadArtistFolderLastUpdate(ctx, artwork.ds, als, artistFolder)
+	artistFolder, artistFolderLastUpdate, err := loadArtistFolder(ctx, artwork.ds, als, albumPaths)
 	if err != nil {
 		return nil, err
 	}
@@ -126,14 +132,20 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 	}
 }
 
-func loadArtistFolderLastUpdate(ctx context.Context, ds model.DataStore, albums model.Albums, folder string) (time.Time, error) {
+func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
 	if len(albums) == 0 {
-		return time.Time{}, nil
+		return "", time.Time{}, nil
 	}
 	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library
 
+	folder := str.LongestCommonPrefix(paths)
+	if !strings.HasSuffix(folder, string(filepath.Separator)) {
+		folder, _ = filepath.Split(folder)
+	}
+	folder = filepath.Dir(folder)
+
 	// Manipulate the path to get the folder ID
-	// BFR: This is a bit hacky, but it's the easiest way to get the folder ID, ATM
+	// TODO: This is a bit hacky, but it's the easiest way to get the folder ID, ATM
 	libPath := core.AbsolutePath(ctx, ds, libID, "")
 	_, base := filepath.Split(folder)
 	folderID := model.NewFolder(model.Library{ID: libID, Path: libPath}, base).ID
@@ -142,7 +154,7 @@ func loadArtistFolderLastUpdate(ctx context.Context, ds model.DataStore, albums 
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
 		log.Warn(ctx, "Could not find folder for artist", "folder", folder, "id", folderID, "base", base, err)
-		return time.Time{}, err
+		return "", time.Time{}, err
 	}
-	return folders[0].ImagesUpdatedAt, nil
+	return folder, folders[0].ImagesUpdatedAt, nil
 }
