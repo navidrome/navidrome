@@ -85,7 +85,6 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startServer(ctx))
 	if conf.Server.DLNAServer.Enabled {
 		g.Go(startDLNAServer(ctx))
-
 	}
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))

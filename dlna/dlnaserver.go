@@ -140,7 +140,10 @@ func (s *DLNAServer) Run(ctx context.Context, addr string, port int) (err error)
 		s.ssdp.startSSDP()
 	}()
 	go func() {
-		s.ssdp.serveHTTP()
+		err := s.ssdp.serveHTTP()
+		if err != nil {
+			log.Error("Error starting ssdp HTTP server", err)
+		}
 	}()
 	return nil
 }
@@ -245,7 +248,7 @@ func (s *SSDPServer) ssdpInterface(intf net.Interface) {
 			// good.
 			return
 		}
-		log.Error(fmt.Sprintf("Error creating ssdp server on %s: %s", intf.Name), err)
+		log.Error("Error creating ssdp server", "intf.Name", intf.Name, err)
 		return
 	}
 	defer ssdpServer.Close()
@@ -312,7 +315,6 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Header().Set("transferMode.dlna.org", "Streaming")
 
-			os.Open(localFilePath)
 			fileHandle, err := os.Open(localFilePath)
 			if err != nil {
 				fmt.Printf("file streaming error: %+v\n", err)
@@ -321,7 +323,6 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			defer fileHandle.Close()
 
 			http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
-		break;	
 		case resourceStreamPath: //TODO refactor this with stream.go:52?
 
 			fileId := components[1]
@@ -340,24 +341,26 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 			http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-		break;
-			case resourceArtPath: //TODO refactor this with handle_images.go:39?
-				artId, err := model.ParseArtworkID(components[1])
-				if err != nil {
-					log.Error("Failure to parse ArtworkId", "inputString", components[1], err)
-					return
-				}
-				//TODO size (250)
-				imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, 250, true)
-				if err != nil {
-					log.Error("Failure to retrieve artwork", "artid", artId, err)
-					return
-				}
-				defer imgReader.Close()
-				w.Header().Set("Cache-Control", "public, max-age=315360000")
-				w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
-				io.Copy(w, imgReader)
-		break;
+		case resourceArtPath: //TODO refactor this with handle_images.go:39?
+			artId, err := model.ParseArtworkID(components[1])
+			if err != nil {
+				log.Error("Failure to parse ArtworkId", "inputString", components[1], err)
+				return
+			}
+			//TODO size (250)
+			imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, 250, true)
+			if err != nil {
+				log.Error("Failure to retrieve artwork", "artid", artId, err)
+				return
+			}
+			defer imgReader.Close()
+			w.Header().Set("Cache-Control", "public, max-age=315360000")
+			w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
+			_, err = io.Copy(w, imgReader)
+			if err != nil {
+				log.Error("Error writing Artwork Response stream", err)
+				return
+			}
 	}
 }
 
@@ -371,7 +374,10 @@ func (s *SSDPServer) rootDescHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", `text/xml; charset="utf-8"`)
 	w.Header().Set("cache-control", "private, max-age=60")
 	w.Header().Set("content-length", strconv.FormatInt(int64(buffer.Len()), 10))
-	buffer.WriteTo(w)
+	_, err := buffer.WriteTo(w)
+	if err != nil {
+		log.Error("Error writing rootDesc to responsebuffer", err)
+	}
 }
 
 // Handle a service control HTTP request.
@@ -419,6 +425,7 @@ func (s *SSDPServer) soapActionResponse(sa upnp.SoapAction, actionRequestXML []b
 func (s *SSDPServer) serveHTTP() error {
 	srv := &http.Server{
 		Handler: s.handler,
+		ReadHeaderTimeout: 10,
 	}
 	err := srv.Serve(s.HTTPConn)
 	select {
@@ -469,22 +476,13 @@ func makeDeviceUUID(unique string) string {
 	return upnp.FormatUUID(buf)
 }
 
-// HTTP handler that sets headers.
-func withHeader(name string, value string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set(name, value)
-		next.ServeHTTP(w, r)
-	})
-}
-
 // serveError returns an http.StatusInternalServerError and logs the error
 func serveError(what interface{}, w http.ResponseWriter, text string, err error) {
 	http.Error(w, text+".", http.StatusInternalServerError)
-	log.Error(fmt.Sprintf("serveError: %s, %s, %s", what, text), err)
+	log.Error("serveError", "what", what, "text", text, err)
 }
 
 func GetTemplate() (tpl *template.Template, err error) {
-
 	templateBytes := `<?xml version="1.0"?>
 <root xmlns="urn:schemas-upnp-org:device-1-0"
       xmlns:dlna="urn:schemas-dlna-org:device-1-0"
@@ -536,12 +534,10 @@ func GetTemplate() (tpl *template.Template, err error) {
   </device>
 </root>`
 
-	var templateString = string(templateBytes)
-
-	tpl, err = template.New("rootDesc").Parse(templateString)
+	tpl, err = template.New("rootDesc").Parse(templateBytes)
 	if err != nil {
 		return nil, fmt.Errorf("get template parse: %w", err)
 	}
 
-	return
+	return tpl, nil
 }

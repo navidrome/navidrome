@@ -211,7 +211,6 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	} else if matchResults, err := recentRegex.Groups(o.Path); err == nil {
-
 		log.Debug("TODO recent MATCH") //ROB YOU ARE
 		fmt.Printf("%+v", matchResults)
 
@@ -496,7 +495,8 @@ func (o object) ID() string {
 		return o.Id
 	}
 	if !path.IsAbs(o.Path) {
-		log.Fatal(fmt.Sprintf("Relative object path used with ID: $s", o.Path))
+		log.Fatal("Relative object path used", "path", o.Path)
+		return "-1"
 	}
 	if len(o.Path) == 1 {
 		return "0"
