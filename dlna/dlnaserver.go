@@ -32,13 +32,13 @@ import (
 )
 
 const (
-	serverField       = "Linux/3.4 DLNADOC/1.50 UPnP/1.0 DMS/1.0"
-	rootDescPath      = "/rootDesc.xml"
-	resourcePath           = "/r/"
-	resourceFilePath	   = "f"
+	serverField        = "Linux/3.4 DLNADOC/1.50 UPnP/1.0 DMS/1.0"
+	rootDescPath       = "/rootDesc.xml"
+	resourcePath       = "/r/"
+	resourceFilePath   = "f"
 	resourceStreamPath = "s"
-	resourceArtPath = "a"
-	serviceControlURL = "/ctl"
+	resourceArtPath    = "a"
+	serviceControlURL  = "/ctl"
 )
 
 //go:embed static/*
@@ -49,8 +49,8 @@ type DLNAServer struct {
 	broker events.Broker
 	ssdp   SSDPServer
 	ctx    context.Context
-	ms core.MediaStreamer
-	art	artwork.Artwork
+	ms     core.MediaStreamer
+	art    artwork.Artwork
 }
 
 type SSDPServer struct {
@@ -74,8 +74,8 @@ type SSDPServer struct {
 	// Time interval between SSPD announces
 	AnnounceInterval time.Duration
 
-	ms core.MediaStreamer
-	art	artwork.Artwork
+	ms  core.MediaStreamer
+	art artwork.Artwork
 }
 
 func New(ds model.DataStore, broker events.Broker, mediastreamer core.MediaStreamer, artwork artwork.Artwork) *DLNAServer {
@@ -89,10 +89,10 @@ func New(ds model.DataStore, broker events.Broker, mediastreamer core.MediaStrea
 			ModelNumber:      consts.Version,
 			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
 			waitChan:         make(chan struct{}),
-			ms: mediastreamer,
-			art: artwork,
+			ms:               mediastreamer,
+			art:              artwork,
 		},
-		ms: mediastreamer,
+		ms:  mediastreamer,
 		art: artwork,
 	}
 
@@ -293,73 +293,73 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 
 	components := strings.Split(remotePath, "/")
 	switch components[0] {
-		case resourceFilePath:
-			localFile, _ := strings.CutPrefix(remotePath, path.Join(resourceFilePath,"Music/Files"))
-			localFilePath := path.Join(conf.Server.MusicFolder, localFile)
+	case resourceFilePath:
+		localFile, _ := strings.CutPrefix(remotePath, path.Join(resourceFilePath, "Music/Files"))
+		localFilePath := path.Join(conf.Server.MusicFolder, localFile)
 
-			log.Info(fmt.Sprintf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath))
+		log.Info(fmt.Sprintf("resource handler Executed with remote path: %s, localpath: %s", remotePath, localFilePath))
 
-			fileStats, err := os.Stat(localFilePath)
-			if err != nil {
-				http.NotFound(w, r)
-				return
-			}
-			w.Header().Set("Content-Length", strconv.FormatInt(fileStats.Size(), 10))
+		fileStats, err := os.Stat(localFilePath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Length", strconv.FormatInt(fileStats.Size(), 10))
 
-			// add some DLNA specific headers
-			if r.Header.Get("getContentFeatures.dlna.org") != "" {
-				w.Header().Set("contentFeatures.dlna.org", dms_dlna.ContentFeatures{
-					SupportRange: true,
-				}.String())
-			}
-			w.Header().Set("transferMode.dlna.org", "Streaming")
+		// add some DLNA specific headers
+		if r.Header.Get("getContentFeatures.dlna.org") != "" {
+			w.Header().Set("contentFeatures.dlna.org", dms_dlna.ContentFeatures{
+				SupportRange: true,
+			}.String())
+		}
+		w.Header().Set("transferMode.dlna.org", "Streaming")
 
-			fileHandle, err := os.Open(localFilePath)
-			if err != nil {
-				fmt.Printf("file streaming error: %+v\n", err)
-				return
-			}
-			defer fileHandle.Close()
+		fileHandle, err := os.Open(localFilePath)
+		if err != nil {
+			fmt.Printf("file streaming error: %+v\n", err)
+			return
+		}
+		defer fileHandle.Close()
 
-			http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
-		case resourceStreamPath: //TODO refactor this with stream.go:52?
+		http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
+	case resourceStreamPath: //TODO refactor this with stream.go:52?
 
-			fileId := components[1]
+		fileId := components[1]
 
-			//TODO figure out format, bitrate 
-			stream, err := s.ms.NewStream(r.Context(), fileId, "mp3", 0, 0)
-			if err != nil {
-				log.Error("Error streaming file", "id", fileId, err)
-				return
+		//TODO figure out format, bitrate
+		stream, err := s.ms.NewStream(r.Context(), fileId, "mp3", 0, 0)
+		if err != nil {
+			log.Error("Error streaming file", "id", fileId, err)
+			return
+		}
+		defer func() {
+			if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
+				log.Error("Error closing stream", "id", fileId, "file", stream.Name(), err)
 			}
-			defer func() {
-				if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-					log.Error("Error closing stream", "id", fileId, "file", stream.Name(), err)
-				}
-			}()
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
-			http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-		case resourceArtPath: //TODO refactor this with handle_images.go:39?
-			artId, err := model.ParseArtworkID(components[1])
-			if err != nil {
-				log.Error("Failure to parse ArtworkId", "inputString", components[1], err)
-				return
-			}
-			//TODO size (250)
-			imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, 250, true)
-			if err != nil {
-				log.Error("Failure to retrieve artwork", "artid", artId, err)
-				return
-			}
-			defer imgReader.Close()
-			w.Header().Set("Cache-Control", "public, max-age=315360000")
-			w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
-			_, err = io.Copy(w, imgReader)
-			if err != nil {
-				log.Error("Error writing Artwork Response stream", err)
-				return
-			}
+		}()
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
+		http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
+	case resourceArtPath: //TODO refactor this with handle_images.go:39?
+		artId, err := model.ParseArtworkID(components[1])
+		if err != nil {
+			log.Error("Failure to parse ArtworkId", "inputString", components[1], err)
+			return
+		}
+		//TODO size (250)
+		imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, 250, true)
+		if err != nil {
+			log.Error("Failure to retrieve artwork", "artid", artId, err)
+			return
+		}
+		defer imgReader.Close()
+		w.Header().Set("Cache-Control", "public, max-age=315360000")
+		w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
+		_, err = io.Copy(w, imgReader)
+		if err != nil {
+			log.Error("Error writing Artwork Response stream", err)
+			return
+		}
 	}
 }
 
@@ -423,7 +423,7 @@ func (s *SSDPServer) soapActionResponse(sa upnp.SoapAction, actionRequestXML []b
 
 func (s *SSDPServer) serveHTTP() error {
 	srv := &http.Server{
-		Handler: s.handler,
+		Handler:           s.handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	err := srv.Serve(s.HTTPConn)

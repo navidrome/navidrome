@@ -13,6 +13,7 @@ replace (
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0
+	github.com/anacrolix/dms v1.7.1
 	github.com/andybalholm/cascadia v1.3.3
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
@@ -51,6 +52,9 @@ require (
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
+	github.com/onsi/ginkgo/v2 v2.23.4
+	github.com/onsi/gomega v1.37.0
+	github.com/oriser/regroup v0.0.0-20240925165441-f6bb0e08289e
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pressly/goose/v3 v3.26.0
