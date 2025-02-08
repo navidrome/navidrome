@@ -253,13 +253,12 @@ func (s *SSDPServer) ssdpInterface(intf net.Interface) {
 	}
 	defer ssdpServer.Close()
 
-	log.Info(fmt.Sprintf("Started SSDP on %v", intf.Name))
+	log.Info("Started SSDP", "intf.Name", intf.Name)
 	stopped := make(chan struct{})
 	go func() {
 		defer close(stopped)
 		if err := ssdpServer.Serve(); err != nil {
-			log.Error(fmt.Sprintf("Err %q", intf.Name), err)
-
+			log.Error("Error in ssdpServer Serve", "intf.Name", intf.Name, err)
 		}
 	}()
 	select {
