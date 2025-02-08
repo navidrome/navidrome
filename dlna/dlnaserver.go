@@ -322,8 +322,7 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 
 			http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
 		break;	
-		case resourceStreamPath:
-			//Copypasta stream.go:52
+		case resourceStreamPath: //TODO refactor this with stream.go:52?
 
 			fileId := components[1]
 
@@ -331,8 +330,7 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			stream, err := s.ms.NewStream(r.Context(), fileId, "mp3", 0, 0)
 			if err != nil {
 				log.Error("Error streaming file", "id", fileId, err)
-				//TODO throw 500
-				//eturn nil, err
+				return
 			}
 			defer func() {
 				if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
@@ -343,19 +341,22 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
 			http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
 		break;
-			case resourceArtPath:
-				log.Debug("1a")
-				//copy pasta handle_images.go:39
-				artId, _ := model.ParseArtworkID(components[1])
-				imgReader, lastUpdate, _ := s.art.Get(r.Context(), artId, 250, true)
-				log.Debug("2a")
+			case resourceArtPath: //TODO refactor this with handle_images.go:39?
+				artId, err := model.ParseArtworkID(components[1])
+				if err != nil {
+					log.Error("Failure to parse ArtworkId", "inputString", components[1], err)
+					return
+				}
+				//TODO size (250)
+				imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, 250, true)
+				if err != nil {
+					log.Error("Failure to retrieve artwork", "artid", artId, err)
+					return
+				}
 				defer imgReader.Close()
-				log.Debug("3a")
 				w.Header().Set("Cache-Control", "public, max-age=315360000")
 				w.Header().Set("Last-Modified", lastUpdate.Format(time.RFC1123))
-				log.Debug("4a")
 				io.Copy(w, imgReader)
-				log.Debug("5a")
 		break;
 	}
 }

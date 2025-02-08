@@ -275,6 +275,14 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			OriginalTrackNumber: track.TrackNumber,
 			Date: upnpav.Timestamp{Time:trackDateAsTimeObject},
 		}
+
+		if(track.HasCoverArt) {
+			obj.AlbumArtURI = (&url.URL{
+				Scheme: "http",
+				Host:   host,
+				Path:   path.Join(resourcePath, resourceArtPath, track.CoverArtID().String()),
+			}).String()
+		}
  		
 		//TODO figure out how this fits with transcoding etc
 		var mimeType = "audio/mp3"
