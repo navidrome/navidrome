@@ -150,10 +150,14 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	_, base := filepath.Split(folder)
 	folderID := model.NewFolder(model.Library{ID: libID, Path: libPath}, base).ID
 
+	log.Trace(ctx, "Calculating artist folder details", "base", base, "folder", folder, "folderID", folderID,
+		"libPath", libPath, "libID", libID, "albumPaths", paths)
+
 	// Get the last update time for the folder
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
-		log.Warn(ctx, "Could not find folder for artist", "folder", folder, "id", folderID, "base", base, err)
+		log.Warn(ctx, "Could not find folder for artist", "folder", folder, "id", folderID, "base", base,
+			"libPath", libPath, "libID", libID, err)
 		return "", time.Time{}, err
 	}
 	return folder, folders[0].ImagesUpdatedAt, nil
