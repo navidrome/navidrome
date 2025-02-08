@@ -284,8 +284,6 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			Res:    make([]upnpav.Resource, 0, 1),
 		}
 
-		//TODO replace this with a streaming path
-		//directFileAccessPath := path.Join(resourcePath, resourceFilePath, "Music/Files", strings.TrimPrefix(track.Path, conf.Server.MusicFolder))
 		streamAccessPath := path.Join(resourcePath, resourceStreamPath, track.ID)
 		item.Res = append(item.Res, upnpav.Resource{
 			URL: (&url.URL{
@@ -316,12 +314,6 @@ func floatToDurationString(totalSeconds32 float32) string {
 	ms := int(math.Floor(math.Mod(totalSeconds,1) * 1000))
 
 	return fmt.Sprintf("%02d:%02d:%02d.%03d", hours, minutes, seconds, ms)
-}
-
-func (cds *contentDirectoryService) doAlbum(album *model.Album, basepath string, ret []interface{}, host string) ([]interface{}, error) {
-	log.Debug(fmt.Sprintf("TODO: doAlbum Called with : '%+v', '%s'", album, basepath))
-	panic("doAlbum Called!")
-	return ret, nil
 }
 
 func (cds *contentDirectoryService) doAlbums(albums model.Albums, basepath string, ret []interface{}, host string) ([]interface{}, error) {
