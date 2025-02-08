@@ -167,20 +167,18 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 	if matchResults["AlbumTitle"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
-	} else {
-		indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
+	}
+	indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
+	if err != nil {
+		fmt.Printf("Error retrieving Indexes: %+v", err)
+		return nil, err
+	}
+	for indexItem := range indexes {
+		child := object{
+			Path: path.Join(o.Path, indexes[indexItem].Name),
+			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		for indexItem := range indexes {
-			child := object{
-				Path: path.Join(o.Path, indexes[indexItem].Name),
-				Id:   path.Join(o.Path, indexes[indexItem].ID),
-			}
-			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-		}
-		return ret, nil
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 	}
 	return ret, nil
 }
@@ -212,20 +210,18 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 			}
 		}
-	} else {
-		indexes, err := cds.ds.Genre(cds.ctx).GetAll()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
+	}
+	indexes, err := cds.ds.Genre(cds.ctx).GetAll()
+	if err != nil {
+		fmt.Printf("Error retrieving Indexes: %+v", err)
+		return nil, err
+	}
+	for indexItem := range indexes {
+		child := object{
+			Path: path.Join(o.Path, indexes[indexItem].Name),
+			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		for indexItem := range indexes {
-			child := object{
-				Path: path.Join(o.Path, indexes[indexItem].Name),
-				Id:   path.Join(o.Path, indexes[indexItem].ID),
-			}
-			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-		}
-		return ret, nil
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 	}
 	return ret, nil
 }
@@ -234,21 +230,20 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 	if matchResults["RecentAlbum"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["RecentAlbum"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
-	} else {
-		indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
-		}
-		for indexItem := range indexes {
-			child := object{
-				Path: path.Join(o.Path, indexes[indexItem].Name),
-				Id:   path.Join(o.Path, indexes[indexItem].ID),
-			}
-			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-		}
-		return ret, nil
 	}
+	indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
+	if err != nil {
+		fmt.Printf("Error retrieving Indexes: %+v", err)
+		return nil, err
+	}
+	for indexItem := range indexes {
+		child := object{
+			Path: path.Join(o.Path, indexes[indexItem].Name),
+			Id:   path.Join(o.Path, indexes[indexItem].ID),
+		}
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+	}
+	return ret, nil
 }
 
 func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
@@ -261,18 +256,18 @@ func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *con
 		return cds.doMediaFiles(x.MediaFiles(), o.Path, ret, host)
 	}
 	indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
-		if err != nil {
-			fmt.Printf("Error retrieving Indexes: %+v", err)
-			return nil, err
+	if err != nil {
+		fmt.Printf("Error retrieving Indexes: %+v", err)
+		return nil, err
+	}
+	for indexItem := range indexes {
+		child := object{
+			Path: path.Join(o.Path, indexes[indexItem].Name),
+			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		for indexItem := range indexes {
-			child := object{
-				Path: path.Join(o.Path, indexes[indexItem].Name),
-				Id:   path.Join(o.Path, indexes[indexItem].ID),
-			}
-			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-		}
-		return ret, nil
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+	}
+	return ret, nil
 }
 
 func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePath string, ret []interface{}, host string) ([]interface{}, error) {
@@ -382,7 +377,6 @@ type browse struct {
 // ContentDirectory object from ObjectID.
 func (cds *contentDirectoryService) objectFromID(id string) (o object, err error) {
 	log.Debug("objectFromID called", "id", id)
-
 	o.Path, err = url.QueryUnescape(id)
 	if err != nil {
 		return
