@@ -424,7 +424,7 @@ func (s *SSDPServer) soapActionResponse(sa upnp.SoapAction, actionRequestXML []b
 func (s *SSDPServer) serveHTTP() error {
 	srv := &http.Server{
 		Handler: s.handler,
-		ReadHeaderTimeout: 10,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 	err := srv.Serve(s.HTTPConn)
 	select {
