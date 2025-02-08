@@ -108,153 +108,178 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 	}
 
 	if o.Path == "/Music" {
-		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
-		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host))
-		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host))
-		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host))
-		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host))
-		ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host))
-		return ret, nil
+		return handleDefault(ret, cds, o, host)
 	} else if _, err := filesRegex.Groups(o.Path); err == nil {
 		return cds.doFiles(ret, o.Path, host)
 	} else if matchResults, err := artistRegex.Groups(o.Path); err == nil {
-		if matchResults["ArtistAlbumTrack"] != "" {
-			//This is never hit as the URL is direct to the resourcePath
-			log.Debug("Artist Get a track ")
-		} else if matchResults["ArtistAlbum"] != "" {
-			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
-			return cds.doMediaFiles(tracks, o.Path, ret, host)
-		} else if matchResults["Artist"] != "" {
-			allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
-			return cds.doAlbums(allAlbumsForThisArtist, o.Path, ret, host)
-		} else {
-			indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
-			if err != nil {
-				fmt.Printf("Error retrieving Indexes: %+v", err)
-				return nil, err
-			}
-			for letterIndex := range indexes {
-				for artist := range indexes[letterIndex].Artists {
-					artistId := indexes[letterIndex].Artists[artist].ID
-					child := object{
-						Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
-						Id:   path.Join(o.Path, artistId),
-					}
-					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-				}
-			}
-			return ret, nil
-		}
+		return handleArtist(matchResults, ret, cds, o, host)
 	} else if matchResults, err := albumRegex.Groups(o.Path); err == nil {
-		if matchResults["AlbumTrack"] != "" {
-			//This is never hit as the URL is direct to the streamPath
-		} else if matchResults["AlbumTitle"] != "" {
-			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
-			return cds.doMediaFiles(tracks, o.Path, ret, host)
-		} else {
-			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
-			if err != nil {
-				fmt.Printf("Error retrieving Indexes: %+v", err)
-				return nil, err
-			}
-			for indexItem := range indexes {
-				child := object{
-					Path: path.Join(o.Path, indexes[indexItem].Name),
-					Id:   path.Join(o.Path, indexes[indexItem].ID),
-				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-			}
-			return ret, nil
-		}
+		return handleAlbum(matchResults, ret, cds, o, host)
 	} else if matchResults, err := genresRegex.Groups(o.Path); err == nil {
-		if matchResults["GenreTrack"] != "" {
-			//This is never hit as the URL is direct to the streamPath
-		} else if matchResults["GenreArtist"] != "" {
-			tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{ 
-				squirrel.Eq{"genre.id": matchResults["Genre"],},
-				squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
-			  },
-			})
-			if err != nil {
-				fmt.Printf("Error retrieving tracks for artist and genre: %+v", err)
-				return nil, err
-			}
-			return cds.doMediaFiles(tracks, o.Path, ret, host)
-		} else if matchResults["Genre"] != "" {
-			if matchResults["GenreArtist"] == "" {
-				artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{ "genre.id": matchResults["Genre"]}})
-				if err != nil {
-					fmt.Printf("Error retrieving artists for genre: %+v", err)
-					return nil, err
-				}
-				for artistIndex := range artists {
-					child := object{
-						Path: path.Join(o.Path, artists[artistIndex].Name),
-						Id: path.Join(o.Path, artists[artistIndex].ID),
-					}
-					ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-				}
-			}
-		} else {
-			indexes, err := cds.ds.Genre(cds.ctx).GetAll()
-			if err != nil {
-				fmt.Printf("Error retrieving Indexes: %+v", err)
-				return nil, err
-			}
-			for indexItem := range indexes {
-				child := object{
-					Path: path.Join(o.Path, indexes[indexItem].Name),
-					Id:   path.Join(o.Path, indexes[indexItem].ID),
-				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-			}
-			return ret, nil
-		}
+		return handleGenre(matchResults, ret, cds, o, host)
 	} else if matchResults, err := recentRegex.Groups(o.Path); err == nil {
-		log.Debug("TODO recent MATCH") //ROB YOU ARE
-		fmt.Printf("%+v", matchResults)
-
-		if matchResults["RecentAlbum"] != "" {
-			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["RecentAlbum"]}})
-			return cds.doMediaFiles(tracks, o.Path, ret, host)
-		} else {
-			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
-			if err != nil {
-				fmt.Printf("Error retrieving Indexes: %+v", err)
-				return nil, err
-			}
-			for indexItem := range indexes {
-				child := object{
-					Path: path.Join(o.Path, indexes[indexItem].Name),
-					Id:   path.Join(o.Path, indexes[indexItem].ID),
-				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
-			}
-			return ret, nil
-		}
+		return handleRecent(matchResults, ret, cds, o, host)
 	} else if matchResults, err := playlistRegex.Groups(o.Path); err == nil {
-		if matchResults["PlaylistTrack"] != "" {
-			//This is never hit as the URL is direct to the streamPath
-		} else if matchResults["Playlist"] != "" {
-			log.Debug("Playlist only MATCH")
-			x, xerr := cds.ds.Playlist(cds.ctx).Get(matchResults["Playlist"])
-			log.Debug(fmt.Sprintf("TODO Playlist: %+v", x), xerr)
-		} else {
-			log.Debug("Playlist else MATCH")
-			indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
-			if err != nil {
-				fmt.Printf("Error retrieving Indexes: %+v", err)
-				return nil, err
-			}
-			for indexItem := range indexes {
+		return handlePlaylists(matchResults, ret, cds, o, host)
+	}
+	return ret, nil
+}
+
+func handleDefault(ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host))
+	return ret, nil
+}
+
+func handleArtist(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+	if matchResults["ArtistAlbumTrack"] != "" {
+		//This is never hit as the URL is direct to the resourcePath
+		log.Debug("Artist Get a track ")
+	} else if matchResults["ArtistAlbum"] != "" {
+		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
+		return cds.doMediaFiles(tracks, o.Path, ret, host)
+	} else if matchResults["Artist"] != "" {
+		allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
+		return cds.doAlbums(allAlbumsForThisArtist, o.Path, ret, host)
+	} else {
+		indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for letterIndex := range indexes {
+			for artist := range indexes[letterIndex].Artists {
+				artistId := indexes[letterIndex].Artists[artist].ID
 				child := object{
-					Path: path.Join(o.Path, indexes[indexItem].Name),
-					Id:   path.Join(o.Path, indexes[indexItem].ID),
+					Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
+					Id:   path.Join(o.Path, artistId),
 				}
 				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 			}
-			return ret, nil
 		}
+		return ret, nil
+	}
+	return ret,nil
+}
+
+func handleAlbum(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+	if matchResults["AlbumTrack"] != "" {
+		//This is never hit as the URL is direct to the streamPath
+	} else if matchResults["AlbumTitle"] != "" {
+		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
+		return cds.doMediaFiles(tracks, o.Path, ret, host)
+	} else {
+		indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				Path: path.Join(o.Path, indexes[indexItem].Name),
+				Id:   path.Join(o.Path, indexes[indexItem].ID),
+			}
+			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		}
+		return ret, nil
+	}
+	return ret, nil
+}
+
+func handleGenre(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+	if matchResults["GenreTrack"] != "" {
+		//This is never hit as the URL is direct to the streamPath
+	} else if matchResults["GenreArtist"] != "" {
+		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
+				squirrel.Eq{"genre.id": matchResults["Genre"]},
+				squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
+			},
+		})
+		if err != nil {
+			fmt.Printf("Error retrieving tracks for artist and genre: %+v", err)
+			return nil, err
+		}
+		return cds.doMediaFiles(tracks, o.Path, ret, host)
+	} else if matchResults["Genre"] != "" {
+		if matchResults["GenreArtist"] == "" {
+			artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"genre.id": matchResults["Genre"]}})
+			if err != nil {
+				fmt.Printf("Error retrieving artists for genre: %+v", err)
+				return nil, err
+			}
+			for artistIndex := range artists {
+				child := object{
+					Path: path.Join(o.Path, artists[artistIndex].Name),
+					Id:   path.Join(o.Path, artists[artistIndex].ID),
+				}
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			}
+		}
+	} else {
+		indexes, err := cds.ds.Genre(cds.ctx).GetAll()
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				Path: path.Join(o.Path, indexes[indexItem].Name),
+				Id:   path.Join(o.Path, indexes[indexItem].ID),
+			}
+			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		}
+		return ret, nil
+	}
+	return ret, nil
+}
+
+func handleRecent(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+	if matchResults["RecentAlbum"] != "" {
+		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["RecentAlbum"]}})
+		return cds.doMediaFiles(tracks, o.Path, ret, host)
+	} else {
+		indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				Path: path.Join(o.Path, indexes[indexItem].Name),
+				Id:   path.Join(o.Path, indexes[indexItem].ID),
+			}
+			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		}
+		return ret, nil
+	}
+}
+
+func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+	if matchResults["PlaylistTrack"] != "" {
+		//This is never hit as the URL is direct to the streamPath
+	} else if matchResults["Playlist"] != "" {
+		log.Debug("Playlist only MATCH")
+		//x, xerr := cds.ds.Playlist(cds.ctx).Get(matchResults["Playlist"])
+		return ret, nil
+	} else {
+		log.Debug("Playlist else MATCH")
+		indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
+		if err != nil {
+			fmt.Printf("Error retrieving Indexes: %+v", err)
+			return nil, err
+		}
+		for indexItem := range indexes {
+			child := object{
+				Path: path.Join(o.Path, indexes[indexItem].Name),
+				Id:   path.Join(o.Path, indexes[indexItem].ID),
+			}
+			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		}
+		return ret, nil
 	}
 	return ret, nil
 }
@@ -262,44 +287,44 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePath string, ret []interface{}, host string) ([]interface{}, error) {
 	//TODO flesh object out with actually useful metadata about the track
 	/*
-  <item id="1$7$455$1" parentID="1$7$455" restricted="1" refID="64$15A$0$1">
-    <dc:title>Love Takes Time</dc:title>
-    <dc:description/>
-    <dc:creator>Mariah Carey</dc:creator>
-    <dc:date>2000-01-01</dc:date>
-    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
-	<upnp:artist>Mariah Carey</upnp:artist>
-    <upnp:album>#1's</upnp:album>
-    <upnp:genre>Pop</upnp:genre>
-    <upnp:originalTrackNumber>2</upnp:originalTrackNumber>
-    <upnp:albumArtURI xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" dlna:profileID="JPEG_TN">http://172.30.0.4:8200/AlbumArt/24179-17759.jpg</upnp:albumArtURI>
-	<res size="8861869" duration="0:04:36.160" bitrate="256000" sampleFrequency="44100" nrAudioChannels="2" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://172.30.0.4:8200/MediaItems/17759.mp3</res>
-  </item>
+		  <item id="1$7$455$1" parentID="1$7$455" restricted="1" refID="64$15A$0$1">
+		    <dc:title>Love Takes Time</dc:title>
+		    <dc:description/>
+		    <dc:creator>Mariah Carey</dc:creator>
+		    <dc:date>2000-01-01</dc:date>
+		    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+			<upnp:artist>Mariah Carey</upnp:artist>
+		    <upnp:album>#1's</upnp:album>
+		    <upnp:genre>Pop</upnp:genre>
+		    <upnp:originalTrackNumber>2</upnp:originalTrackNumber>
+		    <upnp:albumArtURI xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" dlna:profileID="JPEG_TN">http://172.30.0.4:8200/AlbumArt/24179-17759.jpg</upnp:albumArtURI>
+			<res size="8861869" duration="0:04:36.160" bitrate="256000" sampleFrequency="44100" nrAudioChannels="2" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://172.30.0.4:8200/MediaItems/17759.mp3</res>
+		  </item>
 	*/
 	for _, track := range tracks {
 		trackDateAsTimeObject, _ := time.Parse(time.DateOnly, track.Date)
 
 		obj := upnpav.Object{
-			ID:         path.Join(basePath, track.ID),
-			Restricted: 1,
-			ParentID:   basePath,
-			Title:      track.Title,
-			Class: "object.item.audioItem.musicTrack",
-			Artist: track.Artist,
-			Album: track.Album,
-			Genre: track.Genre,
+			ID:                  path.Join(basePath, track.ID),
+			Restricted:          1,
+			ParentID:            basePath,
+			Title:               track.Title,
+			Class:               "object.item.audioItem.musicTrack",
+			Artist:              track.Artist,
+			Album:               track.Album,
+			Genre:               track.Genre,
 			OriginalTrackNumber: track.TrackNumber,
-			Date: upnpav.Timestamp{Time:trackDateAsTimeObject},
+			Date:                upnpav.Timestamp{Time: trackDateAsTimeObject},
 		}
 
-		if(track.HasCoverArt) {
+		if track.HasCoverArt {
 			obj.AlbumArtURI = (&url.URL{
 				Scheme: "http",
 				Host:   host,
 				Path:   path.Join(resourcePath, resourceArtPath, track.CoverArtID().String()),
 			}).String()
 		}
- 		
+
 		//TODO figure out how this fits with transcoding etc
 		var mimeType = "audio/mp3"
 
@@ -318,7 +343,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 			ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 				SupportRange: false,
 			}.String()),
-			Size: uint64(track.Size),
+			Size:     uint64(track.Size),
 			Duration: floatToDurationString(track.Duration),
 		})
 		ret = append(ret, item)
@@ -329,13 +354,13 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 
 func floatToDurationString(totalSeconds32 float32) string {
 	totalSeconds := float64(totalSeconds32)
-	secondsInAnHour := float64(60*60)
+	secondsInAnHour := float64(60 * 60)
 	secondsInAMinute := float64(60)
 
 	hours := int(math.Floor(totalSeconds / secondsInAnHour))
-	minutes :=  int(math.Floor(math.Mod(totalSeconds, secondsInAnHour) / secondsInAMinute))
+	minutes := int(math.Floor(math.Mod(totalSeconds, secondsInAnHour) / secondsInAMinute))
 	seconds := int(math.Floor(math.Mod(totalSeconds, secondsInAMinute)))
-	ms := int(math.Floor(math.Mod(totalSeconds,1) * 1000))
+	ms := int(math.Floor(math.Mod(totalSeconds, 1) * 1000))
 
 	return fmt.Sprintf("%02d:%02d:%02d.%03d", hours, minutes, seconds, ms)
 }
