@@ -1,7 +1,6 @@
 package filter
 
 import (
-	"fmt"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -48,15 +47,17 @@ func AlbumsByArtist() Options {
 }
 
 func AlbumsByArtistID(artistId string) Options {
-	var filters Sqlizer
+	filters := []Sqlizer{
+		persistence.Exists("json_tree(Participants, '$.albumartist')", Eq{"value": artistId}),
+	}
 	if conf.Server.SubsonicArtistParticipations {
-		filters = Like{"participants": fmt.Sprintf(`%%"%s"%%`, artistId)}
-	} else {
-		filters = Eq{"album_artist_id": artistId}
+		filters = append(filters,
+			persistence.Exists("json_tree(Participants, '$.artist')", Eq{"value": artistId}),
+		)
 	}
 	return addDefaultFilters(Options{
 		Sort:    "max_year",
-		Filters: filters,
+		Filters: Or(filters),
 	})
 }
 
