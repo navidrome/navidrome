@@ -89,6 +89,8 @@ func New(ds model.DataStore, broker events.Broker, mediastreamer core.MediaStrea
 			ModelNumber:      consts.Version,
 			RootDeviceUUID:   makeDeviceUUID("Navidrome"),
 			waitChan:         make(chan struct{}),
+			ms: mediastreamer,
+			art: artwork,
 		},
 		ms: mediastreamer,
 		art: artwork,
@@ -321,37 +323,25 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			http.ServeContent(w, r, remotePath, time.Now(), fileHandle)
 		break;	
 		case resourceStreamPath:
-			//TODO streaming endpoint
-			log.Debug(fmt.Sprintf("TODO IMPLEMENT THIS: %+v", r))
-
 			//Copypasta stream.go:52
 
-			id := components[1]
+			fileId := components[1]
 
-			ctx := r.Context()
-			/*
-			maxBitRate := p.IntOr("maxBitRate", 0)
-			format, _ := p.String("format")
-			timeOffset := p.IntOr("timeOffset", 0)
-*/			//TODO figure out format, bitrate 
-log.Debug(fmt.Sprintf("1 %+v | comp: %+v",id, components))
-			stream, err := s.ms.NewStream(ctx, id, "mp3", 0, 0)
+			//TODO figure out format, bitrate 
+			stream, err := s.ms.NewStream(r.Context(), fileId, "mp3", 0, 0)
 			if err != nil {
+				log.Error("Error streaming file", "id", fileId, err)
+				//TODO throw 500
 				//eturn nil, err
 			}
-			log.Debug("2")
-			// Make sure the stream will be closed at the end, to avoid leakage
 			defer func() {
 				if err := stream.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-					log.Error("Error closing stream", "id", id, "file", stream.Name(), err)
+					log.Error("Error closing stream", "id", fileId, "file", stream.Name(), err)
 				}
 			}()
-			log.Debug("3")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Content-Duration", strconv.FormatFloat(float64(stream.Duration()), 'G', -1, 32))
-			log.Debug("4")
 			http.ServeContent(w, r, stream.Name(), stream.ModTime(), stream)
-			log.Debug("5")
 		break;
 			case resourceArtPath:
 				log.Debug("1a")
