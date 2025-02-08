@@ -135,13 +135,13 @@ func loadArtistFolderLastUpdate(ctx context.Context, ds model.DataStore, albums 
 	// Manipulate the path to get the folder ID
 	// BFR: This is a bit hacky, but it's the easiest way to get the folder ID, ATM
 	libPath := core.AbsolutePath(ctx, ds, libID, "")
-	_, folder = filepath.Split(folder)
-	folderID := model.NewFolder(model.Library{ID: libID, Path: libPath}, folder).ID
+	_, base := filepath.Split(folder)
+	folderID := model.NewFolder(model.Library{ID: libID, Path: libPath}, base).ID
 
 	// Get the last update time for the folder
 	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
-		log.Warn(ctx, "Could not find folder for artist", "folder", folder, "id", folderID, err)
+		log.Warn(ctx, "Could not find folder for artist", "folder", folder, "id", folderID, "base", base, err)
 		return time.Time{}, err
 	}
 	return folders[0].ImagesUpdatedAt, nil
