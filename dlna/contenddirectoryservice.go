@@ -42,7 +42,7 @@ func init() {
 	artistRegex = regroup.MustCompile("\\/Music\\/Artists[\\/]?(?P<Artist>[^\\/]+)?[\\/]?(?<ArtistAlbum>[^\\/]+)?[\\/]?(?<ArtistAlbumTrack>[^\\/]+)?")
 	albumRegex = regroup.MustCompile("\\/Music\\/Albums[\\/]?(?P<AlbumTitle>[^\\/]+)?[\\/]?(?<AlbumTrack>[^\\/]+)?")
 	genresRegex = regroup.MustCompile("\\/Music\\/Genres[\\/]?(?P<Genre>[^\\/]+)?[\\/]?(?P<GenreArtist>[^/]+)?[\\/]?(?P<GenreTrack>[^\\/]+)?")
-	recentRegex = regroup.MustCompile("\\/Music\\/Recently Added[\\/]?(?P<RecentTrack>[^\\/]+)?")
+	recentRegex = regroup.MustCompile("\\/Music\\/Recently Added[\\/]?(?P<RecentAlbum>[^\\/]+)?")
 	playlistRegex = regroup.MustCompile("\\/Music\\/Playlist[\\/]?(?P<Playlist>[^\\/]+)?[\\/]?(?P<PlaylistTrack>[^\\/]+)?")
 }
 
@@ -147,8 +147,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 		}
 	} else if matchResults, err := albumRegex.Groups(o.Path); err == nil {
 		if matchResults["AlbumTrack"] != "" {
-			log.Debug("TODO AlbumTrack MATCH")
-			//This is never hit as the URL is direct to the resourcePath
+			//This is never hit as the URL is direct to the streamPath
 		} else if matchResults["AlbumTitle"] != "" {
 			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
 			return cds.doMediaFiles(tracks, o.Path, ret, host)
@@ -168,9 +167,8 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	} else if matchResults, err := genresRegex.Groups(o.Path); err == nil {
-		log.Debug("Genre MATCH")
 		if matchResults["GenreTrack"] != "" {
-			log.Debug("TODO GenreTrack MATCH")
+			//This is never hit as the URL is direct to the streamPath
 		} else if matchResults["GenreArtist"] != "" {
 			tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{ 
 				squirrel.Eq{"genre.id": matchResults["Genre"],},
@@ -213,12 +211,31 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 			return ret, nil
 		}
 	} else if matchResults, err := recentRegex.Groups(o.Path); err == nil {
-		log.Debug("TODO recent MATCH")
+
+		log.Debug("TODO recent MATCH") //ROB YOU ARE
 		fmt.Printf("%+v", matchResults)
+
+		if matchResults["RecentAlbum"] != "" {
+			tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["RecentAlbum"]}})
+			return cds.doMediaFiles(tracks, o.Path, ret, host)
+		} else {
+			indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
+			if err != nil {
+				fmt.Printf("Error retrieving Indexes: %+v", err)
+				return nil, err
+			}
+			for indexItem := range indexes {
+				child := object{
+					Path: path.Join(o.Path, indexes[indexItem].Name),
+					Id:   path.Join(o.Path, indexes[indexItem].ID),
+				}
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			}
+			return ret, nil
+		}
 	} else if matchResults, err := playlistRegex.Groups(o.Path); err == nil {
-		log.Debug("TODO Playlist MATCH")
 		if matchResults["PlaylistTrack"] != "" {
-			log.Debug("TODO PlaylistTrack MATCH")
+			//This is never hit as the URL is direct to the streamPath
 		} else if matchResults["Playlist"] != "" {
 			log.Debug("Playlist only MATCH")
 			x, xerr := cds.ds.Playlist(cds.ctx).Get(matchResults["Playlist"])
