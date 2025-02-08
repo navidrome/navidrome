@@ -44,6 +44,7 @@ func (f Folder) String() string {
 func FolderID(lib Library, path string) string {
 	path = strings.TrimPrefix(path, lib.Path)
 	path = strings.TrimPrefix(path, string(os.PathSeparator))
+	path = filepath.Clean(path)
 	key := fmt.Sprintf("%d:%s", lib.ID, path)
 	return id.NewHash(key)
 }

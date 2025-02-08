@@ -24,9 +24,33 @@ var _ = Describe("Folder", func() {
 	})
 
 	Describe("FolderID", func() {
+		When("the folder path is the library root", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := lib.Path
+				expectedID := id.NewHash("1:.")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
+		When("the folder path is '.' (library root)", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := "."
+				expectedID := id.NewHash("1:.")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
 		When("the folder path is relative", func() {
 			It("should return the correct folder ID", func() {
 				folderPath := "rock"
+				expectedID := id.NewHash("1:rock")
+				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
+			})
+		})
+
+		When("the folder path starts with '.'", func() {
+			It("should return the correct folder ID", func() {
+				folderPath := "./rock"
 				expectedID := id.NewHash("1:rock")
 				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
 			})
