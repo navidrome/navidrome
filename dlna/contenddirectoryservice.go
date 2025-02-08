@@ -39,11 +39,11 @@ var playlistRegex *regroup.ReGroup
 
 func init() {
 	filesRegex = regroup.MustCompile("\\/Music\\/Files[\\/]?((?P<Path>.+))?")
-	artistRegex = regroup.MustCompile("\\/Music\\/Artists[\\/]?(?P<Artist>[^\\/]+)?[\\/]?(?<ArtistAlbum>[^\\/]+)?[\\/]?(?<ArtistAlbumTrack>[^\\/]+)?")
-	albumRegex = regroup.MustCompile("\\/Music\\/Albums[\\/]?(?P<AlbumTitle>[^\\/]+)?[\\/]?(?<AlbumTrack>[^\\/]+)?")
-	genresRegex = regroup.MustCompile("\\/Music\\/Genres[\\/]?(?P<Genre>[^\\/]+)?[\\/]?(?P<GenreArtist>[^/]+)?[\\/]?(?P<GenreTrack>[^\\/]+)?")
+	artistRegex = regroup.MustCompile("\\/Music\\/Artists[\\/]?(?P<Artist>[^\\/]+)?[\\/]?(?<ArtistAlbum>[^\\/]+)?[\\/]?")
+	albumRegex = regroup.MustCompile("\\/Music\\/Albums[\\/]?(?P<AlbumTitle>[^\\/]+)?[\\/]?")
+	genresRegex = regroup.MustCompile("\\/Music\\/Genres[\\/]?(?P<Genre>[^\\/]+)?[\\/]?(?P<GenreArtist>[^/]+)?[\\/]?")
 	recentRegex = regroup.MustCompile("\\/Music\\/Recently Added[\\/]?(?P<RecentAlbum>[^\\/]+)?")
-	playlistRegex = regroup.MustCompile("\\/Music\\/Playlist[\\/]?(?P<Playlist>[^\\/]+)?[\\/]?(?P<PlaylistTrack>[^\\/]+)?")
+	playlistRegex = regroup.MustCompile("\\/Music\\/Playlists[\\/]?(?P<Playlist>[^\\/]+)?[\\/]?")
 }
 
 func (cds *contentDirectoryService) updateIDString() string {
@@ -136,10 +136,7 @@ func handleDefault(ret []interface{}, cds *contentDirectoryService, o object, ho
 }
 
 func handleArtist(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
-	if matchResults["ArtistAlbumTrack"] != "" {
-		//This is never hit as the URL is direct to the resourcePath
-		log.Debug("Artist Get a track ")
-	} else if matchResults["ArtistAlbum"] != "" {
+	if matchResults["ArtistAlbum"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
 	} else if matchResults["Artist"] != "" {
@@ -167,9 +164,7 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 }
 
 func handleAlbum(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
-	if matchResults["AlbumTrack"] != "" {
-		//This is never hit as the URL is direct to the streamPath
-	} else if matchResults["AlbumTitle"] != "" {
+	if matchResults["AlbumTitle"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
 	} else {
@@ -191,9 +186,7 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 }
 
 func handleGenre(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
-	if matchResults["GenreTrack"] != "" {
-		//This is never hit as the URL is direct to the streamPath
-	} else if matchResults["GenreArtist"] != "" {
+	if matchResults["GenreArtist"] != "" {
 		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
 			squirrel.Eq{"genre.id": matchResults["Genre"]},
 			squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
@@ -259,15 +252,15 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 }
 
 func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
-	if matchResults["PlaylistTrack"] != "" {
-		//This is never hit as the URL is direct to the streamPath
-	} else if matchResults["Playlist"] != "" {
-		log.Debug("Playlist only MATCH")
-		//x, xerr := cds.ds.Playlist(cds.ctx).Get(matchResults["Playlist"])
-		return ret, nil
-	} else {
-		log.Debug("Playlist else MATCH")
-		indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
+	if matchResults["Playlist"] != "" {
+		x, err := cds.ds.Playlist(cds.ctx).GetWithTracks(matchResults["Playlist"], false)
+		if err != nil {
+			log.Error("Error fetching playlist", "playlist", matchResults["Playlist"], err)
+			return ret, nil
+		}
+		return cds.doMediaFiles(x.MediaFiles(), o.Path, ret, host)
+	}
+	indexes, err := cds.ds.Playlist(cds.ctx).GetAll()
 		if err != nil {
 			fmt.Printf("Error retrieving Indexes: %+v", err)
 			return nil, err
@@ -280,27 +273,9 @@ func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *con
 			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
 		}
 		return ret, nil
-	}
-	return ret, nil
 }
 
 func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePath string, ret []interface{}, host string) ([]interface{}, error) {
-	//TODO flesh object out with actually useful metadata about the track
-	/*
-		  <item id="1$7$455$1" parentID="1$7$455" restricted="1" refID="64$15A$0$1">
-		    <dc:title>Love Takes Time</dc:title>
-		    <dc:description/>
-		    <dc:creator>Mariah Carey</dc:creator>
-		    <dc:date>2000-01-01</dc:date>
-		    <upnp:class>object.item.audioItem.musicTrack</upnp:class>
-			<upnp:artist>Mariah Carey</upnp:artist>
-		    <upnp:album>#1's</upnp:album>
-		    <upnp:genre>Pop</upnp:genre>
-		    <upnp:originalTrackNumber>2</upnp:originalTrackNumber>
-		    <upnp:albumArtURI xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/" dlna:profileID="JPEG_TN">http://172.30.0.4:8200/AlbumArt/24179-17759.jpg</upnp:albumArtURI>
-			<res size="8861869" duration="0:04:36.160" bitrate="256000" sampleFrequency="44100" nrAudioChannels="2" protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000">http://172.30.0.4:8200/MediaItems/17759.mp3</res>
-		  </item>
-	*/
 	for _, track := range tracks {
 		trackDateAsTimeObject, _ := time.Parse(time.DateOnly, track.Date)
 
