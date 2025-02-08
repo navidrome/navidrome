@@ -163,7 +163,7 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 		}
 		return ret, nil
 	}
-	return ret,nil
+	return ret, nil
 }
 
 func handleAlbum(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
@@ -195,9 +195,9 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 		//This is never hit as the URL is direct to the streamPath
 	} else if matchResults["GenreArtist"] != "" {
 		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
-				squirrel.Eq{"genre.id": matchResults["Genre"]},
-				squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
-			},
+			squirrel.Eq{"genre.id": matchResults["Genre"]},
+			squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
+		},
 		})
 		if err != nil {
 			fmt.Printf("Error retrieving tracks for artist and genre: %+v", err)
