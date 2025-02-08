@@ -133,16 +133,14 @@ export const SongInfo = (props) => {
               </TableCell>
             </TableRow>
           )}
-          {tags.map(([name, values]) =>
-            excludedTags.includes(name) ? null : (
-              <TableRow key={`${record.id}-tag-${name}`}>
-                <TableCell scope="row" className={classes.tableCell}>
-                  {name}:
-                </TableCell>
-                <TableCell align="left">{values.join(' • ')}</TableCell>
-              </TableRow>
-            ),
-          )}
+          {tags.map(([name, values]) => (
+            <TableRow key={`${record.id}-tag-${name}`}>
+              <TableCell scope="row" className={classes.tableCell}>
+                {name}:
+              </TableCell>
+              <TableCell align="left">{values.join(' • ')}</TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </TableContainer>
