@@ -31,6 +31,7 @@ import ArtistListActions from './ArtistListActions'
 import ArtistSimpleList from './ArtistSimpleList'
 import { DraggableTypes } from '../consts'
 import en from '../i18n/en.json'
+import { formatBytes } from '../utils/index.js'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -118,7 +119,10 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     role ? record?.stats[role]?.[counter] : record?.[counter]
   const getAlbumCount = (record) => getCounter(record, 'albumCount')
   const getSongCount = (record) => getCounter(record, 'songCount')
-  const getSize = (record) => getCounter(record, 'size')
+  const getSize = (record) => {
+    const size = getCounter(record, 'size')
+    return size ? formatBytes(size) : '0 MB'
+  }
 
   const toggleableFields = useMemo(
     () => ({

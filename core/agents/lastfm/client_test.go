@@ -42,10 +42,10 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			artist, err := client.artistGetInfo(context.Background(), "U2", "123")
+			artist, err := client.artistGetInfo(context.Background(), "U2", "mbid-1234")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=123&method=artist.getInfo"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
 		})
 
 		It("fails if Last.fm returns an http status != 200", func() {
@@ -102,10 +102,10 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			similar, err := client.artistGetSimilar(context.Background(), "U2", "123", 2)
+			similar, err := client.artistGetSimilar(context.Background(), "U2", "mbid-1234", 2)
 			Expect(err).To(BeNil())
 			Expect(len(similar.Artists)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&mbid=123&method=artist.getSimilar"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
 		})
 	})
 
@@ -114,10 +114,10 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			top, err := client.artistGetTopTracks(context.Background(), "U2", "123", 2)
+			top, err := client.artistGetTopTracks(context.Background(), "U2", "mbid-1234", 2)
 			Expect(err).To(BeNil())
 			Expect(len(top.Track)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&mbid=123&method=artist.getTopTracks"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
 		})
 	})
 

@@ -63,7 +63,7 @@ func (c *client) artistGetInfo(ctx context.Context, name string, mbid string) (*
 	params := url.Values{}
 	params.Add("method", "artist.getInfo")
 	params.Add("artist", name)
-	params.Add("mbid", mbid)
+	//params.Add("mbid", mbid)
 	params.Add("lang", c.lang)
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
@@ -76,7 +76,7 @@ func (c *client) artistGetSimilar(ctx context.Context, name string, mbid string,
 	params := url.Values{}
 	params.Add("method", "artist.getSimilar")
 	params.Add("artist", name)
-	params.Add("mbid", mbid)
+	//params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
@@ -89,7 +89,7 @@ func (c *client) artistGetTopTracks(ctx context.Context, name string, mbid strin
 	params := url.Values{}
 	params.Add("method", "artist.getTopTracks")
 	params.Add("artist", name)
-	params.Add("mbid", mbid)
+	//params.Add("mbid", mbid)
 	params.Add("limit", strconv.Itoa(limit))
 	response, err := c.makeRequest(ctx, http.MethodGet, params, false)
 	if err != nil {
