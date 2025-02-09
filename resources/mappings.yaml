@@ -101,11 +101,11 @@ main:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:
     aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics ]
-    maxlength: 32768
+    maxLength: 32768
     type: pair # ex: lyrics:eng, lyrics:xxx
   comment:
     aliases: [ comm:description, comment, ©cmt, description, icmt ]
-    maxlength: 4096
+    maxLength: 4096
   originaldate:
     aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear ]
     type: date
