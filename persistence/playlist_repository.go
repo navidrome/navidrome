@@ -369,12 +369,14 @@ func (r *playlistRepository) loadTracks(sel SelectBuilder, id string) (model.Pla
 			"coalesce(rating, 0) as rating",
 			"f.*",
 			"playlist_tracks.*",
+			"library.path as library_path",
 		).
 		LeftJoin("annotation on (" +
 			"annotation.item_id = media_file_id" +
 			" AND annotation.item_type = 'media_file'" +
 			" AND annotation.user_id = '" + userId(r.ctx) + "')").
 		Join("media_file f on f.id = media_file_id").
+		Join("library on f.library_id = library.id").
 		Where(Eq{"playlist_id": id})
 	tracks := dbPlaylistTracks{}
 	err := r.queryAll(tracksQuery, &tracks)
