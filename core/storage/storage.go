@@ -3,7 +3,9 @@ package storage
 import (
 	"errors"
 	"net/url"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -42,6 +44,9 @@ func For(uri string) (Storage, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
+	}
+	if u.Scheme == LocalSchemaID && runtime.GOOS == "windows" {
+		u.Path = path.Join(u.Host, u.Path)
 	}
 	c, ok := registry[u.Scheme]
 	if !ok {
