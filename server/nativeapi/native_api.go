@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
+	"html"
 	"net/http"
 	"strconv"
 
@@ -163,7 +164,7 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 	var resp []byte
 	var err error
 	if len(ids) == 1 {
-		resp = []byte(`{"id":"` + ids[0] + `"}`)
+		resp = []byte(`{"id":"` + html.EscapeString(ids[0]) + `"}`)
 	} else {
 		resp, err = json.Marshal(&struct {
 			Ids []string `json:"ids"`
