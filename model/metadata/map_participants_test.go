@@ -518,4 +518,76 @@ var _ = Describe("Participants", func() {
 			Expect(producers[1].MbzArtistID).To(Equal(mbid1))
 		})
 	})
+
+	Describe("Non-standard MBID tags", func() {
+		var allMappings = map[model.Role]model.TagName{
+			model.RoleComposer:  model.TagMusicBrainzComposerID,
+			model.RoleLyricist:  model.TagMusicBrainzLyricistID,
+			model.RoleConductor: model.TagMusicBrainzConductorID,
+			model.RoleArranger:  model.TagMusicBrainzArrangerID,
+			model.RoleDirector:  model.TagMusicBrainzDirectorID,
+			model.RoleProducer:  model.TagMusicBrainzProducerID,
+			model.RoleEngineer:  model.TagMusicBrainzEngineerID,
+			model.RoleMixer:     model.TagMusicBrainzMixerID,
+			model.RoleRemixer:   model.TagMusicBrainzRemixerID,
+			model.RoleDJMixer:   model.TagMusicBrainzDJMixerID,
+		}
+
+		It("should handle more artists than mbids", func() {
+			for key := range allMappings {
+				mf = toMediaFile(map[string][]string{
+					key.String():              {"a", "b", "c"},
+					allMappings[key].String(): {"f634bf6d-d66a-425d-888a-28ad39392759", "3dfa3c70-d7d3-4b97-b953-c298dd305e12"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(key, HaveLen(3)))
+				roles := participants[key]
+
+				Expect(roles[0].Name).To(Equal("a"))
+				Expect(roles[1].Name).To(Equal("b"))
+				Expect(roles[2].Name).To(Equal("c"))
+
+				Expect(roles[0].MbzArtistID).To(Equal("f634bf6d-d66a-425d-888a-28ad39392759"))
+				Expect(roles[1].MbzArtistID).To(Equal("3dfa3c70-d7d3-4b97-b953-c298dd305e12"))
+				Expect(roles[2].MbzArtistID).To(Equal(""))
+			}
+		})
+
+		It("should handle more mbids than artists", func() {
+			for key := range allMappings {
+				mf = toMediaFile(map[string][]string{
+					key.String():              {"a", "b"},
+					allMappings[key].String(): {"f634bf6d-d66a-425d-888a-28ad39392759", "3dfa3c70-d7d3-4b97-b953-c298dd305e12"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(key, HaveLen(2)))
+				roles := participants[key]
+
+				Expect(roles[0].Name).To(Equal("a"))
+				Expect(roles[1].Name).To(Equal("b"))
+
+				Expect(roles[0].MbzArtistID).To(Equal("f634bf6d-d66a-425d-888a-28ad39392759"))
+				Expect(roles[1].MbzArtistID).To(Equal("3dfa3c70-d7d3-4b97-b953-c298dd305e12"))
+			}
+		})
+
+		It("should refuse duplicate names if no mbid specified", func() {
+			for key := range allMappings {
+				mf = toMediaFile(map[string][]string{
+					key.String(): {"a", "b", "a", "a"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(key, HaveLen(2)))
+				roles := participants[key]
+
+				Expect(roles[0].Name).To(Equal("a"))
+				Expect(roles[0].MbzArtistID).To(Equal(""))
+				Expect(roles[1].Name).To(Equal("b"))
+				Expect(roles[1].MbzArtistID).To(Equal(""))
+			}
+		})
+	})
 })
