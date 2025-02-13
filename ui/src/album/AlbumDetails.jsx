@@ -285,7 +285,7 @@ const AlbumDetails = (props) => {
               />
             </Typography>
             <Typography component={'h6'} className={classes.recordArtist}>
-              {record.tags['albumversion']}
+              {record?.tags?.['albumversion']}
             </Typography>
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />

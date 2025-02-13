@@ -102,11 +102,22 @@ var _ = Describe("Metadata", func() {
 
 			It("should truncate long strings", func() {
 				props.Tags = map[string][]string{
-					"Title": {strings.Repeat("a", 2048)},
+					"Title":      {strings.Repeat("a", 2048)},
+					"Comment":    {strings.Repeat("a", 8192)},
+					"lyrics:xxx": {strings.Repeat("a", 60000)},
 				}
 				md = metadata.New(filePath, props)
 
 				Expect(md.String(model.TagTitle)).To(HaveLen(1024))
+				Expect(md.String(model.TagComment)).To(HaveLen(4096))
+				pair := md.Pairs(model.TagLyrics)
+
+				Expect(pair).To(HaveLen(1))
+				Expect(pair[0].Key()).To(Equal("xxx"))
+
+				// Note: a total of 6 characters are lost from maxLength from
+				// the key portion and separator
+				Expect(pair[0].Value()).To(HaveLen(32762))
 			})
 
 			It("should split multiple values", func() {

@@ -5,7 +5,7 @@ import (
 	"context"
 	"io/fs"
 	"maps"
-	"path/filepath"
+	"path"
 	"slices"
 	"sort"
 	"strings"
@@ -109,7 +109,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignoreP
 		}
 	}
 
-	dir := filepath.Clean(currentFolder)
+	dir := path.Clean(currentFolder)
 	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
@@ -120,7 +120,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignoreP
 }
 
 func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, currentPatterns []string) []string {
-	ignoreFilePath := filepath.Join(currentFolder, consts.ScanIgnoreFile)
+	ignoreFilePath := path.Join(currentFolder, consts.ScanIgnoreFile)
 	var newPatterns []string
 	if _, err := fs.Stat(fsys, ignoreFilePath); err == nil {
 		// Read and parse the .ndignore file
@@ -178,7 +178,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 	entries := fullReadDir(ctx, dirFile)
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
-		entryPath := filepath.Join(dirPath, entry.Name())
+		entryPath := path.Join(dirPath, entry.Name())
 		if len(ignorePatterns) > 0 && isScanIgnored(ignoreMatcher, entryPath) {
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
@@ -264,7 +264,7 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return false, nil
 	}
 	// Does this symlink point to a directory?
-	fileInfo, err := fs.Stat(fsys, filepath.Join(baseDir, dirEnt.Name()))
+	fileInfo, err := fs.Stat(fsys, path.Join(baseDir, dirEnt.Name()))
 	if err != nil {
 		return false, err
 	}

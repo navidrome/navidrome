@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -84,7 +85,6 @@ func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, p
 type ProgressInfo struct {
 	LibID           int
 	FileCount       uint32
-	FolderCount     uint32
 	Path            string
 	Phase           string
 	ChangesDetected bool
@@ -141,7 +141,14 @@ func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
 	if err != nil {
 		return 0, 0, fmt.Errorf("media file count: %w", err)
 	}
-	folderCount, err := s.ds.Folder(ctx).CountAll()
+	folderCount, err := s.ds.Folder(ctx).CountAll(
+		model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Gt{"num_audio_files": 0},
+				squirrel.Eq{"missing": false},
+			},
+		},
+	)
 	if err != nil {
 		return 0, 0, fmt.Errorf("folder count: %w", err)
 	}
@@ -227,7 +234,9 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 			continue
 		}
 		s.count.Add(p.FileCount)
-		s.folderCount.Add(1)
+		if p.FileCount > 0 {
+			s.folderCount.Add(1)
+		}
 		status := &events.ScanStatus{
 			Scanning:    true,
 			Count:       int64(s.count.Load()),

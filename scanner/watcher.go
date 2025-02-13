@@ -54,7 +54,7 @@ func (w *watcher) Run(ctx context.Context) error {
 				break
 			}
 			if status.Scanning {
-				log.Info(ctx, "Watcher: Already scanning, will retry later", "waitTime", w.triggerWait*3)
+				log.Debug(ctx, "Watcher: Already scanning, will retry later", "waitTime", w.triggerWait*3)
 				trigger.Reset(w.triggerWait * 3)
 				continue
 			}
