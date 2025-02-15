@@ -191,7 +191,7 @@ additional:
   movement:
     aliases: [ mvin, movement, mvi ]
   recordlabel:
-    aliases: [ tpub, label, publisher, ----:com.apple.itunes:label, wm/publisher ]
+    aliases: [ tpub, label, publisher, ----:com.apple.itunes:label, wm/publisher, organization ]
     album: true
   musicbrainz_discid:
     aliases: [ txxx:musicbrainz disc id, musicbrainz_discid, musicbrainz disc id, ----:com.apple.itunes:musicbrainz disc id, musicbrainz/disc id ]
