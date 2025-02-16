@@ -141,6 +141,27 @@ export const SongInfo = (props) => {
               <TableCell align="left">{values.join(' • ')}</TableCell>
             </TableRow>
           ))}
+          {record.rawTags && (
+            <>
+              <TableRow key={`${record.id}-raw-header`}>
+                <TableCell
+                  scope="row"
+                  className={classes.tableCell}
+                ></TableCell>
+                <TableCell align="left">
+                  <h4>{translate(`resources.song.fields.rawTags`)}</h4>
+                </TableCell>
+              </TableRow>
+              {Object.entries(record.rawTags).map(([key, value]) => (
+                <TableRow key={`${record.id}-${key}`}>
+                  <TableCell scope="row" className={classes.tableCell}>
+                    {key}:
+                  </TableCell>
+                  <TableCell align="left">{value.join(' • ')}</TableCell>
+                </TableRow>
+              ))}
+            </>
+          )}
         </TableBody>
       </Table>
     </TableContainer>

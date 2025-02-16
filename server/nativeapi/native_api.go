@@ -6,9 +6,11 @@ import (
 	"html"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -58,6 +60,7 @@ func (n *Router) routes() http.Handler {
 		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
 		n.addMissingFilesRoute(r)
+		n.addInspectRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -177,5 +180,19 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 	_, err = w.Write(resp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (n *Router) addInspectRoute(r chi.Router) {
+	if conf.Server.Inspect.Enabled {
+		r.Group(func(r chi.Router) {
+			if conf.Server.Inspect.MaxRequests > 0 {
+				log.Debug("Throttling inspect", "maxRequests", conf.Server.Inspect.MaxRequests,
+					"backlogLimit", conf.Server.Inspect.BacklogLimit, "backlogTimeout",
+					conf.Server.Inspect.BacklogTimeout)
+				r.Use(middleware.ThrottleBacklog(conf.Server.Inspect.MaxRequests, conf.Server.Inspect.BacklogLimit, time.Duration(conf.Server.Inspect.BacklogTimeout)))
+			}
+			r.Get("/inspect", inspect(n.ds))
+		})
 	}
 }

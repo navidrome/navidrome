@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useTranslate } from 'react-admin'
+import { useNotify, useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
@@ -16,10 +16,12 @@ import {
   openDownloadMenu,
   DOWNLOAD_MENU_SONG,
   openShareMenu,
+  openInspectDialog,
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import { httpClient } from '../dataProvider'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -55,6 +57,7 @@ export const SongContextMenu = ({
   const classes = useStyles()
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const options = {
     playNow: {
@@ -105,6 +108,25 @@ export const SongContextMenu = ({
       enabled: true,
       label: translate('resources.song.actions.info'),
       action: (record) => dispatch(openExtendedInfoDialog(record)),
+    },
+    inspect: {
+      enabled: config.enableInspect,
+      label: translate('resources.song.actions.inspect'),
+      action: async (record) => {
+        try {
+          const data = await httpClient(`/api/inspect?id=${record.id}`)
+          dispatch(openInspectDialog({ ...record, rawTags: data.json.rawTags }))
+        } catch (error) {
+          notify(
+            translate('ra.notification.http_error') + ': ' + error.message,
+            {
+              type: 'warning',
+              multiLine: true,
+              duration: 0,
+            },
+          )
+        }
+      },
     },
   }
 
