@@ -93,6 +93,7 @@ type configOptions struct {
 	Jukebox                         jukeboxOptions
 	Backup                          backupOptions
 	PID                             pidOptions
+	Inspect                         inspectOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -177,6 +178,13 @@ type backupOptions struct {
 type pidOptions struct {
 	Track string
 	Album string
+}
+
+type inspectOptions struct {
+	Enabled        bool
+	MaxRequests    int
+	BacklogLimit   int
+	BacklogTimeout int
 }
 
 var (
@@ -489,6 +497,11 @@ func init() {
 
 	viper.SetDefault("pid.track", consts.DefaultTrackPID)
 	viper.SetDefault("pid.album", consts.DefaultAlbumPID)
+
+	viper.SetDefault("inspect.enabled", true)
+	viper.SetDefault("inspect.maxrequests", 1)
+	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
+	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

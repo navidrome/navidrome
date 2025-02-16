@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useTranslate } from 'react-admin'
+import { useNotify, usePermissions, useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
@@ -20,6 +20,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import { httpClient } from '../dataProvider'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -55,7 +56,10 @@ export const SongContextMenu = ({
   const classes = useStyles()
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
+  const { permissions } = usePermissions()
+
   const options = {
     playNow: {
       enabled: true,
@@ -104,7 +108,26 @@ export const SongContextMenu = ({
     info: {
       enabled: true,
       label: translate('resources.song.actions.info'),
-      action: (record) => dispatch(openExtendedInfoDialog(record)),
+      action: async (record) => {
+        let fullRecord = record
+        if (permissions === 'admin') {
+          try {
+            const data = await httpClient(`/api/inspect?id=${record.id}`)
+            fullRecord = { ...record, rawTags: data.json.rawTags }
+          } catch (error) {
+            notify(
+              translate('ra.notification.http_error') + ': ' + error.message,
+              {
+                type: 'warning',
+                multiLine: true,
+                duration: 0,
+              },
+            )
+          }
+        }
+
+        dispatch(openExtendedInfoDialog(fullRecord))
+      },
     },
   }
 

@@ -34,6 +34,7 @@ const defaultConfig = {
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
   separator: '/',
+  enableInspect: true,
 }
 
 let config

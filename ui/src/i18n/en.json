@@ -30,7 +30,9 @@
         "grouping": "Grouping",
         "mood": "Mood",
         "participants": "Additional participants",
-        "tags": "Additional Tags"
+        "tags": "Additional Tags",
+        "mappedTags": "Mapped tags",
+        "rawTags": "Raw tags"
       },
       "actions": {
         "addToQueue": "Play Later",
@@ -39,7 +41,8 @@
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
-        "info": "Get Info"
+        "info": "Get Info",
+        "inspect": "Show tag mapping"
       }
     },
     "album": {
