@@ -52,7 +52,7 @@ func (cds *contentDirectoryService) updateIDString() string {
 
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
-func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, isContainer bool, host string) (ret interface{}) {
+func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, isContainer bool, host string, filesize int64) (ret interface{}) {
 	obj := upnpav.Object{
 		ID:         cdsObject.ID(),
 		Restricted: 1,
@@ -68,8 +68,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 			ChildCount: &defaultChildCount,
 		}
 	}
-	// Read the mime type from the fs.Object if possible,
-	// otherwise fall back to working out what it is from the file path.
+
 	var mimeType = "audio/mp3" //TODO
 
 	obj.Class = "object.item.audioItem.musicTrack"
@@ -89,7 +88,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 		ProtocolInfo: fmt.Sprintf("http-get:*:%s:%s", mimeType, dlna.ContentFeatures{
 			SupportRange: true,
 		}.String()),
-		Size: uint64(1048576), //TODO
+		Size: uint64(filesize),
 	})
 
 	ret = item
@@ -103,7 +102,7 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 	if o.Path == "/" || o.Path == "" {
 		log.Debug("ReadContainer default route")
 		newObject := object{Path: "/Music"}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(newObject, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(newObject, true, host, -1))
 		return ret, nil
 	}
 
@@ -126,12 +125,12 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 }
 
 func handleDefault(ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host, -1))
 	return ret, nil
 }
 
@@ -155,7 +154,7 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 				Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
 				Id:   path.Join(o.Path, artistId),
 			}
-			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+			ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 		}
 	}
 	return ret, nil
@@ -176,7 +175,7 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 	}
 	return ret, nil
 }
@@ -205,7 +204,7 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 					Path: path.Join(o.Path, artists[artistIndex].Name),
 					Id:   path.Join(o.Path, artists[artistIndex].ID),
 				}
-				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 			}
 		}
 	}
@@ -219,7 +218,7 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 	}
 	return ret, nil
 }
@@ -239,7 +238,7 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 	}
 	return ret, nil
 }
@@ -263,7 +262,7 @@ func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *con
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 	}
 	return ret, nil
 }
@@ -339,7 +338,7 @@ func (cds *contentDirectoryService) doAlbums(albums model.Albums, basepath strin
 			Path: path.Join(basepath, album.Name),
 			Id:   path.Join(basepath, album.ID),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host))
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 	}
 	return ret, nil
 }
@@ -359,7 +358,8 @@ func (cds *contentDirectoryService) doFiles(ret []interface{}, oPath string, hos
 			Path: path.Join(oPath, file.Name()),
 			Id:   path.Join(oPath, file.Name()),
 		}
-		ret = append(ret, cds.cdsObjectToUpnpavObject(child, file.IsDir(), host))
+		fileInfo,_ := file.Info()
+		ret = append(ret, cds.cdsObjectToUpnpavObject(child, file.IsDir(), host, fileInfo.Size()))
 	}
 	return ret, nil
 }
