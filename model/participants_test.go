@@ -78,6 +78,23 @@ var _ = Describe("Participants", func() {
 				RoleArtist: []Participant{_p("1", "Artist1"), _p("2", "Artist2")},
 			}))
 		})
+		It("adds the artist with and without subrole", func() {
+			participants = Participants{}
+			participants.Add(RolePerformer, Artist{ID: "3", Name: "Artist3"})
+			participants.AddWithSubRole(RolePerformer, "SubRole", Artist{ID: "3", Name: "Artist3"})
+
+			artist3 := _p("3", "Artist3")
+			artist3WithSubRole := artist3
+			artist3WithSubRole.SubRole = "SubRole"
+
+			Expect(participants[RolePerformer]).To(HaveLen(2))
+			Expect(participants).To(Equal(Participants{
+				RolePerformer: []Participant{
+					artist3,
+					artist3WithSubRole,
+				},
+			}))
+		})
 	})
 
 	Describe("Merge", func() {
