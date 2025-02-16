@@ -15,8 +15,6 @@ import {
   LISTENBRAINZ_TOKEN_CLOSE,
   SHARE_MENU_OPEN,
   SHARE_MENU_CLOSE,
-  INSPECT_DIALOG_OPEN,
-  INSPECT_DIALOG_CLOSE,
 } from '../actions'
 
 export const shareDialogReducer = (
@@ -125,7 +123,6 @@ export const downloadMenuDialogReducer = (
 
 export const expandInfoDialogReducer = (
   previousState = {
-    inspect: false,
     open: false,
     record: undefined,
   },
@@ -142,20 +139,6 @@ export const expandInfoDialogReducer = (
     case EXTENDED_INFO_CLOSE:
       return {
         ...previousState,
-        open: false,
-        record: undefined,
-      }
-    case INSPECT_DIALOG_OPEN:
-      return {
-        ...previousState,
-        inspect: true,
-        open: true,
-        record: payload.record,
-      }
-    case INSPECT_DIALOG_CLOSE:
-      return {
-        ...previousState,
-        inspect: false,
         open: false,
         record: undefined,
       }

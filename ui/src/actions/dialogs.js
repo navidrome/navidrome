@@ -14,8 +14,6 @@ export const DOWNLOAD_MENU_PLAY = 'playlist'
 export const DOWNLOAD_MENU_SONG = 'song'
 export const SHARE_MENU_OPEN = 'SHARE_MENU_OPEN'
 export const SHARE_MENU_CLOSE = 'SHARE_MENU_CLOSE'
-export const INSPECT_DIALOG_OPEN = 'INSPECT_DIALOG_OPEN'
-export const INSPECT_DIALOG_CLOSE = 'INSPECT_DIALOG_CLOSE'
 
 export const openShareMenu = (ids, resource, name, label) => ({
   type: SHARE_MENU_OPEN,
@@ -77,13 +75,4 @@ export const openListenBrainzTokenDialog = () => ({
 
 export const closeListenBrainzTokenDialog = () => ({
   type: LISTENBRAINZ_TOKEN_CLOSE,
-})
-
-export const openInspectDialog = (record) => ({
-  record,
-  type: INSPECT_DIALOG_OPEN,
-})
-
-export const closeInspectDialog = () => ({
-  type: INSPECT_DIALOG_CLOSE,
 })

@@ -31,6 +31,7 @@
         "mood": "Mood",
         "participants": "Additional participants",
         "tags": "Additional Tags",
+        "mappedTags": "Mapped tags",
         "rawTags": "Raw tags"
       },
       "actions": {

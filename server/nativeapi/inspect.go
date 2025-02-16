@@ -6,56 +6,31 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/navidrome/navidrome/scanner/metadata_old"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-type inspectOutput struct {
-	File       string                  `json:"file"`
-	RawTags    metadata_old.ParsedTags `json:"rawTags"`
-	MappedTags model.MediaFile         `json:"mappedTags"`
-}
-
-func doInspect(ctx context.Context, ds model.DataStore, id string) (*inspectOutput, error) {
+func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.InspectOutput, error) {
 	file, err := ds.MediaFile(ctx).Get(id)
 	if err != nil {
 		return nil, err
 	}
 
-	path := file.Path
-
-	s, err := storage.For(file.LibraryPath)
-	if err != nil {
-		return nil, err
-	}
-
-	fs, err := s.FS()
-	if err != nil {
-		return nil, err
-	}
-
-	tags, err := fs.ReadTags(path)
-	if err != nil {
-		return nil, err
-	}
-
-	md := metadata.New(path, tags[path])
-	result := &inspectOutput{
-		File:       file.AbsolutePath(),
-		RawTags:    tags[path].Tags,
-		MappedTags: md.ToMediaFile(file.LibraryID, file.FolderID),
-	}
-
-	return result, nil
+	return core.Inspect(file.AbsolutePath(), file.LibraryID, file.FolderID)
 }
 
 func inspect(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
+		user, _ := request.UserFrom(ctx)
+		if !user.IsAdmin {
+			http.Error(w, "Inspect is only available to admin users", http.StatusUnauthorized)
+		}
+
 		p := req.Params(r)
 		id, err := p.String("id")
 

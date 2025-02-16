@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useNotify, useTranslate } from 'react-admin'
+import { useNotify, usePermissions, useTranslate } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
@@ -16,7 +16,6 @@ import {
   openDownloadMenu,
   DOWNLOAD_MENU_SONG,
   openShareMenu,
-  openInspectDialog,
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
@@ -59,6 +58,8 @@ export const SongContextMenu = ({
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
+  const { permissions } = usePermissions()
+
   const options = {
     playNow: {
       enabled: true,
@@ -107,25 +108,25 @@ export const SongContextMenu = ({
     info: {
       enabled: true,
       label: translate('resources.song.actions.info'),
-      action: (record) => dispatch(openExtendedInfoDialog(record)),
-    },
-    inspect: {
-      enabled: config.enableInspect,
-      label: translate('resources.song.actions.inspect'),
       action: async (record) => {
-        try {
-          const data = await httpClient(`/api/inspect?id=${record.id}`)
-          dispatch(openInspectDialog({ ...record, rawTags: data.json.rawTags }))
-        } catch (error) {
-          notify(
-            translate('ra.notification.http_error') + ': ' + error.message,
-            {
-              type: 'warning',
-              multiLine: true,
-              duration: 0,
-            },
-          )
+        let fullRecord = record
+        if (permissions === 'admin') {
+          try {
+            const data = await httpClient(`/api/inspect?id=${record.id}`)
+            fullRecord = { ...record, rawTags: data.json.rawTags }
+          } catch (error) {
+            notify(
+              translate('ra.notification.http_error') + ': ' + error.message,
+              {
+                type: 'warning',
+                multiLine: true,
+                duration: 0,
+              },
+            )
+          }
         }
+
+        dispatch(openExtendedInfoDialog(fullRecord))
       },
     },
   }

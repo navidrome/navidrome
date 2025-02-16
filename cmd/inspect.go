@@ -3,14 +3,11 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/navidrome/navidrome/scanner/metadata_old"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -46,7 +43,7 @@ var marshalers = map[string]func(interface{}) ([]byte, error){
 }
 
 func prettyMarshal(v interface{}) ([]byte, error) {
-	out := v.([]inspectorOutput)
+	out := v.([]core.InspectOutput)
 	var res strings.Builder
 	for i := range out {
 		res.WriteString(fmt.Sprintf("====================\nFile: %s\n\n", out[i].File))
@@ -58,47 +55,24 @@ func prettyMarshal(v interface{}) ([]byte, error) {
 	return []byte(res.String()), nil
 }
 
-type inspectorOutput struct {
-	File       string
-	RawTags    metadata_old.ParsedTags
-	MappedTags model.MediaFile
-}
-
 func runInspector(args []string) {
 	marshal := marshalers[format]
 	if marshal == nil {
 		log.Fatal("Invalid format", "format", format)
 	}
-	var out []inspectorOutput
+	var out []core.InspectOutput
 	for _, filePath := range args {
 		if !model.IsAudioFile(filePath) {
 			log.Warn("Not an audio file", "file", filePath)
 			continue
 		}
-		path, file := filepath.Split(filePath)
-		s, err := storage.For(path)
+		output, err := core.Inspect(filePath, 1, "")
 		if err != nil {
-			log.Fatal("Error creating storage", err)
-		}
-		fs, err := s.FS()
-		if err != nil {
-			log.Fatal("Error creating FS", err)
-		}
-		tags, err := fs.ReadTags(file)
-		if err != nil {
-			log.Warn("Error reading tags", "file", file, "err", err)
+			log.Warn("Unable to process file", "file", filePath, "error", err)
 			continue
 		}
-		if len(tags[file].Tags) == 0 {
-			log.Warn("No tags found", "file", file)
-			continue
-		}
-		md := metadata.New(file, tags[file])
-		out = append(out, inspectorOutput{
-			File:       file,
-			RawTags:    tags[file].Tags,
-			MappedTags: md.ToMediaFile(1, ""),
-		})
+
+		out = append(out, *output)
 	}
 	data, _ := marshal(out)
 	fmt.Println(string(data))
