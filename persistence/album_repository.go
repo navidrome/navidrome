@@ -62,6 +62,8 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText := []string{a.Name, a.SortAlbumName, a.AlbumArtist}
 	fullText = append(fullText, a.Album.Participants.AllNames()...)
 	fullText = append(fullText, slices.Collect(maps.Values(a.Album.Discs))...)
+	fullText = append(fullText, a.Album.Tags[model.TagAlbumVersion]...)
+	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
 
 	args["tags"] = marshalTags(a.Album.Tags)
