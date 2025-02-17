@@ -67,6 +67,7 @@
         "rating": "Rating",
         "createdAt": "Date added",
         "recordLabel": "Label",
+        "catalogNum": "Catalog Number",
         "releaseType": "Type",
         "grouping": "Grouping",
         "media": "Media",

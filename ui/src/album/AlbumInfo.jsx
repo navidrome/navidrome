@@ -50,6 +50,7 @@ const AlbumInfo = (props) => {
         render={(record) => record.tags?.recordlabel?.join(', ')}
       />
     ),
+    catalogNum: <TextField source={'catalogNum'} />,
     releaseType: (
       <FunctionField
         source={'releaseType'}
@@ -79,7 +80,7 @@ const AlbumInfo = (props) => {
     comment: <MultiLineTextField source={'comment'} />,
   }
 
-  const optionalFields = ['comment', 'genre']
+  const optionalFields = ['comment', 'genre', 'catalogNum']
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
   })
