@@ -28,7 +28,7 @@ var _ = Describe("ToMediaFile", func() {
 		}
 	})
 
-	var toMediaFile = func(tags map[string][]string) model.MediaFile {
+	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
 		return md.ToMediaFile(1, "folderID")
@@ -36,7 +36,7 @@ var _ = Describe("ToMediaFile", func() {
 
 	Describe("Dates", func() {
 		It("should parse the dates like Picard", func() {
-			mf = toMediaFile(map[string][]string{
+			mf = toMediaFile(model.RawTags{
 				"ORIGINALDATE": {"1978-09-10"},
 				"DATE":         {"1977-03-04"},
 				"RELEASEDATE":  {"2002-01-02"},
@@ -53,7 +53,7 @@ var _ = Describe("ToMediaFile", func() {
 
 	Describe("Lyrics", func() {
 		It("should parse the lyrics", func() {
-			mf = toMediaFile(map[string][]string{
+			mf = toMediaFile(model.RawTags{
 				"LYRICS:XXX": {"Lyrics"},
 				"LYRICS:ENG": {
 					"[00:00.00]This is\n[00:02.50]English SYLT\n",

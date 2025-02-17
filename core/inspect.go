@@ -10,9 +10,9 @@ import (
 )
 
 type InspectOutput struct {
-	File       string              `json:"file"`
-	RawTags    map[string][]string `json:"rawTags"`
-	MappedTags *model.MediaFile    `json:"mappedTags,omitempty"`
+	File       string           `json:"file"`
+	RawTags    model.RawTags    `json:"rawTags"`
+	MappedTags *model.MediaFile `json:"mappedTags,omitempty"`
 }
 
 func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, error) {

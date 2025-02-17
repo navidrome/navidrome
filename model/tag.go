@@ -68,6 +68,8 @@ func tagID(name TagName, value string) string {
 	return id.NewTagID(string(name), value)
 }
 
+type RawTags map[string][]string
+
 type Tags map[TagName][]string
 
 func (t Tags) Values(name TagName) []string {

@@ -43,7 +43,7 @@ var _ = Describe("Metadata", func() {
 	Describe("Metadata", func() {
 		Describe("New", func() {
 			It("should create a new Metadata object with the correct properties", func() {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"©ART":                                {"First Artist", "Second Artist"},
 					"----:com.apple.iTunes:CATALOGNUMBER": {"1234"},
 					"tbpm":                                {"120.6"},
@@ -76,7 +76,7 @@ var _ = Describe("Metadata", func() {
 
 			It("should clean the tags map correctly", func() {
 				const unknownTag = "UNKNOWN_TAG"
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"TPE1":          {"Artist Name", "Artist Name", ""},
 					"©ART":          {"Second Artist"},
 					"CatalogNumber": {""},
@@ -101,7 +101,7 @@ var _ = Describe("Metadata", func() {
 			})
 
 			It("should truncate long strings", func() {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"Title":      {strings.Repeat("a", 2048)},
 					"Comment":    {strings.Repeat("a", 8192)},
 					"lyrics:xxx": {strings.Repeat("a", 60000)},
@@ -121,7 +121,7 @@ var _ = Describe("Metadata", func() {
 			})
 
 			It("should split multiple values", func() {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"Genre": {"Rock/Pop;;Punk"},
 				}
 				md = metadata.New(filePath, props)
@@ -132,7 +132,7 @@ var _ = Describe("Metadata", func() {
 
 		DescribeTable("Date",
 			func(value string, expectedYear int, expectedDate string) {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"date": {value},
 				}
 				md = metadata.New(filePath, props)
@@ -156,7 +156,7 @@ var _ = Describe("Metadata", func() {
 
 		DescribeTable("NumAndTotal",
 			func(num, total string, expectedNum int, expectedTotal int) {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"Track":      {num},
 					"TrackTotal": {total},
 				}
@@ -176,7 +176,7 @@ var _ = Describe("Metadata", func() {
 		Describe("Performers", func() {
 			Describe("ID3", func() {
 				BeforeEach(func() {
-					props.Tags = map[string][]string{
+					props.Tags = model.RawTags{
 						"PERFORMER:GUITAR":            {"Guitarist 1", "Guitarist 2"},
 						"PERFORMER:BACKGROUND VOCALS": {"Backing Singer"},
 						"PERFORMER:PERFORMER":         {"Wonderlove", "Lovewonder"},
@@ -199,7 +199,7 @@ var _ = Describe("Metadata", func() {
 
 			Describe("Vorbis", func() {
 				BeforeEach(func() {
-					props.Tags = map[string][]string{
+					props.Tags = model.RawTags{
 						"PERFORMER": {
 							"John Adams (Rhodes piano)",
 							"Vincent Henry (alto saxophone, baritone saxophone and tenor saxophone)",
@@ -229,7 +229,7 @@ var _ = Describe("Metadata", func() {
 
 		Describe("Lyrics", func() {
 			BeforeEach(func() {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					"LYRICS:POR": {"Letras"},
 					"LYRICS:ENG": {"Lyrics"},
 				}
@@ -248,7 +248,7 @@ var _ = Describe("Metadata", func() {
 
 		Describe("ReplayGain", func() {
 			createMF := func(tag, tagValue string) model.MediaFile {
-				props.Tags = map[string][]string{
+				props.Tags = model.RawTags{
 					tag: {tagValue},
 				}
 				md = metadata.New(filePath, props)

@@ -19,7 +19,7 @@ import (
 
 type Info struct {
 	FileInfo        FileInfo
-	Tags            map[string][]string
+	Tags            model.RawTags
 	AudioProperties AudioProperties
 	HasPicture      bool
 }
@@ -188,7 +188,7 @@ func parseDate(filePath string, tagName model.TagName, tagValue string) string {
 // clean filters out tags that are not in the mappings or are empty,
 // combine equivalent tags and remove duplicated values.
 // It keeps the order of the tags names as they are defined in the mappings.
-func clean(filePath string, tags map[string][]string) model.Tags {
+func clean(filePath string, tags model.RawTags) model.Tags {
 	lowered := lowerTags(tags)
 	mappings := model.TagMappings()
 	cleaned := make(model.Tags, len(mappings))
@@ -219,7 +219,7 @@ func processRegularMapping(mapping model.TagConf, lowered model.Tags) []string {
 	return values
 }
 
-func lowerTags(tags map[string][]string) model.Tags {
+func lowerTags(tags model.RawTags) model.Tags {
 	lowered := make(model.Tags, len(tags))
 	for k, v := range tags {
 		lowered[model.TagName(strings.ToLower(k))] = v
