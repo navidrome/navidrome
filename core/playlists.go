@@ -200,6 +200,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			}
 			filteredLines = append(filteredLines, line)
 		}
+		filteredLines = slice.Map(filteredLines, filepath.ToSlash)
 		found, err := mediaFileRepository.FindByPaths(filteredLines)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
