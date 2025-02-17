@@ -8,8 +8,11 @@ import (
 	"image/draw"
 	"image/png"
 	"io"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -44,10 +47,38 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	ff := []sourceFunc{
+		a.fromPlaylistNamedCover(ctx),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	}
 	return selectImageReader(ctx, a.artID, ff...)
+}
+
+func (a *playlistArtworkReader) fromPlaylistNamedCover(ctx context.Context) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		playlistName := a.pl.Name
+		imagePath, err := findMatchingImage(playlistName)
+		if err != nil {
+			return nil, "", err
+		}
+		file, err := os.Open(imagePath)
+		if err != nil {
+			return nil, "", err
+		}
+		return file, filepath.Ext(imagePath), nil
+	}
+}
+
+func findMatchingImage(playlistName string) (string, error) {
+	extensions := []string{".png", ".jpg", ".jpeg"}
+	for _, ext := range extensions {
+		mediaFolder := conf.Server.MusicFolder
+		path := filepath.Join(mediaFolder, "/zPlaylists", playlistName+ext)
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
+	}
+	return "", errors.New("no matching image found")
 }
 
 func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {
