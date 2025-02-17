@@ -135,6 +135,36 @@ main:
   musicbrainz_releasegroupid:
     aliases: [ txxx:musicbrainz release group id, musicbrainz_releasegroupid, ----:com.apple.itunes:musicbrainz release group id, musicbrainz/release group id ]
     type: uuid
+  musicbrainz_composerid:
+    aliases: [ txxx:musicbrainz composer id, musicbrainz_composerid, musicbrainz_composer_id, ----:com.apple.itunes:musicbrainz composer id, musicbrainz/composer id ]
+    type: uuid
+  musicbrainz_lyricistid:
+    aliases: [ txxx:musicbrainz lyricist id, musicbrainz_lyricistid, musicbrainz_lyricist_id, ----:com.apple.itunes:musicbrainz lyricist id, musicbrainz/lyricist id ]
+    type: uuid
+  musicbrainz_directorid:
+    aliases: [ txxx:musicbrainz director id, musicbrainz_directorid, musicbrainz_director_id, ----:com.apple.itunes:musicbrainz director id, musicbrainz/director id ]
+    type: uuid
+  musicbrainz_producerid:
+    aliases: [ txxx:musicbrainz producer id, musicbrainz_producerid, musicbrainz_producer_id, ----:com.apple.itunes:musicbrainz producer id, musicbrainz/producer id ]
+    type: uuid
+  musicbrainz_engineerid:
+    aliases: [ txxx:musicbrainz engineer id, musicbrainz_engineerid, musicbrainz_engineer_id, ----:com.apple.itunes:musicbrainz engineer id, musicbrainz/engineer id ]
+    type: uuid
+  musicbrainz_mixerid:
+    aliases: [ txxx:musicbrainz mixer id, musicbrainz_mixerid, musicbrainz_mixer_id, ----:com.apple.itunes:musicbrainz mixer id, musicbrainz/mixer id ]
+    type: uuid
+  musicbrainz_remixerid:
+    aliases: [ txxx:musicbrainz remixer id, musicbrainz_remixerid, musicbrainz_remixer_id, ----:com.apple.itunes:musicbrainz remixer id, musicbrainz/remixer id ]
+    type: uuid
+  musicbrainz_djmixerid:
+    aliases: [ txxx:musicbrainz djmixer id, musicbrainz_djmixerid, musicbrainz_djmixer_id, ----:com.apple.itunes:musicbrainz djmixer id, musicbrainz/djmixer id ]
+    type: uuid
+  musicbrainz_conductorid:
+    aliases: [ txxx:musicbrainz conductor id, musicbrainz_conductorid, musicbrainz_conductor_id, ----:com.apple.itunes:musicbrainz conductor id, musicbrainz/conductor id ]
+    type: uuid
+  musicbrainz_arrangerid:
+    aliases: [ txxx:musicbrainz arranger id, musicbrainz_arrangerid, musicbrainz_arranger_id, ----:com.apple.itunes:musicbrainz arranger id, musicbrainz/arranger id ]
+    type: uuid
   releasetype:
     aliases: [ txxx:musicbrainz album type, releasetype, musicbrainz_albumtype, ----:com.apple.itunes:musicbrainz album type, musicbrainz/album type ]
     album: true
@@ -153,6 +183,9 @@ main:
     aliases: [r128_track_gain]
   performer:
     aliases: [performer]
+    type: pair
+  musicbrainz_performerid:
+    aliases: [ txxx:musicbrainz performer id, musicbrainz_performerid, musicbrainz_performer_id, ----:com.apple.itunes:musicbrainz performer id, musicbrainz/performer id ]
     type: pair
   explicitstatus:
     aliases: [ itunesadvisory, rtng ]

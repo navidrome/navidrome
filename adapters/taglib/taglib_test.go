@@ -255,11 +255,11 @@ var _ = Describe("Extractor", func() {
 
 		Context("when the TIPL string is populated", func() {
 			It("correctly parses roles and names", func() {
-				tags["tipl"] = []string{"arranger Andrew Powell dj-mix François Kevorkian engineer Chris Blair"}
+				tags["tipl"] = []string{"arranger Andrew Powell DJ-mix François Kevorkian DJ-mix Jane Doe engineer Chris Blair"}
 				parseTIPL(tags)
 				Expect(tags["arranger"]).To(ConsistOf("Andrew Powell"))
 				Expect(tags["engineer"]).To(ConsistOf("Chris Blair"))
-				Expect(tags["djmixer"]).To(ConsistOf("François Kevorkian"))
+				Expect(tags["djmixer"]).To(ConsistOf("François Kevorkian", "Jane Doe"))
 			})
 
 			It("handles multiple names for a single role", func() {

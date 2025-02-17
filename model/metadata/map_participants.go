@@ -17,27 +17,35 @@ type roleTags struct {
 }
 
 var roleMappings = map[model.Role]roleTags{
-	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort},
-	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort},
-	model.RoleConductor: {name: model.TagConductor},
-	model.RoleArranger:  {name: model.TagArranger},
-	model.RoleDirector:  {name: model.TagDirector},
-	model.RoleProducer:  {name: model.TagProducer},
-	model.RoleEngineer:  {name: model.TagEngineer},
-	model.RoleMixer:     {name: model.TagMixer},
-	model.RoleRemixer:   {name: model.TagRemixer},
-	model.RoleDJMixer:   {name: model.TagDJMixer},
+	model.RoleComposer:  {name: model.TagComposer, sort: model.TagComposerSort, mbid: model.TagMusicBrainzComposerID},
+	model.RoleLyricist:  {name: model.TagLyricist, sort: model.TagLyricistSort, mbid: model.TagMusicBrainzLyricistID},
+	model.RoleConductor: {name: model.TagConductor, mbid: model.TagMusicBrainzConductorID},
+	model.RoleArranger:  {name: model.TagArranger, mbid: model.TagMusicBrainzArrangerID},
+	model.RoleDirector:  {name: model.TagDirector, mbid: model.TagMusicBrainzDirectorID},
+	model.RoleProducer:  {name: model.TagProducer, mbid: model.TagMusicBrainzProducerID},
+	model.RoleEngineer:  {name: model.TagEngineer, mbid: model.TagMusicBrainzEngineerID},
+	model.RoleMixer:     {name: model.TagMixer, mbid: model.TagMusicBrainzMixerID},
+	model.RoleRemixer:   {name: model.TagRemixer, mbid: model.TagMusicBrainzRemixerID},
+	model.RoleDJMixer:   {name: model.TagDJMixer, mbid: model.TagMusicBrainzDJMixerID},
 }
 
 func (md Metadata) mapParticipants() model.Participants {
 	participants := make(model.Participants)
 
 	// Parse track artists
-	artists := md.parseArtists(model.TagTrackArtist, model.TagTrackArtists, model.TagTrackArtistSort, model.TagTrackArtistsSort, model.TagMusicBrainzArtistID)
+	artists := md.parseArtists(
+		model.TagTrackArtist, model.TagTrackArtists,
+		model.TagTrackArtistSort, model.TagTrackArtistsSort,
+		model.TagMusicBrainzArtistID,
+	)
 	participants.Add(model.RoleArtist, artists...)
 
 	// Parse album artists
-	albumArtists := md.parseArtists(model.TagAlbumArtist, model.TagAlbumArtists, model.TagAlbumArtistSort, model.TagAlbumArtistsSort, model.TagMusicBrainzAlbumArtistID)
+	albumArtists := md.parseArtists(
+		model.TagAlbumArtist, model.TagAlbumArtists,
+		model.TagAlbumArtistSort, model.TagAlbumArtistsSort,
+		model.TagMusicBrainzAlbumArtistID,
+	)
 	if len(albumArtists) == 1 && albumArtists[0].Name == consts.UnknownArtist {
 		if md.Bool(model.TagCompilation) {
 			albumArtists = md.buildArtists([]string{consts.VariousArtists}, nil, []string{consts.VariousArtistsMbzId})
@@ -58,22 +66,58 @@ func (md Metadata) mapParticipants() model.Participants {
 		}
 	}
 
-	titleCaser := cases.Title(language.Und)
+	rolesMbzIdMap := md.buildRoleMbidMaps()
+	md.processPerformers(participants, rolesMbzIdMap)
+	md.syncMissingMbzIDs(participants)
 
-	// Parse performers
-	for _, performer := range md.Pairs(model.TagPerformer) {
-		name := performer.Value()
-		id := md.artistID(name)
-		orderName := str.SanitizeFieldForSortingNoArticle(name)
-		subRole := titleCaser.String(performer.Key())
-		participants.AddWithSubRole(model.RolePerformer, subRole, model.Artist{
-			ID:              id,
-			Name:            name,
-			OrderArtistName: orderName,
-		})
+	return participants
+}
+
+// buildRoleMbidMaps creates a map of roles to MBZ IDs
+func (md Metadata) buildRoleMbidMaps() map[string][]string {
+	titleCaser := cases.Title(language.Und)
+	rolesMbzIdMap := make(map[string][]string)
+	for _, mbid := range md.Pairs(model.TagMusicBrainzPerformerID) {
+		role := titleCaser.String(mbid.Key())
+		rolesMbzIdMap[role] = append(rolesMbzIdMap[role], mbid.Value())
 	}
 
-	// Create a map to store the MbzArtistID for each artist name
+	return rolesMbzIdMap
+}
+
+func (md Metadata) processPerformers(participants model.Participants, rolesMbzIdMap map[string][]string) {
+	// roleIdx keeps track of the index of the MBZ ID for each role
+	roleIdx := make(map[string]int)
+	for role := range rolesMbzIdMap {
+		roleIdx[role] = 0
+	}
+
+	titleCaser := cases.Title(language.Und)
+	for _, performer := range md.Pairs(model.TagPerformer) {
+		name := performer.Value()
+		subRole := titleCaser.String(performer.Key())
+
+		artist := model.Artist{
+			ID:              md.artistID(name),
+			Name:            name,
+			OrderArtistName: str.SanitizeFieldForSortingNoArticle(name),
+			MbzArtistID:     md.getPerformerMbid(subRole, rolesMbzIdMap, roleIdx),
+		}
+		participants.AddWithSubRole(model.RolePerformer, subRole, artist)
+	}
+}
+
+// getPerformerMbid returns the MBZ ID for a performer, based on the subrole
+func (md Metadata) getPerformerMbid(subRole string, rolesMbzIdMap map[string][]string, roleIdx map[string]int) string {
+	if mbids, exists := rolesMbzIdMap[subRole]; exists && roleIdx[subRole] < len(mbids) {
+		defer func() { roleIdx[subRole]++ }()
+		return mbids[roleIdx[subRole]]
+	}
+	return ""
+}
+
+// syncMissingMbzIDs fills in missing MBZ IDs for artists that have been previously parsed
+func (md Metadata) syncMissingMbzIDs(participants model.Participants) {
 	artistMbzIDMap := make(map[string]string)
 	for _, artist := range append(participants[model.RoleArtist], participants[model.RoleAlbumArtist]...) {
 		if artist.MbzArtistID != "" {
@@ -81,24 +125,21 @@ func (md Metadata) mapParticipants() model.Participants {
 		}
 	}
 
-	if len(artistMbzIDMap) > 0 {
-		// For each artist in each role, try to figure out their MBID from the
-		// track/album artists (the only roles that have MBID in MusicBrainz)
-		for role, list := range participants {
-			for i, participant := range list {
-				if participant.MbzArtistID == "" {
-					if mbzID, found := artistMbzIDMap[participant.Name]; found {
-						participants[role][i].MbzArtistID = mbzID
-					}
+	for role, list := range participants {
+		for i, artist := range list {
+			if artist.MbzArtistID == "" {
+				if mbzID, exists := artistMbzIDMap[artist.Name]; exists {
+					participants[role][i].MbzArtistID = mbzID
 				}
 			}
 		}
 	}
-
-	return participants
 }
 
-func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
+func (md Metadata) parseArtists(
+	name model.TagName, names model.TagName, sort model.TagName,
+	sorts model.TagName, mbid model.TagName,
+) []model.Artist {
 	nameValues := md.getArtistValues(name, names)
 	sortValues := md.getArtistValues(sort, sorts)
 	mbids := md.Strings(mbid)

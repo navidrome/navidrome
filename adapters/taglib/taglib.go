@@ -103,7 +103,7 @@ var tiplMapping = map[string]string{
 	"engineer": "engineer",
 	"producer": "producer",
 	"mix":      "mixer",
-	"dj-mix":   "djmixer",
+	"DJ-mix":   "djmixer",
 }
 
 // parseTIPL parses the ID3v2.4 TIPL frame string, which is received from TagLib in the format:
@@ -122,7 +122,7 @@ func parseTIPL(tags map[string][]string) {
 	addRole := func(currentRole string, currentValue []string) {
 		if currentRole != "" && len(currentValue) > 0 {
 			role := tiplMapping[currentRole]
-			tags[role] = append(tags[currentRole], strings.Join(currentValue, " "))
+			tags[role] = append(tags[role], strings.Join(currentValue, " "))
 		}
 	}
 
