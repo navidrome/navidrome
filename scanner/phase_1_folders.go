@@ -205,12 +205,12 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 
 	// Get list of files to import, based on modtime (or all if fullScan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
-	filesToImport := make([]string, 0, len(entry.audioFiles))
+	filesToImport := make(map[string]*model.MediaFile, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
 		if !foundInDB || p.state.fullScan {
-			filesToImport = append(filesToImport, fullPath)
+			filesToImport[fullPath] = dbTrack
 		} else {
 			info, err := af.Info()
 			if err != nil {
@@ -219,7 +219,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 				return entry, nil
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
-				filesToImport = append(filesToImport, fullPath)
+				filesToImport[fullPath] = dbTrack
 			}
 		}
 		delete(dbTracks, fullPath)
@@ -248,10 +248,10 @@ const filesBatchSize = 200
 
 // loadTagsFromFiles reads metadata from the files in the given list and populates
 // the entry's tracks and tags with the results.
-func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) error {
+func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string]*model.MediaFile) error {
 	tracks := make([]model.MediaFile, 0, len(toImport))
 	uniqueTags := make(map[string]model.Tag, len(toImport))
-	for chunk := range slices.Chunk(toImport, filesBatchSize) {
+	for chunk := range slice.CollectChunks(maps.Keys(toImport), filesBatchSize) {
 		allInfo, err := entry.job.fs.ReadTags(chunk...)
 		if err != nil {
 			log.Warn(p.ctx, "Scanner: Error extracting metadata from files. Skipping", "folder", entry.path, err)
@@ -266,9 +266,15 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport []string) 
 			}
 
 			// Keep track of any album ID changes, to reassign annotations later
-			prevID := md.AlbumID(track, p.prevAlbumPIDConf)
-			if prevID != track.AlbumID {
-				entry.albumIDMap[track.AlbumID] = prevID
+			prevAlbumID := ""
+			if prev := toImport[filePath]; prev != nil {
+				prevAlbumID = prev.AlbumID
+			} else {
+				prevAlbumID = md.AlbumID(track, p.prevAlbumPIDConf)
+			}
+			_, ok := entry.albumIDMap[track.AlbumID]
+			if prevAlbumID != track.AlbumID && !ok {
+				entry.albumIDMap[track.AlbumID] = prevAlbumID
 			}
 		}
 	}
