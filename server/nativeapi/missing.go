@@ -3,6 +3,7 @@ package nativeapi
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 
 	"github.com/Masterminds/squirrel"
@@ -24,10 +25,23 @@ func newMissingRepository(ds model.DataStore) rest.RepositoryConstructor {
 }
 
 func (r *missingRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	opt := r.parseOptions(options)
+	return r.ResourceRepository.Count(opt)
+}
+
+func (r *missingRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
+	opt := r.parseOptions(options)
+	return r.ResourceRepository.ReadAll(opt)
+}
+
+func (r *missingRepository) parseOptions(options []rest.QueryOptions) rest.QueryOptions {
+	var opt rest.QueryOptions
 	if len(options) > 0 {
-		options[0].Filters["missing"] = "true"
+		opt = options[0]
+		opt.Filters = maps.Clone(opt.Filters)
 	}
-	return r.ResourceRepository.Count(options...)
+	opt.Filters["missing"] = "true"
+	return opt
 }
 
 func (r *missingRepository) Read(id string) (any, error) {
@@ -42,13 +56,6 @@ func (r *missingRepository) Read(id string) (any, error) {
 		return nil, model.ErrNotFound
 	}
 	return all[0], nil
-}
-
-func (r *missingRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	if len(options) > 0 {
-		options[0].Filters["missing"] = "true"
-	}
-	return r.ResourceRepository.ReadAll(options...)
 }
 
 func (r *missingRepository) EntityName() string {
