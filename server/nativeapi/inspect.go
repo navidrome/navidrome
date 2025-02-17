@@ -52,6 +52,7 @@ func inspect(ds model.DataStore) http.HandlerFunc {
 			return
 		}
 
+		output.MappedTags = nil
 		response, err := json.Marshal(output)
 		if err != nil {
 			log.Error(ctx, "Error marshalling json", err)

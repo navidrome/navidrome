@@ -6,13 +6,13 @@ import (
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/navidrome/navidrome/scanner/metadata_old"
+	. "github.com/navidrome/navidrome/utils/gg"
 )
 
 type InspectOutput struct {
-	File       string                  `json:"file"`
-	RawTags    metadata_old.ParsedTags `json:"rawTags"`
-	MappedTags model.MediaFile         `json:"mappedTags"`
+	File       string              `json:"file"`
+	RawTags    map[string][]string `json:"rawTags"`
+	MappedTags *model.MediaFile    `json:"mappedTags,omitempty"`
 }
 
 func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, error) {
@@ -37,7 +37,7 @@ func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, e
 	result := &InspectOutput{
 		File:       filePath,
 		RawTags:    tags[file].Tags,
-		MappedTags: md.ToMediaFile(libraryId, folderId),
+		MappedTags: P(md.ToMediaFile(libraryId, folderId)),
 	}
 
 	return result, nil
