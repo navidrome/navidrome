@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sync/atomic"
 	"time"
 
@@ -31,7 +30,7 @@ func newLocalStorage(u url.URL) storage.Storage {
 	if !ok || newExtractor == nil {
 		log.Fatal("Extractor not found", "path", conf.Server.Scanner.Extractor)
 	}
-	isWindowsPath, _ := regexp.MatchString(`^[a-zA-Z]:`, u.Host)
+	isWindowsPath := filepath.VolumeName(u.Host) != ""
 	if u.Scheme == storage.LocalSchemaID && isWindowsPath {
 		u.Path = filepath.Join(u.Host, u.Path)
 	}
