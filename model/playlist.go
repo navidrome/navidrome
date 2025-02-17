@@ -61,7 +61,7 @@ func (pls *Playlist) ToM3U8() string {
 	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", pls.Name))
 	for _, t := range pls.Tracks {
 		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
-		buf.WriteString(t.Path + "\n")
+		buf.WriteString(t.AbsolutePath() + "\n")
 	}
 	return buf.String()
 }
