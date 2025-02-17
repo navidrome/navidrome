@@ -71,7 +71,7 @@ func postRun() {
 // If any of the services returns an error, it will log it and exit. If the process receives a signal to exit,
 // it will cancel the context and exit gracefully.
 func runNavidrome(ctx context.Context) {
-	defer db.Init()()
+	defer db.Init(ctx)()
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(startServer(ctx))
@@ -80,6 +80,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startPlaybackServer(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
+	g.Go(scheduleDBOptimizer(ctx))
 	if conf.Server.Scanner.Enabled {
 		g.Go(runInitialScan(ctx))
 		g.Go(startScanWatcher(ctx))
@@ -261,6 +262,17 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 			}
 		})
 
+		return err
+	}
+}
+
+func scheduleDBOptimizer(ctx context.Context) func() error {
+	return func() error {
+		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
+		schedulerInstance := scheduler.GetInstance()
+		err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
+			db.Optimize(ctx)
+		})
 		return err
 	}
 }

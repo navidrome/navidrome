@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 
@@ -20,7 +21,9 @@ func TestDB(t *testing.T) {
 
 var _ = Describe("IsSchemaEmpty", func() {
 	var database *sql.DB
+	var ctx context.Context
 	BeforeEach(func() {
+		ctx = context.Background()
 		path := "file::memory:"
 		database, _ = sql.Open(db.Dialect, path)
 	})
@@ -28,10 +31,10 @@ var _ = Describe("IsSchemaEmpty", func() {
 	It("returns false if the goose metadata table is found", func() {
 		_, err := database.Exec("create table goose_db_version (id primary key);")
 		Expect(err).ToNot(HaveOccurred())
-		Expect(db.IsSchemaEmpty(database)).To(BeFalse())
+		Expect(db.IsSchemaEmpty(ctx, database)).To(BeFalse())
 	})
 
 	It("returns true if the schema is brand new", func() {
-		Expect(db.IsSchemaEmpty(database)).To(BeTrue())
+		Expect(db.IsSchemaEmpty(ctx, database)).To(BeTrue())
 	})
 })

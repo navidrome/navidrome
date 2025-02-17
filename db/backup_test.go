@@ -112,7 +112,7 @@ var _ = Describe("database backups", func() {
 			DeferCleanup(configtest.SetupConfig())
 
 			conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
-			DeferCleanup(Init())
+			DeferCleanup(Init(ctx))
 		})
 
 		BeforeEach(func() {
@@ -131,7 +131,7 @@ var _ = Describe("database backups", func() {
 
 			backup, err := sql.Open(Driver, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(IsSchemaEmpty(backup)).To(BeFalse())
+			Expect(IsSchemaEmpty(ctx, backup)).To(BeFalse())
 		})
 
 		It("successfully restores the database", func() {
@@ -140,11 +140,11 @@ var _ = Describe("database backups", func() {
 
 			err = tests.ClearDB()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(IsSchemaEmpty(Db())).To(BeTrue())
+			Expect(IsSchemaEmpty(ctx, Db())).To(BeTrue())
 
 			err = Restore(ctx, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(IsSchemaEmpty(Db())).To(BeFalse())
+			Expect(IsSchemaEmpty(ctx, Db())).To(BeFalse())
 		})
 	})
 })

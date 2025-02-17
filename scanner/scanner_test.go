@@ -55,7 +55,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		db.Init()
+		db.Init(ctx)
 		DeferCleanup(func() {
 			Expect(tests.ClearDB()).To(Succeed())
 		})

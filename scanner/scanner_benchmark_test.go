@@ -35,7 +35,7 @@ func BenchmarkScan(b *testing.B) {
 
 	tmpDir := os.TempDir()
 	conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
-	db.Init()
+	db.Init(context.Background())
 
 	ds := persistence.New(db.Db())
 	conf.Server.DevExternalScanner = false

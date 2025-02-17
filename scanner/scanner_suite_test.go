@@ -1,6 +1,7 @@
 package scanner_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/navidrome/navidrome/db"
@@ -18,7 +19,7 @@ func TestScanner(t *testing.T) {
 	)
 
 	tests.Init(t, true)
-	defer db.Close()
+	defer db.Close(context.Background())
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")

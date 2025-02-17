@@ -22,6 +22,8 @@ const (
 	DefaultSessionTimeout  = 48 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
+	OptimizeDBSchedule = "@every 24h"
+
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
 	DefaultEncryptionKey  = "just for obfuscation"
