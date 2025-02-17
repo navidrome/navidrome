@@ -86,7 +86,6 @@ func (md Metadata) buildRoleMbidMaps() map[string][]string {
 }
 
 func (md Metadata) processPerformers(participants model.Participants, rolesMbzIdMap map[string][]string) {
-
 	// roleIdx keeps track of the index of the MBZ ID for each role
 	roleIdx := make(map[string]int)
 	for role := range rolesMbzIdMap {
@@ -137,7 +136,10 @@ func (md Metadata) syncMissingMbzIDs(participants model.Participants) {
 	}
 }
 
-func (md Metadata) parseArtists(name model.TagName, names model.TagName, sort model.TagName, sorts model.TagName, mbid model.TagName) []model.Artist {
+func (md Metadata) parseArtists(
+	name model.TagName, names model.TagName, sort model.TagName,
+	sorts model.TagName, mbid model.TagName,
+) []model.Artist {
 	nameValues := md.getArtistValues(name, names)
 	sortValues := md.getArtistValues(sort, sorts)
 	mbids := md.Strings(mbid)
