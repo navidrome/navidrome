@@ -19,6 +19,10 @@ func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.Inspec
 		return nil, err
 	}
 
+	if file.Missing {
+		return nil, model.ErrNotFound
+	}
+
 	return core.Inspect(file.AbsolutePath(), file.LibraryID, file.FolderID)
 }
 

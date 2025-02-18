@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	. "github.com/navidrome/navidrome/utils/gg"
@@ -33,7 +34,13 @@ func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, e
 		return nil, err
 	}
 
-	md := metadata.New(path, tags[file])
+	tag, ok := tags[file]
+	if !ok {
+		log.Error("Could not get tags for path", "path", filePath)
+		return nil, model.ErrNotFound
+	}
+
+	md := metadata.New(path, tag)
 	result := &InspectOutput{
 		File:       filePath,
 		RawTags:    tags[file].Tags,
