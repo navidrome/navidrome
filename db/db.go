@@ -120,8 +120,10 @@ func Optimize(ctx context.Context) {
 		return
 	}
 	log.Debug(ctx, "Optimizing open connections", "numConns", numConns)
+	var conns []*sql.Conn
 	for i := 0; i < numConns; i++ {
 		conn, err := Db().Conn(ctx)
+		conns = append(conns, conn)
 		if err != nil {
 			log.Error(ctx, "Error getting connection from pool", err)
 			continue
@@ -130,6 +132,10 @@ func Optimize(ctx context.Context) {
 		if err != nil {
 			log.Error(ctx, "Error running PRAGMA optimize", err)
 		}
+	}
+
+	// Return all connections to the Connection Pool
+	for _, conn := range conns {
 		conn.Close()
 	}
 }

@@ -82,6 +82,10 @@ func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, p
 	return progress, nil
 }
 
+func IsScanning() bool {
+	return running.Load()
+}
+
 type ProgressInfo struct {
 	LibID           int
 	FileCount       uint32

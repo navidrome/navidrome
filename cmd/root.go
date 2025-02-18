@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
 	"github.com/spf13/cobra"
@@ -271,6 +272,10 @@ func scheduleDBOptimizer(ctx context.Context) func() error {
 		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
 		schedulerInstance := scheduler.GetInstance()
 		err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
+			if scanner.IsScanning() {
+				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
+				return
+			}
 			db.Optimize(ctx)
 		})
 		return err

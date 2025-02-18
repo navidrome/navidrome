@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chain"
@@ -93,6 +94,9 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 
 		// Update last_scan_completed_at for all libraries
 		s.runUpdateLibraries(ctx, libs),
+
+		// Optimize DB
+		s.runOptimize(ctx),
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
@@ -152,6 +156,15 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 			log.Debug(ctx, "Scanner: Updated tag counts", "elapsed", time.Since(start))
 			return nil
 		})
+	}
+}
+
+func (s *scannerImpl) runOptimize(ctx context.Context) func() error {
+	return func() error {
+		start := time.Now()
+		db.Optimize(ctx)
+		log.Debug(ctx, "Scanner: Optimized DB", "elapsed", time.Since(start))
+		return nil
 	}
 }
 
