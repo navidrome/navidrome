@@ -110,9 +110,10 @@ export const SongContextMenu = ({
       label: translate('resources.song.actions.info'),
       action: async (record) => {
         let fullRecord = record
-        if (permissions === 'admin') {
+        if (permissions === 'admin' && !record.missing) {
           try {
-            const data = await httpClient(`/api/inspect?id=${record.id}`)
+            let id = record.mediaFileId ?? record.id
+            const data = await httpClient(`/api/inspect?id=${id}`)
             fullRecord = { ...record, rawTags: data.json.rawTags }
           } catch (error) {
             notify(
