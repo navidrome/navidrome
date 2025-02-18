@@ -358,7 +358,7 @@ func (cds *contentDirectoryService) doFiles(ret []interface{}, oPath string, hos
 			Path: path.Join(oPath, file.Name()),
 			Id:   path.Join(oPath, file.Name()),
 		}
-		fileInfo,_ := file.Info()
+		fileInfo, _ := file.Info()
 		ret = append(ret, cds.cdsObjectToUpnpavObject(child, file.IsDir(), host, fileInfo.Size()))
 	}
 	return ret, nil
