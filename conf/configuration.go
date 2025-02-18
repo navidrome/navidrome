@@ -99,6 +99,7 @@ type configOptions struct {
 	LastFM       lastfmOptions
 	Spotify      spotifyOptions
 	ListenBrainz listenBrainzOptions
+	Tags         map[string]TagConf
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
@@ -131,6 +132,14 @@ type scannerOptions struct {
 	GroupAlbumReleases bool
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
+}
+
+type TagConf struct {
+	Aliases   []string `yaml:"aliases"`
+	Type      string   `yaml:"type"`
+	MaxLength int      `yaml:"maxLength"`
+	Split     []string `yaml:"split"`
+	Album     bool     `yaml:"album"`
 }
 
 type lastfmOptions struct {

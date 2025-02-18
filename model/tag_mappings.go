@@ -68,13 +68,13 @@ func TagMappings() map[TagName]TagConf {
 }
 
 func TagRolesConf() TagConf {
-	_, conf := parseMappings()
-	return conf.Roles
+	_, cfg := parseMappings()
+	return cfg.Roles
 }
 
 func TagArtistsConf() TagConf {
-	_, conf := parseMappings()
-	return conf.Artists
+	_, cfg := parseMappings()
+	return cfg.Artists
 }
 
 func TagMainMappings() map[TagName]TagConf {
@@ -82,39 +82,28 @@ func TagMainMappings() map[TagName]TagConf {
 	return mappings.Main
 }
 
+var _mappings mappingsConf
+
 var parseMappings = sync.OnceValues(func() (map[TagName]TagConf, mappingsConf) {
-	mappingsFile, err := resources.FS().Open("mappings.yaml")
-	if err != nil {
-		log.Error("Error opening mappings.yaml", err)
-	}
-	decoder := yaml.NewDecoder(mappingsFile)
-	var mappings mappingsConf
-	err = decoder.Decode(&mappings)
-	if err != nil {
-		log.Error("Error decoding mappings.yaml", err)
-	}
-	if len(mappings.Main) == 0 {
-		log.Error("No tag mappings found in mappings.yaml, check the format")
-	}
-	mappings.Artists.SplitRx = compileSplitRegex("artists", mappings.Artists.Split)
-	mappings.Roles.SplitRx = compileSplitRegex("roles", mappings.Roles.Split)
+	_mappings.Artists.SplitRx = compileSplitRegex("artists", _mappings.Artists.Split)
+	_mappings.Roles.SplitRx = compileSplitRegex("roles", _mappings.Roles.Split)
 
 	normalized := tagMappings{}
-	collectTags(mappings.Main, normalized)
-	mappings.Main = normalized
+	collectTags(_mappings.Main, normalized)
+	_mappings.Main = normalized
 
 	normalized = tagMappings{}
-	collectTags(mappings.Additional, normalized)
-	mappings.Additional = normalized
+	collectTags(_mappings.Additional, normalized)
+	_mappings.Additional = normalized
 
 	// Merge main and additional mappings, log an error if a tag is found in both
-	for k, v := range mappings.Main {
-		if _, ok := mappings.Additional[k]; ok {
+	for k, v := range _mappings.Main {
+		if _, ok := _mappings.Additional[k]; ok {
 			log.Error("Tag found in both main and additional mappings", "tag", k)
 		}
 		normalized[k] = v
 	}
-	return normalized, mappings
+	return normalized, _mappings
 })
 
 func collectTags(tagMappings, normalized map[TagName]TagConf) {
@@ -170,11 +159,50 @@ func tagNames() []string {
 	return names
 }
 
-// This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be used in
-// smart playlists
+func loadTagMappings() {
+	mappingsFile, err := resources.FS().Open("mappings.yaml")
+	if err != nil {
+		log.Error("Error opening mappings.yaml", err)
+	}
+	decoder := yaml.NewDecoder(mappingsFile)
+	err = decoder.Decode(&_mappings)
+	if err != nil {
+		log.Error("Error decoding mappings.yaml", err)
+	}
+	if len(_mappings.Main) == 0 {
+		log.Error("No tag mappings found in mappings.yaml, check the format")
+	}
+
+	// Overwrite the default mappings with the ones from the config
+	for tag, cfg := range conf.Server.Tags {
+		if len(cfg.Aliases) == 0 {
+			delete(_mappings.Main, TagName(tag))
+			delete(_mappings.Additional, TagName(tag))
+			continue
+		}
+		c := TagConf{
+			Aliases:   cfg.Aliases,
+			Type:      TagType(cfg.Type),
+			MaxLength: cfg.MaxLength,
+			Split:     cfg.Split,
+			Album:     cfg.Album,
+			SplitRx:   compileSplitRegex(TagName(tag), cfg.Split),
+		}
+		if _, ok := _mappings.Main[TagName(tag)]; ok {
+			_mappings.Main[TagName(tag)] = c
+		} else {
+			_mappings.Additional[TagName(tag)] = c
+		}
+	}
+}
+
 func init() {
 	conf.AddHook(func() {
-		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
+		loadTagMappings()
+
+		// This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be used in
+		// smart playlists
 		criteria.AddTagNames(tagNames())
+		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
 	})
 }
