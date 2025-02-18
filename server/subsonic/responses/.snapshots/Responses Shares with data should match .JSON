@@ -15,16 +15,7 @@
             "album": "album",
             "artist": "artist",
             "duration": 120,
-            "isVideo": false,
-            "bpm": 0,
-            "comment": "",
-            "sortName": "",
-            "mediaType": "",
-            "musicBrainzId": "",
-            "genres": [],
-            "replayGain": {},
-            "channelCount": 0,
-            "samplingRate": 0
+            "isVideo": false
           },
           {
             "id": "2",
@@ -33,16 +24,7 @@
             "album": "album",
             "artist": "artist",
             "duration": 300,
-            "isVideo": false,
-            "bpm": 0,
-            "comment": "",
-            "sortName": "",
-            "mediaType": "",
-            "musicBrainzId": "",
-            "genres": [],
-            "replayGain": {},
-            "channelCount": 0,
-            "samplingRate": 0
+            "isVideo": false
           }
         ],
         "id": "ABC123",

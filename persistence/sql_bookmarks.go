@@ -3,6 +3,7 @@ package persistence
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -13,11 +14,15 @@ import (
 
 const bookmarkTable = "bookmark"
 
-func (r sqlRepository) withBookmark(sql SelectBuilder, idField string) SelectBuilder {
-	return sql.
+func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectBuilder {
+	if userId(r.ctx) == invalidUserId {
+		return query
+	}
+	return query.
 		LeftJoin("bookmark on (" +
 			"bookmark.item_id = " + idField +
-			" AND bookmark.item_type = '" + r.tableName + "'" +
+			// item_ids are unique across different item_types, so the clause below is not needed
+			//" AND bookmark.item_type = '" + r.tableName + "'" +
 			" AND bookmark.user_id = '" + userId(r.ctx) + "')").
 		Columns("coalesce(position, 0) as bookmark_position")
 }
@@ -96,17 +101,13 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	user, _ := request.UserFrom(r.ctx)
 
 	idField := r.tableName + ".id"
-	sq := r.newSelectWithAnnotation(idField).Columns(r.tableName + ".*")
+	sq := r.newSelect().Columns(r.tableName + ".*")
+	sq = r.withAnnotation(sq, idField)
 	sq = r.withBookmark(sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
-	var mfs model.MediaFiles
+	var mfs dbMediaFiles // TODO Decouple from media_file
 	err := r.queryAll(sq, &mfs)
 	if err != nil {
 		log.Error(r.ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
-		return nil, err
-	}
-	err = loadAllGenres(r, mfs)
-	if err != nil {
-		log.Error(r.ctx, "Error loading genres for bookmarked songs", "user", user.UserName, err)
 		return nil, err
 	}
 
@@ -137,7 +138,7 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 				CreatedAt: bmk.CreatedAt,
 				UpdatedAt: bmk.UpdatedAt,
 				ChangedBy: bmk.ChangedBy,
-				Item:      mfs[itemIdx],
+				Item:      *mfs[itemIdx].MediaFile,
 			}
 		}
 	}
@@ -148,7 +149,7 @@ func (r sqlRepository) cleanBookmarks() error {
 	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return err
+		return fmt.Errorf("error cleaning up bookmarks: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c)

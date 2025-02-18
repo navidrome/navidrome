@@ -2,21 +2,24 @@ package persistence
 
 import (
 	"context"
+	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
+	"iter"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	id2 "github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/hasher"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -78,24 +81,27 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 // which gives precedence to sort tags.
 // Ex: order_title => (coalesce(nullif(sort_title,”),order_title) collate nocase)
 // To avoid performance issues, indexes should be created for these sort expressions
-func (r *sqlRepository) setSortMappings(mappings map[string]string) {
+func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ...string) {
+	tn := r.tableName
+	if len(tableName) > 0 {
+		tn = tableName[0]
+	}
 	if conf.Server.PreferSortTags {
 		for k, v := range mappings {
-			v = mapSortOrder(v)
+			v = mapSortOrder(tn, v)
 			mappings[k] = v
 		}
 	}
 	r.sortMappings = mappings
 }
 
-func (r sqlRepository) getTableName() string {
-	return r.tableName
-}
-
 func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
-	sq = r.applyOptions(sq, options...)
-	sq = r.applyFilters(sq, options...)
+	if len(options) > 0 {
+		r.resetSeededRandom(options)
+		sq = r.applyOptions(sq, options...)
+		sq = r.applyFilters(sq, options...)
+	}
 	return sq
 }
 
@@ -185,7 +191,10 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 }
 
 func (r sqlRepository) seedKey() string {
-	return r.tableName + userId(r.ctx)
+	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
+	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
+	userIDHash := md5.Sum([]byte(userId(r.ctx)))
+	return fmt.Sprintf("%s|%x", r.tableName, userIDHash)
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
@@ -219,7 +228,7 @@ func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
 			return 0, err
 		}
 	}
-	return res.RowsAffected()
+	return c, err
 }
 
 var placeholderRegex = regexp.MustCompile(`\?`)
@@ -254,6 +263,38 @@ func (r sqlRepository) queryOne(sq Sqlizer, response interface{}) error {
 	}
 	r.logSQL(query, args, err, 1, start)
 	return err
+}
+
+// queryWithStableResults is a helper function to execute a query and return an iterator that will yield its results
+// from a cursor, guaranteeing that the results will be stable, even if the underlying data changes.
+func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
+	if len(options) > 0 && options[0].Offset > 0 {
+		sq = r.optimizePagination(sq, options[0])
+	}
+	query, args, err := r.toSQL(sq)
+	if err != nil {
+		return nil, err
+	}
+	start := time.Now()
+	rows, err := r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Rows()
+	r.logSQL(query, args, err, -1, start)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(T, error) bool) {
+		defer rows.Close()
+		for rows.Next() {
+			var row T
+			err := rows.ScanStruct(&row)
+			if !yield(row, err) || err != nil {
+				return
+			}
+		}
+		if err := rows.Err(); err != nil {
+			var empty T
+			yield(empty, err)
+		}
+	}, nil
 }
 
 func (r sqlRepository) queryAll(sq SelectBuilder, response interface{}, options ...model.QueryOptions) error {
@@ -295,16 +336,16 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response interface{}) err
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
 	if options.Offset > conf.Server.DevOffsetOptimize {
 		sq = sq.RemoveOffset()
-		oidSq := sq.RemoveColumns().Columns(r.tableName + ".oid")
-		oidSq = oidSq.Limit(uint64(options.Offset))
-		oidSql, args, _ := oidSq.ToSql()
-		sq = sq.Where(r.tableName+".oid not in ("+oidSql+")", args...)
+		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
+		rowidSq = rowidSq.Limit(uint64(options.Offset))
+		rowidSql, args, _ := rowidSq.ToSql()
+		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
 	}
 	return sq
 }
 
-func (r sqlRepository) exists(existsQuery SelectBuilder) (bool, error) {
-	existsQuery = existsQuery.Columns("count(*) as exist").From(r.tableName)
+func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
+	existsQuery := Select("count(*) as exist").From(r.tableName).Where(cond)
 	var res struct{ Exist int64 }
 	err := r.queryOne(existsQuery, &res)
 	return res.Exist > 0, err
@@ -314,11 +355,26 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
+		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
 	return res.Count, err
+}
+
+func (r sqlRepository) putByMatch(filter Sqlizer, id string, m interface{}, colsToUpdate ...string) (string, error) {
+	if id != "" {
+		return r.put(id, m, colsToUpdate...)
+	}
+	existsQuery := r.newSelect().Columns("id").From(r.tableName).Where(filter)
+
+	var res struct{ ID string }
+	err := r.queryOne(existsQuery, &res)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return "", err
+	}
+	return r.put(res.ID, m, colsToUpdate...)
 }
 
 func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (newId string, err error) {
@@ -331,17 +387,20 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 		updateValues := map[string]interface{}{}
 
 		// This is a map of the columns that need to be updated, if specified
-		c2upd := map[string]struct{}{}
-		for _, c := range colsToUpdate {
-			c2upd[toSnakeCase(c)] = struct{}{}
-		}
+		c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
+			return toSnakeCase(s), struct{}{}
+		})
 		for k, v := range values {
 			if _, found := c2upd[k]; len(c2upd) == 0 || found {
 				updateValues[k] = v
 			}
 		}
 
+		updateValues["id"] = id
 		delete(updateValues, "created_at")
+		// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
+		// TODO move to mediafile_repository when each repo has its own upsert method
+		delete(updateValues, "birth_time")
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(updateValues)
 		count, err := r.executeSQL(update)
 		if err != nil {
@@ -353,7 +412,7 @@ func (r sqlRepository) put(id string, m interface{}, colsToUpdate ...string) (ne
 	}
 	// If it does not have an ID OR the ID was not found (when it is a new record with predefined id)
 	if id == "" {
-		id = uuid.NewString()
+		id = id2.NewRandom()
 		values["id"] = id
 	}
 	insert := Insert(r.tableName).SetMap(values)
@@ -372,20 +431,9 @@ func (r sqlRepository) delete(cond Sqlizer) error {
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	//var fmtArgs []string
-	//for name, val := range args {
-	//	var f string
-	//	switch a := args[val].(type) {
-	//	case string:
-	//		f = `'` + a + `'`
-	//	default:
-	//		f = fmt.Sprintf("%v", a)
-	//	}
-	//	fmtArgs = append(fmtArgs, f)
-	//}
-	if err != nil {
-		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
+	if err == nil || errors.Is(err, context.Canceled) {
+		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	} else {
-		log.Trace(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed)
+		log.Error(r.ctx, "SQL: `"+sql+"`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed, err)
 	}
 }

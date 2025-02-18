@@ -11,14 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/model/request"
-
-	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -122,7 +120,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("creates user and sets auth data if user does not exist", func() {
-				newUser := "NEW_USER_" + uuid.NewString()
+				newUser := "NEW_USER_" + id.NewRandom()
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				req.Header.Set("Remote-User", newUser)

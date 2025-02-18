@@ -6,14 +6,6 @@
   "openSubsonic": true,
   "album": {
     "id": "",
-    "name": "",
-    "userRating": 0,
-    "genres": [],
-    "musicBrainzId": "",
-    "isCompilation": false,
-    "sortName": "",
-    "discTitles": [],
-    "originalReleaseDate": {},
-    "releaseDate": {}
+    "name": ""
   }
 }

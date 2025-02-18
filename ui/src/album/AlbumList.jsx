@@ -1,11 +1,13 @@
 import { useSelector } from 'react-redux'
 import { Redirect, useLocation } from 'react-router-dom'
 import {
+  AutocompleteArrayInput,
   AutocompleteInput,
   Filter,
   NullableBooleanInput,
   NumberInput,
   Pagination,
+  ReferenceArrayInput,
   ReferenceInput,
   SearchInput,
   useRefresh,
@@ -29,8 +31,18 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import inflection from 'inflection'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles({
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
+})
 
 const AlbumFilter = (props) => {
+  const classes = useStyles()
   const translate = useTranslate()
   return (
     <Filter {...props} variant={'outlined'}>
@@ -44,7 +56,7 @@ const AlbumFilter = (props) => {
       >
         <AutocompleteInput emptyText="-- None --" />
       </ReferenceInput>
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.album.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -52,7 +64,87 @@ const AlbumFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
+      <ReferenceInput
+        label={translate('resources.album.fields.recordLabel')}
+        source="recordlabel"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'recordlabel' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
+      </ReferenceInput>
+      <ReferenceArrayInput
+        label={translate('resources.album.fields.grouping')}
+        source="grouping"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'grouping' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteArrayInput
+          emptyText="-- None --"
+          classes={classes}
+          optionText="tagValue"
+        />
+      </ReferenceArrayInput>
+      <ReferenceArrayInput
+        label={translate('resources.album.fields.mood')}
+        source="mood"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'mood' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteArrayInput
+          emptyText="-- None --"
+          classes={classes}
+          optionText="tagValue"
+        />
+      </ReferenceArrayInput>
+      <ReferenceInput
+        label={translate('resources.album.fields.media')}
+        source="media"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'media' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteInput emptyText="-- None --" optionText="tagValue" />
+      </ReferenceInput>
+      <ReferenceInput
+        label={translate('resources.album.fields.releaseType')}
+        source="releasetype"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'releasetype' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteInput
+          emptyText="-- None --"
+          optionText={(record) =>
+            record?.tagValue
+              ? inflection.humanize(record?.tagValue)
+              : '-- None --'
+          }
+        />
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
       <NumberInput source="year" />

@@ -35,6 +35,10 @@ var (
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^]]+)]`)
 )
 
+func (l Lyrics) IsEmpty() bool {
+	return len(l.Line) == 0
+}
+
 func ToLyrics(language, text string) (*Lyrics, error) {
 	text = str.SanitizeText(text)
 
@@ -171,7 +175,6 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 		Offset:        offset,
 		Synced:        synced,
 	}
-
 	return &lyrics, nil
 }
 

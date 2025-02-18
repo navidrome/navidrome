@@ -37,15 +37,15 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 	case "frequent":
 		opts = filter.AlbumsByFrequent()
 	case "starred":
-		opts = filter.AlbumsByStarred()
+		opts = filter.ByStarred()
 	case "highest":
-		opts = filter.AlbumsByRating()
+		opts = filter.ByRating()
 	case "byGenre":
 		genre, err := p.String("genre")
 		if err != nil {
 			return nil, 0, err
 		}
-		opts = filter.AlbumsByGenre(genre)
+		opts = filter.ByGenre(genre)
 	case "byYear":
 		fromYear, err := p.Int("fromYear")
 		if err != nil {
@@ -63,7 +63,7 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 
 	opts.Offset = p.IntOr("offset", 0)
 	opts.Max = min(p.IntOr("size", 10), 500)
-	albums, err := api.ds.Album(r.Context()).GetAllWithoutGenres(opts)
+	albums, err := api.ds.Album(r.Context()).GetAll(opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", err)
@@ -111,13 +111,13 @@ func (api *Router) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*respo
 
 func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	options := filter.Starred()
-	artists, err := api.ds.Artist(ctx).GetAll(options)
+	artists, err := api.ds.Artist(ctx).GetAll(filter.ArtistsByStarred())
 	if err != nil {
 		log.Error(r, "Error retrieving starred artists", err)
 		return nil, err
 	}
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(options)
+	options := filter.ByStarred()
+	albums, err := api.ds.Album(ctx).GetAll(options)
 	if err != nil {
 		log.Error(r, "Error retrieving starred albums", err)
 		return nil, err
@@ -195,7 +195,8 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 	offset := p.IntOr("offset", 0)
 	genre, _ := p.String("genre")
 
-	songs, err := api.getSongs(r.Context(), offset, count, filter.SongsByGenre(genre))
+	ctx := r.Context()
+	songs, err := api.getSongs(ctx, offset, count, filter.ByGenre(genre))
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
@@ -203,7 +204,7 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 
 	response := newResponse()
 	response.SongsByGenre = &responses.Songs{}
-	response.SongsByGenre.Songs = slice.MapWithArg(songs, r.Context(), childFromMediaFile)
+	response.SongsByGenre.Songs = slice.MapWithArg(songs, ctx, childFromMediaFile)
 	return response, nil
 }
 

@@ -110,7 +110,7 @@ const useGetHandleGenreClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
 
   return (id) => {
-    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+    return `/album?filter={"genre_id":["${id}"]}&order=ASC&sort=name&perPage=${perPage}`
   }
 }
 
@@ -283,6 +283,9 @@ const AlbumDetails = (props) => {
                 aria-label="love"
                 color="primary"
               />
+            </Typography>
+            <Typography component={'h6'} className={classes.recordArtist}>
+              {record?.tags?.['albumversion']}
             </Typography>
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />

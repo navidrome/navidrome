@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/utils/merge"
@@ -14,9 +13,9 @@ import (
 //go:embed *
 var embedFS embed.FS
 
-var FS = sync.OnceValue(func() fs.FS {
+func FS() fs.FS {
 	return merge.FS{
 		Base:    embedFS,
 		Overlay: os.DirFS(path.Join(conf.Server.DataFolder, "resources")),
 	}
-})
+}

@@ -21,6 +21,9 @@ const useStyles = makeStyles({
   text: {
     verticalAlign: 'text-top',
   },
+  subtitle: {
+    opacity: 0.5,
+  },
 })
 
 export const SongTitleField = ({ showTrackNumbers, ...props }) => {
@@ -33,10 +36,20 @@ export const SongTitleField = ({ showTrackNumbers, ...props }) => {
   const isCurrent =
     currentId && (currentId === record.id || currentId === record.mediaFileId)
 
+  const subtitle = record?.tags?.['subtitle']
+
   const trackName = (r) => {
     const name = r.title
     if (r.trackNumber && showTrackNumbers) {
       return r.trackNumber.toString().padStart(2, '0') + ' ' + name
+    }
+    if (subtitle) {
+      return (
+        <>
+          {name}
+          <span className={classes.subtitle}>{' (' + subtitle + ')'}</span>
+        </>
+      )
     }
     return name
   }

@@ -14,7 +14,11 @@ export const SizeField = ({ source, ...rest }) => {
   const classes = useStyles()
   const record = useRecordContext(rest)
   if (!record) return null
-  return <span className={classes.root}>{formatBytes(record[source])}</span>
+  return (
+    <span className={classes.root}>
+      {record[source] ? formatBytes(record[source]) : '0 MB'}
+    </span>
+  )
 }
 
 SizeField.propTypes = {
