@@ -343,7 +343,6 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 	}
 
 	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
-
 	if err != nil {
 		return false
 	}
