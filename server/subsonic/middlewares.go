@@ -111,15 +111,16 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 					return
 				}
-				if errors.Is(err, model.ErrNotFound) {
+				switch {
+				case errors.Is(err, model.ErrNotFound):
 					log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-				} else if err != nil {
+				case err != nil:
 					log.Error(ctx, "API: Error authenticating username", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-				}
-
-				err = validateCredentials(usr, pass, token, salt, jwt)
-				if err != nil {
-					log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+				default:
+					err = validateCredentials(usr, pass, token, salt, jwt)
+					if err != nil {
+						log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+					}
 				}
 			}
 
