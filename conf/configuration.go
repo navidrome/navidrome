@@ -127,11 +127,11 @@ type configOptions struct {
 
 type scannerOptions struct {
 	Enabled            bool
-	Extractor          string
-	GenreSeparators    string // Deprecated: BFR Update docs
-	GroupAlbumReleases bool
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
+	Extractor          string // Deprecated: BFR Remove before release?
+	GenreSeparators    string // Deprecated: BFR Update docs
+	GroupAlbumReleases bool   // Deprecated: BFR Update docs
 }
 
 type TagConf struct {
@@ -297,6 +297,9 @@ func Load(noConfigDump bool) {
 	if !Server.EnableExternalServices {
 		disableExternalServices()
 	}
+
+	// BFR Remove before release
+	Server.Scanner.Extractor = consts.DefaultScannerExtractor
 
 	// Call init hooks
 	for _, hook := range hooks {
