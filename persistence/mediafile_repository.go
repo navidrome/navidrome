@@ -264,7 +264,7 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
 // that were added/updated after the last scan started. The result is ordered by PID.
-// It does not need to load participants, as they are not used by the scanner.
+// It does not need to load bookmarks, annotations and participnts, as they are not used by the scanner.
 func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	subQ := r.newSelect().Columns("pid").
 		Where(And{
@@ -275,14 +275,13 @@ func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileC
 	if err != nil {
 		return nil, err
 	}
-	sel := r.selectMediaFile().
-		// BFR Optimize with `Exists`?
+	sel := r.newSelect().Columns("media_file.*", "library.path as library_path").
+		LeftJoin("library on media_file.library_id = library.id").
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
 			Eq{"missing": true},
 			ConcatExpr("media_file.created_at > library.last_scan_started_at"),
 		}).
-		//Join("library on media_file.library_id = library.id").
 		OrderBy("pid")
 	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sel)
 	if err != nil {
