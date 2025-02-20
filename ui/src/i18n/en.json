@@ -390,6 +390,7 @@
         "theme": "Theme",
         "language": "Language",
         "defaultView": "Default View",
+        "pageSizeMultiplier": "Page Size Multiplier",
         "desktop_notifications": "Desktop Notifications",
         "lastfmNotConfigured": "Last.fm API-Key is not configured",
         "lastfmScrobbling": "Scrobble to Last.fm",

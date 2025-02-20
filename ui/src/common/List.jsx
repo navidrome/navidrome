@@ -2,6 +2,7 @@ import React from 'react'
 import { List as RAList } from 'react-admin'
 import { Pagination } from './Pagination'
 import { Title } from './index'
+import { defaultPageSize } from '../utils/pageSizes'
 
 export const List = (props) => {
   const { resource } = props
@@ -13,7 +14,7 @@ export const List = (props) => {
           args={{ smart_count: 2 }}
         />
       }
-      perPage={15}
+      perPage={defaultPageSize()}
       pagination={<Pagination />}
       {...props}
     />

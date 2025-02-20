@@ -1,6 +1,7 @@
 import React from 'react'
 import { Pagination as RAPagination } from 'react-admin'
+import { defaultPageSizes } from '../utils/pageSizes'
 
 export const Pagination = (props) => (
-  <RAPagination rowsPerPageOptions={[15, 25, 50]} {...props} />
+  <RAPagination rowsPerPageOptions={defaultPageSizes()} {...props} />
 )

@@ -4,6 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { SelectLanguage } from './SelectLanguage'
 import { SelectTheme } from './SelectTheme'
 import { SelectDefaultView } from './SelectDefaultView'
+import { SelectPageSize } from './SelectPageSize'
 import { NotificationsToggle } from './NotificationsToggle'
 import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
 import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
@@ -25,6 +26,7 @@ const Personal = () => {
         <SelectTheme />
         <SelectLanguage />
         <SelectDefaultView />
+        <SelectPageSize />
         {config.enableReplayGain && <ReplayGainToggle />}
         <NotificationsToggle />
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
