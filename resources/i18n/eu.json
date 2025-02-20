@@ -214,7 +214,8 @@
             "password": "Pasahitza",
             "sign_in": "Sartu",
             "sign_in_error": "Autentifikazioak huts egin du, saiatu berriro",
-            "logout": "Amaitu saioa"
+            "logout": "Amaitu saioa",
+            "insightsCollectionNote": "Navidromek erabilera-datu anonimoak biltzen ditu\nproiektua hobetzeko asmoz. Klikatu [hemen] gehiago ikasteko\neta, hala nahi izanez gero, parte hartzen uzteko"
         },
         "validation": {
             "invalidChars": "Erabili hizkiak eta zenbakiak bakarrik",
@@ -360,15 +361,15 @@
         "lastfmLinkFailure": "Ezin izan da Last.fm-rekin konektatu",
         "lastfmUnlinkSuccess": "Last.fm deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea ezgaitu da",
         "lastfmUnlinkFailure": "Ezin izan da Last.fm deskonektatu",
-        "openIn": {
-            "lastfm": "Ikusi Last.fm-n",
-            "musicbrainz": "Ikusi MusicBrainz-en"
-        },
-        "lastfmLink": "Irakurri gehiago…",
         "listenBrainzLinkSuccess": "Ondo konektatu da ListenBrainz-ekin eta %{user} erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea aktibatu da",
         "listenBrainzLinkFailure": "Ezin izan da ListenBrainz-ekin konektatu: %{error}",
         "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
         "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
+        "openIn": {
+            "lastfm": "Ireki Last.fm-n",
+            "musicbrainz": "Ireki MusicBrainz-en"
+        },
+        "lastfmLink": "Irakurri gehiago…",
         "downloadOriginalFormat": "Deskargatu jatorrizko formatua",
         "shareOriginalFormat": "Partekatu jatorrizko formatua",
         "shareDialogTitle": "Partekatu '%{name}' %{resource}",
@@ -390,6 +391,7 @@
                 "language": "Hizkuntza",
                 "defaultView": "Bista, defektuz",
                 "desktop_notifications": "Mahaigaineko jakinarazpenak",
+                "lastfmNotConfigured": "Ez da Last.fm-ren API gakoa konfiguratu",
                 "lastfmScrobbling": "Bidali Last.fm-ra erabiltzailearen ohiturak",
                 "listenBrainzScrobbling": "Bidali ListenBrainz-era erabiltzailearen ohiturak",
                 "replaygain": "ReplayGain modua",
@@ -435,9 +437,14 @@
         "links": {
             "homepage": "Hasierako orria",
             "source": "Iturburu kodea",
-            "featureRequests": "Eskatu ezaugarria"
-        }
-    },
+            "featureRequests": "Eskatu ezaugarria",
+            "lastInsightsCollection": "Bildutako azken datuak",
+            "insights": {
+              "disabled": "Ezgaituta",
+              "waiting": "Zain"
+      }
+    }
+  },
     "activity": {
         "title": "Ekintzak",
         "totalScanned": "Arakatutako karpeta guztiak",
