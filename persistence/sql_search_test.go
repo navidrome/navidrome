@@ -6,9 +6,9 @@ import (
 )
 
 var _ = Describe("sqlRepository", func() {
-	Describe("getFullText", func() {
+	Describe("formatFullText", func() {
 		It("prefixes with a space", func() {
-			Expect(getFullText("legiao urbana")).To(Equal(" legiao urbana"))
+			Expect(formatFullText("legiao urbana")).To(Equal(" legiao urbana"))
 		})
 	})
 })

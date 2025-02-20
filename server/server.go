@@ -82,7 +82,7 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 		addr = fmt.Sprintf("%s:%d", addr, port)
 		listener, err = net.Listen("tcp", addr)
 		if err != nil {
-			return fmt.Errorf("error creating tcp listener: %w", err)
+			return fmt.Errorf("creating tcp listener: %w", err)
 		}
 	}
 
@@ -106,20 +106,19 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	// Measure server startup time
 	startupTime := time.Since(consts.ServerStart)
 
-	// Wait a short time before checking if the server has started successfully
-	time.Sleep(50 * time.Millisecond)
+	// Wait a short time to make sure the server has started successfully
 	select {
 	case err := <-errC:
 		log.Error(ctx, "Could not start server. Aborting", err)
-		return fmt.Errorf("error starting server: %w", err)
-	default:
+		return fmt.Errorf("starting server: %w", err)
+	case <-time.After(50 * time.Millisecond):
 		log.Info(ctx, "----> Navidrome server is ready!", "address", addr, "startupTime", startupTime, "tlsEnabled", tlsEnabled)
 	}
 
 	// Wait for a signal to terminate
 	select {
 	case err := <-errC:
-		return fmt.Errorf("error running server: %w", err)
+		return fmt.Errorf("running server: %w", err)
 	case <-ctx.Done():
 		// If the context is done (i.e. the server should stop), proceed to shutting down the server
 	}
@@ -138,21 +137,21 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 func createUnixSocketFile(socketPath string, socketPerm string) (net.Listener, error) {
 	// Remove the socket file if it already exists
 	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("error removing previous unix socket file: %w", err)
+		return nil, fmt.Errorf("removing previous unix socket file: %w", err)
 	}
 	// Create listener
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
-		return nil, fmt.Errorf("error creating unix socket listener: %w", err)
+		return nil, fmt.Errorf("creating unix socket listener: %w", err)
 	}
 	// Converts the socketPerm to uint and updates the permission of the unix socket file
 	perm, err := strconv.ParseUint(socketPerm, 8, 32)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing unix socket file permissions: %w", err)
+		return nil, fmt.Errorf("parsing unix socket file permissions: %w", err)
 	}
 	err = os.Chmod(socketPath, os.FileMode(perm))
 	if err != nil {
-		return nil, fmt.Errorf("error updating permission of unix socket file: %w", err)
+		return nil, fmt.Errorf("updating permission of unix socket file: %w", err)
 	}
 	return listener, nil
 }

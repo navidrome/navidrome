@@ -3,9 +3,13 @@ package log
 import (
 	"fmt"
 	"io"
+	"iter"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func ShortDur(d time.Duration) string {
@@ -32,6 +36,15 @@ func StringerValue(s fmt.Stringer) string {
 		return "nil"
 	}
 	return s.String()
+}
+
+func formatSeq[T any](v iter.Seq[T]) string {
+	return formatSlice(slices.Collect(v))
+}
+
+func formatSlice[T any](v []T) string {
+	s := slice.Map(v, func(x T) string { return fmt.Sprintf("%v", x) })
+	return fmt.Sprintf("[`%s`]", strings.Join(s, "`,`"))
 }
 
 func CRLFWriter(w io.Writer) io.Writer {

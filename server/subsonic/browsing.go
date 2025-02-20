@@ -38,7 +38,7 @@ func (api *Router) getArtist(r *http.Request, libId int, ifModifiedSince time.Ti
 
 	var indexes model.ArtistIndexes
 	if lib.LastScanAt.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex()
+		indexes, err = api.ds.Artist(ctx).GetIndex(model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
@@ -252,7 +252,9 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetGenres(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
+	// TODO Put back when album_count is available
+	//genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
+	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, name desc", Order: "desc"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -293,6 +295,9 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
 	for _, s := range artist.SimilarArtists {
 		similar := toArtist(r, s)
+		if s.ID == "" {
+			similar.Id = "-1"
+		}
 		response.ArtistInfo.SimilarArtist = append(response.ArtistInfo.SimilarArtist, similar)
 	}
 	return response, nil
@@ -390,7 +395,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 		dir.Starred = artist.StarredAt
 	}
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +409,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 	a := &responses.ArtistWithAlbumsID3{}
 	a.ArtistID3 = toArtistID3(r, *artist)
 
-	albums, err := api.ds.Album(ctx).GetAllWithoutGenres(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/andybalholm/cascadia"
 	"github.com/navidrome/navidrome/conf"
@@ -31,12 +32,13 @@ var ignoredBiographies = []string{
 }
 
 type lastfmAgent struct {
-	ds          model.DataStore
-	sessionKeys *agents.SessionKeys
-	apiKey      string
-	secret      string
-	lang        string
-	client      *client
+	ds           model.DataStore
+	sessionKeys  *agents.SessionKeys
+	apiKey       string
+	secret       string
+	lang         string
+	client       *client
+	getInfoMutex sync.Mutex
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
@@ -107,7 +109,7 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 }
 
 func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	a, err := l.callArtistGetInfo(ctx, name, "")
+	a, err := l.callArtistGetInfo(ctx, name)
 	if err != nil {
 		return "", err
 	}
@@ -118,7 +120,7 @@ func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string)
 }
 
 func (l *lastfmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	a, err := l.callArtistGetInfo(ctx, name, mbid)
+	a, err := l.callArtistGetInfo(ctx, name)
 	if err != nil {
 		return "", err
 	}
@@ -129,7 +131,7 @@ func (l *lastfmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (
 }
 
 func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	a, err := l.callArtistGetInfo(ctx, name, mbid)
+	a, err := l.callArtistGetInfo(ctx, name)
 	if err != nil {
 		return "", err
 	}
@@ -146,7 +148,7 @@ func (l *lastfmAgent) GetArtistBiography(ctx context.Context, id, name, mbid str
 }
 
 func (l *lastfmAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
-	resp, err := l.callArtistGetSimilar(ctx, name, mbid, limit)
+	resp, err := l.callArtistGetSimilar(ctx, name, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +166,7 @@ func (l *lastfmAgent) GetSimilarArtists(ctx context.Context, id, name, mbid stri
 }
 
 func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	resp, err := l.callArtistGetTopTracks(ctx, artistName, mbid, count)
+	resp, err := l.callArtistGetTopTracks(ctx, artistName, count)
 	if err != nil {
 		return nil, err
 	}
@@ -184,15 +186,19 @@ func (l *lastfmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbi
 var artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
-	a, err := l.callArtistGetInfo(ctx, name, mbid)
+	log.Debug(ctx, "Getting artist images from Last.fm", "name", name)
+	hc := http.Client{
+		Timeout: consts.DefaultHttpClientTimeOut,
+	}
+	a, err := l.callArtistGetInfo(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("get artist info: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodGet, a.URL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.URL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create artist image request: %w", err)
 	}
-	resp, err := l.client.hc.Do(req)
+	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get artist url: %w", err)
 	}
@@ -240,48 +246,31 @@ func (l *lastfmAgent) callAlbumGetInfo(ctx context.Context, name, artist, mbid s
 	return a, nil
 }
 
-func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string, mbid string) (*Artist, error) {
-	a, err := l.client.artistGetInfo(ctx, name, mbid)
-	var lfErr *lastFMError
-	isLastFMError := errors.As(err, &lfErr)
+func (l *lastfmAgent) callArtistGetInfo(ctx context.Context, name string) (*Artist, error) {
+	l.getInfoMutex.Lock()
+	defer l.getInfoMutex.Unlock()
 
-	if mbid != "" && ((err == nil && a.Name == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
-		log.Debug(ctx, "LastFM/artist.getInfo could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
-		return l.callArtistGetInfo(ctx, name, "")
-	}
-
+	a, err := l.client.artistGetInfo(ctx, name)
 	if err != nil {
-		log.Error(ctx, "Error calling LastFM/artist.getInfo", "artist", name, "mbid", mbid, err)
+		log.Error(ctx, "Error calling LastFM/artist.getInfo", "artist", name, err)
 		return nil, err
 	}
 	return a, nil
 }
 
-func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, mbid string, limit int) ([]Artist, error) {
-	s, err := l.client.artistGetSimilar(ctx, name, mbid, limit)
-	var lfErr *lastFMError
-	isLastFMError := errors.As(err, &lfErr)
-	if mbid != "" && ((err == nil && s.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
-		log.Debug(ctx, "LastFM/artist.getSimilar could not find artist by mbid, trying again", "artist", name, "mbid", mbid)
-		return l.callArtistGetSimilar(ctx, name, "", limit)
-	}
+func (l *lastfmAgent) callArtistGetSimilar(ctx context.Context, name string, limit int) ([]Artist, error) {
+	s, err := l.client.artistGetSimilar(ctx, name, limit)
 	if err != nil {
-		log.Error(ctx, "Error calling LastFM/artist.getSimilar", "artist", name, "mbid", mbid, err)
+		log.Error(ctx, "Error calling LastFM/artist.getSimilar", "artist", name, err)
 		return nil, err
 	}
 	return s.Artists, nil
 }
 
-func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName, mbid string, count int) ([]Track, error) {
-	t, err := l.client.artistGetTopTracks(ctx, artistName, mbid, count)
-	var lfErr *lastFMError
-	isLastFMError := errors.As(err, &lfErr)
-	if mbid != "" && ((err == nil && t.Attr.Artist == "[unknown]") || (isLastFMError && lfErr.Code == 6)) {
-		log.Debug(ctx, "LastFM/artist.getTopTracks could not find artist by mbid, trying again", "artist", artistName, "mbid", mbid)
-		return l.callArtistGetTopTracks(ctx, artistName, "", count)
-	}
+func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName string, count int) ([]Track, error) {
+	t, err := l.client.artistGetTopTracks(ctx, artistName, count)
 	if err != nil {
-		log.Error(ctx, "Error calling LastFM/artist.getTopTracks", "artist", artistName, "mbid", mbid, err)
+		log.Error(ctx, "Error calling LastFM/artist.getTopTracks", "artist", artistName, err)
 		return nil, err
 	}
 	return t.Track, nil

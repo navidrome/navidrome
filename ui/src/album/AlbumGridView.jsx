@@ -20,6 +20,7 @@ import {
   RangeDoubleField,
 } from '../common'
 import { DraggableTypes } from '../consts'
+import clsx from 'clsx'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -51,6 +52,16 @@ const useStyles = makeStyles(
     albumName: {
       fontSize: '14px',
       color: theme.palette.type === 'dark' ? '#eee' : 'black',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
+    missingAlbum: {
+      opacity: 0.3,
+    },
+    albumVersion: {
+      fontSize: '12px',
+      color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
       overflow: 'hidden',
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
@@ -135,8 +146,12 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   if (!record) {
     return null
   }
+  const computedClasses = clsx(
+    classes.albumContainer,
+    record.missing && classes.missingAlbum,
+  )
   return (
-    <div className={classes.albumContainer}>
+    <div className={computedClasses}>
       <Link
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
@@ -145,11 +160,13 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={
-            <PlayButton
-              className={classes.albumPlayButton}
-              record={record}
-              size="small"
-            />
+            !record.missing && (
+              <PlayButton
+                className={classes.albumPlayButton}
+                record={record}
+                size="small"
+              />
+            )
           }
           actionIcon={<AlbumContextMenu record={record} color={'white'} />}
         />
@@ -158,7 +175,14 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         className={classes.albumLink}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Typography className={classes.albumName}>{record.name}</Typography>
+        <span>
+          <Typography className={classes.albumName}>{record.name}</Typography>
+          {record.tags && record.tags['albumversion'] && (
+            <Typography className={classes.albumVersion}>
+              {record.tags['albumversion']}
+            </Typography>
+          )}
+        </span>
       </Link>
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />

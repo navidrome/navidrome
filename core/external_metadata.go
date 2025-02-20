@@ -19,16 +19,16 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/random"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
-	unavailableArtistID = "-1"
-	maxSimilarArtists   = 100
-	refreshDelay        = 5 * time.Second
-	refreshTimeout      = 15 * time.Second
-	refreshQueueLength  = 2000
+	maxSimilarArtists  = 100
+	refreshDelay       = 5 * time.Second
+	refreshTimeout     = 15 * time.Second
+	refreshQueueLength = 2000
 )
 
 type ExternalMetadata interface {
@@ -144,7 +144,7 @@ func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum
 		}
 	}
 
-	err = e.ds.Album(ctx).Put(&album.Album)
+	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
 	if err != nil {
 		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", album.Name,
 			"elapsed", time.Since(start), err)
@@ -236,7 +236,7 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArt
 	}
 
 	artist.ExternalInfoUpdatedAt = P(time.Now())
-	err := e.ds.Artist(ctx).Put(&artist.Artist)
+	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artist.Name,
 			"elapsed", time.Since(start), err)
@@ -392,7 +392,10 @@ func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents
 func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
 	if mbid != "" {
 		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.Eq{"mbz_recording_id": mbid},
+			Filters: squirrel.And{
+				squirrel.Eq{"mbz_recording_id": mbid},
+				squirrel.Eq{"missing": false},
+			},
 		})
 		if err == nil && len(mfs) > 0 {
 			return &mfs[0], nil
@@ -406,6 +409,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 				squirrel.Eq{"album_artist_id": artistID},
 			},
 			squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
+			squirrel.Eq{"missing": false},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc ",
 		Max:  1,
@@ -471,20 +475,39 @@ func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agen
 	var result model.Artists
 	var notPresent []string
 
-	// First select artists that are present.
+	artistNames := slice.Map(similar, func(artist agents.Artist) string { return artist.Name })
+
+	// Query all artists at once
+	clauses := slice.Map(artistNames, func(name string) squirrel.Sqlizer {
+		return squirrel.Like{"artist.name": name}
+	})
+	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.Or(clauses),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map for quick lookup
+	artistMap := make(map[string]model.Artist)
+	for _, artist := range artists {
+		artistMap[artist.Name] = artist
+	}
+
+	// Process the similar artists
 	for _, s := range similar {
-		sa, err := e.findArtistByName(ctx, s.Name)
-		if err != nil {
+		if artist, found := artistMap[s.Name]; found {
+			result = append(result, artist)
+		} else {
 			notPresent = append(notPresent, s.Name)
-			continue
 		}
-		result = append(result, sa.Artist)
 	}
 
 	// Then fill up with non-present artists
 	if includeNotPresent {
 		for _, s := range notPresent {
-			sa := model.Artist{ID: unavailableArtistID, Name: s}
+			// Let the ID empty to indicate that the artist is not present in the DB
+			sa := model.Artist{Name: s}
 			result = append(result, sa)
 		}
 	}
@@ -513,7 +536,7 @@ func (e *externalMetadata) findArtistByName(ctx context.Context, artistName stri
 func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, count int, includeNotPresent bool) error {
 	var ids []string
 	for _, sa := range artist.SimilarArtists {
-		if sa.ID == unavailableArtistID {
+		if sa.ID == "" {
 			continue
 		}
 		ids = append(ids, sa.ID)
@@ -544,7 +567,7 @@ func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, c
 				continue
 			}
 			la = sa
-			la.ID = unavailableArtistID
+			la.ID = ""
 		}
 		loaded = append(loaded, la)
 	}

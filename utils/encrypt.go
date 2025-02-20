@@ -41,7 +41,6 @@ func Decrypt(ctx context.Context, encKey []byte, encData string) (value string, 
 	// Recover from any panics
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error(ctx, "Panic during decryption", r)
 			err = errors.New("decryption panicked")
 		}
 	}()

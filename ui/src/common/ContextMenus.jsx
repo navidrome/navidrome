@@ -5,6 +5,7 @@ import IconButton from '@material-ui/core/IconButton'
 import Menu from '@material-ui/core/Menu'
 import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
+import { MdQuestionMark } from 'react-icons/md'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, useNotify, useTranslate } from 'react-admin'
 import clsx from 'clsx'
@@ -32,6 +33,25 @@ const useStyles = makeStyles({
     color: (props) => props.color,
   },
 })
+
+const MoreButton = ({ record, onClick, info, ...rest }) => {
+  const handleClick = record.missing
+    ? (e) => {
+        e.preventDefault()
+        info.action(record)
+        e.stopPropagation()
+      }
+    : onClick
+  return (
+    <IconButton onClick={handleClick} size={'small'} {...rest}>
+      {record?.missing ? (
+        <MdQuestionMark fontSize={'large'} />
+      ) : (
+        <MoreVertIcon fontSize={'small'} />
+      )}
+    </IconButton>
+  )
+}
 
 const ContextMenu = ({
   resource,
@@ -158,24 +178,29 @@ const ContextMenu = ({
 
   const open = Boolean(anchorEl)
 
+  if (!record) {
+    return null
+  }
+
+  const present = !record.missing
+
   return (
     <span className={clsx(classes.noWrap, className)}>
       <LoveButton
         record={record}
         resource={resource}
-        visible={config.enableFavourites && showLove}
+        visible={config.enableFavourites && showLove && present}
         color={color}
       />
-      <IconButton
+      <MoreButton
+        record={record}
+        onClick={handleClick}
+        info={options.info}
         aria-label="more"
         aria-controls="context-menu"
         aria-haspopup="true"
         className={classes.menu}
-        onClick={handleClick}
-        size={'small'}
-      >
-        <MoreVertIcon fontSize={'small'} />
-      </IconButton>
+      />
       <Menu
         id="context-menu"
         anchorEl={anchorEl}

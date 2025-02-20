@@ -1,12 +1,10 @@
 package model_test
 
 import (
-	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/consts"
 	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,6 +12,7 @@ import (
 
 var _ = Describe("MediaFiles", func() {
 	var mfs MediaFiles
+
 	Describe("ToAlbum", func() {
 		Context("Simple attributes", func() {
 			BeforeEach(func() {
@@ -23,14 +22,15 @@ var _ = Describe("MediaFiles", func() {
 						SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 						OrderAlbumName: "OrderAlbumName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-						Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3",
+						MbzReleaseGroupID: "MbzReleaseGroupID", Compilation: false, CatalogNum: "", Path: "/music1/file1.mp3", FolderID: "Folder1",
 					},
 					{
 						ID: "2", Album: "Album", ArtistID: "ArtistID", Artist: "Artist", AlbumArtistID: "AlbumArtistID", AlbumArtist: "AlbumArtist", AlbumID: "AlbumID",
 						SortAlbumName: "SortAlbumName", SortArtistName: "SortArtistName", SortAlbumArtistName: "SortAlbumArtistName",
 						OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
-						Compilation: true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3",
+						MbzReleaseGroupID: "MbzReleaseGroupID",
+						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "/music2/file2.mp3", FolderID: "Folder2",
 					},
 				}
 			})
@@ -39,8 +39,6 @@ var _ = Describe("MediaFiles", func() {
 				album := mfs.ToAlbum()
 				Expect(album.ID).To(Equal("AlbumID"))
 				Expect(album.Name).To(Equal("Album"))
-				Expect(album.Artist).To(Equal("Artist"))
-				Expect(album.ArtistID).To(Equal("ArtistID"))
 				Expect(album.AlbumArtist).To(Equal("AlbumArtist"))
 				Expect(album.AlbumArtistID).To(Equal("AlbumArtistID"))
 				Expect(album.SortAlbumName).To(Equal("SortAlbumName"))
@@ -50,17 +48,33 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.MbzAlbumArtistID).To(Equal("MbzAlbumArtistID"))
 				Expect(album.MbzAlbumType).To(Equal("MbzAlbumType"))
 				Expect(album.MbzAlbumComment).To(Equal("MbzAlbumComment"))
+				Expect(album.MbzReleaseGroupID).To(Equal("MbzReleaseGroupID"))
 				Expect(album.CatalogNum).To(Equal("CatalogNum"))
 				Expect(album.Compilation).To(BeTrue())
 				Expect(album.EmbedArtPath).To(Equal("/music2/file2.mp3"))
-				Expect(album.Paths).To(Equal("/music1" + consts.Zwsp + "/music2"))
+				Expect(album.FolderIDs).To(ConsistOf("Folder1", "Folder2"))
 			})
 		})
 		Context("Aggregated attributes", func() {
+			When("we don't have any songs", func() {
+				BeforeEach(func() {
+					mfs = MediaFiles{}
+				})
+				It("returns an empty album", func() {
+					album := mfs.ToAlbum()
+					Expect(album.Duration).To(Equal(float32(0)))
+					Expect(album.Size).To(Equal(int64(0)))
+					Expect(album.MinYear).To(Equal(0))
+					Expect(album.MaxYear).To(Equal(0))
+					Expect(album.Date).To(BeEmpty())
+					Expect(album.UpdatedAt).To(BeZero())
+					Expect(album.CreatedAt).To(BeZero())
+				})
+			})
 			When("we have only one song", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{
-						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
+						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), BirthTime: t("2022-12-19 08:30")},
 					}
 				})
 				It("calculates the aggregates correctly", func() {
@@ -78,9 +92,9 @@ var _ = Describe("MediaFiles", func() {
 			When("we have multiple songs with different dates", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{
-						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
-						{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
-						{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
+						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), BirthTime: t("2022-12-19 08:30")},
+						{Duration: 200.2, Size: 2048, Year: 0, Date: "", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 08:30")},
+						{Duration: 150.6, Size: 1000, Year: 1986, Date: "1986-01-02", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 07:30")},
 					}
 				})
 				It("calculates the aggregates correctly", func() {
@@ -109,9 +123,9 @@ var _ = Describe("MediaFiles", func() {
 			When("we have multiple songs with same dates", func() {
 				BeforeEach(func() {
 					mfs = MediaFiles{
-						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), CreatedAt: t("2022-12-19 08:30")},
-						{Duration: 200.2, Size: 2048, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 08:30")},
-						{Duration: 150.6, Size: 1000, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:45"), CreatedAt: t("2022-12-19 07:30")},
+						{Duration: 100.2, Size: 1024, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:30"), BirthTime: t("2022-12-19 08:30")},
+						{Duration: 200.2, Size: 2048, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 08:30")},
+						{Duration: 150.6, Size: 1000, Year: 1985, Date: "1985-01-02", UpdatedAt: t("2022-12-19 09:45"), BirthTime: t("2022-12-19 07:30")},
 					}
 				})
 				It("sets the date field correctly", func() {
@@ -121,16 +135,24 @@ var _ = Describe("MediaFiles", func() {
 					Expect(album.MaxYear).To(Equal(1985))
 				})
 			})
+			DescribeTable("explicitStatus",
+				func(mfs MediaFiles, status string) {
+					Expect(mfs.ToAlbum().ExplicitStatus).To(Equal(status))
+				},
+				Entry("sets the album to clean when a clean song is present", MediaFiles{{ExplicitStatus: ""}, {ExplicitStatus: "c"}, {ExplicitStatus: ""}}, "c"),
+				Entry("sets the album to explicit when an explicit song is present", MediaFiles{{ExplicitStatus: ""}, {ExplicitStatus: "e"}, {ExplicitStatus: ""}}, "e"),
+				Entry("takes precedence of explicit songs over clean ones", MediaFiles{{ExplicitStatus: "e"}, {ExplicitStatus: "c"}, {ExplicitStatus: ""}}, "e"),
+			)
 		})
 		Context("Calculated attributes", func() {
 			Context("Discs", func() {
-				When("we have no discs", func() {
+				When("we have no discs info", func() {
 					BeforeEach(func() {
 						mfs = MediaFiles{{Album: "Album1"}, {Album: "Album1"}, {Album: "Album1"}}
 					})
-					It("sets the correct Discs", func() {
+					It("adds 1 disc without subtitle", func() {
 						album := mfs.ToAlbum()
-						Expect(album.Discs).To(BeEmpty())
+						Expect(album.Discs).To(Equal(Discs{1: ""}))
 					})
 				})
 				When("we have only one disc", func() {
@@ -153,38 +175,52 @@ var _ = Describe("MediaFiles", func() {
 				})
 			})
 
-			Context("Genres", func() {
-				When("we have only one Genre", func() {
+			Context("Genres/tags", func() {
+				When("we don't have any tags", func() {
 					BeforeEach(func() {
-						mfs = MediaFiles{{Genres: Genres{{ID: "g1", Name: "Rock"}}}}
+						mfs = MediaFiles{{}}
 					})
 					It("sets the correct Genre", func() {
 						album := mfs.ToAlbum()
-						Expect(album.Genre).To(Equal("Rock"))
-						Expect(album.Genres).To(ConsistOf(Genre{ID: "g1", Name: "Rock"}))
+						Expect(album.Tags).To(BeEmpty())
+					})
+				})
+				When("we have only one Genre", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{{Tags: Tags{"genre": []string{"Rock"}}}}
+					})
+					It("sets the correct Genre", func() {
+						album := mfs.ToAlbum()
+						Expect(album.Tags).To(HaveLen(1))
+						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock"}))
 					})
 				})
 				When("we have multiple Genres", func() {
 					BeforeEach(func() {
-						mfs = MediaFiles{{Genres: Genres{{ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}, {ID: "g3", Name: "Alternative"}}}}
+						mfs = MediaFiles{
+							{Tags: Tags{"genre": []string{"Punk"}, "mood": []string{"Happy", "Chill"}}},
+							{Tags: Tags{"genre": []string{"Rock"}}},
+							{Tags: Tags{"genre": []string{"Alternative", "Rock"}}},
+						}
 					})
-					It("sets the correct Genre", func() {
+					It("sets the correct Genre, sorted by frequency, then alphabetically", func() {
 						album := mfs.ToAlbum()
-						Expect(album.Genre).To(Equal("Rock"))
-						Expect(album.Genres).To(Equal(Genres{{ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}, {ID: "g3", Name: "Alternative"}}))
+						Expect(album.Tags).To(HaveLen(2))
+						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Rock", "Alternative", "Punk"}))
+						Expect(album.Tags).To(HaveKeyWithValue(TagMood, []string{"Chill", "Happy"}))
 					})
 				})
-				When("we have one predominant Genre", func() {
-					var album Album
+				When("we have tags with mismatching case", func() {
 					BeforeEach(func() {
-						mfs = MediaFiles{{Genres: Genres{{ID: "g2", Name: "Punk"}, {ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}}}}
-						album = mfs.ToAlbum()
+						mfs = MediaFiles{
+							{Tags: Tags{"genre": []string{"synthwave"}}},
+							{Tags: Tags{"genre": []string{"Synthwave"}}},
+						}
 					})
-					It("sets the correct Genre", func() {
-						Expect(album.Genre).To(Equal("Punk"))
-					})
-					It("removes duplications from Genres", func() {
-						Expect(album.Genres).To(Equal(Genres{{ID: "g1", Name: "Rock"}, {ID: "g2", Name: "Punk"}}))
+					It("normalizes the tags in just one", func() {
+						album := mfs.ToAlbum()
+						Expect(album.Tags).To(HaveLen(1))
+						Expect(album.Tags).To(HaveKeyWithValue(TagGenre, []string{"Synthwave"}))
 					})
 				})
 			})
@@ -211,41 +247,42 @@ var _ = Describe("MediaFiles", func() {
 					BeforeEach(func() {
 						mfs = MediaFiles{{Comment: "comment1"}, {Comment: "not the same"}, {Comment: "comment1"}}
 					})
-					It("sets the correct Genre", func() {
+					It("sets the correct comment", func() {
 						album := mfs.ToAlbum()
 						Expect(album.Comment).To(BeEmpty())
 					})
 				})
 			})
-			Context("AllArtistIds", func() {
-				BeforeEach(func() {
-					mfs = MediaFiles{
-						{AlbumArtistID: "22", ArtistID: "11"},
-						{AlbumArtistID: "22", ArtistID: "33"},
-						{AlbumArtistID: "22", ArtistID: "11"},
-					}
-				})
-				It("removes duplications", func() {
-					album := mfs.ToAlbum()
-					Expect(album.AllArtistIDs).To(Equal("11 22 33"))
-				})
-			})
-			Context("FullText", func() {
+			Context("Participants", func() {
+				var album Album
 				BeforeEach(func() {
 					mfs = MediaFiles{
 						{
-							Album: "Album1", AlbumArtist: "AlbumArtist1", Artist: "Artist1", DiscSubtitle: "DiscSubtitle1",
-							SortAlbumName: "SortAlbumName1", SortAlbumArtistName: "SortAlbumArtistName1", SortArtistName: "SortArtistName1",
+							Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist1",
+							DiscSubtitle: "DiscSubtitle1", SortAlbumName: "SortAlbumName1",
+							Participants: Participants{
+								RoleAlbumArtist: ParticipantList{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
+								RoleArtist:      ParticipantList{_p("A1", "Artist1", "SortArtistName1")},
+							},
 						},
 						{
-							Album: "Album1", AlbumArtist: "AlbumArtist1", Artist: "Artist2", DiscSubtitle: "DiscSubtitle2",
-							SortAlbumName: "SortAlbumName1", SortAlbumArtistName: "SortAlbumArtistName1", SortArtistName: "SortArtistName2",
+							Album: "Album1", AlbumArtistID: "AA1", AlbumArtist: "Display AlbumArtist1", Artist: "Artist2",
+							DiscSubtitle: "DiscSubtitle2", SortAlbumName: "SortAlbumName1",
+							Participants: Participants{
+								RoleAlbumArtist: ParticipantList{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")},
+								RoleArtist:      ParticipantList{_p("A2", "Artist2", "SortArtistName2")},
+								RoleComposer:    ParticipantList{_p("C1", "Composer1")},
+							},
 						},
 					}
+					album = mfs.ToAlbum()
 				})
-				It("fills the fullText attribute correctly", func() {
-					album := mfs.ToAlbum()
-					Expect(album.FullText).To(Equal(" album1 albumartist1 artist1 artist2 discsubtitle1 discsubtitle2 sortalbumartistname1 sortalbumname1 sortartistname1 sortartistname2"))
+				It("gets all participants from all tracks", func() {
+					Expect(album.Participants).To(HaveKeyWithValue(RoleAlbumArtist, ParticipantList{_p("AA1", "AlbumArtist1", "SortAlbumArtistName1")}))
+					Expect(album.Participants).To(HaveKeyWithValue(RoleComposer, ParticipantList{_p("C1", "Composer1")}))
+					Expect(album.Participants).To(HaveKeyWithValue(RoleArtist, ParticipantList{
+						_p("A1", "Artist1", "SortArtistName1"), _p("A2", "Artist2", "SortArtistName2"),
+					}))
 				})
 			})
 			Context("MbzAlbumID", func() {
@@ -262,71 +299,11 @@ var _ = Describe("MediaFiles", func() {
 					BeforeEach(func() {
 						mfs = MediaFiles{{MbzAlbumID: "id1"}, {MbzAlbumID: "id2"}, {MbzAlbumID: "id1"}}
 					})
-					It("sets the correct MbzAlbumID", func() {
+					It("uses the most frequent MbzAlbumID", func() {
 						album := mfs.ToAlbum()
 						Expect(album.MbzAlbumID).To(Equal("id1"))
 					})
 				})
-			})
-		})
-	})
-
-	Describe("Dirs", func() {
-		var mfs MediaFiles
-
-		When("there are no media files", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{}
-			})
-			It("returns an empty list", func() {
-				Expect(mfs.Dirs()).To(BeEmpty())
-			})
-		})
-
-		When("there is one media file", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{Path: "/music/artist/album/song.mp3"},
-				}
-			})
-			It("returns the directory of the media file", func() {
-				Expect(mfs.Dirs()).To(Equal([]string{filepath.Clean("/music/artist/album")}))
-			})
-		})
-
-		When("there are multiple media files in the same directory", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{Path: "/music/artist/album/song1.mp3"},
-					{Path: "/music/artist/album/song2.mp3"},
-				}
-			})
-			It("returns a single directory", func() {
-				Expect(mfs.Dirs()).To(Equal([]string{filepath.Clean("/music/artist/album")}))
-			})
-		})
-
-		When("there are multiple media files in different directories", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{Path: "/music/artist2/album/song2.mp3"},
-					{Path: "/music/artist1/album/song1.mp3"},
-				}
-			})
-			It("returns all directories", func() {
-				Expect(mfs.Dirs()).To(Equal([]string{filepath.Clean("/music/artist1/album"), filepath.Clean("/music/artist2/album")}))
-			})
-		})
-
-		When("there are media files with empty paths", func() {
-			BeforeEach(func() {
-				mfs = MediaFiles{
-					{Path: ""},
-					{Path: "/music/artist/album/song.mp3"},
-				}
-			})
-			It("ignores the empty paths", func() {
-				Expect(mfs.Dirs()).To(Equal([]string{".", filepath.Clean("/music/artist/album")}))
 			})
 		})
 	})

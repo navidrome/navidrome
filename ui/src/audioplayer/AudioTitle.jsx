@@ -35,6 +35,9 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
     rgTrackPeak: song.rgTrackPeak,
   }
 
+  const subtitle = song.tags?.['subtitle']
+  const title = song.title + (subtitle ? ` (${subtitle})` : '')
+
   return (
     <Link
       to={
@@ -46,9 +49,7 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
       ref={dragSongRef}
     >
       <span>
-        <span className={clsx(classes.songTitle, 'songTitle')}>
-          {song.title}
-        </span>
+        <span className={clsx(classes.songTitle, 'songTitle')}>{title}</span>
         {isDesktop && (
           <QualityInfo
             record={qi}

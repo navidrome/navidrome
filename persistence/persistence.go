@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"reflect"
+	"time"
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/chain"
 	"github.com/pocketbase/dbx"
 )
 
@@ -35,8 +37,16 @@ func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
 	return NewLibraryRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Folder(ctx context.Context) model.FolderRepository {
+	return newFolderRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
 	return NewGenreRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) Tag(ctx context.Context) model.TagRepository {
+	return NewTagRepository(ctx, s.getDBXBuilder())
 }
 
 func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
@@ -101,6 +111,8 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 		return s.Radio(ctx).(model.ResourceRepository)
 	case model.Share:
 		return s.Share(ctx).(model.ResourceRepository)
+	case model.Tag:
+		return s.Tag(ctx).(model.ResourceRepository)
 	}
 	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
 	return nil
@@ -117,55 +129,29 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
 	})
 }
 
-func (s *SQLStore) GC(ctx context.Context, rootFolder string) error {
-	err := s.MediaFile(ctx).(*mediaFileRepository).deleteNotInPath(rootFolder)
-	if err != nil {
-		log.Error(ctx, "Error removing dangling tracks", err)
-		return err
+func (s *SQLStore) GC(ctx context.Context) error {
+	trace := func(ctx context.Context, msg string, f func() error) func() error {
+		return func() error {
+			start := time.Now()
+			err := f()
+			log.Debug(ctx, "GC: "+msg, "elapsed", time.Since(start), err)
+			return err
+		}
 	}
-	err = s.MediaFile(ctx).(*mediaFileRepository).removeNonAlbumArtistIds()
+
+	err := chain.RunSequentially(
+		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty() }),
+		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
+		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty() }),
+		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() }),
+		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() }),
+		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() }),
+		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks() }),
+		trace(ctx, "purge non used tags", func() error { return s.Tag(ctx).(*tagRepository).purgeUnused() }),
+		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
+	)
 	if err != nil {
-		log.Error(ctx, "Error removing non-album artist_ids", err)
-		return err
-	}
-	err = s.Album(ctx).(*albumRepository).purgeEmpty()
-	if err != nil {
-		log.Error(ctx, "Error removing empty albums", err)
-		return err
-	}
-	err = s.Artist(ctx).(*artistRepository).purgeEmpty()
-	if err != nil {
-		log.Error(ctx, "Error removing empty artists", err)
-		return err
-	}
-	err = s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations()
-	if err != nil {
-		log.Error(ctx, "Error removing orphan mediafile annotations", err)
-		return err
-	}
-	err = s.Album(ctx).(*albumRepository).cleanAnnotations()
-	if err != nil {
-		log.Error(ctx, "Error removing orphan album annotations", err)
-		return err
-	}
-	err = s.Artist(ctx).(*artistRepository).cleanAnnotations()
-	if err != nil {
-		log.Error(ctx, "Error removing orphan artist annotations", err)
-		return err
-	}
-	err = s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks()
-	if err != nil {
-		log.Error(ctx, "Error removing orphan bookmarks", err)
-		return err
-	}
-	err = s.Playlist(ctx).(*playlistRepository).removeOrphans()
-	if err != nil {
-		log.Error(ctx, "Error tidying up playlists", err)
-	}
-	err = s.Genre(ctx).(*genreRepository).purgeEmpty()
-	if err != nil {
-		log.Error(ctx, "Error removing unused genres", err)
-		return err
+		log.Error(ctx, "Error tidying up database", err)
 	}
 	return err
 }

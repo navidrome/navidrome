@@ -11,11 +11,11 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/pocketbase/dbx"
 )
@@ -62,13 +62,16 @@ func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, err
 
 func (r *userRepository) Put(u *model.User) error {
 	if u.ID == "" {
-		u.ID = uuid.NewString()
+		u.ID = id.NewRandom()
 	}
 	u.UpdatedAt = time.Now()
 	if u.NewPassword != "" {
 		_ = r.encryptPassword(u)
 	}
-	values, _ := toSQLArgs(*u)
+	values, err := toSQLArgs(*u)
+	if err != nil {
+		return fmt.Errorf("error converting user to SQL args: %w", err)
+	}
 	delete(values, "current_password")
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
 	count, err := r.executeSQL(update)

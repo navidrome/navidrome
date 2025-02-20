@@ -9,16 +9,7 @@
       {
         "id": "1",
         "isDir": false,
-        "isVideo": false,
-        "bpm": 0,
-        "comment": "",
-        "sortName": "",
-        "mediaType": "",
-        "musicBrainzId": "",
-        "genres": [],
-        "replayGain": {},
-        "channelCount": 0,
-        "samplingRate": 0
+        "isVideo": false
       }
     ],
     "id": "",

@@ -124,6 +124,7 @@ export const downloadMenuDialogReducer = (
 export const expandInfoDialogReducer = (
   previousState = {
     open: false,
+    record: undefined,
   },
   payload,
 ) => {
@@ -139,6 +140,7 @@ export const expandInfoDialogReducer = (
       return {
         ...previousState,
         open: false,
+        record: undefined,
       }
     default:
       return previousState

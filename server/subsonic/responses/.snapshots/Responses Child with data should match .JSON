@@ -47,7 +47,67 @@
           "fallbackGain": 6
         },
         "channelCount": 2,
-        "samplingRate": 44100
+        "samplingRate": 44100,
+        "bitDepth": 16,
+        "moods": [
+          "happy",
+          "sad"
+        ],
+        "artists": [
+          {
+            "id": "1",
+            "name": "artist1"
+          },
+          {
+            "id": "2",
+            "name": "artist2"
+          }
+        ],
+        "displayArtist": "artist 1 \u0026 artist 2",
+        "albumArtists": [
+          {
+            "id": "1",
+            "name": "album artist1"
+          },
+          {
+            "id": "2",
+            "name": "album artist2"
+          }
+        ],
+        "displayAlbumArtist": "album artist 1 \u0026 album artist 2",
+        "contributors": [
+          {
+            "role": "role1",
+            "subRole": "subrole3",
+            "artist": {
+              "id": "1",
+              "name": "artist1"
+            }
+          },
+          {
+            "role": "role2",
+            "artist": {
+              "id": "2",
+              "name": "artist2"
+            }
+          },
+          {
+            "role": "composer",
+            "artist": {
+              "id": "3",
+              "name": "composer1"
+            }
+          },
+          {
+            "role": "composer",
+            "artist": {
+              "id": "4",
+              "name": "composer2"
+            }
+          }
+        ],
+        "displayComposer": "composer 1 \u0026 composer 2",
+        "explicitStatus": "clean"
       }
     ],
     "id": "1",

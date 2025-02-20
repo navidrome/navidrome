@@ -41,7 +41,7 @@ func (api *Router) getSearchParams(r *http.Request) (*searchParams, error) {
 	return sp, nil
 }
 
-type searchFunc[T any] func(q string, offset int, size int) (T, error)
+type searchFunc[T any] func(q string, offset int, size int, includeMissing bool) (T, error)
 
 func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, size int, result *T) func() error {
 	return func() error {
@@ -51,7 +51,7 @@ func callSearch[T any](ctx context.Context, s searchFunc[T], q string, offset, s
 		typ := strings.TrimPrefix(reflect.TypeOf(*result).String(), "model.")
 		var err error
 		start := time.Now()
-		*result, err = s(q, offset, size)
+		*result, err = s(q, offset, size, false)
 		if err != nil {
 			log.Error(ctx, "Error searching "+typ, "query", q, "elapsed", time.Since(start), err)
 		} else {

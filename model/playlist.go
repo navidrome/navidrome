@@ -61,7 +61,7 @@ func (pls *Playlist) ToM3U8() string {
 	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", pls.Name))
 	for _, t := range pls.Tracks {
 		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
-		buf.WriteString(t.Path + "\n")
+		buf.WriteString(t.AbsolutePath() + "\n")
 	}
 	return buf.String()
 }
@@ -106,7 +106,7 @@ type PlaylistRepository interface {
 	Exists(id string) (bool, error)
 	Put(pls *Playlist) error
 	Get(id string) (*Playlist, error)
-	GetWithTracks(id string, refreshSmartPlaylist bool) (*Playlist, error)
+	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
