@@ -41,7 +41,8 @@
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
-        "info": "Get Info"
+        "info": "Get Info",
+        "moveToIndex": "Move To Index"
       }
     },
     "album": {
