@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pressly/goose/v3"
 )
 
@@ -30,7 +30,7 @@ func upAddDefaultTranscodings(_ context.Context, tx *sql.Tx) error {
 	}
 
 	for _, t := range consts.DefaultTranscodings {
-		_, err := stmt.Exec(uuid.NewString(), t.Name, t.TargetFormat, t.DefaultBitRate, t.Command)
+		_, err := stmt.Exec(id.NewRandom(), t.Name, t.TargetFormat, t.DefaultBitRate, t.Command)
 		if err != nil {
 			return err
 		}

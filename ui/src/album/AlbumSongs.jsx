@@ -107,13 +107,13 @@ const AlbumSongs = (props) => {
           showTrackNumbers={!isDesktop}
         />
       ),
-      artist: isDesktop && <ArtistLinkField source="artist" />,
+      artist: isDesktop && <ArtistLinkField source="artist" sortable={false} />,
       duration: <DurationField source="duration" sortable={false} />,
       year: isDesktop && (
         <FunctionField
           source="year"
           render={(r) => r.year || ''}
-          sortByOrder={'DESC'}
+          sortable={false}
         />
       ),
       playCount: isDesktop && (

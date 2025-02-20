@@ -46,7 +46,7 @@ export const LoveButton = ({
     <Button
       onClick={handleToggleLove}
       size={'small'}
-      disabled={disabled || loading}
+      disabled={disabled || loading || record?.missing}
       className={classes.love}
       {...rest}
     >

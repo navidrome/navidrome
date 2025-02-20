@@ -24,16 +24,21 @@ func (c Criteria) OrderBy() string {
 	if c.Sort == "" {
 		c.Sort = "title"
 	}
-	f := fieldMap[strings.ToLower(c.Sort)]
+	sortField := strings.ToLower(c.Sort)
+	f := fieldMap[sortField]
 	var mapped string
 	if f == nil {
 		log.Error("Invalid field in 'sort' field. Using 'title'", "sort", c.Sort)
 		mapped = fieldMap["title"].field
 	} else {
-		if f.order == "" {
-			mapped = f.field
-		} else {
+		if f.order != "" {
 			mapped = f.order
+		} else if f.isTag {
+			mapped = "COALESCE(json_extract(media_file.tags, '$." + sortField + "[0].value'), '')"
+		} else if f.isRole {
+			mapped = "COALESCE(json_extract(media_file.participants, '$." + sortField + "[0].name'), '')"
+		} else {
+			mapped = f.field
 		}
 	}
 	if c.Order != "" {
@@ -46,23 +51,20 @@ func (c Criteria) OrderBy() string {
 	return mapped
 }
 
-func (c Criteria) ToSql() (sql string, args []interface{}, err error) {
+func (c Criteria) ToSql() (sql string, args []any, err error) {
 	return c.Expression.ToSql()
 }
 
-func (c Criteria) ChildPlaylistIds() (ids []string) {
+func (c Criteria) ChildPlaylistIds() []string {
 	if c.Expression == nil {
-		return ids
+		return nil
 	}
 
-	switch rules := c.Expression.(type) {
-	case Any:
-		ids = rules.ChildPlaylistIds()
-	case All:
-		ids = rules.ChildPlaylistIds()
+	if parent := c.Expression.(interface{ ChildPlaylistIds() (ids []string) }); parent != nil {
+		return parent.ChildPlaylistIds()
 	}
 
-	return ids
+	return nil
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {

@@ -159,7 +159,7 @@ var _ = Describe("Responses", func() {
 			})
 		})
 
-		Context("with data and MBID and Sort Name", func() {
+		Context("with OpenSubsonic data", func() {
 			BeforeEach(func() {
 				artists := make([]ArtistID3, 1)
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
@@ -170,9 +170,13 @@ var _ = Describe("Responses", func() {
 					UserRating:     3,
 					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
-					MusicBrainzId:  "1234",
-					SortName:       "sort name",
 				}
+				artists[0].OpenSubsonicArtistID3 = &OpenSubsonicArtistID3{
+					MusicBrainzId: "1234",
+					SortName:      "sort name",
+					Roles:         []string{"role1", "role2"},
+				}
+
 				index := make([]IndexID3, 1)
 				index[0] = IndexID3{Name: "A", Artists: artists}
 				response.Artist.Index = index
@@ -198,6 +202,14 @@ var _ = Describe("Responses", func() {
 			It("should match .JSON", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
+			It("should match OpenSubsonic .XML", func() {
+				response.Directory.Child[0].OpenSubsonicChild = &OpenSubsonicChild{}
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match OpenSubsonic .JSON", func() {
+				response.Directory.Child[0].OpenSubsonicChild = &OpenSubsonicChild{}
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
 		})
 		Context("with data", func() {
 			BeforeEach(func() {
@@ -208,10 +220,32 @@ var _ = Describe("Responses", func() {
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
-					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321", ChannelCount: 2,
-					SamplingRate: 44100, SortName: "sorted title",
-					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					Duration: 146, BitRate: 320, Starred: &t,
+				}
+				child[0].OpenSubsonicChild = &OpenSubsonicChild{
+					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted title",
+					BPM: 127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
+					Moods:         []string{"happy", "sad"},
+					ReplayGain:    ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					DisplayArtist: "artist 1 & artist 2",
+					Artists: []ArtistID3Ref{
+						{Id: "1", Name: "artist1"},
+						{Id: "2", Name: "artist2"},
+					},
+					DisplayAlbumArtist: "album artist 1 & album artist 2",
+					AlbumArtists: []ArtistID3Ref{
+						{Id: "1", Name: "album artist1"},
+						{Id: "2", Name: "album artist2"},
+					},
+					DisplayComposer: "composer 1 & composer 2",
+					Contributors: []Contributor{
+						{Role: "role1", SubRole: "subrole3", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},
+						{Role: "role2", Artist: ArtistID3Ref{Id: "2", Name: "artist2"}},
+						{Role: "composer", Artist: ArtistID3Ref{Id: "3", Name: "composer1"}},
+						{Role: "composer", Artist: ArtistID3Ref{Id: "4", Name: "composer2"}},
+					},
+					ExplicitStatus: "clean",
 				}
 				response.Directory.Child = child
 			})
@@ -236,27 +270,69 @@ var _ = Describe("Responses", func() {
 			It("should match .JSON", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
+			It("should match OpenSubsonic .XML", func() {
+				response.AlbumWithSongsID3.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{}
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match OpenSubsonic .JSON", func() {
+				response.AlbumWithSongsID3.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{}
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
 		})
 
 		Context("with data", func() {
 			BeforeEach(func() {
 				album := AlbumID3{
 					Id: "1", Name: "album", Artist: "artist", Genre: "rock",
+				}
+				album.OpenSubsonicAlbumID3 = &OpenSubsonicAlbumID3{
 					Genres:        []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+					UserRating:    4,
 					MusicBrainzId: "1234", IsCompilation: true, SortName: "sorted album",
-					DiscTitles:          DiscTitles{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
+					DiscTitles:          Array[DiscTitle]{{Disc: 1, Title: "disc 1"}, {Disc: 2, Title: "disc 2"}, {Disc: 3}},
 					OriginalReleaseDate: ItemDate{Year: 1994, Month: 2, Day: 4},
 					ReleaseDate:         ItemDate{Year: 2000, Month: 5, Day: 10},
+					ReleaseTypes:        []string{"album", "live"},
+					RecordLabels:        []RecordLabel{{Name: "label1"}, {Name: "label2"}},
+					Moods:               []string{"happy", "sad"},
+					DisplayArtist:       "artist1 & artist2",
+					Artists: []ArtistID3Ref{
+						{Id: "1", Name: "artist1"},
+						{Id: "2", Name: "artist2"},
+					},
+					ExplicitStatus: "clean",
+					Version:        "Deluxe Edition",
 				}
 				t := time.Date(2016, 03, 2, 20, 30, 0, 0, time.UTC)
 				songs := []Child{{
 					Id: "1", IsDir: true, Title: "title", Album: "album", Artist: "artist", Track: 1,
 					Year: 1985, Genre: "Rock", CoverArt: "1", Size: 8421341, ContentType: "audio/flac",
 					Suffix: "flac", TranscodedContentType: "audio/mpeg", TranscodedSuffix: "mp3",
-					Duration: 146, BitRate: 320, Starred: &t, Genres: []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
-					Comment: "a comment", Bpm: 127, MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
-					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					Duration: 146, BitRate: 320, Starred: &t,
 				}}
+				songs[0].OpenSubsonicChild = &OpenSubsonicChild{
+					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
+					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
+					Moods:      []string{"happy", "sad"},
+					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
+					BPM:        127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
+					DisplayArtist: "artist1 & artist2",
+					Artists: []ArtistID3Ref{
+						{Id: "1", Name: "artist1"},
+						{Id: "2", Name: "artist2"},
+					},
+					DisplayAlbumArtist: "album artist1 & album artist2",
+					AlbumArtists: []ArtistID3Ref{
+						{Id: "1", Name: "album artist1"},
+						{Id: "2", Name: "album artist2"},
+					},
+					Contributors: []Contributor{
+						{Role: "role1", Artist: ArtistID3Ref{Id: "1", Name: "artist1"}},
+						{Role: "role2", SubRole: "subrole4", Artist: ArtistID3Ref{Id: "2", Name: "artist2"}},
+					},
+					DisplayComposer: "composer 1 & composer 2",
+					ExplicitStatus:  "clean",
+				}
 				response.AlbumWithSongsID3.AlbumID3 = album
 				response.AlbumWithSongsID3.Song = songs
 			})
@@ -515,8 +591,9 @@ var _ = Describe("Responses", func() {
 
 		Context("with data", func() {
 			BeforeEach(func() {
-				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="http://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
+				response.ArtistInfo.Biography = `Black Sabbath is an English <a target='_blank' href="https://www.last.fm/tag/heavy%20metal" class="bbcode_tag" rel="tag">heavy metal</a> band`
 				response.ArtistInfo.MusicBrainzID = "5182c1d9-c7d2-4dad-afa0-ccfeada921a8"
+
 				response.ArtistInfo.LastFmUrl = "https://www.last.fm/music/Black+Sabbath"
 				response.ArtistInfo.SmallImageUrl = "https://userserve-ak.last.fm/serve/64/27904353.jpg"
 				response.ArtistInfo.MediumImageUrl = "https://userserve-ak.last.fm/serve/126/27904353.jpg"

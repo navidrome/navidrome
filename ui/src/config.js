@@ -33,6 +33,8 @@ const defaultConfig = {
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
+  separator: '/',
+  enableInspect: true,
 }
 
 let config

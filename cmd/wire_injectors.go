@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
@@ -11,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -31,12 +34,19 @@ var allProviders = wire.NewSet(
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.GetInstance,
-	db.Db,
+	scanner.New,
+	scanner.NewWatcher,
 	metrics.NewPrometheusInstance,
+	db.Db,
 )
 
-func CreateServer(musicFolder string) *server.Server {
+func CreateDataStore() model.DataStore {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateServer() *server.Server {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -48,7 +58,7 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	))
 }
 
-func CreateSubsonicAPIRouter() *subsonic.Router {
+func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -84,7 +94,13 @@ func CreatePrometheus() metrics.Metrics {
 	))
 }
 
-func GetScanner() scanner.Scanner {
+func CreateScanner(ctx context.Context) scanner.Scanner {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	panic(wire.Build(
 		allProviders,
 	))

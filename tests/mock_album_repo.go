@@ -4,9 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 func CreateMockAlbumRepo() *MockAlbumRepo {
@@ -28,7 +27,7 @@ func (m *MockAlbumRepo) SetError(err bool) {
 }
 
 func (m *MockAlbumRepo) SetData(albums model.Albums) {
-	m.data = make(map[string]*model.Album)
+	m.data = make(map[string]*model.Album, len(albums))
 	m.all = albums
 	for i, a := range m.all {
 		m.data[a.ID] = &m.all[i]
@@ -37,7 +36,7 @@ func (m *MockAlbumRepo) SetData(albums model.Albums) {
 
 func (m *MockAlbumRepo) Exists(id string) (bool, error) {
 	if m.err {
-		return false, errors.New("Error!")
+		return false, errors.New("unexpected error")
 	}
 	_, found := m.data[id]
 	return found, nil
@@ -45,7 +44,7 @@ func (m *MockAlbumRepo) Exists(id string) (bool, error) {
 
 func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
 	if m.err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("unexpected error")
 	}
 	if d, ok := m.data[id]; ok {
 		return d, nil
@@ -55,10 +54,10 @@ func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
 
 func (m *MockAlbumRepo) Put(al *model.Album) error {
 	if m.err {
-		return errors.New("error")
+		return errors.New("unexpected error")
 	}
 	if al.ID == "" {
-		al.ID = uuid.NewString()
+		al.ID = id.NewRandom()
 	}
 	m.data[al.ID] = al
 	return nil
@@ -69,18 +68,14 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 		m.Options = qo[0]
 	}
 	if m.err {
-		return nil, errors.New("Error!")
+		return nil, errors.New("unexpected error")
 	}
 	return m.all, nil
 }
 
-func (m *MockAlbumRepo) GetAllWithoutGenres(qo ...model.QueryOptions) (model.Albums, error) {
-	return m.GetAll(qo...)
-}
-
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	if m.err {
-		return errors.New("error")
+		return errors.New("unexpected error")
 	}
 	if d, ok := m.data[id]; ok {
 		d.PlayCount++
@@ -91,6 +86,28 @@ func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 }
 func (m *MockAlbumRepo) CountAll(...model.QueryOptions) (int64, error) {
 	return int64(len(m.all)), nil
+}
+
+func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
+	if m.err {
+		return nil, errors.New("unexpected error")
+	}
+	return func(yield func(model.Album, error) bool) {
+		for _, a := range m.data {
+			if a.ID == "error" {
+				if !yield(*a, errors.New("error")) {
+					break
+				}
+				continue
+			}
+			if a.LibraryID != libID {
+				continue
+			}
+			if !yield(*a, nil) {
+				break
+			}
+		}
+	}, nil
 }
 
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)

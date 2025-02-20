@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	. "github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -71,7 +73,7 @@ var _ = Describe("database backups", func() {
 			})
 
 			for _, time := range timesShuffled {
-				path := backupPath(time)
+				path := BackupPath(time)
 				file, err := os.Create(path)
 				Expect(err).ToNot(HaveOccurred())
 				_ = file.Close()
@@ -85,7 +87,7 @@ var _ = Describe("database backups", func() {
 			pruneCount, err := Prune(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			for idx, time := range timesDecreasingChronologically {
-				_, err := os.Stat(backupPath(time))
+				_, err := os.Stat(BackupPath(time))
 				shouldExist := idx < conf.Server.Backup.Count
 				if shouldExist {
 					Expect(err).ToNot(HaveOccurred())
@@ -110,7 +112,7 @@ var _ = Describe("database backups", func() {
 			DeferCleanup(configtest.SetupConfig())
 
 			conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
-			DeferCleanup(Init())
+			DeferCleanup(Init(ctx))
 		})
 
 		BeforeEach(func() {
@@ -129,25 +131,20 @@ var _ = Describe("database backups", func() {
 
 			backup, err := sql.Open(Driver, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(backup)).To(BeFalse())
+			Expect(IsSchemaEmpty(ctx, backup)).To(BeFalse())
 		})
 
 		It("successfully restores the database", func() {
 			path, err := Backup(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			// https://stackoverflow.com/questions/525512/drop-all-tables-command
-			_, err = Db().ExecContext(ctx, `
-PRAGMA writable_schema = 1;
-DELETE FROM sqlite_master WHERE type in ('table', 'index', 'trigger');
-PRAGMA writable_schema = 0;
-			`)
+			err = tests.ClearDB()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(Db())).To(BeTrue())
+			Expect(IsSchemaEmpty(ctx, Db())).To(BeTrue())
 
 			err = Restore(ctx, path)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(isSchemaEmpty(Db())).To(BeFalse())
+			Expect(IsSchemaEmpty(ctx, Db())).To(BeFalse())
 		})
 	})
 })

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/RaveNoX/go-jsoncommentstrip"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -22,7 +23,7 @@ import (
 )
 
 type Playlists interface {
-	ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error)
+	ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error)
 	Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error
 	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 }
@@ -35,16 +36,29 @@ func NewPlaylists(ds model.DataStore) Playlists {
 	return &playlists{ds: ds}
 }
 
-func (s *playlists) ImportFile(ctx context.Context, dir string, fname string) (*model.Playlist, error) {
-	pls, err := s.parsePlaylist(ctx, fname, dir)
+func InPlaylistsPath(folder model.Folder) bool {
+	if conf.Server.PlaylistsPath == "" {
+		return true
+	}
+	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
+	for _, path := range strings.Split(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+		if match, _ := doublestar.Match(path, rel); match {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *playlists) ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
+	pls, err := s.parsePlaylist(ctx, filename, folder)
 	if err != nil {
-		log.Error(ctx, "Error parsing playlist", "path", filepath.Join(dir, fname), err)
+		log.Error(ctx, "Error parsing playlist", "path", filepath.Join(folder.AbsolutePath(), filename), err)
 		return nil, err
 	}
 	log.Debug("Found playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks))
 	err = s.updatePlaylist(ctx, pls)
 	if err != nil {
-		log.Error(ctx, "Error updating playlist", "path", filepath.Join(dir, fname), err)
+		log.Error(ctx, "Error updating playlist", "path", filepath.Join(folder.AbsolutePath(), filename), err)
 	}
 	return pls, err
 }
@@ -56,7 +70,7 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 		Public:  false,
 		Sync:    false,
 	}
-	err := s.parseM3U(ctx, pls, "", reader)
+	err := s.parseM3U(ctx, pls, nil, reader)
 	if err != nil {
 		log.Error(ctx, "Error parsing playlist", err)
 		return nil, err
@@ -69,8 +83,8 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 	return pls, nil
 }
 
-func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, baseDir string) (*model.Playlist, error) {
-	pls, err := s.newSyncedPlaylist(baseDir, playlistFile)
+func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, folder *model.Folder) (*model.Playlist, error) {
+	pls, err := s.newSyncedPlaylist(folder.AbsolutePath(), playlistFile)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +100,7 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, base
 	case ".nsp":
 		err = s.parseNSP(ctx, pls, file)
 	default:
-		err = s.parseM3U(ctx, pls, baseDir, file)
+		err = s.parseM3U(ctx, pls, folder, file)
 	}
 	return pls, err
 }
@@ -112,14 +126,35 @@ func (s *playlists) newSyncedPlaylist(baseDir string, playlistFile string) (*mod
 	return pls, nil
 }
 
-func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.Reader) error {
+func getPositionFromOffset(data []byte, offset int64) (line, column int) {
+	line = 1
+	for _, b := range data[:offset] {
+		if b == '\n' {
+			line++
+			column = 1
+		} else {
+			column++
+		}
+	}
+	return
+}
+
+func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.Reader) error {
 	nsp := &nspFile{}
-	reader := jsoncommentstrip.NewReader(file)
-	dec := json.NewDecoder(reader)
-	err := dec.Decode(nsp)
+	reader = io.LimitReader(reader, 100*1024) // Limit to 100KB
+	reader = jsoncommentstrip.NewReader(reader)
+	input, err := io.ReadAll(reader)
 	if err != nil {
-		log.Error(ctx, "Error parsing SmartPlaylist", "playlist", pls.Name, err)
-		return err
+		return fmt.Errorf("reading SmartPlaylist: %w", err)
+	}
+	err = json.Unmarshal(input, nsp)
+	if err != nil {
+		var syntaxErr *json.SyntaxError
+		if errors.As(err, &syntaxErr) {
+			line, col := getPositionFromOffset(input, syntaxErr.Offset)
+			return fmt.Errorf("JSON syntax error in SmartPlaylist at line %d, column %d: %w", line, col, err)
+		}
+		return fmt.Errorf("JSON parsing error in SmartPlaylist: %w", err)
 	}
 	pls.Rules = &nsp.Criteria
 	if nsp.Name != "" {
@@ -131,7 +166,7 @@ func (s *playlists) parseNSP(ctx context.Context, pls *model.Playlist, file io.R
 	return nil
 }
 
-func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir string, reader io.Reader) error {
+func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader) error {
 	mediaFileRepository := s.ds.MediaFile(ctx)
 	var mfs model.MediaFiles
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 400) {
@@ -150,11 +185,22 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, baseDir s
 				line = strings.TrimPrefix(line, "file://")
 				line, _ = url.QueryUnescape(line)
 			}
-			if baseDir != "" && !filepath.IsAbs(line) {
-				line = filepath.Join(baseDir, line)
+			if !model.IsAudioFile(line) {
+				continue
+			}
+			line = filepath.Clean(line)
+			if folder != nil && !filepath.IsAbs(line) {
+				line = filepath.Join(folder.AbsolutePath(), line)
+				var err error
+				line, err = filepath.Rel(folder.LibraryPath, line)
+				if err != nil {
+					log.Trace(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "folder", folder, err)
+					continue
+				}
 			}
 			filteredLines = append(filteredLines, line)
 		}
+		filteredLines = slice.Map(filteredLines, filepath.ToSlash)
 		found, err := mediaFileRepository.FindByPaths(filteredLines)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
@@ -225,7 +271,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 			return fmt.Errorf("%w: playlist '%s'", model.ErrNotFound, playlistID)
 		}
 		if needsTrackRefresh {
-			pls, err = repo.GetWithTracks(playlistID, true)
+			pls, err = repo.GetWithTracks(playlistID, true, false)
 			pls.RemoveTracks(idxToRemove)
 			pls.AddTracks(idsToAdd)
 		} else {

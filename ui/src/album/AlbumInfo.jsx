@@ -9,13 +9,18 @@ import {
   BooleanField,
   ChipField,
   DateField,
+  FunctionField,
   SingleFieldList,
   TextField,
   useRecordContext,
   useTranslate,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { MultiLineTextField } from '../common'
+import {
+  ArtistLinkField,
+  MultiLineTextField,
+  ParticipantsInfo,
+} from '../common'
 
 const useStyles = makeStyles({
   tableCell: {
@@ -29,7 +34,9 @@ const AlbumInfo = (props) => {
   const record = useRecordContext(props)
   const data = {
     album: <TextField source={'name'} />,
-    albumArtist: <TextField source={'albumArtist'} />,
+    albumArtist: (
+      <ArtistLinkField source="albumArtist" record={record} limit={Infinity} />
+    ),
     genre: (
       <ArrayField source={'genres'}>
         <SingleFieldList linkType={false}>
@@ -37,14 +44,56 @@ const AlbumInfo = (props) => {
         </SingleFieldList>
       </ArrayField>
     ),
+    recordLabel: (
+      <FunctionField
+        source={'recordLabel'}
+        render={(record) => record.tags?.recordlabel?.join(', ')}
+      />
+    ),
+    catalogNum: <TextField source={'catalogNum'} />,
+    releaseType: (
+      <FunctionField
+        source={'releaseType'}
+        render={(record) => record.tags?.releasetype?.join(', ')}
+      />
+    ),
+    media: (
+      <FunctionField
+        source={'media'}
+        render={(record) => record.tags?.media?.join(', ')}
+      />
+    ),
+    grouping: (
+      <FunctionField
+        source={'grouping'}
+        render={(record) => record.tags?.grouping?.join(', ')}
+      />
+    ),
+    mood: (
+      <FunctionField
+        source={'mood'}
+        render={(record) => record.tags?.mood?.join(', ')}
+      />
+    ),
     compilation: <BooleanField source={'compilation'} />,
     updatedAt: <DateField source={'updatedAt'} showTime />,
     comment: <MultiLineTextField source={'comment'} />,
   }
 
-  const optionalFields = ['comment', 'genre']
+  const optionalFields = ['comment', 'genre', 'catalogNum']
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
+  })
+
+  const optionalTags = [
+    'releaseType',
+    'recordLabel',
+    'grouping',
+    'mood',
+    'media',
+  ]
+  optionalTags.forEach((field) => {
+    !record?.tags?.[field.toLowerCase()] && delete data[field]
   })
 
   return (
@@ -68,6 +117,7 @@ const AlbumInfo = (props) => {
               </TableRow>
             )
           })}
+          <ParticipantsInfo record={record} classes={classes} />
         </TableBody>
       </Table>
     </TableContainer>

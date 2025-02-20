@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Table from '@material-ui/core/Table'
 import TableBody from '@material-ui/core/TableBody'
 import TableCell from '@material-ui/core/TableCell'
@@ -14,10 +14,18 @@ import {
   useRecordContext,
 } from 'react-admin'
 import inflection from 'inflection'
-import { BitrateField, SizeField } from './index'
+import {
+  ArtistLinkField,
+  BitrateField,
+  ParticipantsInfo,
+  PathField,
+  SizeField,
+} from './index'
 import { MultiLineTextField } from './MultiLineTextField'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
+import { AlbumLinkField } from '../song/AlbumLinkField'
+import { Tab, Tabs } from '@material-ui/core'
 
 const useStyles = makeStyles({
   gain: {
@@ -34,13 +42,32 @@ export const SongInfo = (props) => {
   const classes = useStyles({ gain: config.enableReplayGain })
   const translate = useTranslate()
   const record = useRecordContext(props)
+  const [tab, setTab] = useState(0)
+
+  // These are already displayed in other fields or are album-level tags
+  const excludedTags = [
+    'genre',
+    'disctotal',
+    'tracktotal',
+    'releasetype',
+    'recordlabel',
+    'media',
+    'albumversion',
+  ]
   const data = {
-    path: <TextField source="path" />,
-    album: <TextField source="album" />,
+    path: <PathField />,
+    album: (
+      <AlbumLinkField source="album" sortByOrder={'ASC'} record={record} />
+    ),
     discSubtitle: <TextField source="discSubtitle" />,
-    albumArtist: <TextField source="albumArtist" />,
+    albumArtist: (
+      <ArtistLinkField source="albumArtist" record={record} limit={Infinity} />
+    ),
+    artist: (
+      <ArtistLinkField source="artist" record={record} limit={Infinity} />
+    ),
     genre: (
-      <FunctionField render={(r) => r.genres?.map((g) => g.name).join(', ')} />
+      <FunctionField render={(r) => r.genres?.map((g) => g.name).join(' • ')} />
     ),
     compilation: <BooleanField source="compilation" />,
     bitRate: <BitrateField source="bitRate" />,
@@ -50,6 +77,15 @@ export const SongInfo = (props) => {
     playCount: <TextField source="playCount" />,
     bpm: <NumberField source="bpm" />,
     comment: <MultiLineTextField source="comment" />,
+  }
+
+  const roles = []
+
+  for (const name of Object.keys(record.participants)) {
+    if (name === 'albumartist' || name === 'artist') {
+      continue
+    }
+    roles.push([name, record.participants[name].length])
   }
 
   const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre']
@@ -69,23 +105,89 @@ export const SongInfo = (props) => {
     )
   }
 
+  const tags = Object.entries(record.tags ?? {}).filter(
+    (tag) => !excludedTags.includes(tag[0]),
+  )
+
   return (
     <TableContainer>
       <Table aria-label="song details" size="small">
         <TableBody>
-          {Object.keys(data).map((key) => {
-            return (
-              <TableRow key={`${record.id}-${key}`}>
-                <TableCell scope="row" className={classes.tableCell}>
-                  {translate(`resources.song.fields.${key}`, {
-                    _: inflection.humanize(inflection.underscore(key)),
-                  })}
-                  :
+          {record.rawTags && (
+            <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+              <Tab
+                label={translate(`resources.song.fields.mappedTags`)}
+                id="mapped-tags-tab"
+                aria-controls="mapped-tags-body"
+              />
+              <Tab
+                label={translate(`resources.song.fields.rawTags`)}
+                id="raw-tags-tab"
+                aria-controls="raw-tags-body"
+              />
+            </Tabs>
+          )}
+          <div
+            hidden={tab === 1}
+            id="mapped-tags-body"
+            aria-labelledby={record.rawTags ? 'mapped-tags-tab' : undefined}
+          >
+            {Object.keys(data).map((key) => {
+              return (
+                <TableRow key={`${record.id}-${key}`}>
+                  <TableCell scope="row" className={classes.tableCell}>
+                    {translate(`resources.song.fields.${key}`, {
+                      _: inflection.humanize(inflection.underscore(key)),
+                    })}
+                    :
+                  </TableCell>
+                  <TableCell align="left">{data[key]}</TableCell>
+                </TableRow>
+              )
+            })}
+            <ParticipantsInfo classes={classes} record={record} />
+            {tags.length > 0 && (
+              <TableRow key={`${record.id}-separator`}>
+                <TableCell
+                  scope="row"
+                  className={classes.tableCell}
+                ></TableCell>
+                <TableCell align="left">
+                  <h4>{translate(`resources.song.fields.tags`)}</h4>
                 </TableCell>
-                <TableCell align="left">{data[key]}</TableCell>
               </TableRow>
-            )
-          })}
+            )}
+            {tags.map(([name, values]) => (
+              <TableRow key={`${record.id}-tag-${name}`}>
+                <TableCell scope="row" className={classes.tableCell}>
+                  {name}:
+                </TableCell>
+                <TableCell align="left">{values.join(' • ')}</TableCell>
+              </TableRow>
+            ))}
+          </div>
+          {record.rawTags && (
+            <div
+              hidden={tab === 0}
+              id="raw-tags-body"
+              aria-labelledby="raw-tags-tab"
+            >
+              <TableRow key={`${record.id}-raw-path`}>
+                <TableCell scope="row" className={classes.tableCell}>
+                  {translate(`resources.song.fields.path`)}:
+                </TableCell>
+                <TableCell align="left">{data.path}</TableCell>
+              </TableRow>
+              {Object.entries(record.rawTags).map(([key, value]) => (
+                <TableRow key={`${record.id}-raw-${key}`}>
+                  <TableCell scope="row" className={classes.tableCell}>
+                    {key}:
+                  </TableCell>
+                  <TableCell align="left">{value.join(' • ')}</TableCell>
+                </TableRow>
+              ))}
+            </div>
+          )}
         </TableBody>
       </Table>
     </TableContainer>
