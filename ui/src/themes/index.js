@@ -4,6 +4,7 @@ import ExtraDarkTheme from './extradark'
 import GreenTheme from './green'
 import SpotifyTheme from './spotify'
 import LigeraTheme from './ligera'
+import ModernDarkTheme from './modernDark'
 import MonokaiTheme from './monokai'
 import ElectricPurpleTheme from './electricPurple'
 import NordTheme from './nord'
@@ -23,6 +24,7 @@ export default {
   GreenTheme,
   GruvboxDarkTheme,
   LigeraTheme,
+  ModernDarkTheme,
   MonokaiTheme,
   NordTheme,
   NuclearTheme,
