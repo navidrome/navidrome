@@ -295,10 +295,10 @@ with artist_role_counters as (
 artist_total_counters as (
 	select mfa.artist_id,
 		   'total' as role,
-		   count(distinct mf.album) as album_count,
+		   count(distinct mf.album_id) as album_count,
 		   count(distinct mf.id) as count,
 		   sum(mf.size) as size
-	from (select distinct artist_id, media_file_id
+	from (select artist_id, media_file_id
 		  from main.media_file_artists) as mfa
 			 join main.media_file mf on mfa.media_file_id = mf.id
 	group by mfa.artist_id
