@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/disintegration/imaging"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -73,7 +73,7 @@ func findMatchingImage(playlistName string) (string, error) {
 	extensions := []string{".png", ".jpg", ".jpeg"}
 	for _, ext := range extensions {
 		mediaFolder := conf.Server.MusicFolder
-		path := filepath.Join(mediaFolder, "/zPlaylists", playlistName+ext)
+		path := filepath.Join(mediaFolder, "/custom_playlists", playlistName+ext)
 		if _, err := os.Stat(path); err == nil {
 			return path, nil
 		}
@@ -92,7 +92,7 @@ func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sou
 	}
 }
 
-func toAlbumArtworkIDs(albumIDs []string) []model.ArtworkID {
+func toArtworkIDs(albumIDs []string) []model.ArtworkID {
 	return slice.Map(albumIDs, func(id string) model.ArtworkID {
 		al := model.Album{ID: id}
 		return al.CoverArtID()
@@ -106,21 +106,24 @@ func (a *playlistArtworkReader) loadTiles(ctx context.Context) ([]image.Image, e
 		log.Error(ctx, "Error getting album IDs for playlist", "id", a.pl.ID, "name", a.pl.Name, err)
 		return nil, err
 	}
-	ids := toAlbumArtworkIDs(albumIds)
+	ids := toArtworkIDs(albumIds)
 
 	var tiles []image.Image
-	for _, id := range ids {
-		r, _, err := fromAlbum(ctx, a.a, id)()
-		if err == nil {
-			tile, err := a.createTile(ctx, r)
-			if err == nil {
-				tiles = append(tiles, tile)
-			}
-			_ = r.Close()
-		}
-		if len(tiles) == 4 {
+	for len(tiles) < 4 {
+		if len(ids) == 0 {
 			break
 		}
+		id := ids[len(ids)-1]
+		ids = ids[0 : len(ids)-1]
+		r, _, err := fromAlbum(ctx, a.a, id)()
+		if err != nil {
+			continue
+		}
+		tile, err := a.createTile(ctx, r)
+		if err == nil {
+			tiles = append(tiles, tile)
+		}
+		_ = r.Close()
 	}
 	switch len(tiles) {
 	case 0:
