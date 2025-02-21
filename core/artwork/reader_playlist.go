@@ -73,7 +73,7 @@ func findMatchingImage(playlistName string) (string, error) {
 	extensions := []string{".png", ".jpg", ".jpeg"}
 	for _, ext := range extensions {
 		mediaFolder := conf.Server.MusicFolder
-		path := filepath.Join(mediaFolder, "/custom_playlists", playlistName+ext)
+		path := filepath.Join(mediaFolder, "/zPlaylists", playlistName+ext)
 		if _, err := os.Stat(path); err == nil {
 			return path, nil
 		}
