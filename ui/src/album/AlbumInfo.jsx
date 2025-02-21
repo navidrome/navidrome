@@ -26,6 +26,9 @@ const useStyles = makeStyles({
   tableCell: {
     width: '17.5%',
   },
+  value: {
+    whiteSpace: 'pre-line',
+  },
 })
 
 const AlbumInfo = (props) => {
@@ -113,7 +116,9 @@ const AlbumInfo = (props) => {
                   })}
                   :
                 </TableCell>
-                <TableCell align="left">{data[key]}</TableCell>
+                <TableCell align="left" className={classes.value}>
+                  {data[key]}
+                </TableCell>
               </TableRow>
             )
           })}
