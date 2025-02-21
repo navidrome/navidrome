@@ -4,12 +4,15 @@ import { LinkToVersion } from './AboutDialog'
 import TableBody from '@material-ui/core/TableBody'
 import TableRow from '@material-ui/core/TableRow'
 import Table from '@material-ui/core/Table'
+import TableCell from '@material-ui/core/TableCell'
 
 const Wrapper = ({ version }) => (
   <Table>
     <TableBody>
       <TableRow>
-        <LinkToVersion version={version} />
+        <TableCell>
+          <LinkToVersion version={version} />
+        </TableCell>
       </TableRow>
     </TableBody>
   </Table>

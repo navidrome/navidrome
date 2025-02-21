@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import Link from '@material-ui/core/Link'
 import Dialog from '@material-ui/core/Dialog'
@@ -16,6 +16,8 @@ import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
 import { INSIGHTS_DOC_URL } from '../consts.js'
+import subsonic from '../subsonic/index.js'
+import { Typography } from '@material-ui/core'
 
 const links = {
   homepage: 'navidrome.org',
@@ -29,7 +31,7 @@ const links = {
 
 const LinkToVersion = ({ version }) => {
   if (version === 'dev') {
-    return <TableCell align="left">{version}</TableCell>
+    return <>{version}</>
   }
 
   const parts = version.split(' ')
@@ -41,12 +43,46 @@ const LinkToVersion = ({ version }) => {
       }...${commitID}`
     : `https://github.com/navidrome/navidrome/releases/tag/v${parts[0]}`
   return (
-    <TableCell align="left">
+    <>
       <Link href={url} target="_blank" rel="noopener noreferrer">
         {parts[0]}
       </Link>
       {' (' + commitID + ')'}
-    </TableCell>
+    </>
+  )
+}
+
+const ShowVersion = ({ uiVersion, serverVersion }) => {
+  const translate = useTranslate()
+
+  const showRefresh = uiVersion !== serverVersion
+
+  return (
+    <>
+      <TableRow>
+        <TableCell align="right" component="th" scope="row">
+          {translate('menu.version')}:
+        </TableCell>
+        <TableCell align="left">
+          <LinkToVersion version={serverVersion} />
+        </TableCell>
+      </TableRow>
+      {showRefresh && (
+        <TableRow>
+          <TableCell align="right" component="th" scope="row">
+            UI {translate('menu.version')}:
+          </TableCell>
+          <TableCell align="left">
+            <LinkToVersion version={uiVersion} />
+            <Link onClick={() => window.location.reload()}>
+              <Typography variant={'caption'}>
+                {' ' + translate('ra.notification.new_version')}
+              </Typography>
+            </Link>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   )
 }
 
@@ -54,6 +90,23 @@ const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
   const { permissions } = usePermissions()
   const { data, loading } = useGetOne('insights', 'insights_status')
+  const [serverVersion, setServerVersion] = useState('')
+  const uiVersion = config.version
+
+  useEffect(() => {
+    subsonic
+      .ping()
+      .then((resp) => resp.json['subsonic-response'])
+      .then((data) => {
+        if (data.status === 'ok') {
+          setServerVersion(data.serverVersion)
+        }
+      })
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error('error pinging server', e)
+      })
+  }, [setServerVersion])
 
   const lastRun = !loading && data?.lastRun
   let insightsStatus = 'N/A'
@@ -74,12 +127,10 @@ const AboutDialog = ({ open, onClose }) => {
         <TableContainer component={Paper}>
           <Table aria-label={translate('menu.about')} size="small">
             <TableBody>
-              <TableRow>
-                <TableCell align="right" component="th" scope="row">
-                  {translate('menu.version')}:
-                </TableCell>
-                <LinkToVersion version={config.version} />
-              </TableRow>
+              <ShowVersion
+                uiVersion={uiVersion}
+                serverVersion={serverVersion}
+              />
               {Object.keys(links).map((key) => {
                 return (
                   <TableRow key={key}>
