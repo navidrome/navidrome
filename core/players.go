@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -52,6 +53,7 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 				UserId:          user.ID,
 				Client:          client,
 				ScrobbleEnabled: true,
+				ReportRealPath:  conf.Server.DefaultReportRealPath,
 			}
 			log.Info(ctx, "Registering new player", "id", plr.ID, "client", client, "username", username, "type", userAgent)
 		}
