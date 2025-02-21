@@ -29,6 +29,8 @@ const url = (command, id, options) => {
   return `/rest/${command}?${params.toString()}`
 }
 
+const ping = () => httpClient(url('ping'))
+
 const scrobble = (id, time, submission = true) =>
   httpClient(
     url('scrobble', id, {
@@ -88,6 +90,7 @@ const streamUrl = (id, options) => {
 
 export default {
   url,
+  ping,
   scrobble,
   nowPlaying,
   download,
