@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 )
@@ -125,7 +125,7 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 }
 
 func createNewSecret(ctx context.Context, ds model.DataStore) string {
-	secret := uuid.NewString()
+	secret := id.NewRandom()
 	encSecret, err := utils.Encrypt(ctx, getEncKey(), secret)
 	if err != nil {
 		log.Error(ctx, "Could not encrypt JWT secret", err)

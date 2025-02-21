@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -30,31 +32,41 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("ImportFile", func() {
+		var folder *model.Folder
 		BeforeEach(func() {
 			ps = NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
+			libPath, _ := os.Getwd()
+			folder = &model.Folder{
+				ID:          "1",
+				LibraryID:   1,
+				LibraryPath: libPath,
+				Path:        "tests/fixtures",
+				Name:        "playlists",
+			}
 		})
 
 		Describe("M3U", func() {
 			It("parses well-formed playlists", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/pls1.m3u")
+				// get absolute path for "tests/fixtures" folder
+				pls, err := ps.ImportFile(ctx, folder, "pls1.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Tracks).To(HaveLen(3))
-				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
-				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
+				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/playlists/test.ogg"))
 				Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
 				Expect(mp.last).To(Equal(pls))
 			})
 
 			It("parses playlists using LF ending", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures/playlists", "lf-ended.m3u")
+				pls, err := ps.ImportFile(ctx, folder, "lf-ended.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
 
 			It("parses playlists using CR ending (old Mac format)", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures/playlists", "cr-ended.m3u")
+				pls, err := ps.ImportFile(ctx, folder, "cr-ended.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
@@ -62,7 +74,7 @@ var _ = Describe("Playlists", func() {
 
 		Describe("NSP", func() {
 			It("parses well-formed playlists", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/recently_played.nsp")
+				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mp.last).To(Equal(pls))
 				Expect(pls.OwnerID).To(Equal("123"))
@@ -72,6 +84,10 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Rules.Order).To(Equal("desc"))
 				Expect(pls.Rules.Limit).To(Equal(100))
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
+			})
+			It("returns an error if the playlist is not well-formed", func() {
+				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
+				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
 			})
 		})
 	})
@@ -155,6 +171,52 @@ var _ = Describe("Playlists", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(1))
 			Expect(pls.Tracks[0].Path).To(Equal("tEsT1.Mp3"))
+		})
+	})
+
+	Describe("InPlaylistsPath", func() {
+		var folder model.Folder
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			folder = model.Folder{
+				LibraryPath: "/music",
+				Path:        "playlists/abc",
+				Name:        "folder1",
+			}
+		})
+
+		It("returns true if PlaylistsPath is empty", func() {
+			conf.Server.PlaylistsPath = ""
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if PlaylistsPath is any (**/**)", func() {
+			conf.Server.PlaylistsPath = "**/**"
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if folder is in PlaylistsPath", func() {
+			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns false if folder is not in PlaylistsPath", func() {
+			conf.Server.PlaylistsPath = "other"
+			Expect(InPlaylistsPath(folder)).To(BeFalse())
+		})
+
+		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
+			conf.Server.PlaylistsPath = "."
+			Expect(InPlaylistsPath(folder)).To(BeFalse())
+
+			folder2 := model.Folder{
+				LibraryPath: "/music",
+				Path:        "",
+				Name:        ".",
+			}
+
+			Expect(InPlaylistsPath(folder2)).To(BeTrue())
 		})
 	})
 })

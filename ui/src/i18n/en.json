@@ -26,7 +26,13 @@
         "quality": "Quality",
         "bpm": "BPM",
         "playDate": "Last Played",
-        "createdAt": "Date added"
+        "createdAt": "Date added",
+        "grouping": "Grouping",
+        "mood": "Mood",
+        "participants": "Additional participants",
+        "tags": "Additional Tags",
+        "mappedTags": "Mapped tags",
+        "rawTags": "Raw tags"
       },
       "actions": {
         "addToQueue": "Play Later",
@@ -58,7 +64,13 @@
         "updatedAt": "Updated at",
         "comment": "Comment",
         "rating": "Rating",
-        "createdAt": "Date added"
+        "createdAt": "Date added",
+        "recordLabel": "Label",
+        "catalogNum": "Catalog Number",
+        "releaseType": "Type",
+        "grouping": "Grouping",
+        "media": "Media",
+        "mood": "Mood"
       },
       "actions": {
         "playAll": "Play",
@@ -89,7 +101,23 @@
         "size": "Size",
         "playCount": "Plays",
         "rating": "Rating",
-        "genre": "Genre"
+        "genre": "Genre",
+        "role": "Role"
+      },
+      "roles": {
+        "albumartist": "Album Artist |||| Album Artists",
+        "artist": "Artist |||| Artists",
+        "composer": "Composer |||| Composers",
+        "conductor": "Conductor |||| Conductors",
+        "lyricist": "Lyricist |||| Lyricists",
+        "arranger": "Arranger |||| Arrangers",
+        "producer": "Producer |||| Producers",
+        "director": "Director |||| Directors",
+        "engineer": "Engineer |||| Engineers",
+        "mixer": "Mixer |||| Mixers",
+        "remixer": "Remixer |||| Remixers",
+        "djmixer": "DJ Mixer |||| DJ Mixers",
+        "performer": "Performer |||| Performers"
       }
     },
     "user": {
@@ -200,6 +228,20 @@
       },
       "notifications": {},
       "actions": {}
+    },
+    "missing": {
+      "name": "Missing File|||| Missing Files",
+      "fields": {
+        "path": "Path",
+        "size": "Size",
+        "updatedAt": "Disappeared on"
+      },
+      "actions": {
+        "remove": "Remove"
+      },
+      "notifications": {
+        "removed": "Missing file(s) removed"
+      }
     }
   },
   "ra": {
@@ -355,6 +397,8 @@
     "noPlaylistsAvailable": "None available",
     "delete_user_title": "Delete user '%{name}'",
     "delete_user_content": "Are you sure you want to delete this user and all their data (including playlists and preferences)?",
+    "remove_missing_title": "Remove missing files",
+    "remove_missing_content": "Are you sure you want to remove the selected missing files from the database? This will remove permanently any references to them, including their play counts and ratings.",
     "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
     "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https",
     "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",

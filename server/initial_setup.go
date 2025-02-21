@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 func initialSetup(ds model.DataStore) {
@@ -46,11 +46,11 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 		panic(fmt.Sprintf("Could not access User table: %s", err))
 	}
 	if c == 0 {
-		id := uuid.NewString()
+		newID := id.NewRandom()
 		log.Warn("Creating initial admin user. This should only be used for development purposes!!",
-			"user", consts.DevInitialUserName, "password", initialPassword, "id", id)
+			"user", consts.DevInitialUserName, "password", initialPassword, "id", newID)
 		initialUser := model.User{
-			ID:          id,
+			ID:          newID,
 			UserName:    consts.DevInitialUserName,
 			Name:        consts.DevInitialName,
 			Email:       "",

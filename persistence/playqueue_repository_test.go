@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -56,6 +56,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			// Add a new song to the DB
 			newSong := songRadioactivity
 			newSong.ID = "temp-track"
+			newSong.Path = "/new-path"
 			mfRepo := NewMediaFileRepository(ctx, GetDBXBuilder())
 
 			Expect(mfRepo.Put(&newSong)).To(Succeed())
@@ -110,7 +111,7 @@ func aPlayQueue(userId, current string, position int64, items ...model.MediaFile
 	createdAt := time.Now()
 	updatedAt := createdAt.Add(time.Minute)
 	return &model.PlayQueue{
-		ID:        uuid.NewString(),
+		ID:        id.NewRandom(),
 		UserID:    userId,
 		Current:   current,
 		Position:  position,

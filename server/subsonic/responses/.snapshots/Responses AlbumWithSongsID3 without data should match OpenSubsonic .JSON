@@ -1,0 +1,26 @@
+{
+  "status": "ok",
+  "version": "1.8.0",
+  "type": "navidrome",
+  "serverVersion": "v0.0.0",
+  "openSubsonic": true,
+  "album": {
+    "id": "",
+    "name": "",
+    "userRating": 0,
+    "genres": [],
+    "musicBrainzId": "",
+    "isCompilation": false,
+    "sortName": "",
+    "discTitles": [],
+    "originalReleaseDate": {},
+    "releaseDate": {},
+    "releaseTypes": [],
+    "recordLabels": [],
+    "moods": [],
+    "artists": [],
+    "displayArtist": "",
+    "explicitStatus": "",
+    "version": ""
+  }
+}

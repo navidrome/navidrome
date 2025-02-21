@@ -1,0 +1,248 @@
+#file: noinspection SpellCheckingInspection
+# Tag mapping adapted from https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
+#
+# This file contains the mapping between the tags in your music files and the fields in Navidrome.
+# You can add new tags, change the aliases, or add new split characters to the existing tags.
+# The artists and roles keys are used to define how to split the tag values into multiple values.
+# The tags are divided into two categories: main and additional.
+# The main tags are handled directly by Navidrome, while the additional tags are available as fields for smart playlists.
+#
+# Applies to single valued ARTIST and ALBUMARTIST tags. Won't be applied if the tag is multivalued or the multivalued
+# versions are available (ARTISTS and ALBUMARTISTS)
+artists:
+  split: [" / ", " feat. ", " feat ", " ft. ", " ft ", "; "]
+# Applies to all remaining single-valued role tags (composer, lyricist, arranger...)
+roles:
+  split: ["/", ";"]
+
+# These tags are handled directly by Navidrome. You can add/remove/reorder aliases, but changing the tag name
+# may require code changes
+main:
+  title:
+    aliases: [ tit2, title, ©nam, inam ]
+  titlesort:
+    aliases: [ tsot, titlesort, sonm, wm/titlesortorder ]
+  artist:
+    aliases: [ tpe1, artist, ©art, author, iart ]
+  artistsort:
+    aliases: [ tsop, artistsort, artistsort, soar, wm/artistsortorder ]
+  artists:
+    aliases: [ txxx:artists, artists, ----:com.apple.itunes:artists, wm/artists ]
+  artistssort:
+    aliases: [ artistssort ]
+  arranger:
+    aliases: [ tipl:arranger, ipls:arranger, arranger ]
+  composer:
+    aliases: [ tcom, composer, ©wrt, wm/composer, imus,
+      writer, txxx:writer, iwri,
+      # If you need writer separated from composer, remove these tagss from the line above
+      # and uncomment the two lines below
+    ]
+  #writer:
+  #  aliases: [ WRITER, TXXX:Writer, IWRI ]
+  composersort:
+    aliases: [ tsoc, txxx:composersort, composersort, soco, wm/composersortorder ]
+  lyricist:
+    aliases: [ text, lyricist, ----:com.apple.itunes:lyricist, wm/writer ]
+  lyricistsort:
+    aliases: [ lyricistsort ]
+  conductor:
+    aliases: [ tpe3, conductor, ----:com.apple.itunes:conductor, wm/conductor ]
+  director:
+    aliases: [ txxx:director, director, ©dir, wm/director ]
+  djmixer:
+    aliases: [ tipl:dj-mix, ipls:dj-mix, djmixer, ----:com.apple.itunes:djmixer, wm/djmixer ]
+  mixer:
+    aliases: [ tipl:mix, ipls:mix, mixer, ----:com.apple.itunes:mixer, wm/mixer ]
+  engineer:
+    aliases: [ tipl:engineer, ipls:engineer, engineer, ----:com.apple.itunes:engineer, wm/engineer, ieng ]
+  producer:
+    aliases: [ tipl:producer, ipls:producer, producer, ----:com.apple.itunes:producer, wm/producer, ipro ]
+  remixer:
+    aliases: [ tpe4, remixer, mixartist, ----:com.apple.itunes:remixer, wm/modifiedby ]
+  albumartist:
+    aliases: [ tpe2, albumartist, album artist, aart, wm/albumartist ]
+  albumartistsort:
+    aliases: [ tso2, txxx:albumartistsort, albumartistsort, soaa, wm/albumartistsortorder ]
+  albumartists:
+    aliases: [ txxx:album artists, albumartists ]
+  albumartistssort:
+    aliases: [ albumartistssort ]
+  album:
+    aliases: [ talb, album, ©alb, wm/albumtitle, iprd ]
+  albumsort:
+    aliases: [ tsoa, albumsort, soal, wm/albumsortorder ]
+  albumversion:
+    aliases: [albumversion, musicbrainz_albumcomment, musicbrainz album comment, version]
+    album: true
+  genre:
+    aliases: [ tcon, genre, ©gen, wm/genre, ignr ]
+    split: [ ";", "/", "," ]
+    album: true
+  mood:
+    aliases: [ tmoo, mood, ----:com.apple.itunes:mood, wm/mood ]
+    split: [ ";", "/", "," ]
+    album: true
+  compilation:
+    aliases: [ tcmp, compilation, cpil, wm/iscompilation ]
+  track:
+    aliases: [ track, trck, tracknumber, trkn, wm/tracknumber, itrk ]
+  tracktotal:
+    aliases: [ tracktotal, totaltracks ]
+    album: true
+  disc:
+    aliases: [ tpos, disc, discnumber, disk, wm/partofset ]
+  disctotal:
+    aliases: [ disctotal, totaldiscs ]
+    album: true
+  discsubtitle:
+    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, wm/setsubtitle ]
+  bpm:
+    aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
+  lyrics:
+    aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics ]
+    maxLength: 32768
+    type: pair # ex: lyrics:eng, lyrics:xxx
+  comment:
+    aliases: [ comm:description, comment, ©cmt, description, icmt ]
+    maxLength: 4096
+  originaldate:
+    aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear ]
+    type: date
+  recordingdate:
+    aliases: [ tdrc, date, icrd, ©day, wm/year, year ]
+    type: date
+  releasedate:
+    aliases: [ tdrl, releasedate ]
+    type: date
+  catalognumber:
+    aliases: [ txxx:catalognumber, catalognumber, ----:com.apple.itunes:catalognumber, wm/catalogno ]
+  musicbrainz_artistid:
+    aliases: [ txxx:musicbrainz artist id, musicbrainz_artistid, musicbrainz artist id, ----:com.apple.itunes:musicbrainz artist id, musicbrainz/artist id ]
+    type: uuid
+  musicbrainz_recordingid:
+    aliases: [ ufid:http://musicbrainz.org, musicbrainz_trackid, musicbrainz track id, ----:com.apple.itunes:musicbrainz track id, musicbrainz/track id ]
+    type: uuid
+  musicbrainz_trackid:
+    aliases: [txxx:musicbrainz release track id, musicbrainz_releasetrackid, ----:com.apple.itunes:musicbrainz release track id, musicbrainz/release track id]
+    type: uuid
+  musicbrainz_albumartistid:
+    aliases: [ txxx:musicbrainz album artist id, musicbrainz_albumartistid, musicbrainz album artist id, ----:com.apple.itunes:musicbrainz album artist id, musicbrainz/album artist id ]
+    type: uuid
+  musicbrainz_albumid:
+    aliases: [ txxx:musicbrainz album id, musicbrainz_albumid, musicbrainz album id, ----:com.apple.itunes:musicbrainz album id, musicbrainz/album id ]
+    type: uuid
+  musicbrainz_releasegroupid:
+    aliases: [ txxx:musicbrainz release group id, musicbrainz_releasegroupid, ----:com.apple.itunes:musicbrainz release group id, musicbrainz/release group id ]
+    type: uuid
+  musicbrainz_composerid:
+    aliases: [ txxx:musicbrainz composer id, musicbrainz_composerid, musicbrainz_composer_id, ----:com.apple.itunes:musicbrainz composer id, musicbrainz/composer id ]
+    type: uuid
+  musicbrainz_lyricistid:
+    aliases: [ txxx:musicbrainz lyricist id, musicbrainz_lyricistid, musicbrainz_lyricist_id, ----:com.apple.itunes:musicbrainz lyricist id, musicbrainz/lyricist id ]
+    type: uuid
+  musicbrainz_directorid:
+    aliases: [ txxx:musicbrainz director id, musicbrainz_directorid, musicbrainz_director_id, ----:com.apple.itunes:musicbrainz director id, musicbrainz/director id ]
+    type: uuid
+  musicbrainz_producerid:
+    aliases: [ txxx:musicbrainz producer id, musicbrainz_producerid, musicbrainz_producer_id, ----:com.apple.itunes:musicbrainz producer id, musicbrainz/producer id ]
+    type: uuid
+  musicbrainz_engineerid:
+    aliases: [ txxx:musicbrainz engineer id, musicbrainz_engineerid, musicbrainz_engineer_id, ----:com.apple.itunes:musicbrainz engineer id, musicbrainz/engineer id ]
+    type: uuid
+  musicbrainz_mixerid:
+    aliases: [ txxx:musicbrainz mixer id, musicbrainz_mixerid, musicbrainz_mixer_id, ----:com.apple.itunes:musicbrainz mixer id, musicbrainz/mixer id ]
+    type: uuid
+  musicbrainz_remixerid:
+    aliases: [ txxx:musicbrainz remixer id, musicbrainz_remixerid, musicbrainz_remixer_id, ----:com.apple.itunes:musicbrainz remixer id, musicbrainz/remixer id ]
+    type: uuid
+  musicbrainz_djmixerid:
+    aliases: [ txxx:musicbrainz djmixer id, musicbrainz_djmixerid, musicbrainz_djmixer_id, ----:com.apple.itunes:musicbrainz djmixer id, musicbrainz/djmixer id ]
+    type: uuid
+  musicbrainz_conductorid:
+    aliases: [ txxx:musicbrainz conductor id, musicbrainz_conductorid, musicbrainz_conductor_id, ----:com.apple.itunes:musicbrainz conductor id, musicbrainz/conductor id ]
+    type: uuid
+  musicbrainz_arrangerid:
+    aliases: [ txxx:musicbrainz arranger id, musicbrainz_arrangerid, musicbrainz_arranger_id, ----:com.apple.itunes:musicbrainz arranger id, musicbrainz/arranger id ]
+    type: uuid
+  releasetype:
+    aliases: [ txxx:musicbrainz album type, releasetype, musicbrainz_albumtype, ----:com.apple.itunes:musicbrainz album type, musicbrainz/album type ]
+    album: true
+    split: [ "," ]
+  replaygain_album_gain:
+    aliases: [ txxx:replaygain_album_gain, replaygain_album_gain, ----:com.apple.itunes:replaygain_album_gain ]
+  replaygain_album_peak:
+    aliases: [ txxx:replaygain_album_peak, replaygain_album_peak, ----:com.apple.itunes:replaygain_album_peak ]
+  replaygain_track_gain:
+    aliases: [ txxx:replaygain_track_gain, replaygain_track_gain, ----:com.apple.itunes:replaygain_track_gain ]
+  replaygain_track_peak:
+    aliases: [ txxx:replaygain_track_peak, replaygain_track_peak, ----:com.apple.itunes:replaygain_track_peak ]
+  r128_album_gain:
+    aliases: [r128_album_gain]
+  r128_track_gain:
+    aliases: [r128_track_gain]
+  performer:
+    aliases: [performer]
+    type: pair
+  musicbrainz_performerid:
+    aliases: [ txxx:musicbrainz performer id, musicbrainz_performerid, musicbrainz_performer_id, ----:com.apple.itunes:musicbrainz performer id, musicbrainz/performer id ]
+    type: pair
+  explicitstatus:
+    aliases: [ itunesadvisory, rtng ]
+
+# Additional tags. You can add new tags without the need to modify the code. They will be available as fields
+# for smart playlists
+additional:
+  asin:
+    aliases: [ txxx:asin, asin, ----:com.apple.itunes:asin ]
+  barcode:
+    aliases: [ txxx:barcode, barcode, ----:com.apple.itunes:barcode, wm/barcode ]
+  copyright:
+    aliases: [ tcop, copyright, cprt, icop ]
+  encodedby:
+    aliases: [ tenc, encodedby, ©too, wm/encodedby, ienc ]
+  encodersettings:
+    aliases: [ tsse, encodersettings, ----:com.apple.itunes:encodersettings, wm/encodingsettings ]
+  grouping:
+    aliases: [ grp1, grouping, ©grp, wm/contentgroupdescription ]
+    album: true
+  key:
+    aliases: [ tkey, key, ----:com.apple.itunes:initialkey, wm/initialkey ]
+  isrc:
+    aliases: [ tsrc, isrc, ----:com.apple.itunes:isrc, wm/isrc ]
+  language:
+    aliases: [ tlan, language, ----:com.apple.itunes:language, wm/language, ilng ]
+  license:
+    aliases: [ wcop, txxx:license, license, ----:com.apple.itunes:license ]
+  media:
+    aliases: [ tmed, media, ----:com.apple.itunes:media, wm/media, imed ]
+    album: true
+  movementname:
+    aliases: [ mvnm, movementname, ©mvn ]
+  movementtotal:
+    aliases: [ movementtotal, mvc ]
+  movement:
+    aliases: [ mvin, movement, mvi ]
+  recordlabel:
+    aliases: [ tpub, label, publisher, ----:com.apple.itunes:label, wm/publisher, organization ]
+    album: true
+  musicbrainz_discid:
+    aliases: [ txxx:musicbrainz disc id, musicbrainz_discid, musicbrainz disc id, ----:com.apple.itunes:musicbrainz disc id, musicbrainz/disc id ]
+    type: uuid
+  musicbrainz_workid:
+    aliases: [ txxx:musicbrainz work id, musicbrainz_workid, musicbrainz work id, ----:com.apple.itunes:musicbrainz work id, musicbrainz/work id ]
+    type: uuid
+  releasecountry:
+    aliases: [ txxx:musicbrainz album release country, releasecountry, ----:com.apple.itunes:musicbrainz album release country, musicbrainz/album release country, icnt ]
+    album: true
+  releasestatus:
+    aliases: [ txxx:musicbrainz album status, releasestatus, musicbrainz_albumstatus, ----:com.apple.itunes:musicbrainz album status, musicbrainz/album status ]
+    album: true
+  script:
+    aliases: [ txxx:script, script, ----:com.apple.itunes:script, wm/script ]
+  subtitle:
+    aliases: [ tit3, subtitle, ----:com.apple.itunes:subtitle, wm/subtitle ]
+  website:
+    aliases: [ woar, website, weblink, wm/authorurl ]
+  work:
+    aliases: [ txxx:work, tit1, work, ©wrk, wm/work ]

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 )
 
 type unmarshalConjunctionType []Expression
@@ -24,7 +23,7 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 				expr = unmarshalConjunction(k, v)
 			}
 			if expr == nil {
-				return fmt.Errorf(`invalid expression key %s`, k)
+				return fmt.Errorf(`invalid expression key '%s'`, k)
 			}
 			es = append(es, expr)
 		}
@@ -34,7 +33,7 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 }
 
 func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
-	m := make(map[string]interface{})
+	m := make(map[string]any)
 	err := json.Unmarshal(rawValue, &m)
 	if err != nil {
 		return nil
@@ -89,7 +88,7 @@ func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression 
 	return nil
 }
 
-func marshalExpression(name string, value map[string]interface{}) ([]byte, error) {
+func marshalExpression(name string, value map[string]any) ([]byte, error) {
 	if len(value) != 1 {
 		return nil, fmt.Errorf(`invalid %s expression length %d for values %v`, name, len(value), value)
 	}
@@ -119,11 +118,4 @@ func marshalConjunction(name string, conj []Expression) ([]byte, error) {
 		aux.All = conj
 	}
 	return json.Marshal(aux)
-}
-
-type date time.Time
-
-func (t date) MarshalJSON() ([]byte, error) {
-	stamp := fmt.Sprintf(`"%s"`, time.Time(t).Format("2006-01-02"))
-	return []byte(stamp), nil
 }
