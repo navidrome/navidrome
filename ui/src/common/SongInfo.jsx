@@ -36,6 +36,9 @@ const useStyles = makeStyles({
   tableCell: {
     width: '17.5%',
   },
+  value: {
+    whiteSpace: 'pre-line',
+  },
 })
 
 export const SongInfo = (props) => {
@@ -111,27 +114,27 @@ export const SongInfo = (props) => {
 
   return (
     <TableContainer>
-      <Table aria-label="song details" size="small">
-        <TableBody>
-          {record.rawTags && (
-            <Tabs value={tab} onChange={(_, value) => setTab(value)}>
-              <Tab
-                label={translate(`resources.song.fields.mappedTags`)}
-                id="mapped-tags-tab"
-                aria-controls="mapped-tags-body"
-              />
-              <Tab
-                label={translate(`resources.song.fields.rawTags`)}
-                id="raw-tags-tab"
-                aria-controls="raw-tags-body"
-              />
-            </Tabs>
-          )}
-          <div
-            hidden={tab === 1}
-            id="mapped-tags-body"
-            aria-labelledby={record.rawTags ? 'mapped-tags-tab' : undefined}
-          >
+      {record.rawTags && (
+        <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+          <Tab
+            label={translate(`resources.song.fields.mappedTags`)}
+            id="mapped-tags-tab"
+            aria-controls="mapped-tags-body"
+          />
+          <Tab
+            label={translate(`resources.song.fields.rawTags`)}
+            id="raw-tags-tab"
+            aria-controls="raw-tags-body"
+          />
+        </Tabs>
+      )}
+      <div
+        hidden={tab == 1}
+        id="mapped-tags-body"
+        aria-labelledby={record.rawTags ? 'mapped-tags-tab' : undefined}
+      >
+        <Table aria-label="song details" size="small">
+          <TableBody>
             {Object.keys(data).map((key) => {
               return (
                 <TableRow key={`${record.id}-${key}`}>
@@ -141,7 +144,9 @@ export const SongInfo = (props) => {
                     })}
                     :
                   </TableCell>
-                  <TableCell align="left">{data[key]}</TableCell>
+                  <TableCell align="left" className={classes.value}>
+                    {data[key]}
+                  </TableCell>
                 </TableRow>
               )
             })}
@@ -152,7 +157,7 @@ export const SongInfo = (props) => {
                   scope="row"
                   className={classes.tableCell}
                 ></TableCell>
-                <TableCell align="left">
+                <TableCell align="left" className={classes.value}>
                   <h4>{translate(`resources.song.fields.tags`)}</h4>
                 </TableCell>
               </TableRow>
@@ -162,16 +167,22 @@ export const SongInfo = (props) => {
                 <TableCell scope="row" className={classes.tableCell}>
                   {name}:
                 </TableCell>
-                <TableCell align="left">{values.join(' • ')}</TableCell>
+                <TableCell align="left" className={classes.value}>
+                  {values.join(' • ')}
+                </TableCell>
               </TableRow>
             ))}
-          </div>
-          {record.rawTags && (
-            <div
-              hidden={tab === 0}
-              id="raw-tags-body"
-              aria-labelledby="raw-tags-tab"
-            >
+          </TableBody>
+        </Table>
+      </div>
+      {record.rawTags && (
+        <div
+          hidden={tab === 0}
+          id="raw-tags-body"
+          aria-labelledby="raw-tags-tab"
+        >
+          <Table size="small" aria-label="song raw tags">
+            <TableBody>
               <TableRow key={`${record.id}-raw-path`}>
                 <TableCell scope="row" className={classes.tableCell}>
                   {translate(`resources.song.fields.path`)}:
@@ -183,13 +194,15 @@ export const SongInfo = (props) => {
                   <TableCell scope="row" className={classes.tableCell}>
                     {key}:
                   </TableCell>
-                  <TableCell align="left">{value.join(' • ')}</TableCell>
+                  <TableCell align="left" className={classes.value}>
+                    {value.join(' • ')}
+                  </TableCell>
                 </TableRow>
               ))}
-            </div>
-          )}
-        </TableBody>
-      </Table>
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </TableContainer>
   )
 }

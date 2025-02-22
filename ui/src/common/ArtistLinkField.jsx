@@ -23,6 +23,7 @@ const ALink = withWidth()((props) => {
       {...rest}
     >
       {artist.name}
+      {artist.subroles?.length > 0 ? ` (${artist.subroles.join(', ')})` : ''}
     </Link>
   )
 })
@@ -89,19 +90,29 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
   }
 
   // Dedupe artists, only shows the first 3
-  const seen = new Set()
+  const seen = new Map()
   const dedupedArtists = []
   let limitedShow = false
 
   for (const artist of artists ?? []) {
     if (!seen.has(artist.id)) {
-      seen.add(artist.id)
-
       if (dedupedArtists.length < limit) {
-        dedupedArtists.push(artist)
+        seen.set(artist.id, dedupedArtists.length)
+        dedupedArtists.push({
+          ...artist,
+          subroles: artist.subRole ? [artist.subRole] : [],
+        })
       } else {
         limitedShow = true
-        break
+      }
+    } else {
+      const position = seen.get(artist.id)
+
+      if (position !== -1) {
+        const existing = dedupedArtists[position]
+        if (artist.subRole && !existing.subroles.includes(artist.subRole)) {
+          existing.subroles.push(artist.subRole)
+        }
       }
     }
   }
