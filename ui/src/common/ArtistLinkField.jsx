@@ -22,8 +22,8 @@ const ALink = withWidth()((props) => {
       }}
       {...rest}
     >
-      {artist.name}{' '}
-      {artist.subroles?.length > 0 ? `(${artist.subroles.join(', ')})` : ''}
+      {artist.name}
+      {artist.subroles?.length > 0 ? ` (${artist.subroles.join(', ')})` : ''}
     </Link>
   )
 })
