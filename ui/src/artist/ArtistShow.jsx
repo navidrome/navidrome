@@ -56,7 +56,7 @@ const AlbumShowLayout = (props) => {
   const { width } = props
   const [, perPageOptions] = useAlbumsPerPage(width)
 
-  const maxPerPage = 36
+  const maxPerPage = 90
   let perPage = 0
   let pagination = null
 
@@ -67,7 +67,9 @@ const AlbumShowLayout = (props) => {
 
   if (count > maxPerPage) {
     perPage = Math.trunc(maxPerPage / perPageOptions[0]) * perPageOptions[0]
-    const rowsPerPageOptions = [1, 2, 3].map((option) => option * perPage)
+    const rowsPerPageOptions = [1, 2, 3].map((option) =>
+      Math.trunc(option * (perPage / 3)),
+    )
     pagination = <Pagination rowsPerPageOptions={rowsPerPageOptions} />
   }
 
