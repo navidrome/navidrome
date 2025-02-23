@@ -150,27 +150,6 @@ func (r *mediaFileRepository) GetWithParticipants(id string) (*model.MediaFile, 
 	return m, err
 }
 
-func (r *mediaFileRepository) getParticipants(m *model.MediaFile) (model.Participants, error) {
-	ar := NewArtistRepository(r.ctx, r.db)
-	ids := m.Participants.AllIDs()
-	artists, err := ar.GetAll(model.QueryOptions{Filters: Eq{"id": ids}})
-	if err != nil {
-		return nil, fmt.Errorf("getting participants: %w", err)
-	}
-	artistMap := slice.ToMap(artists, func(a model.Artist) (string, model.Artist) {
-		return a.ID, a
-	})
-	p := m.Participants
-	for role, artistList := range p {
-		for idx, artist := range artistList {
-			if a, ok := artistMap[artist.ID]; ok {
-				p[role][idx].Artist = a
-			}
-		}
-	}
-	return p, nil
-}
-
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
