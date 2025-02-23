@@ -200,9 +200,9 @@ func init() {
 	conf.AddHook(func() {
 		loadTagMappings()
 
-		// This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be used in
-		// smart playlists
-		criteria.AddTagNames(tagNames())
+		// This is here to avoid cyclic imports. The criteria package needs to know all tag names, so they can be
+		// used in smart playlists
 		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
+		criteria.AddTagNames(tagNames())
 	})
 }
