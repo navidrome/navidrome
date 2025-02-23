@@ -15,7 +15,10 @@ type mimeConf struct {
 	Lossless []string          `yaml:"lossless"`
 }
 
-var LosslessFormats []string
+var (
+	LosslessFormats      []string
+	ValidImageExtensions []string
+)
 
 func initMimeTypes() {
 	// In some circumstances, Windows sets JS mime-type to `text/plain`!
@@ -36,6 +39,9 @@ func initMimeTypes() {
 	}
 	for ext, typ := range mimeConf.Types {
 		_ = mime.AddExtensionType(ext, typ)
+		if strings.HasPrefix(typ, "image/") {
+			ValidImageExtensions = append(ValidImageExtensions, ext)
+		}
 	}
 
 	for _, ext := range mimeConf.Lossless {

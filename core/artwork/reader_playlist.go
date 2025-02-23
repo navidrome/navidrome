@@ -14,6 +14,7 @@ import (
 
 	"github.com/disintegration/imaging"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -57,7 +58,7 @@ func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, stri
 func (a *playlistArtworkReader) fromPlaylistNamedCover(ctx context.Context) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		playlistName := a.pl.Name
-		imagePath, err := findMatchingImage(playlistName)
+		imagePath, err := findMatchingImage(ctx, "playlist", playlistName)
 		if err != nil {
 			return nil, "", err
 		}
@@ -69,13 +70,12 @@ func (a *playlistArtworkReader) fromPlaylistNamedCover(ctx context.Context) sour
 	}
 }
 
-func findMatchingImage(playlistName string) (string, error) {
-	extensions := []string{".png", ".jpg", ".jpeg"}
-	for _, ext := range extensions {
-		mediaFolder := conf.Server.MusicFolder
-		path := filepath.Join(mediaFolder, "/customArtwork", playlistName+ext)
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
+func findMatchingImage(_ context.Context, resource string, name string) (string, error) {
+	path := filepath.Join(conf.Server.ArtworkFolder, resource, name)
+	for _, ext := range mime.ValidImageExtensions {
+		filename := path + ext
+		if _, err := os.Stat(filename); err == nil {
+			return filename, nil
 		}
 	}
 	return "", errors.New("no matching image found")
