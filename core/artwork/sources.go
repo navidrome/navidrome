@@ -3,6 +3,7 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,8 @@ import (
 	"time"
 
 	"github.com/dhowden/tag"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -191,4 +194,33 @@ func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, err
 		return nil, "", fmt.Errorf("error retrieveing artwork from %s: %s", imageUrl, resp.Status)
 	}
 	return resp.Body, imageUrl.String(), nil
+}
+
+func fromNamedArtwork(ctx context.Context, resource string, names ...string) sourceFunc {
+	return func() (io.ReadCloser, string, error) {
+		for _, name := range names {
+			playlistName := name
+			imagePath, err := findMatchingImage(ctx, resource, playlistName)
+			if err != nil {
+				continue
+			}
+			file, err := os.Open(imagePath)
+			if err != nil {
+				return nil, "", err
+			}
+			return file, imagePath, nil
+		}
+		return nil, "", errors.New("no matching image found")
+	}
+}
+
+func findMatchingImage(_ context.Context, resource string, name string) (string, error) {
+	path := filepath.Join(conf.Server.ArtworkFolder, resource, name)
+	for _, ext := range mime.ValidImageExtensions {
+		filename := path + ext
+		if _, err := os.Stat(filename); err == nil {
+			return filename, nil
+		}
+	}
+	return "", errors.New("no matching image found")
 }

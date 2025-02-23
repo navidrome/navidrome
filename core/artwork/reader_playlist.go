@@ -8,13 +8,9 @@ import (
 	"image/draw"
 	"image/png"
 	"io"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/disintegration/imaging"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -48,37 +44,11 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	ff := []sourceFunc{
-		a.fromPlaylistNamedCover(ctx),
+		fromNamedArtwork(ctx, "playlist", a.pl.ID, a.pl.Name),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	}
 	return selectImageReader(ctx, a.artID, ff...)
-}
-
-func (a *playlistArtworkReader) fromPlaylistNamedCover(ctx context.Context) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		playlistName := a.pl.Name
-		imagePath, err := findMatchingImage(ctx, "playlist", playlistName)
-		if err != nil {
-			return nil, "", err
-		}
-		file, err := os.Open(imagePath)
-		if err != nil {
-			return nil, "", err
-		}
-		return file, filepath.Ext(imagePath), nil
-	}
-}
-
-func findMatchingImage(_ context.Context, resource string, name string) (string, error) {
-	path := filepath.Join(conf.Server.ArtworkFolder, resource, name)
-	for _, ext := range mime.ValidImageExtensions {
-		filename := path + ext
-		if _, err := os.Stat(filename); err == nil {
-			return filename, nil
-		}
-	}
-	return "", errors.New("no matching image found")
 }
 
 func (a *playlistArtworkReader) fromGeneratedTiledCover(ctx context.Context) sourceFunc {
