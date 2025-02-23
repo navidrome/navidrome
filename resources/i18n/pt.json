@@ -30,7 +30,9 @@
         "grouping": "Agrupamento",
         "mood": "Mood",
         "participants": "Outros Participantes",
-        "tags": "Outras Tags"
+        "tags": "Outras Tags",
+        "mappedTags": "Tags mapeadas",
+        "rawTags": "Tags originais"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -124,7 +126,6 @@
         "userName": "Usuário",
         "isAdmin": "Admin?",
         "lastLoginAt": "Últ. Login",
-        "lastAccessAt": "Últ. Acesso",
         "updatedAt": "Últ. Atualização",
         "name": "Nome",
         "password": "Senha",
@@ -132,7 +133,8 @@
         "changePassword": "Trocar Senha?",
         "currentPassword": "Senha Atual",
         "newPassword": "Nova Senha",
-        "token": "Token"
+        "token": "Token",
+        "lastAccessAt": "Últ. Acesso"
       },
       "helperTexts": {
         "name": "Alterações no seu nome só serão refletidas no próximo login"
@@ -393,8 +395,6 @@
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
     "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
-    "remove_missing_title": "Remover arquivos ausentes",
-    "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
     "notifications_blocked": "Você bloqueou notificações para este site nas configurações do seu browser",
     "notifications_not_available": "Este navegador não suporta notificações",
     "lastfmLinkSuccess": "Sua conta no Last.fm foi conectada com sucesso",
@@ -417,7 +417,9 @@
     "shareSuccess": "Link copiado para o clipboard : %{url}",
     "shareFailure": "Erro ao copiar o link %{url} para o clipboard",
     "downloadDialogTitle": "Baixar %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Copie para o clipboard: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Copie para o clipboard: Ctrl+C, Enter",
+    "remove_missing_title": "Remover arquivos ausentes",
+    "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações."
   },
   "menu": {
     "library": "Biblioteca",
@@ -431,7 +433,6 @@
         "language": "Língua",
         "defaultView": "Tela inicial",
         "desktop_notifications": "Notificações",
-        "lastfmNotConfigured": "A API-Key do Last.fm não está configurada",
         "lastfmScrobbling": "Enviar scrobbles para Last.fm",
         "listenBrainzScrobbling": "Enviar scrobbles para ListenBrainz",
         "replaygain": "Modo ReplayGain",
@@ -440,7 +441,8 @@
           "none": "Desligado",
           "album": "Usar ganho do álbum",
           "track": "Usar ganho do faixa"
-        }
+        },
+        "lastfmNotConfigured": "A API-Key do Last.fm não está configurada"
       }
     },
     "albumList": "Álbuns",
