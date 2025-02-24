@@ -132,6 +132,7 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.ScrobbleCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
 			Expect(fake.LastScrobble.ID).To(Equal("123"))
+			Expect(fake.LastScrobble.Participants).To(Equal(track.Participants))
 		})
 
 		It("increments play counts in the DB", func() {
@@ -191,7 +192,6 @@ var _ = Describe("PlayTracker", func() {
 			Expect(artist1.PlayCount).To(Equal(int64(1)))
 			Expect(artist2.PlayCount).To(Equal(int64(1)))
 		})
-
 	})
 
 })
