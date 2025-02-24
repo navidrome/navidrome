@@ -48,7 +48,11 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 		return nil, errors.New("error")
 	}
 	if d, ok := m.data[id]; ok {
-		return d, nil
+		// Intentionally clone the file and remove participants. This should
+		// catch any caller that actually means to call GetWithParticipants
+		res := *d
+		res.Participants = model.Participants{}
+		return &res, nil
 	}
 	return nil, model.ErrNotFound
 }

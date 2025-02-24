@@ -40,7 +40,11 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
 	mf.LibraryID = 1
 	mf.LibraryPath = "music" // Default folder
-	mf.Participants = model.Participants{}
+	mf.Participants = model.Participants{
+		model.RoleArtist: model.ParticipantList{
+			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
+		},
+	}
 	return mf
 }
 
@@ -135,14 +139,6 @@ var _ = BeforeSuite(func() {
 	//	}
 	//}
 
-	mr := NewMediaFileRepository(ctx, conn)
-	for i := range testSongs {
-		err := mr.Put(&testSongs[i])
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
 	for i := range testAlbums {
 		a := testAlbums[i]
@@ -156,6 +152,14 @@ var _ = BeforeSuite(func() {
 	for i := range testArtists {
 		a := testArtists[i]
 		err := arr.Put(&a)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	mr := NewMediaFileRepository(ctx, conn)
+	for i := range testSongs {
+		err := mr.Put(&testSongs[i])
 		if err != nil {
 			panic(err)
 		}
