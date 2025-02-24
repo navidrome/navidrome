@@ -30,9 +30,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 			"enqueue_time":  enqueueTime,
 		})
 		_, err := rawRepo.executeSQL(ins)
-		if err != nil {
-			panic(err)
-		}
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	BeforeEach(func() {
@@ -50,10 +48,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 	AfterEach(func() {
 		del := squirrel.Delete(rawRepo.tableName)
 		_, err := rawRepo.executeSQL(del)
-
-		if err != nil {
-			panic(err)
-		}
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("Without data", func() {
