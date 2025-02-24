@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -17,12 +18,14 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 	var rawRepo sqlRepository
 
 	enqueueTime := time.Date(2025, 01, 01, 00, 00, 00, 00, time.Local)
+	var ids []string
 
 	var insertManually = func(service, userId, mediaFileId string, playTime time.Time) {
+		id := id.NewRandom()
+		ids = append(ids, id)
+
 		ins := squirrel.Insert("scrobble_buffer").SetMap(map[string]interface{}{
-			// This _should_ be short enough such that there will not be a collision
-			// with a randomly generated ID. If ID generation changes, maybe update this
-			"id":            service + userId + mediaFileId,
+			"id":            id,
 			"user_id":       userId,
 			"service":       service,
 			"media_file_id": mediaFileId,
@@ -43,6 +46,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 			tableName: "scrobble_buffer",
 			db:        db,
 		}
+		ids = []string{}
 	})
 
 	AfterEach(func() {
@@ -120,7 +124,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 			})
 
 			It("deletes an item when specified properly", func() {
-				err := scrobble.Dequeue(&model.ScrobbleEntry{ID: "b22221004"})
+				err := scrobble.Dequeue(&model.ScrobbleEntry{ID: ids[3]})
 				Expect(err).ToNot(HaveOccurred())
 
 				count, err := scrobble.Length()
