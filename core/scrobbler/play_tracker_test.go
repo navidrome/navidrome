@@ -68,6 +68,7 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.NowPlayingCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
 			Expect(fake.Track.ID).To(Equal("123"))
+			Expect(fake.Track.Participants).To(Equal(track.Participants))
 		})
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
