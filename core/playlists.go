@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -228,31 +229,39 @@ func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, fol
 	if err != nil {
 		return nil, err
 	}
-	// Normalize paths to be relative to the library root. Search for roots in any library
-	var res []string
+
+	// Create regex patterns for each library path
+	patterns := make([]string, len(libs))
+	for i, lib := range libs {
+		cleanPath := filepath.Clean(lib.Path)
+		escapedPath := regexp.QuoteMeta(cleanPath)
+		patterns[i] = fmt.Sprintf("^%s(?:/|$)", escapedPath)
+	}
+	// Combine all patterns into a single regex
+	combinedPattern := strings.Join(patterns, "|")
+	libRegex := regexp.MustCompile(combinedPattern)
+
+	res := make([]string, 0, len(lines))
 	for idx, line := range lines {
 		var libPath string
 		var filePath string
+
 		if folder != nil && !filepath.IsAbs(line) {
 			libPath = folder.LibraryPath
 			filePath = filepath.Join(folder.AbsolutePath(), line)
 		} else {
-			for _, lib := range libs {
-				if strings.HasPrefix(line, lib.Path) {
-					libPath = lib.Path
-					filePath = line
-					break
-				}
+			cleanLine := filepath.Clean(line)
+			if libPath = libRegex.FindString(cleanLine); libPath != "" {
+				filePath = cleanLine
 			}
 		}
+
 		if libPath != "" {
-			var err error
-			filePath, err = filepath.Rel(libPath, filePath)
-			if err != nil {
+			if rel, err := filepath.Rel(libPath, filePath); err == nil {
+				res = append(res, rel)
+			} else {
 				log.Trace(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "folder", folder, err)
-				continue
 			}
-			res = append(res, filePath)
 		} else {
 			log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
 		}

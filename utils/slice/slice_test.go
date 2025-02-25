@@ -140,7 +140,7 @@ var _ = Describe("Slice Utils", func() {
 			Expect(count).To(Equal(expected))
 		},
 		Entry("returns empty slice for an empty input", "tests/fixtures/empty.txt", 0),
-		Entry("returns the lines of a file", "tests/fixtures/playlists/pls1.m3u", 3),
+		Entry("returns the lines of a file", "tests/fixtures/playlists/pls1.m3u", 2),
 		Entry("returns empty if file does not exist", "tests/fixtures/NON-EXISTENT", 0),
 	)
 

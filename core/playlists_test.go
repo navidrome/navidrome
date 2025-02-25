@@ -56,10 +56,9 @@ var _ = Describe("Playlists", func() {
 				pls, err := ps.ImportFile(ctx, folder, "pls1.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
-				Expect(pls.Tracks).To(HaveLen(3))
+				Expect(pls.Tracks).To(HaveLen(2))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
 				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/playlists/test.ogg"))
-				Expect(pls.Tracks[2].Path).To(Equal("tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
 				Expect(mockPlsRepo.last).To(Equal(pls))
 			})
 

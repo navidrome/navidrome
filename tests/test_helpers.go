@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -18,7 +17,7 @@ func TempFileName(t testingT, prefix, suffix string) string {
 	return filepath.Join(t.TempDir(), prefix+id.NewRandom()+suffix)
 }
 
-func TempFile(t testingT, prefix, suffix string) (fs.File, string, error) {
+func TempFile(t testingT, prefix, suffix string) (*os.File, string, error) {
 	name := TempFileName(t, prefix, suffix)
 	f, err := os.Create(name)
 	return f, name, err
