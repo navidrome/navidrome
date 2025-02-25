@@ -209,7 +209,7 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 	return db.MockedRadio
 }
 
-func (db *MockDataStore) WithTx(block func(model.DataStore) error) error {
+func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
 	return block(db)
 }
 

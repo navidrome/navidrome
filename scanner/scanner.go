@@ -128,7 +128,7 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 				log.Debug(ctx, "Scanner: No changes detected, skipping GC")
 			}
 			return nil
-		})
+		}, "scanner: GC")
 	}
 }
 
@@ -155,7 +155,7 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 			}
 			log.Debug(ctx, "Scanner: Updated tag counts", "elapsed", time.Since(start))
 			return nil
-		})
+		}, "scanner: refresh stats")
 	}
 }
 
@@ -189,7 +189,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 				}
 			}
 			return nil
-		})
+		}, "scanner: update libraries")
 	}
 }
 

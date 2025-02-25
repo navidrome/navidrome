@@ -113,7 +113,7 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 		p.refreshed.Add(1)
 		p.state.changesDetected.Store(true)
 		return nil
-	})
+	}, "scanner: refresh album")
 	if err != nil {
 		return nil, err
 	}
@@ -153,5 +153,5 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 		log.Debug(p.ctx, "Scanner: Refreshed artist annotations", "artists", cnt, "elapsed", time.Since(start))
 		p.state.changesDetected.Store(true)
 		return nil
-	})
+	}, "scanner: finalize phaseRefreshAlbums")
 }
