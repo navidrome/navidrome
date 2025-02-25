@@ -101,7 +101,7 @@ var _ = Describe("Playlists", func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
 			ps = NewPlaylists(ds)
-			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}})
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
 
@@ -110,11 +110,13 @@ var _ = Describe("Playlists", func() {
 				"tests/test.mp3",
 				"tests/test.ogg",
 				"tests/01 Invisible (RED) Edit Version.mp3",
+				"downloads/newfile.flac",
 			}
 			m3u := strings.Join([]string{
 				"#PLAYLIST:playlist 1",
 				"/music/tests/test.mp3",
 				"/music/tests/test.ogg",
+				"/new/downloads/newfile.flac",
 				"file:///music/tests/01%20Invisible%20(RED)%20Edit%20Version.mp3",
 			}, "\n")
 			f := strings.NewReader(m3u)
@@ -124,10 +126,11 @@ var _ = Describe("Playlists", func() {
 			Expect(pls.OwnerID).To(Equal("123"))
 			Expect(pls.Name).To(Equal("playlist 1"))
 			Expect(pls.Sync).To(BeFalse())
-			Expect(pls.Tracks).To(HaveLen(3))
+			Expect(pls.Tracks).To(HaveLen(4))
 			Expect(pls.Tracks[0].Path).To(Equal("tests/test.mp3"))
 			Expect(pls.Tracks[1].Path).To(Equal("tests/test.ogg"))
-			Expect(pls.Tracks[2].Path).To(Equal("tests/01 Invisible (RED) Edit Version.mp3"))
+			Expect(pls.Tracks[2].Path).To(Equal("downloads/newfile.flac"))
+			Expect(pls.Tracks[3].Path).To(Equal("tests/01 Invisible (RED) Edit Version.mp3"))
 			Expect(mockPlsRepo.last).To(Equal(pls))
 		})
 
