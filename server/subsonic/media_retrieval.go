@@ -67,9 +67,6 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	square := p.BoolOr("square", false)
 
 	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
-	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
-
 	switch {
 	case errors.Is(err, context.Canceled):
 		return nil, nil
@@ -82,6 +79,9 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	}
 
 	defer imgReader.Close()
+	w.Header().Set("cache-control", "public, max-age=315360000")
+	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
+
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
