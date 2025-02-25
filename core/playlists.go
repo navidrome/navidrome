@@ -188,20 +188,14 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			if !model.IsAudioFile(line) {
 				continue
 			}
-			line = filepath.Clean(line)
-			if folder != nil && !filepath.IsAbs(line) {
-				line = filepath.Join(folder.AbsolutePath(), line)
-				var err error
-				line, err = filepath.Rel(folder.LibraryPath, line)
-				if err != nil {
-					log.Trace(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "folder", folder, err)
-					continue
-				}
-			}
 			filteredLines = append(filteredLines, line)
 		}
-		filteredLines = slice.Map(filteredLines, filepath.ToSlash)
-		found, err := mediaFileRepository.FindByPaths(filteredLines)
+		paths, err := s.normalizePaths(ctx, pls, folder, filteredLines)
+		if err != nil {
+			log.Warn(ctx, "Error normalizing paths in playlist", "playlist", pls.Name, err)
+			continue
+		}
+		found, err := mediaFileRepository.FindByPaths(paths)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
@@ -210,7 +204,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		for idx := range found {
 			existing[strings.ToLower(found[idx].Path)] = idx
 		}
-		for _, path := range filteredLines {
+		for _, path := range paths {
 			idx, ok := existing[strings.ToLower(path)]
 			if ok {
 				mfs = append(mfs, found[idx])
@@ -226,6 +220,44 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	pls.AddMediaFiles(mfs)
 
 	return nil
+}
+
+// TODO This won't work for multiple libraries
+func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, folder *model.Folder, lines []string) ([]string, error) {
+	libs, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+	// Normalize paths to be relative to the library root. Search for roots in any library
+	var res []string
+	for idx, line := range lines {
+		var libPath string
+		var filePath string
+		if folder != nil && !filepath.IsAbs(line) {
+			libPath = folder.LibraryPath
+			filePath = filepath.Join(folder.AbsolutePath(), line)
+		} else {
+			for _, lib := range libs {
+				if strings.HasPrefix(line, lib.Path) {
+					libPath = lib.Path
+					filePath = line
+					break
+				}
+			}
+		}
+		if libPath != "" {
+			var err error
+			filePath, err = filepath.Rel(libPath, filePath)
+			if err != nil {
+				log.Trace(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "folder", folder, err)
+				continue
+			}
+			res = append(res, filePath)
+		} else {
+			log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
+		}
+	}
+	return slice.Map(res, filepath.ToSlash), nil
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
