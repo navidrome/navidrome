@@ -165,7 +165,7 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
 	}
-	indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres()
+	indexes, err := cds.ds.Album(cds.ctx).GetAll()
 	if err != nil {
 		fmt.Printf("Error retrieving Indexes: %+v", err)
 		return nil, err
@@ -228,7 +228,7 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["RecentAlbum"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
 	}
-	indexes, err := cds.ds.Album(cds.ctx).GetAllWithoutGenres(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
+	indexes, err := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Sort: "recently_added", Order: "desc", Max: 25})
 	if err != nil {
 		fmt.Printf("Error retrieving Indexes: %+v", err)
 		return nil, err
@@ -245,7 +245,7 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 
 func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
 	if matchResults["Playlist"] != "" {
-		x, err := cds.ds.Playlist(cds.ctx).GetWithTracks(matchResults["Playlist"], false)
+		x, err := cds.ds.Playlist(cds.ctx).GetWithTracks(matchResults["Playlist"], false, false)
 		if err != nil {
 			log.Error("Error fetching playlist", "playlist", matchResults["Playlist"], err)
 			return ret, nil
