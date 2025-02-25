@@ -225,21 +225,10 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 
 // TODO This won't work for multiple libraries
 func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, folder *model.Folder, lines []string) ([]string, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libRegex, err := s.compileLibraryPaths(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	// Create regex patterns for each library path
-	patterns := make([]string, len(libs))
-	for i, lib := range libs {
-		cleanPath := filepath.Clean(lib.Path)
-		escapedPath := regexp.QuoteMeta(cleanPath)
-		patterns[i] = fmt.Sprintf("^%s(?:/|$)", escapedPath)
-	}
-	// Combine all patterns into a single regex
-	combinedPattern := strings.Join(patterns, "|")
-	libRegex := regexp.MustCompile(combinedPattern)
 
 	res := make([]string, 0, len(lines))
 	for idx, line := range lines {
@@ -260,13 +249,36 @@ func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, fol
 			if rel, err := filepath.Rel(libPath, filePath); err == nil {
 				res = append(res, rel)
 			} else {
-				log.Trace(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "folder", folder, err)
+				log.Debug(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "libPath", libPath,
+					"filePath", filePath, err)
 			}
 		} else {
 			log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
 		}
 	}
 	return slice.Map(res, filepath.ToSlash), nil
+}
+
+func (s *playlists) compileLibraryPaths(ctx context.Context) (*regexp.Regexp, error) {
+	libs, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create regex patterns for each library path
+	patterns := make([]string, len(libs))
+	for i, lib := range libs {
+		cleanPath := filepath.Clean(lib.Path)
+		escapedPath := regexp.QuoteMeta(cleanPath)
+		patterns[i] = fmt.Sprintf("^%s(?:/|$)", escapedPath)
+	}
+	// Combine all patterns into a single regex
+	combinedPattern := strings.Join(patterns, "|")
+	re, err := regexp.Compile(combinedPattern)
+	if err != nil {
+		return nil, fmt.Errorf("compiling library paths `%s`: %w", combinedPattern, err)
+	}
+	return re, nil
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
