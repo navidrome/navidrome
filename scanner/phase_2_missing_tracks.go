@@ -159,7 +159,7 @@ func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTr
 			}
 		}
 		return nil
-	})
+	}, "scanner: process missing tracks")
 	if err != nil {
 		return nil, err
 	}

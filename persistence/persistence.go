@@ -118,14 +118,28 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 	return nil
 }
 
-func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	conn, ok := s.db.(*dbx.DB)
-	if !ok {
+func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
+	var msg string
+	if len(scope) > 0 {
+		msg = scope[0]
+	}
+	start := time.Now()
+	conn, inTx := s.db.(*dbx.DB)
+	if !inTx {
+		log.Trace("Nested Transaction started", "scope", msg)
 		conn = dbx.NewFromDB(db.Db(), db.Driver)
+	} else {
+		log.Trace("Transaction started", "scope", msg)
 	}
 	return conn.Transactional(func(tx *dbx.Tx) error {
 		newDb := &SQLStore{db: tx}
-		return block(newDb)
+		err := block(newDb)
+		if !inTx {
+			log.Trace("Nested Transaction finished", "scope", msg, "elapsed", time.Since(start), err)
+		} else {
+			log.Trace("Transaction finished", "scope", msg, "elapsed", time.Since(start), err)
+		}
+		return err
 	})
 }
 
