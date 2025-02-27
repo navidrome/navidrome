@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -113,6 +114,14 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 	}
 	event := &events.RefreshResource{}
 	err := api.ds.WithTx(func(tx model.DataStore) error {
+		// Workaround to force the transaction to be upgraded to immediate mode to avoid deadlocks
+		// See https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/
+		tmpID := uuid.NewString()
+		_ = tx.Property(ctx).Put("tmp_"+tmpID, "")
+		defer func() {
+			_ = tx.Property(ctx).Delete("tmp_" + tmpID)
+		}()
+
 		for _, id := range ids {
 			exist, err := tx.Album(ctx).Exists(id)
 			if err != nil {
