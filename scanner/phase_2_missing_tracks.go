@@ -106,79 +106,75 @@ func (p *phaseMissingTracks) stages() []ppl.Stage[*missingTracks] {
 }
 
 func (p *phaseMissingTracks) processMissingTracks(in *missingTracks) (*missingTracks, error) {
-	err := p.ds.WithTx(func(tx model.DataStore) error {
-		for _, ms := range in.missing {
-			var exactMatch model.MediaFile
-			var equivalentMatch model.MediaFile
+	for _, ms := range in.missing {
+		var exactMatch model.MediaFile
+		var equivalentMatch model.MediaFile
 
-			// Identify exact and equivalent matches
-			for _, mt := range in.matched {
-				if ms.Equals(mt) {
-					exactMatch = mt
-					break // Prioritize exact match
-				}
-				if ms.IsEquivalent(mt) {
-					equivalentMatch = mt
-				}
+		// Identify exact and equivalent matches
+		for _, mt := range in.matched {
+			if ms.Equals(mt) {
+				exactMatch = mt
+				break // Prioritize exact match
 			}
-
-			// Use the exact match if found
-			if exactMatch.ID != "" {
-				log.Debug(p.ctx, "Scanner: Found missing track in a new place", "missing", ms.Path, "movedTo", exactMatch.Path, "lib", in.lib.Name)
-				err := p.moveMatched(tx, exactMatch, ms)
-				if err != nil {
-					log.Error(p.ctx, "Scanner: Error moving matched track", "missing", ms.Path, "movedTo", exactMatch.Path, "lib", in.lib.Name, err)
-					return err
-				}
-				p.totalMatched.Add(1)
-				continue
-			}
-
-			// If there is only one missing and one matched track, consider them equivalent (same PID)
-			if len(in.missing) == 1 && len(in.matched) == 1 {
-				singleMatch := in.matched[0]
-				log.Debug(p.ctx, "Scanner: Found track with same persistent ID in a new place", "missing", ms.Path, "movedTo", singleMatch.Path, "lib", in.lib.Name)
-				err := p.moveMatched(tx, singleMatch, ms)
-				if err != nil {
-					log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "movedTo", singleMatch.Path, "lib", in.lib.Name, err)
-					return err
-				}
-				p.totalMatched.Add(1)
-				continue
-			}
-
-			// Use the equivalent match if no other better match was found
-			if equivalentMatch.ID != "" {
-				log.Debug(p.ctx, "Scanner: Found missing track with same base path", "missing", ms.Path, "movedTo", equivalentMatch.Path, "lib", in.lib.Name)
-				err := p.moveMatched(tx, equivalentMatch, ms)
-				if err != nil {
-					log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "movedTo", equivalentMatch.Path, "lib", in.lib.Name, err)
-					return err
-				}
-				p.totalMatched.Add(1)
+			if ms.IsEquivalent(mt) {
+				equivalentMatch = mt
 			}
 		}
-		return nil
-	}, "scanner: process missing tracks")
-	if err != nil {
-		return nil, err
+
+		// Use the exact match if found
+		if exactMatch.ID != "" {
+			log.Debug(p.ctx, "Scanner: Found missing track in a new place", "missing", ms.Path, "movedTo", exactMatch.Path, "lib", in.lib.Name)
+			err := p.moveMatched(exactMatch, ms)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error moving matched track", "missing", ms.Path, "movedTo", exactMatch.Path, "lib", in.lib.Name, err)
+				return nil, err
+			}
+			p.totalMatched.Add(1)
+			continue
+		}
+
+		// If there is only one missing and one matched track, consider them equivalent (same PID)
+		if len(in.missing) == 1 && len(in.matched) == 1 {
+			singleMatch := in.matched[0]
+			log.Debug(p.ctx, "Scanner: Found track with same persistent ID in a new place", "missing", ms.Path, "movedTo", singleMatch.Path, "lib", in.lib.Name)
+			err := p.moveMatched(singleMatch, ms)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "movedTo", singleMatch.Path, "lib", in.lib.Name, err)
+				return nil, err
+			}
+			p.totalMatched.Add(1)
+			continue
+		}
+
+		// Use the equivalent match if no other better match was found
+		if equivalentMatch.ID != "" {
+			log.Debug(p.ctx, "Scanner: Found missing track with same base path", "missing", ms.Path, "movedTo", equivalentMatch.Path, "lib", in.lib.Name)
+			err := p.moveMatched(equivalentMatch, ms)
+			if err != nil {
+				log.Error(p.ctx, "Scanner: Error updating matched track", "missing", ms.Path, "movedTo", equivalentMatch.Path, "lib", in.lib.Name, err)
+				return nil, err
+			}
+			p.totalMatched.Add(1)
+		}
 	}
 	return in, nil
 }
 
-func (p *phaseMissingTracks) moveMatched(tx model.DataStore, mt, ms model.MediaFile) error {
-	discardedID := mt.ID
-	mt.ID = ms.ID
-	err := tx.MediaFile(p.ctx).Put(&mt)
-	if err != nil {
-		return fmt.Errorf("update matched track: %w", err)
-	}
-	err = tx.MediaFile(p.ctx).Delete(discardedID)
-	if err != nil {
-		return fmt.Errorf("delete discarded track: %w", err)
-	}
-	p.state.changesDetected.Store(true)
-	return nil
+func (p *phaseMissingTracks) moveMatched(mt, ms model.MediaFile) error {
+	return p.ds.WithTx(func(tx model.DataStore) error {
+		discardedID := mt.ID
+		mt.ID = ms.ID
+		err := tx.MediaFile(p.ctx).Put(&mt)
+		if err != nil {
+			return fmt.Errorf("update matched track: %w", err)
+		}
+		err = tx.MediaFile(p.ctx).Delete(discardedID)
+		if err != nil {
+			return fmt.Errorf("delete discarded track: %w", err)
+		}
+		p.state.changesDetected.Store(true)
+		return nil
+	})
 }
 
 func (p *phaseMissingTracks) finalize(err error) error {

@@ -213,6 +213,10 @@ func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...s
 	return block(db)
 }
 
+func (db *MockDataStore) WithTxImmediate(block func(tx model.DataStore) error, label ...string) error {
+	return block(db)
+}
+
 func (db *MockDataStore) Resource(context.Context, any) model.ResourceRepository {
 	return struct{ model.ResourceRepository }{}
 }

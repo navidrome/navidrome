@@ -42,5 +42,6 @@ type DataStore interface {
 	Resource(ctx context.Context, model interface{}) ResourceRepository
 
 	WithTx(block func(tx DataStore) error, scope ...string) error
+	WithTxImmediate(block func(tx DataStore) error, scope ...string) error
 	GC(ctx context.Context) error
 }

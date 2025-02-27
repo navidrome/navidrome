@@ -104,19 +104,13 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 		return nil, nil
 	}
 	start := time.Now()
-	err := p.ds.WithTx(func(tx model.DataStore) error {
-		err := tx.Album(p.ctx).Put(album)
-		log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start))
-		if err != nil {
-			return fmt.Errorf("refreshing album %s: %w", album.ID, err)
-		}
-		p.refreshed.Add(1)
-		p.state.changesDetected.Store(true)
-		return nil
-	}, "scanner: refresh album")
+	err := p.ds.Album(p.ctx).Put(album)
+	log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start), err)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("refreshing album %s: %w", album.ID, err)
 	}
+	p.refreshed.Add(1)
+	p.state.changesDetected.Store(true)
 	return album, nil
 }
 
@@ -135,23 +129,21 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 		log.Debug(p.ctx, "Scanner: No changes detected, skipping refreshing annotations")
 		return nil
 	}
-	return p.ds.WithTx(func(tx model.DataStore) error {
-		// Refresh album annotations
-		start := time.Now()
-		cnt, err := tx.Album(p.ctx).RefreshPlayCounts()
-		if err != nil {
-			return fmt.Errorf("refreshing album annotations: %w", err)
-		}
-		log.Debug(p.ctx, "Scanner: Refreshed album annotations", "albums", cnt, "elapsed", time.Since(start))
+	// Refresh album annotations
+	start := time.Now()
+	cnt, err := p.ds.Album(p.ctx).RefreshPlayCounts()
+	if err != nil {
+		return fmt.Errorf("refreshing album annotations: %w", err)
+	}
+	log.Debug(p.ctx, "Scanner: Refreshed album annotations", "albums", cnt, "elapsed", time.Since(start))
 
-		// Refresh artist annotations
-		start = time.Now()
-		cnt, err = tx.Artist(p.ctx).RefreshPlayCounts()
-		if err != nil {
-			return fmt.Errorf("refreshing artist annotations: %w", err)
-		}
-		log.Debug(p.ctx, "Scanner: Refreshed artist annotations", "artists", cnt, "elapsed", time.Since(start))
-		p.state.changesDetected.Store(true)
-		return nil
-	}, "scanner: finalize phaseRefreshAlbums")
+	// Refresh artist annotations
+	start = time.Now()
+	cnt, err = p.ds.Artist(p.ctx).RefreshPlayCounts()
+	if err != nil {
+		return fmt.Errorf("refreshing artist annotations: %w", err)
+	}
+	log.Debug(p.ctx, "Scanner: Refreshed artist annotations", "artists", cnt, "elapsed", time.Since(start))
+	p.state.changesDetected.Store(true)
+	return nil
 }
