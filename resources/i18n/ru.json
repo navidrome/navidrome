@@ -26,7 +26,13 @@
         "bpm": "BPM",
         "playDate": "Последнее воспроизведение",
         "channels": "Каналы",
-        "createdAt": "Дата добавления"
+        "createdAt": "Дата добавления",
+        "grouping": "",
+        "mood": "",
+        "participants": "",
+        "tags": "",
+        "mappedTags": "",
+        "rawTags": ""
       },
       "actions": {
         "addToQueue": "В очередь",
@@ -58,7 +64,13 @@
         "originalDate": "Оригинал",
         "releaseDate": "Релиз",
         "releases": "Релиз |||| Релиза |||| Релизов",
-        "released": "Релиз"
+        "released": "Релиз",
+        "recordLabel": "",
+        "catalogNum": "",
+        "releaseType": "",
+        "grouping": "",
+        "media": "",
+        "mood": ""
       },
       "actions": {
         "playAll": "Играть",
@@ -89,7 +101,23 @@
         "playCount": "Проигран",
         "rating": "Рейтинг",
         "genre": "Жанр",
-        "size": "Размер"
+        "size": "Размер",
+        "role": ""
+      },
+      "roles": {
+        "albumartist": "",
+        "artist": "",
+        "composer": "",
+        "conductor": "",
+        "lyricist": "",
+        "arranger": "",
+        "producer": "",
+        "director": "",
+        "engineer": "",
+        "mixer": "",
+        "remixer": "",
+        "djmixer": "",
+        "performer": ""
       }
     },
     "user": {
@@ -135,11 +163,11 @@
       }
     },
     "transcoding": {
-      "name": "Транскодирование |||| Транскодирование",
+      "name": "Транскодирование  |||| Транскодирование",
       "fields": {
         "name": "Название",
         "targetFormat": "Целевой формат",
-        "defaultBitRate": "Стандартный битрейт",
+        "defaultBitRate": "Битрейт по умолчанию",
         "command": "Команда"
       }
     },
@@ -183,9 +211,9 @@
       }
     },
     "share": {
-      "name": "Ссылка доступа |||| Ссылки доступа",
+      "name": "Общий доступ |||| Общий доступ",
       "fields": {
-        "username": "Кто поделился",
+        "username": "Поделился",
         "url": "Ссылка",
         "description": "Описание",
         "contents": "Содержание",
@@ -194,9 +222,23 @@
         "visitCount": "Посещения",
         "format": "Формат",
         "maxBitRate": "Макс. Битрейт",
-        "updatedAt": "Обновлено",
+        "updatedAt": "Обновлено в",
         "createdAt": "Создано",
-        "downloadable": "Разрешить скачивание?"
+        "downloadable": "Разрешить загрузку?"
+      }
+    },
+    "missing": {
+      "name": "",
+      "fields": {
+        "path": "",
+        "size": "",
+        "updatedAt": ""
+      },
+      "actions": {
+        "remove": ""
+      },
+      "notifications": {
+        "removed": ""
       }
     }
   },
@@ -213,7 +255,7 @@
       "sign_in": "Войти",
       "sign_in_error": "Ошибка аутентификации, попробуйте снова",
       "logout": "Выйти",
-      "insightsCollectionNote": "Navidrome собирает анонимные данные об использовании для\nулучшения проекта. Нажмите [здесь], чтобы\nузнать больше или отказаться"
+      "insightsCollectionNote": ""
     },
     "validation": {
       "invalidChars": "Пожалуйста, используйте только буквы и цифры",
@@ -375,7 +417,9 @@
     "shareSuccess": "URL скопирован в буфер обмена: %{url}",
     "shareFailure": "Ошибка копирования URL-адреса %{url} в буфер обмена",
     "downloadDialogTitle": "Скачать %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Копировать в буфер обмена: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Копировать в буфер обмена: Ctrl+C, Enter",
+    "remove_missing_title": "",
+    "remove_missing_content": ""
   },
   "menu": {
     "library": "Библиотека",
@@ -389,7 +433,6 @@
         "language": "Язык",
         "defaultView": "Вид по умолчанию",
         "desktop_notifications": "Уведомления на рабочем столе",
-        "lastfmNotConfigured": "API-ключ Last.fm не настроен",
         "lastfmScrobbling": "Скробблинг Last.fm",
         "listenBrainzScrobbling": "Скробблинг ListenBrainz",
         "replaygain": "ReplayGain режим",
@@ -398,7 +441,8 @@
           "none": "Отключить",
           "album": "Использовать усиление альбома",
           "track": "Использовать усиление трека"
-        }
+        },
+        "lastfmNotConfigured": ""
       }
     },
     "albumList": "Альбомы",
@@ -435,12 +479,12 @@
     "links": {
       "homepage": "Главная",
       "source": "Код",
-      "featureRequests": "Предложения"
-    },
-    "lastInsightsCollection": "Последний сбор данных",
-    "insights": {
-      "disabled": "Отключено",
-      "waiting": "Пока нет"
+      "featureRequests": "Предложения",
+      "lastInsightsCollection": "",
+      "insights": {
+        "disabled": "",
+        "waiting": ""
+      }
     }
   },
   "activity": {

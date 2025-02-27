@@ -26,7 +26,13 @@
         "bpm": "BPM",
         "playDate": "最後の再生",
         "channels": "チャンネル",
-        "createdAt": "追加日"
+        "createdAt": "追加日",
+        "grouping": "",
+        "mood": "",
+        "participants": "",
+        "tags": "",
+        "mappedTags": "",
+        "rawTags": ""
       },
       "actions": {
         "addToQueue": "最後に再生",
@@ -58,7 +64,13 @@
         "originalDate": "オリジナルの日付",
         "releaseDate": "リリース日",
         "releases": "リリース",
-        "released": "リリース"
+        "released": "リリース",
+        "recordLabel": "",
+        "catalogNum": "",
+        "releaseType": "",
+        "grouping": "",
+        "media": "",
+        "mood": ""
       },
       "actions": {
         "playAll": "再生",
@@ -89,7 +101,23 @@
         "playCount": "再生数",
         "rating": "レート",
         "genre": "ジャンル",
-        "size": "サイズ"
+        "size": "サイズ",
+        "role": ""
+      },
+      "roles": {
+        "albumartist": "",
+        "artist": "",
+        "composer": "",
+        "conductor": "",
+        "lyricist": "",
+        "arranger": "",
+        "producer": "",
+        "director": "",
+        "engineer": "",
+        "mixer": "",
+        "remixer": "",
+        "djmixer": "",
+        "performer": ""
       }
     },
     "user": {
@@ -198,6 +226,20 @@
         "createdAt": "作成日",
         "downloadable": "ダウンロードを許可しますか？"
       }
+    },
+    "missing": {
+      "name": "",
+      "fields": {
+        "path": "",
+        "size": "",
+        "updatedAt": ""
+      },
+      "actions": {
+        "remove": ""
+      },
+      "notifications": {
+        "removed": ""
+      }
     }
   },
   "ra": {
@@ -212,7 +254,8 @@
       "password": "パスワード",
       "sign_in": "ログイン",
       "sign_in_error": "認証に失敗しました。入力を確認してください",
-      "logout": "ログアウト"
+      "logout": "ログアウト",
+      "insightsCollectionNote": "Navidromeでは、プロジェクトの改善に役立てるため、匿名の利用データを収集しています。詳しくは [here] をクリックしてください。"
     },
     "validation": {
       "invalidChars": "文字と数字のみを使用してください",
@@ -374,7 +417,9 @@
     "shareSuccess": "コピーしました: %{url}",
     "shareFailure": "コピーに失敗しました %{url}",
     "downloadDialogTitle": "ダウンロード %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter"
+    "shareCopyToClipboard": "クリップボードへコピー: Ctrl+C, Enter",
+    "remove_missing_title": "",
+    "remove_missing_content": ""
   },
   "menu": {
     "library": "ライブラリ",
@@ -396,7 +441,8 @@
           "none": "無効",
           "album": "アルバムゲインを使う",
           "track": "トラックゲインを使う"
-        }
+        },
+        "lastfmNotConfigured": "Last.fmのAPIキーが設定されていません"
       }
     },
     "albumList": "アルバム",
@@ -433,7 +479,12 @@
     "links": {
       "homepage": "ホームページ",
       "source": "ソースコード",
-      "featureRequests": "機能リクエスト"
+      "featureRequests": "機能リクエスト",
+      "lastInsightsCollection": "最後のデータ収集",
+      "insights": {
+        "disabled": "無効",
+        "waiting": "待機中"
+      }
     }
   },
   "activity": {

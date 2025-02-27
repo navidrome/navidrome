@@ -26,7 +26,13 @@
         "bpm": "BPM",
         "playDate": "Últimas reproducciones",
         "channels": "Canales",
-        "createdAt": "Creado el"
+        "createdAt": "Creado el",
+        "grouping": "",
+        "mood": "",
+        "participants": "",
+        "tags": "",
+        "mappedTags": "",
+        "rawTags": ""
       },
       "actions": {
         "addToQueue": "Reproducir después",
@@ -58,7 +64,13 @@
         "originalDate": "Original",
         "releaseDate": "Publicado",
         "releases": "Lanzamiento |||| Lanzamientos",
-        "released": "Publicado"
+        "released": "Publicado",
+        "recordLabel": "",
+        "catalogNum": "",
+        "releaseType": "",
+        "grouping": "",
+        "media": "",
+        "mood": ""
       },
       "actions": {
         "playAll": "Reproducir",
@@ -73,8 +85,8 @@
       "lists": {
         "all": "Todos",
         "random": "Aleatorio",
-        "recentlyAdded": "Añadidos recientemente",
-        "recentlyPlayed": "Reproducidos recientemente",
+        "recentlyAdded": "Recientes",
+        "recentlyPlayed": "Recientes",
         "mostPlayed": "Más reproducidos",
         "starred": "Favoritos",
         "topRated": "Los mejores calificados"
@@ -89,7 +101,23 @@
         "playCount": "Reproducciones",
         "rating": "Calificación",
         "genre": "Género",
-        "size": "Tamaño"
+        "size": "Tamaño",
+        "role": ""
+      },
+      "roles": {
+        "albumartist": "",
+        "artist": "",
+        "composer": "",
+        "conductor": "",
+        "lyricist": "",
+        "arranger": "",
+        "producer": "",
+        "director": "",
+        "engineer": "",
+        "mixer": "",
+        "remixer": "",
+        "djmixer": "",
+        "performer": ""
       }
     },
     "user": {
@@ -197,6 +225,20 @@
         "updatedAt": "Actualizado el",
         "createdAt": "Creado el",
         "downloadable": "¿Permitir descargas?"
+      }
+    },
+    "missing": {
+      "name": "",
+      "fields": {
+        "path": "",
+        "size": "",
+        "updatedAt": ""
+      },
+      "actions": {
+        "remove": ""
+      },
+      "notifications": {
+        "removed": ""
       }
     }
   },
@@ -375,7 +417,9 @@
     "shareSuccess": "URL copiada al portapapeles: %{url}",
     "shareFailure": "Error al copiar la URL %{url} al portapapeles",
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro"
+    "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro",
+    "remove_missing_title": "",
+    "remove_missing_content": ""
   },
   "menu": {
     "library": "Biblioteca",

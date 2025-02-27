@@ -26,7 +26,13 @@
         "bpm": "BPM",
         "playDate": "Son Oynatılma",
         "channels": "Kanal",
-        "createdAt": "Eklenme tarihi"
+        "createdAt": "Eklenme tarihi",
+        "grouping": "Gruplama",
+        "mood": "Mod",
+        "participants": "Ek katılımcılar",
+        "tags": "Ek Etiketler",
+        "mappedTags": "Eşlenen etiketler",
+        "rawTags": "Ham etiketler"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -58,7 +64,13 @@
         "originalDate": "Orijinal",
         "releaseDate": "Yayınlanma Tarihi",
         "releases": "Yayınlanan |||| Yayınlananlar",
-        "released": "Yayınlandı"
+        "released": "Yayınlandı",
+        "recordLabel": "Etiket",
+        "catalogNum": "Katalog Numarası",
+        "releaseType": "Tür",
+        "grouping": "Gruplama",
+        "media": "Medya",
+        "mood": "Mod"
       },
       "actions": {
         "playAll": "Oynat",
@@ -89,7 +101,23 @@
         "playCount": "Oynatmalar",
         "rating": "Derecelendirme",
         "genre": "Tür",
-        "size": "Boyut"
+        "size": "Boyut",
+        "role": "Rol"
+      },
+      "roles": {
+        "albumartist": "Albüm Sanatçısı |||| Albüm Sanatçısı",
+        "artist": "Sanatçı |||| Sanatçı",
+        "composer": "Besteci |||| Besteci",
+        "conductor": "Şef |||| Şef",
+        "lyricist": "Söz Yazarı |||| Söz Yazarı",
+        "arranger": "Düzenleyici |||| Düzenleyici",
+        "producer": "Yapımcı |||| Yapımcı",
+        "director": "Yönetmen |||| Yönetmen",
+        "engineer": "Teknisyen |||| Teknisyen",
+        "mixer": "Mikser |||| Mikser",
+        "remixer": "Remiks |||| Remiks",
+        "djmixer": "DJ Mikseri |||| DJ Mikseri",
+        "performer": "Sanatçı |||| Sanatçı"
       }
     },
     "user": {
@@ -198,6 +226,20 @@
         "createdAt": "Oluşturma Tarihi",
         "downloadable": "İndirmelere İzin Ver"
       }
+    },
+    "missing": {
+      "name": "Eksik Dosya |||| Eksik Dosyalar",
+      "fields": {
+        "path": "Yol",
+        "size": "Boyut",
+        "updatedAt": "Kaybolma"
+      },
+      "actions": {
+        "remove": "Kaldır"
+      },
+      "notifications": {
+        "removed": "Eksik dosya(lar) kaldırıldı"
+      }
     }
   },
   "ra": {
@@ -275,7 +317,7 @@
       "loading": "Yükleniyor",
       "not_found": "Bulunamadı",
       "show": "%{name} #%{id}",
-      "empty": "Henüz %{name} Oluşturulmadı.",
+      "empty": "%{name} henüz yok.",
       "invite": "Bir tane oluşturmak ister misin?"
     },
     "input": {
@@ -375,7 +417,9 @@
     "shareSuccess": "URL panoya kopyalandı: %{url}",
     "shareFailure": "%{url} panoya kopyalanırken hata oluştu",
     "downloadDialogTitle": "%{resource}: '%{name}' (%{size}) dosyasını indirin",
-    "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter",
+    "remove_missing_title": "Eksik dosyaları kaldır",
+    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır."
   },
   "menu": {
     "library": "Kütüphane",
