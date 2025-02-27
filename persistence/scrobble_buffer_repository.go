@@ -6,13 +6,27 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
 type scrobbleBufferRepository struct {
 	sqlRepository
+}
+
+type dbScrobbleBuffer struct {
+	dbMediaFile
+	*model.ScrobbleEntry `structs:",flatten"`
+}
+
+func (t *dbScrobbleBuffer) PostScan() error {
+	if err := t.dbMediaFile.PostScan(); err != nil {
+		return err
+	}
+	t.ScrobbleEntry.MediaFile = *t.dbMediaFile.MediaFile
+	t.ScrobbleEntry.MediaFile.ID = t.MediaFileID
+	return nil
 }
 
 func NewScrobbleBufferRepository(ctx context.Context, db dbx.Builder) model.ScrobbleBufferRepository {
@@ -38,7 +52,7 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 
 func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
 	ins := Insert(r.tableName).SetMap(map[string]interface{}{
-		"id":            uuid.NewString(),
+		"id":            id.NewRandom(),
 		"user_id":       userId,
 		"service":       service,
 		"media_file_id": mediaFileId,
@@ -60,16 +74,19 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 		}).
 		OrderBy("play_time", "s.rowid").Limit(1)
 
-	res := &model.ScrobbleEntry{}
-	err := r.queryOne(sql, res)
+	var res dbScrobbleBuffer
+	err := r.queryOne(sql, &res)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	res.MediaFile.ID = res.MediaFileID
-	return res, nil
+	res.ScrobbleEntry.Participants, err = r.getParticipants(&res.ScrobbleEntry.MediaFile)
+	if err != nil {
+		return nil, err
+	}
+	return res.ScrobbleEntry, nil
 }
 
 func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {

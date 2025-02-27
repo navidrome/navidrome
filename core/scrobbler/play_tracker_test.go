@@ -22,7 +22,8 @@ var _ = Describe("PlayTracker", func() {
 	var tracker PlayTracker
 	var track model.MediaFile
 	var album model.Album
-	var artist model.Artist
+	var artist1 model.Artist
+	var artist2 model.Artist
 	var fake fakeScrobbler
 
 	BeforeEach(func() {
@@ -44,16 +45,18 @@ var _ = Describe("PlayTracker", func() {
 			Title:          "Track Title",
 			Album:          "Track Album",
 			AlbumID:        "al-1",
-			Artist:         "Track Artist",
-			ArtistID:       "ar-1",
-			AlbumArtist:    "Track AlbumArtist",
 			TrackNumber:    1,
 			Duration:       180,
 			MbzRecordingID: "mbz-123",
+			Participants: map[model.Role]model.ParticipantList{
+				model.RoleArtist: []model.Participant{_p("ar-1", "Artist 1"), _p("ar-2", "Artist 2")},
+			},
 		}
 		_ = ds.MediaFile(ctx).Put(&track)
-		artist = model.Artist{ID: "ar-1"}
-		_ = ds.Artist(ctx).Put(&artist)
+		artist1 = model.Artist{ID: "ar-1"}
+		_ = ds.Artist(ctx).Put(&artist1)
+		artist2 = model.Artist{ID: "ar-2"}
+		_ = ds.Artist(ctx).Put(&artist2)
 		album = model.Album{ID: "al-1"}
 		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
 	})
@@ -65,6 +68,7 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.NowPlayingCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
 			Expect(fake.Track.ID).To(Equal("123"))
+			Expect(fake.Track.Participants).To(Equal(track.Participants))
 		})
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
@@ -129,6 +133,7 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.ScrobbleCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
 			Expect(fake.LastScrobble.ID).To(Equal("123"))
+			Expect(fake.LastScrobble.Participants).To(Equal(track.Participants))
 		})
 
 		It("increments play counts in the DB", func() {
@@ -140,7 +145,10 @@ var _ = Describe("PlayTracker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(track.PlayCount).To(Equal(int64(1)))
 			Expect(album.PlayCount).To(Equal(int64(1)))
-			Expect(artist.PlayCount).To(Equal(int64(1)))
+
+			// It should increment play counts for all artists
+			Expect(artist1.PlayCount).To(Equal(int64(1)))
+			Expect(artist2.PlayCount).To(Equal(int64(1)))
 		})
 
 		It("does not send track to agent if user has not authorized", func() {
@@ -180,9 +188,11 @@ var _ = Describe("PlayTracker", func() {
 
 			Expect(track.PlayCount).To(Equal(int64(1)))
 			Expect(album.PlayCount).To(Equal(int64(1)))
-			Expect(artist.PlayCount).To(Equal(int64(1)))
-		})
 
+			// It should increment play counts for all artists
+			Expect(artist1.PlayCount).To(Equal(int64(1)))
+			Expect(artist2.PlayCount).To(Equal(int64(1)))
+		})
 	})
 
 })
@@ -219,4 +229,13 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	f.UserID = userId
 	f.LastScrobble = s
 	return nil
+}
+
+// BFR This is duplicated in a few places
+func _p(id, name string, sortName ...string) model.Participant {
+	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
+	if len(sortName) > 0 {
+		p.Artist.SortArtistName = sortName[0]
+	}
+	return p
 }

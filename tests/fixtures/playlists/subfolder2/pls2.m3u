@@ -1,2 +1,4 @@
-test.mp3
-test.ogg
+../test.mp3
+../test.ogg
+/tests/fixtures/01%20Invisible%20(RED)%20Edit%20Version.mp3
+/invalid/path/xyz.mp3

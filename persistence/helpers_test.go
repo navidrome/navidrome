@@ -57,16 +57,16 @@ var _ = Describe("Helpers", func() {
 				HaveKeyWithValue("id", "123"),
 				HaveKeyWithValue("album_id", "456"),
 				HaveKeyWithValue("play_count", 2),
-				HaveKeyWithValue("updated_at", now.Format(time.RFC3339Nano)),
-				HaveKeyWithValue("created_at", now.Format(time.RFC3339Nano)),
+				HaveKeyWithValue("updated_at", BeTemporally("~", now)),
+				HaveKeyWithValue("created_at", BeTemporally("~", now)),
 				Not(HaveKey("Embed")),
 			))
 		})
 	})
 
-	Describe("exists", func() {
+	Describe("Exists", func() {
 		It("constructs the correct EXISTS query", func() {
-			e := exists("album", squirrel.Eq{"id": 1})
+			e := Exists("album", squirrel.Eq{"id": 1})
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("exists (select 1 from album where id = ?)"))
 			Expect(args).To(ConsistOf(1))
@@ -74,9 +74,9 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("notExists", func() {
+	Describe("NotExists", func() {
 		It("constructs the correct NOT EXISTS query", func() {
-			e := notExists("artist", squirrel.ConcatExpr("id = artist_id"))
+			e := NotExists("artist", squirrel.ConcatExpr("id = artist_id"))
 			sql, args, err := e.ToSql()
 			Expect(sql).To(Equal("not exists (select 1 from artist where id = artist_id)"))
 			Expect(args).To(BeEmpty())
@@ -87,19 +87,20 @@ var _ = Describe("Helpers", func() {
 	Describe("mapSortOrder", func() {
 		It("does not change the sort string if there are no order columns", func() {
 			sort := "album_name asc"
-			mapped := mapSortOrder(sort)
+			mapped := mapSortOrder("album", sort)
 			Expect(mapped).To(Equal(sort))
 		})
 		It("changes order columns to sort expression", func() {
 			sort := "ORDER_ALBUM_NAME asc"
-			mapped := mapSortOrder(sort)
-			Expect(mapped).To(Equal("(coalesce(nullif(sort_album_name,''),order_album_name) collate nocase) asc"))
+			mapped := mapSortOrder("album", sort)
+			Expect(mapped).To(Equal(`(coalesce(nullif(album.sort_album_name,''),album.order_album_name)` +
+				` collate nocase) asc`))
 		})
 		It("changes multiple order columns to sort expressions", func() {
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
-			mapped := mapSortOrder(sort)
-			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(sort_title,''),order_title) collate nocase) asc,` +
-				` (coalesce(nullif(sort_album_artist_name,''),order_album_artist_name) collate nocase) desc, year desc`))
+			mapped := mapSortOrder("album", sort)
+			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
+				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
 		})
 	})
 })

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
@@ -18,43 +20,56 @@ import (
 var _ = Describe("Playlists", func() {
 	var ds *tests.MockDataStore
 	var ps Playlists
-	var mp mockedPlaylist
+	var mockPlsRepo mockedPlaylistRepo
+	var mockLibRepo *tests.MockLibraryRepo
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		mp = mockedPlaylist{}
+		mockPlsRepo = mockedPlaylistRepo{}
+		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
-			MockedPlaylist: &mp,
+			MockedPlaylist: &mockPlsRepo,
+			MockedLibrary:  mockLibRepo,
 		}
 		ctx = request.WithUser(ctx, model.User{ID: "123"})
+		// Path should be libPath, but we want to match the root folder referenced in the m3u, which is `/`
+		mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/"}})
 	})
 
 	Describe("ImportFile", func() {
+		var folder *model.Folder
 		BeforeEach(func() {
 			ps = NewPlaylists(ds)
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
+			libPath, _ := os.Getwd()
+			folder = &model.Folder{
+				ID:          "1",
+				LibraryID:   1,
+				LibraryPath: libPath,
+				Path:        "tests/fixtures",
+				Name:        "playlists",
+			}
 		})
 
 		Describe("M3U", func() {
 			It("parses well-formed playlists", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/pls1.m3u")
+				pls, err := ps.ImportFile(ctx, folder, "pls1.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.OwnerID).To(Equal("123"))
-				Expect(pls.Tracks).To(HaveLen(3))
-				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
-				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
-				Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
-				Expect(mp.last).To(Equal(pls))
+				Expect(pls.Tracks).To(HaveLen(2))
+				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+				Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/playlists/test.ogg"))
+				Expect(mockPlsRepo.last).To(Equal(pls))
 			})
 
 			It("parses playlists using LF ending", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures/playlists", "lf-ended.m3u")
+				pls, err := ps.ImportFile(ctx, folder, "lf-ended.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
 
 			It("parses playlists using CR ending (old Mac format)", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures/playlists", "cr-ended.m3u")
+				pls, err := ps.ImportFile(ctx, folder, "cr-ended.m3u")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.Tracks).To(HaveLen(2))
 			})
@@ -62,9 +77,9 @@ var _ = Describe("Playlists", func() {
 
 		Describe("NSP", func() {
 			It("parses well-formed playlists", func() {
-				pls, err := ps.ImportFile(ctx, "tests/fixtures", "playlists/recently_played.nsp")
+				pls, err := ps.ImportFile(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(mp.last).To(Equal(pls))
+				Expect(mockPlsRepo.last).To(Equal(pls))
 				Expect(pls.OwnerID).To(Equal("123"))
 				Expect(pls.Name).To(Equal("Recently Played"))
 				Expect(pls.Comment).To(Equal("Recently played tracks"))
@@ -72,6 +87,10 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Rules.Order).To(Equal("desc"))
 				Expect(pls.Rules.Limit).To(Equal(100))
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
+			})
+			It("returns an error if the playlist is not well-formed", func() {
+				_, err := ps.ImportFile(ctx, folder, "invalid_json.nsp")
+				Expect(err.Error()).To(ContainSubstring("line 19, column 1: invalid character '\\n'"))
 			})
 		})
 	})
@@ -82,79 +101,136 @@ var _ = Describe("Playlists", func() {
 			repo = &mockedMediaFileFromListRepo{}
 			ds.MockedMediaFile = repo
 			ps = NewPlaylists(ds)
+			mockLibRepo.SetData([]model.Library{{ID: 1, Path: "/music"}, {ID: 2, Path: "/new"}})
 			ctx = request.WithUser(ctx, model.User{ID: "123"})
 		})
 
 		It("parses well-formed playlists", func() {
 			repo.data = []string{
-				"tests/fixtures/test.mp3",
-				"tests/fixtures/test.ogg",
-				"/tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+				"tests/test.mp3",
+				"tests/test.ogg",
+				"tests/01 Invisible (RED) Edit Version.mp3",
+				"downloads/newfile.flac",
 			}
-			f, _ := os.Open("tests/fixtures/playlists/pls-with-name.m3u")
-			defer f.Close()
+			m3u := strings.Join([]string{
+				"#PLAYLIST:playlist 1",
+				"/music/tests/test.mp3",
+				"/music/tests/test.ogg",
+				"/new/downloads/newfile.flac",
+				"file:///music/tests/01%20Invisible%20(RED)%20Edit%20Version.mp3",
+			}, "\n")
+			f := strings.NewReader(m3u)
+
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.OwnerID).To(Equal("123"))
 			Expect(pls.Name).To(Equal("playlist 1"))
 			Expect(pls.Sync).To(BeFalse())
-			Expect(pls.Tracks).To(HaveLen(3))
-			Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/test.mp3"))
-			Expect(pls.Tracks[1].Path).To(Equal("tests/fixtures/test.ogg"))
-			Expect(pls.Tracks[2].Path).To(Equal("/tests/fixtures/01 Invisible (RED) Edit Version.mp3"))
-			Expect(mp.last).To(Equal(pls))
-			f.Close()
-
+			Expect(pls.Tracks).To(HaveLen(4))
+			Expect(pls.Tracks[0].Path).To(Equal("tests/test.mp3"))
+			Expect(pls.Tracks[1].Path).To(Equal("tests/test.ogg"))
+			Expect(pls.Tracks[2].Path).To(Equal("downloads/newfile.flac"))
+			Expect(pls.Tracks[3].Path).To(Equal("tests/01 Invisible (RED) Edit Version.mp3"))
+			Expect(mockPlsRepo.last).To(Equal(pls))
 		})
 
 		It("sets the playlist name as a timestamp if the #PLAYLIST directive is not present", func() {
 			repo.data = []string{
-				"tests/fixtures/test.mp3",
-				"tests/fixtures/test.ogg",
-				"/tests/fixtures/01 Invisible (RED) Edit Version.mp3",
+				"tests/test.mp3",
+				"tests/test.ogg",
+				"/tests/01 Invisible (RED) Edit Version.mp3",
 			}
-			f, _ := os.Open("tests/fixtures/playlists/pls-without-name.m3u")
-			defer f.Close()
+			m3u := strings.Join([]string{
+				"/music/tests/test.mp3",
+				"/music/tests/test.ogg",
+			}, "\n")
+			f := strings.NewReader(m3u)
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			_, err = time.Parse(time.RFC3339, pls.Name)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(pls.Tracks).To(HaveLen(3))
+			Expect(pls.Tracks).To(HaveLen(2))
 		})
 
 		It("returns only tracks that exist in the database and in the same other as the m3u", func() {
 			repo.data = []string{
-				"test1.mp3",
-				"test2.mp3",
-				"test3.mp3",
+				"album1/test1.mp3",
+				"album2/test2.mp3",
+				"album3/test3.mp3",
 			}
 			m3u := strings.Join([]string{
-				"test3.mp3",
-				"test1.mp3",
-				"test4.mp3",
-				"test2.mp3",
+				"/music/album3/test3.mp3",
+				"/music/album1/test1.mp3",
+				"/music/album4/test4.mp3",
+				"/music/album2/test2.mp3",
 			}, "\n")
 			f := strings.NewReader(m3u)
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(3))
-			Expect(pls.Tracks[0].Path).To(Equal("test3.mp3"))
-			Expect(pls.Tracks[1].Path).To(Equal("test1.mp3"))
-			Expect(pls.Tracks[2].Path).To(Equal("test2.mp3"))
+			Expect(pls.Tracks[0].Path).To(Equal("album3/test3.mp3"))
+			Expect(pls.Tracks[1].Path).To(Equal("album1/test1.mp3"))
+			Expect(pls.Tracks[2].Path).To(Equal("album2/test2.mp3"))
 		})
 
 		It("is case-insensitive when comparing paths", func() {
 			repo.data = []string{
-				"tEsT1.Mp3",
+				"abc/tEsT1.Mp3",
 			}
 			m3u := strings.Join([]string{
-				"TeSt1.mP3",
+				"/music/ABC/TeSt1.mP3",
 			}, "\n")
 			f := strings.NewReader(m3u)
 			pls, err := ps.ImportM3U(ctx, f)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Tracks).To(HaveLen(1))
-			Expect(pls.Tracks[0].Path).To(Equal("tEsT1.Mp3"))
+			Expect(pls.Tracks[0].Path).To(Equal("abc/tEsT1.Mp3"))
+		})
+	})
+
+	Describe("InPlaylistsPath", func() {
+		var folder model.Folder
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			folder = model.Folder{
+				LibraryPath: "/music",
+				Path:        "playlists/abc",
+				Name:        "folder1",
+			}
+		})
+
+		It("returns true if PlaylistsPath is empty", func() {
+			conf.Server.PlaylistsPath = ""
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if PlaylistsPath is any (**/**)", func() {
+			conf.Server.PlaylistsPath = "**/**"
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if folder is in PlaylistsPath", func() {
+			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			Expect(InPlaylistsPath(folder)).To(BeTrue())
+		})
+
+		It("returns false if folder is not in PlaylistsPath", func() {
+			conf.Server.PlaylistsPath = "other"
+			Expect(InPlaylistsPath(folder)).To(BeFalse())
+		})
+
+		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
+			conf.Server.PlaylistsPath = "."
+			Expect(InPlaylistsPath(folder)).To(BeFalse())
+
+			folder2 := model.Folder{
+				LibraryPath: "/music",
+				Path:        "",
+				Name:        ".",
+			}
+
+			Expect(InPlaylistsPath(folder2)).To(BeTrue())
 		})
 	})
 })
@@ -192,16 +268,16 @@ func (r *mockedMediaFileFromListRepo) FindByPaths([]string) (model.MediaFiles, e
 	return mfs, nil
 }
 
-type mockedPlaylist struct {
+type mockedPlaylistRepo struct {
 	last *model.Playlist
 	model.PlaylistRepository
 }
 
-func (r *mockedPlaylist) FindByPath(string) (*model.Playlist, error) {
+func (r *mockedPlaylistRepo) FindByPath(string) (*model.Playlist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (r *mockedPlaylist) Put(pls *model.Playlist) error {
+func (r *mockedPlaylistRepo) Put(pls *model.Playlist) error {
 	r.last = pls
 	return nil
 }

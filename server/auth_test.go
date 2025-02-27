@@ -11,14 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/model/request"
-
-	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -122,7 +120,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("creates user and sets auth data if user does not exist", func() {
-				newUser := "NEW_USER_" + uuid.NewString()
+				newUser := "NEW_USER_" + id.NewRandom()
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				req.Header.Set("Remote-User", newUser)
@@ -219,18 +217,36 @@ var _ = Describe("Auth", func() {
 		})
 	})
 
-	Describe("authHeaderMapper", func() {
-		It("maps the custom header to Authorization header", func() {
-			r := httptest.NewRequest("GET", "/index.html", nil)
-			r.Header.Set(consts.UIAuthorizationHeader, "test authorization bearer")
-			w := httptest.NewRecorder()
+	Describe("tokenFromHeader", func() {
+		It("returns the token when the Authorization header is set correctly", func() {
+			req := httptest.NewRequest("GET", "/", nil)
+			req.Header.Set(consts.UIAuthorizationHeader, "Bearer testtoken")
 
-			authHeaderMapper(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				Expect(r.Header.Get("Authorization")).To(Equal("test authorization bearer"))
-				w.WriteHeader(200)
-			})).ServeHTTP(w, r)
+			token := tokenFromHeader(req)
+			Expect(token).To(Equal("testtoken"))
+		})
 
-			Expect(w.Code).To(Equal(200))
+		It("returns an empty string when the Authorization header is not set", func() {
+			req := httptest.NewRequest("GET", "/", nil)
+
+			token := tokenFromHeader(req)
+			Expect(token).To(BeEmpty())
+		})
+
+		It("returns an empty string when the Authorization header is not a Bearer token", func() {
+			req := httptest.NewRequest("GET", "/", nil)
+			req.Header.Set(consts.UIAuthorizationHeader, "Basic testtoken")
+
+			token := tokenFromHeader(req)
+			Expect(token).To(BeEmpty())
+		})
+
+		It("returns an empty string when the Bearer token is too short", func() {
+			req := httptest.NewRequest("GET", "/", nil)
+			req.Header.Set(consts.UIAuthorizationHeader, "Bearer")
+
+			token := tokenFromHeader(req)
+			Expect(token).To(BeEmpty())
 		})
 	})
 

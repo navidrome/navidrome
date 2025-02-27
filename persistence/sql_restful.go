@@ -36,7 +36,7 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 		}
 		// Ignore invalid filters (not based on a field or filter function)
 		if r.isFieldWhiteListed != nil && !r.isFieldWhiteListed(f) {
-			log.Warn(ctx, "Ignoring filter not whitelisted", "filter", f)
+			log.Warn(ctx, "Ignoring filter not whitelisted", "filter", f, "table", r.tableName)
 			continue
 		}
 		// For fields ending in "id", use an exact match
@@ -72,7 +72,7 @@ func (r sqlRepository) sanitizeSort(sort, order string) (string, string) {
 			sort = mapped
 		} else {
 			if !r.isFieldWhiteListed(sort) {
-				log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort)
+				log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort, "table", r.tableName)
 				sort = ""
 			}
 		}
@@ -102,15 +102,15 @@ func containsFilter(field string) func(string, any) Sqlizer {
 
 func booleanFilter(field string, value any) Sqlizer {
 	v := strings.ToLower(value.(string))
-	return Eq{field: strings.ToLower(v) == "true"}
+	return Eq{field: v == "true"}
 }
 
-func fullTextFilter(_ string, value any) Sqlizer {
-	return fullTextExpr(value.(string))
+func fullTextFilter(tableName string) func(string, any) Sqlizer {
+	return func(field string, value any) Sqlizer { return fullTextExpr(tableName, value.(string)) }
 }
 
 func substringFilter(field string, value any) Sqlizer {
-	parts := strings.Split(value.(string), " ")
+	parts := strings.Fields(value.(string))
 	filters := And{}
 	for _, part := range parts {
 		filters = append(filters, Like{field: "%" + part + "%"})
@@ -119,9 +119,7 @@ func substringFilter(field string, value any) Sqlizer {
 }
 
 func idFilter(tableName string) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer {
-		return Eq{tableName + ".id": value}
-	}
+	return func(field string, value any) Sqlizer { return Eq{tableName + ".id": value} }
 }
 
 func invalidFilter(ctx context.Context) func(string, any) Sqlizer {

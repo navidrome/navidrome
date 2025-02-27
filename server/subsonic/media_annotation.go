@@ -112,7 +112,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		return nil
 	}
 	event := &events.RefreshResource{}
-	err := api.ds.WithTx(func(tx model.DataStore) error {
+	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
 		for _, id := range ids {
 			exist, err := tx.Album(ctx).Exists(id)
 			if err != nil {

@@ -26,7 +26,13 @@
         "bpm": "BPM",
         "playDate": "Último reproducido",
         "channels": "Canles",
-        "createdAt": "Engadido"
+        "createdAt": "Engadido",
+        "grouping": "Grupos",
+        "mood": "Estado",
+        "participants": "Participantes adicionais",
+        "tags": "Etiquetas adicionais",
+        "mappedTags": "",
+        "rawTags": "Etiquetas en cru"
       },
       "actions": {
         "addToQueue": "Ao final da cola",
@@ -58,7 +64,13 @@
         "originalDate": "Orixinal",
         "releaseDate": "Publicado",
         "releases": "Publicación ||| Publicacións",
-        "released": "Publicado"
+        "released": "Publicado",
+        "recordLabel": "Editorial",
+        "catalogNum": "Número de catálogo",
+        "releaseType": "Tipo",
+        "grouping": "Grupos",
+        "media": "Multimedia",
+        "mood": "Estado"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -89,7 +101,23 @@
         "playCount": "Reproducións",
         "rating": "Valoración",
         "genre": "Xénero",
-        "size": "Tamaño"
+        "size": "Tamaño",
+        "role": "Rol"
+      },
+      "roles": {
+        "albumartist": "Artista do álbum |||| Artistas do álbum",
+        "artist": "Artista |||| Artistas",
+        "composer": "Composición |||| Composición",
+        "conductor": "Condutor |||| Condutoras",
+        "lyricist": "Letrista |||| Letristas",
+        "arranger": "Arranxos |||| Arranxos",
+        "producer": "Produtora |||| Produtoras",
+        "director": "Dirección |||| Dirección",
+        "engineer": "Enxeñería |||| Enxeñería",
+        "mixer": "Mistura |||| Mistura",
+        "remixer": "Remezcla |||| Remezcla",
+        "djmixer": "Mezcla DJs |||| Mezcla DJs",
+        "performer": "Intérprete |||| Intérpretes"
       }
     },
     "user": {
@@ -198,6 +226,20 @@
         "createdAt": "Creada o",
         "downloadable": "Permitir descargas?"
       }
+    },
+    "missing": {
+      "name": "Falta o ficheiro |||| Faltan os ficheiros",
+      "fields": {
+        "path": "Ruta",
+        "size": "Tamaño",
+        "updatedAt": "Desapareceu o"
+      },
+      "actions": {
+        "remove": "Retirar"
+      },
+      "notifications": {
+        "removed": "Ficheiro(s) faltantes retirados"
+      }
     }
   },
   "ra": {
@@ -212,7 +254,8 @@
       "password": "Contrasinal",
       "sign_in": "Accede",
       "sign_in_error": "Fallou a autenticación, volve intentalo",
-      "logout": "Pechar sesión"
+      "logout": "Pechar sesión",
+      "insightsCollectionNote": "Navidrome recolle datos anónimos de uso para mellorar o proxecto. Peme [aquí] para saber máis e desactivar se queres"
     },
     "validation": {
       "invalidChars": "Utiliza só letras e números",
@@ -374,7 +417,9 @@
     "shareSuccess": "URL copiado ao portapapeis: %{url}",
     "shareFailure": "Erro ao copiar o URL %{url} ao portapapeis",
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Copiar ao portapapeis: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Copiar ao portapapeis: Ctrl+C, Enter",
+    "remove_missing_title": "Retirar ficheiros que faltan",
+    "remove_missing_content": "Tes certeza de querer retirar da base de datos os ficheiros que faltan? Isto retirará de xeito permanente todas a referencias a eles, incluíndo a conta de reproducións e valoracións."
   },
   "menu": {
     "library": "Biblioteca",
@@ -396,7 +441,8 @@
           "none": "Desactivada",
           "album": "Usar ganancia do Álbum",
           "track": "Usar ganancia da Canción"
-        }
+        },
+        "lastfmNotConfigured": "Clave da API Last.fm non configurada"
       }
     },
     "albumList": "Álbums",
@@ -433,7 +479,12 @@
     "links": {
       "homepage": "Inicio",
       "source": "Código fonte",
-      "featureRequests": "Solicitar funcións"
+      "featureRequests": "Solicitar funcións",
+      "lastInsightsCollection": "Última colección insights",
+      "insights": {
+        "disabled": "Desactivado",
+        "waiting": "Agardando"
+      }
     }
   },
   "activity": {

@@ -4,6 +4,11 @@ import { REST_URL } from '../consts'
 
 const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
+const isAdmin = () => {
+  const role = localStorage.getItem('role')
+  return role === 'admin'
+}
+
 const mapResource = (resource, params) => {
   switch (resource) {
     case 'playlistTrack': {
@@ -11,8 +16,18 @@ const mapResource = (resource, params) => {
       let plsId = '0'
       if (params.filter) {
         plsId = params.filter.playlist_id
+        if (!isAdmin()) {
+          params.filter.missing = false
+        }
       }
       return [`playlist/${plsId}/tracks`, params]
+    }
+    case 'album':
+    case 'song': {
+      if (params.filter && !isAdmin()) {
+        params.filter.missing = false
+      }
+      return [resource, params]
     }
     default:
       return [resource, params]
@@ -63,7 +78,7 @@ const wrapperDataProvider = {
   },
   deleteMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)
-    if (r.endsWith('/tracks')) {
+    if (r.endsWith('/tracks') || resource === 'missing') {
       return callDeleteMany(r, p)
     }
     return dataProvider.deleteMany(r, p)

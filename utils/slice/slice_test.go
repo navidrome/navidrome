@@ -63,6 +63,34 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("ToMap", func() {
+		It("returns empty map for an empty input", func() {
+			transformFunc := func(v int) (int, string) { return v, strconv.Itoa(v) }
+			result := slice.ToMap([]int{}, transformFunc)
+			Expect(result).To(BeEmpty())
+		})
+
+		It("returns a map with the result of the transform function", func() {
+			transformFunc := func(v int) (int, string) { return v * 2, strconv.Itoa(v * 2) }
+			result := slice.ToMap([]int{1, 2, 3, 4}, transformFunc)
+			Expect(result).To(HaveLen(4))
+			Expect(result).To(HaveKeyWithValue(2, "2"))
+			Expect(result).To(HaveKeyWithValue(4, "4"))
+			Expect(result).To(HaveKeyWithValue(6, "6"))
+			Expect(result).To(HaveKeyWithValue(8, "8"))
+		})
+	})
+
+	Describe("CompactByFrequency", func() {
+		It("returns empty slice for an empty input", func() {
+			Expect(slice.CompactByFrequency([]int{})).To(BeEmpty())
+		})
+
+		It("groups by frequency", func() {
+			Expect(slice.CompactByFrequency([]int{1, 2, 1, 2, 3, 2})).To(HaveExactElements(2, 1, 3))
+		})
+	})
+
 	Describe("MostFrequent", func() {
 		It("returns zero value if no arguments are passed", func() {
 			Expect(slice.MostFrequent([]int{})).To(BeZero())
@@ -73,6 +101,9 @@ var _ = Describe("Slice Utils", func() {
 		})
 		It("returns the item that appeared more times", func() {
 			Expect(slice.MostFrequent([]string{"1", "2", "1", "2", "3", "2"})).To(Equal("2"))
+		})
+		It("ignores zero values", func() {
+			Expect(slice.MostFrequent([]int{0, 0, 0, 2, 2})).To(Equal(2))
 		})
 	})
 
@@ -88,6 +119,16 @@ var _ = Describe("Slice Utils", func() {
 		})
 	})
 
+	Describe("Unique", func() {
+		It("returns empty slice for an empty input", func() {
+			Expect(slice.Unique([]int{})).To(BeEmpty())
+		})
+
+		It("returns the unique elements", func() {
+			Expect(slice.Unique([]int{1, 2, 1, 2, 3, 2})).To(HaveExactElements(1, 2, 3))
+		})
+	})
+
 	DescribeTable("LinesFrom",
 		func(path string, expected int) {
 			count := 0
@@ -99,7 +140,7 @@ var _ = Describe("Slice Utils", func() {
 			Expect(count).To(Equal(expected))
 		},
 		Entry("returns empty slice for an empty input", "tests/fixtures/empty.txt", 0),
-		Entry("returns the lines of a file", "tests/fixtures/playlists/pls1.m3u", 3),
+		Entry("returns the lines of a file", "tests/fixtures/playlists/pls1.m3u", 2),
 		Entry("returns empty if file does not exist", "tests/fixtures/NON-EXISTENT", 0),
 	)
 

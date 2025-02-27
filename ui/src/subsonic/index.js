@@ -29,6 +29,8 @@ const url = (command, id, options) => {
   return `/rest/${command}?${params.toString()}`
 }
 
+const ping = () => httpClient(url('ping'))
+
 const scrobble = (id, time, submission = true) =>
   httpClient(
     url('scrobble', id, {
@@ -62,7 +64,7 @@ const getCoverArtUrl = (record, size, square) => {
   // TODO Move this logic to server. `song` and `album` should have a CoverArtID
   if (record.album) {
     return baseUrl(url('getCoverArt', 'mf-' + record.id, options))
-  } else if (record.artist) {
+  } else if (record.albumArtist) {
     return baseUrl(url('getCoverArt', 'al-' + record.id, options))
   } else {
     return baseUrl(url('getCoverArt', 'ar-' + record.id, options))
@@ -88,6 +90,7 @@ const streamUrl = (id, options) => {
 
 export default {
   url,
+  ping,
   scrobble,
   nowPlaying,
   download,

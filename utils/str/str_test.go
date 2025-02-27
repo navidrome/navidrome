@@ -23,6 +23,13 @@ var _ = Describe("String Utils", func() {
 		It("finds the longest common prefix", func() {
 			Expect(str.LongestCommonPrefix(testPaths)).To(Equal("/Music/iTunes 1/iTunes Media/Music/"))
 		})
+		It("does NOT handle partial prefixes", func() {
+			albums := []string{
+				"/artist/albumOne",
+				"/artist/albumTwo",
+			}
+			Expect(str.LongestCommonPrefix(albums)).To(Equal("/artist/album"))
+		})
 	})
 })
 

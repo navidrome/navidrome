@@ -3,22 +3,26 @@ package persistence
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 )
 
 const annotationTable = "annotation"
 
-func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.QueryOptions) SelectBuilder {
-	query := r.newSelect(options...).
+func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
+	if userId(r.ctx) == invalidUserId {
+		return query
+	}
+	query = query.
 		LeftJoin("annotation on ("+
 			"annotation.item_id = "+idField+
-			" AND annotation.item_type = '"+r.tableName+"'"+
+			// item_ids are unique across different item_types, so the clause below is not needed
+			//" AND annotation.item_type = '"+r.tableName+"'"+
 			" AND annotation.user_id = '"+userId(r.ctx)+"')").
 		Columns(
 			"coalesce(starred, 0) as starred",
@@ -27,7 +31,9 @@ func (r sqlRepository) newSelectWithAnnotation(idField string, options ...model.
 			"play_date",
 		)
 	if conf.Server.AlbumPlayCountMode == consts.AlbumPlayCountModeNormalized && r.tableName == "album" {
-		query = query.Columns("round(coalesce(round(cast(play_count as float) / coalesce(song_count, 1), 1), 0)) as play_count")
+		query = query.Columns(
+			fmt.Sprintf("round(coalesce(round(cast(play_count as float) / coalesce(%[1]s.song_count, 1), 1), 0)) as play_count", r.tableName),
+		)
 	} else {
 		query = query.Columns("coalesce(play_count, 0) as play_count")
 	}
@@ -95,11 +101,23 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	return err
 }
 
+func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
+	if prevID == newID || prevID == "" || newID == "" {
+		return nil
+	}
+	upd := Update(annotationTable).Where(And{
+		Eq{annotationTable + ".item_type": r.tableName},
+		Eq{annotationTable + ".item_id": prevID},
+	}).Set("item_id", newID)
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r sqlRepository) cleanAnnotations() error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
 	if err != nil {
-		return err
+		return fmt.Errorf("error cleaning up annotations: %w", err)
 	}
 	if c > 0 {
 		log.Debug(r.ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)

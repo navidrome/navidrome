@@ -70,8 +70,6 @@ FROM --platform=$BUILDPLATFORM base AS build
 
 # Install build dependencies for the target platform
 ARG TARGETPLATFORM
-ARG GIT_SHA
-ARG GIT_TAG
 
 RUN xx-apt install -y binutils gcc g++ libc6-dev zlib1g-dev
 RUN xx-verify --setup
@@ -80,6 +78,9 @@ RUN --mount=type=bind,source=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
     go mod download
+
+ARG GIT_SHA
+ARG GIT_TAG
 
 RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
@@ -124,7 +125,7 @@ LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
 # Install ffmpeg and mpv
-RUN apk add -U --no-cache ffmpeg mpv
+RUN apk add -U --no-cache ffmpeg mpv sqlite
 
 # Copy navidrome binary
 COPY --from=build /out/navidrome /app/
