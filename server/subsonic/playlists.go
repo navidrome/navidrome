@@ -58,7 +58,7 @@ func (api *Router) getPlaylist(ctx context.Context, id string) (*responses.Subso
 }
 
 func (api *Router) create(ctx context.Context, playlistId, name string, ids []string) (string, error) {
-	err := api.ds.WithTx(func(tx model.DataStore) error {
+	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
 		owner := getUser(ctx)
 		var pls *model.Playlist
 		var err error
