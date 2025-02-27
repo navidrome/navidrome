@@ -9,7 +9,7 @@
         "trackNumber": "Titel #",
         "playCount": "Wiedergaben",
         "title": "Titel",
-        "artist": "Künstler",
+        "artist": "Interpret",
         "album": "Album",
         "path": "Dateipfad",
         "genre": "Genre",
@@ -26,7 +26,13 @@
         "bpm": "BPM",
         "playDate": "Letzte Wiedergabe",
         "channels": "Spuren",
-        "createdAt": "Hinzugefügt"
+        "createdAt": "Hinzugefügt",
+        "grouping": "Gruppierung",
+        "mood": "Stimmung",
+        "participants": "Weitere Beteiligte",
+        "tags": "Weitere Tags",
+        "mappedTags": "Gemappte Tags",
+        "rawTags": "Tag Rohdaten"
       },
       "actions": {
         "addToQueue": "Später abspielen",
@@ -58,7 +64,13 @@
         "originalDate": "Ursprünglich",
         "releaseDate": "Erschienen",
         "releases": "Veröffentlichung |||| Veröffentlichungen",
-        "released": "Erschienen"
+        "released": "Erschienen",
+        "recordLabel": "Label",
+        "catalogNum": "Katalognummer",
+        "releaseType": "Typ",
+        "grouping": "Gruppierung",
+        "media": "Medium",
+        "mood": "Stimmung"
       },
       "actions": {
         "playAll": "Abspielen",
@@ -89,7 +101,23 @@
         "playCount": "Wiedergaben",
         "rating": "Bewertung",
         "genre": "Genre",
-        "size": "Größe"
+        "size": "Größe",
+        "role": "Rolle"
+      },
+      "roles": {
+        "albumartist": "Albuminterpret |||| Albuminterpreten",
+        "artist": "Interpret |||| Interpreten",
+        "composer": "Komponist |||| Komponisten",
+        "conductor": "Dirigent |||| Dirigenten",
+        "lyricist": "Texter |||| Texter",
+        "arranger": "Arrangeur |||| Arrangeure",
+        "producer": "Produzent |||| Produzenten",
+        "director": "Direktor |||| Direktoren",
+        "engineer": "Ingenieur |||| Ingenieure",
+        "mixer": "Mixer |||| Mixer",
+        "remixer": "Remixer |||| Remixer",
+        "djmixer": "DJ Mixer |||| DJ Mixer",
+        "performer": "ausübender Künstler |||| ausübende Künstler"
       }
     },
     "user": {
@@ -197,6 +225,20 @@
         "updatedAt": "Geändert am",
         "createdAt": "Erstellt am",
         "downloadable": "Downloads erlauben?"
+      }
+    },
+    "missing": {
+      "name": "Fehlende Datei |||| Fehlende Dateien",
+      "fields": {
+        "path": "Pfad",
+        "size": "Größe",
+        "updatedAt": "Fehlt seit"
+      },
+      "actions": {
+        "remove": "Entfernen"
+      },
+      "notifications": {
+        "removed": "Fehlende Datei(en) entfernt"
       }
     }
   },
@@ -375,7 +417,9 @@
     "shareSuccess": "URL in Zwischenablage kopiert: %{url}",
     "shareFailure": "Fehler URL %{url} konnte nicht in Zwischenablage kopiert werden",
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter"
+    "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter",
+    "remove_missing_title": "Fehlende Dateien entfernen",
+    "remove_missing_content": "Möchtest du die ausgewählten Fehlenden Dateien wirklich aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht."
   },
   "menu": {
     "library": "Bibliothek",
@@ -421,7 +465,7 @@
     "toggleMiniModeText": "Minimieren",
     "destroyText": "Zerstören",
     "downloadText": "Herunterladen",
-    "removeAudioListsText": "Audiolisten löschen",
+    "removeAudioListsText": "Audiolisten entfernen",
     "clickToDeleteText": "Klicken um %{name} zu Löschen",
     "emptyLyricText": "Kein Liedtext",
     "playModeText": {
