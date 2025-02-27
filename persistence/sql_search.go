@@ -15,12 +15,6 @@ func formatFullText(text ...string) string {
 }
 
 func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, includeMissing bool, results any, orderBys ...string) error {
-	q = strings.TrimSpace(q)
-	q = strings.TrimSuffix(q, "*")
-	if len(q) < 2 {
-		return nil
-	}
-
 	//sq := r.newSelect().Columns(r.tableName + ".*")
 	//sq = r.withAnnotation(sq, r.tableName+".id")
 	//sq = r.withBookmark(sq, r.tableName+".id")
@@ -41,7 +35,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, offset, size int, in
 }
 
 func fullTextExpr(tableName string, s string) Sqlizer {
-	q := str.SanitizeStrings(s)
+	q := str.NormalizeText(str.SanitizeStrings(s))
 	if q == "" {
 		return nil
 	}

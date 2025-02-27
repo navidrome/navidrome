@@ -31,6 +31,26 @@ var _ = Describe("String Utils", func() {
 			Expect(str.LongestCommonPrefix(albums)).To(Equal("/artist/album"))
 		})
 	})
+
+	Describe("NormalizeText", func() {
+		It("traditional Chinese should be replaced with simplified", func() {
+			Expect(str.NormalizeText("週傑倫")).To(Equal("周杰伦"))
+		})
+		It("simplified Chinese should be unchanged", func() {
+			Expect(str.NormalizeText("简体")).To(Equal("简体"))
+		})
+		It("alphabet should be unchanged", func() {
+			for _, letter := range letters {
+				Expect(str.NormalizeText(letter)).To(Equal(letter))
+			}
+		})
+		It("Japanese should be unchanged", func() {
+			Expect(str.NormalizeText("にっぽんご")).To(Equal("にっぽんご"))
+		})
+		It("unicode normalization", func() {
+			Expect(str.NormalizeText("e\u0301")).To(Equal("\u00e9"))
+		})
+	})
 })
 
 var testPaths = []string{
@@ -146,3 +166,5 @@ var testPaths = []string{
 	"/Music/iTunes 1/iTunes Media/Music/War/Why Can't We Be Friends/Low Rider.m4a",
 	"/Music/iTunes 1/iTunes Media/Music/Yes/Fragile/01 Roundabout.m4a",
 }
+
+var letters = []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
