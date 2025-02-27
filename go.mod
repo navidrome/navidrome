@@ -8,6 +8,7 @@ replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/RaveNoX/go-jsoncommentstrip v1.0.0
+	github.com/anacrolix/dms v1.7.1
 	github.com/andybalholm/cascadia v1.3.3
 	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/bradleyjkemp/cupaloy/v2 v2.8.0
@@ -41,6 +42,7 @@ require (
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.22.2
 	github.com/onsi/gomega v1.36.2
+	github.com/oriser/regroup v0.0.0-20240925165441-f6bb0e08289e
 	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/pocketbase/dbx v1.11.0
 	github.com/pressly/goose/v3 v3.24.1
@@ -66,6 +68,8 @@ require (
 )
 
 require (
+	github.com/anacrolix/generics v0.0.1 // indirect
+	github.com/anacrolix/log v0.15.2 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
