@@ -143,6 +143,20 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string)
 	})
 }
 
+func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope ...string) error {
+	ctx := context.Background()
+	return s.WithTx(func(tx model.DataStore) error {
+		// Workaround to force the transaction to be upgraded to immediate mode to avoid deadlocks
+		// See https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/
+		_ = tx.Property(ctx).Put("tmp_lock_flag", "")
+		defer func() {
+			_ = tx.Property(ctx).Delete("tmp_lock_flag")
+		}()
+
+		return block(tx)
+	}, scope...)
+}
+
 func (s *SQLStore) GC(ctx context.Context) error {
 	trace := func(ctx context.Context, msg string, f func() error) func() error {
 		return func() error {

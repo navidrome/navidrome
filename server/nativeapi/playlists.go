@@ -100,7 +100,7 @@ func deleteFromPlaylist(ds model.DataStore) http.HandlerFunc {
 		p := req.Params(r)
 		playlistId, _ := p.String(":playlistId")
 		ids, _ := p.Strings("id")
-		err := ds.WithTx(func(tx model.DataStore) error {
+		err := ds.WithTxImmediate(func(tx model.DataStore) error {
 			tracksRepo := tx.Playlist(r.Context()).Tracks(playlistId, true)
 			return tracksRepo.Delete(ids...)
 		})

@@ -262,7 +262,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	needsInfoUpdate := name != nil || comment != nil || public != nil
 	needsTrackRefresh := len(idxToRemove) > 0
 
-	return s.ds.WithTx(func(tx model.DataStore) error {
+	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
 		var pls *model.Playlist
 		var err error
 		repo := tx.Playlist(ctx)
