@@ -214,7 +214,9 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 				folder.numPlaylists++
 			case model.IsImageFile(entry.Name()):
 				folder.imageFiles[entry.Name()] = entry
-				if fileInfo.ModTime().After(folder.imagesUpdatedAt) {
+				if folder.imagesUpdatedAt.IsZero() {
+					folder.imagesUpdatedAt = folder.modTime
+				} else if fileInfo.ModTime().After(folder.imagesUpdatedAt) {
 					folder.imagesUpdatedAt = fileInfo.ModTime()
 				}
 			}
