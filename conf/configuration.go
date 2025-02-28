@@ -29,7 +29,7 @@ type configOptions struct {
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
-	ScanInterval                    time.Duration
+	ScanInterval                    time.Duration // Deprecated: Remove before release
 	ScanSchedule                    string
 	SessionTimeout                  time.Duration
 	BaseURL                         string
@@ -130,7 +130,7 @@ type scannerOptions struct {
 	Enabled            bool
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
-	Extractor          string // Deprecated: BFR Remove before release?
+	Extractor          string
 	GenreSeparators    string // Deprecated: BFR Update docs
 	GroupAlbumReleases bool   // Deprecated: BFR Update docs
 }
@@ -300,7 +300,10 @@ func Load(noConfigDump bool) {
 	}
 
 	// BFR Remove before release
-	Server.Scanner.Extractor = consts.DefaultScannerExtractor
+	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
+		Server.Scanner.Extractor = consts.DefaultScannerExtractor
+	}
 
 	// Call init hooks
 	for _, hook := range hooks {
