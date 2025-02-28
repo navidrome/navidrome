@@ -130,8 +130,7 @@ type scannerOptions struct {
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
 	Extractor          string
-	GenreSeparators    string // Deprecated: BFR Update docs
-	GroupAlbumReleases bool   // Deprecated: BFR Update docs
+	GroupAlbumReleases bool // Deprecated: BFR Update docs
 }
 
 type TagConf struct {
@@ -474,7 +473,6 @@ func init() {
 	viper.SetDefault("scanner.enabled", true)
 	viper.SetDefault("scanner.schedule", "0")
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
-	viper.SetDefault("scanner.genreseparators", ";/,")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
