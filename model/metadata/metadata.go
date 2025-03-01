@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 type Info struct {
@@ -368,6 +369,9 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 			log.Trace("Invalid UUID tag value", "tag", tagName, "value", value)
 			return ""
 		}
+	default:
+		// normalize the tag value to reduce duplication
+		value = str.NormalizeText(value)
 	}
 	return value
 }
