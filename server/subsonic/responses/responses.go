@@ -372,6 +372,7 @@ type User struct {
 	ShareRole           bool    `xml:"shareRole,attr"              json:"shareRole"`
 	VideoConversionRole bool    `xml:"videoConversionRole,attr"    json:"videoConversionRole"`
 	Folder              []int32 `xml:"folder,omitempty"            json:"folder,omitempty"`
+	SyncPlayqueue       bool    `xml:"syncPlayqueue,attr"          json:"syncPlayqueue"`
 }
 
 type Users struct {
