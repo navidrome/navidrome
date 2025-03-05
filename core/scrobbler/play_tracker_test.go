@@ -35,8 +35,11 @@ var _ = Describe("PlayTracker", func() {
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
 		fake = fakeScrobbler{Authorized: true}
-		Register("fake", func(ds model.DataStore) Scrobbler {
+		Register("fake", func(model.DataStore) Scrobbler {
 			return &fake
+		})
+		Register("disabled", func(model.DataStore) Scrobbler {
+			return nil
 		})
 		tracker = newPlayTracker(ds, events.GetBroker())
 
@@ -59,6 +62,11 @@ var _ = Describe("PlayTracker", func() {
 		_ = ds.Artist(ctx).Put(&artist2)
 		album = model.Album{ID: "al-1"}
 		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
+	})
+
+	It("does not register disabled scrobblers", func() {
+		Expect(tracker.(*playTracker).scrobblers).To(HaveKey("fake"))
+		Expect(tracker.(*playTracker).scrobblers).ToNot(HaveKey("disabled"))
 	})
 
 	Describe("NowPlaying", func() {

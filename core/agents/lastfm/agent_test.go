@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -30,16 +31,38 @@ var _ = Describe("lastfmAgent", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		ctx = context.Background()
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.LastFM.Enabled = true
+		conf.Server.LastFM.ApiKey = "123"
+		conf.Server.LastFM.Secret = "secret"
 	})
 	Describe("lastFMConstructor", func() {
-		It("uses configured api key and language", func() {
-			conf.Server.LastFM.ApiKey = "123"
-			conf.Server.LastFM.Secret = "secret"
-			conf.Server.LastFM.Language = "pt"
-			agent := lastFMConstructor(ds)
-			Expect(agent.apiKey).To(Equal("123"))
-			Expect(agent.secret).To(Equal("secret"))
-			Expect(agent.lang).To(Equal("pt"))
+		When("Agent is properly configured", func() {
+			It("uses configured api key and language", func() {
+				conf.Server.LastFM.Language = "pt"
+				agent := lastFMConstructor(ds)
+				Expect(agent.apiKey).To(Equal("123"))
+				Expect(agent.secret).To(Equal("secret"))
+				Expect(agent.lang).To(Equal("pt"))
+			})
+		})
+		When("Agent is disabled", func() {
+			It("returns nil", func() {
+				conf.Server.LastFM.Enabled = false
+				Expect(lastFMConstructor(ds)).To(BeNil())
+			})
+		})
+		When("ApiKey is empty", func() {
+			It("returns nil", func() {
+				conf.Server.LastFM.ApiKey = ""
+				Expect(lastFMConstructor(ds)).To(BeNil())
+			})
+		})
+		When("Secret is empty", func() {
+			It("returns nil", func() {
+				conf.Server.LastFM.Secret = ""
+				Expect(lastFMConstructor(ds)).To(BeNil())
+			})
 		})
 	})
 

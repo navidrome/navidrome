@@ -53,13 +53,20 @@ func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
 	m := cache.NewSimpleCache[string, NowPlayingInfo]()
 	p := &playTracker{ds: ds, playMap: m, broker: broker}
 	p.scrobblers = make(map[string]Scrobbler)
+	var enabled []string
 	for name, constructor := range constructors {
 		s := constructor(ds)
+		if s == nil {
+			log.Debug("Scrobbler not available. Missing configuration?", "name", name)
+			continue
+		}
+		enabled = append(enabled, name)
 		if conf.Server.DevEnableBufferedScrobble {
 			s = newBufferedScrobbler(ds, s, name)
 		}
 		p.scrobblers[name] = s
 	}
+	log.Debug("List of scrobblers enabled", "names", enabled)
 	return p
 }
 
