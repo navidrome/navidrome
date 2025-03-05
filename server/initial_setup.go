@@ -35,7 +35,7 @@ func initialSetup(ds model.DataStore) {
 
 		err = properties.Put(consts.InitialSetupFlagKey, time.Now().String())
 		return err
-	})
+	}, "initial setup")
 }
 
 // If the Dev Admin user is not present, create it

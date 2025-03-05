@@ -43,7 +43,10 @@ type Data struct {
 		LogLevel                string `json:"logLevel,omitempty"`
 		LogFileConfigured       bool   `json:"logFileConfigured,omitempty"`
 		TLSConfigured           bool   `json:"tlsConfigured,omitempty"`
+		ScannerEnabled          bool   `json:"scannerEnabled,omitempty"`
 		ScanSchedule            string `json:"scanSchedule,omitempty"`
+		ScanWatcherWait         uint64 `json:"scanWatcherWait,omitempty"`
+		ScanOnStartup           bool   `json:"scanOnStartup,omitempty"`
 		TranscodingCacheSize    string `json:"transcodingCacheSize,omitempty"`
 		ImageCacheSize          string `json:"imageCacheSize,omitempty"`
 		EnableArtworkPrecache   bool   `json:"enableArtworkPrecache,omitempty"`

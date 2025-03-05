@@ -390,7 +390,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			}
 		}
 		return nil
-	})
+	}, "scanner: persist changes")
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
 	}
@@ -464,7 +464,7 @@ func (p *phaseFolders) finalize(err error) error {
 			}
 		}
 		return nil
-	})
+	}, "scanner: finalize phaseFolders")
 	return errors.Join(err, errF)
 }
 

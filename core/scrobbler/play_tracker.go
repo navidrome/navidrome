@@ -124,7 +124,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	success := 0
 
 	for _, s := range submissions {
-		mf, err := p.ds.MediaFile(ctx).Get(s.TrackID)
+		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(s.TrackID)
 		if err != nil {
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue

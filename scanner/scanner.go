@@ -128,7 +128,7 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 				log.Debug(ctx, "Scanner: No changes detected, skipping GC")
 			}
 			return nil
-		})
+		}, "scanner: GC")
 	}
 }
 
@@ -138,24 +138,22 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 			log.Debug(ctx, "Scanner: No changes detected, skipping refreshing stats")
 			return nil
 		}
-		return s.ds.WithTx(func(tx model.DataStore) error {
-			start := time.Now()
-			stats, err := tx.Artist(ctx).RefreshStats()
-			if err != nil {
-				log.Error(ctx, "Scanner: Error refreshing artists stats", err)
-				return fmt.Errorf("refreshing artists stats: %w", err)
-			}
-			log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
+		start := time.Now()
+		stats, err := s.ds.Artist(ctx).RefreshStats()
+		if err != nil {
+			log.Error(ctx, "Scanner: Error refreshing artists stats", err)
+			return fmt.Errorf("refreshing artists stats: %w", err)
+		}
+		log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
 
-			start = time.Now()
-			err = tx.Tag(ctx).UpdateCounts()
-			if err != nil {
-				log.Error(ctx, "Scanner: Error updating tag counts", err)
-				return fmt.Errorf("updating tag counts: %w", err)
-			}
-			log.Debug(ctx, "Scanner: Updated tag counts", "elapsed", time.Since(start))
-			return nil
-		})
+		start = time.Now()
+		err = s.ds.Tag(ctx).UpdateCounts()
+		if err != nil {
+			log.Error(ctx, "Scanner: Error updating tag counts", err)
+			return fmt.Errorf("updating tag counts: %w", err)
+		}
+		log.Debug(ctx, "Scanner: Updated tag counts", "elapsed", time.Since(start))
+		return nil
 	}
 }
 
@@ -189,7 +187,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 				}
 			}
 			return nil
-		})
+		}, "scanner: update libraries")
 	}
 }
 

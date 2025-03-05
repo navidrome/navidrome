@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -188,20 +189,14 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			if !model.IsAudioFile(line) {
 				continue
 			}
-			line = filepath.Clean(line)
-			if folder != nil && !filepath.IsAbs(line) {
-				line = filepath.Join(folder.AbsolutePath(), line)
-				var err error
-				line, err = filepath.Rel(folder.LibraryPath, line)
-				if err != nil {
-					log.Trace(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "folder", folder, err)
-					continue
-				}
-			}
 			filteredLines = append(filteredLines, line)
 		}
-		filteredLines = slice.Map(filteredLines, filepath.ToSlash)
-		found, err := mediaFileRepository.FindByPaths(filteredLines)
+		paths, err := s.normalizePaths(ctx, pls, folder, filteredLines)
+		if err != nil {
+			log.Warn(ctx, "Error normalizing paths in playlist", "playlist", pls.Name, err)
+			continue
+		}
+		found, err := mediaFileRepository.FindByPaths(paths)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
@@ -210,7 +205,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		for idx := range found {
 			existing[strings.ToLower(found[idx].Path)] = idx
 		}
-		for _, path := range filteredLines {
+		for _, path := range paths {
 			idx, ok := existing[strings.ToLower(path)]
 			if ok {
 				mfs = append(mfs, found[idx])
@@ -226,6 +221,64 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 	pls.AddMediaFiles(mfs)
 
 	return nil
+}
+
+// TODO This won't work for multiple libraries
+func (s *playlists) normalizePaths(ctx context.Context, pls *model.Playlist, folder *model.Folder, lines []string) ([]string, error) {
+	libRegex, err := s.compileLibraryPaths(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]string, 0, len(lines))
+	for idx, line := range lines {
+		var libPath string
+		var filePath string
+
+		if folder != nil && !filepath.IsAbs(line) {
+			libPath = folder.LibraryPath
+			filePath = filepath.Join(folder.AbsolutePath(), line)
+		} else {
+			cleanLine := filepath.Clean(line)
+			if libPath = libRegex.FindString(cleanLine); libPath != "" {
+				filePath = cleanLine
+			}
+		}
+
+		if libPath != "" {
+			if rel, err := filepath.Rel(libPath, filePath); err == nil {
+				res = append(res, rel)
+			} else {
+				log.Debug(ctx, "Error getting relative path", "playlist", pls.Name, "path", line, "libPath", libPath,
+					"filePath", filePath, err)
+			}
+		} else {
+			log.Warn(ctx, "Path in playlist not found in any library", "path", line, "line", idx)
+		}
+	}
+	return slice.Map(res, filepath.ToSlash), nil
+}
+
+func (s *playlists) compileLibraryPaths(ctx context.Context) (*regexp.Regexp, error) {
+	libs, err := s.ds.Library(ctx).GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create regex patterns for each library path
+	patterns := make([]string, len(libs))
+	for i, lib := range libs {
+		cleanPath := filepath.Clean(lib.Path)
+		escapedPath := regexp.QuoteMeta(cleanPath)
+		patterns[i] = fmt.Sprintf("^%s(?:/|$)", escapedPath)
+	}
+	// Combine all patterns into a single regex
+	combinedPattern := strings.Join(patterns, "|")
+	re, err := regexp.Compile(combinedPattern)
+	if err != nil {
+		return nil, fmt.Errorf("compiling library paths `%s`: %w", combinedPattern, err)
+	}
+	return re, nil
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist) error {
@@ -262,7 +315,7 @@ func (s *playlists) Update(ctx context.Context, playlistID string,
 	needsInfoUpdate := name != nil || comment != nil || public != nil
 	needsTrackRefresh := len(idxToRemove) > 0
 
-	return s.ds.WithTx(func(tx model.DataStore) error {
+	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
 		var pls *model.Playlist
 		var err error
 		repo := tx.Playlist(ctx)

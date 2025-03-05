@@ -82,6 +82,10 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 	if err != nil {
 		return nil, err
 	}
+	res.ScrobbleEntry.Participants, err = r.getParticipants(&res.ScrobbleEntry.MediaFile)
+	if err != nil {
+		return nil, err
+	}
 	return res.ScrobbleEntry, nil
 }
 

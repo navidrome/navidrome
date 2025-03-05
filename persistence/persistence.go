@@ -118,15 +118,43 @@ func (s *SQLStore) Resource(ctx context.Context, m interface{}) model.ResourceRe
 	return nil
 }
 
-func (s *SQLStore) WithTx(block func(tx model.DataStore) error) error {
-	conn, ok := s.db.(*dbx.DB)
-	if !ok {
+func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
+	var msg string
+	if len(scope) > 0 {
+		msg = scope[0]
+	}
+	start := time.Now()
+	conn, inTx := s.db.(*dbx.DB)
+	if !inTx {
+		log.Trace("Nested Transaction started", "scope", msg)
 		conn = dbx.NewFromDB(db.Db(), db.Driver)
+	} else {
+		log.Trace("Transaction started", "scope", msg)
 	}
 	return conn.Transactional(func(tx *dbx.Tx) error {
 		newDb := &SQLStore{db: tx}
-		return block(newDb)
+		err := block(newDb)
+		if !inTx {
+			log.Trace("Nested Transaction finished", "scope", msg, "elapsed", time.Since(start), err)
+		} else {
+			log.Trace("Transaction finished", "scope", msg, "elapsed", time.Since(start), err)
+		}
+		return err
 	})
+}
+
+func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope ...string) error {
+	ctx := context.Background()
+	return s.WithTx(func(tx model.DataStore) error {
+		// Workaround to force the transaction to be upgraded to immediate mode to avoid deadlocks
+		// See https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/
+		_ = tx.Property(ctx).Put("tmp_lock_flag", "")
+		defer func() {
+			_ = tx.Property(ctx).Delete("tmp_lock_flag")
+		}()
+
+		return block(tx)
+	}, scope...)
 }
 
 func (s *SQLStore) GC(ctx context.Context) error {
