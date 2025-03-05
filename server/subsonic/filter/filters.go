@@ -50,7 +50,7 @@ func AlbumsByArtistID(artistId string) Options {
 	filters := []Sqlizer{
 		persistence.Exists("json_tree(Participants, '$.albumartist')", Eq{"value": artistId}),
 	}
-	if conf.Server.SubsonicArtistParticipations {
+	if conf.Server.Subsonic.ArtistParticipations {
 		filters = append(filters,
 			persistence.Exists("json_tree(Participants, '$.artist')", Eq{"value": artistId}),
 		)
