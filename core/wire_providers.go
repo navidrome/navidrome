@@ -17,7 +17,7 @@ var Set = wire.NewSet(
 	NewPlayers,
 	NewShare,
 	NewPlaylists,
-	agents.New,
+	agents.GetAgents,
 	ffmpeg.New,
 	scrobbler.GetPlayTracker,
 	playback.GetInstance,
