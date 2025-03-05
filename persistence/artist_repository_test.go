@@ -18,6 +18,7 @@ var _ = Describe("ArtistRepository", func() {
 	var repo model.ArtistRepository
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
 		ctx := log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, model.User{ID: "userid"})
 		repo = NewArtistRepository(ctx, GetDBXBuilder())
@@ -51,7 +52,6 @@ var _ = Describe("ArtistRepository", func() {
 		r := artistRepository{indexGroups: utils.ParseIndexGroups(conf.Server.IndexGroups)}
 		When("PreferSortTags is false", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig)
 				conf.Server.PreferSortTags = false
 			})
 			It("returns the OrderArtistName key is SortArtistName is empty", func() {
@@ -68,7 +68,6 @@ var _ = Describe("ArtistRepository", func() {
 		})
 		When("PreferSortTags is true", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig)
 				conf.Server.PreferSortTags = true
 			})
 			It("returns the SortArtistName key if it is not empty", func() {
@@ -87,7 +86,6 @@ var _ = Describe("ArtistRepository", func() {
 	Describe("GetIndex", func() {
 		When("PreferSortTags is true", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Server.PreferSortTags = true
 			})
 			It("returns the index when PreferSortTags is true and SortArtistName is not empty", func() {
@@ -128,7 +126,6 @@ var _ = Describe("ArtistRepository", func() {
 
 		When("PreferSortTags is false", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Server.PreferSortTags = false
 			})
 			It("returns the index when SortArtistName is NOT empty", func() {

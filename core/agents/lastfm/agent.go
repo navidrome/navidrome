@@ -42,6 +42,9 @@ type lastfmAgent struct {
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
+	if !conf.Server.LastFM.Enabled || conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
+		return nil
+	}
 	l := &lastfmAgent{
 		ds:          ds,
 		lang:        conf.Server.LastFM.Language,
@@ -340,15 +343,19 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 
 func init() {
 	conf.AddHook(func() {
-		if conf.Server.LastFM.Enabled {
-			if conf.Server.LastFM.ApiKey != "" && conf.Server.LastFM.Secret != "" {
-				agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
-					return lastFMConstructor(ds)
-				})
-				scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-					return lastFMConstructor(ds)
-				})
+		agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
+			a := lastFMConstructor(ds)
+			if a != nil {
+				return a
 			}
-		}
+			return nil
+		})
+		scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
+			a := lastFMConstructor(ds)
+			if a != nil {
+				return a
+			}
+			return nil
+		})
 	})
 }
