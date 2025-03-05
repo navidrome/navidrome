@@ -29,8 +29,6 @@ type configOptions struct {
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
-	ScanInterval                    time.Duration
-	ScanSchedule                    string
 	SessionTimeout                  time.Duration
 	BaseURL                         string
 	BasePath                        string
@@ -128,11 +126,11 @@ type configOptions struct {
 
 type scannerOptions struct {
 	Enabled            bool
+	Schedule           string
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
-	Extractor          string // Deprecated: BFR Remove before release?
-	GenreSeparators    string // Deprecated: BFR Update docs
-	GroupAlbumReleases bool   // Deprecated: BFR Update docs
+	Extractor          string
+	GroupAlbumReleases bool // Deprecated: BFR Update docs
 }
 
 type TagConf struct {
@@ -300,7 +298,10 @@ func Load(noConfigDump bool) {
 	}
 
 	// BFR Remove before release
-	Server.Scanner.Extractor = consts.DefaultScannerExtractor
+	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
+		Server.Scanner.Extractor = consts.DefaultScannerExtractor
+	}
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -357,25 +358,12 @@ func validatePlaylistsPath() error {
 }
 
 func validateScanSchedule() error {
-	if Server.ScanInterval != -1 {
-		log.Warn("ScanInterval is DEPRECATED. Please use ScanSchedule. See docs at https://navidrome.org/docs/usage/configuration-options/")
-		if Server.ScanSchedule != "@every 1m" {
-			log.Error("You cannot specify both ScanInterval and ScanSchedule, ignoring ScanInterval")
-		} else {
-			if Server.ScanInterval == 0 {
-				Server.ScanSchedule = ""
-			} else {
-				Server.ScanSchedule = fmt.Sprintf("@every %s", Server.ScanInterval)
-			}
-			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
-		}
-	}
-	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
-		Server.ScanSchedule = ""
+	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
+		Server.Scanner.Schedule = ""
 		return nil
 	}
 	var err error
-	Server.ScanSchedule, err = validateSchedule(Server.ScanSchedule, "ScanSchedule")
+	Server.Scanner.Schedule, err = validateSchedule(Server.Scanner.Schedule, "Scanner.Schedule")
 	return err
 }
 
@@ -384,10 +372,8 @@ func validateBackupSchedule() error {
 		Server.Backup.Schedule = ""
 		return nil
 	}
-
 	var err error
-	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "BackupSchedule")
-
+	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "Backup.Schedule")
 	return err
 }
 
@@ -398,7 +384,7 @@ func validateSchedule(schedule, field string) (string, error) {
 	c := cron.New()
 	id, err := c.AddFunc(schedule, func() {})
 	if err != nil {
-		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", field, err)
+		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", schedule, err)
 	} else {
 		c.Remove(id)
 	}
@@ -420,8 +406,6 @@ func init() {
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
-	viper.SetDefault("scaninterval", -1)
-	viper.SetDefault("scanschedule", "0")
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
 	viper.SetDefault("tlskey", "")
@@ -487,8 +471,8 @@ func init() {
 	viper.SetDefault("jukebox.adminonly", true)
 
 	viper.SetDefault("scanner.enabled", true)
+	viper.SetDefault("scanner.schedule", "0")
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
-	viper.SetDefault("scanner.genreseparators", ";/,")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)

@@ -187,7 +187,6 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.EnablePrometheus = conf.Server.Prometheus.Enabled
 	data.Config.TranscodingCacheSize = conf.Server.TranscodingCacheSize
 	data.Config.ImageCacheSize = conf.Server.ImageCacheSize
-	data.Config.ScanSchedule = conf.Server.ScanSchedule
 	data.Config.SessionTimeout = uint64(math.Trunc(conf.Server.SessionTimeout.Seconds()))
 	data.Config.SearchFullString = conf.Server.SearchFullString
 	data.Config.RecentlyAddedByModTime = conf.Server.RecentlyAddedByModTime
@@ -195,6 +194,10 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.Config.BackupSchedule = conf.Server.Backup.Schedule
 	data.Config.BackupCount = conf.Server.Backup.Count
 	data.Config.DevActivityPanel = conf.Server.DevActivityPanel
+	data.Config.ScannerEnabled = conf.Server.Scanner.Enabled
+	data.Config.ScanSchedule = conf.Server.Scanner.Schedule
+	data.Config.ScanWatcherWait = uint64(math.Trunc(conf.Server.Scanner.WatcherWait.Seconds()))
+	data.Config.ScanOnStartup = conf.Server.Scanner.ScanOnStartup
 
 	return data
 })
