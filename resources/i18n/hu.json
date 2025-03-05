@@ -31,7 +31,7 @@
                 "mood": "Hangulat",
                 "participants": "További résztvevők",
                 "tags": "További címkék",
-                "mappedTags": "Hozzárendelt? címkék (Mapped tags)",
+                "mappedTags": "Feldolgozott címkék",
                 "rawTags": "Nyers címkék"
             },
             "actions": {
@@ -109,14 +109,14 @@
                 "artist": "Előadó |||| Előadók",
                 "composer": "Zeneszerző |||| Zeneszerzők",
                 "conductor": "Karmester |||| Karmesterek",
-                "lyricist": "Lírikus |||| Lírikusok",
-                "arranger": "Rendező |||| Rendezők",
+                "lyricist": "Szövegíró |||| Szövegírók",
+                "arranger": "Hangszerelő |||| Hangszerelők",
                 "producer": "Producer |||| Producerek",
-                "director": "Igazgató |||| Igazgatók",
+                "director": "Rendező |||| Rendezők",
                 "engineer": "Mérnök |||| Mérnökök",
-                "mixer": "Mixer |||| Mixerek",
-                "remixer": "Feldolgozó |||| Feldolgozók",
-                "djmixer": "DJ Mixer |||| DJ Mixerek",
+                "mixer": "Keverő |||| Keverők",
+                "remixer": "Átdolgozó |||| Átdolgozók",
+                "djmixer": "DJ keverő |||| DJ keverők",
                 "performer": "Előadóművész |||| Előadóművészek"
             }
         },
