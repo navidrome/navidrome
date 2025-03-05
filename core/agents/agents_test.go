@@ -29,7 +29,7 @@ var _ = Describe("Agents", func() {
 		var ag *Agents
 		BeforeEach(func() {
 			conf.Server.Agents = ""
-			ag = New(ds)
+			ag = createAgents(ds)
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
@@ -49,7 +49,7 @@ var _ = Describe("Agents", func() {
 			Register("disabled", func(model.DataStore) Interface { return nil })
 			Register("empty", func(model.DataStore) Interface { return &emptyAgent{} })
 			conf.Server.Agents = "empty,fake,disabled"
-			ag = New(ds)
+			ag = createAgents(ds)
 			Expect(ag.AgentName()).To(Equal("agents"))
 		})
 
