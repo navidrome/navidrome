@@ -93,10 +93,10 @@ type MediaFile struct {
 }
 
 func (mf MediaFile) FullTitle() string {
-	if mf.Tags[TagSubtitle] == nil {
-		return mf.Title
+	if conf.Server.AppendSubtitle && mf.Tags[TagSubtitle] != nil {
+		return fmt.Sprintf("%s (%s)", mf.Title, mf.Tags[TagSubtitle][0])
 	}
-	return fmt.Sprintf("%s (%s)", mf.Title, mf.Tags[TagSubtitle][0])
+	return mf.Title
 }
 
 func (mf MediaFile) ContentType() string {

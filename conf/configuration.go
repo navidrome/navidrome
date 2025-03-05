@@ -57,6 +57,7 @@ type configOptions struct {
 	SearchFullString                bool
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
+	AppendSubtitle                  bool
 	IgnoredArticles                 string
 	IndexGroups                     string
 	FFmpegPath                      string
@@ -433,6 +434,7 @@ func init() {
 	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
+	viper.SetDefault("appendsubtitle", true)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")
