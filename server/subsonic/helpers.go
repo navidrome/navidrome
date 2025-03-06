@@ -317,7 +317,7 @@ func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubson
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	child.ExplicitStatus = mapExplicitStatus(al.ExplicitStatus)
-	child.SortName = al.SortAlbumName
+	child.SortName = sortName(al.SortAlbumName, al.OrderAlbumName)
 	return &child
 }
 
