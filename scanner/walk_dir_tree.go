@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/chrono"
 	ignore "github.com/sabhiram/go-gitignore"
 )
@@ -214,9 +215,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 				folder.numPlaylists++
 			case model.IsImageFile(entry.Name()):
 				folder.imageFiles[entry.Name()] = entry
-				if fileInfo.ModTime().After(folder.imagesUpdatedAt) {
-					folder.imagesUpdatedAt = fileInfo.ModTime()
-				}
+				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
 			}
 		}
 	}
