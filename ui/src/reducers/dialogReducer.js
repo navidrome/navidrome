@@ -15,6 +15,8 @@ import {
   LISTENBRAINZ_TOKEN_CLOSE,
   SHARE_MENU_OPEN,
   SHARE_MENU_CLOSE,
+  MOVE_TO_INDEX_OPEN,
+  MOVE_TO_INDEX_CLOSE,
 } from '../actions'
 
 export const shareDialogReducer = (
@@ -161,6 +163,30 @@ export const listenBrainzTokenDialogReducer = (
         open: true,
       }
     case LISTENBRAINZ_TOKEN_CLOSE:
+      return {
+        ...previousState,
+        open: false,
+      }
+    default:
+      return previousState
+  }
+}
+
+export const moveToIndexDialogReducer = (
+  previousState = {
+    open: false,
+  },
+  payload,
+) => {
+  const { type } = payload
+  switch (type) {
+    case MOVE_TO_INDEX_OPEN:
+      return {
+        ...previousState,
+        open: true,
+        record: payload.record,
+      }
+    case MOVE_TO_INDEX_CLOSE:
       return {
         ...previousState,
         open: false,

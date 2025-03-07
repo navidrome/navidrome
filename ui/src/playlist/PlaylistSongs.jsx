@@ -31,6 +31,7 @@ import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import MoveToIndexDialog from '../dialogs/MoveToIndexDialog'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -84,7 +85,8 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const listContext = useListContext()
-  const { data, ids, selectedIds, onUnselectItems, refetch } = listContext
+  const { data, ids, selectedIds, onUnselectItems, refetch, total } =
+    listContext
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -127,6 +129,18 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       reorder(playlistId, fromId, toId)
     },
     [playlistId, reorder, ids],
+  )
+
+  const onSongMoved = useCallback(
+    /**
+     *
+     * @param {string} from index
+     * @param {string} to index
+     */
+    (from, to) => {
+      reorder(playlistId, from, to)
+    },
+    [playlistId, reorder],
   )
 
   const toggleableFields = useMemo(() => {
@@ -207,12 +221,18 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
                 onAddToPlaylist={onAddToPlaylist}
                 showLove={false}
                 className={classes.contextMenu}
+                showMoveToIndex={!readOnly}
               />
             </SongDatagrid>
           </ReorderableList>
         </Card>
       </div>
       <ExpandInfoDialog content={<SongInfo />} />
+      <MoveToIndexDialog
+        onSuccess={onSongMoved}
+        max={total}
+        playlistId={playlistId}
+      />
       {React.cloneElement(props.pagination, listContext)}
     </>
   )
