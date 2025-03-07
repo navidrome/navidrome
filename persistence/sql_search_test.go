@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("sqlRepository", func() {
+var _ = Describe("Search", func() {
 	Describe("formatFullText", func() {
 		It("prefixes with a space", func() {
 			Expect(formatFullText("legiao urbana")).To(Equal(" legiao urbana"))
