@@ -307,10 +307,23 @@ func Load(noConfigDump bool) {
 		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
 		Server.Scanner.Extractor = consts.DefaultScannerExtractor
 	}
+	logDeprecatedOptions("Scanner.GroupAlbumReleases")
 
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+func logDeprecatedOptions(options ...string) {
+	for _, option := range options {
+		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		if os.Getenv(envVar) != "" {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", envVar))
+		}
+		if viper.InConfig(option) {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", option))
+		}
 	}
 }
 
