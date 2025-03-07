@@ -190,7 +190,7 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 
 		libPathLen := utf8.RuneCountInString(lib.Path)
 		_, err = tx.ExecContext(ctx, fmt.Sprintf(`
-update media_file set path = substr(path,%d);`, libPathLen+2))
+update media_file set path = replace(substr(path, %d), '\', '/');`, libPathLen+2))
 		if err != nil {
 			return fmt.Errorf("error updating media_file path: %w", err)
 		}
