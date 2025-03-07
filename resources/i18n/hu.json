@@ -26,7 +26,13 @@
                 "bpm": "BPM",
                 "playDate": "Utoljára lejátszva",
                 "channels": "Csatornák",
-                "createdAt": "Hozzáadva"
+                "createdAt": "Hozzáadva",
+                "grouping": "Csoportosítás",
+                "mood": "Hangulat",
+                "participants": "További résztvevők",
+                "tags": "További címkék",
+                "mappedTags": "Feldolgozott címkék",
+                "rawTags": "Nyers címkék"
             },
             "actions": {
                 "addToQueue": "Lejátszás útolsóként",
@@ -58,7 +64,13 @@
                 "originalDate": "Eredeti",
                 "releaseDate": "Kiadva",
                 "releases": "Kiadó |||| Kiadók",
-                "released": "Kiadta"
+                "released": "Kiadta",
+                "recordLabel": "Lemezkiadó",
+                "catalogNum": "Katalógusszám",
+                "releaseType": "Típus",
+                "grouping": "Csoportosítás",
+                "media": "Média",
+                "mood": "Hangulat"
             },
             "actions": {
                 "playAll": "Lejátszás",
@@ -89,7 +101,23 @@
                 "playCount": "Lejátszások",
                 "rating": "Értékelés",
                 "genre": "Stílus",
-                "size": "Méret"
+                "size": "Méret",
+                "role": "Szerep"
+            },
+            "roles": {
+                "albumartist": "Album előadó |||| Album előadók",
+                "artist": "Előadó |||| Előadók",
+                "composer": "Zeneszerző |||| Zeneszerzők",
+                "conductor": "Karmester |||| Karmesterek",
+                "lyricist": "Szövegíró |||| Szövegírók",
+                "arranger": "Hangszerelő |||| Hangszerelők",
+                "producer": "Producer |||| Producerek",
+                "director": "Rendező |||| Rendezők",
+                "engineer": "Mérnök |||| Mérnökök",
+                "mixer": "Keverő |||| Keverők",
+                "remixer": "Átdolgozó |||| Átdolgozók",
+                "djmixer": "DJ keverő |||| DJ keverők",
+                "performer": "Előadóművész |||| Előadóművészek"
             }
         },
         "user": {
@@ -200,6 +228,20 @@
             }
         }
     },
+    "missing": {
+        "name": "Hiányzó fájl|||| Hiányzó fájlok",
+        "fields": {
+            "path": "Útvonal",
+            "size": "Méret",
+            "updatedAt": "Eltűnt ekkor:"
+        },
+        "actions": {
+            "remove": "Eltávolítás"
+        },
+        "notifications": {
+            "removed": "Hiányzó fájl(ok) eltávolítva"
+        }
+    },
     "ra": {
         "auth": {
             "welcome1": "Köszönjük, hogy a Navidrome-ot telepítetted!",
@@ -256,7 +298,7 @@
             "close": "Bezárás",
             "open_menu": "Menü megnyitása",
             "close_menu": "Menü bezárása",
-            "unselect": "Kijelölés törlése",
+            "unselect": "Kijelölés megszüntetése",
             "skip": "Átugrás",
             "bulk_actions_mobile": "1 |||| %{smart_count}",
             "share": "Megosztás",
@@ -353,6 +395,8 @@
         "noPlaylistsAvailable": "Nem áll rendelkezésre",
         "delete_user_title": "Felhasználó törlése '%{name}'",
         "delete_user_content": "Biztos, hogy törölni akarod ezt a felhasználót az adataival (beállítások és lejátszási listák) együtt?",
+        "remove_missing_title": "Hiányzó fájlok eltávolítása",
+        "remove_missing_content": "Biztos, hogy el akarod távolítani a kiválasztott, hiányó fájlokat az adatbázisból? Ez a művelet véglegesen törölni fog minden hozzájuk kapcsolódó referenciát, beleértve a lejátszások számát és értékeléseket.",
         "notifications_blocked": "A böngésződ beállításaiban letiltottad az értesítéseket erre az oldalra.",
         "notifications_not_available": "Ez a böngésző nem támogatja az asztali értesítéseket, vagy a Navidrome-ot nem https-en keresztül használod.",
         "lastfmLinkSuccess": "Sikeresen összekapcsolva Last.fm-el és halgatott számok küldése engedélyezve.",
@@ -445,7 +489,7 @@
     },
     "activity": {
         "title": "Aktivitás",
-        "totalScanned": "Beolvasott mappák összesen",
+        "totalScanned": "Összes beolvasott mappa:",
         "quickScan": "Gyors beolvasás",
         "fullScan": "Teljes beolvasás",
         "serverUptime": "Szerver üzemidő",
