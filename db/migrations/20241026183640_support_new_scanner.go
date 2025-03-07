@@ -152,7 +152,6 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 				return err
 			}
 
-			// BFR Test on Windows, both relative and absolute MusicFolders
 			path = strings.TrimPrefix(path, filepath.Clean(lib.Path))
 			path = strings.TrimPrefix(path, string(os.PathSeparator))
 			path = filepath.Clean(path)
