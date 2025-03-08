@@ -33,7 +33,7 @@
     "ra-data-json-server": "^3.19.12",
     "ra-i18n-polyglot": "^3.19.12",
     "react": "^17.0.2",
-    "react-admin": "^3.19.12",
+    "react-admin": "^5.6.3",
     "react-dnd": "^14.0.5",
     "react-dnd-html5-backend": "^14.0.2",
     "react-dom": "^17.0.2",
