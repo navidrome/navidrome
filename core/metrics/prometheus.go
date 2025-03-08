@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,6 +21,7 @@ import (
 type Metrics interface {
 	WriteInitialMetrics(ctx context.Context)
 	WriteAfterScanMetrics(ctx context.Context, success bool)
+	WriteScheduledMetrics(ctx context.Context)
 	GetHandler() http.Handler
 }
 
@@ -40,15 +42,22 @@ func NewNoopInstance() Metrics {
 
 func (m *metrics) WriteInitialMetrics(ctx context.Context) {
 	getPrometheusMetrics().versionInfo.With(prometheus.Labels{"version": consts.Version}).Set(1)
-	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
+	processDbTotalMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
+	processGenreAggregateMetrics(ctx, m.ds, getPrometheusMetrics().genreAggregate)
+	processPlayerLastSeenMetrics(ctx, m.ds, getPrometheusMetrics().playerLastSeen)
 }
 
 func (m *metrics) WriteAfterScanMetrics(ctx context.Context, success bool) {
-	processSqlAggregateMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
+	processDbTotalMetrics(ctx, m.ds, getPrometheusMetrics().dbTotal)
 
 	scanLabels := prometheus.Labels{"success": strconv.FormatBool(success)}
 	getPrometheusMetrics().lastMediaScan.With(scanLabels).SetToCurrentTime()
 	getPrometheusMetrics().mediaScansCounter.With(scanLabels).Inc()
+	processGenreAggregateMetrics(ctx, m.ds, getPrometheusMetrics().genreAggregate)
+}
+
+func (m *metrics) WriteScheduledMetrics(ctx context.Context) {
+	processPlayerLastSeenMetrics(ctx, m.ds, getPrometheusMetrics().playerLastSeen)
 }
 
 func (m *metrics) GetHandler() http.Handler {
@@ -69,6 +78,8 @@ type prometheusMetrics struct {
 	versionInfo       *prometheus.GaugeVec
 	lastMediaScan     *prometheus.GaugeVec
 	mediaScansCounter *prometheus.CounterVec
+	genreAggregate    *prometheus.GaugeVec
+	playerLastSeen    *prometheus.GaugeVec
 }
 
 // Prometheus' metrics requires initialization. But not more than once
@@ -102,6 +113,20 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 			},
 			[]string{"success"},
 		),
+		genreAggregate: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "genre_totals",
+				Help: "Total tracks per genre",
+			},
+			[]string{"genre"},
+		),
+		playerLastSeen: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "player_last_seen",
+				Help: "Seconds since a given player was last seen",
+			},
+			[]string{"player", "name", "user_id"},
+		),
 	}
 	err := prometheus.DefaultRegisterer.Register(instance.dbTotal)
 	if err != nil {
@@ -119,10 +144,18 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 	if err != nil {
 		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register media_scans metrics: %w", err))
 	}
+	err = prometheus.DefaultRegisterer.Register(instance.genreAggregate)
+	if err != nil {
+		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register genre_totals metrics: %w", err))
+	}
+	err = prometheus.DefaultRegisterer.Register(instance.playerLastSeen)
+	if err != nil {
+		log.Fatal("Unable to create Prometheus metric instance", fmt.Errorf("unable to register player_last_seen metrics: %w", err))
+	}
 	return instance
 })
 
-func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
+func processDbTotalMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
 	albumsCount, err := ds.Album(ctx).CountAll()
 	if err != nil {
 		log.Warn("album CountAll error", err)
@@ -150,6 +183,44 @@ func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetG
 		return
 	}
 	targetGauge.With(prometheus.Labels{"model": "user"}).Set(float64(usersCount))
+
+	genreCount, err := ds.Genre(ctx).CountAll()
+	if err != nil {
+		log.Warn("genre CountAll error", err)
+		return
+	}
+	targetGauge.With(prometheus.Labels{"model": "genre"}).Set(float64(genreCount))
+
+	playerCount, err := ds.Player(ctx).CountAll()
+	if err != nil {
+		log.Warn("player CountAll error", err)
+		return
+	}
+	targetGauge.With(prometheus.Labels{"model": "player"}).Set(float64(playerCount))
+}
+
+func processGenreAggregateMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
+	genres, err := ds.Genre(ctx).GetAll()
+	if err != nil {
+		log.Warn("genre GetAll error", err)
+		return
+	}
+
+	for _, genre := range genres {
+		targetGauge.With(prometheus.Labels{"genre": genre.Name}).Set(float64(genre.SongCount))
+	}
+}
+
+func processPlayerLastSeenMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
+	players, err := ds.Player(ctx).GetAll()
+	if err != nil {
+		log.Warn("genre GetAll error", err)
+		return
+	}
+
+	for _, player := range players {
+		targetGauge.With(prometheus.Labels{"player": player.ID, "name": player.Name, "user_id": player.UserId}).Set(time.Since(player.LastSeen).Seconds())
+	}
 }
 
 type noopMetrics struct {
@@ -158,5 +229,7 @@ type noopMetrics struct {
 func (n noopMetrics) WriteInitialMetrics(context.Context) {}
 
 func (n noopMetrics) WriteAfterScanMetrics(context.Context, bool) {}
+
+func (n noopMetrics) WriteScheduledMetrics(context.Context) {}
 
 func (n noopMetrics) GetHandler() http.Handler { return nil }

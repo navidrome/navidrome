@@ -78,6 +78,8 @@ const (
 const (
 	PrometheusDefaultPath = "/metrics"
 	PrometheusAuthUser    = "navidrome"
+
+	ScheduledMetricsSchedule = "@every 15s"
 )
 
 // Cache options

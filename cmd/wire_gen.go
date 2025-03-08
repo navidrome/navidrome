@@ -168,6 +168,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 	return playbackServer
 }
 
+func GetPrometheus() metrics.Metrics {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	metricsMetrics := metrics.NewPrometheusInstance(dataStore)
+	return metricsMetrics
+}
+
 // wire_injectors.go:
 
 var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, metrics.NewPrometheusInstance, db.Db)

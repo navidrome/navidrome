@@ -111,3 +111,9 @@ func GetPlaybackServer() playback.PlaybackServer {
 		allProviders,
 	))
 }
+
+func GetPrometheus() metrics.Metrics {
+	panic(wire.Build(
+		allProviders,
+	))
+}
