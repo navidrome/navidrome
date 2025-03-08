@@ -101,8 +101,13 @@ const renderInput = ({
 }) => (
   <TextField
     error={!!(touched && error)}
+    inputProps={{
+      // mobile keyboards: suppress capitalization and correction for login related fields
+      autocapitalize:'none',
+      autocorrect: 'off',
+      ...inputProps
+    }}
     helperText={touched && error}
-    {...inputProps}
     {...props}
     fullWidth
   />
