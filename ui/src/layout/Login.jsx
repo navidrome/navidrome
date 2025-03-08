@@ -103,9 +103,9 @@ const renderInput = ({
     error={!!(touched && error)}
     inputProps={{
       // mobile keyboards: suppress capitalization and correction for login related fields
-      autocapitalize:'none',
+      autocapitalize: 'none',
       autocorrect: 'off',
-      ...inputProps
+      ...inputProps,
     }}
     helperText={touched && error}
     {...props}
