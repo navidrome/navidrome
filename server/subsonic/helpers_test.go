@@ -82,6 +82,24 @@ var _ = Describe("helpers", func() {
 			Expect(buildDiscSubtitles(album)).To(BeNil())
 		})
 
+		It("should return nil when album has only one disc without title", func() {
+			album := model.Album{
+				Discs: map[int]string{
+					1: "",
+				},
+			}
+			Expect(buildDiscSubtitles(album)).To(BeNil())
+		})
+
+		It("should return the disc title for a single disc", func() {
+			album := model.Album{
+				Discs: map[int]string{
+					1: "Special Edition",
+				},
+			}
+			Expect(buildDiscSubtitles(album)).To(Equal([]responses.DiscTitle{{Disc: 1, Title: "Special Edition"}}))
+		})
+
 		It("should return correct disc titles when album has discs with valid disc numbers", func() {
 			album := model.Album{
 				Discs: map[int]string{

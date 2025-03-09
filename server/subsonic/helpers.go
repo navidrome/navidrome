@@ -347,6 +347,9 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	for num, title := range a.Discs {
 		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
 	}
+	if len(discTitles) == 1 && discTitles[0].Title == "" {
+		return nil
+	}
 	sort.Slice(discTitles, func(i, j int) bool {
 		return discTitles[i].Disc < discTitles[j].Disc
 	})
