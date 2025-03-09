@@ -24,9 +24,15 @@
         "rating": "Рейтинг",
         "quality": "Якість",
         "bpm": "Темп",
-        "playDate": "Востаннє відтворено",
+        "playDate": "Останнє відтворення",
         "channels": "Канали",
-        "createdAt": "Додано"
+        "createdAt": "Додано",
+        "grouping": "Групування",
+        "mood": "Настрій",
+        "participants": "Додаткові вчасники",
+        "tags": "Додаткові теги",
+        "mappedTags": "Зіставлені теги",
+        "rawTags": "Вихідні теги"
       },
       "actions": {
         "addToQueue": "Прослухати пізніше",
@@ -58,7 +64,13 @@
         "originalDate": "Оригінал",
         "releaseDate": "Дата випуску",
         "releases": "Випуск |||| Випуски",
-        "released": "Випущений"
+        "released": "Випущений",
+        "recordLabel": "Лейбл",
+        "catalogNum": "Номер каталогу",
+        "releaseType": "Тип",
+        "grouping": "Групування",
+        "media": "Медіа",
+        "mood": "Настрій"
       },
       "actions": {
         "playAll": "Прослухати",
@@ -89,7 +101,23 @@
         "playCount": "Відтворено",
         "rating": "Рейтинг",
         "genre": "Жанр",
-        "size": "Розмір"
+        "size": "Розмір",
+        "role": "Роль"
+      },
+      "roles": {
+        "albumartist": "Виконавець альбому |||| Виконавці альбому",
+        "artist": "Виконавець |||| Виконавці",
+        "composer": "Композитор |||| Композитори",
+        "conductor": "Диригент |||| Диригенти",
+        "lyricist": "Автор текстів |||| Автори текстів",
+        "arranger": "Аранжувальник |||| Аранжувальники",
+        "producer": "Продюсер |||| Продюсери",
+        "director": "Режисер |||| Режисери",
+        "engineer": "Інженер |||| Інженери",
+        "mixer": "Звукоінженер |||| Звукоінженери",
+        "remixer": "Реміксер |||| Реміксери",
+        "djmixer": "DJ-звукоінженер |||| DJ-звукоінженери",
+        "performer": "Виконавець |||| Виконавці"
       }
     },
     "user": {
@@ -191,12 +219,26 @@
         "contents": "Вміст",
         "expiresAt": "Дійсний",
         "lastVisitedAt": "Останній візит",
-        "visitCount": "Відвідин",
+        "visitCount": "Відвідано",
         "format": "Формат",
         "maxBitRate": "Макс. Біт рейт",
         "updatedAt": "Оновлено",
         "createdAt": "Створено",
         "downloadable": "Дозволити завантаження?"
+      }
+    },
+    "missing": {
+      "name": "Файл відсутній |||| Відсутні файли",
+      "fields": {
+        "path": "Шлях файлу",
+        "size": "Розмір",
+        "updatedAt": "Зник"
+      },
+      "actions": {
+        "remove": "Видалити"
+      },
+      "notifications": {
+        "removed": "Видалено зниклі файл(и)"
       }
     }
   },
@@ -210,12 +252,13 @@
       "user_menu": "Профіль",
       "username": "Ім'я користувача",
       "password": "Пароль",
-      "sign_in": "Ввійти",
+      "sign_in": "Увійти",
       "sign_in_error": "Помилка аутентифікації, спробуйте знову",
-      "logout": "Вийти"
+      "logout": "Вийти",
+      "insightsCollectionNote": "Navidrome збирає анонімні дані про використання, \nщоб допомогти покращити проєкт.\nНатисніть [тут], щоб дізнатися більше та відмовитись, якщо хочете"
     },
     "validation": {
-      "invalidChars": "Будь ласка, використовуйте лише букви і числа",
+      "invalidChars": "Будь ласка, використовуйте лише букви та числа",
       "passwordDoesNotMatch": "Пароль не співпадає",
       "required": "Обов'язково для заповнення",
       "minLength": "Мінімальна кількість символів %{min}",
@@ -299,16 +342,16 @@
     "message": {
       "about": "Довідка",
       "are_you_sure": "Ви впевнені?",
-      "bulk_delete_content": "Ви дійсно хочете видалити %{name}? |||| Ви впевнені що хочете видалити об'єкти, кількістю %{smart_count}?",
+      "bulk_delete_content": "Ви дійсно хочете видалити %{name}? |||| Ви впевнені, що хочете видалити об'єкти, кількістю %{smart_count}?",
       "bulk_delete_title": "Видалити %{name} |||| Видалити %{smart_count} %{name} елементів",
-      "delete_content": "Ви впевнені що хочете видалити цей елемент?",
+      "delete_content": "Ви впевнені, що хочете видалити цей елемент?",
       "delete_title": "Видалити %{name} #%{id}",
       "details": "Деталі",
-      "error": "Виникла помилка на стороні клієнта і ваш запит не був завершений.",
+      "error": "Виникла помилка на стороні клієнта і ваш запит не було завершено.",
       "invalid_form": "Форма заповнена не вірно. Перевірте помилки",
       "loading": "Сторінка завантажується, хвилинку будь ласка",
       "no": "Ні",
-      "not_found": "Ви набрали невірний URL-адресу, або перейшли за хибним посиланням.",
+      "not_found": "Ви набрали невірну URL-адресу, або перейшли за хибним посиланням.",
       "yes": "Так",
       "unsaved_changes": "Деякі зміни не було збережено.  Ви впевнені, що хочете проігнорувати?"
     },
@@ -351,9 +394,9 @@
     "songsAddedToPlaylist": "Додати 1 пісню у список відтворення |||| Додати %{smart_count} пісні у список відтворення\n",
     "noPlaylistsAvailable": "Нічого немає",
     "delete_user_title": "Видалити користувача '%{name}'",
-    "delete_user_content": "Ви справді хочете видалити цього користувача і усі його данні (включаючи списки відтворення і налаштування)?",
+    "delete_user_content": "Ви справді хочете видалити цього користувача та всі його дані (включаючи списки відтворення і налаштування)?",
     "notifications_blocked": "У вас заблоковані Сповіщення для цього сайту у вашому браузері",
-    "notifications_not_available": "Ваш браузер не підтримує сповіщень або доступ до Navidrome не використовує https",
+    "notifications_not_available": "Ваш браузер не підтримує сповіщення, або ви не підключені до Navidrome через HTTPS",
     "lastfmLinkSuccess": "Last.fm успішно підключено, scrobbling увімкнено",
     "lastfmLinkFailure": "Last.fm не вдалося підключити",
     "lastfmUnlinkSuccess": "Last.fm від'єднано та вимкнено scrobbling",
@@ -374,7 +417,9 @@
     "shareSuccess": "URL скопійований в буфер обміну: %{url}",
     "shareFailure": "Помилка копіюваня URL %{url} в буфер обміну",
     "downloadDialogTitle": "Завантаження %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Скопіювати в буфер: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Скопіювати в буфер: Ctrl+C, Enter",
+    "remove_missing_title": "Видалити зниклі файли",
+    "remove_missing_content": "Ви впевнені, що хочете видалити вибрані відсутні файли з бази даних? Це назавжди видалить усі посилання на них, включаючи кількість прослуховувань та рейтинги."
   },
   "menu": {
     "library": "Бібліотека",
@@ -388,15 +433,16 @@
         "language": "Мова",
         "defaultView": "Вигляд по замовчуванню",
         "desktop_notifications": "Сповіщення",
-        "lastfmScrobbling": "Scrobble на Last.fm",
-        "listenBrainzScrobbling": "Scrobble на ListenBrainz",
+        "lastfmScrobbling": "Скробблінг до Last.fm",
+        "listenBrainzScrobbling": "Скробблінг до ListenBrainz",
         "replaygain": "Режим ReplayGain",
         "preAmp": "ReplayGain підсилення (дБ)",
         "gain": {
           "none": "Вимкнено",
-          "album": "Використовуйте підсилення для Альбому",
-          "track": "Використовуйте посилення доріжки"
-        }
+          "album": "Використовувати підсилення для альбому",
+          "track": "Використовувати підсилення для треку"
+        },
+        "lastfmNotConfigured": "API-ключ Last.fm не налаштовано"
       }
     },
     "albumList": "Альбом",
@@ -408,7 +454,7 @@
     "playListsText": "Грати по черзі",
     "openText": "Відкрити",
     "closeText": "Закрити",
-    "notContentText": "Без музики",
+    "notContentText": "Немає музики",
     "clickToPlayText": "Натисніть для програвання",
     "clickToPauseText": "Натисніть для паузи",
     "nextTrackText": "Наступний трек",
@@ -421,7 +467,7 @@
     "downloadText": "Завантажити",
     "removeAudioListsText": "Видалити аудіо лист",
     "clickToDeleteText": "Натисніть, щоб видалити",
-    "emptyLyricText": "Без тексту",
+    "emptyLyricText": "Немає тексту",
     "playModeText": {
       "order": "По порядку",
       "orderLoop": "Повторити",
@@ -433,7 +479,12 @@
     "links": {
       "homepage": "Головна",
       "source": "Вихідний код",
-      "featureRequests": "Пропозиції"
+      "featureRequests": "Пропозиції",
+      "lastInsightsCollection": "Останній збір даних",
+      "insights": {
+        "disabled": "Вимкнено",
+        "waiting": "Очікування"
+      }
     }
   },
   "activity": {
@@ -445,7 +496,7 @@
     "serverDown": "Оффлайн"
   },
   "help": {
-    "title": "Navidrome гарячі клавіші",
+    "title": "Гарячі клавіші Navidrome",
     "hotkeys": {
       "show_help": "Показати довідку",
       "toggle_menu": "Сховати/Показати бокове меню",
