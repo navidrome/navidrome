@@ -55,7 +55,7 @@ func (c TagConf) SplitTagValue(values []string) []string {
 type TagType string
 
 const (
-	TagTypeInteger TagType = "integer"
+	TagTypeInteger TagType = "int"
 	TagTypeFloat   TagType = "float"
 	TagTypeDate    TagType = "date"
 	TagTypeUUID    TagType = "uuid"

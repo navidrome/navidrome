@@ -57,7 +57,6 @@ type configOptions struct {
 	SearchFullString                bool
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
-	AppendSubtitle                  bool
 	IgnoredArticles                 string
 	IndexGroups                     string
 	FFmpegPath                      string
@@ -133,6 +132,7 @@ type scannerOptions struct {
 }
 
 type subsonicOptions struct {
+	AppendSubtitle        bool
 	ArtistParticipations  bool
 	DefaultReportRealPath bool
 	LegacyClients         string
@@ -447,7 +447,6 @@ func init() {
 	viper.SetDefault("searchfullstring", false)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
-	viper.SetDefault("appendsubtitle", true)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")
@@ -494,6 +493,7 @@ func init() {
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
 
+	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
