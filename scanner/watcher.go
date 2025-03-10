@@ -133,6 +133,12 @@ func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 		return false
 	case name == ".DS_Store":
 		return true
+	case baseDir == conf.Server.DataFolder:
+		return true
+	case name == "navidrome.db", name == "navidrome.db-shm", name == "navidrome.db-wal":
+		return true
+	case baseDir == conf.Server.CacheFolder:
+		return true
 	}
 	// As it can be a deletion and not a change, we cannot reliably know if the path is a file or directory.
 	// But at this point, we can assume it's a directory. If it's a file, it would be ignored anyway
