@@ -19,8 +19,8 @@ import (
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/dlna"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
@@ -59,7 +59,7 @@ func CreateDLNAServer() *dlna.DLNAServer {
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	fileCache := artwork.GetImageCache()
-	agentsAgents := agents.New(dataStore)
+	agentsAgents := agents.GetAgents(dataStore)
 	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
 	dlnaServer := dlna.New(dataStore, broker, mediaStreamer, artworkArtwork)
