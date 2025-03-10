@@ -10,7 +10,7 @@ import TableRow from '@material-ui/core/TableRow'
 import TableCell from '@material-ui/core/TableCell'
 import Paper from '@material-ui/core/Paper'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import inflection from 'inflection'
+import { humanize, underscore } from 'inflection'
 import { useGetOne, usePermissions, useTranslate } from 'react-admin'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
@@ -136,7 +136,7 @@ const AboutDialog = ({ open, onClose }) => {
                   <TableRow key={key}>
                     <TableCell align="right" component="th" scope="row">
                       {translate(`about.links.${key}`, {
-                        _: inflection.humanize(inflection.underscore(key)),
+                        _: humanize(underscore(key)),
                       })}
                       :
                     </TableCell>

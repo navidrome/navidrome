@@ -9,7 +9,7 @@ import TableBody from '@material-ui/core/TableBody'
 import TableRow from '@material-ui/core/TableRow'
 import TableCell from '@material-ui/core/TableCell'
 import { useTranslate } from 'react-admin'
-import inflection from 'inflection'
+import { humanize } from 'inflection'
 import { keyMap } from '../hotkeys'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
@@ -29,7 +29,7 @@ const HelpTable = (props) => {
               {Object.keys(keyMap).map((key) => {
                 const { sequences, name } = keyMap[key]
                 const description = translate(`help.hotkeys.${name}`, {
-                  _: inflection.humanize(name),
+                  _: humanize(name),
                 })
                 return (
                   <TableRow key={key}>
