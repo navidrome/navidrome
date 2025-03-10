@@ -46,6 +46,13 @@ func (r *playerRepository) Get(id string) (*model.Player, error) {
 	return &res, err
 }
 
+func (r *playerRepository) GetAll(options ...model.QueryOptions) (model.Players, error) {
+	sq := r.selectPlayer(options...)
+	res := model.Players{}
+	err := r.queryAll(sq, &res)
+	return res, err
+}
+
 func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.Player, error) {
 	sel := r.selectPlayer().Where(And{
 		Eq{"client": client},

@@ -82,6 +82,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(schedulePrometheusScheduledMetrics(ctx))
 	if conf.Server.Scanner.Enabled {
 		g.Go(runInitialScan(ctx))
 		g.Go(startScanWatcher(ctx))
@@ -322,6 +323,18 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+func schedulePrometheusScheduledMetrics(ctx context.Context) func() error {
+	return func() error {
+		log.Info(ctx, "Starting metrics scheduler", "schedule", consts.ScheduledMetricsSchedule)
+		schedulerInstance := scheduler.GetInstance()
+		err := schedulerInstance.Add(consts.ScheduledMetricsSchedule, func() {
+			p := GetPrometheus()
+			p.WriteScheduledMetrics(ctx)
+		})
+		return err
 	}
 }
 
