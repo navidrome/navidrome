@@ -6,7 +6,7 @@ import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
 import SubMenu from './SubMenu'
-import inflection from 'inflection'
+import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
 import config from '../config'
@@ -42,7 +42,7 @@ const translatedResourceName = (resource, translate) =>
             smart_count: 2,
             _: resource.options.label,
           })
-        : inflection.humanize(inflection.pluralize(resource.name)),
+        : humanize(pluralize(resource.name)),
   })
 
 const Menu = ({ dense = false }) => {

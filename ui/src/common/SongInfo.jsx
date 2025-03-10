@@ -13,7 +13,7 @@ import {
   useTranslate,
   useRecordContext,
 } from 'react-admin'
-import inflection from 'inflection'
+import { humanize, underscore } from 'inflection'
 import {
   ArtistLinkField,
   BitrateField,
@@ -140,7 +140,7 @@ export const SongInfo = (props) => {
                 <TableRow key={`${record.id}-${key}`}>
                   <TableCell scope="row" className={classes.tableCell}>
                     {translate(`resources.song.fields.${key}`, {
-                      _: inflection.humanize(inflection.underscore(key)),
+                      _: humanize(underscore(key)),
                     })}
                     :
                   </TableCell>
