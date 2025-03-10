@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing/fstest"
 	"unicode/utf8"
 
@@ -143,7 +144,6 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 		// Then create an in-memory filesystem with all paths
 		var path string
 		var lib model.Library
-		var f *model.Folder
 		fsys := fstest.MapFS{}
 
 		for rows.Next() {
@@ -152,9 +152,9 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 				return err
 			}
 
-			// BFR Windows!!
+			path = strings.TrimPrefix(path, filepath.Clean(lib.Path))
+			path = strings.TrimPrefix(path, string(os.PathSeparator))
 			path = filepath.Clean(path)
-			path, _ = filepath.Rel("/", path)
 			fsys[path] = &fstest.MapFile{Mode: fs.ModeDir}
 		}
 		if err = rows.Err(); err != nil {
@@ -164,19 +164,18 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return nil
 		}
 
-		// Finally, walk the in-mem filesystem and insert all folders into the DB.
 		stmt, err := tx.PrepareContext(ctx, "insert into folder (id, library_id, path, name, parent_id) values (?, ?, ?, ?, ?)")
 		if err != nil {
 			return err
 		}
-		root, _ := filepath.Rel("/", lib.Path)
-		err = fs.WalkDir(fsys, root, func(path string, d fs.DirEntry, err error) error {
+
+		// Finally, walk the in-mem filesystem and insert all folders into the DB.
+		err = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() {
-				path, _ = filepath.Rel(root, path)
-				f = model.NewFolder(lib, path)
+				f := model.NewFolder(lib, path)
 				_, err = stmt.ExecContext(ctx, f.ID, lib.ID, f.Path, f.Name, f.ParentID)
 				if err != nil {
 					log.Error("Error writing folder to DB", "path", path, err)
@@ -190,7 +189,7 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 
 		libPathLen := utf8.RuneCountInString(lib.Path)
 		_, err = tx.ExecContext(ctx, fmt.Sprintf(`
-update media_file set path = substr(path,%d);`, libPathLen+2))
+update media_file set path = replace(substr(path, %d), '\', '/');`, libPathLen+2))
 		if err != nil {
 			return fmt.Errorf("error updating media_file path: %w", err)
 		}

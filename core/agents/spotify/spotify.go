@@ -27,6 +27,9 @@ type spotifyAgent struct {
 }
 
 func spotifyConstructor(ds model.DataStore) agents.Interface {
+	if conf.Server.Spotify.ID == "" || conf.Server.Spotify.Secret == "" {
+		return nil
+	}
 	l := &spotifyAgent{
 		ds:     ds,
 		id:     conf.Server.Spotify.ID,
@@ -88,8 +91,6 @@ func (s *spotifyAgent) searchArtist(ctx context.Context, name string) (*Artist, 
 
 func init() {
 	conf.AddHook(func() {
-		if conf.Server.Spotify.ID != "" && conf.Server.Spotify.Secret != "" {
-			agents.Register(spotifyAgentName, spotifyConstructor)
-		}
+		agents.Register(spotifyAgentName, spotifyConstructor)
 	})
 }

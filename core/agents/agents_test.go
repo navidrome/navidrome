@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,7 +29,7 @@ var _ = Describe("Agents", func() {
 		var ag *Agents
 		BeforeEach(func() {
 			conf.Server.Agents = ""
-			ag = New(ds)
+			ag = createAgents(ds)
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
@@ -44,17 +45,19 @@ var _ = Describe("Agents", func() {
 		var mock *mockAgent
 		BeforeEach(func() {
 			mock = &mockAgent{}
-			Register("fake", func(ds model.DataStore) Interface {
-				return mock
-			})
-			Register("empty", func(ds model.DataStore) Interface {
-				return struct {
-					Interface
-				}{}
-			})
-			conf.Server.Agents = "empty,fake"
-			ag = New(ds)
+			Register("fake", func(model.DataStore) Interface { return mock })
+			Register("disabled", func(model.DataStore) Interface { return nil })
+			Register("empty", func(model.DataStore) Interface { return &emptyAgent{} })
+			conf.Server.Agents = "empty,fake,disabled"
+			ag = createAgents(ds)
 			Expect(ag.AgentName()).To(Equal("agents"))
+		})
+
+		It("does not register disabled agents", func() {
+			ags := slice.Map(ag.agents, func(a Interface) string { return a.AgentName() })
+			// local agent is always appended to the end of the agents list
+			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
+			Expect(ags).ToNot(ContainElement("disabled"))
 		})
 
 		Describe("GetArtistMBID", func() {
@@ -343,4 +346,12 @@ func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string)
 			},
 		},
 	}, nil
+}
+
+type emptyAgent struct {
+	Interface
+}
+
+func (e *emptyAgent) AgentName() string {
+	return "empty"
 }

@@ -55,7 +55,8 @@ func (c TagConf) SplitTagValue(values []string) []string {
 type TagType string
 
 const (
-	TagTypeInteger TagType = "integer"
+	TagTypeString  TagType = "string"
+	TagTypeInteger TagType = "int"
 	TagTypeFloat   TagType = "float"
 	TagTypeDate    TagType = "date"
 	TagTypeUUID    TagType = "uuid"
@@ -113,8 +114,9 @@ func collectTags(tagMappings, normalized map[TagName]TagConf) {
 			aliases = append(aliases, strings.ToLower(val))
 		}
 		if v.Split != nil {
-			if v.Type != "" {
-				log.Error("Tag splitting only available for string types", "tag", k, "split", v.Split, "type", v.Type)
+			if v.Type != "" && v.Type != TagTypeString {
+				log.Error("Tag splitting only available for string types", "tag", k, "split", v.Split,
+					"type", string(v.Type))
 				v.Split = nil
 			} else {
 				v.SplitRx = compileSplitRegex(k, v.Split)

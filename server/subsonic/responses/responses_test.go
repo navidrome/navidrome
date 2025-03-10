@@ -403,6 +403,42 @@ var _ = Describe("Responses", func() {
 				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
 			})
 		})
+
+		Context("with OS data", func() {
+			BeforeEach(func() {
+				child := make([]Child, 1)
+				child[0] = Child{Id: "1", OpenSubsonicChild: &OpenSubsonicChild{
+					MediaType:     MediaTypeAlbum,
+					MusicBrainzId: "00000000-0000-0000-0000-000000000000",
+					Genres: Array[ItemGenre]{
+						ItemGenre{Name: "Genre 1"},
+						ItemGenre{Name: "Genre 2"},
+					},
+					Moods:         []string{"mood1", "mood2"},
+					DisplayArtist: "Display artist",
+					Artists: Array[ArtistID3Ref]{
+						ArtistID3Ref{Id: "artist-1", Name: "Artist 1"},
+						ArtistID3Ref{Id: "artist-2", Name: "Artist 2"},
+					},
+					DisplayAlbumArtist: "Display album artist",
+					AlbumArtists: Array[ArtistID3Ref]{
+						ArtistID3Ref{Id: "album-artist-1", Name: "Artist 1"},
+						ArtistID3Ref{Id: "album-artist-2", Name: "Artist 2"},
+					},
+					ExplicitStatus: "explicit",
+					SortName:       "sort name",
+				}}
+				response.AlbumList.Album = child
+
+			})
+
+			It("should match .XML", func() {
+				Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+			It("should match .JSON", func() {
+				Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+			})
+		})
 	})
 
 	Describe("User", func() {

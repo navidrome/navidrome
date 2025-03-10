@@ -103,8 +103,8 @@ func (api *Router) GetAlbumList2(w http.ResponseWriter, r *http.Request) (*respo
 	w.Header().Set("x-total-count", strconv.FormatInt(pageCount, 10))
 
 	response := newResponse()
-	response.AlbumList2 = &responses.AlbumList{
-		Album: slice.MapWithArg(albums, r.Context(), childFromAlbum),
+	response.AlbumList2 = &responses.AlbumList2{
+		Album: slice.MapWithArg(albums, r.Context(), buildAlbumID3),
 	}
 	return response, nil
 }
@@ -137,13 +137,29 @@ func (api *Router) GetStarred(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetStarred2(r *http.Request) (*responses.Subsonic, error) {
-	resp, err := api.GetStarred(r)
+	ctx := r.Context()
+	artists, err := api.ds.Artist(ctx).GetAll(filter.ArtistsByStarred())
 	if err != nil {
+		log.Error(r, "Error retrieving starred artists", err)
+		return nil, err
+	}
+	options := filter.ByStarred()
+	albums, err := api.ds.Album(ctx).GetAll(options)
+	if err != nil {
+		log.Error(r, "Error retrieving starred albums", err)
+		return nil, err
+	}
+	mediaFiles, err := api.ds.MediaFile(ctx).GetAll(options)
+	if err != nil {
+		log.Error(r, "Error retrieving starred mediaFiles", err)
 		return nil, err
 	}
 
 	response := newResponse()
-	response.Starred2 = resp.Starred
+	response.Starred2 = &responses.Starred2{}
+	response.Starred2.Artist = slice.MapWithArg(artists, r, toArtistID3)
+	response.Starred2.Album = slice.MapWithArg(albums, ctx, buildAlbumID3)
+	response.Starred2.Song = slice.MapWithArg(mediaFiles, ctx, childFromMediaFile)
 	return response, nil
 }
 

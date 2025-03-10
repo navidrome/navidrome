@@ -7,7 +7,11 @@ import config from '../config'
 const TranscodingList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   return (
-    <List exporter={false} {...props}>
+    <List
+      {...props}
+      exporter={false}
+      bulkActionButtons={config.enableTranscodingConfig}
+    >
       {isXsmall ? (
         <SimpleList
           primaryText={(r) => r.name}

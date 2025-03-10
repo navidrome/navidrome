@@ -19,7 +19,7 @@ import (
 
 const (
 	//imageHostingUrl = "https://unsplash.com/photos/%s/download?fm=jpg&w=1600&h=900&fit=max"
-	imageHostingUrl     = "https://www.navidrome.org/images/%s.jpg"
+	imageHostingUrl     = "https://www.navidrome.org/images/%s.webp"
 	imageListURL        = "https://www.navidrome.org/images/index.yml"
 	imageListTTL        = 24 * time.Hour
 	imageCacheDir       = "backgrounds"
@@ -62,7 +62,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer s.Close()
 
-	w.Header().Set("content-type", "image/jpeg")
+	w.Header().Set("content-type", "image/webp")
 	_, _ = io.Copy(w, s.Reader)
 }
 
@@ -131,6 +131,10 @@ func (h *Handler) getImageList(ctx context.Context) ([]string, error) {
 }
 
 func imageURL(imageName string) string {
-	imageName = strings.TrimSuffix(imageName, ".jpg")
+	// Discard extension
+	parts := strings.Split(imageName, ".")
+	if len(parts) > 1 {
+		imageName = parts[0]
+	}
 	return fmt.Sprintf(imageHostingUrl, imageName)
 }

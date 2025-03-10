@@ -147,18 +147,18 @@ func startDLNAServer(ctx context.Context) func() error {
 // schedulePeriodicScan schedules a periodic scan of the music library, if configured.
 func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.ScanSchedule
+		schedule := conf.Server.Scanner.Schedule
 		if schedule == "" {
-			log.Warn(ctx, "Periodic scan is DISABLED")
+			log.Info(ctx, "Periodic scan is DISABLED")
 			return nil
 		}
 
-		scanner := CreateScanner(ctx)
+		s := CreateScanner(ctx)
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
 		err := schedulerInstance.Add(schedule, func() {
-			_, err := scanner.ScanAll(ctx, false)
+			_, err := s.ScanAll(ctx, false)
 			if err != nil {
 				log.Error(ctx, "Error executing periodic scan", err)
 			}
@@ -246,7 +246,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
 		schedule := conf.Server.Backup.Schedule
 		if schedule == "" {
-			log.Warn(ctx, "Periodic backup is DISABLED")
+			log.Info(ctx, "Periodic backup is DISABLED")
 			return nil
 		}
 

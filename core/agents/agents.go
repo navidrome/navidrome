@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/singleton"
 )
 
 type Agents struct {
@@ -17,22 +18,36 @@ type Agents struct {
 	agents []Interface
 }
 
-func New(ds model.DataStore) *Agents {
+func GetAgents(ds model.DataStore) *Agents {
+	return singleton.GetInstance(func() *Agents {
+		return createAgents(ds)
+	})
+}
+
+func createAgents(ds model.DataStore) *Agents {
 	var order []string
 	if conf.Server.Agents != "" {
 		order = strings.Split(conf.Server.Agents, ",")
 	}
 	order = append(order, LocalAgentName)
 	var res []Interface
+	var enabled []string
 	for _, name := range order {
 		init, ok := Map[name]
 		if !ok {
-			log.Error("Agent not available. Check configuration", "name", name)
+			log.Error("Invalid agent. Check `Agents` configuration", "name", name, "conf", conf.Server.Agents)
 			continue
 		}
 
+		agent := init(ds)
+		if agent == nil {
+			log.Debug("Agent not available. Missing configuration?", "name", name)
+			continue
+		}
+		enabled = append(enabled, name)
 		res = append(res, init(ds))
 	}
+	log.Debug("List of agents enabled", "names", enabled)
 
 	return &Agents{ds: ds, agents: res}
 }

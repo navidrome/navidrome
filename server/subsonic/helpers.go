@@ -110,7 +110,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 
 func toOSArtistID3(ctx context.Context, a model.Artist) *responses.OpenSubsonicArtistID3 {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	artist := responses.OpenSubsonicArtistID3{
@@ -197,7 +197,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -301,7 +301,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 
 func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubsonicChild {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -317,6 +317,7 @@ func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubson
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	child.ExplicitStatus = mapExplicitStatus(al.ExplicitStatus)
+	child.SortName = sortName(al.SortAlbumName, al.OrderAlbumName)
 	return &child
 }
 
@@ -345,6 +346,9 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	var discTitles []responses.DiscTitle
 	for num, title := range a.Discs {
 		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
+	}
+	if len(discTitles) == 1 && discTitles[0].Title == "" {
+		return nil
 	}
 	sort.Slice(discTitles, func(i, j int) bool {
 		return discTitles[i].Disc < discTitles[j].Disc
@@ -376,7 +380,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 
 func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubsonicAlbumID3 {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	dir := responses.OpenSubsonicAlbumID3{}
