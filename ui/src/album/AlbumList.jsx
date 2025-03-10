@@ -31,7 +31,7 @@ import albumLists, { defaultAlbumList } from './albumLists'
 import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
-import inflection from 'inflection'
+import { humanize } from 'inflection'
 import { makeStyles } from '@material-ui/core/styles'
 
 const useStyles = makeStyles({
@@ -140,9 +140,7 @@ const AlbumFilter = (props) => {
         <AutocompleteInput
           emptyText="-- None --"
           optionText={(record) =>
-            record?.tagValue
-              ? inflection.humanize(record?.tagValue)
-              : '-- None --'
+            record?.tagValue ? humanize(record?.tagValue) : '-- None --'
           }
         />
       </ReferenceInput>
