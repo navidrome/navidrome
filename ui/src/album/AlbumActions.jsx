@@ -73,8 +73,9 @@ const AlbumActions = ({
   }, [dispatch, data, ids])
 
   const handleAddToPlaylist = React.useCallback(() => {
-    dispatch(openAddToPlaylist({ selectedIds: ids }))
-  }, [dispatch, ids])
+    const selectedIds = ids.filter((id) => !data[id].missing)
+    dispatch(openAddToPlaylist({ selectedIds }))
+  }, [dispatch, data, ids])
 
   const handleShare = React.useCallback(() => {
     dispatch(openShareMenu([record.id], 'album', record.name))
