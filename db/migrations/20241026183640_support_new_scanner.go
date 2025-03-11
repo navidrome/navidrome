@@ -187,9 +187,8 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return fmt.Errorf("error populating folder table: %w", err)
 		}
 
-		// Remove library path prefix from media_file paths
-		// Make sure the library path has no trailing slash
-		libPath := strings.TrimSuffix(lib.Path, string(os.PathSeparator))
+		// Count the number of characters in the library path
+		libPath := filepath.Clean(lib.Path)
 		libPathLen := utf8.RuneCountInString(libPath)
 
 		// In one go, update all paths in the media_file table, removing the library path prefix
