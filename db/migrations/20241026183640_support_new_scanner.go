@@ -178,7 +178,7 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 				f := model.NewFolder(lib, path)
 				_, err = stmt.ExecContext(ctx, f.ID, lib.ID, f.Path, f.Name, f.ParentID)
 				if err != nil {
-					log.Error("Error writing folder to DB", "path", path, err)
+					log.Error("error writing folder to DB", "path", path, err)
 				}
 			}
 			return err
@@ -187,7 +187,12 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return fmt.Errorf("error populating folder table: %w", err)
 		}
 
-		libPathLen := utf8.RuneCountInString(lib.Path)
+		// Count the number of characters in the library path
+		libPath := filepath.Clean(lib.Path)
+		libPathLen := utf8.RuneCountInString(libPath)
+
+		// In one go, update all paths in the media_file table, removing the library path prefix
+		// and replacing any backslashes with slashes (the path separator used by the io/fs package)
 		_, err = tx.ExecContext(ctx, fmt.Sprintf(`
 update media_file set path = replace(substr(path, %d), '\', '/');`, libPathLen+2))
 		if err != nil {
