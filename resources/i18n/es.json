@@ -27,12 +27,12 @@
         "playDate": "Últimas reproducciones",
         "channels": "Canales",
         "createdAt": "Creado el",
-        "grouping": "",
+        "grouping": "Agrupación",
         "mood": "",
-        "participants": "",
-        "tags": "",
-        "mappedTags": "",
-        "rawTags": ""
+        "participants": "Participantes",
+        "tags": "Etiquetas",
+        "mappedTags": "Etiquetas asignadas",
+        "rawTags": "Etiquetas sin procesar"
       },
       "actions": {
         "addToQueue": "Reproducir después",
@@ -65,10 +65,10 @@
         "releaseDate": "Publicado",
         "releases": "Lanzamiento |||| Lanzamientos",
         "released": "Publicado",
-        "recordLabel": "",
-        "catalogNum": "",
-        "releaseType": "",
-        "grouping": "",
+        "recordLabel": "Discográfica",
+        "catalogNum": "Número de catálogo",
+        "releaseType": "Tipo de lanzamiento",
+        "grouping": "Agrupación",
         "media": "",
         "mood": ""
       },
@@ -76,7 +76,7 @@
         "playAll": "Reproducir",
         "playNext": "Reproducir siguiente",
         "addToQueue": "Reproducir después",
-        "shuffle": "Aletorio",
+        "shuffle": "Aleatorio",
         "addToPlaylist": "Agregar a la lista",
         "download": "Descargar",
         "info": "Obtener información",
@@ -102,22 +102,22 @@
         "rating": "Calificación",
         "genre": "Género",
         "size": "Tamaño",
-        "role": ""
+        "role": "Rol"
       },
       "roles": {
-        "albumartist": "",
-        "artist": "",
-        "composer": "",
-        "conductor": "",
-        "lyricist": "",
-        "arranger": "",
-        "producer": "",
-        "director": "",
-        "engineer": "",
-        "mixer": "",
-        "remixer": "",
-        "djmixer": "",
-        "performer": ""
+        "albumartist": "Artista del álbum",
+        "artist": "Artista",
+        "composer": "Compositor",
+        "conductor": "Director de orquesta",
+        "lyricist": "Letrista",
+        "arranger": "Arreglista",
+        "producer": "Productor",
+        "director": "Director",
+        "engineer": "Ingeniero de sonido",
+        "mixer": "Mezclador",
+        "remixer": "Remixer",
+        "djmixer": "DJ Mixer",
+        "performer": "Intérprete"
       }
     },
     "user": {
@@ -141,7 +141,7 @@
       },
       "notifications": {
         "created": "Usuario creado",
-        "updated": "Usuario actulalizado",
+        "updated": "Usuario actualizado",
         "deleted": "Usuario eliminado"
       },
       "message": {
@@ -228,17 +228,17 @@
       }
     },
     "missing": {
-      "name": "",
+      "name": "Faltante",
       "fields": {
-        "path": "",
-        "size": "",
-        "updatedAt": ""
+        "path": "Ruta",
+        "size": "Tamaño",
+        "updatedAt": "Actualizado el"
       },
       "actions": {
-        "remove": ""
+        "remove": "Eliminar"
       },
       "notifications": {
-        "removed": ""
+        "removed": "Eliminado"
       }
     }
   },
@@ -413,12 +413,12 @@
     "downloadOriginalFormat": "Descargar formato original",
     "shareOriginalFormat": "Compartir formato original",
     "shareDialogTitle": "Compartir %{resource} '%{name}'",
-    "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Share %{smart_count} %{resource}",
+    "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Compartir %{smart_count} %{resource}",
     "shareSuccess": "URL copiada al portapapeles: %{url}",
     "shareFailure": "Error al copiar la URL %{url} al portapapeles",
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro",
-    "remove_missing_title": "",
+    "remove_missing_title": "Eliminar elemento faltante",
     "remove_missing_content": ""
   },
   "menu": {
