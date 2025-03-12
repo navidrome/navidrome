@@ -10,6 +10,7 @@ export const ShuffleAllButton = ({ filters }) => {
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const notify = useNotify()
+  filters = { ...filters, missing: false }
 
   const handleOnClick = () => {
     dataProvider
