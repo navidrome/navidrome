@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -51,17 +50,6 @@ var _ = Describe("MediaRepository", func() {
 
 		_, err := mr.Get(newID)
 		Expect(err).To(MatchError(model.ErrNotFound))
-	})
-
-	XIt("filters by genre", func() {
-		Expect(mr.GetAll(model.QueryOptions{
-			Sort:    "genre.name asc, title asc",
-			Filters: squirrel.Eq{"genre.name": "Rock"},
-		})).To(Equal(model.MediaFiles{
-			songDayInALife,
-			songAntenna,
-			songComeTogether,
-		}))
 	})
 
 	Context("Annotations", func() {
