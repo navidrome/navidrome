@@ -16,7 +16,6 @@ export default defineConfig({
       filename: 'sw.js',
       devOptions: {
         enabled: true,
-        type: 'module',
       },
     }),
   ],

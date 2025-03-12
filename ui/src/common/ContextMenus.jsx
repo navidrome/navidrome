@@ -233,6 +233,7 @@ export const AlbumContextMenu = (props) =>
           album_id: props.record.id,
           release_date: props.releaseDate,
           disc_number: props.discNumber,
+          missing: false,
         },
       }}
     />
@@ -262,7 +263,7 @@ export const ArtistContextMenu = (props) =>
           field: 'album',
           order: 'ASC',
         },
-        filter: { album_artist_id: props.record.id },
+        filter: { album_artist_id: props.record.id, missing: false },
       }}
     />
   ) : null
