@@ -141,6 +141,7 @@ type subsonicOptions struct {
 }
 
 type TagConf struct {
+	Ignore    bool     `yaml:"ignore"`
 	Aliases   []string `yaml:"aliases"`
 	Type      string   `yaml:"type"`
 	MaxLength int      `yaml:"maxLength"`
