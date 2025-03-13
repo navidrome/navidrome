@@ -128,7 +128,8 @@ type scannerOptions struct {
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
 	Extractor          string
-	GroupAlbumReleases bool // Deprecated: BFR Update docs
+	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
+	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 }
 
 type subsonicOptions struct {
@@ -307,6 +308,7 @@ func Load(noConfigDump bool) {
 		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
 		Server.Scanner.Extractor = consts.DefaultScannerExtractor
 	}
+	logDeprecatedOptions("Scanner.GenreSeparators")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases")
 
 	// Call init hooks
@@ -489,9 +491,10 @@ func init() {
 	viper.SetDefault("scanner.enabled", true)
 	viper.SetDefault("scanner.schedule", "0")
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
-	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
+	viper.SetDefault("scanner.genreseparators", "")
+	viper.SetDefault("scanner.groupalbumreleases", false)
 
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
