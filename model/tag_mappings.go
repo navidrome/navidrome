@@ -175,6 +175,15 @@ func loadTagMappings() {
 		log.Error("No tag mappings found in mappings.yaml, check the format")
 	}
 
+	// Use Scanner.GenreSeparators if specified and Tags.genre is not defined
+	if conf.Server.Scanner.GenreSeparators != "" && len(conf.Server.Tags["genre"].Aliases) == 0 {
+		genreConf := _mappings.Main[TagName("genre")]
+		genreConf.Split = strings.Split(conf.Server.Scanner.GenreSeparators, "")
+		genreConf.SplitRx = compileSplitRegex("genre", genreConf.Split)
+		_mappings.Main[TagName("genre")] = genreConf
+		log.Debug("Loading deprecated list of genre separators", "separators", genreConf.Split)
+	}
+
 	// Overwrite the default mappings with the ones from the config
 	for tag, cfg := range conf.Server.Tags {
 		if len(cfg.Aliases) == 0 {
