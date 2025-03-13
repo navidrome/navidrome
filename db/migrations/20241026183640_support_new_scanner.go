@@ -172,14 +172,20 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 		// Finally, walk the in-mem filesystem and insert all folders into the DB.
 		err = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
-				return err
+				// Don't abort the walk, just log the error
+				log.Error("error walking folder to DB", "path", path, err)
+				return nil
 			}
-			if d.IsDir() {
-				f := model.NewFolder(lib, path)
-				_, err = stmt.ExecContext(ctx, f.ID, lib.ID, f.Path, f.Name, f.ParentID)
-				if err != nil {
-					log.Error("error writing folder to DB", "path", path, err)
-				}
+			// Skip entries that are not directories
+			if !d.IsDir() {
+				return nil
+			}
+
+			// Create a folder in the DB
+			f := model.NewFolder(lib, path)
+			_, err = stmt.ExecContext(ctx, f.ID, lib.ID, f.Path, f.Name, f.ParentID)
+			if err != nil {
+				log.Error("error writing folder to DB", "path", path, err)
 			}
 			return err
 		})
