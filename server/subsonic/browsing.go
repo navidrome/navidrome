@@ -303,6 +303,7 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	response := newResponse()
+	response.ArtistInfo = &responses.ArtistInfo{}
 	response.ArtistInfo.ArtistInfoBase = *base
 
 	for _, s := range *similarArtists {
@@ -322,6 +323,7 @@ func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) 
 	}
 
 	response := newResponse()
+	response.ArtistInfo2 = &responses.ArtistInfo2{}
 	response.ArtistInfo2.ArtistInfoBase = *base
 
 	for _, s := range *similarArtists {
