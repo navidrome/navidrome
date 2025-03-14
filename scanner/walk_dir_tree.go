@@ -145,7 +145,10 @@ func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, 
 		}
 		// If the .ndignore file is empty, mimic the current behavior and ignore everything
 		if len(newPatterns) == 0 {
+			log.Trace(ctx, "Scanner: .ndignore file is empty, ignoring everything", "path", currentFolder)
 			newPatterns = []string{"**/*"}
+		} else {
+			log.Trace(ctx, "Scanner: .ndignore file found ", "path", ignoreFilePath, "patterns", newPatterns)
 		}
 	}
 	// Combine the patterns from the .ndignore file with the ones passed as argument
@@ -180,7 +183,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
 		entryPath := path.Join(dirPath, entry.Name())
-		if len(ignorePatterns) > 0 && isScanIgnored(ignoreMatcher, entryPath) {
+		if len(ignorePatterns) > 0 && isScanIgnored(ctx, ignoreMatcher, entryPath) {
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
@@ -309,6 +312,10 @@ func isEntryIgnored(name string) bool {
 	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }
 
-func isScanIgnored(matcher *ignore.GitIgnore, entryPath string) bool {
-	return matcher.MatchesPath(entryPath)
+func isScanIgnored(ctx context.Context, matcher *ignore.GitIgnore, entryPath string) bool {
+	matches := matcher.MatchesPath(entryPath)
+	if matches {
+		log.Trace(ctx, "Scanner: Ignoring entry matching .ndignore: ", "path", entryPath)
+	}
+	return matches
 }
