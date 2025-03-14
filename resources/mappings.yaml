@@ -96,7 +96,7 @@ main:
     aliases: [ disctotal, totaldiscs ]
     album: true
   discsubtitle:
-    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, wm/setsubtitle ]
+    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, setsubtitle, wm/setsubtitle ]
   bpm:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:
