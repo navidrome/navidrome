@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,11 +120,17 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"has_rating":      hasRatingFilter,
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
+		"role_total_id":   allRolesFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
 		filters[string(tag)] = tagIDFilter
 	}
+
+	for role := range model.AllRoles {
+		filters["role_"+role+"_id"] = artistRoleFilter
+	}
+
 	return filters
 })
 
@@ -153,14 +160,25 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 	}
 }
 
-// BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		Exists("json_tree(Participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
 	}
-	// For any role:
-	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
+}
+
+func artistRoleFilter(name string, value interface{}) Sqlizer {
+	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
+
+	// Check if the role name is valid. If not, return an invalid filter
+	if _, ok := model.AllRoles[roleName]; !ok {
+		return Gt{"": nil}
+	}
+	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
+}
+
+func allRolesFilter(_ string, value interface{}) Sqlizer {
+	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
