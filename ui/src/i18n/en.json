@@ -102,8 +102,7 @@
         "playCount": "Plays",
         "rating": "Rating",
         "genre": "Genre",
-        "role": "Role",
-        "allRoles": "All Roles"
+        "role": "Role"
       },
       "roles": {
         "albumartist": "Album Artist |||| Album Artists",
