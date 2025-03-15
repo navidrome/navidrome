@@ -1,6 +1,5 @@
 import React, { useState, createElement, useEffect } from 'react'
 import {
-  InputLabel,
   makeStyles,
   MenuItem,
   Select,
@@ -16,13 +15,13 @@ import {
   Pagination,
   useTranslate,
 } from 'react-admin'
-import en from '../i18n/en.json'
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
 import { useAlbumsPerPage } from '../common/index.js'
 import { useArtistRoles } from '../common/useArtistRoles.jsx'
+import { useLocation } from 'react-router-dom/cjs/react-router-dom.min.js'
 
 const useStyles = makeStyles({
   root: {
@@ -72,7 +71,10 @@ const AlbumShowLayout = (props) => {
   const record = useRecordContext()
   const { width } = props
   const [, perPageOptions] = useAlbumsPerPage(width)
-  const [role, setRole] = useState('albumartist')
+  const { search } = useLocation()
+  const [role, setRole] = useState(
+    new URLSearchParams(search).get('role') ?? 'total',
+  )
   const roles = useArtistRoles(false)
   const classes = useStyles()
 
@@ -99,7 +101,6 @@ const AlbumShowLayout = (props) => {
     <>
       {record && <ArtistDetails />}
       <div className={classes.root}>
-        <InputLabel>{translate('resources.artist.fields.role')}</InputLabel>
         <Select
           value={role}
           onChange={(event) => setRole(event.target.value)}

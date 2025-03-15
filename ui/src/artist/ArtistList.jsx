@@ -29,7 +29,6 @@ import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import ArtistSimpleList from './ArtistSimpleList'
 import { DraggableTypes } from '../consts'
-import en from '../i18n/en.json'
 import { formatBytes } from '../utils/index.js'
 import { useArtistRoles } from '../common/useArtistRoles.jsx'
 
@@ -98,7 +97,10 @@ const ArtistDatagrid = (props) => (
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const { filterValues } = rest
   const classes = useStyles()
-  const handleArtistLink = useGetHandleArtistClick(width)
+  const handleArtistLink = useGetHandleArtistClick(
+    width,
+    rest.filterValues?.role,
+  )
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   useResourceRefresh('artist')
