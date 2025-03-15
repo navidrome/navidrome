@@ -37,6 +37,14 @@ func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
 		Where(Eq{"tag.tag_name": model.TagGenre})
 }
 
+func (r *genreRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
+	return r.count(r.newSelect(opt...).
+		Columns(
+			"id",
+		).
+		Where(Eq{"tag.tag_name": model.TagGenre}))
+}
+
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
 	sq := r.selectGenre(opt...)
 	res := model.Genres{}
