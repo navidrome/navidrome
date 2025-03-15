@@ -95,7 +95,7 @@ const AlbumShowLayout = (props) => {
     pagination = <Pagination rowsPerPageOptions={rowsPerPageOptions} />
   }
 
-  const id = `${role}_id`
+  const id = `role_${role}_id`
 
   return (
     <>
