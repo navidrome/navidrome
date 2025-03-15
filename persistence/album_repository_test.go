@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -234,6 +235,52 @@ var _ = Describe("AlbumRepository", func() {
 				Expect(albums[i].SongCount).To(Equal(dba[i].Album.SongCount))
 				Expect(albums[i].PlayCount).To(Equal(dba[i].Album.PlayCount))
 			}
+		})
+	})
+
+	Describe("artistRoleFilter", func() {
+		DescribeTable("creates correct SQL expressions for artist roles",
+			func(filterName, artistID, expectedSQL string) {
+				sqlizer := artistRoleFilter(filterName, artistID)
+				sql, args, err := sqlizer.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(expectedSQL))
+				Expect(args).To(Equal([]interface{}{artistID}))
+			},
+			Entry("artist role", "role_artist_id", "123",
+				"exists (select 1 from json_tree(participants, '$.artist') where value = ?)"),
+			Entry("albumartist role", "role_albumartist_id", "456",
+				"exists (select 1 from json_tree(participants, '$.albumartist') where value = ?)"),
+			Entry("composer role", "role_composer_id", "789",
+				"exists (select 1 from json_tree(participants, '$.composer') where value = ?)"),
+		)
+
+		It("works with the actual filter map", func() {
+			filters := albumFilters()
+
+			for roleName := range model.AllRoles {
+				filterName := "role_" + roleName + "_id"
+				filterFunc, exists := filters[filterName]
+				Expect(exists).To(BeTrue(), fmt.Sprintf("Filter %s should exist", filterName))
+
+				sqlizer := filterFunc(filterName, "test-id")
+				sql, args, err := sqlizer.ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(fmt.Sprintf("exists (select 1 from json_tree(participants, '$.%s') where value = ?)", roleName)))
+				Expect(args).To(Equal([]interface{}{"test-id"}))
+			}
+		})
+
+		It("rejects invalid roles", func() {
+			sqlizer := artistRoleFilter("role_invalid_id", "123")
+			_, _, err := sqlizer.ToSql()
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects invalid filter names", func() {
+			sqlizer := artistRoleFilter("invalid_name", "123")
+			_, _, err := sqlizer.ToSql()
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

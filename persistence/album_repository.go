@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -161,18 +162,23 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		Exists("json_tree(Participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
 	}
 }
 
 func artistRoleFilter(name string, value interface{}) Sqlizer {
-	key := name[5 : len(name)-3]
-	return Exists(fmt.Sprintf("json_tree(Participants, '$.%s')", key), Eq{"value": value})
+	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
+
+	// Check if the role name is valid. If not, return an invalid filter
+	if _, ok := model.AllRoles[roleName]; !ok {
+		return Gt{"": nil}
+	}
+	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
 }
 
 func allRolesFilter(_ string, value interface{}) Sqlizer {
-	return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
+	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
