@@ -119,17 +119,11 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"has_rating":      hasRatingFilter,
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
-		"role_total_id":   allRolesFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
 		filters[string(tag)] = tagIDFilter
 	}
-
-	for role := range model.AllRoles {
-		filters["role_"+role+"_id"] = artistRoleFilter
-	}
-
 	return filters
 })
 
@@ -159,20 +153,14 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 	}
 }
 
+// BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
 		Exists("json_tree(Participants, '$.albumartist')", Eq{"value": value}),
 		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
 	}
-}
-
-func artistRoleFilter(name string, value interface{}) Sqlizer {
-	key := name[5 : len(name)-3]
-	return Exists(fmt.Sprintf("json_tree(Participants, '$.%s')", key), Eq{"value": value})
-}
-
-func allRolesFilter(_ string, value interface{}) Sqlizer {
-	return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
+	// For any role:
+	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
