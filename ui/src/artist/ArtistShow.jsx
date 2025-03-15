@@ -78,7 +78,7 @@ const AlbumShowLayout = (props) => {
   const roles = useArtistRoles(false)
   const classes = useStyles()
 
-  const maxPerPage = 72
+  const maxPerPage = 36
   let perPage = 0
   let pagination = null
 
@@ -90,7 +90,7 @@ const AlbumShowLayout = (props) => {
   if (count > maxPerPage) {
     perPage = Math.trunc(maxPerPage / perPageOptions[0]) * perPageOptions[0]
     const rowsPerPageOptions = [1, 2, 3].map((option) =>
-      Math.trunc(option * (perPage / 3)),
+      Math.trunc(option * perPage),
     )
     pagination = <Pagination rowsPerPageOptions={rowsPerPageOptions} />
   }
