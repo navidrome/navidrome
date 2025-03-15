@@ -103,7 +103,6 @@ var _ = Describe("Responses", func() {
 					Name:           "aaa",
 					Starred:        &t,
 					UserRating:     3,
-					AlbumCount:     2,
 					ArtistImageUrl: "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
 				}
 				index := make([]Index, 1)
