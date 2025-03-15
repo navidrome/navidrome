@@ -10,7 +10,6 @@ import {
   SearchInput,
   SelectInput,
   TextField,
-  useTranslate,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -30,8 +29,8 @@ import config from '../config'
 import ArtistListActions from './ArtistListActions'
 import ArtistSimpleList from './ArtistSimpleList'
 import { DraggableTypes } from '../consts'
-import en from '../i18n/en.json'
 import { formatBytes } from '../utils/index.js'
+import { useArtistRoles } from '../common/useArtistRoles.jsx'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -58,18 +57,7 @@ const useStyles = makeStyles({
 })
 
 const ArtistFilter = (props) => {
-  const translate = useTranslate()
-  const rolesObj = en?.resources?.artist?.roles
-  const roles = Object.keys(rolesObj).reduce((acc, role) => {
-    acc.push({
-      id: role,
-      name: translate(`resources.artist.roles.${role}`, {
-        smart_count: 2,
-      }),
-    })
-    return acc
-  }, [])
-  roles?.sort((a, b) => a.name.localeCompare(b.name))
+  const roles = useArtistRoles(true)
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
@@ -109,7 +97,10 @@ const ArtistDatagrid = (props) => (
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   const { filterValues } = rest
   const classes = useStyles()
-  const handleArtistLink = useGetHandleArtistClick(width)
+  const handleArtistLink = useGetHandleArtistClick(
+    width,
+    rest.filterValues?.role,
+  )
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   useResourceRefresh('artist')

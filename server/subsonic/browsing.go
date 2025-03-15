@@ -270,30 +270,43 @@ func (api *Router) GetGenres(r *http.Request) (*responses.Subsonic, error) {
 	return response, nil
 }
 
-func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
+func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *model.Artists, error) {
 	ctx := r.Context()
 	p := req.Params(r)
 	id, err := p.String("id")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	count := p.IntOr("count", 20)
 	includeNotPresent := p.BoolOr("includeNotPresent", false)
 
 	artist, err := api.externalMetadata.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	base := responses.ArtistInfoBase{}
+	base.Biography = artist.Biography
+	base.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
+	base.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
+	base.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 1200)
+	base.LastFmUrl = artist.ExternalUrl
+	base.MusicBrainzID = artist.MbzArtistID
+
+	return &base, &artist.SimilarArtists, nil
+}
+
+func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
+	base, similarArtists, err := api.getArtistInfo(r)
+	if err != nil {
 		return nil, err
 	}
 
 	response := newResponse()
 	response.ArtistInfo = &responses.ArtistInfo{}
-	response.ArtistInfo.Biography = artist.Biography
-	response.ArtistInfo.SmallImageUrl = public.ImageURL(r, artist.CoverArtID(), 300)
-	response.ArtistInfo.MediumImageUrl = public.ImageURL(r, artist.CoverArtID(), 600)
-	response.ArtistInfo.LargeImageUrl = public.ImageURL(r, artist.CoverArtID(), 1200)
-	response.ArtistInfo.LastFmUrl = artist.ExternalUrl
-	response.ArtistInfo.MusicBrainzID = artist.MbzArtistID
-	for _, s := range artist.SimilarArtists {
+	response.ArtistInfo.ArtistInfoBase = *base
+
+	for _, s := range *similarArtists {
 		similar := toArtist(r, s)
 		if s.ID == "" {
 			similar.Id = "-1"
@@ -304,23 +317,20 @@ func (api *Router) GetArtistInfo(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) GetArtistInfo2(r *http.Request) (*responses.Subsonic, error) {
-	info, err := api.GetArtistInfo(r)
+	base, similarArtists, err := api.getArtistInfo(r)
 	if err != nil {
 		return nil, err
 	}
 
 	response := newResponse()
 	response.ArtistInfo2 = &responses.ArtistInfo2{}
-	response.ArtistInfo2.ArtistInfoBase = info.ArtistInfo.ArtistInfoBase
-	for _, s := range info.ArtistInfo.SimilarArtist {
-		similar := responses.ArtistID3{}
-		similar.Id = s.Id
-		similar.Name = s.Name
-		similar.AlbumCount = s.AlbumCount
-		similar.Starred = s.Starred
-		similar.UserRating = s.UserRating
-		similar.CoverArt = s.CoverArt
-		similar.ArtistImageUrl = s.ArtistImageUrl
+	response.ArtistInfo2.ArtistInfoBase = *base
+
+	for _, s := range *similarArtists {
+		similar := toArtistID3(r, s)
+		if s.ID == "" {
+			similar.Id = "-1"
+		}
 		response.ArtistInfo2.SimilarArtist = append(response.ArtistInfo2.SimilarArtist, similar)
 	}
 	return response, nil

@@ -77,11 +77,26 @@ func sortName(sortName, orderName string) string {
 	return orderName
 }
 
+func getArtistAlbumCount(a model.Artist) int32 {
+	albumStats := a.Stats[model.RoleAlbumArtist]
+
+	// If ArtistParticipations are set, then `getArtist` will return albums
+	// where the artist is an album artist OR artist. While it may be an underestimate,
+	// guess the count by taking a max of the album artist and artist count. This is
+	// guaranteed to be <= the actual count.
+	// Otherwise, return just the roles as album artist (precise)
+	if conf.Server.Subsonic.ArtistParticipations {
+		artistStats := a.Stats[model.RoleArtist]
+		return int32(max(artistStats.AlbumCount, albumStats.AlbumCount))
+	} else {
+		return int32(albumStats.AlbumCount)
+	}
+}
+
 func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
-		AlbumCount:     int32(a.AlbumCount),
 		UserRating:     int32(a.Rating),
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
@@ -96,7 +111,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
-		AlbumCount:     int32(a.AlbumCount),
+		AlbumCount:     getArtistAlbumCount(a),
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
