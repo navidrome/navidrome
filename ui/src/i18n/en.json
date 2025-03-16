@@ -231,6 +231,7 @@
     },
     "missing": {
       "name": "Missing File|||| Missing Files",
+      "empty": "No Missing Files",
       "fields": {
         "path": "Path",
         "size": "Size",
