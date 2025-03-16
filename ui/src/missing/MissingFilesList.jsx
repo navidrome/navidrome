@@ -1,4 +1,4 @@
-import { List, SizeField } from '../common/index.js'
+import { EmptyExpected, List, SizeField } from '../common/index'
 import {
   Datagrid,
   DateField,
@@ -38,6 +38,7 @@ const MissingFilesList = (props) => {
       bulkActionButtons={<BulkActionButtons />}
       perPage={50}
       pagination={<MissingPagination />}
+      empty={<EmptyExpected />}
     >
       <Datagrid>
         <TextField source={'path'} />
