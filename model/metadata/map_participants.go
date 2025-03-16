@@ -215,14 +215,13 @@ func (md Metadata) mapDisplayArtist() string {
 }
 
 func (md Metadata) mapDisplayAlbumArtist() string {
+	fallbackName := consts.UnknownArtist
+	if md.Bool(model.TagCompilation) {
+		fallbackName = consts.VariousArtists
+	}
 	return cmp.Or(
 		md.mapDisplayName(model.TagAlbumArtist, model.TagAlbumArtists),
 		md.mapDisplayName(model.TagTrackArtist, model.TagTrackArtists),
-		func() string {
-			if md.Bool(model.TagCompilation) {
-				return consts.VariousArtists
-			}
-			return consts.UnknownArtist
-		}(),
+		fallbackName,
 	)
 }
