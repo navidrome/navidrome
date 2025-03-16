@@ -10,6 +10,10 @@ import (
 )
 
 var _ = Describe("helpers", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
 	Describe("fakePath", func() {
 		var mf model.MediaFile
 		BeforeEach(func() {
@@ -134,4 +138,29 @@ var _ = Describe("helpers", func() {
 		Entry("returns \"explicit\" when the db value is \"e\"", "e", "explicit"),
 		Entry("returns an empty string when the db value is \"\"", "", ""),
 		Entry("returns an empty string when there are unexpected values on the db", "abc", ""))
+
+	Describe("getArtistAlbumCount", func() {
+		artist := model.Artist{
+			Stats: map[model.Role]model.ArtistStats{
+				model.RoleAlbumArtist: {
+					AlbumCount: 3,
+				},
+				model.RoleArtist: {
+					AlbumCount: 4,
+				},
+			},
+		}
+
+		It("Handles album count without artist participations", func() {
+			conf.Server.Subsonic.ArtistParticipations = false
+			result := getArtistAlbumCount(artist)
+			Expect(result).To(Equal(int32(3)))
+		})
+
+		It("Handles album count without with participations", func() {
+			conf.Server.Subsonic.ArtistParticipations = true
+			result := getArtistAlbumCount(artist)
+			Expect(result).To(Equal(int32(4)))
+		})
+	})
 })

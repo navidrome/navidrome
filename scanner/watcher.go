@@ -101,22 +101,27 @@ func watchLib(ctx context.Context, lib model.Library, watchChan chan struct{}) {
 		log.Error(ctx, "Watcher: Error watching library", "library", lib.ID, "path", lib.Path, err)
 		return
 	}
-	log.Info(ctx, "Watcher started", "library", lib.ID, "path", lib.Path)
+	absLibPath, err := filepath.Abs(lib.Path)
+	if err != nil {
+		log.Error(ctx, "Watcher: Error converting lib.Path to absolute", "library", lib.ID, "path", lib.Path, err)
+		return
+	}
+	log.Info(ctx, "Watcher started", "library", lib.ID, "libPath", lib.Path, "absoluteLibPath", absLibPath)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case path := <-c:
-			path, err = filepath.Rel(lib.Path, path)
+			path, err = filepath.Rel(absLibPath, path)
 			if err != nil {
-				log.Error(ctx, "Watcher: Error getting relative path", "library", lib.ID, "path", path, err)
+				log.Error(ctx, "Watcher: Error getting relative path", "library", lib.ID, "libPath", absLibPath, "path", path, err)
 				continue
 			}
 			if isIgnoredPath(ctx, fsys, path) {
 				log.Trace(ctx, "Watcher: Ignoring change", "library", lib.ID, "path", path)
 				continue
 			}
-			log.Trace(ctx, "Watcher: Detected change", "library", lib.ID, "path", path)
+			log.Trace(ctx, "Watcher: Detected change", "library", lib.ID, "path", path, "libPath", absLibPath)
 			watchChan <- struct{}{}
 		}
 	}

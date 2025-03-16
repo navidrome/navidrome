@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"maps"
 	"regexp"
 	"slices"
@@ -175,21 +176,42 @@ func loadTagMappings() {
 		log.Error("No tag mappings found in mappings.yaml, check the format")
 	}
 
+	// Use Scanner.GenreSeparators if specified and Tags.genre is not defined
+	if conf.Server.Scanner.GenreSeparators != "" && len(conf.Server.Tags["genre"].Aliases) == 0 {
+		genreConf := _mappings.Main[TagName("genre")]
+		genreConf.Split = strings.Split(conf.Server.Scanner.GenreSeparators, "")
+		genreConf.SplitRx = compileSplitRegex("genre", genreConf.Split)
+		_mappings.Main[TagName("genre")] = genreConf
+		log.Debug("Loading deprecated list of genre separators", "separators", genreConf.Split)
+	}
+
 	// Overwrite the default mappings with the ones from the config
 	for tag, cfg := range conf.Server.Tags {
-		if len(cfg.Aliases) == 0 {
+		if cfg.Ignore {
 			delete(_mappings.Main, TagName(tag))
 			delete(_mappings.Additional, TagName(tag))
 			continue
 		}
-		c := TagConf{
-			Aliases:   cfg.Aliases,
-			Type:      TagType(cfg.Type),
-			MaxLength: cfg.MaxLength,
-			Split:     cfg.Split,
-			Album:     cfg.Album,
-			SplitRx:   compileSplitRegex(TagName(tag), cfg.Split),
+		oldValue, ok := _mappings.Main[TagName(tag)]
+		if !ok {
+			oldValue = _mappings.Additional[TagName(tag)]
 		}
+		aliases := cfg.Aliases
+		if len(aliases) == 0 {
+			aliases = oldValue.Aliases
+		}
+		split := cfg.Split
+		if len(split) == 0 {
+			split = oldValue.Split
+		}
+		c := TagConf{
+			Aliases:   aliases,
+			Split:     split,
+			Type:      cmp.Or(TagType(cfg.Type), oldValue.Type),
+			MaxLength: cmp.Or(cfg.MaxLength, oldValue.MaxLength),
+			Album:     cmp.Or(cfg.Album, oldValue.Album),
+		}
+		c.SplitRx = compileSplitRegex(TagName(tag), c.Split)
 		if _, ok := _mappings.Main[TagName(tag)]; ok {
 			_mappings.Main[TagName(tag)] = c
 		} else {

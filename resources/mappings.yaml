@@ -1,6 +1,14 @@
 #file: noinspection SpellCheckingInspection
 # Tag mapping adapted from https://picard-docs.musicbrainz.org/downloads/MusicBrainz_Picard_Tag_Map.html
 #
+# NOTE FOR USERS:
+#
+# This file can be used as a reference to understand how Navidrome maps the tags in your music files to its fields.
+# If you want to customize these mappings, please refer to https://www.navidrome.org/docs/usage/customtags/
+#
+#
+# NOTE FOR DEVELOPERS:
+#
 # This file contains the mapping between the tags in your music files and the fields in Navidrome.
 # You can add new tags, change the aliases, or add new split characters to the existing tags.
 # The artists and roles keys are used to define how to split the tag values into multiple values.
@@ -96,7 +104,7 @@ main:
     aliases: [ disctotal, totaldiscs ]
     album: true
   discsubtitle:
-    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, wm/setsubtitle ]
+    aliases: [ tsst, discsubtitle, ----:com.apple.itunes:discsubtitle, setsubtitle, wm/setsubtitle ]
   bpm:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:

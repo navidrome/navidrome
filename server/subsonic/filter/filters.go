@@ -95,7 +95,7 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	}
 	ff := And{}
 	if genre != "" {
-		ff = append(ff, Eq{"genre.name": genre})
+		ff = append(ff, filterByGenre(genre))
 	}
 	if fromYear != 0 {
 		ff = append(ff, GtOrEq{"year": fromYear})
@@ -118,11 +118,15 @@ func SongWithLyrics(artist, title string) Options {
 
 func ByGenre(genre string) Options {
 	return addDefaultFilters(Options{
-		Sort: "name asc",
-		Filters: persistence.Exists("json_tree(tags)", And{
-			Like{"value": genre},
-			NotEq{"atom": nil},
-		}),
+		Sort:    "name asc",
+		Filters: filterByGenre(genre),
+	})
+}
+
+func filterByGenre(genre string) Sqlizer {
+	return persistence.Exists("json_tree(tags)", And{
+		Like{"value": genre},
+		NotEq{"atom": nil},
 	})
 }
 
