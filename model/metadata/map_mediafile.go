@@ -73,7 +73,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 
 	mf.Participants = md.mapParticipants()
 	mf.Artist = md.mapDisplayArtist()
-	mf.AlbumArtist = md.mapDisplayAlbumArtist()
+	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
 	// Persistent IDs
 	mf.PID = md.trackPID(mf)

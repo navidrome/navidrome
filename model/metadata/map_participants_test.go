@@ -404,6 +404,35 @@ var _ = Describe("Participants", func() {
 				})
 			})
 
+			When("the COMPILATION tag is not set and there is no ALBUMARTIST tag", func() {
+				BeforeEach(func() {
+					mf = toMediaFile(model.RawTags{
+						"ARTIST":     {"Artist Name", "Another Artist"},
+						"ARTISTSORT": {"Name, Artist", "Artist, Another"},
+					})
+				})
+
+				It("should use the first ARTIST as ALBUMARTIST", func() {
+					Expect(mf.AlbumArtist).To(Equal("Artist Name"))
+				})
+
+				It("should add the ARTIST to participants as ALBUMARTIST", func() {
+					participants := mf.Participants
+					Expect(participants).To(HaveLen(2))
+					Expect(participants).To(SatisfyAll(
+						HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(2)),
+					))
+
+					albumArtist := participants[model.RoleAlbumArtist][0]
+					Expect(albumArtist.Name).To(Equal("Artist Name"))
+					Expect(albumArtist.SortArtistName).To(Equal("Name, Artist"))
+
+					albumArtist = participants[model.RoleAlbumArtist][1]
+					Expect(albumArtist.Name).To(Equal("Another Artist"))
+					Expect(albumArtist.SortArtistName).To(Equal("Artist, Another"))
+				})
+			})
+
 			When("the COMPILATION tag is true", func() {
 				BeforeEach(func() {
 					mf = toMediaFile(model.RawTags{
@@ -428,6 +457,19 @@ var _ = Describe("Participants", func() {
 					Expect(albumArtist.OrderArtistName).To(Equal("various artists"))
 					Expect(albumArtist.SortArtistName).To(BeEmpty())
 					Expect(albumArtist.MbzArtistID).To(Equal(consts.VariousArtistsMbzId))
+				})
+			})
+
+			When("the COMPILATION tag is true and there are ALBUMARTIST tags", func() {
+				BeforeEach(func() {
+					mf = toMediaFile(model.RawTags{
+						"COMPILATION": {"1"},
+						"ALBUMARTIST": {"Album Artist Name 1", "Album Artist Name 2"},
+					})
+				})
+
+				It("should use the ALBUMARTIST names as display name", func() {
+					Expect(mf.AlbumArtist).To(Equal("Album Artist Name 1 • Album Artist Name 2"))
 				})
 			})
 		})

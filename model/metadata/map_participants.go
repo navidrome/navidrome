@@ -214,14 +214,14 @@ func (md Metadata) mapDisplayArtist() string {
 	)
 }
 
-func (md Metadata) mapDisplayAlbumArtist() string {
+func (md Metadata) mapDisplayAlbumArtist(mf model.MediaFile) string {
 	fallbackName := consts.UnknownArtist
 	if md.Bool(model.TagCompilation) {
 		fallbackName = consts.VariousArtists
 	}
 	return cmp.Or(
 		md.mapDisplayName(model.TagAlbumArtist, model.TagAlbumArtists),
-		md.mapDisplayName(model.TagTrackArtist, model.TagTrackArtists),
+		mf.Participants.First(model.RoleAlbumArtist).Name,
 		fallbackName,
 	)
 }
