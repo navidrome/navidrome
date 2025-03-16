@@ -231,6 +231,7 @@
     },
     "missing": {
       "name": "Missing File|||| Missing Files",
+      "empty": "No Missing Files",
       "fields": {
         "path": "Path",
         "size": "Size",
@@ -320,7 +321,6 @@
       "not_found": "Not Found",
       "show": "%{name} #%{id}",
       "empty": "No %{name} yet.",
-      "emptyExpected": "No %{name}",
       "invite": "Do you want to add one?"
     },
     "input": {
