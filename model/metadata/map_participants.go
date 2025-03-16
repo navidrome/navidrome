@@ -224,6 +224,5 @@ func (md Metadata) mapDisplayAlbumArtist() string {
 			}
 			return consts.UnknownArtist
 		}(),
-		consts.UnknownArtist,
 	)
 }
