@@ -16,6 +16,7 @@ type Data struct {
 		Containerized bool   `json:"containerized"`
 		Arch          string `json:"arch"`
 		NumCPU        int    `json:"numCPU"`
+		Packaged      string `json:"packaged,omitempty"`
 	} `json:"os"`
 	Mem struct {
 		Alloc      uint64 `json:"alloc"`

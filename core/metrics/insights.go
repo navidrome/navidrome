@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -152,6 +153,9 @@ var staticData = sync.OnceValue(func() insights.Data {
 	// Build info
 	data.Build.Settings, data.Build.GoVersion = buildInfo()
 	data.OS.Containerized = consts.InContainer
+
+	// Install info
+	data.OS.Packaged = os.Getenv("ND_PACKAGE_TYPE")
 
 	// OS info
 	data.OS.Type = runtime.GOOS
