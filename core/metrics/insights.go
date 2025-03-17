@@ -155,7 +155,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	data.OS.Packaged = os.Getenv("ND_PACKAGE_TYPE")
+	data.OS.Package = os.Getenv("ND_PACKAGE_TYPE")
 
 	// OS info
 	data.OS.Type = runtime.GOOS
