@@ -151,13 +151,17 @@ var (
 	UnknownArtistID     = id.NewHash(strings.ToLower(UnknownArtist))
 	VariousArtistsMbzId = "89ad4ac3-39f7-470e-963a-56509c546377"
 
-	ServerStart = time.Now()
+	ArtistJoiner = " • "
 )
 
-var InContainer = func() bool {
-	// Check if the /.nddockerenv file exists
-	if _, err := os.Stat("/.nddockerenv"); err == nil {
-		return true
-	}
-	return false
-}()
+var (
+	ServerStart = time.Now()
+
+	InContainer = func() bool {
+		// Check if the /.nddockerenv file exists
+		if _, err := os.Stat("/.nddockerenv"); err == nil {
+			return true
+		}
+		return false
+	}()
+)
