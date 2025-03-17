@@ -229,6 +229,7 @@
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
+      "empty": "Nenhum arquivo ausente",
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",

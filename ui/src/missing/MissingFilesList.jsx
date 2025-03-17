@@ -1,4 +1,4 @@
-import { List, SizeField } from '../common/index.js'
+import { List, SizeField } from '../common/index'
 import {
   Datagrid,
   DateField,
