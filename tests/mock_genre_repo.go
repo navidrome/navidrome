@@ -15,6 +15,15 @@ func (r *MockedGenreRepo) init() {
 	}
 }
 
+func (r *MockedGenreRepo) CountAll(...model.QueryOptions) (int64, error) {
+	if r.Error != nil {
+		return 0, r.Error
+	}
+	r.init()
+
+	return int64(len(r.data)), nil
+}
+
 func (r *MockedGenreRepo) GetAll(...model.QueryOptions) (model.Genres, error) {
 	if r.Error != nil {
 		return nil, r.Error
