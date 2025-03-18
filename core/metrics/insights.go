@@ -155,7 +155,11 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	data.OS.Package = os.Getenv("ND_PACKAGE_TYPE")
+	packageFilename := filepath.Join(filepath.Dir(conf.Server.ConfigFile), "package")
+	packageFileData, err := os.ReadFile(packageFilename)
+	if err == nil {
+		data.OS.Package = string(packageFileData)
+	}
 
 	// OS info
 	data.OS.Type = runtime.GOOS
