@@ -82,6 +82,12 @@ nfpms:
           owner: navidrome
           group: navidrome
 
+      - dst: /etc/navidrome/package
+        contents: {{ .Env.PACKAGE_TYPE }}
+        file_info:
+          owner: navidrome
+          group: navidrome
+
     scripts:
       preinstall: "release/linux/preinstall.sh"
       postinstall: "release/linux/postinstall.sh"
