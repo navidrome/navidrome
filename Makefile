@@ -29,7 +29,7 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 .PHONY: dev
 
 server: check_go_env buildjs ##@Development Start the backend in development mode
-	@ND_ENABLEINSIGHTSCOLLECTOR="false" go run github.com/cespare/reflex@latest -d none -c reflex.conf
+	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
