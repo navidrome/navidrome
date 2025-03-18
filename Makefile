@@ -33,7 +33,7 @@ server: check_go_env buildjs ##@Development Start the backend in development mod
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -tags=netgo -notify ./...
+	go tool ginkgo watch -tags=netgo -notify ./...
 .PHONY: watch
 
 test: ##@Development Run Go tests
@@ -68,7 +68,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
-	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/responses/...
+	UPDATE_SNAPSHOTS=true go tool ginkgo ./server/subsonic/responses/...
 .PHONY: snapshots
 
 migration-sql: ##@Development Create an empty SQL migration file

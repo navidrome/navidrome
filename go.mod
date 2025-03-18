@@ -126,5 +126,6 @@ require (
 tool (
 	github.com/cespare/reflex
 	github.com/google/wire/cmd/wire
+	github.com/onsi/ginkgo/v2/ginkgo
 	golang.org/x/tools/cmd/goimports
 )
