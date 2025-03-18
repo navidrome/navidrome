@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/go-viper/encoding/ini"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -549,6 +550,10 @@ func init() {
 }
 
 func InitConfig(cfgFile string) {
+	codecRegistry := viper.NewCodecRegistry()
+	_ = codecRegistry.RegisterCodec("ini", ini.Codec{})
+	viper.SetOptions(viper.WithCodecRegistry(codecRegistry))
+
 	cfgFile = getConfigFile(cfgFile)
 	if cfgFile != "" {
 		// Use config file from the flag.
