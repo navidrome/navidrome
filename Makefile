@@ -64,7 +64,7 @@ format: ##@Development Format code
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire@latest gen -tags=netgo ./...
+	go tool wire gen -tags=netgo ./...
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
