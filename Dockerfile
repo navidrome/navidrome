@@ -138,7 +138,6 @@ ENV GODEBUG="asyncpreemptoff=1"
 RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}
-HEALTHCHECK CMD wget -O- http://localhost:${ND_PORT}/ping || exit 1
 WORKDIR /app
 
 ENTRYPOINT ["/app/navidrome"]
