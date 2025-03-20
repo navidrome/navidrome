@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"cmp"
 	"encoding/json"
 	"maps"
 	"math"
@@ -39,11 +40,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.ExplicitStatus = md.mapExplicitStatusTag()
 
 	// Dates
-	origDate := md.Date(model.TagOriginalDate)
+	date, origDate, relDate := md.mapDates()
 	mf.OriginalYear, mf.OriginalDate = origDate.Year(), string(origDate)
-	relDate := md.Date(model.TagReleaseDate)
 	mf.ReleaseYear, mf.ReleaseDate = relDate.Year(), string(relDate)
-	date := md.Date(model.TagRecordingDate)
 	mf.Year, mf.Date = date.Year(), string(date)
 
 	// MBIDs
@@ -163,4 +162,23 @@ func (md Metadata) mapExplicitStatusTag() string {
 	default:
 		return ""
 	}
+}
+
+func (md Metadata) mapDates() (date Date, originalDate Date, releaseDate Date) {
+	// Start with defaults
+	date = md.Date(model.TagRecordingDate)
+	originalDate = md.Date(model.TagOriginalDate)
+	releaseDate = md.Date(model.TagReleaseDate)
+
+	// For some historic reason, taggers have been writing the Release Date of an album to the Date tag,
+	// and leave the Release Date tag empty.
+	legacyMappings := (originalDate != "") &&
+		(releaseDate == "") &&
+		(date >= originalDate)
+	if legacyMappings {
+		return originalDate, originalDate, date
+	}
+	// when there's no Date, first fall back to Original Date, then to Release Date.
+	date = cmp.Or(date, originalDate, releaseDate)
+	return date, originalDate, releaseDate
 }

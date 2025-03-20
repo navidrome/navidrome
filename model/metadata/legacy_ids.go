@@ -50,6 +50,7 @@ func legacyMapAlbumName(md Metadata) string {
 }
 
 // Keep the TaggedLikePicard logic for backwards compatibility
+// TODO use `mapDates` instead, to unify the logic
 func legacyReleaseDate(md Metadata) string {
 	// Start with defaults
 	date := md.Date(model.TagRecordingDate)
