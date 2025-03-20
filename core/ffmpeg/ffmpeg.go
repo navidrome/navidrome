@@ -29,7 +29,7 @@ func New() FFmpeg {
 }
 
 const (
-	extractImageCmd = "ffmpeg -i %s -an -vcodec copy -f image2pipe -"
+	extractImageCmd = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
 	probeCmd        = "ffmpeg %s -f ffmetadata"
 )
 
