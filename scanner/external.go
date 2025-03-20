@@ -33,6 +33,8 @@ func (s *scannerExternal) scanAll(ctx context.Context, fullScan bool, progress c
 	cmd := exec.CommandContext(ctx, exe, "scan",
 		"--nobanner", "--subprocess",
 		"--configfile", conf.Server.ConfigFile,
+		"--datafolder", conf.Server.DataFolder,
+		"--cachefolder", conf.Server.CacheFolder,
 		If(fullScan, "--full", ""))
 
 	in, out := io.Pipe()
