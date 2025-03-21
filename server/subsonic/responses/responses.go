@@ -284,7 +284,7 @@ type OpenSubsonicAlbumID3 struct {
 
 type ArtistWithAlbumsID3 struct {
 	ArtistID3
-	Album []Child `xml:"album"                              json:"album,omitempty"`
+	Album []AlbumID3 `xml:"album"                              json:"album,omitempty"`
 }
 
 type AlbumWithSongsID3 struct {

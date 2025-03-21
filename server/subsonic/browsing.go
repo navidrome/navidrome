@@ -424,7 +424,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 		return nil, err
 	}
 
-	a.Album = slice.MapWithArg(albums, ctx, childFromAlbum)
+	a.Album = slice.MapWithArg(albums, ctx, buildAlbumID3)
 	return a, nil
 }
 
