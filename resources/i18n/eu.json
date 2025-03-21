@@ -216,7 +216,7 @@
         "username": "Partekatzailea:",
         "url": "URLa",
         "description": "Deskribapena",
-        "downloadable": "Deskargatzea ahalbidetu?"
+        "downloadable": "Deskargatzea ahalbidetu?",
         "contents": "Edukia",
         "expiresAt": "Iraungitze-data:",
         "lastVisitedAt": "Azkenekoz bisitatu zen:",
@@ -224,7 +224,7 @@
         "format": "Formatua",
         "maxBitRate": "Gehienezko bit tasa",
         "updatedAt": "Eguneratze-data:",
-        "createdAt": "Sortze-data:",
+        "createdAt": "Sortze-data:"
       },
       "notifications": {},
       "actions": {}
