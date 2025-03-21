@@ -239,7 +239,8 @@
       },
       "notifications": {
         "removed": "Eksik dosya(lar) kaldırıldı"
-      }
+      },
+      "empty": "Eksik Dosya Yok"
     }
   },
   "ra": {
