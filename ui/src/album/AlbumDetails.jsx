@@ -144,11 +144,15 @@ const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
   const record = useRecordContext(props)
+
+  // Create an array of detail elements
   let details = []
   const addDetail = (obj) => {
     const id = details.length
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
   }
+
+  // Calculate date related fields
   const yearRange = formatRange(record, 'year')
   const date = record.date ? formatFullDate(record.date) : yearRange
 
@@ -160,34 +164,31 @@ const Details = (props) => {
   const dateToUse = originalDate || date
   const isOriginalDate = originalDate && dateToUse !== date
   const showDate = dateToUse && dateToUse !== releaseDate
-  showDate &&
-    addDetail(
-      <>
-        {[
-          isXsmall
-            ? '♫'
-            : isOriginalDate
-              ? translate('resources.album.fields.originalDate')
-              : undefined,
-          dateToUse,
-        ].join('  ')}
-      </>,
-    )
 
-  releaseDate &&
-    addDetail(
-      <>
-        {[
-          !isXsmall
-            ? translate('resources.album.fields.releaseDate')
-            : showDate
-              ? '○'
-              : undefined,
-          releaseDate,
-        ].join('  ')}
-      </>,
-    )
+  // Get label for the main date display
+  const getDateLabel = () => {
+    if (isXsmall) return '♫'
+    if (isOriginalDate) return translate('resources.album.fields.originalDate')
+    return null
+  }
 
+  // Get label for release date display
+  const getReleaseDateLabel = () => {
+    if (!isXsmall) return translate('resources.album.fields.releaseDate')
+    if (showDate) return '○'
+    return null
+  }
+
+  // Display dates with appropriate labels
+  if (showDate) {
+    addDetail(<>{[getDateLabel(), dateToUse].filter(Boolean).join('  ')}</>)
+  }
+
+  if (releaseDate) {
+    addDetail(
+      <>{[getReleaseDateLabel(), releaseDate].filter(Boolean).join('  ')}</>,
+    )
+  }
   addDetail(
     <>
       {record.songCount +
@@ -200,6 +201,7 @@ const Details = (props) => {
   !isXsmall && addDetail(<DurationField source={'duration'} />)
   !isXsmall && addDetail(<SizeField source="size" />)
 
+  // Return the details rendered with separators
   return <>{intersperse(details, ' · ')}</>
 }
 
