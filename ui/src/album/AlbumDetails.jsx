@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -10,25 +10,25 @@ import {
   withWidth,
 } from '@material-ui/core'
 import {
-  useRecordContext,
-  useTranslate,
   ArrayField,
-  SingleFieldList,
   ChipField,
   Link,
+  SingleFieldList,
+  useRecordContext,
+  useTranslate,
 } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
   ArtistLinkField,
+  CollapsibleComment,
   DurationField,
   formatRange,
-  SizeField,
   LoveButton,
   RatingField,
+  SizeField,
   useAlbumsPerPage,
-  CollapsibleComment,
 } from '../common'
 import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
@@ -149,57 +149,42 @@ const Details = (props) => {
     const id = details.length
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
   }
-
-  const originalYearRange = formatRange(record, 'originalYear')
-  const originalDate = record.originalDate
-    ? formatFullDate(record.originalDate)
-    : originalYearRange
   const yearRange = formatRange(record, 'year')
   const date = record.date ? formatFullDate(record.date) : yearRange
-  const releaseDate = record.releaseDate
-    ? formatFullDate(record.releaseDate)
-    : date
 
-  const showReleaseDate = date !== releaseDate && releaseDate.length > 3
-  const showOriginalDate =
-    date !== originalDate &&
-    originalDate !== releaseDate &&
-    originalDate.length > 3
+  const originalDate = record.originalDate
+    ? formatFullDate(record.originalDate)
+    : formatRange(record, 'originalYear')
+  const releaseDate = record?.releaseDate && formatFullDate(record.releaseDate)
 
-  showOriginalDate &&
-    !isXsmall &&
+  const dateToUse = originalDate || date
+  const isOriginalDate = originalDate && dateToUse !== date
+  const showDate = dateToUse && dateToUse !== releaseDate
+  showDate &&
     addDetail(
       <>
-        {[translate('resources.album.fields.originalDate'), originalDate].join(
-          '  ',
-        )}
+        {[
+          isXsmall
+            ? '♫'
+            : isOriginalDate
+              ? translate('resources.album.fields.originalDate')
+              : undefined,
+          dateToUse,
+        ].join('  ')}
       </>,
     )
 
-  yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
-
-  showReleaseDate &&
+  releaseDate &&
     addDetail(
       <>
-        {(!isXsmall
-          ? [translate('resources.album.fields.releaseDate'), releaseDate]
-          : ['○', record.releaseDate.substring(0, 4)]
-        ).join('  ')}
-      </>,
-    )
-
-  const showReleases = record.releases > 1
-  showReleases &&
-    addDetail(
-      <>
-        {!isXsmall
-          ? [
-              record.releases,
-              translate('resources.album.fields.releases', {
-                smart_count: record.releases,
-              }),
-            ].join(' ')
-          : ['(', record.releases, ')))'].join(' ')}
+        {[
+          !isXsmall
+            ? translate('resources.album.fields.releaseDate')
+            : showDate
+              ? '○'
+              : undefined,
+          releaseDate,
+        ].join('  ')}
       </>,
     )
 
