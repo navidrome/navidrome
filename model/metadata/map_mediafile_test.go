@@ -53,7 +53,7 @@ var _ = Describe("ToMediaFile", func() {
 		It("should parse dates with only year", func() {
 			mf = toMediaFile(model.RawTags{
 				"ORIGINALYEAR": {"1978"},
-				"YEAR":         {"1977"},
+				"DATE":         {"1977"},
 				"RELEASEDATE":  {"2002"},
 			})
 
