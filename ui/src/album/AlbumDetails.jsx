@@ -140,7 +140,7 @@ const GenreList = () => {
   )
 }
 
-const Details = (props) => {
+export const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
   const record = useRecordContext(props)
