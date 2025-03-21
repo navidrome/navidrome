@@ -9,10 +9,10 @@ export const AlbumDatesField = ({ className, ...rest }) => {
   const releaseDate = record.releaseDate
   const releaseYear = releaseDate?.toString().substring(0, 4)
   const yearRange =
-    formatRange(record, 'originalYear').toString() || record['maxYear']
+    formatRange(record, 'originalYear') || record['maxYear']?.toString()
   let label = yearRange
 
-  if (yearRange !== releaseYear && releaseYear !== undefined) {
+  if (releaseYear !== undefined && yearRange !== releaseYear) {
     label = `${originalYearSymbol} ${yearRange} · ${releaseYearSymbol} ${releaseYear}`
   }
   return <span className={className}>{label}</span>
