@@ -577,9 +577,17 @@ func InitConfig(cfgFile string) {
 	}
 }
 
+// getConfigFile returns the path to the config file, either from the flag or from the environment variable.
+// If it is defined in the environment variable, it will check if the file exists.
 func getConfigFile(cfgFile string) string {
 	if cfgFile != "" {
 		return cfgFile
 	}
-	return os.Getenv("ND_CONFIGFILE")
+	cfgFile = os.Getenv("ND_CONFIGFILE")
+	if cfgFile != "" {
+		if _, err := os.Stat(cfgFile); err == nil {
+			return cfgFile
+		}
+	}
+	return ""
 }
