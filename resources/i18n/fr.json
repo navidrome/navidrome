@@ -398,7 +398,7 @@
     "delete_user_title": "Supprimer l'utilisateur '%{name}'",
     "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
     "remove_missing_title": "Supprimer les fichiers manquants",
-    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définiviement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations.",
+    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations.",
     "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
     "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS",
     "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
