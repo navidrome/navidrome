@@ -97,9 +97,10 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r.tableName = "album"
 	r.registerModel(&model.Album{}, albumFilters())
 	r.setSortMappings(map[string]string{
-		"name":           "order_album_name, order_album_artist_name",
-		"artist":         "compilation, order_album_artist_name, order_album_name",
-		"album_artist":   "compilation, order_album_artist_name, order_album_name",
+		"name":         "order_album_name, order_album_artist_name",
+		"artist":       "compilation, order_album_artist_name, order_album_name",
+		"album_artist": "compilation, order_album_artist_name, order_album_name",
+		// TODO Rename this to just year (or date)
 		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name",
 		"random":         "random",
 		"recently_added": recentlyAddedSort(),
