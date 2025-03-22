@@ -120,7 +120,7 @@ func (md Metadata) first(key model.TagName) string {
 
 func float(value string, def ...float64) float64 {
 	v, err := strconv.ParseFloat(value, 64)
-	if err != nil || v == math.Inf(-1) || v == math.Inf(1) {
+	if err != nil || v == math.Inf(-1) || math.IsInf(v, 1) || math.IsNaN(v) {
 		if len(def) > 0 {
 			return def[0]
 		}
