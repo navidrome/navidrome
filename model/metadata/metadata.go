@@ -83,10 +83,8 @@ type Metadata struct {
 	hasPicture bool
 }
 
-func (md Metadata) FilePath() string     { return md.filePath }
-func (md Metadata) ModTime() time.Time   { return md.fileInfo.ModTime() }
-func (md Metadata) BirthTime() time.Time { return md.fileInfo.BirthTime() }
-func (md Metadata) Size() int64          { return md.fileInfo.Size() }
+func (md Metadata) FilePath() string { return md.filePath }
+func (md Metadata) Size() int64      { return md.fileInfo.Size() }
 func (md Metadata) Suffix() string {
 	return strings.ToLower(strings.TrimPrefix(path.Ext(md.filePath), "."))
 }
@@ -100,6 +98,18 @@ func (md Metadata) Int(key model.TagName) int64              { v, _ := strconv.A
 func (md Metadata) Bool(key model.TagName) bool              { v, _ := strconv.ParseBool(md.first(key)); return v }
 func (md Metadata) Date(key model.TagName) Date              { return md.date(key) }
 func (md Metadata) NumAndTotal(key model.TagName) (int, int) { return md.tuple(key) }
+
+func (md Metadata) BirthTime() time.Time { return md.fileInfo.BirthTime() }
+func (md Metadata) ModTime() time.Time {
+	type ChangeTimer interface {
+		ChangeTime() time.Time
+	}
+	if ct, ok := md.fileInfo.(ChangeTimer); ok {
+		return ct.ChangeTime()
+	}
+	return md.fileInfo.ModTime()
+}
+
 func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 	return float(md.first(key), def...)
 }

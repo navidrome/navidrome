@@ -66,7 +66,7 @@ func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 			if err != nil {
 				return nil, err
 			}
-			v.FileInfo = localFileInfo{info}
+			v.FileInfo = newLocalFileInfo(info)
 			res[path] = v
 		}
 	}
@@ -77,13 +77,29 @@ func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 // with metadata.FileInfo
 type localFileInfo struct {
 	fs.FileInfo
+	ts times.Timespec
+}
+
+// newLocalFileInfo creates a localFileInfo with preloaded time information
+func newLocalFileInfo(info fs.FileInfo) localFileInfo {
+	return localFileInfo{
+		FileInfo: info,
+		ts:       times.Get(info),
+	}
 }
 
 func (lfi localFileInfo) BirthTime() time.Time {
-	if ts := times.Get(lfi.FileInfo); ts.HasBirthTime() {
-		return ts.BirthTime()
+	if lfi.ts.HasBirthTime() {
+		return lfi.ts.BirthTime()
 	}
 	return time.Now()
+}
+
+func (lfi localFileInfo) ChangeTime() time.Time {
+	if lfi.ts.HasChangeTime() {
+		return lfi.ts.ChangeTime()
+	}
+	return lfi.ModTime()
 }
 
 func init() {
