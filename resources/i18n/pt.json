@@ -18,6 +18,7 @@
         "size": "Tamanho",
         "updatedAt": "Últ. Atualização",
         "bitRate": "Bitrate",
+        "bitDepth": "Profundidade de bits",
         "discSubtitle": "Sub-título do disco",
         "starred": "Favorita",
         "comment": "Comentário",
