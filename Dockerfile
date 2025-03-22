@@ -133,6 +133,7 @@ COPY --from=build /out/navidrome /app/
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
+ENV ND_CONFIGFILE=/data/navidrome.toml
 ENV ND_PORT=4533
 ENV GODEBUG="asyncpreemptoff=1"
 RUN touch /.nddockerenv
