@@ -252,9 +252,7 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetGenres(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	// TODO Put back when album_count is available
-	//genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, name desc", Order: "desc"})
+	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
