@@ -155,7 +155,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	packageFilename := filepath.Join(filepath.Dir(conf.Server.ConfigFile), "package")
+	packageFilename := filepath.Join(conf.Server.DataFolder, ".package")
 	packageFileData, err := os.ReadFile(packageFilename)
 	if err == nil {
 		data.OS.Package = string(packageFileData)

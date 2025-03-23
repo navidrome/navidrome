@@ -50,7 +50,7 @@ cp "$WORKSPACE"/LICENSE "$WORKSPACE"/README.md "$MSI_OUTPUT_DIR"
 cp "$BINARY" "$MSI_OUTPUT_DIR"
 
 # package type indicator file
-echo "msi" > "$MSI_OUTPUT_DIR/package"
+echo "msi" > "$MSI_OUTPUT_DIR/.package"
 
 # workaround for wixl WixVariable not working to override bmp locations
 cp "$WORKSPACE"/release/wix/bmp/banner.bmp /usr/share/wixl-*/ext/ui/bitmaps/bannrbmp.bmp
