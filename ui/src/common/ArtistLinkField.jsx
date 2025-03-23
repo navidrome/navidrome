@@ -63,13 +63,13 @@ const parseAndReplaceArtists = (
 
 export const ArtistLinkField = ({ record, className, limit, source }) => {
   const role = source.toLowerCase()
+
+  // Get artists array with fallback
+  let artists = record?.participants?.[role] || []
   const remixers =
     role === 'artist' && record?.participants?.remixer
       ? record.participants.remixer.slice(0, 2)
       : []
-
-  // Get artists array with fallback
-  let artists = record?.participants?.[role] || []
 
   // Use parseAndReplaceArtists for artist and albumartist roles
   if ((role === 'artist' || role === 'albumartist') && record[source]) {
@@ -80,19 +80,31 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
     )
 
     if (artistsLinks.length > 0) {
-      // For artist role, append remixers if available
+      // For artist role, append remixers if available, avoiding duplicates
       if (role === 'artist' && remixers.length > 0) {
-        artistsLinks.push(' • ')
-        remixers.forEach((remixer, index) => {
-          if (index > 0) artistsLinks.push(' • ')
-          artistsLinks.push(
-            <ALink
-              artist={remixer}
-              className={className}
-              key={`remixer-${remixer.id}`}
-            />,
-          )
-        })
+        // Track which artists are already displayed to avoid duplicates
+        const displayedArtistIds = new Set(
+          artists.map((artist) => artist.id).filter(Boolean),
+        )
+
+        // Only add remixers that aren't already in the artists list
+        const uniqueRemixers = remixers.filter(
+          (remixer) => remixer.id && !displayedArtistIds.has(remixer.id),
+        )
+
+        if (uniqueRemixers.length > 0) {
+          artistsLinks.push(' • ')
+          uniqueRemixers.forEach((remixer, index) => {
+            if (index > 0) artistsLinks.push(' • ')
+            artistsLinks.push(
+              <ALink
+                artist={remixer}
+                className={className}
+                key={`remixer-${remixer.id}`}
+              />,
+            )
+          })
+        }
       }
 
       return <div className={className}>{artistsLinks}</div>
@@ -102,16 +114,17 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
   // Fall back to regular handling
   if (artists.length === 0 && record[source]) {
     artists = [{ name: record[source], id: record[source + 'Id'] }]
-  } else if (role === 'artist' && remixers.length > 0) {
-    artists = [...artists, ...remixers]
   }
+
+  // For artist role, combine artists and remixers before deduplication
+  const allArtists = role === 'artist' ? [...artists, ...remixers] : artists
 
   // Dedupe artists and collect subroles
   const seen = new Map()
   const dedupedArtists = []
   let limitedShow = false
 
-  for (const artist of artists) {
+  for (const artist of allArtists) {
     if (!artist?.id) continue
 
     if (!seen.has(artist.id)) {
@@ -144,6 +157,7 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
 
   return <>{intersperse(artistsList, ' • ')}</>
 }
+
 ArtistLinkField.propTypes = {
   limit: PropTypes.number,
   record: PropTypes.object,
