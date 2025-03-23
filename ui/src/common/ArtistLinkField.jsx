@@ -63,21 +63,21 @@ const parseAndReplaceArtists = (
 
 export const ArtistLinkField = ({ record, className, limit, source }) => {
   const role = source.toLowerCase()
-  const artists = record['participants']
-    ? record['participants'][role]
-    : [{ name: record[source], id: record[source + 'Id'] }]
 
-  // When showing artists for a track, add any remixers to the list of artists
-  if (
-    role === 'artist' &&
-    record['participants'] &&
-    record['participants']['remixer']
-  ) {
-    record['participants']['remixer'].forEach((remixer) => {
-      artists.push(remixer)
-    })
+  // Get artists array with fallback
+  let artists = []
+  if (record?.participants?.[role]) {
+    artists = [...record.participants[role]]
+
+    // Add remixers when applicable
+    if (role === 'artist' && record.participants.remixer?.length) {
+      artists = [...artists, ...record.participants.remixer]
+    }
+  } else if (record[source]) {
+    artists = [{ name: record[source], id: record[source + 'Id'] }]
   }
 
+  // Special handling for albumartist
   if (role === 'albumartist') {
     const artistsLinks = parseAndReplaceArtists(
       record[source],
@@ -89,12 +89,14 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
     }
   }
 
-  // Dedupe artists, only shows the first 3
+  // Dedupe artists and collect subroles
   const seen = new Map()
   const dedupedArtists = []
   let limitedShow = false
 
-  for (const artist of artists ?? []) {
+  for (const artist of artists) {
+    if (!artist?.id) continue
+
     if (!seen.has(artist.id)) {
       if (dedupedArtists.length < limit) {
         seen.set(artist.id, dedupedArtists.length)
@@ -107,22 +109,20 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
       }
     } else {
       const position = seen.get(artist.id)
-
-      if (position !== -1) {
-        const existing = dedupedArtists[position]
-        if (artist.subRole && !existing.subroles.includes(artist.subRole)) {
-          existing.subroles.push(artist.subRole)
-        }
+      const existing = dedupedArtists[position]
+      if (artist.subRole && !existing.subroles.includes(artist.subRole)) {
+        existing.subroles.push(artist.subRole)
       }
     }
   }
 
+  // Create artist links
   const artistsList = dedupedArtists.map((artist) => (
-    <ALink artist={artist} className={className} key={artist?.id} />
+    <ALink artist={artist} className={className} key={artist.id} />
   ))
 
   if (limitedShow) {
-    artistsList.push(<span>...</span>)
+    artistsList.push(<span key="more">...</span>)
   }
 
   return <>{intersperse(artistsList, ' • ')}</>
