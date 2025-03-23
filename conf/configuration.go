@@ -317,7 +317,6 @@ func Load(noConfigDump bool) {
 		disableExternalServices()
 	}
 
-	// BFR Remove before release
 	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
 		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
 		Server.Scanner.Extractor = consts.DefaultScannerExtractor
