@@ -31,10 +31,10 @@ type MediaFile struct {
 	Title       string `structs:"title" json:"title"`
 	Album       string `structs:"album" json:"album"`
 	ArtistID    string `structs:"artist_id" json:"artistId"` // Deprecated: Use Participants instead
-	// BFR Rename to ArtistDisplayName
+	// Artist is the display name used for the artist.
 	Artist        string `structs:"artist" json:"artist"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated: Use Participants instead
-	// BFR Rename to AlbumArtistDisplayName
+	// AlbumArtist is the display name used for the album artist.
 	AlbumArtist          string  `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string  `structs:"album_id" json:"albumId"`
 	HasCoverArt          bool    `structs:"has_cover_art" json:"hasCoverArt"`

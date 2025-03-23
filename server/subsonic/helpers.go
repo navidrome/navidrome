@@ -235,7 +235,6 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	child.BitDepth = int32(mf.BitDepth)
 	child.Genres = toItemGenres(mf.Genres)
 	child.Moods = mf.Tags.Values(model.TagMood)
-	// BFR What if Child is an Album and not a Song?
 	child.DisplayArtist = mf.Artist
 	child.Artists = artistRefs(mf.Participants[model.RoleArtist])
 	child.DisplayAlbumArtist = mf.AlbumArtist
