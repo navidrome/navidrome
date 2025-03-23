@@ -129,6 +129,7 @@ type scannerOptions struct {
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
 	Extractor          string
+	ArtistJoiner       string
 	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 }
@@ -495,6 +496,7 @@ func init() {
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
+	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 

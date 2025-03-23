@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -210,8 +211,8 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 
 func (md Metadata) mapDisplayName(singularTagName, pluralTagName model.TagName) string {
 	return cmp.Or(
-		strings.Join(md.tags[singularTagName], consts.ArtistJoiner),
-		strings.Join(md.tags[pluralTagName], consts.ArtistJoiner),
+		strings.Join(md.tags[singularTagName], conf.Server.Scanner.ArtistJoiner),
+		strings.Join(md.tags[pluralTagName], conf.Server.Scanner.ArtistJoiner),
 	)
 }
 
