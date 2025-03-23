@@ -63,30 +63,47 @@ const parseAndReplaceArtists = (
 
 export const ArtistLinkField = ({ record, className, limit, source }) => {
   const role = source.toLowerCase()
+  const remixers =
+    role === 'artist' && record?.participants?.remixer
+      ? record.participants.remixer.slice(0, 2)
+      : []
 
   // Get artists array with fallback
-  let artists = []
-  if (record?.participants?.[role]) {
-    artists = [...record.participants[role]]
+  let artists = record?.participants?.[role] || []
 
-    // Add remixers when applicable
-    if (role === 'artist' && record.participants.remixer?.length) {
-      artists = [...artists, ...record.participants.remixer]
-    }
-  } else if (record[source]) {
-    artists = [{ name: record[source], id: record[source + 'Id'] }]
-  }
-
-  // Special handling for albumartist
-  if (role === 'albumartist') {
+  // Use parseAndReplaceArtists for artist and albumartist roles
+  if ((role === 'artist' || role === 'albumartist') && record[source]) {
     const artistsLinks = parseAndReplaceArtists(
       record[source],
       artists,
       className,
     )
+
     if (artistsLinks.length > 0) {
+      // For artist role, append remixers if available
+      if (role === 'artist' && remixers.length > 0) {
+        artistsLinks.push(' • ')
+        remixers.forEach((remixer, index) => {
+          if (index > 0) artistsLinks.push(' • ')
+          artistsLinks.push(
+            <ALink
+              artist={remixer}
+              className={className}
+              key={`remixer-${remixer.id}`}
+            />,
+          )
+        })
+      }
+
       return <div className={className}>{artistsLinks}</div>
     }
+  }
+
+  // Fall back to regular handling
+  if (artists.length === 0 && record[source]) {
+    artists = [{ name: record[source], id: record[source + 'Id'] }]
+  } else if (role === 'artist' && remixers.length > 0) {
+    artists = [...artists, ...remixers]
   }
 
   // Dedupe artists and collect subroles
@@ -127,7 +144,6 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
 
   return <>{intersperse(artistsList, ' • ')}</>
 }
-
 ArtistLinkField.propTypes = {
   limit: PropTypes.number,
   record: PropTypes.object,
