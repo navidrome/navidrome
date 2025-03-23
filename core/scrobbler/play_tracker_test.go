@@ -239,7 +239,6 @@ func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble)
 	return nil
 }
 
-// BFR This is duplicated in a few places
 func _p(id, name string, sortName ...string) model.Participant {
 	p := model.Participant{Artist: model.Artist{ID: id, Name: name}}
 	if len(sortName) > 0 {
