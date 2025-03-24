@@ -25,13 +25,15 @@
         "quality": "Qualité",
         "bpm": "BPM",
         "playDate": "Derniers joués",
+        "channels": "Canaux",
         "createdAt": "Date d'ajout",
         "grouping": "Regroupement",
         "mood": "Humeur",
         "participants": "Participants supplémentaires",
         "tags": "Étiquettes supplémentaires",
         "mappedTags": "Étiquettes correspondantes",
-        "rawTags": "Étiquettes brutes"
+        "rawTags": "Étiquettes brutes",
+        "bitDepth": "Profondeur de bit"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -51,19 +53,19 @@
         "duration": "Durée",
         "songCount": "Nombre de pistes",
         "playCount": "Nombre d'écoutes",
-        "size": "Taille",
         "name": "Nom",
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Année",
-        "originalDate": "Original",
-        "releaseDate": "Sortie",
-        "releases": "Sortie |||| Sorties",
-        "released": "Sortie",
         "updatedAt": "Mis à jour le",
         "comment": "Commentaire",
         "rating": "Classement",
         "createdAt": "Date d'ajout",
+        "size": "Taille",
+        "originalDate": "Original",
+        "releaseDate": "Sortie",
+        "releases": "Sortie |||| Sorties",
+        "released": "Sortie",
         "recordLabel": "Label",
         "catalogNum": "Numéro de catalogue",
         "releaseType": "Type",
@@ -75,11 +77,11 @@
         "playAll": "Lire",
         "playNext": "Lire ensuite",
         "addToQueue": "Ajouter à la file",
-        "share": "Partager",
         "shuffle": "Mélanger",
         "addToPlaylist": "Ajouter à la playlist",
         "download": "Télécharger",
-        "info": "Plus d'informations"
+        "info": "Plus d'informations",
+        "share": "Partager"
       },
       "lists": {
         "all": "Tous",
@@ -97,10 +99,10 @@
         "name": "Nom",
         "albumCount": "Nombre d'albums",
         "songCount": "Nombre de pistes",
-        "size": "Taille",
         "playCount": "Lectures",
         "rating": "Classement",
         "genre": "Genre",
+        "size": "Taille",
         "role": "Rôle"
       },
       "roles": {
@@ -125,7 +127,6 @@
         "userName": "Nom d'utilisateur",
         "isAdmin": "Administrateur",
         "lastLoginAt": "Dernière connexion",
-        "lastAccessAt": "Dernier accès",
         "updatedAt": "Dernière mise à jour",
         "name": "Nom",
         "password": "Mot de passe",
@@ -133,7 +134,8 @@
         "changePassword": "Changer le mot de passe ?",
         "currentPassword": "Mot de passe actuel",
         "newPassword": "Nouveau mot de passe",
-        "token": "Token"
+        "token": "Token",
+        "lastAccessAt": "Dernier accès"
       },
       "helperTexts": {
         "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion"
@@ -215,7 +217,6 @@
         "username": "Partagé(e) par",
         "url": "Lien URL",
         "description": "Description",
-        "downloadable": "Autoriser les téléchargements ?",
         "contents": "Contenu",
         "expiresAt": "Expire le",
         "lastVisitedAt": "Visité pour la dernière fois",
@@ -223,14 +224,12 @@
         "format": "Format",
         "maxBitRate": "Bitrate maximum",
         "updatedAt": "Mis à jour le",
-        "createdAt": "Créé le"
-      },
-      "notifications": {},
-      "actions": {}
+        "createdAt": "Créé le",
+        "downloadable": "Autoriser les téléchargements ?"
+      }
     },
     "missing": {
       "name": "Fichier manquant|||| Fichiers manquants",
-      "empty": "Aucun fichier manquant",
       "fields": {
         "path": "Chemin",
         "size": "Taille",
@@ -241,7 +240,8 @@
       },
       "notifications": {
         "removed": "Fichier(s) manquant(s) supprimé(s)"
-      }
+      },
+      "empty": "Aucun fichier manquant"
     }
   },
   "ra": {
@@ -279,7 +279,6 @@
       "add": "Ajouter",
       "back": "Retour",
       "bulk_actions": "%{smart_count} sélectionné |||| %{smart_count} sélectionnés",
-      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "cancel": "Annuler",
       "clear_input_value": "Vider le champ",
       "clone": "Dupliquer",
@@ -303,6 +302,7 @@
       "close_menu": "Fermer le menu",
       "unselect": "Désélectionner",
       "skip": "Ignorer",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "Partager",
       "download": "Télécharger"
     },
@@ -397,31 +397,31 @@
     "noPlaylistsAvailable": "Aucune playlist",
     "delete_user_title": "Supprimer l'utilisateur '%{name}'",
     "delete_user_content": "Êtes-vous sûr(e) de vouloir supprimer cet utilisateur et ses données associées (y compris ses playlists et préférences) ?",
-    "remove_missing_title": "Supprimer les fichiers manquants",
-    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définiviement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations.",
     "notifications_blocked": "Votre navigateur bloque les notifications de ce site",
     "notifications_not_available": "Votre navigateur ne permet pas d'afficher les notifications sur le bureau ou vous n'accédez pas à Navidrome via HTTPS",
     "lastfmLinkSuccess": "Last.fm a été correctement relié et le scrobble a été activé",
     "lastfmLinkFailure": "Last.fm n'a pas pu être correctement relié",
     "lastfmUnlinkSuccess": "Last.fm n'est plus relié et le scrobble a été désactivé",
     "lastfmUnlinkFailure": "Erreur pendant la suppression du lien avec Last.fm",
-    "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur : %{user}",
-    "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz : %{error}",
-    "listenBrainzUnlinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant désactivés",
-    "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz",
     "openIn": {
       "lastfm": "Ouvrir dans Last.fm",
       "musicbrainz": "Ouvrir dans MusicBrainz"
     },
     "lastfmLink": "Lire plus...",
+    "listenBrainzLinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant activés pour l'utilisateur : %{user}",
+    "listenBrainzLinkFailure": "Échec lors de la liaison avec ListenBrainz : %{error}",
+    "listenBrainzUnlinkSuccess": "La liaison et le scrobble avec ListenBrainz sont maintenant désactivés",
+    "listenBrainzUnlinkFailure": "Échec lors de la désactivation de la liaison avec ListenBrainz",
+    "downloadOriginalFormat": "Télécharger au format original",
     "shareOriginalFormat": "Partager avec le format original",
     "shareDialogTitle": "Partager %{resource} '%{name}'",
     "shareBatchDialogTitle": "Partager 1 %{resource} |||| Partager %{smart_count} %{resource}",
-    "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter",
     "shareSuccess": "Lien copié vers le presse-papier : %{url}",
     "shareFailure": "Erreur en copiant le lien %{url} vers le presse-papier",
     "downloadDialogTitle": "Télécharger %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "Télécharger au format original"
+    "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter",
+    "remove_missing_title": "Supprimer les fichiers manquants",
+    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations"
   },
   "menu": {
     "library": "Bibliothèque",
@@ -435,7 +435,6 @@
         "language": "Langue",
         "defaultView": "Vue par défaut",
         "desktop_notifications": "Notifications de bureau",
-        "lastfmNotConfigured": "La clef API de Last.fm n'est pas configurée",
         "lastfmScrobbling": "Scrobbler vers Last.fm",
         "listenBrainzScrobbling": "Scrobbler vers ListenBrainz",
         "replaygain": "Mode ReplayGain",
@@ -444,13 +443,14 @@
           "none": "Désactivé",
           "album": "Utiliser le gain de l'album",
           "track": "Utiliser le gain des pistes"
-        }
+        },
+        "lastfmNotConfigured": "La clef API de Last.fm n'est pas configurée"
       }
     },
     "albumList": "Albums",
+    "about": "À propos",
     "playlists": "Playlists",
-    "sharedPlaylists": "Playlists partagées",
-    "about": "À propos"
+    "sharedPlaylists": "Playlists partagées"
   },
   "player": {
     "playListsText": "File de lecture",
@@ -505,10 +505,10 @@
       "toggle_play": "Lecture/Pause",
       "prev_song": "Morceau précédent",
       "next_song": "Morceau suivant",
-      "current_song": "Aller à la chanson en cours",
       "vol_up": "Augmenter le volume",
       "vol_down": "Baisser le volume",
-      "toggle_love": "Ajouter/Enlever le morceau des favoris"
+      "toggle_love": "Ajouter/Enlever le morceau des favoris",
+      "current_song": "Aller à la chanson en cours"
     }
   }
 }
