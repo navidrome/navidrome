@@ -32,7 +32,8 @@
         "participants": "Ek katılımcılar",
         "tags": "Ek Etiketler",
         "mappedTags": "Eşlenen etiketler",
-        "rawTags": "Ham etiketler"
+        "rawTags": "Ham etiketler",
+        "bitDepth": ""
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -239,7 +240,8 @@
       },
       "notifications": {
         "removed": "Eksik dosya(lar) kaldırıldı"
-      }
+      },
+      "empty": "Eksik Dosya Yok"
     }
   },
   "ra": {
