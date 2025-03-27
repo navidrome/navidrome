@@ -30,6 +30,7 @@ import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
+import { PLAYER_PLAY_TRACKS, filterSongs } from '../actions'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -232,8 +233,16 @@ const Player = () => {
           )
         }
       }
+      if (localStorage.getItem('sync') === 'true') {
+        let ids = ''
+        for (let i = 0; i < playerState.queue.length; i++) {
+          let song = playerState.queue[i]['trackId']
+          ids += `&id=${song}`
+        }
+        subsonic.syncPlayQueue(currentPlaying(info).data, ids)
+      }
     },
-    [context, dispatch, showNotifications, startTime],
+    [context, dispatch, showNotifications, startTime, playerState.queue],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
@@ -312,5 +321,4 @@ const Player = () => {
     </ThemeProvider>
   )
 }
-
 export { Player }
