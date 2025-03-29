@@ -50,7 +50,7 @@ const ArtistDetails = (props) => {
   )
 }
 
-const AlbumShowLayout = (props) => {
+const ArtistShowLayout = (props) => {
   const showContext = useShowContext(props)
   const record = useRecordContext()
   const { width } = props
@@ -98,7 +98,7 @@ const ArtistShow = withWidth()((props) => {
   const controllerProps = useShowController(props)
   return (
     <ShowContextProvider value={controllerProps}>
-      <AlbumShowLayout {...controllerProps} />
+      <ArtistShowLayout {...controllerProps} />
     </ShowContextProvider>
   )
 })
