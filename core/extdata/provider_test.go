@@ -84,12 +84,12 @@ type testArtistRepo struct {
 
 func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	// Get the error state using reflection
-	if getField(m.MockArtistRepo, "err").(bool) {
+	if getField(m.MockArtistRepo, "Err").(bool) {
 		return nil, errors.New("error")
 	}
 
 	// Get the data using reflection
-	dataMap := getField(m.MockArtistRepo, "data").(map[string]*model.Artist)
+	dataMap := getField(m.MockArtistRepo, "Data").(map[string]*model.Artist)
 
 	// Convert map to slice
 	artists := make(model.Artists, 0, len(dataMap))
@@ -145,12 +145,12 @@ type testMediaFileRepo struct {
 
 func (m *testMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
 	// Get the error state using reflection
-	if getField(m.MockMediaFileRepo, "err").(bool) {
+	if getField(m.MockMediaFileRepo, "Err").(bool) {
 		return nil, errors.New("error")
 	}
 
 	// Get the data using reflection
-	dataMap := getField(m.MockMediaFileRepo, "data").(map[string]*model.MediaFile)
+	dataMap := getField(m.MockMediaFileRepo, "Data").(map[string]*model.MediaFile)
 
 	// Convert map to slice
 	mediaFiles := make(model.MediaFiles, 0, len(dataMap))
