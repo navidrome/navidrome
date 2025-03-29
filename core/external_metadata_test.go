@@ -9,7 +9,11 @@ import (
 	"unsafe"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	_ "github.com/navidrome/navidrome/core/agents/lastfm"
+	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
+	_ "github.com/navidrome/navidrome/core/agents/spotify"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -40,14 +44,19 @@ func (m *mockArtistTopSongsAgent) GetArtistTopSongs(ctx context.Context, id, art
 	m.lastArtistName = artistName
 	m.lastMBID = mbid
 
+	log.Debug(ctx, "MockAgent.GetArtistTopSongs called", "id", id, "name", artistName, "mbid", mbid, "count", count)
+
 	// Use the custom function if available
 	if m.getArtistTopSongsFn != nil {
 		return m.getArtistTopSongsFn(ctx, id, artistName, mbid, count)
 	}
 
 	if m.err != nil {
+		log.Debug(ctx, "MockAgent.GetArtistTopSongs returning error", "err", m.err)
 		return nil, m.err
 	}
+
+	log.Debug(ctx, "MockAgent.GetArtistTopSongs returning songs", "count", len(m.topSongs))
 	return m.topSongs, nil
 }
 
@@ -92,6 +101,11 @@ func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 		return nil, errors.New("error")
 	}
 
+	// No filters means return all
+	if len(options) == 0 || options[0].Filters == nil {
+		return m.artists, nil
+	}
+
 	// Basic implementation that returns artists matching name filter
 	if len(options) > 0 && options[0].Filters != nil {
 		switch f := options[0].Filters.(type) {
@@ -107,6 +121,18 @@ func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 						return model.Artists{a}, nil
 					}
 				}
+			}
+		case squirrel.Eq:
+			if ids, ok := f["artist.id"]; ok {
+				var result model.Artists
+				for _, a := range m.artists {
+					for _, id := range ids.([]string) {
+						if a.ID == id {
+							result = append(result, a)
+						}
+					}
+				}
+				return result, nil
 			}
 		}
 	}
@@ -208,6 +234,15 @@ func (m *testMediaFileRepo) handleAndFilter(andFilter squirrel.And, option model
 							}
 						}
 					}
+					if albumArtistID, ok := eqCond["album_artist_id"]; ok {
+						log.Debug("MediaFileRepo.handleAndFilter: Looking for album_artist_id", "albumArtistID", albumArtistID)
+						for _, mf := range notMissingMatches {
+							if mf.AlbumArtistID == albumArtistID.(string) {
+								log.Debug("MediaFileRepo.handleAndFilter: Found match by album_artist_id", "id", mf.ID, "title", mf.Title)
+								artistMatches = append(artistMatches, mf)
+							}
+						}
+					}
 				}
 			}
 		case squirrel.Like:
@@ -224,6 +259,12 @@ func (m *testMediaFileRepo) handleAndFilter(andFilter squirrel.And, option model
 						titleMatches = append(titleMatches, mf)
 					}
 				}
+			}
+		case squirrel.Eq:
+			// Handle missing check
+			if missingFlag, ok := filter["missing"]; ok && !missingFlag.(bool) {
+				// This is already handled above when we build notMissingMatches
+				continue
 			}
 		}
 	}
@@ -257,9 +298,13 @@ var _ = Describe("ExternalMetadata", func() {
 	var mockArtistRepo *testArtistRepo
 	var mockMediaFileRepo *testMediaFileRepo
 	var ctx context.Context
+	var originalAgentsConfig string
 
 	BeforeEach(func() {
 		ctx = context.Background()
+
+		// Store the original agents config to restore it later
+		originalAgentsConfig = conf.Server.Agents
 
 		// Setup mocks
 		mockArtistRepo = newTestArtistRepo()
@@ -275,31 +320,21 @@ var _ = Describe("ExternalMetadata", func() {
 
 		// Create a mock agent
 		mockAgent = &mockArtistTopSongsAgent{}
-		log.Debug("Creating mock agent", "agent", mockAgent)
-		agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
-
-		// Create a custom agents instance directly with our mock agent
-		agentsImpl := &agents.Agents{}
-
-		// Use reflection to set the unexported fields
-		setAgentField(agentsImpl, "ds", ds)
-		setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
-
-		// Create the externalMetadata instance with our custom Agents implementation
-		em = NewExternalMetadata(ds, agentsImpl)
-
-		// Verify that the agent is available
-		log.Debug("ExternalMetadata created", "em", em)
+		log.Debug(ctx, "Creating mock agent", "agent", mockAgent)
 	})
 
-	Describe("TopSongs", func() {
+	AfterEach(func() {
+		// Restore original config
+		conf.Server.Agents = originalAgentsConfig
+	})
+
+	Describe("TopSongs with direct agent injection", func() {
 		BeforeEach(func() {
 			// Set up artists data
 			mockArtistRepo.SetData(model.Artists{
 				{ID: "artist-1", Name: "Artist One"},
 				{ID: "artist-2", Name: "Artist Two"},
 			})
-			log.Debug("Artist data set up", "count", 2)
 
 			// Set up mediafiles data with all necessary fields for matching
 			mockMediaFileRepo.SetData(model.MediaFiles{
@@ -331,22 +366,26 @@ var _ = Describe("ExternalMetadata", func() {
 					Missing:           false,
 				},
 			})
-			log.Debug("Media files data set up", "count", 3)
 
 			// Configure the mockAgent to return some top songs
 			mockAgent.topSongs = []agents.Song{
 				{Name: "Song One", MBID: "mbid-1"},
 				{Name: "Song Two", MBID: "mbid-2"},
 			}
-			log.Debug("Mock agent configured with top songs", "count", len(mockAgent.topSongs))
+
+			// Create a custom agents instance directly with our mock agent
+			agentsImpl := &agents.Agents{}
+
+			// Use reflection to set the unexported fields
+			setAgentField(agentsImpl, "ds", ds)
+			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
+
+			// Create the externalMetadata instance with our custom Agents implementation
+			em = NewExternalMetadata(ds, agentsImpl)
 		})
 
 		It("returns matching songs from the agent results", func() {
-			log.Debug("Running test: returns matching songs from the agent results")
-
 			songs, err := em.TopSongs(ctx, "Artist One", 5)
-
-			log.Debug("Test results", "err", err, "songs", songs)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(2))
@@ -360,12 +399,10 @@ var _ = Describe("ExternalMetadata", func() {
 		})
 
 		It("returns nil when artist is not found", func() {
-			// Empty mockArtistRepo to simulate artist not found
-			mockArtistRepo.err = errors.New("artist repo error")
+			// Set an error for mockArtistRepo to simulate artist not found
+			mockArtistRepo.SetError(true)
 
 			songs, err := em.TopSongs(ctx, "Unknown Artist", 5)
-
-			log.Debug("Test results after TopSongs call with unknown artist", "err", err, "songs", songs)
 
 			Expect(err).To(BeNil())
 			Expect(songs).To(BeNil())
@@ -379,111 +416,21 @@ var _ = Describe("ExternalMetadata", func() {
 
 			songs, err := em.TopSongs(ctx, "Artist One", 5)
 
-			log.Debug("Test results for non-matching songs", "err", err, "songs", songs)
-
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(0))
 		})
 
-		It("returns nil when agent returns other errors", func() {
-			// We need to ensure artist is found first
-			mockArtistRepo.err = nil
+		It("returns nil when agent returns errors", func() {
+			// Reset the agent error state
+			mockArtistRepo.SetError(false)
 
-			// Create the error right away
+			// Set the error
 			testError := errors.New("some agent error")
-
-			// Reset the default mock agent
 			mockAgent.err = testError
-			mockAgent.topSongs = nil // Make sure no songs are returned with the error
 
-			log.Debug("==================== TEST SETUP ====================")
-			log.Debug("Using default mock agent for this test", "agent", mockAgent, "err", mockAgent.err)
+			songs, err := em.TopSongs(ctx, "Artist One", 5)
 
-			// Directly test the mock agent's GetArtistTopSongs function
-			songs, err := mockAgent.GetArtistTopSongs(ctx, "1", "Artist One", "mbz-1", 5)
-			log.Debug("Direct GetArtistTopSongs result", "songs", songs, "err", err)
-			Expect(err).To(Equal(testError))
-
-			// Directly test the agents.Agents implementation to check how it handles errors
-			agentsObj := &agents.Agents{}
-			setAgentField(agentsObj, "ds", ds)
-			setAgentField(agentsObj, "agents", []agents.Interface{mockAgent})
-
-			// Test the wrapped agent directly
-			songs, err = agentsObj.GetArtistTopSongs(ctx, "1", "Artist One", "mbz-1", 5)
-			log.Debug("Agents.GetArtistTopSongs result", "songs", songs, "err", err)
-			// If Agents.GetArtistTopSongs swallows errors and returns ErrNotFound, that's an issue with agents
-			// but we're still testing the current behavior
-
-			// Create a direct agent that returns the error directly from GetArtistTopSongs
-			directAgent := &mockArtistTopSongsAgent{
-				getArtistTopSongsFn: func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-					return nil, testError
-				},
-			}
-
-			// Create the ExternalMetadata instance with a direct pipeline to our agent
-			directAgentsObj := &agents.Agents{}
-			setAgentField(directAgentsObj, "ds", ds)
-			setAgentField(directAgentsObj, "agents", []agents.Interface{directAgent})
-
-			// Create the externalMetadata instance to test
-			directEM := NewExternalMetadata(ds, directAgentsObj)
-
-			// Call the method we're testing with our direct agent setup
-			songs2, err := directEM.TopSongs(ctx, "Artist One", 5)
-
-			log.Debug("Direct TopSongs result", "err", err, "songs", songs2)
-
-			// With our improved code, the error should now be propagated if it's passed directly from the agent
-			// But we keep this test in its original form to ensure the current behavior works
-			// A new test will be added that tests the improved error propagation
-			Expect(err).To(BeNil())
-			Expect(songs2).To(BeNil())
-		})
-
-		It("propagates errors with direct agent implementation", func() {
-			// We need to ensure artist is found first
-			mockArtistRepo.err = nil
-
-			// Create the error right away
-			testError := errors.New("direct agent error")
-
-			// Create a direct agent that bypasses agents.Agents
-			// This simulates a case where the error would be properly propagated if agents.Agents
-			// wasn't silently swallowing errors
-			directAgent := &mockArtistTopSongsAgent{
-				getArtistTopSongsFn: func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-					log.Debug("Direct agent GetArtistTopSongs called", "id", id, "name", artistName, "count", count)
-					return nil, testError
-				},
-			}
-
-			// Check that our direct agent works as expected
-			songsTest, errTest := directAgent.GetArtistTopSongs(ctx, "1", "Artist One", "mbz-1", 5)
-			log.Debug("Testing direct agent", "songs", songsTest, "err", errTest)
-			Expect(errTest).To(Equal(testError))
-
-			// Create a custom implementation of agents.Agents that will return our error
-			directAgentsImpl := &agents.Agents{}
-			setAgentField(directAgentsImpl, "ds", ds)
-			setAgentField(directAgentsImpl, "agents", []agents.Interface{directAgent})
-
-			// Test the agents implementation directly
-			songsAgents, errAgents := directAgentsImpl.GetArtistTopSongs(ctx, "1", "Artist One", "mbz-1", 5)
-			log.Debug("Direct agents result", "songs", songsAgents, "err", errAgents)
-
-			// Create a new external metadata instance
-			directEM := NewExternalMetadata(ds, directAgentsImpl)
-
-			// Call the method we're testing with our direct implementation
-			songs, err := directEM.TopSongs(ctx, "Artist One", 5)
-
-			log.Debug("Direct TopSongs result with propagation", "err", err, "songs", songs)
-
-			// In theory this would pass with the improved implementation, but in practice
-			// the root issue is the agents.Agents implementation that swallows non-ErrNotFound errors
-			// For now we'll expect nil, which matches the current behavior
+			// Current behavior returns nil for both error and songs
 			Expect(err).To(BeNil())
 			Expect(songs).To(BeNil())
 		})
@@ -497,11 +444,95 @@ var _ = Describe("ExternalMetadata", func() {
 
 			songs, err := em.TopSongs(ctx, "Artist One", 1)
 
-			log.Debug("Test results for count parameter", "err", err, "songs", songs, "count", len(songs))
-
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(1))
 			Expect(songs[0].ID).To(Equal("song-1"))
+		})
+	})
+
+	Describe("TopSongs with agent registration", func() {
+		BeforeEach(func() {
+			// Set our mock agent as the only agent
+			conf.Server.Agents = "mock"
+
+			// Set up artists data
+			mockArtistRepo.SetData(model.Artists{
+				{ID: "artist-1", Name: "Artist One"},
+			})
+
+			// Set up mediafiles data
+			mockMediaFileRepo.SetData(model.MediaFiles{
+				{
+					ID:                "song-1",
+					Title:             "Song One",
+					Artist:            "Artist One",
+					ArtistID:          "artist-1",
+					MbzReleaseTrackID: "mbid-1",
+					Missing:           false,
+				},
+				{
+					ID:                "song-2",
+					Title:             "Song Two",
+					Artist:            "Artist One",
+					ArtistID:          "artist-1",
+					MbzReleaseTrackID: "mbid-2",
+					Missing:           false,
+				},
+			})
+
+			// Configure and register the agent
+			mockAgent.topSongs = []agents.Song{
+				{Name: "Song One", MBID: "mbid-1"},
+				{Name: "Song Two", MBID: "mbid-2"},
+			}
+
+			// Register our mock agent
+			agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
+
+			// Create the externalMetadata instance with registered agents
+			em = NewExternalMetadata(ds, agents.GetAgents(ds))
+		})
+
+		It("returns matching songs from the registered agent", func() {
+			songs, err := em.TopSongs(ctx, "Artist One", 5)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("song-1"))
+			Expect(songs[1].ID).To(Equal("song-2"))
+		})
+	})
+
+	Describe("Error propagation from agents", func() {
+		BeforeEach(func() {
+			// Set up artists data
+			mockArtistRepo.SetData(model.Artists{
+				{ID: "artist-1", Name: "Artist One"},
+			})
+
+			// Create a direct agent that returns an error
+			testError := errors.New("direct agent error")
+			directAgent := &mockArtistTopSongsAgent{
+				getArtistTopSongsFn: func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+					return nil, testError
+				},
+			}
+
+			// Create a custom implementation of agents.Agents that will return our error
+			directAgentsImpl := &agents.Agents{}
+			setAgentField(directAgentsImpl, "ds", ds)
+			setAgentField(directAgentsImpl, "agents", []agents.Interface{directAgent})
+
+			// Create a new external metadata instance
+			em = NewExternalMetadata(ds, directAgentsImpl)
+		})
+
+		It("handles errors from the agent according to current behavior", func() {
+			songs, err := em.TopSongs(ctx, "Artist One", 5)
+
+			// Current behavior returns nil for both error and songs
+			Expect(err).To(BeNil())
+			Expect(songs).To(BeNil())
 		})
 	})
 })
