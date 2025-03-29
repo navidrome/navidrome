@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='windows-1252'?>
+
 <?if $(var.Platform) = x64 ?>
 	<?define ProductName = "Navidrome" ?>
 	<?define UpgradeCode = "2f154974-1443-41b6-b808-b8be530291b3" ?>
@@ -71,7 +71,7 @@
 			</Directory>
 		</Directory>
 
-		<Directory Id="[ND_DATAFOLDER]">
+		<Directory Id="ND_DATAFOLDER">
 			<Component Id='PackageFile' Guid='9eec0697-803c-4629-858f-20dc376c960b' Win64="$(var.Win64)">
 				<File Id='package' Name='.package' DiskId='1' Source='.package' KeyPath='no' />
 			</Component>
@@ -87,6 +87,7 @@
 			<ComponentRef Id='Configuration'/>
 			<ComponentRef Id='MainExecutable' />
 			<ComponentRef Id='FFMpegExecutable' />
+			<ComponentRef Id='PackageFile' />
 		</Feature>
 	</Product>
 </Wix>
