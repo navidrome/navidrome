@@ -14,6 +14,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/extdata"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
@@ -22,13 +23,13 @@ import (
 type artistReader struct {
 	cacheKey
 	a            *artwork
-	em           core.ExternalMetadata
+	em           extdata.ExternalMetadata
 	artist       model.Artist
 	artistFolder string
 	imgFiles     []string
 }
 
-func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em core.ExternalMetadata) (*artistReader, error) {
+func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em extdata.ExternalMetadata) (*artistReader, error) {
 	ar, err := artwork.ds.Artist(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err

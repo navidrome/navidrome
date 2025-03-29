@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/extdata"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -24,7 +24,7 @@ type Artwork interface {
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
 }
 
-func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em core.ExternalMetadata) Artwork {
+func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em extdata.ExternalMetadata) Artwork {
 	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, em: em}
 }
 
@@ -32,7 +32,7 @@ type artwork struct {
 	ds     model.DataStore
 	cache  cache.FileCache
 	ffmpeg ffmpeg.FFmpeg
-	em     core.ExternalMetadata
+	em     extdata.ExternalMetadata
 }
 
 type artworkReader interface {
