@@ -164,7 +164,9 @@ join library on media_file.library_id = library.id`, string(os.PathSeparator)))
 			return nil
 		}
 
-		stmt, err := tx.PrepareContext(ctx, "insert into folder (id, library_id, path, name, parent_id) values (?, ?, ?, ?, ?)")
+		stmt, err := tx.PrepareContext(ctx,
+			"insert into folder (id, library_id, path, name, parent_id, updated_at) values (?, ?, ?, ?, ?, '0000-00-00 00:00:00')",
+		)
 		if err != nil {
 			return err
 		}

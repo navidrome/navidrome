@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -74,10 +75,13 @@ func (c *simpleCache[K, V]) Get(key K) (V, error) {
 }
 
 func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Duration, error)) (V, error) {
+	var err error
 	loaderWrapper := ttlcache.LoaderFunc[K, V](
 		func(t *ttlcache.Cache[K, V], key K) *ttlcache.Item[K, V] {
 			c.evictExpired()
-			value, ttl, err := loader(key)
+			var value V
+			var ttl time.Duration
+			value, ttl, err = loader(key)
 			if err != nil {
 				return nil
 			}
@@ -87,6 +91,9 @@ func (c *simpleCache[K, V]) GetWithLoader(key K, loader func(key K) (V, time.Dur
 	item := c.data.Get(key, ttlcache.WithLoader[K, V](loaderWrapper))
 	if item == nil {
 		var zero V
+		if err != nil {
+			return zero, fmt.Errorf("cache error: loader returned %w", err)
+		}
 		return zero, errors.New("item not found")
 	}
 	return item.Value(), nil
