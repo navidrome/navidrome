@@ -291,9 +291,9 @@ func (m *testMediaFileRepo) handleAndFilter(andFilter squirrel.And, option model
 	return result, nil
 }
 
-var _ = Describe("ExternalMetadata", func() {
+var _ = Describe("Provider", func() {
 	var ds model.DataStore
-	var em ExternalMetadata
+	var em Provider
 	var mockAgent *mockArtistTopSongsAgent
 	var mockArtistRepo *testArtistRepo
 	var mockMediaFileRepo *testMediaFileRepo
@@ -380,7 +380,7 @@ var _ = Describe("ExternalMetadata", func() {
 			setAgentField(agentsImpl, "ds", ds)
 			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
 
-			// Create the externalMetadata instance with our custom Agents implementation
+			// Create the provider instance with our custom Agents implementation
 			em = NewExternalMetadata(ds, agentsImpl)
 		})
 
@@ -489,7 +489,7 @@ var _ = Describe("ExternalMetadata", func() {
 			// Register our mock agent
 			agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
 
-			// Create the externalMetadata instance with registered agents
+			// Create the provider instance with registered agents
 			em = NewExternalMetadata(ds, agents.GetAgents(ds))
 		})
 

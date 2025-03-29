@@ -20,14 +20,14 @@ import (
 type albumArtworkReader struct {
 	cacheKey
 	a          *artwork
-	em         extdata.ExternalMetadata
+	em         extdata.Provider
 	album      model.Album
 	updatedAt  *time.Time
 	imgFiles   []string
 	rootFolder string
 }
 
-func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em extdata.ExternalMetadata) (*albumArtworkReader, error) {
+func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em extdata.Provider) (*albumArtworkReader, error) {
 	al, err := artwork.ds.Album(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err

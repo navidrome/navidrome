@@ -36,7 +36,7 @@ type Router struct {
 	streamer         core.MediaStreamer
 	archiver         core.Archiver
 	players          core.Players
-	externalMetadata extdata.ExternalMetadata
+	externalMetadata extdata.Provider
 	playlists        core.Playlists
 	scanner          scanner.Scanner
 	broker           events.Broker
@@ -46,7 +46,7 @@ type Router struct {
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
-	players core.Players, externalMetadata extdata.ExternalMetadata, scanner scanner.Scanner, broker events.Broker,
+	players core.Players, externalMetadata extdata.Provider, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 ) *Router {
 	r := &Router{

@@ -23,13 +23,13 @@ import (
 type artistReader struct {
 	cacheKey
 	a            *artwork
-	em           extdata.ExternalMetadata
+	em           extdata.Provider
 	artist       model.Artist
 	artistFolder string
 	imgFiles     []string
 }
 
-func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em extdata.ExternalMetadata) (*artistReader, error) {
+func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, em extdata.Provider) (*artistReader, error) {
 	ar, err := artwork.ds.Artist(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err

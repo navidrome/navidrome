@@ -24,7 +24,7 @@ type Artwork interface {
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
 }
 
-func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em extdata.ExternalMetadata) Artwork {
+func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em extdata.Provider) Artwork {
 	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, em: em}
 }
 
@@ -32,7 +32,7 @@ type artwork struct {
 	ds     model.DataStore
 	cache  cache.FileCache
 	ffmpeg ffmpeg.FFmpeg
-	em     extdata.ExternalMetadata
+	em     extdata.Provider
 }
 
 type artworkReader interface {

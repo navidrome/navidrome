@@ -157,7 +157,7 @@ func fromAlbumPlaceholder() sourceFunc {
 		return r, consts.PlaceholderAlbumArt, nil
 	}
 }
-func fromArtistExternalSource(ctx context.Context, ar model.Artist, em extdata.ExternalMetadata) sourceFunc {
+func fromArtistExternalSource(ctx context.Context, ar model.Artist, em extdata.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		imageUrl, err := em.ArtistImage(ctx, ar.ID)
 		if err != nil {
@@ -168,7 +168,7 @@ func fromArtistExternalSource(ctx context.Context, ar model.Artist, em extdata.E
 	}
 }
 
-func fromAlbumExternalSource(ctx context.Context, al model.Album, em extdata.ExternalMetadata) sourceFunc {
+func fromAlbumExternalSource(ctx context.Context, al model.Album, em extdata.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		imageUrl, err := em.AlbumImage(ctx, al.ID)
 		if err != nil {
