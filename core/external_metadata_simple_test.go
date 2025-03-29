@@ -6,7 +6,6 @@ import (
 	"log"
 	"reflect"
 	"strings"
-	"testing"
 	"unsafe"
 
 	"github.com/Masterminds/squirrel"
@@ -15,7 +14,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/str"
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 // Custom implementation of ArtistRepository for testing
@@ -285,178 +285,190 @@ func setStructField(obj interface{}, fieldName string, value interface{}) {
 	rf.Set(reflect.ValueOf(value))
 }
 
-// Direct implementation of ExternalMetadata for testing that avoids agents registration issues
-func TestDirectTopSongs(t *testing.T) {
-	// Setup
-	ctx := context.Background()
+var _ = Describe("CustomExternalMetadata", func() {
+	var ctx context.Context
 
-	// Create custom mock repositories
-	mockArtistRepo := newCustomArtistRepo()
-	mockMediaFileRepo := newCustomMediaFileRepo()
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
 
-	// Configure mock data
-	artist := model.Artist{ID: "artist-1", Name: "Artist One"}
-	mockArtistRepo.SetData(model.Artists{artist})
+	Describe("DirectTopSongs", func() {
+		var mockArtistRepo *customArtistRepo
+		var mockMediaFileRepo *customMediaFileRepo
+		var mockDS *tests.MockDataStore
+		var mockAgent *MockAgent
+		var agentsImpl *agents.Agents
+		var em ExternalMetadata
 
-	log.Printf("Test: Set up artist: %s (ID: %s)", artist.Name, artist.ID)
+		BeforeEach(func() {
+			// Create custom mock repositories
+			mockArtistRepo = newCustomArtistRepo()
+			mockMediaFileRepo = newCustomMediaFileRepo()
 
-	mediaFiles := []model.MediaFile{
-		{
-			ID:                "song-1",
-			Title:             "Song One",
-			Artist:            "Artist One",
-			ArtistID:          "artist-1",
-			MbzReleaseTrackID: "mbid-1",
-			Missing:           false,
-		},
-		{
-			ID:                "song-2",
-			Title:             "Song Two",
-			Artist:            "Artist One",
-			ArtistID:          "artist-1",
-			MbzReleaseTrackID: "mbid-2",
-			Missing:           false,
-		},
-	}
-	mockMediaFileRepo.SetData(model.MediaFiles(mediaFiles))
+			// Configure mock data
+			artist := model.Artist{ID: "artist-1", Name: "Artist One"}
+			mockArtistRepo.SetData(model.Artists{artist})
 
-	for _, mf := range mediaFiles {
-		log.Printf("Test: Set up media file: %s (ID: %s, MBID: %s, ArtistID: %s)",
-			mf.Title, mf.ID, mf.MbzReleaseTrackID, mf.ArtistID)
-	}
+			log.Printf("Test: Set up artist: %s (ID: %s)", artist.Name, artist.ID)
 
-	// Create mock datastore
-	mockDS := &tests.MockDataStore{
-		MockedArtist:    mockArtistRepo,
-		MockedMediaFile: mockMediaFileRepo,
-	}
+			mediaFiles := []model.MediaFile{
+				{
+					ID:                "song-1",
+					Title:             "Song One",
+					Artist:            "Artist One",
+					ArtistID:          "artist-1",
+					MbzReleaseTrackID: "mbid-1",
+					Missing:           false,
+				},
+				{
+					ID:                "song-2",
+					Title:             "Song Two",
+					Artist:            "Artist One",
+					ArtistID:          "artist-1",
+					MbzReleaseTrackID: "mbid-2",
+					Missing:           false,
+				},
+			}
+			mockMediaFileRepo.SetData(model.MediaFiles(mediaFiles))
 
-	// Create mock agent
-	mockAgent := &MockAgent{
-		topSongs: []agents.Song{
-			{Name: "Song One", MBID: "mbid-1"},
-			{Name: "Song Two", MBID: "mbid-2"},
-		},
-	}
+			for _, mf := range mediaFiles {
+				log.Printf("Test: Set up media file: %s (ID: %s, MBID: %s, ArtistID: %s)",
+					mf.Title, mf.ID, mf.MbzReleaseTrackID, mf.ArtistID)
+			}
 
-	// Use the real agents.Agents implementation but with our mock agent
-	agentsImpl := &agents.Agents{}
+			// Create mock datastore
+			mockDS = &tests.MockDataStore{
+				MockedArtist:    mockArtistRepo,
+				MockedMediaFile: mockMediaFileRepo,
+			}
 
-	// Set unexported fields using reflection and unsafe
-	setStructField(agentsImpl, "ds", mockDS)
-	setStructField(agentsImpl, "agents", []agents.Interface{mockAgent})
+			// Create mock agent
+			mockAgent = &MockAgent{
+				topSongs: []agents.Song{
+					{Name: "Song One", MBID: "mbid-1"},
+					{Name: "Song Two", MBID: "mbid-2"},
+				},
+			}
 
-	// Create our service under test
-	em := NewExternalMetadata(mockDS, agentsImpl)
+			// Use the real agents.Agents implementation but with our mock agent
+			agentsImpl = &agents.Agents{}
 
-	// Test
-	log.Printf("Test: Calling TopSongs for artist: %s", "Artist One")
-	songs, err := em.TopSongs(ctx, "Artist One", 5)
+			// Set unexported fields using reflection and unsafe
+			setStructField(agentsImpl, "ds", mockDS)
+			setStructField(agentsImpl, "agents", []agents.Interface{mockAgent})
 
-	log.Printf("Test: Result: error=%v, songs=%v", err, songs)
+			// Create our service under test
+			em = NewExternalMetadata(mockDS, agentsImpl)
+		})
 
-	// Assertions
-	assert.NoError(t, err)
-	assert.Len(t, songs, 2)
-	if len(songs) > 0 {
-		assert.Equal(t, "song-1", songs[0].ID)
-	}
-	if len(songs) > 1 {
-		assert.Equal(t, "song-2", songs[1].ID)
-	}
-}
+		It("returns matching songs from the artist results", func() {
+			log.Printf("Test: Calling TopSongs for artist: %s", "Artist One")
+			songs, err := em.TopSongs(ctx, "Artist One", 5)
 
-func TestTopSongs(t *testing.T) {
-	// Setup
-	ctx := context.Background()
+			log.Printf("Test: Result: error=%v, songs=%v", err, songs)
 
-	// Store the original config to restore it later
-	originalAgentsConfig := conf.Server.Agents
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("song-1"))
+			Expect(songs[1].ID).To(Equal("song-2"))
+		})
+	})
 
-	// Set our mock agent as the only agent
-	conf.Server.Agents = "mock"
-	defer func() {
-		conf.Server.Agents = originalAgentsConfig
-	}()
+	Describe("TopSongs with agent registration", func() {
+		var mockArtistRepo *customArtistRepo
+		var mockMediaFileRepo *customMediaFileRepo
+		var mockDS *tests.MockDataStore
+		var mockAgent *MockAgent
+		var em ExternalMetadata
+		var originalAgentsConfig string
 
-	// Clear the agents map to prevent interference
-	agents.Map = nil
+		BeforeEach(func() {
+			// Store the original config to restore it later
+			originalAgentsConfig = conf.Server.Agents
 
-	// Create custom mock repositories
-	mockArtistRepo := newCustomArtistRepo()
-	mockMediaFileRepo := newCustomMediaFileRepo()
+			// Set our mock agent as the only agent
+			conf.Server.Agents = "mock"
 
-	// Configure mock data
-	artist := model.Artist{ID: "artist-1", Name: "Artist One"}
-	mockArtistRepo.SetData(model.Artists{artist})
+			// Clear the agents map to prevent interference
+			agents.Map = nil
 
-	log.Printf("Test: Set up artist: %s (ID: %s)", artist.Name, artist.ID)
+			// Create custom mock repositories
+			mockArtistRepo = newCustomArtistRepo()
+			mockMediaFileRepo = newCustomMediaFileRepo()
 
-	mediaFiles := []model.MediaFile{
-		{
-			ID:                "song-1",
-			Title:             "Song One",
-			Artist:            "Artist One",
-			ArtistID:          "artist-1",
-			MbzReleaseTrackID: "mbid-1",
-			Missing:           false,
-		},
-		{
-			ID:                "song-2",
-			Title:             "Song Two",
-			Artist:            "Artist One",
-			ArtistID:          "artist-1",
-			MbzReleaseTrackID: "mbid-2",
-			Missing:           false,
-		},
-	}
-	mockMediaFileRepo.SetData(model.MediaFiles(mediaFiles))
+			// Configure mock data
+			artist := model.Artist{ID: "artist-1", Name: "Artist One"}
+			mockArtistRepo.SetData(model.Artists{artist})
 
-	for _, mf := range mediaFiles {
-		log.Printf("Test: Set up media file: %s (ID: %s, MBID: %s, ArtistID: %s)",
-			mf.Title, mf.ID, mf.MbzReleaseTrackID, mf.ArtistID)
-	}
+			log.Printf("Test: Set up artist: %s (ID: %s)", artist.Name, artist.ID)
 
-	// Create mock datastore
-	mockDS := &tests.MockDataStore{
-		MockedArtist:    mockArtistRepo,
-		MockedMediaFile: mockMediaFileRepo,
-	}
+			mediaFiles := []model.MediaFile{
+				{
+					ID:                "song-1",
+					Title:             "Song One",
+					Artist:            "Artist One",
+					ArtistID:          "artist-1",
+					MbzReleaseTrackID: "mbid-1",
+					Missing:           false,
+				},
+				{
+					ID:                "song-2",
+					Title:             "Song Two",
+					Artist:            "Artist One",
+					ArtistID:          "artist-1",
+					MbzReleaseTrackID: "mbid-2",
+					Missing:           false,
+				},
+			}
+			mockMediaFileRepo.SetData(model.MediaFiles(mediaFiles))
 
-	// Create and register a mock agent
-	mockAgent := &MockAgent{
-		topSongs: []agents.Song{
-			{Name: "Song One", MBID: "mbid-1"},
-			{Name: "Song Two", MBID: "mbid-2"},
-		},
-	}
+			for _, mf := range mediaFiles {
+				log.Printf("Test: Set up media file: %s (ID: %s, MBID: %s, ArtistID: %s)",
+					mf.Title, mf.ID, mf.MbzReleaseTrackID, mf.ArtistID)
+			}
 
-	// Register our mock agent - this is key to making it available
-	agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
+			// Create mock datastore
+			mockDS = &tests.MockDataStore{
+				MockedArtist:    mockArtistRepo,
+				MockedMediaFile: mockMediaFileRepo,
+			}
 
-	// Dump the registered agents for debugging
-	log.Printf("Test: Registered agents:")
-	for name := range agents.Map {
-		log.Printf("  - %s", name)
-	}
+			// Create and register a mock agent
+			mockAgent = &MockAgent{
+				topSongs: []agents.Song{
+					{Name: "Song One", MBID: "mbid-1"},
+					{Name: "Song Two", MBID: "mbid-2"},
+				},
+			}
 
-	// Create the service to test
-	log.Printf("Test: Creating ExternalMetadata with conf.Server.Agents=%s", conf.Server.Agents)
-	em := NewExternalMetadata(mockDS, agents.GetAgents(mockDS))
+			// Register our mock agent - this is key to making it available
+			agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
 
-	// Test
-	log.Printf("Test: Calling TopSongs for artist: %s", "Artist One")
-	songs, err := em.TopSongs(ctx, "Artist One", 5)
+			// Dump the registered agents for debugging
+			log.Printf("Test: Registered agents:")
+			for name := range agents.Map {
+				log.Printf("  - %s", name)
+			}
 
-	log.Printf("Test: Result: error=%v, songs=%v", err, songs)
+			// Create the service to test
+			log.Printf("Test: Creating ExternalMetadata with conf.Server.Agents=%s", conf.Server.Agents)
+			em = NewExternalMetadata(mockDS, agents.GetAgents(mockDS))
+		})
 
-	// Assertions
-	assert.NoError(t, err)
-	assert.Len(t, songs, 2)
-	if len(songs) > 0 {
-		assert.Equal(t, "song-1", songs[0].ID)
-	}
-	if len(songs) > 1 {
-		assert.Equal(t, "song-2", songs[1].ID)
-	}
-}
+		AfterEach(func() {
+			conf.Server.Agents = originalAgentsConfig
+		})
+
+		It("returns matching songs from the registered agent", func() {
+			log.Printf("Test: Calling TopSongs for artist: %s", "Artist One")
+			songs, err := em.TopSongs(ctx, "Artist One", 5)
+
+			log.Printf("Test: Result: error=%v, songs=%v", err, songs)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("song-1"))
+			Expect(songs[1].ID).To(Equal("song-2"))
+		})
+	})
+})
