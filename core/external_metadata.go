@@ -358,15 +358,22 @@ func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, coun
 		return nil, nil
 	}
 
-	return e.getMatchingTopSongs(ctx, e.ag, artist, count)
-}
-
-func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
-	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
+	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
+	// Return nil for ErrNotFound, but propagate other errors
 	if errors.Is(err, agents.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
+		log.Error(ctx, "Error getting top songs from agent", "artist", artistName, err)
+		return nil, err
+	}
+	return songs, nil
+}
+
+func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
+	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
+	if err != nil {
+		// Preserve the error type, don't transform it
 		return nil, err
 	}
 
