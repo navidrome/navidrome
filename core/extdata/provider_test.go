@@ -3,9 +3,7 @@ package extdata
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
-	"strings"
 	"unsafe"
 
 	"github.com/Masterminds/squirrel"
@@ -71,51 +69,49 @@ func setAgentField(obj interface{}, fieldName string, value interface{}) {
 	rf.Set(reflect.ValueOf(value))
 }
 
-// Custom ArtistRepo that implements GetAll for our tests
+// Gets unexported field value from a struct using reflection and unsafe package
+func getField(obj interface{}, fieldName string) interface{} {
+	v := reflect.ValueOf(obj).Elem()
+	f := v.FieldByName(fieldName)
+	rf := reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+	return rf.Interface()
+}
+
+// Extended MockArtistRepo with GetAll query behavior needed for tests
 type testArtistRepo struct {
 	*tests.MockArtistRepo
-	artists model.Artists
-	errFlag bool
-	err     error
-}
-
-func newTestArtistRepo() *testArtistRepo {
-	return &testArtistRepo{
-		MockArtistRepo: tests.CreateMockArtistRepo(),
-		artists:        model.Artists{},
-	}
-}
-
-func (m *testArtistRepo) SetError(err bool) {
-	m.errFlag = err
-	m.MockArtistRepo.SetError(err)
-}
-
-func (m *testArtistRepo) SetData(artists model.Artists) {
-	m.artists = artists
-	m.MockArtistRepo.SetData(artists)
 }
 
 func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	if m.errFlag {
+	// Get the error state using reflection
+	if getField(m.MockArtistRepo, "err").(bool) {
 		return nil, errors.New("error")
+	}
+
+	// Get the data using reflection
+	dataMap := getField(m.MockArtistRepo, "data").(map[string]*model.Artist)
+
+	// Convert map to slice
+	artists := make(model.Artists, 0, len(dataMap))
+	for _, a := range dataMap {
+		artists = append(artists, *a)
 	}
 
 	// No filters means return all
 	if len(options) == 0 || options[0].Filters == nil {
-		return m.artists, nil
+		return artists, nil
 	}
 
-	// Basic implementation that returns artists matching name filter
+	// Process filters
 	if len(options) > 0 && options[0].Filters != nil {
 		switch f := options[0].Filters.(type) {
 		case squirrel.Like:
 			if nameFilter, ok := f["artist.name"]; ok {
 				// Convert to string and remove any SQL wildcard characters for simple comparison
-				name := strings.ReplaceAll(nameFilter.(string), "%", "")
+				name := str.Clear(nameFilter.(string))
 				log.Debug("ArtistRepo.GetAll: Looking for artist by name", "name", name)
 
-				for _, a := range m.artists {
+				for _, a := range artists {
 					if a.Name == name {
 						log.Debug("ArtistRepo.GetAll: Found artist", "id", a.ID, "name", a.Name)
 						return model.Artists{a}, nil
@@ -125,7 +121,7 @@ func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 		case squirrel.Eq:
 			if ids, ok := f["artist.id"]; ok {
 				var result model.Artists
-				for _, a := range m.artists {
+				for _, a := range artists {
 					for _, id := range ids.([]string) {
 						if a.ID == id {
 							result = append(result, a)
@@ -142,37 +138,28 @@ func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 	return model.Artists{}, nil
 }
 
-// Custom MediaFileRepo that implements GetAll for our tests
+// Extended MockMediaFileRepo with GetAll query behavior needed for tests
 type testMediaFileRepo struct {
 	*tests.MockMediaFileRepo
-	mediaFiles model.MediaFiles
-	errFlag    bool
-}
-
-func newTestMediaFileRepo() *testMediaFileRepo {
-	return &testMediaFileRepo{
-		MockMediaFileRepo: tests.CreateMockMediaFileRepo(),
-		mediaFiles:        model.MediaFiles{},
-	}
-}
-
-func (m *testMediaFileRepo) SetError(err bool) {
-	m.errFlag = err
-	m.MockMediaFileRepo.SetError(err)
-}
-
-func (m *testMediaFileRepo) SetData(mfs model.MediaFiles) {
-	m.mediaFiles = mfs
-	m.MockMediaFileRepo.SetData(mfs)
 }
 
 func (m *testMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	if m.errFlag {
+	// Get the error state using reflection
+	if getField(m.MockMediaFileRepo, "err").(bool) {
 		return nil, errors.New("error")
 	}
 
+	// Get the data using reflection
+	dataMap := getField(m.MockMediaFileRepo, "data").(map[string]*model.MediaFile)
+
+	// Convert map to slice
+	mediaFiles := make(model.MediaFiles, 0, len(dataMap))
+	for _, mf := range dataMap {
+		mediaFiles = append(mediaFiles, *mf)
+	}
+
 	if len(options) == 0 {
-		return m.mediaFiles, nil
+		return mediaFiles, nil
 	}
 
 	// Process filters
@@ -181,14 +168,13 @@ func (m *testMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFi
 		case squirrel.And:
 			// This handles the case where we search by artist ID and title
 			log.Debug("MediaFileRepo.GetAll: Processing AND filter")
-			return m.handleAndFilter(filter, options[0])
+			return m.handleAndFilter(filter, options[0], mediaFiles)
 		case squirrel.Eq:
 			// This handles the case where we search by mbz_recording_id
-			log.Debug("MediaFileRepo.GetAll: Processing EQ filter", "filter", fmt.Sprintf("%+v", filter))
+			log.Debug("MediaFileRepo.GetAll: Processing EQ filter")
 			if mbid, ok := filter["mbz_recording_id"]; ok {
 				log.Debug("MediaFileRepo.GetAll: Looking for MBID", "mbid", mbid)
-				for _, mf := range m.mediaFiles {
-					log.Debug("MediaFileRepo.GetAll: Comparing MBID", "file_mbid", mf.MbzReleaseTrackID, "search_mbid", mbid, "missing", mf.Missing)
+				for _, mf := range mediaFiles {
 					if mf.MbzReleaseTrackID == mbid.(string) && !mf.Missing {
 						log.Debug("MediaFileRepo.GetAll: Found matching file by MBID", "id", mf.ID, "title", mf.Title)
 						return model.MediaFiles{mf}, nil
@@ -202,14 +188,14 @@ func (m *testMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFi
 	return model.MediaFiles{}, nil
 }
 
-func (m *testMediaFileRepo) handleAndFilter(andFilter squirrel.And, option model.QueryOptions) (model.MediaFiles, error) {
+func (m *testMediaFileRepo) handleAndFilter(andFilter squirrel.And, option model.QueryOptions, mediaFiles model.MediaFiles) (model.MediaFiles, error) {
 	// Get matches for each condition
 	var artistMatches []model.MediaFile
 	var titleMatches []model.MediaFile
 	var notMissingMatches []model.MediaFile
 
 	// First identify non-missing files
-	for _, mf := range m.mediaFiles {
+	for _, mf := range mediaFiles {
 		if !mf.Missing {
 			notMissingMatches = append(notMissingMatches, mf)
 		}
@@ -247,7 +233,7 @@ func (m *testMediaFileRepo) handleAndFilter(andFilter squirrel.And, option model
 			}
 		case squirrel.Like:
 			// Handle title matching
-			log.Debug("MediaFileRepo.handleAndFilter: Processing LIKE filter", "filter", fmt.Sprintf("%+v", filter))
+			log.Debug("MediaFileRepo.handleAndFilter: Processing LIKE filter")
 			if orderTitle, ok := filter["order_title"]; ok {
 				normalizedTitle := str.SanitizeFieldForSorting(orderTitle.(string))
 				log.Debug("MediaFileRepo.handleAndFilter: Looking for title match", "normalizedTitle", normalizedTitle)
@@ -307,8 +293,11 @@ var _ = Describe("Provider", func() {
 		originalAgentsConfig = conf.Server.Agents
 
 		// Setup mocks
-		mockArtistRepo = newTestArtistRepo()
-		mockMediaFileRepo = newTestMediaFileRepo()
+		artistRepo := tests.CreateMockArtistRepo()
+		mockArtistRepo = &testArtistRepo{MockArtistRepo: artistRepo}
+
+		mediaFileRepo := tests.CreateMockMediaFileRepo()
+		mockMediaFileRepo = &testMediaFileRepo{MockMediaFileRepo: mediaFileRepo}
 
 		ds = &tests.MockDataStore{
 			MockedArtist:    mockArtistRepo,
