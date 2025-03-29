@@ -27,6 +27,7 @@ var _ = Describe("Provider", func() {
 	var mediaFileRepo *mockMediaFileRepo
 	var ctx context.Context
 	var originalAgentsConfig string
+	var agentsImpl *agents.Agents
 
 	BeforeEach(func() {
 		ctx = context.Background()
@@ -49,6 +50,14 @@ var _ = Describe("Provider", func() {
 		// Create a mock agent
 		mockAgent = &mockArtistTopSongsAgent{}
 		log.Debug(ctx, "Creating mock agent", "agent", mockAgent)
+
+		// Create a custom agents instance directly with our mock agent
+		agentsImpl = &agents.Agents{}
+		setAgentField(agentsImpl, "ds", ds)
+		setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
+
+		// Create the provider instance with our custom Agents implementation
+		em = NewExternalMetadata(ds, agentsImpl)
 	})
 
 	AfterEach(func() {
@@ -96,13 +105,31 @@ var _ = Describe("Provider", func() {
 			artistRepo.SetData(model.Artists{artist1, artist2})
 			mediaFileRepo.SetData(model.MediaFiles{song1, song2, song3})
 
-			// Set up the specific mock responses needed for the TopSongs method
+		})
+
+		It("returns matching songs from the agent results", func() {
+			// Setup data needed for this specific test
+			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
 			artistRepo.FindByName("Artist One", artist1)
+
+			song1 := model.MediaFile{
+				ID:                "song-1",
+				Title:             "Song One",
+				ArtistID:          "artist-1",
+				MbzReleaseTrackID: "mbid-1",
+				Missing:           false,
+			}
+
+			song2 := model.MediaFile{
+				ID:                "song-2",
+				Title:             "Song Two",
+				ArtistID:          "artist-1",
+				MbzReleaseTrackID: "mbid-2",
+				Missing:           false,
+			}
+
 			mediaFileRepo.FindByMBID("mbid-1", song1)
 			mediaFileRepo.FindByMBID("mbid-2", song2)
-
-			// Setup default behavior for empty searches
-			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
 
 			// Configure the mockAgent to return some top songs
 			mockAgent.topSongs = []agents.Song{
@@ -110,18 +137,6 @@ var _ = Describe("Provider", func() {
 				{Name: "Song Two", MBID: "mbid-2"},
 			}
 
-			// Create a custom agents instance directly with our mock agent
-			agentsImpl := &agents.Agents{}
-
-			// Use reflection to set the unexported fields
-			setAgentField(agentsImpl, "ds", ds)
-			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
-
-			// Create the provider instance with our custom Agents implementation
-			em = NewExternalMetadata(ds, agentsImpl)
-		})
-
-		It("returns matching songs from the agent results", func() {
 			songs, err := em.TopSongs(ctx, "Artist One", 5)
 
 			Expect(err).ToNot(HaveOccurred())
@@ -136,23 +151,20 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("returns nil when artist is not found", func() {
-			// Clear previous expectations
+			// Clear any previous mock setup to avoid conflicts
 			artistRepo = newMockArtistRepo()
-			mediaFileRepo = newMockMediaFileRepo()
 
+			// Setup for artist not found scenario - return empty list
+			artistRepo.On("GetAll", mock.Anything).Return(model.Artists{}, nil).Once()
+
+			// We need to recreate the datastore with the new mocks
 			ds = &tests.MockDataStore{
 				MockedArtist:    artistRepo,
 				MockedMediaFile: mediaFileRepo,
 			}
 
-			// Create a custom agents instance directly with our mock agent
-			agentsImpl := &agents.Agents{}
-			setAgentField(agentsImpl, "ds", ds)
-			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
+			// Create a new provider with the updated datastore
 			em = NewExternalMetadata(ds, agentsImpl)
-
-			// Set up for artist not found scenario - return empty list
-			artistRepo.On("GetAll", mock.Anything).Return(model.Artists{}, nil).Once()
 
 			songs, err := em.TopSongs(ctx, "Unknown Artist", 5)
 
@@ -161,24 +173,8 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("returns empty list when no matching songs are found", func() {
-			// Clear previous expectations
-			artistRepo = newMockArtistRepo()
-			mediaFileRepo = newMockMediaFileRepo()
-
-			ds = &tests.MockDataStore{
-				MockedArtist:    artistRepo,
-				MockedMediaFile: mediaFileRepo,
-			}
-
-			// Create a custom agents instance directly with our mock agent
-			agentsImpl := &agents.Agents{}
-			setAgentField(agentsImpl, "ds", ds)
-			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
-			em = NewExternalMetadata(ds, agentsImpl)
-
 			// Set up artist data
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
-			artistRepo.SetData(model.Artists{artist1})
 			artistRepo.FindByName("Artist One", artist1)
 
 			// Configure the agent to return songs that don't match our repo
@@ -196,25 +192,10 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("returns nil when agent returns errors", func() {
-			// New set of mocks for this test
-			artistRepo = newMockArtistRepo()
-			mediaFileRepo = newMockMediaFileRepo()
-
-			ds = &tests.MockDataStore{
-				MockedArtist:    artistRepo,
-				MockedMediaFile: mediaFileRepo,
-			}
-
 			// Set up artist data
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
 			artistRepo.SetData(model.Artists{artist1})
 			artistRepo.FindByName("Artist One", artist1)
-
-			// Create a custom agents instance directly with our mock agent
-			agentsImpl := &agents.Agents{}
-			setAgentField(agentsImpl, "ds", ds)
-			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
-			em = NewExternalMetadata(ds, agentsImpl)
 
 			// Set the error
 			testError := errors.New("some agent error")
@@ -228,15 +209,6 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("respects count parameter", func() {
-			// New set of mocks for this test
-			artistRepo = newMockArtistRepo()
-			mediaFileRepo = newMockMediaFileRepo()
-
-			ds = &tests.MockDataStore{
-				MockedArtist:    artistRepo,
-				MockedMediaFile: mediaFileRepo,
-			}
-
 			// Set up test data
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
 			song1 := model.MediaFile{
@@ -258,12 +230,6 @@ var _ = Describe("Provider", func() {
 				{Name: "Song Two", MBID: "mbid-2"},
 				{Name: "Song Three", MBID: "mbid-3"},
 			}
-
-			// Create a custom agents instance directly with our mock agent
-			agentsImpl := &agents.Agents{}
-			setAgentField(agentsImpl, "ds", ds)
-			setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
-			em = NewExternalMetadata(ds, agentsImpl)
 
 			// Default to empty response for any queries
 			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
@@ -357,13 +323,8 @@ var _ = Describe("Provider", func() {
 				},
 			}
 
-			// Create a custom implementation of agents.Agents that will return our error
-			directAgentsImpl := &agents.Agents{}
-			setAgentField(directAgentsImpl, "ds", ds)
-			setAgentField(directAgentsImpl, "agents", []agents.Interface{directAgent})
-
-			// Create a new external metadata instance
-			em = NewExternalMetadata(ds, directAgentsImpl)
+			// Override the default agents implementation with our error-returning one
+			setAgentField(agentsImpl, "agents", []agents.Interface{directAgent})
 		})
 
 		It("handles errors from the agent according to current behavior", func() {
