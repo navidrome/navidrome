@@ -21,9 +21,9 @@ var _ = Describe("Responses", func() {
 	BeforeEach(func() {
 		response = &Subsonic{
 			Status:        StatusOK,
-			Version:       "1.8.0",
+			Version:       "1.16.1",
 			Type:          consts.AppName,
-			ServerVersion: "v0.0.0",
+			ServerVersion: "v0.55.0",
 			OpenSubsonic:  true,
 		}
 	})
