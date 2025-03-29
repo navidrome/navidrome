@@ -69,31 +69,20 @@ func setAgentField(obj interface{}, fieldName string, value interface{}) {
 	rf.Set(reflect.ValueOf(value))
 }
 
-// Gets unexported field value from a struct using reflection and unsafe package
-func getField(obj interface{}, fieldName string) interface{} {
-	v := reflect.ValueOf(obj).Elem()
-	f := v.FieldByName(fieldName)
-	rf := reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
-	return rf.Interface()
-}
-
 // Extended MockArtistRepo with GetAll query behavior needed for tests
 type testArtistRepo struct {
 	*tests.MockArtistRepo
 }
 
 func (m *testArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	// Get the error state using reflection
-	if getField(m.MockArtistRepo, "Err").(bool) {
+	// Check the error state
+	if m.MockArtistRepo.Err {
 		return nil, errors.New("error")
 	}
 
-	// Get the data using reflection
-	dataMap := getField(m.MockArtistRepo, "Data").(map[string]*model.Artist)
-
-	// Convert map to slice
-	artists := make(model.Artists, 0, len(dataMap))
-	for _, a := range dataMap {
+	// Convert data map to slice
+	artists := make(model.Artists, 0, len(m.MockArtistRepo.Data))
+	for _, a := range m.MockArtistRepo.Data {
 		artists = append(artists, *a)
 	}
 
@@ -144,17 +133,14 @@ type testMediaFileRepo struct {
 }
 
 func (m *testMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	// Get the error state using reflection
-	if getField(m.MockMediaFileRepo, "Err").(bool) {
+	// Check the error state
+	if m.MockMediaFileRepo.Err {
 		return nil, errors.New("error")
 	}
 
-	// Get the data using reflection
-	dataMap := getField(m.MockMediaFileRepo, "Data").(map[string]*model.MediaFile)
-
-	// Convert map to slice
-	mediaFiles := make(model.MediaFiles, 0, len(dataMap))
-	for _, mf := range dataMap {
+	// Convert data map to slice
+	mediaFiles := make(model.MediaFiles, 0, len(m.MockMediaFileRepo.Data))
+	for _, mf := range m.MockMediaFileRepo.Data {
 		mediaFiles = append(mediaFiles, *mf)
 	}
 
