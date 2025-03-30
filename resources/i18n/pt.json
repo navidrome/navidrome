@@ -57,6 +57,7 @@
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
+        "date": "Data de Lançamento",
         "updatedAt": "Últ. Atualização",
         "comment": "Comentário",
         "rating": "Classificação",

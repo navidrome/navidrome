@@ -62,13 +62,14 @@ func AlbumsByArtistID(artistId string) Options {
 }
 
 func AlbumsByYear(fromYear, toYear int) Options {
-	sortOption := "max_year, name"
+	orderOption := ""
 	if fromYear > toYear {
 		fromYear, toYear = toYear, fromYear
-		sortOption = "max_year desc, name"
+		orderOption = "desc"
 	}
 	return addDefaultFilters(Options{
-		Sort: sortOption,
+		Sort:  "max_year",
+		Order: orderOption,
 		Filters: Or{
 			And{
 				GtOrEq{"min_year": fromYear},
@@ -118,7 +119,7 @@ func SongWithLyrics(artist, title string) Options {
 
 func ByGenre(genre string) Options {
 	return addDefaultFilters(Options{
-		Sort:    "name asc",
+		Sort:    "name",
 		Filters: filterByGenre(genre),
 	})
 }

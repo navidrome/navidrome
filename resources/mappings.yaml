@@ -118,10 +118,10 @@ main:
     aliases: [ tdor, originaldate, ----:com.apple.itunes:originaldate, wm/originalreleasetime, tory, originalyear, ----:com.apple.itunes:originalyear, wm/originalreleaseyear ]
     type: date
   recordingdate:
-    aliases: [ tdrc, date, icrd, ©day, wm/year, year ]
+    aliases: [ tdrc, date, recordingdate, icrd, record date ]
     type: date
   releasedate:
-    aliases: [ tdrl, releasedate ]
+    aliases: [ tdrl, releasedate, ©day, wm/year, year ]
     type: date
   catalognumber:
     aliases: [ txxx:catalognumber, catalognumber, ----:com.apple.itunes:catalognumber, wm/catalogno ]
