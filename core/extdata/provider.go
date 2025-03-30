@@ -42,7 +42,7 @@ type Provider interface {
 
 type provider struct {
 	ds          model.DataStore
-	ag          *agents.Agents
+	ag          AllAgents
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -57,7 +57,17 @@ type auxArtist struct {
 	Name string
 }
 
-func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) Provider {
+type AllAgents interface {
+	agents.AlbumInfoRetriever
+	agents.ArtistBiographyRetriever
+	agents.ArtistMBIDRetriever
+	agents.ArtistImageRetriever
+	agents.ArtistSimilarRetriever
+	agents.ArtistTopSongsRetriever
+	agents.ArtistURLRetriever
+}
+
+func NewProvider(ds model.DataStore, agents AllAgents) Provider {
 	e := &provider{ds: ds, ag: agents}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)

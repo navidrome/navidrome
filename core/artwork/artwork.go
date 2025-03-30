@@ -24,15 +24,15 @@ type Artwork interface {
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error)
 }
 
-func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, em extdata.Provider) Artwork {
-	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, em: em}
+func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg, provider extdata.Provider) Artwork {
+	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
 }
 
 type artwork struct {
-	ds     model.DataStore
-	cache  cache.FileCache
-	ffmpeg ffmpeg.FFmpeg
-	em     extdata.Provider
+	ds       model.DataStore
+	cache    cache.FileCache
+	ffmpeg   ffmpeg.FFmpeg
+	provider extdata.Provider
 }
 
 type artworkReader interface {
@@ -115,9 +115,9 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 	} else {
 		switch artID.Kind {
 		case model.KindArtistArtwork:
-			artReader, err = newArtistReader(ctx, a, artID, a.em)
+			artReader, err = newArtistReader(ctx, a, artID, a.provider)
 		case model.KindAlbumArtwork:
-			artReader, err = newAlbumArtworkReader(ctx, a, artID, a.em)
+			artReader, err = newAlbumArtworkReader(ctx, a, artID, a.provider)
 		case model.KindMediaFileArtwork:
 			artReader, err = newMediafileArtworkReader(ctx, a, artID)
 		case model.KindPlaylistArtwork:

@@ -31,37 +31,37 @@ type handlerRaw = func(http.ResponseWriter, *http.Request) (*responses.Subsonic,
 
 type Router struct {
 	http.Handler
-	ds               model.DataStore
-	artwork          artwork.Artwork
-	streamer         core.MediaStreamer
-	archiver         core.Archiver
-	players          core.Players
-	externalMetadata extdata.Provider
-	playlists        core.Playlists
-	scanner          scanner.Scanner
-	broker           events.Broker
-	scrobbler        scrobbler.PlayTracker
-	share            core.Share
-	playback         playback.PlaybackServer
+	ds        model.DataStore
+	artwork   artwork.Artwork
+	streamer  core.MediaStreamer
+	archiver  core.Archiver
+	players   core.Players
+	provider  extdata.Provider
+	playlists core.Playlists
+	scanner   scanner.Scanner
+	broker    events.Broker
+	scrobbler scrobbler.PlayTracker
+	share     core.Share
+	playback  playback.PlaybackServer
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
-	players core.Players, externalMetadata extdata.Provider, scanner scanner.Scanner, broker events.Broker,
+	players core.Players, provider extdata.Provider, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 ) *Router {
 	r := &Router{
-		ds:               ds,
-		artwork:          artwork,
-		streamer:         streamer,
-		archiver:         archiver,
-		players:          players,
-		externalMetadata: externalMetadata,
-		playlists:        playlists,
-		scanner:          scanner,
-		broker:           broker,
-		scrobbler:        scrobbler,
-		share:            share,
-		playback:         playback,
+		ds:        ds,
+		artwork:   artwork,
+		streamer:  streamer,
+		archiver:  archiver,
+		players:   players,
+		provider:  provider,
+		playlists: playlists,
+		scanner:   scanner,
+		broker:    broker,
+		scrobbler: scrobbler,
+		share:     share,
+		playback:  playback,
 	}
 	r.Handler = r.routes()
 	return r

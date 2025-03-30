@@ -21,7 +21,7 @@ import (
 
 var _ = Describe("Provider", func() {
 	var ds model.DataStore
-	var em Provider
+	var provider Provider
 	var mockAgent *mockArtistTopSongsAgent
 	var artistRepo *mockArtistRepo
 	var mediaFileRepo *mockMediaFileRepo
@@ -57,7 +57,7 @@ var _ = Describe("Provider", func() {
 		setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
 
 		// Create the provider instance with our custom Agents implementation
-		em = NewExternalMetadata(ds, agentsImpl)
+		provider = NewProvider(ds, agentsImpl)
 	})
 
 	AfterEach(func() {
@@ -137,7 +137,7 @@ var _ = Describe("Provider", func() {
 				{Name: "Song Two", MBID: "mbid-2"},
 			}
 
-			songs, err := em.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(2))
@@ -164,9 +164,9 @@ var _ = Describe("Provider", func() {
 			}
 
 			// Create a new provider with the updated datastore
-			em = NewExternalMetadata(ds, agentsImpl)
+			provider = NewProvider(ds, agentsImpl)
 
-			songs, err := em.TopSongs(ctx, "Unknown Artist", 5)
+			songs, err := provider.TopSongs(ctx, "Unknown Artist", 5)
 
 			Expect(err).To(BeNil())
 			Expect(songs).To(BeNil())
@@ -185,7 +185,7 @@ var _ = Describe("Provider", func() {
 			// Default to empty response for any queries
 			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
 
-			songs, err := em.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(0))
@@ -201,7 +201,7 @@ var _ = Describe("Provider", func() {
 			testError := errors.New("some agent error")
 			mockAgent.err = testError
 
-			songs, err := em.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
 			// Current behavior returns nil for both error and songs
 			Expect(err).To(BeNil())
@@ -234,7 +234,7 @@ var _ = Describe("Provider", func() {
 			// Default to empty response for any queries
 			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
 
-			songs, err := em.TopSongs(ctx, "Artist One", 1)
+			songs, err := provider.TopSongs(ctx, "Artist One", 1)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(1))
@@ -290,11 +290,11 @@ var _ = Describe("Provider", func() {
 			agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
 
 			// Create the provider instance with registered agents
-			em = NewExternalMetadata(ds, agents.GetAgents(ds))
+			provider = NewProvider(ds, agents.GetAgents(ds))
 		})
 
 		It("returns matching songs from the registered agent", func() {
-			songs, err := em.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(2))
@@ -328,7 +328,7 @@ var _ = Describe("Provider", func() {
 		})
 
 		It("handles errors from the agent according to current behavior", func() {
-			songs, err := em.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
 			// Current behavior returns nil for both error and songs
 			Expect(err).To(BeNil())
