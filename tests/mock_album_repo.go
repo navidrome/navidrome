@@ -110,4 +110,13 @@ func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	}, nil
 }
 
+func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
+	if m.Err {
+		return errors.New("unexpected error")
+	}
+	// Simple implementation to prevent nil pointer dereference in tests.
+	// We could optionally update m.Data here if needed for specific tests.
+	return nil
+}
+
 var _ model.AlbumRepository = (*MockAlbumRepo)(nil)
