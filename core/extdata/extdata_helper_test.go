@@ -189,6 +189,7 @@ type mockCombinedAgents struct {
 	topSongsAgent    agents.ArtistTopSongsRetriever
 	similarAgent     agents.ArtistSimilarRetriever
 	imageAgent       agents.ArtistImageRetriever
+	albumInfoAgent   agents.AlbumInfoRetriever
 	agents.Interface // Embed to satisfy non-overridden methods
 }
 
@@ -213,6 +214,9 @@ func (m *mockCombinedAgents) GetArtistTopSongs(ctx context.Context, id, artistNa
 // --- Stubs for other Agents interface methods ---
 
 func (m *mockCombinedAgents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+	if m.albumInfoAgent != nil {
+		return m.albumInfoAgent.GetAlbumInfo(ctx, name, artist, mbid)
+	}
 	if m.topSongsAgent != nil {
 		if ar, ok := m.topSongsAgent.(agents.AlbumInfoRetriever); ok {
 			return ar.GetAlbumInfo(ctx, name, artist, mbid)

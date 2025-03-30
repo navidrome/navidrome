@@ -91,6 +91,7 @@ func (e *provider) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
 	default:
 		return auxAlbum{}, model.ErrNotFound
 	}
+
 	return album, nil
 }
 
@@ -340,12 +341,22 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 	}
 
 	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
-	if errors.Is(err, agents.ErrNotFound) {
+	if err != nil {
+		switch {
+		case errors.Is(err, agents.ErrNotFound):
+			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+		case errors.Is(err, context.Canceled):
+			log.Debug(ctx, "AlbumImage call canceled", err)
+		default:
+			log.Warn(ctx, "Error getting album info from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
+		}
+
 		return nil, err
 	}
-	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "AlbumImage call canceled", ctx.Err())
-		return nil, ctx.Err()
+
+	if info == nil {
+		log.Warn(ctx, "Agent returned nil info without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+		return nil, agents.ErrNotFound
 	}
 
 	// Return the biggest image
@@ -369,7 +380,6 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 	}
 
 	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
-	// Return nil for ErrNotFound or any other errors
 	if err != nil {
 		log.Error(ctx, "Error getting top songs from agent", "artist", artistName, err)
 		return nil, nil
