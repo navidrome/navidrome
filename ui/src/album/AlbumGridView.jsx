@@ -13,14 +13,10 @@ import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
-import {
-  AlbumContextMenu,
-  PlayButton,
-  ArtistLinkField,
-  RangeDoubleField,
-} from '../common'
+import { AlbumContextMenu, PlayButton, ArtistLinkField } from '../common'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
+import { AlbumDatesField } from './AlbumDatesField.jsx'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -187,16 +183,7 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />
       ) : (
-        <RangeDoubleField
-          record={record}
-          source={'year'}
-          symbol1={'♫'}
-          symbol2={'○'}
-          separator={' · '}
-          sortBy={'max_year'}
-          sortByOrder={'DESC'}
-          className={classes.albumSubtitle}
-        />
+        <AlbumDatesField record={record} className={classes.albumSubtitle} />
       )}
     </div>
   )

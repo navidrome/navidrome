@@ -296,7 +296,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Name = al.Name
 	child.Album = al.Name
 	child.Artist = al.AlbumArtist
-	child.Year = int32(al.MaxYear)
+	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
@@ -380,7 +380,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.SongCount = int32(album.SongCount)
 	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount
-	dir.Year = int32(album.MaxYear)
+	dir.Year = int32(cmp.Or(album.MaxOriginalYear, album.MaxYear))
 	dir.Genre = album.Genre
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt

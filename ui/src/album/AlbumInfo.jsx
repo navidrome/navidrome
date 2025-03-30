@@ -20,6 +20,7 @@ import {
   ArtistLinkField,
   MultiLineTextField,
   ParticipantsInfo,
+  RangeField,
 } from '../common'
 
 const useStyles = makeStyles({
@@ -47,6 +48,20 @@ const AlbumInfo = (props) => {
         </SingleFieldList>
       </ArrayField>
     ),
+    date:
+      record?.maxYear && record.maxYear === record.minYear ? (
+        <TextField source={'date'} />
+      ) : (
+        <RangeField source={'year'} />
+      ),
+    originalDate:
+      record?.maxOriginalYear &&
+      record.maxOriginalYear === record.minOriginalYear ? (
+        <TextField source={'originalDate'} />
+      ) : (
+        <RangeField source={'originalYear'} />
+      ),
+    releaseDate: <TextField source={'releaseDate'} />,
     recordLabel: (
       <FunctionField
         source={'recordLabel'}
