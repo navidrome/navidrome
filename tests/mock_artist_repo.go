@@ -76,7 +76,6 @@ func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 	if m.Err {
 		return nil, errors.New("mock repo error")
 	}
-	// Convert map back to slice for GetAll simulation
 	var allArtists model.Artists
 	for _, artist := range m.Data {
 		allArtists = append(allArtists, *artist)
@@ -92,8 +91,6 @@ func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
 	if m.Err {
 		return errors.New("mock repo error")
 	}
-	// Simple implementation to prevent nil pointer dereference
-	// Could update m.Data if needed for specific tests
 	return nil
 }
 

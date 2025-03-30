@@ -23,10 +23,11 @@ func init() {
 
 var _ = Describe("Provider UpdateAlbumInfo", func() {
 	var (
-		ctx context.Context
-		p   extdata.Provider
-		ds  *tests.MockDataStore
-		ag  *extdata.MockAgents
+		ctx           context.Context
+		p             extdata.Provider
+		ds            *tests.MockDataStore
+		ag            *extdata.MockAgents
+		mockAlbumRepo *tests.MockAlbumRepo
 	)
 
 	BeforeEach(func() {
@@ -34,35 +35,27 @@ var _ = Describe("Provider UpdateAlbumInfo", func() {
 		ds = new(tests.MockDataStore)
 		ag = new(extdata.MockAgents)
 		p = extdata.NewProvider(ds, ag)
-
-		// Default config
+		mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 		conf.Server.DevAlbumInfoTimeToLive = 1 * time.Hour
 	})
 
 	It("returns error when album is not found", func() {
-		// MockDataStore will return a MockAlbumRepo with an empty Data map by default
-		_ = ds.Album(ctx).(*tests.MockAlbumRepo) // Ensure MockAlbumRepo is initialized
-
 		album, err := p.UpdateAlbumInfo(ctx, "al-not-found")
 
 		Expect(err).To(MatchError(model.ErrNotFound))
 		Expect(album).To(BeNil())
-		// No AssertExpectations needed for custom mock
 		ag.AssertNotCalled(GinkgoT(), "GetAlbumInfo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	It("populates info when album exists but has no external info", func() {
-		// Setup: Album exists in DS, ExternalInfoUpdatedAt is nil
 		originalAlbum := &model.Album{
 			ID:          "al-existing",
 			Name:        "Test Album",
 			AlbumArtist: "Test Artist",
 			MbzAlbumID:  "mbid-album",
 		}
-		mockAlbumRepo := ds.Album(ctx).(*tests.MockAlbumRepo)
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
-		// Mock agent response
 		expectedInfo := &agents.AlbumInfo{
 			URL:         "http://example.com/album",
 			Description: "Album Description",
@@ -74,10 +67,8 @@ var _ = Describe("Provider UpdateAlbumInfo", func() {
 		}
 		ag.On("GetAlbumInfo", ctx, "Test Album", "Test Artist", "mbid-album").Return(expectedInfo, nil)
 
-		// Call the method under test
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-existing")
 
-		// Assertions
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedAlbum).NotTo(BeNil())
 		Expect(updatedAlbum.ID).To(Equal("al-existing"))
@@ -87,13 +78,12 @@ var _ = Describe("Provider UpdateAlbumInfo", func() {
 		Expect(updatedAlbum.MediumImageUrl).To(Equal("http://example.com/medium.jpg"))
 		Expect(updatedAlbum.SmallImageUrl).To(Equal("http://example.com/small.jpg"))
 		Expect(updatedAlbum.ExternalInfoUpdatedAt).NotTo(BeNil())
-		Expect(*updatedAlbum.ExternalInfoUpdatedAt).To(BeTemporally("~", time.Now(), time.Second)) // Check timestamp was set
+		Expect(*updatedAlbum.ExternalInfoUpdatedAt).To(BeTemporally("~", time.Now(), time.Second))
 
 		ag.AssertExpectations(GinkgoT())
 	})
 
 	It("returns cached info when album exists and info is not expired", func() {
-		// Setup: Album exists in DS, ExternalInfoUpdatedAt is recent
 		now := time.Now()
 		originalAlbum := &model.Album{
 			ID:                    "al-cached",
@@ -102,26 +92,22 @@ var _ = Describe("Provider UpdateAlbumInfo", func() {
 			ExternalUrl:           "http://cached.com/album",
 			Description:           "Cached Desc",
 			LargeImageUrl:         "http://cached.com/large.jpg",
-			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)), // Not expired
+			ExternalInfoUpdatedAt: gg.P(now.Add(-conf.Server.DevAlbumInfoTimeToLive / 2)),
 		}
-		mockAlbumRepo := ds.Album(ctx).(*tests.MockAlbumRepo)
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
-		// Call the method under test
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-cached")
 
-		// Assertions
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedAlbum).NotTo(BeNil())
-		Expect(*updatedAlbum).To(Equal(*originalAlbum)) // Should return the exact cached data
+		Expect(*updatedAlbum).To(Equal(*originalAlbum))
 
 		ag.AssertNotCalled(GinkgoT(), "GetAlbumInfo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	It("returns cached info and triggers background refresh when info is expired", func() {
-		// Setup: Album exists in DS, ExternalInfoUpdatedAt is old
 		now := time.Now()
-		expiredTime := now.Add(-conf.Server.DevAlbumInfoTimeToLive * 2) // Definitely expired
+		expiredTime := now.Add(-conf.Server.DevAlbumInfoTimeToLive * 2)
 		originalAlbum := &model.Album{
 			ID:                    "al-expired",
 			Name:                  "Expired Album",
@@ -131,75 +117,54 @@ var _ = Describe("Provider UpdateAlbumInfo", func() {
 			LargeImageUrl:         "http://expired.com/large.jpg",
 			ExternalInfoUpdatedAt: gg.P(expiredTime),
 		}
-		mockAlbumRepo := ds.Album(ctx).(*tests.MockAlbumRepo)
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
-		// Call the method under test
-		// Note: We are not testing the background refresh directly here, only the immediate return
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-expired")
 
-		// Assertions: Should return the stale data immediately
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedAlbum).NotTo(BeNil())
-		Expect(*updatedAlbum).To(Equal(*originalAlbum)) // Should return the exact cached (stale) data
+		Expect(*updatedAlbum).To(Equal(*originalAlbum))
 
-		// Assertions: Agent should NOT be called synchronously
 		ag.AssertNotCalled(GinkgoT(), "GetAlbumInfo", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	It("returns error when agent fails to get album info", func() {
-		// Setup: Album exists in DS, ExternalInfoUpdatedAt is nil
 		originalAlbum := &model.Album{
 			ID:          "al-agent-error",
 			Name:        "Agent Error Album",
 			AlbumArtist: "Agent Error Artist",
 			MbzAlbumID:  "mbid-agent-error",
 		}
-		mockAlbumRepo := ds.Album(ctx).(*tests.MockAlbumRepo)
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
-		// Mock agent response with an error
 		expectedErr := errors.New("agent communication failed")
 		ag.On("GetAlbumInfo", ctx, "Agent Error Album", "Agent Error Artist", "mbid-agent-error").Return(nil, expectedErr)
 
-		// Call the method under test
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-agent-error")
 
-		// Assertions
 		Expect(err).To(MatchError(expectedErr))
 		Expect(updatedAlbum).To(BeNil())
 		ag.AssertExpectations(GinkgoT())
 	})
 
 	It("returns original album when agent returns ErrNotFound", func() {
-		// Setup: Album exists in DS, ExternalInfoUpdatedAt is nil
 		originalAlbum := &model.Album{
 			ID:          "al-agent-notfound",
 			Name:        "Agent NotFound Album",
 			AlbumArtist: "Agent NotFound Artist",
 			MbzAlbumID:  "mbid-agent-notfound",
-			// ExternalInfoUpdatedAt is nil
 		}
-		mockAlbumRepo := ds.Album(ctx).(*tests.MockAlbumRepo)
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
-		// Mock agent response with ErrNotFound
 		ag.On("GetAlbumInfo", ctx, "Agent NotFound Album", "Agent NotFound Artist", "mbid-agent-notfound").Return(nil, agents.ErrNotFound)
 
-		// Call the method under test
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-agent-notfound")
 
-		// Assertions
-		Expect(err).NotTo(HaveOccurred()) // No error should be returned
+		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedAlbum).NotTo(BeNil())
-		Expect(*updatedAlbum).To(Equal(*originalAlbum))        // Should return original data
-		Expect(updatedAlbum.ExternalInfoUpdatedAt).To(BeNil()) // Timestamp should not be set
+		Expect(*updatedAlbum).To(Equal(*originalAlbum))
+		Expect(updatedAlbum.ExternalInfoUpdatedAt).To(BeNil())
 
-		// Agent was called, but UpdateExternalInfo should not have been
 		ag.AssertExpectations(GinkgoT())
-		// We can't assert mockAlbumRepo.AssertNotCalled for UpdateExternalInfo because it's not a testify mock method
 	})
-
-	// Test cases will go here
-
 })

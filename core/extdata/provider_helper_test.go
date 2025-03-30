@@ -186,15 +186,15 @@ func (m *mockSimilarArtistAgent) GetSimilarArtists(ctx context.Context, id, name
 
 // mockAgents mocks the main Agents interface used by Provider
 type mockAgents struct {
-	mock.Mock        // Embed testify mock
-	topSongsAgent    agents.ArtistTopSongsRetriever
-	similarAgent     agents.ArtistSimilarRetriever
-	imageAgent       agents.ArtistImageRetriever
-	albumInfoAgent   agents.AlbumInfoRetriever
-	bioAgent         agents.ArtistBiographyRetriever // Added field for clarity
-	mbidAgent        agents.ArtistMBIDRetriever      // Added field for clarity
-	urlAgent         agents.ArtistURLRetriever       // Added field for clarity
-	agents.Interface                                 // Embed to satisfy non-overridden methods
+	mock.Mock      // Embed testify mock
+	topSongsAgent  agents.ArtistTopSongsRetriever
+	similarAgent   agents.ArtistSimilarRetriever
+	imageAgent     agents.ArtistImageRetriever
+	albumInfoAgent agents.AlbumInfoRetriever
+	bioAgent       agents.ArtistBiographyRetriever
+	mbidAgent      agents.ArtistMBIDRetriever
+	urlAgent       agents.ArtistURLRetriever
+	agents.Interface
 }
 
 func (m *mockAgents) AgentName() string {
@@ -205,7 +205,6 @@ func (m *mockAgents) GetSimilarArtists(ctx context.Context, id, name, mbid strin
 	if m.similarAgent != nil {
 		return m.similarAgent.GetSimilarArtists(ctx, id, name, mbid, limit)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, id, name, mbid, limit)
 	if args.Get(0) != nil {
 		return args.Get(0).([]agents.Artist), args.Error(1)
@@ -217,7 +216,6 @@ func (m *mockAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	if m.topSongsAgent != nil {
 		return m.topSongsAgent.GetArtistTopSongs(ctx, id, artistName, mbid, count)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, id, artistName, mbid, count)
 	if args.Get(0) != nil {
 		return args.Get(0).([]agents.Song), args.Error(1)
@@ -225,13 +223,10 @@ func (m *mockAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	return nil, args.Error(1)
 }
 
-// --- Stubs for other Agents interface methods ---
-
 func (m *mockAgents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
 	if m.albumInfoAgent != nil {
 		return m.albumInfoAgent.GetAlbumInfo(ctx, name, artist, mbid)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, name, artist, mbid)
 	if args.Get(0) != nil {
 		return args.Get(0).(*agents.AlbumInfo), args.Error(1)
@@ -243,7 +238,6 @@ func (m *mockAgents) GetArtistMBID(ctx context.Context, id string, name string) 
 	if m.mbidAgent != nil {
 		return m.mbidAgent.GetArtistMBID(ctx, id, name)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, id, name)
 	return args.String(0), args.Error(1)
 }
@@ -252,7 +246,6 @@ func (m *mockAgents) GetArtistURL(ctx context.Context, id, name, mbid string) (s
 	if m.urlAgent != nil {
 		return m.urlAgent.GetArtistURL(ctx, id, name, mbid)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, id, name, mbid)
 	return args.String(0), args.Error(1)
 }
@@ -261,7 +254,6 @@ func (m *mockAgents) GetArtistBiography(ctx context.Context, id, name, mbid stri
 	if m.bioAgent != nil {
 		return m.bioAgent.GetArtistBiography(ctx, id, name, mbid)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, id, name, mbid)
 	return args.String(0), args.Error(1)
 }
@@ -270,7 +262,6 @@ func (m *mockAgents) GetArtistImages(ctx context.Context, id, name, mbid string)
 	if m.imageAgent != nil {
 		return m.imageAgent.GetArtistImages(ctx, id, name, mbid)
 	}
-	// Fallback to testify mock
 	args := m.Called(ctx, id, name, mbid)
 	if args.Get(0) != nil {
 		return args.Get(0).([]agents.ExternalImage), args.Error(1)

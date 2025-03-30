@@ -114,8 +114,6 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
-	// Simple implementation to prevent nil pointer dereference in tests.
-	// We could optionally update m.Data here if needed for specific tests.
 	return nil
 }
 
