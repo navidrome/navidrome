@@ -72,4 +72,29 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 	return model.ErrNotFound
 }
 
+func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+	if m.Err {
+		return nil, errors.New("mock repo error")
+	}
+	// Convert map back to slice for GetAll simulation
+	var allArtists model.Artists
+	for _, artist := range m.Data {
+		allArtists = append(allArtists, *artist)
+	}
+	// Apply Max=1 if present (simple simulation for findArtistByName)
+	if len(options) > 0 && options[0].Max == 1 && len(allArtists) > 0 {
+		return allArtists[:1], nil
+	}
+	return allArtists, nil
+}
+
+func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
+	if m.Err {
+		return errors.New("mock repo error")
+	}
+	// Simple implementation to prevent nil pointer dereference
+	// Could update m.Data if needed for specific tests
+	return nil
+}
+
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)
