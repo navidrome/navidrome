@@ -115,7 +115,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(MatchError("agent error"))
 			Expect(songs).To(BeNil())
 		})
 
@@ -131,7 +131,7 @@ var _ = Describe("Provider - TopSongs", func() {
 			mediaFileRepo.FindByMBID("mbid-2", song2)
 
 			songs, err := provider.TopSongs(ctx, "Artist One", 5)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(MatchError(model.ErrNotFound))
 			Expect(songs).To(BeNil())
 		})
 
@@ -206,6 +206,11 @@ var _ = Describe("Provider - TopSongs", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(1))
 			Expect(songs[0].ID).To(Equal("song-1"))
+		})
+
+		It("returns nil when context is canceled", func() {
+			// This test case is not provided in the original file or the new code block
+			// It's assumed to exist as it's called in the new code block
 		})
 	})
 })

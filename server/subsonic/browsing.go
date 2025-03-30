@@ -378,7 +378,7 @@ func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 	count := p.IntOr("count", 50)
 
 	songs, err := api.provider.TopSongs(ctx, artist, count)
-	if err != nil {
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
 

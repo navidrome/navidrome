@@ -329,7 +329,7 @@ func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error)
 
 	imageUrl := artist.ArtistImageUrl()
 	if imageUrl == "" {
-		return nil, agents.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	return url.Parse(imageUrl)
 }
@@ -345,8 +345,9 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 		switch {
 		case errors.Is(err, agents.ErrNotFound):
 			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+			return nil, model.ErrNotFound
 		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "AlbumImage call canceled", err)
+			log.Debug(ctx, "GetAlbumInfo call canceled", err)
 		default:
 			log.Warn(ctx, "Error getting album info from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
 		}
@@ -356,7 +357,7 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 
 	if info == nil {
 		log.Warn(ctx, "Agent returned nil info without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
-		return nil, agents.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 
 	// Return the biggest image
@@ -367,7 +368,7 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 		}
 	}
 	if img.URL == "" {
-		return nil, agents.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	return url.Parse(img.URL)
 }
@@ -381,8 +382,17 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 
 	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
 	if err != nil {
-		log.Error(ctx, "Error getting top songs from agent", "artist", artistName, err)
-		return nil, nil
+		switch {
+		case errors.Is(err, agents.ErrNotFound):
+			log.Trace(ctx, "TopSongs not found", "name", artistName)
+			return nil, model.ErrNotFound
+		case errors.Is(err, context.Canceled):
+			log.Debug(ctx, "TopSongs call canceled", err)
+		default:
+			log.Warn(ctx, "Error getting top songs from agent", "artist", artistName, err)
+		}
+
+		return nil, err
 	}
 	return songs, nil
 }
@@ -390,7 +400,6 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
 	if err != nil {
-		// Preserve the error type, don't transform it
 		return nil, err
 	}
 
@@ -405,12 +414,10 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 			break
 		}
 	}
-
-	log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
-
-	// If no matching songs were found, return empty result
 	if len(mfs) == 0 {
-		return nil, nil
+		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
+	} else {
+		log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
 	}
 
 	return mfs, nil

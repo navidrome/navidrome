@@ -118,7 +118,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 			imgURL, err := provider.AlbumImage(ctx, "not-found")
 
-			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(err).To(MatchError("data not found"))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "not-found")
 			mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "not-found")
@@ -137,7 +137,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 			imgURL, err := provider.AlbumImage(ctx, "album-1")
 
-			Expect(err).To(MatchError(agentErr))
+			Expect(err).To(MatchError("agent failure"))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "album-1")
 			mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-1")
@@ -155,7 +155,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 			imgURL, err := provider.AlbumImage(ctx, "album-1")
 
-			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(err).To(MatchError("data not found"))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "album-1")
 			mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-1")
@@ -173,7 +173,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 			imgURL, err := provider.AlbumImage(ctx, "album-1")
 
-			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(err).To(MatchError("data not found"))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "album-1")
 			mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-1")
@@ -193,7 +193,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 			imgURL, err := provider.AlbumImage(cctx, "album-1")
 
-			Expect(err).To(MatchError(context.Canceled))
+			Expect(err).To(MatchError("context canceled"))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "album-1")
 			mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "album-1")
@@ -286,7 +286,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 			imgURL, err := provider.AlbumImage(ctx, "mf-no-album")
 
-			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(err).To(MatchError("data not found"))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "mf-no-album")
 			mockAlbumRepo.AssertCalled(GinkgoT(), "Get", "mf-no-album")

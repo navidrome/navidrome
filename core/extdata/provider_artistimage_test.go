@@ -115,7 +115,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 			imgURL, err := provider.ArtistImage(ctx, "artist-1")
 
 			// Assert
-			Expect(err).To(MatchError(agents.ErrNotFound)) // Corrected Expectation: The provider maps agent errors (other than canceled) to ErrNotFound if no image was found/populated
+			Expect(err).To(MatchError(model.ErrNotFound)) // Corrected Expectation: The provider maps agent errors (other than canceled) to ErrNotFound if no image was found/populated
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-1")
 			mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-1", "Artist One", "")
@@ -130,7 +130,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 			imgURL, err := provider.ArtistImage(ctx, "artist-1")
 
 			// Assert
-			Expect(err).To(MatchError(agents.ErrNotFound))
+			Expect(err).To(MatchError(model.ErrNotFound))
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-1")
 			mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-1", "Artist One", "")
@@ -145,7 +145,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 			imgURL, err := provider.ArtistImage(ctx, "artist-1")
 
 			// Assert
-			Expect(err).To(MatchError(agents.ErrNotFound)) // Implementation maps empty result to ErrNotFound
+			Expect(err).To(MatchError(model.ErrNotFound)) // Implementation maps empty result to ErrNotFound
 			Expect(imgURL).To(BeNil())
 			mockArtistRepo.AssertCalled(GinkgoT(), "Get", "artist-1")
 			mockImageAgent.AssertCalled(GinkgoT(), "GetArtistImages", ctx, "artist-1", "Artist One", "")
