@@ -42,7 +42,7 @@ type Provider interface {
 
 type provider struct {
 	ds          model.DataStore
-	ag          AllAgents
+	ag          Agents
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -57,7 +57,7 @@ type auxArtist struct {
 	Name string
 }
 
-type AllAgents interface {
+type Agents interface {
 	agents.AlbumInfoRetriever
 	agents.ArtistBiographyRetriever
 	agents.ArtistMBIDRetriever
@@ -67,7 +67,7 @@ type AllAgents interface {
 	agents.ArtistURLRetriever
 }
 
-func NewProvider(ds model.DataStore, agents AllAgents) Provider {
+func NewProvider(ds model.DataStore, agents Agents) Provider {
 	e := &provider{ds: ds, ag: agents}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)

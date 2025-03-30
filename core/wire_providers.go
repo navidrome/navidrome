@@ -19,7 +19,7 @@ var Set = wire.NewSet(
 	NewPlaylists,
 	agents.GetAgents,
 	extdata.NewProvider,
-	wire.Bind(new(extdata.AllAgents), new(*agents.Agents)),
+	wire.Bind(new(extdata.Agents), new(*agents.Agents)),
 	ffmpeg.New,
 	scrobbler.GetPlayTracker,
 	playback.GetInstance,

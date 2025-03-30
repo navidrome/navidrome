@@ -3,8 +3,6 @@ package extdata
 import (
 	"context"
 	"errors"
-	"reflect"
-	"unsafe"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -23,11 +21,11 @@ var _ = Describe("Provider", func() {
 	var ds model.DataStore
 	var provider Provider
 	var mockAgent *mockArtistTopSongsAgent
+	var mockAgents *mockAllAgents
 	var artistRepo *mockArtistRepo
 	var mediaFileRepo *mockMediaFileRepo
 	var ctx context.Context
 	var originalAgentsConfig string
-	var agentsImpl *agents.Agents
 
 	BeforeEach(func() {
 		ctx = context.Background()
@@ -51,13 +49,12 @@ var _ = Describe("Provider", func() {
 		mockAgent = &mockArtistTopSongsAgent{}
 		log.Debug(ctx, "Creating mock agent", "agent", mockAgent)
 
-		// Create a custom agents instance directly with our mock agent
-		agentsImpl = &agents.Agents{}
-		setAgentField(agentsImpl, "ds", ds)
-		setAgentField(agentsImpl, "agents", []agents.Interface{mockAgent})
+		// Create a mock for the Agents interface that Provider depends on
+		mockAgents = newMockAllAgents()
+		mockAgents.topSongsRetriever = mockAgent
 
-		// Create the provider instance with our custom Agents implementation
-		provider = NewProvider(ds, agentsImpl)
+		// Create the provider instance with our mock Agents implementation
+		provider = NewProvider(ds, mockAgents)
 	})
 
 	AfterEach(func() {
@@ -164,7 +161,7 @@ var _ = Describe("Provider", func() {
 			}
 
 			// Create a new provider with the updated datastore
-			provider = NewProvider(ds, agentsImpl)
+			provider = NewProvider(ds, mockAgents)
 
 			songs, err := provider.TopSongs(ctx, "Unknown Artist", 5)
 
@@ -315,16 +312,11 @@ var _ = Describe("Provider", func() {
 			// Setup default behavior for empty searches
 			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
 
-			// Create a direct agent that returns an error
+			// Create a mock with a custom GetArtistTopSongs implementation that returns an error
 			testError := errors.New("direct agent error")
-			directAgent := &mockArtistTopSongsAgent{
-				getArtistTopSongsFn: func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-					return nil, testError
-				},
+			mockAgent.getArtistTopSongsFn = func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+				return nil, testError
 			}
-
-			// Override the default agents implementation with our error-returning one
-			setAgentField(agentsImpl, "agents", []agents.Interface{directAgent})
 		})
 
 		It("handles errors from the agent according to current behavior", func() {
@@ -336,6 +328,75 @@ var _ = Describe("Provider", func() {
 		})
 	})
 })
+
+// MockAllAgents implements the Agents interface that Provider depends on
+type mockAllAgents struct {
+	mock.Mock
+	topSongsRetriever agents.ArtistTopSongsRetriever
+}
+
+func newMockAllAgents() *mockAllAgents {
+	return &mockAllAgents{}
+}
+
+func (m *mockAllAgents) AgentName() string {
+	return "mockAllAgents"
+}
+
+func (m *mockAllAgents) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
+	args := m.Called(ctx, id, name)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockAllAgents) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
+	args := m.Called(ctx, id, name, mbid)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockAllAgents) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
+	args := m.Called(ctx, id, name, mbid)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockAllAgents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
+	args := m.Called(ctx, id, name, mbid, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]agents.Artist), args.Error(1)
+}
+
+func (m *mockAllAgents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
+	args := m.Called(ctx, id, name, mbid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]agents.ExternalImage), args.Error(1)
+}
+
+func (m *mockAllAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+	// Delegate to the top songs retriever if it's set
+	if m.topSongsRetriever != nil {
+		return m.topSongsRetriever.GetArtistTopSongs(ctx, id, artistName, mbid, count)
+	}
+
+	args := m.Called(ctx, id, artistName, mbid, count)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]agents.Song), args.Error(1)
+}
+
+func (m *mockAllAgents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+	args := m.Called(ctx, name, artist, mbid)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*agents.AlbumInfo), args.Error(1)
+}
+
+// Make sure mockAllAgents implements the Agents interface
+var _ Agents = (*mockAllAgents)(nil)
 
 // Mock agent implementation for testing
 type mockArtistTopSongsAgent struct {
@@ -377,14 +438,6 @@ func (m *mockArtistTopSongsAgent) GetArtistTopSongs(ctx context.Context, id, art
 
 // Make sure the mock agent implements the necessary interface
 var _ agents.ArtistTopSongsRetriever = (*mockArtistTopSongsAgent)(nil)
-
-// Sets unexported fields in a struct using reflection and unsafe package
-func setAgentField(obj interface{}, fieldName string, value interface{}) {
-	v := reflect.ValueOf(obj).Elem()
-	f := v.FieldByName(fieldName)
-	rf := reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
-	rf.Set(reflect.ValueOf(value))
-}
 
 // Mocked ArtistRepo that uses testify's mock
 type mockArtistRepo struct {
