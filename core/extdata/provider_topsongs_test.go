@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,23 +17,20 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var _ = Describe("Provider", func() {
+var _ = Describe("Provider - TopSongs", func() {
 	var ds model.DataStore
 	var provider Provider
-	var mockAgent *mockArtistTopSongsAgent
-	var mockAgents *mockAllAgents
 	var artistRepo *mockArtistRepo
 	var mediaFileRepo *mockMediaFileRepo
+	var mockTopSongsAgent *mockArtistTopSongsAgent
+	var agentsCombined Agents
 	var ctx context.Context
 	var originalAgentsConfig string
 
 	BeforeEach(func() {
 		ctx = context.Background()
-
-		// Store the original agents config to restore it later
 		originalAgentsConfig = conf.Server.Agents
 
-		// Setup mocks
 		artistRepo = newMockArtistRepo()
 		mediaFileRepo = newMockMediaFileRepo()
 
@@ -42,194 +39,110 @@ var _ = Describe("Provider", func() {
 			MockedMediaFile: mediaFileRepo,
 		}
 
-		// Clear the agents map to prevent interference from previous tests
+		mockTopSongsAgent = &mockArtistTopSongsAgent{}
+
+		agentsCombined = &mockCombinedAgents{
+			topSongsAgent: mockTopSongsAgent,
+			similarAgent:  nil,
+		}
+
 		agents.Map = nil
-
-		// Create a mock agent
-		mockAgent = &mockArtistTopSongsAgent{}
-		log.Debug(ctx, "Creating mock agent", "agent", mockAgent)
-
-		// Create a mock for the Agents interface that Provider depends on
-		mockAgents = newMockAllAgents()
-		mockAgents.topSongsRetriever = mockAgent
-
-		// Create the provider instance with our mock Agents implementation
-		provider = NewProvider(ds, mockAgents)
+		provider = NewProvider(ds, agentsCombined)
 	})
 
 	AfterEach(func() {
-		// Restore original config
 		conf.Server.Agents = originalAgentsConfig
+		agents.Map = nil
 	})
 
-	Describe("TopSongs with direct agent injection", func() {
+	Describe("TopSongs", func() {
 		BeforeEach(func() {
-			// Set up test data
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
 			artist2 := model.Artist{ID: "artist-2", Name: "Artist Two"}
-
-			song1 := model.MediaFile{
-				ID:                "song-1",
-				Title:             "Song One",
-				Artist:            "Artist One",
-				ArtistID:          "artist-1",
-				AlbumArtistID:     "artist-1",
-				MbzReleaseTrackID: "mbid-1",
-				Missing:           false,
-			}
-
-			song2 := model.MediaFile{
-				ID:                "song-2",
-				Title:             "Song Two",
-				Artist:            "Artist One",
-				ArtistID:          "artist-1",
-				AlbumArtistID:     "artist-1",
-				MbzReleaseTrackID: "mbid-2",
-				Missing:           false,
-			}
-
-			song3 := model.MediaFile{
-				ID:                "song-3",
-				Title:             "Song Three",
-				Artist:            "Artist Two",
-				ArtistID:          "artist-2",
-				AlbumArtistID:     "artist-2",
-				MbzReleaseTrackID: "mbid-3",
-				Missing:           false,
-			}
-
-			// Set up basic data for the repos
 			artistRepo.SetData(model.Artists{artist1, artist2})
+
+			song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzReleaseTrackID: "mbid-1"}
+			song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzReleaseTrackID: "mbid-2"}
+			song3 := model.MediaFile{ID: "song-3", Title: "Song Three", ArtistID: "artist-2", MbzReleaseTrackID: "mbid-3"}
 			mediaFileRepo.SetData(model.MediaFiles{song1, song2, song3})
 
+			mockTopSongsAgent.SetTopSongs([]agents.Song{
+				{Name: "Song One", MBID: "mbid-1"},
+				{Name: "Song Two", MBID: "mbid-2"},
+			})
 		})
 
-		It("returns matching songs from the agent results", func() {
-			// Setup data needed for this specific test
+		It("returns top songs for a known artist", func() {
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
 			artistRepo.FindByName("Artist One", artist1)
 
-			song1 := model.MediaFile{
-				ID:                "song-1",
-				Title:             "Song One",
-				ArtistID:          "artist-1",
-				MbzReleaseTrackID: "mbid-1",
-				Missing:           false,
-			}
-
-			song2 := model.MediaFile{
-				ID:                "song-2",
-				Title:             "Song Two",
-				ArtistID:          "artist-1",
-				MbzReleaseTrackID: "mbid-2",
-				Missing:           false,
-			}
-
+			song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzReleaseTrackID: "mbid-1"}
+			song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", MbzReleaseTrackID: "mbid-2"}
 			mediaFileRepo.FindByMBID("mbid-1", song1)
 			mediaFileRepo.FindByMBID("mbid-2", song2)
 
-			// Configure the mockAgent to return some top songs
-			mockAgent.topSongs = []agents.Song{
-				{Name: "Song One", MBID: "mbid-1"},
-				{Name: "Song Two", MBID: "mbid-2"},
-			}
-
-			songs, err := provider.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 2)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(HaveLen(2))
 			Expect(songs[0].ID).To(Equal("song-1"))
 			Expect(songs[1].ID).To(Equal("song-2"))
-
-			// Verify the agent was called with the right parameters
-			Expect(mockAgent.lastArtistID).To(Equal("artist-1"))
-			Expect(mockAgent.lastArtistName).To(Equal("Artist One"))
-			Expect(mockAgent.lastCount).To(Equal(5))
 		})
 
-		It("returns nil when artist is not found", func() {
-			// Clear any previous mock setup to avoid conflicts
-			artistRepo = newMockArtistRepo()
-
-			// Setup for artist not found scenario - return empty list
-			artistRepo.On("GetAll", mock.Anything).Return(model.Artists{}, nil).Once()
-
-			// We need to recreate the datastore with the new mocks
-			ds = &tests.MockDataStore{
-				MockedArtist:    artistRepo,
-				MockedMediaFile: mediaFileRepo,
-			}
-
-			// Create a new provider with the updated datastore
-			provider = NewProvider(ds, mockAgents)
+		It("returns nil for an unknown artist", func() {
+			artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+				if opt.Max != 1 || opt.Filters == nil {
+					return false
+				}
+				_, ok := opt.Filters.(squirrel.Like)
+				return ok
+			})).Return(model.Artists{}, model.ErrNotFound).Once()
 
 			songs, err := provider.TopSongs(ctx, "Unknown Artist", 5)
 
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).To(BeNil())
 		})
 
-		It("returns empty list when no matching songs are found", func() {
-			// Set up artist data
+		It("returns nil when the agent returns an error", func() {
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
 			artistRepo.FindByName("Artist One", artist1)
 
-			// Configure the agent to return songs that don't match our repo
-			mockAgent.topSongs = []agents.Song{
-				{Name: "Nonexistent Song", MBID: "unknown-mbid"},
-			}
+			mockTopSongsAgent.SetError(errors.New("agent error"))
 
-			// Default to empty response for any queries
-			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
+			song1 := model.MediaFile{ID: "song-1"}
+			song2 := model.MediaFile{ID: "song-2"}
+			mediaFileRepo.FindByMBID("mbid-1", song1)
+			mediaFileRepo.FindByMBID("mbid-2", song2)
 
 			songs, err := provider.TopSongs(ctx, "Artist One", 5)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(songs).To(HaveLen(0))
-		})
-
-		It("returns nil when agent returns errors", func() {
-			// Set up artist data
-			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
-			artistRepo.SetData(model.Artists{artist1})
-			artistRepo.FindByName("Artist One", artist1)
-
-			// Set the error
-			testError := errors.New("some agent error")
-			mockAgent.err = testError
-
-			songs, err := provider.TopSongs(ctx, "Artist One", 5)
-
-			// Current behavior returns nil for both error and songs
-			Expect(err).To(BeNil())
 			Expect(songs).To(BeNil())
 		})
 
-		It("respects count parameter", func() {
-			// Set up test data
+		It("returns nil when the agent returns ErrNotFound", func() {
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
-			song1 := model.MediaFile{
-				ID:                "song-1",
-				Title:             "Song One",
-				ArtistID:          "artist-1",
-				MbzReleaseTrackID: "mbid-1",
-				Missing:           false,
-			}
-
-			// Set up mocks
-			artistRepo.SetData(model.Artists{artist1})
 			artistRepo.FindByName("Artist One", artist1)
+
+			mockTopSongsAgent.SetError(agents.ErrNotFound)
+
+			song1 := model.MediaFile{ID: "song-1"}
+			song2 := model.MediaFile{ID: "song-2"}
 			mediaFileRepo.FindByMBID("mbid-1", song1)
+			mediaFileRepo.FindByMBID("mbid-2", song2)
 
-			// Configure the mockAgent
-			mockAgent.topSongs = []agents.Song{
-				{Name: "Song One", MBID: "mbid-1"},
-				{Name: "Song Two", MBID: "mbid-2"},
-				{Name: "Song Three", MBID: "mbid-3"},
-			}
+			songs, err := provider.TopSongs(ctx, "Artist One", 5)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(BeNil())
+		})
 
-			// Default to empty response for any queries
-			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
+		It("returns fewer songs if count is less than available top songs", func() {
+			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
+			artistRepo.FindByName("Artist One", artist1)
+
+			song1 := model.MediaFile{ID: "song-1"}
+			mediaFileRepo.FindByMBID("mbid-1", song1)
 
 			songs, err := provider.TopSongs(ctx, "Artist One", 1)
 
@@ -237,281 +150,99 @@ var _ = Describe("Provider", func() {
 			Expect(songs).To(HaveLen(1))
 			Expect(songs[0].ID).To(Equal("song-1"))
 		})
-	})
 
-	Describe("TopSongs with agent registration", func() {
-		BeforeEach(func() {
-			// Set our mock agent as the only agent
-			conf.Server.Agents = "mock"
-
-			// Set up test data
+		It("returns fewer songs if fewer matching tracks are found", func() {
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
-
-			song1 := model.MediaFile{
-				ID:                "song-1",
-				Title:             "Song One",
-				Artist:            "Artist One",
-				ArtistID:          "artist-1",
-				MbzReleaseTrackID: "mbid-1",
-				Missing:           false,
-			}
-
-			song2 := model.MediaFile{
-				ID:                "song-2",
-				Title:             "Song Two",
-				Artist:            "Artist One",
-				ArtistID:          "artist-1",
-				MbzReleaseTrackID: "mbid-2",
-				Missing:           false,
-			}
-
-			// Set up basic data for the repos
-			artistRepo.SetData(model.Artists{artist1})
-			mediaFileRepo.SetData(model.MediaFiles{song1, song2})
-
-			// Set up the specific mock responses needed for the TopSongs method
 			artistRepo.FindByName("Artist One", artist1)
-			mediaFileRepo.FindByMBID("mbid-1", song1)
-			mediaFileRepo.FindByMBID("mbid-2", song2)
 
-			// Setup default behavior for empty searches
-			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
+			song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzReleaseTrackID: "mbid-1"}
 
-			// Configure and register the agent
-			mockAgent.topSongs = []agents.Song{
-				{Name: "Song One", MBID: "mbid-1"},
-				{Name: "Song Two", MBID: "mbid-2"},
+			matcherForMBID := func(expectedMBID string) func(opt model.QueryOptions) bool {
+				return func(opt model.QueryOptions) bool {
+					if opt.Filters == nil {
+						return false
+					}
+					andClause, ok := opt.Filters.(squirrel.And)
+					if !ok {
+						return false
+					}
+					for _, condition := range andClause {
+						if eqClause, ok := condition.(squirrel.Eq); ok {
+							if mbid, exists := eqClause["mbz_recording_id"]; exists {
+								return mbid == expectedMBID
+							}
+						}
+					}
+					return false
+				}
 			}
 
-			// Register our mock agent
-			agents.Register("mock", func(model.DataStore) agents.Interface { return mockAgent })
+			matcherForTitleArtistFallback := func(artistID, title string) func(opt model.QueryOptions) bool {
+				return func(opt model.QueryOptions) bool {
+					if opt.Filters == nil {
+						return false
+					}
+					andClause, ok := opt.Filters.(squirrel.And)
+					if !ok || len(andClause) < 3 {
+						return false
+					}
+					foundLike := false
+					for _, condition := range andClause {
+						if likeClause, ok := condition.(squirrel.Like); ok {
+							if _, exists := likeClause["order_title"]; exists {
+								foundLike = true
+								break
+							}
+						}
+					}
+					return foundLike
+				}
+			}
 
-			// Create the provider instance with registered agents
-			provider = NewProvider(ds, agents.GetAgents(ds))
-		})
+			mediaFileRepo.On("GetAll", mock.MatchedBy(matcherForMBID("mbid-1"))).Return(model.MediaFiles{song1}, nil).Once()
+			mediaFileRepo.On("GetAll", mock.MatchedBy(matcherForMBID("mbid-2"))).Return(model.MediaFiles{}, nil).Once()
+			mediaFileRepo.On("GetAll", mock.MatchedBy(matcherForTitleArtistFallback("artist-1", "Song Two"))).Return(model.MediaFiles{}, nil).Once()
 
-		It("returns matching songs from the registered agent", func() {
-			songs, err := provider.TopSongs(ctx, "Artist One", 5)
+			songs, err := provider.TopSongs(ctx, "Artist One", 2)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(songs).To(HaveLen(2))
+			Expect(songs).To(HaveLen(1))
 			Expect(songs[0].ID).To(Equal("song-1"))
-			Expect(songs[1].ID).To(Equal("song-2"))
-		})
-	})
-
-	Describe("Error propagation from agents", func() {
-		BeforeEach(func() {
-			// Set up test data
-			artist1 := model.Artist{ID: "artist-1", Name: "Artist One"}
-
-			// Set up basic data for the repos
-			artistRepo.SetData(model.Artists{artist1})
-			artistRepo.FindByName("Artist One", artist1)
-
-			// Setup default behavior for empty searches
-			mediaFileRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{}, nil).Maybe()
-
-			// Create a mock with a custom GetArtistTopSongs implementation that returns an error
-			testError := errors.New("direct agent error")
-			mockAgent.getArtistTopSongsFn = func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-				return nil, testError
-			}
-		})
-
-		It("handles errors from the agent according to current behavior", func() {
-			songs, err := provider.TopSongs(ctx, "Artist One", 5)
-
-			// Current behavior returns nil for both error and songs
-			Expect(err).To(BeNil())
-			Expect(songs).To(BeNil())
 		})
 	})
 })
 
-// MockAllAgents implements the Agents interface that Provider depends on
-type mockAllAgents struct {
-	mock.Mock
-	topSongsRetriever agents.ArtistTopSongsRetriever
-}
-
-func newMockAllAgents() *mockAllAgents {
-	return &mockAllAgents{}
-}
-
-func (m *mockAllAgents) AgentName() string {
-	return "mockAllAgents"
-}
-
-func (m *mockAllAgents) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	args := m.Called(ctx, id, name)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockAllAgents) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	args := m.Called(ctx, id, name, mbid)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockAllAgents) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	args := m.Called(ctx, id, name, mbid)
-	return args.String(0), args.Error(1)
-}
-
-func (m *mockAllAgents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
-	args := m.Called(ctx, id, name, mbid, limit)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]agents.Artist), args.Error(1)
-}
-
-func (m *mockAllAgents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
-	args := m.Called(ctx, id, name, mbid)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]agents.ExternalImage), args.Error(1)
-}
-
-func (m *mockAllAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	// Delegate to the top songs retriever if it's set
-	if m.topSongsRetriever != nil {
-		return m.topSongsRetriever.GetArtistTopSongs(ctx, id, artistName, mbid, count)
-	}
-
-	args := m.Called(ctx, id, artistName, mbid, count)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]agents.Song), args.Error(1)
-}
-
-func (m *mockAllAgents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
-	args := m.Called(ctx, name, artist, mbid)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*agents.AlbumInfo), args.Error(1)
-}
-
-// Make sure mockAllAgents implements the Agents interface
-var _ Agents = (*mockAllAgents)(nil)
-
-// Mock agent implementation for testing
+// Mock implementation for ArtistTopSongsRetriever
+// This remains here as it's specific to TopSongs tests and simpler than mockSimilarArtistAgent
 type mockArtistTopSongsAgent struct {
-	agents.Interface
-	err                 error
-	topSongs            []agents.Song
-	lastArtistID        string
-	lastArtistName      string
-	lastMBID            string
-	lastCount           int
-	getArtistTopSongsFn func(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error)
+	mock.Mock
+	topSongs []agents.Song
+	err      error
 }
 
 func (m *mockArtistTopSongsAgent) AgentName() string {
-	return "mock"
+	return "mockTopSongs"
+}
+
+func (m *mockArtistTopSongsAgent) SetTopSongs(songs []agents.Song) {
+	m.topSongs = songs
+	m.err = nil
+}
+
+func (m *mockArtistTopSongsAgent) SetError(err error) {
+	m.err = err
+	m.topSongs = nil
 }
 
 func (m *mockArtistTopSongsAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	m.lastCount = count
-	m.lastArtistID = id
-	m.lastArtistName = artistName
-	m.lastMBID = mbid
-
-	log.Debug(ctx, "MockAgent.GetArtistTopSongs called", "id", id, "name", artistName, "mbid", mbid, "count", count)
-
-	// Use the custom function if available
-	if m.getArtistTopSongsFn != nil {
-		return m.getArtistTopSongsFn(ctx, id, artistName, mbid, count)
-	}
-
 	if m.err != nil {
-		log.Debug(ctx, "MockAgent.GetArtistTopSongs returning error", "err", m.err)
 		return nil, m.err
 	}
 
-	log.Debug(ctx, "MockAgent.GetArtistTopSongs returning songs", "count", len(m.topSongs))
+	if len(m.topSongs) > count {
+		return m.topSongs[:count], nil
+	}
 	return m.topSongs, nil
 }
 
-// Make sure the mock agent implements the necessary interface
 var _ agents.ArtistTopSongsRetriever = (*mockArtistTopSongsAgent)(nil)
-
-// Mocked ArtistRepo that uses testify's mock
-type mockArtistRepo struct {
-	mock.Mock
-	model.ArtistRepository
-}
-
-func newMockArtistRepo() *mockArtistRepo {
-	return &mockArtistRepo{}
-}
-
-func (m *mockArtistRepo) SetData(artists model.Artists) {
-	// Store the data for Get queries
-	for _, a := range artists {
-		m.On("Get", a.ID).Return(&a, nil)
-	}
-}
-
-func (m *mockArtistRepo) SetError(hasError bool) {
-	if hasError {
-		m.On("GetAll", mock.Anything).Return(nil, errors.New("error"))
-	}
-}
-
-func (m *mockArtistRepo) FindByName(name string, artist model.Artist) {
-	// Set up a mock for finding an artist by name with LIKE filter, using Anything matcher for flexibility
-	m.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Once()
-}
-
-func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
-	args := m.Called(mock.Anything)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.Artists), args.Error(1)
-}
-
-// Mocked MediaFileRepo that uses testify's mock
-type mockMediaFileRepo struct {
-	mock.Mock
-	model.MediaFileRepository
-}
-
-func newMockMediaFileRepo() *mockMediaFileRepo {
-	return &mockMediaFileRepo{}
-}
-
-func (m *mockMediaFileRepo) SetData(mediaFiles model.MediaFiles) {
-	// Store the data for Get queries
-	for _, mf := range mediaFiles {
-		m.On("Get", mf.ID).Return(&mf, nil)
-	}
-}
-
-func (m *mockMediaFileRepo) SetError(hasError bool) {
-	if hasError {
-		m.On("GetAll", mock.Anything).Return(nil, errors.New("error"))
-	}
-}
-
-func (m *mockMediaFileRepo) FindByMBID(mbid string, mediaFile model.MediaFile) {
-	// Set up a mock for finding a media file by MBID using Anything matcher for flexibility
-	m.On("GetAll", mock.Anything).Return(model.MediaFiles{mediaFile}, nil).Once()
-}
-
-func (m *mockMediaFileRepo) FindByArtistAndTitle(artistID string, title string, mediaFile model.MediaFile) {
-	// Set up a mock for finding a media file by artist ID and title
-	m.On("GetAll", mock.Anything).Return(model.MediaFiles{mediaFile}, nil).Once()
-}
-
-func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
-	args := m.Called(mock.Anything)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(model.MediaFiles), args.Error(1)
-}
