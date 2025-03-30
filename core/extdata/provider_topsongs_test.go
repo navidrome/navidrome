@@ -11,8 +11,7 @@ import (
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
 	"github.com/navidrome/navidrome/model"
-
-	// Use helper mocks, not tests.MockDataStore for this file due to filtering needs
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -20,7 +19,6 @@ import (
 
 var _ = Describe("Provider - TopSongs", func() {
 	var (
-		// ds model.DataStore // Keep using helper mocks below
 		p                    Provider
 		artistRepo           *mockArtistRepo    // From provider_helper_test.go
 		mediaFileRepo        *mockMediaFileRepo // From provider_helper_test.go
@@ -33,16 +31,16 @@ var _ = Describe("Provider - TopSongs", func() {
 		ctx = context.Background()
 		originalAgentsConfig = conf.Server.Agents
 
-		artistRepo = newMockArtistRepo()       // Keep using helper mock
-		mediaFileRepo = newMockMediaFileRepo() // Keep using helper mock
+		artistRepo = newMockArtistRepo()       // Use helper mock
+		mediaFileRepo = newMockMediaFileRepo() // Use helper mock
 
-		// Mock DataStore interface implementation using helper mocks
-		ds := &mockDataStoreForTopSongs{
-			mockedArtist:    artistRepo,
-			mockedMediaFile: mediaFileRepo,
+		// Configure tests.MockDataStore to use the testify/mock-based repos
+		ds := &tests.MockDataStore{
+			MockedArtist:    artistRepo,
+			MockedMediaFile: mediaFileRepo,
 		}
 
-		ag = new(MockAgents) // Use consolidated mock
+		ag = new(MockAgents)
 
 		p = NewProvider(ds, ag)
 	})
@@ -53,7 +51,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 	Describe("TopSongs", func() {
 		BeforeEach(func() {
-			// Setup data directly in testify mocks if needed, or setup expectations
+			// Setup expectations in individual tests
 		})
 
 		It("returns top songs for a known artist", func() {
@@ -161,7 +159,7 @@ var _ = Describe("Provider - TopSongs", func() {
 			// Mock agent response
 			agentSongs := []agents.Song{
 				{Name: "Song One", MBID: "mbid-song-1"},
-				{Name: "Song Two", MBID: "mbid-song-2"}, // Agent knows this song
+				{Name: "Song Two", MBID: "mbid-song-2"},
 			}
 			ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
 
@@ -182,8 +180,6 @@ var _ = Describe("Provider - TopSongs", func() {
 			mediaFileRepo.AssertExpectations(GinkgoT())
 		})
 
-		// Context canceled test needs separate handling if async ops were involved, but TopSongs is synchronous.
-		// We can test cancellation behavior if the agent call respects context cancellation.
 		It("returns error when context is canceled during agent call", func() {
 			// Mock finding the artist
 			artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
@@ -205,22 +201,6 @@ var _ = Describe("Provider - TopSongs", func() {
 		})
 	})
 })
-
-// Helper mock implementing model.DataStore for this test file
-// Allows using helper repo mocks instead of tests.MockDataStore
-type mockDataStoreForTopSongs struct {
-	model.DataStore // Embed for unimplemented methods
-	mockedArtist    model.ArtistRepository
-	mockedMediaFile model.MediaFileRepository
-}
-
-func (m *mockDataStoreForTopSongs) Artist(ctx context.Context) model.ArtistRepository {
-	return m.mockedArtist
-}
-
-func (m *mockDataStoreForTopSongs) MediaFile(ctx context.Context) model.MediaFileRepository {
-	return m.mockedMediaFile
-}
 
 // Helper functions to match squirrel filters for testify/mock
 func matchArtistByNameFilter(opt model.QueryOptions) bool {
