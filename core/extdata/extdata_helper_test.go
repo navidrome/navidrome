@@ -1,4 +1,4 @@
-package extdata
+package extdata_test
 
 import (
 	"context"

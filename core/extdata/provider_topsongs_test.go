@@ -1,4 +1,4 @@
-package extdata
+package extdata_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
+	. "github.com/navidrome/navidrome/core/extdata"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -21,7 +22,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		p                    Provider
 		artistRepo           *mockArtistRepo    // From provider_helper_test.go
 		mediaFileRepo        *mockMediaFileRepo // From provider_helper_test.go
-		ag                   *MockAgents        // Consolidated mock from export_test.go
+		ag                   *mockAgents        // Consolidated mock from export_test.go
 		ctx                  context.Context
 		originalAgentsConfig string
 	)
@@ -39,7 +40,7 @@ var _ = Describe("Provider - TopSongs", func() {
 			MockedMediaFile: mediaFileRepo,
 		}
 
-		ag = new(MockAgents)
+		ag = new(mockAgents)
 
 		p = NewProvider(ds, ag)
 	})

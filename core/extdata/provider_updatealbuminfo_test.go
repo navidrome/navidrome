@@ -26,14 +26,14 @@ var _ = Describe("Provider UpdateAlbumInfo", func() {
 		ctx           context.Context
 		p             extdata.Provider
 		ds            *tests.MockDataStore
-		ag            *extdata.MockAgents
+		ag            *mockAgents
 		mockAlbumRepo *tests.MockAlbumRepo
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		ds = new(tests.MockDataStore)
-		ag = new(extdata.MockAgents)
+		ag = new(mockAgents)
 		p = extdata.NewProvider(ds, ag)
 		mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 		conf.Server.DevAlbumInfoTimeToLive = 1 * time.Hour

@@ -26,14 +26,14 @@ var _ = Describe("Provider UpdateArtistInfo", func() {
 		ctx            context.Context
 		p              extdata.Provider
 		ds             *tests.MockDataStore
-		ag             *extdata.MockAgents
+		ag             *mockAgents
 		mockArtistRepo *tests.MockArtistRepo
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		ds = new(tests.MockDataStore)
-		ag = new(extdata.MockAgents)
+		ag = new(mockAgents)
 		p = extdata.NewProvider(ds, ag)
 		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
 		conf.Server.DevArtistInfoTimeToLive = 1 * time.Hour

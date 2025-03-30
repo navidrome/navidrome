@@ -1,4 +1,4 @@
-package extdata
+package extdata_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	. "github.com/navidrome/navidrome/core/extdata"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
