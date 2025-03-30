@@ -41,7 +41,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 		mockTopSongsAgent = &mockArtistTopSongsAgent{}
 
-		agentsCombined = &mockCombinedAgents{
+		agentsCombined = &mockAgents{
 			topSongsAgent: mockTopSongsAgent,
 			similarAgent:  nil,
 		}

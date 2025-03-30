@@ -21,7 +21,7 @@ var _ = Describe("Provider - ArtistImage", func() {
 	var mockAlbumRepo *mockAlbumRepo
 	var mockMediaFileRepo *mockMediaFileRepo
 	var mockImageAgent *mockArtistImageAgent
-	var agentsCombined *mockCombinedAgents
+	var agentsCombined *mockAgents
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var originalAgentsConfig string
@@ -43,8 +43,8 @@ var _ = Describe("Provider - ArtistImage", func() {
 
 		mockImageAgent = newMockArtistImageAgent()
 
-		// Use the mockCombinedAgents from helper, setting the specific agent
-		agentsCombined = &mockCombinedAgents{
+		// Use the mockAgents from helper, setting the specific agent
+		agentsCombined = &mockAgents{
 			imageAgent: mockImageAgent,
 		}
 
@@ -281,7 +281,7 @@ type mockArtistImageAgent struct {
 // Constructor for the mock agent
 func newMockArtistImageAgent() *mockArtistImageAgent {
 	mock := new(mockArtistImageAgent)
-	// Set default AgentName if needed, although usually called via mockCombinedAgents
+	// Set default AgentName if needed, although usually called via mockAgents
 	mock.On("AgentName").Return("mockImage").Maybe()
 	return mock
 }

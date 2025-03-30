@@ -21,38 +21,18 @@ func init() {
 	log.SetLevel(log.LevelDebug)
 }
 
-// MockAgents implements the extdata.Agents interface for testing
-type MockAgents struct {
-	mock.Mock
-	agents.AlbumInfoRetriever
-	agents.ArtistBiographyRetriever
-	agents.ArtistMBIDRetriever
-	agents.ArtistImageRetriever
-	agents.ArtistSimilarRetriever
-	agents.ArtistTopSongsRetriever
-	agents.ArtistURLRetriever
-}
-
-func (m *MockAgents) GetAlbumInfo(ctx context.Context, albumName, artistName, mbid string) (*agents.AlbumInfo, error) {
-	args := m.Called(ctx, albumName, artistName, mbid)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*agents.AlbumInfo), args.Error(1)
-}
-
 var _ = Describe("Provider UpdateAlbumInfo", func() {
 	var (
 		ctx context.Context
 		p   extdata.Provider
 		ds  *tests.MockDataStore
-		ag  *MockAgents
+		ag  *extdata.MockAgents
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		ds = new(tests.MockDataStore)
-		ag = new(MockAgents)
+		ag = new(extdata.MockAgents)
 		p = extdata.NewProvider(ds, ag)
 
 		// Default config

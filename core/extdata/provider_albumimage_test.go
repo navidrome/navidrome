@@ -21,7 +21,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 	var mockAlbumRepo *mockAlbumRepo
 	var mockMediaFileRepo *mockMediaFileRepo
 	var mockAlbumAgent *mockAlbumInfoAgent
-	var agentsCombined *mockCombinedAgents
+	var agentsCombined *mockAgents
 	var ctx context.Context
 	var cancel context.CancelFunc
 	var originalAgentsConfig string
@@ -43,7 +43,7 @@ var _ = Describe("Provider - AlbumImage", func() {
 
 		mockAlbumAgent = newMockAlbumInfoAgent()
 
-		agentsCombined = &mockCombinedAgents{
+		agentsCombined = &mockAgents{
 			albumInfoAgent: mockAlbumAgent,
 		}
 

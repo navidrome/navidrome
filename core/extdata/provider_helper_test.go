@@ -184,102 +184,96 @@ func (m *mockSimilarArtistAgent) GetSimilarArtists(ctx context.Context, id, name
 	return nil, args.Error(1)
 }
 
-// mockCombinedAgents mocks the main Agents interface used by Provider
-type mockCombinedAgents struct {
+// mockAgents mocks the main Agents interface used by Provider
+type mockAgents struct {
+	mock.Mock        // Embed testify mock
 	topSongsAgent    agents.ArtistTopSongsRetriever
 	similarAgent     agents.ArtistSimilarRetriever
 	imageAgent       agents.ArtistImageRetriever
 	albumInfoAgent   agents.AlbumInfoRetriever
-	agents.Interface // Embed to satisfy non-overridden methods
+	bioAgent         agents.ArtistBiographyRetriever // Added field for clarity
+	mbidAgent        agents.ArtistMBIDRetriever      // Added field for clarity
+	urlAgent         agents.ArtistURLRetriever       // Added field for clarity
+	agents.Interface                                 // Embed to satisfy non-overridden methods
 }
 
-func (m *mockCombinedAgents) AgentName() string {
+func (m *mockAgents) AgentName() string {
 	return "mockCombined"
 }
 
-func (m *mockCombinedAgents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
+func (m *mockAgents) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
 	if m.similarAgent != nil {
 		return m.similarAgent.GetSimilarArtists(ctx, id, name, mbid, limit)
 	}
-	return nil, agents.ErrNotFound
+	// Fallback to testify mock
+	args := m.Called(ctx, id, name, mbid, limit)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Artist), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
-func (m *mockCombinedAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
+func (m *mockAgents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
 	if m.topSongsAgent != nil {
 		return m.topSongsAgent.GetArtistTopSongs(ctx, id, artistName, mbid, count)
 	}
-	return nil, agents.ErrNotFound
+	// Fallback to testify mock
+	args := m.Called(ctx, id, artistName, mbid, count)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.Song), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 // --- Stubs for other Agents interface methods ---
 
-func (m *mockCombinedAgents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
+func (m *mockAgents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
 	if m.albumInfoAgent != nil {
 		return m.albumInfoAgent.GetAlbumInfo(ctx, name, artist, mbid)
 	}
-	if m.topSongsAgent != nil {
-		if ar, ok := m.topSongsAgent.(agents.AlbumInfoRetriever); ok {
-			return ar.GetAlbumInfo(ctx, name, artist, mbid)
-		}
+	// Fallback to testify mock
+	args := m.Called(ctx, name, artist, mbid)
+	if args.Get(0) != nil {
+		return args.Get(0).(*agents.AlbumInfo), args.Error(1)
 	}
-	return nil, agents.ErrNotFound
+	return nil, args.Error(1)
 }
 
-func (m *mockCombinedAgents) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	if m.topSongsAgent != nil {
-		if ar, ok := m.topSongsAgent.(agents.ArtistMBIDRetriever); ok {
-			return ar.GetArtistMBID(ctx, id, name)
-		}
+func (m *mockAgents) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
+	if m.mbidAgent != nil {
+		return m.mbidAgent.GetArtistMBID(ctx, id, name)
 	}
-	if m.similarAgent != nil {
-		if ar, ok := m.similarAgent.(agents.ArtistMBIDRetriever); ok {
-			return ar.GetArtistMBID(ctx, id, name)
-		}
-	}
-	return "", agents.ErrNotFound
+	// Fallback to testify mock
+	args := m.Called(ctx, id, name)
+	return args.String(0), args.Error(1)
 }
 
-func (m *mockCombinedAgents) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	if m.topSongsAgent != nil {
-		if ar, ok := m.topSongsAgent.(agents.ArtistURLRetriever); ok {
-			return ar.GetArtistURL(ctx, id, name, mbid)
-		}
+func (m *mockAgents) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
+	if m.urlAgent != nil {
+		return m.urlAgent.GetArtistURL(ctx, id, name, mbid)
 	}
-	if m.similarAgent != nil {
-		if ar, ok := m.similarAgent.(agents.ArtistURLRetriever); ok {
-			return ar.GetArtistURL(ctx, id, name, mbid)
-		}
-	}
-	return "", agents.ErrNotFound
+	// Fallback to testify mock
+	args := m.Called(ctx, id, name, mbid)
+	return args.String(0), args.Error(1)
 }
 
-func (m *mockCombinedAgents) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	if m.topSongsAgent != nil {
-		if ar, ok := m.topSongsAgent.(agents.ArtistBiographyRetriever); ok {
-			return ar.GetArtistBiography(ctx, id, name, mbid)
-		}
+func (m *mockAgents) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
+	if m.bioAgent != nil {
+		return m.bioAgent.GetArtistBiography(ctx, id, name, mbid)
 	}
-	if m.similarAgent != nil {
-		if ar, ok := m.similarAgent.(agents.ArtistBiographyRetriever); ok {
-			return ar.GetArtistBiography(ctx, id, name, mbid)
-		}
-	}
-	return "", agents.ErrNotFound
+	// Fallback to testify mock
+	args := m.Called(ctx, id, name, mbid)
+	return args.String(0), args.Error(1)
 }
 
-func (m *mockCombinedAgents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
+func (m *mockAgents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
 	if m.imageAgent != nil {
 		return m.imageAgent.GetArtistImages(ctx, id, name, mbid)
 	}
-	if m.topSongsAgent != nil {
-		if ar, ok := m.topSongsAgent.(agents.ArtistImageRetriever); ok {
-			return ar.GetArtistImages(ctx, id, name, mbid)
-		}
+	// Fallback to testify mock
+	args := m.Called(ctx, id, name, mbid)
+	if args.Get(0) != nil {
+		return args.Get(0).([]agents.ExternalImage), args.Error(1)
 	}
-	if m.similarAgent != nil {
-		if ar, ok := m.similarAgent.(agents.ArtistImageRetriever); ok {
-			return ar.GetArtistImages(ctx, id, name, mbid)
-		}
-	}
-	return nil, agents.ErrNotFound
+	return nil, args.Error(1)
 }
