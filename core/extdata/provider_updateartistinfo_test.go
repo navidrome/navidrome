@@ -21,7 +21,7 @@ func init() {
 	log.SetLevel(log.LevelDebug)
 }
 
-var _ = Describe("Provider UpdateArtistInfo", func() {
+var _ = Describe("Provider - UpdateArtistInfo", func() {
 	var (
 		ctx            context.Context
 		p              extdata.Provider
@@ -203,7 +203,7 @@ var _ = Describe("Provider UpdateArtistInfo", func() {
 		Expect(updatedArtist.SimilarArtists[2].Name).To(Equal("Similar Absent Lookup"))
 	})
 
-	It("returns error when an agent fails during info population", func() {
+	It("updates ArtistInfo even if an optional agent call fails", func() {
 		originalArtist := &model.Artist{
 			ID:   "ar-agent-fail",
 			Name: "Agent Fail Artist",

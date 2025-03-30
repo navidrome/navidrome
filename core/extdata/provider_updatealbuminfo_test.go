@@ -21,7 +21,7 @@ func init() {
 	log.SetLevel(log.LevelDebug)
 }
 
-var _ = Describe("Provider UpdateAlbumInfo", func() {
+var _ = Describe("Provider - UpdateAlbumInfo", func() {
 	var (
 		ctx           context.Context
 		p             extdata.Provider

@@ -103,7 +103,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			}
 		})
 
-		It("returns nil when artist is not found", func() {
+		It("returns ErrNotFound when artist is not found", func() {
 			artistRepo.On("Get", "artist-unknown-artist").Return(nil, model.ErrNotFound)
 			mediaFileRepo.On("Get", "artist-unknown-artist").Return(nil, model.ErrNotFound)
 
