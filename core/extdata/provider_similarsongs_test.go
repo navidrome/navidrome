@@ -37,8 +37,6 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			MockedMediaFile: mediaFileRepo,
 		}
 
-		agents.Map = nil
-
 		mockAgent = &mockSimilarArtistAgent{}
 		mockTopAgent = mockAgent
 		mockSimilarAgent = mockAgent

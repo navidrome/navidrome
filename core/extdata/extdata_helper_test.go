@@ -126,6 +126,38 @@ func (m *mockMediaFileRepo) FindByArtistAndTitle(artistID string, title string, 
 	})).Return(model.MediaFiles{mediaFile}, nil).Once()
 }
 
+// mockAlbumRepo mocks model.AlbumRepository
+type mockAlbumRepo struct {
+	mock.Mock
+	model.AlbumRepository
+}
+
+func newMockAlbumRepo() *mockAlbumRepo {
+	return &mockAlbumRepo{}
+}
+
+// Get implements model.AlbumRepository.
+func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Album), args.Error(1)
+}
+
+// GetAll implements model.AlbumRepository.
+func (m *mockAlbumRepo) GetAll(options ...model.QueryOptions) (model.Albums, error) {
+	argsSlice := make([]interface{}, len(options))
+	for i, v := range options {
+		argsSlice[i] = v
+	}
+	args := m.Called(argsSlice...)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(model.Albums), args.Error(1)
+}
+
 // mockSimilarArtistAgent mocks agents implementing ArtistTopSongsRetriever and ArtistSimilarRetriever
 type mockSimilarArtistAgent struct {
 	mock.Mock
@@ -156,6 +188,7 @@ func (m *mockSimilarArtistAgent) GetSimilarArtists(ctx context.Context, id, name
 type mockCombinedAgents struct {
 	topSongsAgent    agents.ArtistTopSongsRetriever
 	similarAgent     agents.ArtistSimilarRetriever
+	imageAgent       agents.ArtistImageRetriever
 	agents.Interface // Embed to satisfy non-overridden methods
 }
 
@@ -231,6 +264,9 @@ func (m *mockCombinedAgents) GetArtistBiography(ctx context.Context, id, name, m
 }
 
 func (m *mockCombinedAgents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
+	if m.imageAgent != nil {
+		return m.imageAgent.GetArtistImages(ctx, id, name, mbid)
+	}
 	if m.topSongsAgent != nil {
 		if ar, ok := m.topSongsAgent.(agents.ArtistImageRetriever); ok {
 			return ar.GetArtistImages(ctx, id, name, mbid)

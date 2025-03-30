@@ -46,13 +46,11 @@ var _ = Describe("Provider - TopSongs", func() {
 			similarAgent:  nil,
 		}
 
-		agents.Map = nil
 		provider = NewProvider(ds, agentsCombined)
 	})
 
 	AfterEach(func() {
 		conf.Server.Agents = originalAgentsConfig
-		agents.Map = nil
 	})
 
 	Describe("TopSongs", func() {
