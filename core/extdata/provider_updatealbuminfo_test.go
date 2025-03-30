@@ -31,7 +31,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
 		p = extdata.NewProvider(ds, ag)

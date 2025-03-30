@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/extdata"
 	"github.com/navidrome/navidrome/log"
@@ -31,12 +32,13 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DevArtistInfoTimeToLive = 1 * time.Hour
+		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
 		p = extdata.NewProvider(ds, ag)
 		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
-		conf.Server.DevArtistInfoTimeToLive = 1 * time.Hour
 	})
 
 	It("returns error when artist is not found", func() {
