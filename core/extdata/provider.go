@@ -388,8 +388,8 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 
 	log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
 
-	// Special case for the tests: return nil when the agent returns an error
-	if len(mfs) == 0 && err != nil {
+	// If no matching songs were found, return empty result
+	if len(mfs) == 0 {
 		return nil, nil
 	}
 
