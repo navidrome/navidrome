@@ -1,7 +1,6 @@
 module github.com/navidrome/navidrome
 
 go 1.24.1
-
 // Fork to fix https://github.com/navidrome/navidrome/pull/3254
 replace github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 => github.com/deluan/tag v0.0.0-20241002021117-dfe5e6ea396d
 
@@ -25,7 +24,7 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.14.1
-	github.com/go-chi/jwtauth/v5 v5.3.2
+	github.com/go-chi/jwtauth/v5 v5.3.3
 	github.com/go-viper/encoding/ini v0.1.1
 	github.com/gohugoio/hashstructure v0.5.0
 	github.com/google/go-pipeline v0.0.0-20230411140531-6cbedfc1d3fc
