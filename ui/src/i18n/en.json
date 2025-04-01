@@ -58,6 +58,7 @@
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Year",
+        "date": "Recording Date",
         "originalDate": "Original",
         "releaseDate": "Released",
         "releases": "Release |||| Releases",
