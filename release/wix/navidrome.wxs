@@ -1,4 +1,4 @@
-
+<?xml version='1.0' encoding='windows-1252'?>
 <?if $(var.Platform) = x64 ?>
 	<?define ProductName = "Navidrome" ?>
 	<?define UpgradeCode = "2f154974-1443-41b6-b808-b8be530291b3" ?>
