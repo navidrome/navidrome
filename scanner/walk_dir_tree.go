@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/chrono"
 	ignore "github.com/sabhiram/go-gitignore"
 )
@@ -69,7 +70,6 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		albumIDMap: make(map[string]string),
 		updTime:    job.popLastUpdate(id),
 	}
-	f.elapsed.Start()
 	return f
 }
 
@@ -114,6 +114,8 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignoreP
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
+	folder.elapsed.Start()
+
 	results <- folder
 
 	return nil
@@ -144,7 +146,10 @@ func loadIgnoredPatterns(ctx context.Context, fsys fs.FS, currentFolder string, 
 		}
 		// If the .ndignore file is empty, mimic the current behavior and ignore everything
 		if len(newPatterns) == 0 {
+			log.Trace(ctx, "Scanner: .ndignore file is empty, ignoring everything", "path", currentFolder)
 			newPatterns = []string{"**/*"}
+		} else {
+			log.Trace(ctx, "Scanner: .ndignore file found ", "path", ignoreFilePath, "patterns", newPatterns)
 		}
 	}
 	// Combine the patterns from the .ndignore file with the ones passed as argument
@@ -179,7 +184,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
 		entryPath := path.Join(dirPath, entry.Name())
-		if len(ignorePatterns) > 0 && isScanIgnored(ignoreMatcher, entryPath) {
+		if len(ignorePatterns) > 0 && isScanIgnored(ctx, ignoreMatcher, entryPath) {
 			log.Trace(ctx, "Scanner: Ignoring entry", "path", entryPath)
 			continue
 		}
@@ -214,9 +219,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, ignorePatterns [
 				folder.numPlaylists++
 			case model.IsImageFile(entry.Name()):
 				folder.imageFiles[entry.Name()] = entry
-				if fileInfo.ModTime().After(folder.imagesUpdatedAt) {
-					folder.imagesUpdatedAt = fileInfo.ModTime()
-				}
+				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)
 			}
 		}
 	}
@@ -310,6 +313,10 @@ func isEntryIgnored(name string) bool {
 	return strings.HasPrefix(name, ".") && !strings.HasPrefix(name, "..")
 }
 
-func isScanIgnored(matcher *ignore.GitIgnore, entryPath string) bool {
-	return matcher.MatchesPath(entryPath)
+func isScanIgnored(ctx context.Context, matcher *ignore.GitIgnore, entryPath string) bool {
+	matches := matcher.MatchesPath(entryPath)
+	if matches {
+		log.Trace(ctx, "Scanner: Ignoring entry matching .ndignore: ", "path", entryPath)
+	}
+	return matches
 }

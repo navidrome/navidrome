@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,9 +97,10 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 	r.tableName = "album"
 	r.registerModel(&model.Album{}, albumFilters())
 	r.setSortMappings(map[string]string{
-		"name":           "order_album_name, order_album_artist_name",
-		"artist":         "compilation, order_album_artist_name, order_album_name",
-		"album_artist":   "compilation, order_album_artist_name, order_album_name",
+		"name":         "order_album_name, order_album_artist_name",
+		"artist":       "compilation, order_album_artist_name, order_album_name",
+		"album_artist": "compilation, order_album_artist_name, order_album_name",
+		// TODO Rename this to just year (or date)
 		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name",
 		"random":         "random",
 		"recently_added": recentlyAddedSort(),
@@ -119,11 +121,17 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"has_rating":      hasRatingFilter,
 		"missing":         booleanFilter,
 		"genre_id":        tagIDFilter,
+		"role_total_id":   allRolesFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
 		filters[string(tag)] = tagIDFilter
 	}
+
+	for role := range model.AllRoles {
+		filters["role_"+role+"_id"] = artistRoleFilter
+	}
+
 	return filters
 })
 
@@ -153,20 +161,30 @@ func yearFilter(_ string, value interface{}) Sqlizer {
 	}
 }
 
-// BFR: Support other roles
 func artistFilter(_ string, value interface{}) Sqlizer {
 	return Or{
-		Exists("json_tree(Participants, '$.albumartist')", Eq{"value": value}),
-		Exists("json_tree(Participants, '$.artist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.albumartist')", Eq{"value": value}),
+		Exists("json_tree(participants, '$.artist')", Eq{"value": value}),
 	}
-	// For any role:
-	//return Like{"Participants": fmt.Sprintf(`%%"%s"%%`, value)}
+}
+
+func artistRoleFilter(name string, value interface{}) Sqlizer {
+	roleName := strings.TrimSuffix(strings.TrimPrefix(name, "role_"), "_id")
+
+	// Check if the role name is valid. If not, return an invalid filter
+	if _, ok := model.AllRoles[roleName]; !ok {
+		return Gt{"": nil}
+	}
+	return Exists(fmt.Sprintf("json_tree(participants, '$.%s')", roleName), Eq{"value": value})
+}
+
+func allRolesFilter(_ string, value interface{}) Sqlizer {
+	return Like{"participants": fmt.Sprintf(`%%"%s"%%`, value)}
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	sql := r.newSelect()
 	sql = r.withAnnotation(sql, "album.id")
-	// BFR WithParticipants (for filtering by name)?
 	return r.count(sql, options...)
 }
 

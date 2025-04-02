@@ -17,7 +17,7 @@ type Album struct {
 	Name          string `structs:"name" json:"name"`
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
-	// BFR Rename to AlbumArtistDisplayName
+	// AlbumArtist is the display name used for the album artist.
 	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
 	MaxYear              int      `structs:"max_year" json:"maxYear"`
 	MinYear              int      `structs:"min_year" json:"minYear"`

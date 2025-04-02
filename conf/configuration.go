@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/go-viper/encoding/ini"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -59,8 +60,6 @@ type configOptions struct {
 	PreferSortTags                  bool
 	IgnoredArticles                 string
 	IndexGroups                     string
-	SubsonicArtistParticipations    bool
-	DefaultReportRealPath           bool
 	FFmpegPath                      string
 	MPVPath                         string
 	MPVCmdTemplate                  string
@@ -94,6 +93,7 @@ type configOptions struct {
 	Backup                          backupOptions
 	PID                             pidOptions
 	Inspect                         inspectOptions
+	Subsonic                        subsonicOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -122,7 +122,6 @@ type configOptions struct {
 	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
-	DevOpenSubsonicDisabledClients   string
 }
 
 type scannerOptions struct {
@@ -131,10 +130,20 @@ type scannerOptions struct {
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
 	Extractor          string
-	GroupAlbumReleases bool // Deprecated: BFR Update docs
+	ArtistJoiner       string
+	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
+	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
+}
+
+type subsonicOptions struct {
+	AppendSubtitle        bool
+	ArtistParticipations  bool
+	DefaultReportRealPath bool
+	LegacyClients         string
 }
 
 type TagConf struct {
+	Ignore    bool     `yaml:"ignore"`
 	Aliases   []string `yaml:"aliases"`
 	Type      string   `yaml:"type"`
 	MaxLength int      `yaml:"maxLength"`
@@ -302,15 +311,28 @@ func Load(noConfigDump bool) {
 		disableExternalServices()
 	}
 
-	// BFR Remove before release
 	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
 		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
 		Server.Scanner.Extractor = consts.DefaultScannerExtractor
 	}
+	logDeprecatedOptions("Scanner.GenreSeparators")
+	logDeprecatedOptions("Scanner.GroupAlbumReleases")
 
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+func logDeprecatedOptions(options ...string) {
+	for _, option := range options {
+		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		if os.Getenv(envVar) != "" {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", envVar))
+		}
+		if viper.InConfig(option) {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", option))
+		}
 	}
 }
 
@@ -436,8 +458,6 @@ func init() {
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
-	viper.SetDefault("subsonicartistparticipations", false)
-	viper.SetDefault("defaultreportrealpath", false)
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
 
@@ -479,9 +499,16 @@ func init() {
 	viper.SetDefault("scanner.enabled", true)
 	viper.SetDefault("scanner.schedule", "0")
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
-	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
+	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
+	viper.SetDefault("scanner.genreseparators", "")
+	viper.SetDefault("scanner.groupalbumreleases", false)
+
+	viper.SetDefault("subsonic.appendsubtitle", true)
+	viper.SetDefault("subsonic.artistparticipations", false)
+	viper.SetDefault("subsonic.defaultreportrealpath", false)
+	viper.SetDefault("subsonic.legacyclients", "DSub")
 
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
@@ -527,10 +554,13 @@ func init() {
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
-	viper.SetDefault("devopensubsonicdisabledclients", "DSub")
 }
 
 func InitConfig(cfgFile string) {
+	codecRegistry := viper.NewCodecRegistry()
+	_ = codecRegistry.RegisterCodec("ini", ini.Codec{})
+	viper.SetOptions(viper.WithCodecRegistry(codecRegistry))
+
 	cfgFile = getConfigFile(cfgFile)
 	if cfgFile != "" {
 		// Use config file from the flag.
@@ -554,9 +584,17 @@ func InitConfig(cfgFile string) {
 	}
 }
 
+// getConfigFile returns the path to the config file, either from the flag or from the environment variable.
+// If it is defined in the environment variable, it will check if the file exists.
 func getConfigFile(cfgFile string) string {
 	if cfgFile != "" {
 		return cfgFile
 	}
-	return os.Getenv("ND_CONFIGFILE")
+	cfgFile = os.Getenv("ND_CONFIGFILE")
+	if cfgFile != "" {
+		if _, err := os.Stat(cfgFile); err == nil {
+			return cfgFile
+		}
+	}
+	return ""
 }

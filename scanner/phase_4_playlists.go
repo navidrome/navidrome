@@ -45,8 +45,12 @@ func (p *phasePlaylists) producer() ppl.Producer[*model.Folder] {
 }
 
 func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
+	if !conf.Server.AutoImportPlaylists {
+		log.Info(p.ctx, "Playlists will not be imported, AutoImportPlaylists is set to false")
+		return nil
+	}
 	u, _ := request.UserFrom(p.ctx)
-	if !conf.Server.AutoImportPlaylists || !u.IsAdmin {
+	if !u.IsAdmin {
 		log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet, "+
 			"Please create an admin user first, and then update the playlists for them to be imported")
 		return nil

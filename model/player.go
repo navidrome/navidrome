@@ -28,5 +28,4 @@ type PlayerRepository interface {
 	Put(p *Player) error
 	CountAll(...QueryOptions) (int64, error)
 	CountByClient(...QueryOptions) (map[string]int64, error)
-	// TODO: Add CountAll method. Useful at least for metrics.
 }

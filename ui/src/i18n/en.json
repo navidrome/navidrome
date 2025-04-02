@@ -18,6 +18,7 @@
         "size": "File size",
         "updatedAt": "Updated at",
         "bitRate": "Bit rate",
+        "bitDepth": "Bit depth",
         "channels": "Channels",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
@@ -57,6 +58,7 @@
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Year",
+        "date": "Recording Date",
         "originalDate": "Original",
         "releaseDate": "Released",
         "releases": "Release |||| Releases",
@@ -231,6 +233,7 @@
     },
     "missing": {
       "name": "Missing File|||| Missing Files",
+      "empty": "No Missing Files",
       "fields": {
         "path": "Path",
         "size": "Size",

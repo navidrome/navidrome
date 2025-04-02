@@ -51,11 +51,16 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	})
 	p.setSortMappings(
 		map[string]string{
-			"id":       "playlist_tracks.id",
-			"artist":   "order_artist_name",
-			"album":    "order_album_name, order_album_artist_name",
-			"title":    "order_title",
-			"duration": "duration", // To make sure the field will be whitelisted
+			"id":           "playlist_tracks.id",
+			"artist":       "order_artist_name",
+			"album_artist": "order_album_artist_name",
+			"album":        "order_album_name, order_album_artist_name",
+			"title":        "order_title",
+			// To make sure these fields will be whitelisted
+			"duration": "duration",
+			"year":     "year",
+			"bpm":      "bpm",
+			"channels": "channels",
 		},
 		"f") // TODO I don't like this solution, but I won't change it now as it's not the focus of BFR.
 

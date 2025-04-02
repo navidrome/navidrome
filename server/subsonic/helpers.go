@@ -77,11 +77,26 @@ func sortName(sortName, orderName string) string {
 	return orderName
 }
 
+func getArtistAlbumCount(a model.Artist) int32 {
+	albumStats := a.Stats[model.RoleAlbumArtist]
+
+	// If ArtistParticipations are set, then `getArtist` will return albums
+	// where the artist is an album artist OR artist. While it may be an underestimate,
+	// guess the count by taking a max of the album artist and artist count. This is
+	// guaranteed to be <= the actual count.
+	// Otherwise, return just the roles as album artist (precise)
+	if conf.Server.Subsonic.ArtistParticipations {
+		artistStats := a.Stats[model.RoleArtist]
+		return int32(max(artistStats.AlbumCount, albumStats.AlbumCount))
+	} else {
+		return int32(albumStats.AlbumCount)
+	}
+}
+
 func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	artist := responses.Artist{
 		Id:             a.ID,
 		Name:           a.Name,
-		AlbumCount:     int32(a.AlbumCount),
 		UserRating:     int32(a.Rating),
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
@@ -96,7 +111,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	artist := responses.ArtistID3{
 		Id:             a.ID,
 		Name:           a.Name,
-		AlbumCount:     int32(a.AlbumCount),
+		AlbumCount:     getArtistAlbumCount(a),
 		CoverArt:       a.CoverArtID().String(),
 		ArtistImageUrl: public.ImageURL(r, a.CoverArtID(), 600),
 		UserRating:     int32(a.Rating),
@@ -110,7 +125,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 
 func toOSArtistID3(ctx context.Context, a model.Artist) *responses.OpenSubsonicArtistID3 {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	artist := responses.OpenSubsonicArtistID3{
@@ -197,7 +212,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -220,13 +235,12 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	child.BitDepth = int32(mf.BitDepth)
 	child.Genres = toItemGenres(mf.Genres)
 	child.Moods = mf.Tags.Values(model.TagMood)
-	// BFR What if Child is an Album and not a Song?
 	child.DisplayArtist = mf.Artist
 	child.Artists = artistRefs(mf.Participants[model.RoleArtist])
 	child.DisplayAlbumArtist = mf.AlbumArtist
 	child.AlbumArtists = artistRefs(mf.Participants[model.RoleAlbumArtist])
 	var contributors []responses.Contributor
-	child.DisplayComposer = mf.Participants[model.RoleComposer].Join(" • ")
+	child.DisplayComposer = mf.Participants[model.RoleComposer].Join(consts.ArtistJoiner)
 	for role, participants := range mf.Participants {
 		if role == model.RoleArtist || role == model.RoleAlbumArtist {
 			continue
@@ -282,7 +296,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	child.Name = al.Name
 	child.Album = al.Name
 	child.Artist = al.AlbumArtist
-	child.Year = int32(al.MaxYear)
+	child.Year = int32(cmp.Or(al.MaxOriginalYear, al.MaxYear))
 	child.Genre = al.Genre
 	child.CoverArt = al.CoverArtID().String()
 	child.Created = &al.CreatedAt
@@ -301,7 +315,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 
 func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubsonicChild {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -317,6 +331,7 @@ func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubson
 	child.DisplayAlbumArtist = al.AlbumArtist
 	child.AlbumArtists = artistRefs(al.Participants[model.RoleAlbumArtist])
 	child.ExplicitStatus = mapExplicitStatus(al.ExplicitStatus)
+	child.SortName = sortName(al.SortAlbumName, al.OrderAlbumName)
 	return &child
 }
 
@@ -346,6 +361,9 @@ func buildDiscSubtitles(a model.Album) []responses.DiscTitle {
 	for num, title := range a.Discs {
 		discTitles = append(discTitles, responses.DiscTitle{Disc: int32(num), Title: title})
 	}
+	if len(discTitles) == 1 && discTitles[0].Title == "" {
+		return nil
+	}
 	sort.Slice(discTitles, func(i, j int) bool {
 		return discTitles[i].Disc < discTitles[j].Disc
 	})
@@ -362,7 +380,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 	dir.SongCount = int32(album.SongCount)
 	dir.Duration = int32(album.Duration)
 	dir.PlayCount = album.PlayCount
-	dir.Year = int32(album.MaxYear)
+	dir.Year = int32(cmp.Or(album.MaxOriginalYear, album.MaxYear))
 	dir.Genre = album.Genre
 	if !album.CreatedAt.IsZero() {
 		dir.Created = &album.CreatedAt
@@ -376,7 +394,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 
 func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubsonicAlbumID3 {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.DevOpenSubsonicDisabledClients, player.Client) {
+	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	dir := responses.OpenSubsonicAlbumID3{}

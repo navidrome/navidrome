@@ -90,13 +90,14 @@ var _ = Describe("Metadata", func() {
 				md = metadata.New(filePath, props)
 
 				Expect(md.All()).To(SatisfyAll(
-					HaveLen(5),
 					Not(HaveKey(unknownTag)),
 					HaveKeyWithValue(model.TagTrackArtist, []string{"Artist Name", "Second Artist"}),
 					HaveKeyWithValue(model.TagAlbum, []string{"Album Name"}),
-					HaveKeyWithValue(model.TagRecordingDate, []string{"2022-10-02", "2022"}),
+					HaveKeyWithValue(model.TagRecordingDate, []string{"2022-10-02"}),
+					HaveKeyWithValue(model.TagReleaseDate, []string{"2022"}),
 					HaveKeyWithValue(model.TagGenre, []string{"Pop", "Rock"}),
 					HaveKeyWithValue(model.TagTrackNumber, []string{"1/10"}),
+					HaveLen(6),
 				))
 			})
 
@@ -264,6 +265,7 @@ var _ = Describe("Metadata", func() {
 				Entry("1.2dB", "1.2dB", 1.2),
 				Entry("Infinity", "Infinity", 0.0),
 				Entry("Invalid value", "INVALID VALUE", 0.0),
+				Entry("NaN", "NaN", 0.0),
 			)
 			DescribeTable("Peak",
 				func(tagValue string, expected float64) {
@@ -275,6 +277,7 @@ var _ = Describe("Metadata", func() {
 				Entry("Invalid dB suffix", "0.7dB", 1.0),
 				Entry("Infinity", "Infinity", 1.0),
 				Entry("Invalid value", "INVALID VALUE", 1.0),
+				Entry("NaN", "NaN", 1.0),
 			)
 			DescribeTable("getR128GainValue",
 				func(tagValue string, expected float64) {

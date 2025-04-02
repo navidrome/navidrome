@@ -13,7 +13,7 @@ import {
   useTranslate,
   useRecordContext,
 } from 'react-admin'
-import inflection from 'inflection'
+import { humanize, underscore } from 'inflection'
 import {
   ArtistLinkField,
   BitrateField,
@@ -74,6 +74,7 @@ export const SongInfo = (props) => {
     ),
     compilation: <BooleanField source="compilation" />,
     bitRate: <BitrateField source="bitRate" />,
+    bitDepth: <NumberField source="bitDepth" />,
     channels: <NumberField source="channels" />,
     size: <SizeField source="size" />,
     updatedAt: <DateField source="updatedAt" showTime />,
@@ -91,7 +92,7 @@ export const SongInfo = (props) => {
     roles.push([name, record.participants[name].length])
   }
 
-  const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre']
+  const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre', 'bitDepth']
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
   })
@@ -140,7 +141,7 @@ export const SongInfo = (props) => {
                 <TableRow key={`${record.id}-${key}`}>
                   <TableCell scope="row" className={classes.tableCell}>
                     {translate(`resources.song.fields.${key}`, {
-                      _: inflection.humanize(inflection.underscore(key)),
+                      _: humanize(underscore(key)),
                     })}
                     :
                   </TableCell>

@@ -53,7 +53,7 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 				UserId:          user.ID,
 				Client:          client,
 				ScrobbleEnabled: true,
-				ReportRealPath:  conf.Server.DefaultReportRealPath,
+				ReportRealPath:  conf.Server.Subsonic.DefaultReportRealPath,
 			}
 			log.Info(ctx, "Registering new player", "id", plr.ID, "client", client, "username", username, "type", userAgent)
 		}
