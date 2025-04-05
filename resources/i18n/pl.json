@@ -27,13 +27,13 @@
         "playDate": "Ostatnio Odtwarzane",
         "channels": "Kanały",
         "createdAt": "Data dodania",
-        "grouping": "",
-        "mood": "",
-        "participants": "",
-        "tags": "",
-        "mappedTags": "",
-        "rawTags": "",
-        "bitDepth": ""
+        "grouping": "Grupowanie",
+        "mood": "Nastrój",
+        "participants": "Dodatkowi uczestnicy",
+        "tags": "Dodatkowe Tagi",
+        "mappedTags": "Zmapowane tagi",
+        "rawTags": "Surowe tagi",
+        "bitDepth": "Głębokość próbkowania"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -66,12 +66,13 @@
         "releaseDate": "Data Wydania",
         "releases": "Wydanie |||| Wydania",
         "released": "Wydany",
-        "recordLabel": "",
-        "catalogNum": "",
-        "releaseType": "",
-        "grouping": "",
-        "media": "",
-        "mood": ""
+        "recordLabel": "Wytwórnia",
+        "catalogNum": "Numer Katalogowy",
+        "releaseType": "Typ",
+        "grouping": "Grupowanie",
+        "media": "Media",
+        "mood": "Nastrój",
+        "date": ""
       },
       "actions": {
         "playAll": "Odtwarzaj",
@@ -103,15 +104,15 @@
         "rating": "Ocena",
         "genre": "Gatunek",
         "size": "Rozmiar",
-        "role": ""
+        "role": "Rola"
       },
       "roles": {
-        "albumartist": "",
-        "artist": "",
-        "composer": "",
-        "conductor": "",
-        "lyricist": "",
-        "arranger": "",
+        "albumartist": "Wykonawca Albumu |||| Wykonawcy Albumu",
+        "artist": "Wykonawca |||| Wykonawcy",
+        "composer": "Kompozytor |||| Kompozytorzy",
+        "conductor": "Dyrygent |||| Dyrygenci",
+        "lyricist": "Autor tekstów |||| Autorzy tekstów",
+        "arranger": "Aranżer |||| Aranżerzy",
         "producer": "Producent |||| Producenci",
         "director": "Reżyser |||| Reżyserzy",
         "engineer": "Inżynier |||| Inżynierowie",
@@ -241,7 +242,7 @@
       "notifications": {
         "removed": "Usunięto brakujące pliki"
       },
-      "empty": ""
+      "empty": "Bez Brakujących Plików"
     }
   },
   "ra": {
