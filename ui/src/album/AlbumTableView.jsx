@@ -6,6 +6,7 @@ import {
   DateField,
   NumberField,
   TextField,
+  FunctionField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
@@ -107,6 +108,13 @@ const AlbumTableView = ({
       year: (
         <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] || ''}
+          sortable={false}
+        />
+      ),
       duration: isDesktop && <DurationField source="duration" />,
       size: isDesktop && <SizeField source="size" />,
       rating: config.enableStarRating && (
@@ -124,7 +132,7 @@ const AlbumTableView = ({
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
-    defaultOff: ['createdAt'],
+    defaultOff: ['createdAt', 'size', 'mood'],
   })
 
   return isXsmall ? (

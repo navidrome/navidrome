@@ -196,6 +196,7 @@ const AlbumList = (props) => {
       'songCount',
       'playCount',
       'year',
+      'mood',
       'duration',
       'rating',
       'size',
