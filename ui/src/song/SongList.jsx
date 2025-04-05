@@ -168,6 +168,13 @@ const SongList = (props) => {
       ),
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] || ''}
+          sortable={false}
+        />
+      ),
       comment: <TextField source="comment" />,
       path: <PathField source="path" />,
       createdAt: <DateField source="createdAt" showTime />,
@@ -183,6 +190,7 @@ const SongList = (props) => {
       'playDate',
       'albumArtist',
       'genre',
+      'mood',
       'comment',
       'path',
       'createdAt',
