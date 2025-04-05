@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/extdata"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
@@ -13,11 +14,12 @@ var Set = wire.NewSet(
 	NewMediaStreamer,
 	GetTranscodingCache,
 	NewArchiver,
-	NewExternalMetadata,
 	NewPlayers,
 	NewShare,
 	NewPlaylists,
 	agents.GetAgents,
+	extdata.NewProvider,
+	wire.Bind(new(extdata.Agents), new(*agents.Agents)),
 	ffmpeg.New,
 	scrobbler.GetPlayTracker,
 	playback.GetInstance,

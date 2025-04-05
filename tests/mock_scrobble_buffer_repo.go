@@ -8,7 +8,7 @@ import (
 
 type MockedScrobbleBufferRepo struct {
 	Error error
-	data  model.ScrobbleEntries
+	Data  model.ScrobbleEntries
 }
 
 func CreateMockedScrobbleBufferRepo() *MockedScrobbleBufferRepo {
@@ -20,7 +20,7 @@ func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
 		return nil, m.Error
 	}
 	userIds := make(map[string]struct{})
-	for _, e := range m.data {
+	for _, e := range m.Data {
 		if e.Service == service {
 			userIds[e.UserID] = struct{}{}
 		}
@@ -36,7 +36,7 @@ func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, 
 	if m.Error != nil {
 		return m.Error
 	}
-	m.data = append(m.data, model.ScrobbleEntry{
+	m.Data = append(m.Data, model.ScrobbleEntry{
 		MediaFile:   model.MediaFile{ID: mediaFileId},
 		Service:     service,
 		UserID:      userId,
@@ -50,7 +50,7 @@ func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.Scrobble
 	if m.Error != nil {
 		return nil, m.Error
 	}
-	for _, e := range m.data {
+	for _, e := range m.Data {
 		if e.Service == service && e.UserID == userId {
 			return &e, nil
 		}
@@ -63,13 +63,13 @@ func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
 		return m.Error
 	}
 	newData := model.ScrobbleEntries{}
-	for _, e := range m.data {
+	for _, e := range m.Data {
 		if e.Service == entry.Service && e.UserID == entry.UserID && e.PlayTime == entry.PlayTime && e.MediaFile.ID == entry.MediaFile.ID {
 			continue
 		}
 		newData = append(newData, e)
 	}
-	m.data = newData
+	m.Data = newData
 	return nil
 }
 
@@ -77,5 +77,5 @@ func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
 	if m.Error != nil {
 		return 0, m.Error
 	}
-	return int64(len(m.data)), nil
+	return int64(len(m.Data)), nil
 }

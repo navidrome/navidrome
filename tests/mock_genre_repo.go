@@ -6,12 +6,12 @@ import (
 
 type MockedGenreRepo struct {
 	Error error
-	data  map[string]model.Genre
+	Data  map[string]model.Genre
 }
 
 func (r *MockedGenreRepo) init() {
-	if r.data == nil {
-		r.data = make(map[string]model.Genre)
+	if r.Data == nil {
+		r.Data = make(map[string]model.Genre)
 	}
 }
 
@@ -22,7 +22,7 @@ func (r *MockedGenreRepo) GetAll(...model.QueryOptions) (model.Genres, error) {
 	r.init()
 
 	var all model.Genres
-	for _, g := range r.data {
+	for _, g := range r.Data {
 		all = append(all, g)
 	}
 	return all, nil
@@ -33,6 +33,6 @@ func (r *MockedGenreRepo) Put(g *model.Genre) error {
 		return r.Error
 	}
 	r.init()
-	r.data[g.ID] = *g
+	r.Data[g.ID] = *g
 	return nil
 }
