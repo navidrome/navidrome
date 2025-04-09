@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/extdata"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
@@ -67,7 +67,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	provider := extdata.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
@@ -91,7 +91,7 @@ func CreatePublicRouter() *public.Router {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	provider := extdata.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
@@ -135,7 +135,7 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	provider := extdata.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
@@ -151,7 +151,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	provider := extdata.NewProvider(dataStore, agentsAgents)
+	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()

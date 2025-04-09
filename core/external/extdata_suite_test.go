@@ -1,4 +1,4 @@
-package extdata
+package external
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestExternalData(t *testing.T) {
+func TestExternal(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "ExternalData Suite")
+	RunSpecs(t, "External Suite")
 }

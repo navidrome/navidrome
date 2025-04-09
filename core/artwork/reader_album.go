@@ -12,7 +12,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/core/extdata"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
 )
@@ -20,14 +20,14 @@ import (
 type albumArtworkReader struct {
 	cacheKey
 	a          *artwork
-	provider   extdata.Provider
+	provider   external.Provider
 	album      model.Album
 	updatedAt  *time.Time
 	imgFiles   []string
 	rootFolder string
 }
 
-func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider extdata.Provider) (*albumArtworkReader, error) {
+func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*albumArtworkReader, error) {
 	al, err := artwork.ds.Album(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err

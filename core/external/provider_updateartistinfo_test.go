@@ -1,4 +1,4 @@
-package extdata_test
+package external_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/extdata"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -25,7 +25,7 @@ func init() {
 var _ = Describe("Provider - UpdateArtistInfo", func() {
 	var (
 		ctx            context.Context
-		p              extdata.Provider
+		p              external.Provider
 		ds             *tests.MockDataStore
 		ag             *mockAgents
 		mockArtistRepo *tests.MockArtistRepo
@@ -37,7 +37,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
-		p = extdata.NewProvider(ds, ag)
+		p = external.NewProvider(ds, ag)
 		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
 	})
 

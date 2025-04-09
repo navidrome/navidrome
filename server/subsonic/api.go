@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/extdata"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
@@ -36,7 +36,7 @@ type Router struct {
 	streamer  core.MediaStreamer
 	archiver  core.Archiver
 	players   core.Players
-	provider  extdata.Provider
+	provider  external.Provider
 	playlists core.Playlists
 	scanner   scanner.Scanner
 	broker    events.Broker
@@ -46,7 +46,7 @@ type Router struct {
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer core.MediaStreamer, archiver core.Archiver,
-	players core.Players, provider extdata.Provider, scanner scanner.Scanner, broker events.Broker,
+	players core.Players, provider external.Provider, scanner scanner.Scanner, broker events.Broker,
 	playlists core.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 ) *Router {
 	r := &Router{

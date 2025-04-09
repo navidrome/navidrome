@@ -1,4 +1,4 @@
-package extdata_test
+package external_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	_ "github.com/navidrome/navidrome/core/agents/lastfm"
 	_ "github.com/navidrome/navidrome/core/agents/listenbrainz"
 	_ "github.com/navidrome/navidrome/core/agents/spotify"
-	. "github.com/navidrome/navidrome/core/extdata"
+	. "github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"

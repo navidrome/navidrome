@@ -1,4 +1,4 @@
-package extdata
+package external
 
 import (
 	"context"

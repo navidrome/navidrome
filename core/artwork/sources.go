@@ -17,7 +17,7 @@ import (
 
 	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/extdata"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -157,7 +157,7 @@ func fromAlbumPlaceholder() sourceFunc {
 		return r, consts.PlaceholderAlbumArt, nil
 	}
 }
-func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider extdata.Provider) sourceFunc {
+func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		imageUrl, err := provider.ArtistImage(ctx, ar.ID)
 		if err != nil {
@@ -168,7 +168,7 @@ func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider ext
 	}
 }
 
-func fromAlbumExternalSource(ctx context.Context, al model.Album, provider extdata.Provider) sourceFunc {
+func fromAlbumExternalSource(ctx context.Context, al model.Album, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		imageUrl, err := provider.AlbumImage(ctx, al.ID)
 		if err != nil {
