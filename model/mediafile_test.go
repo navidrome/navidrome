@@ -373,6 +373,32 @@ var _ = Describe("MediaFiles", func() {
 						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc2/01.mp3"))
 					})
 				})
+
+				When("we have media files with path names that don't correlate with disc numbers", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/file-z.mp3", // Path would be sorted last alphabetically
+								HasCoverArt: true,
+								DiscNumber:  1, // But it has lowest disc number
+							},
+							{
+								Path:        "Artist/Album/file-a.mp3", // Path would be sorted first alphabetically
+								HasCoverArt: true,
+								DiscNumber:  2, // But it has higher disc number
+							},
+							{
+								Path:        "Artist/Album/file-m.mp3",
+								HasCoverArt: true,
+								DiscNumber:  3,
+							},
+						}
+					})
+					It("selects the cover art from the lowest disc number regardless of path", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/file-z.mp3"))
+					})
+				})
 			})
 		})
 	})
