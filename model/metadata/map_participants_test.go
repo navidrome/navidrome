@@ -370,49 +370,6 @@ var _ = Describe("Participants", func() {
 				Expect(artist1.MbzArtistID).To(Equal(mbid2))
 			})
 		})
-
-		Context("Single-valued ARTIST tag with semicolon, no ARTISTS tags", func() {
-			BeforeEach(func() {
-				mf = toMediaFile(model.RawTags{
-					"ARTIST": {"hey; ho"},
-				})
-			})
-
-			It("should use the full string as display name", func() {
-				Expect(mf.Artist).To(Equal("hey; ho"))
-			})
-
-			It("should split the artist by semicolon", func() {
-				participants := mf.Participants
-				Expect(participants).To(SatisfyAll(
-					HaveKeyWithValue(model.RoleArtist, HaveLen(2)),
-				))
-
-				By("adding the first artist to the participants")
-				artist0 := participants[model.RoleArtist][0]
-				Expect(artist0.ID).ToNot(BeEmpty())
-				Expect(artist0.Name).To(Equal("hey"))
-				Expect(artist0.OrderArtistName).To(Equal("hey"))
-
-				By("adding the second artist to the participants")
-				artist1 := participants[model.RoleArtist][1]
-				Expect(artist1.ID).ToNot(BeEmpty())
-				Expect(artist1.Name).To(Equal("ho"))
-				Expect(artist1.OrderArtistName).To(Equal("ho"))
-			})
-
-			It("should use the full artist name as albumArtist when no ALBUMARTIST is provided", func() {
-				Expect(mf.AlbumArtist).To(Equal("hey; ho"))
-
-				participants := mf.Participants
-				Expect(participants).To(SatisfyAll(
-					HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(2)),
-				))
-
-				albumArtist := participants[model.RoleAlbumArtist][0]
-				Expect(albumArtist.Name).To(Equal("hey"))
-			})
-		})
 	})
 
 	Describe("ALBUMARTIST(S) tags", func() {
@@ -546,6 +503,25 @@ var _ = Describe("Participants", func() {
 				Expect(albumArtist.OrderArtistName).To(Equal("album artist name"))
 				Expect(albumArtist.SortArtistName).To(Equal("Album Artist Sort Name"))
 				Expect(albumArtist.MbzArtistID).To(Equal(mbid2))
+			})
+		})
+		Context("Multiple values in a single-valued ARTIST tag, no ALBUMARTIST tag", func() {
+			BeforeEach(func() {
+				mf = toMediaFile(model.RawTags{
+					"ARTIST": {"hey; ho"},
+				})
+			})
+
+			It("should use the full artist name as displayAlbumArtist when no ALBUMARTIST is provided", func() {
+				Expect(mf.AlbumArtist).To(Equal("hey; ho"))
+
+				participants := mf.Participants
+				Expect(participants).To(SatisfyAll(
+					HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(2)),
+				))
+
+				albumArtist := participants[model.RoleAlbumArtist][0]
+				Expect(albumArtist.Name).To(Equal("hey"))
 			})
 		})
 	})
