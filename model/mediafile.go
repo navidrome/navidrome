@@ -211,14 +211,14 @@ func (mfs MediaFiles) ToAlbum() Album {
 		comments = append(comments, m.Comment)
 		mbzAlbumIds = append(mbzAlbumIds, m.MbzAlbumID)
 		mbzReleaseGroupIds = append(mbzReleaseGroupIds, m.MbzReleaseGroupID)
-		if m.HasCoverArt && a.EmbedArtPath == "" {
-			a.EmbedArtPath = m.Path
-		}
 		if m.DiscNumber > 0 {
 			a.Discs.Add(m.DiscNumber, m.DiscSubtitle)
 		}
 		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participants.Merge(m.Participants)
+
+		// Find the MediaFile with cover art and the lowest disc number to use for album cover
+		a.EmbedArtPath = firstArtPath(a.EmbedArtPath, m)
 
 		if m.ExplicitStatus == "c" && a.ExplicitStatus != "e" {
 			a.ExplicitStatus = "c"
@@ -303,6 +303,19 @@ func fixAlbumArtist(a *Album) {
 		a.AlbumArtist = consts.VariousArtists
 		a.AlbumArtistID = consts.VariousArtistsID
 	}
+}
+
+// firstArtPath determines which media file path should be used for album artwork
+// based on disc number (preferring lower disc numbers) and path (for consistency)
+func firstArtPath(currentPath string, m MediaFile) string {
+	if !m.HasCoverArt {
+		return currentPath
+	}
+
+	if m.Path < currentPath || currentPath == "" {
+		return m.Path
+	}
+	return currentPath
 }
 
 type MediaFileCursor iter.Seq2[MediaFile, error]
