@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -113,5 +114,10 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, albums ...mo
 			imgFiles = append(imgFiles, filepath.Join(path, img))
 		}
 	}
+
+	// Sort image files to ensure consistent selection of cover art
+	// This prioritizes files from lower-numbered disc folders by sorting the paths
+	slices.Sort(imgFiles)
+
 	return paths, imgFiles, &updatedAt, nil
 }
