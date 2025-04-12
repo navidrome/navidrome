@@ -236,7 +236,13 @@ Each plugin must include a manifest file (`manifest.json`) that declares its cap
   "pluginType": "agent",
   "requiredPermissions": {
     "hostFunctions": ["HttpDo", "GetConfig", "Log", "GetUserPreference"],
-    "httpMethods": ["GET", "POST"]
+    "allowedUrls": {
+      "https://api.last.fm": ["GET", "POST"], // Specific URL with specific methods
+      "https://ws.audioscrobbler.com": ["*"], // Any method on specific domain
+      "https://*.last.fm": ["GET"], // GET requests to any last.fm subdomain
+      "*": ["GET"] // GET requests to any URL (use with caution)
+    },
+    "allowRedirects": true
   },
   "configurationOptions": [
     { "name": "ApiKey", "required": true, "description": "Last.fm API key" },
@@ -254,6 +260,12 @@ The manifest structure includes:
 
 - Basic plugin metadata (name, version, description)
 - Required permissions for host functions and HTTP methods
+- Specific allowed URLs with permitted HTTP methods for each, supporting wildcards:
+  - Exact URLs with specific methods
+  - Domain-specific wildcards with `"*"` for any method
+  - Domain pattern wildcards (e.g., `"https://*.domain.com"`)
+  - Full wildcard `"*": ["*"]` for unrestricted access (should be used with caution)
+- Whether redirects are allowed to be followed
 - Configuration options the plugin needs to function
 
 ### 3.3 Plugin Manager Implementation
@@ -349,13 +361,114 @@ func (h *HostFunctions) HttpDo(ctx context.Context, req proto.HttpDoRequest) (pr
         return proto.HttpDoResponse{}, errors.New("permission denied")
     }
 
-    // Check permission for specific HTTP method
-    if !h.permManager.IsHttpMethodAllowed(h.pluginContext.Name, req.Method) {
-        return proto.HttpDoResponse{}, errors.New("HTTP method not allowed")
+    // Extract the base URL for permission checking
+    parsedURL, err := url.Parse(req.Url)
+    if err != nil {
+        return proto.HttpDoResponse{}, fmt.Errorf("invalid URL: %v", err)
+    }
+
+    // Block internal network addresses by default
+    if isInternalAddress(parsedURL.Host) {
+        return proto.HttpDoResponse{}, errors.New("access to internal network addresses is forbidden")
+    }
+
+    // Check if the URL is allowed for this plugin with the specific method
+    baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+    if !h.permManager.IsUrlAllowed(h.pluginContext.Name, baseURL, req.Method) {
+        return proto.HttpDoResponse{}, fmt.Errorf("URL not allowed with method %s: %s", req.Method, baseURL)
+    }
+
+    // Configure redirect policy based on permissions
+    client := *h.httpClient // Create a copy of the client to modify
+    if !h.permManager.AreRedirectsAllowed(h.pluginContext.Name) {
+        client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+            return http.ErrUseLastResponse // Prevent following redirects
+        }
     }
 
     // Create and send HTTP request based on the method and parameters provided
     // Return the response or error
+}
+
+// Helper function to detect internal network addresses
+func isInternalAddress(host string) bool {
+    // Remove port from host if present
+    if idx := strings.LastIndex(host, ":"); idx != -1 {
+        host = host[:idx]
+    }
+
+    // Check if IP address
+    ip := net.ParseIP(host)
+    if ip != nil {
+        // Block private, loopback, and link-local addresses
+        return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
+    }
+
+    // For hostnames, try to resolve and check IPs
+    ips, err := net.LookupIP(host)
+    if err != nil {
+        // If we can't resolve, default to allowing it
+        return false
+    }
+
+    for _, ip := range ips {
+        if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+            return true
+        }
+    }
+
+    return false
+}
+
+// IsUrlAllowed checks if a URL and method are allowed for a plugin
+func (p *PermissionManager) IsUrlAllowed(pluginName, requestURL, method string) bool {
+    pluginSettings, ok := p.pluginSettings[pluginName]
+    if !ok {
+        return false
+    }
+
+    // Check for exact URL match first
+    if methods, ok := pluginSettings.Limits.AllowedUrls[requestURL]; ok {
+        return isMethodAllowed(methods, method)
+    }
+
+    // Check for wildcard domain matches
+    for pattern, methods := range pluginSettings.Limits.AllowedUrls {
+        if patternMatchesURL(pattern, requestURL) && isMethodAllowed(methods, method) {
+            return true
+        }
+    }
+
+    return false
+}
+
+// patternMatchesURL checks if a URL pattern matches a given URL
+func patternMatchesURL(pattern, url string) bool {
+    // Handle global wildcard
+    if pattern == "*" {
+        return true
+    }
+
+    // Handle domain wildcards like "https://*.example.com"
+    if strings.Contains(pattern, "*") {
+        regexp := strings.Replace(pattern, ".", "\\.", -1)
+        regexp = strings.Replace(regexp, "*", ".*", -1)
+        regexp = "^" + regexp + "$"
+        match, err := regexp.MatchString(regexp, url)
+        return err == nil && match
+    }
+
+    return false
+}
+
+// isMethodAllowed checks if a method is allowed in a list of methods
+func isMethodAllowed(allowedMethods []string, method string) bool {
+    for _, m := range allowedMethods {
+        if m == method || m == "*" {
+            return true
+        }
+    }
+    return false
 }
 ```
 
@@ -376,8 +489,9 @@ type PluginLimits struct {
     AllowedHostFuncs    []string
     HttpTimeoutSeconds  int
     MaxHttpBodySizeMB   int
-    AllowedHttpMethods  []string
-    RateLimits          map[string]int // e.g., "requests_per_minute": 60
+    AllowedUrls         map[string][]string  // Map of URLs to allowed methods
+    AllowRedirects      bool
+    RateLimits          map[string]int       // e.g., "requests_per_minute": 60
 }
 
 // Plugin-specific options
@@ -409,13 +523,17 @@ Directory = "${DataFolder}/plugins"
 [Plugins.DefaultLimits]
 HttpTimeoutSeconds = 30
 MaxHttpBodySizeMB = 10
-AllowedHttpMethods = ["GET"]
+AllowRedirects = false
 
 [PluginSettings.lastfm]
 Enabled = true
 [PluginSettings.lastfm.Limits]
 AllowedHostFuncs = ["HttpDo", "GetConfig", "Log", "GetUserPreference"]
-AllowedHttpMethods = ["GET", "POST"]
+AllowRedirects = true
+[PluginSettings.lastfm.Limits.AllowedUrls]
+"https://api.last.fm" = ["GET", "POST"]      # Specific URL with specific methods
+"https://ws.audioscrobbler.com" = ["*"]      # Any method on specific domain
+"https://*.last.fm" = ["GET"]                # GET requests to any last.fm subdomain
 [PluginSettings.lastfm.Config]
 ApiKey = "your_api_key_here"
 Secret = "your_secret_here"
@@ -424,10 +542,21 @@ Secret = "your_secret_here"
 Enabled = true
 [PluginSettings.spotify.Limits]
 AllowedHostFuncs = ["HttpDo", "Log"]
-AllowedHttpMethods = ["GET"]
+AllowRedirects = true
+[PluginSettings.spotify.Limits.AllowedUrls]
+"https://api.spotify.com" = ["GET"]          # Specific URL with specific method
 [PluginSettings.spotify.Config]
 ClientId = "your_client_id"
 ClientSecret = "your_client_secret"
+
+# Development plugin with unrestricted access - USE WITH CAUTION
+[PluginSettings.devplugin]
+Enabled = true
+[PluginSettings.devplugin.Limits]
+AllowedHostFuncs = ["HttpDo", "GetConfig", "Log", "GetUserPreference"]
+AllowRedirects = true
+[PluginSettings.devplugin.Limits.AllowedUrls]
+"*" = ["*"]                                  # Unrestricted access to any URL with any method
 ```
 
 ## 4. Security Considerations
@@ -462,7 +591,9 @@ Plugins will run in a WebAssembly sandbox with limited capabilities:
 ### 4.5 HTTP Security
 
 - All HTTP requests from plugins are mediated through the unified HttpDo interface
-- HTTP methods can be restricted per plugin via the AllowedHttpMethods configuration
+- URLs are restricted to an explicit allowlist with specific HTTP methods allowed per URL
+- Internal network addresses (private IP ranges, localhost) are explicitly blocked
+- Redirects require explicit permission to prevent URL allowlist bypass
 - URL validation prevents access to internal/restricted networks
 - Rate limiting prevents abuse of external services
 - Response size limits prevent memory exhaustion
