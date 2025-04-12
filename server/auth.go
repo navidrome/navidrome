@@ -292,13 +292,17 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	user, err := userRepo.FindByUsernameWithPassword(username)
 	if user == nil || err != nil {
 		log.Info(r, "User passed in header not found", "user", username)
+		// Check if this is the first user being created
+		count, _ := userRepo.CountAll()
+		isFirstUser := count == 0
+
 		newUser := model.User{
 			ID:          id.NewRandom(),
 			UserName:    username,
 			Name:        username,
 			Email:       "",
 			NewPassword: consts.PasswordAutogenPrefix + id.NewRandom(),
-			IsAdmin:     false,
+			IsAdmin:     isFirstUser, // Make the first user an admin
 		}
 		err := userRepo.Put(&newUser)
 		if err != nil {

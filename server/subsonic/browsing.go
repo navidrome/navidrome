@@ -210,7 +210,7 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	album, err := api.externalMetadata.UpdateAlbumInfo(ctx, id)
+	album, err := api.provider.UpdateAlbumInfo(ctx, id)
 
 	if err != nil {
 		return nil, err
@@ -278,7 +278,7 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 	count := p.IntOr("count", 20)
 	includeNotPresent := p.BoolOr("includeNotPresent", false)
 
-	artist, err := api.externalMetadata.UpdateArtistInfo(ctx, id, count, includeNotPresent)
+	artist, err := api.provider.UpdateArtistInfo(ctx, id, count, includeNotPresent)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -343,7 +343,7 @@ func (api *Router) GetSimilarSongs(r *http.Request) (*responses.Subsonic, error)
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.externalMetadata.SimilarSongs(ctx, id, count)
+	songs, err := api.provider.SimilarSongs(ctx, id, count)
 	if err != nil {
 		return nil, err
 	}
@@ -377,8 +377,8 @@ func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.externalMetadata.TopSongs(ctx, artist, count)
-	if err != nil {
+	songs, err := api.provider.TopSongs(ctx, artist, count)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
 

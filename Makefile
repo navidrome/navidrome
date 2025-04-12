@@ -49,7 +49,7 @@ testall: testrace ##@Development Run Go and JS tests
 .PHONY: testall
 
 lint: ##@Development Lint Go code
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v --timeout 5m
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run -v --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
