@@ -61,8 +61,8 @@ func CreateDLNAServer() *dlna.DLNAServer {
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	fileCache := artwork.GetImageCache()
 	agentsAgents := agents.GetAgents(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	dlnaServer := dlna.New(dataStore, broker, mediaStreamer, artworkArtwork)
 	return dlnaServer
 }
