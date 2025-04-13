@@ -1,4 +1,4 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
   <playlists>
     <playlist id="111" name="aaa" comment="comment" songCount="2" duration="120" public="true" owner="admin" created="0001-01-01T00:00:00Z" changed="0001-01-01T00:00:00Z" coverArt="pl-123123123123"></playlist>
     <playlist id="222" name="bbb" songCount="0" duration="0" public="false" created="0001-01-01T00:00:00Z" changed="0001-01-01T00:00:00Z"></playlist>

@@ -216,6 +216,7 @@
         "username": "Partekatzailea:",
         "url": "URLa",
         "description": "Deskribapena",
+        "downloadable": "Deskargatzea ahalbidetu?",
         "contents": "Edukia",
         "expiresAt": "Iraungitze-data:",
         "lastVisitedAt": "Azkenekoz bisitatu zen:",
@@ -223,22 +224,24 @@
         "format": "Formatua",
         "maxBitRate": "Gehienezko bit tasa",
         "updatedAt": "Eguneratze-data:",
-        "createdAt": "Sortze-data:",
-        "downloadable": "Deskargatzea ahalbidetu?"
-      }
+        "createdAt": "Sortze-data:"
+      },
+      "notifications": {},
+      "actions": {}
     },
     "missing": {
-      "name": "",
+      "name": "Fitxategia falta da|||| Fitxategiak falta dira",
+      "empty": "Ez da fitxategirik falta",
       "fields": {
-        "path": "",
-        "size": "",
-        "updatedAt": ""
+        "path": "Bidea",
+        "size": "Tamaina",
+        "updatedAt": "Desagertze-data:"
       },
       "actions": {
-        "remove": ""
+        "remove": "Kendu"
       },
       "notifications": {
-        "removed": ""
+        "removed": "Faltan zeuden fitxategiak kendu dira"
       }
     }
   },

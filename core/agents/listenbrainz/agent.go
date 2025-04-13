@@ -76,14 +76,14 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
-		return scrobbler.ErrNotAuthorized
+		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
 	li := l.formatListen(track)
 	err = l.client.updateNowPlaying(ctx, sk, li)
 	if err != nil {
 		log.Warn(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
-		return scrobbler.ErrUnrecoverable
+		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
 }
@@ -91,7 +91,7 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
-		return scrobbler.ErrNotAuthorized
+		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
 	li := l.formatListen(&s.MediaFile)
@@ -105,12 +105,12 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 	isListenBrainzError := errors.As(err, &lbErr)
 	if !isListenBrainzError {
 		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", s.Title, err)
-		return scrobbler.ErrRetryLater
+		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
 	if lbErr.Code == 500 || lbErr.Code == 503 {
-		return scrobbler.ErrRetryLater
+		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
-	return scrobbler.ErrUnrecoverable
+	return errors.Join(err, scrobbler.ErrUnrecoverable)
 }
 
 func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) bool {

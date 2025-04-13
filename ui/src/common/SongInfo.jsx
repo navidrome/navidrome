@@ -74,6 +74,7 @@ export const SongInfo = (props) => {
     ),
     compilation: <BooleanField source="compilation" />,
     bitRate: <BitrateField source="bitRate" />,
+    bitDepth: <NumberField source="bitDepth" />,
     channels: <NumberField source="channels" />,
     size: <SizeField source="size" />,
     updatedAt: <DateField source="updatedAt" showTime />,
@@ -91,7 +92,7 @@ export const SongInfo = (props) => {
     roles.push([name, record.participants[name].length])
   }
 
-  const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre']
+  const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre', 'bitDepth']
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
   })

@@ -296,7 +296,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 	})
 	if err != nil {
 		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
-		return scrobbler.ErrUnrecoverable
+		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
 }
@@ -304,7 +304,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
-		return scrobbler.ErrNotAuthorized
+		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
 	if s.Duration <= 30 {
@@ -328,12 +328,12 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 	isLastFMError := errors.As(err, &lfErr)
 	if !isLastFMError {
 		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
-		return scrobbler.ErrRetryLater
+		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
 	if lfErr.Code == 11 || lfErr.Code == 16 {
-		return scrobbler.ErrRetryLater
+		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
-	return scrobbler.ErrUnrecoverable
+	return errors.Join(err, scrobbler.ErrUnrecoverable)
 }
 
 func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {

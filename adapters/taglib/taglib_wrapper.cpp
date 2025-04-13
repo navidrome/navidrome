@@ -201,40 +201,41 @@ int taglib_read(const FILENAME_CHAR_T *filename, unsigned long id) {
 char has_cover(const TagLib::FileRef f) {
   char hasCover = 0;
   // ----- MP3
-  if (TagLib::MPEG::File *
-      mp3File{dynamic_cast<TagLib::MPEG::File *>(f.file())}) {
+  if (TagLib::MPEG::File * mp3File{dynamic_cast<TagLib::MPEG::File *>(f.file())}) {
     if (mp3File->ID3v2Tag()) {
       const auto &frameListMap{mp3File->ID3v2Tag()->frameListMap()};
       hasCover = !frameListMap["APIC"].isEmpty();
     }
   }
   // ----- FLAC
-  else if (TagLib::FLAC::File *
-           flacFile{dynamic_cast<TagLib::FLAC::File *>(f.file())}) {
+  else if (TagLib::FLAC::File * flacFile{dynamic_cast<TagLib::FLAC::File *>(f.file())}) {
     hasCover = !flacFile->pictureList().isEmpty();
   }
   // ----- MP4
-  else if (TagLib::MP4::File *
-           mp4File{dynamic_cast<TagLib::MP4::File *>(f.file())}) {
+  else if (TagLib::MP4::File * mp4File{dynamic_cast<TagLib::MP4::File *>(f.file())}) {
     auto &coverItem{mp4File->tag()->itemMap()["covr"]};
     TagLib::MP4::CoverArtList coverArtList{coverItem.toCoverArtList()};
     hasCover = !coverArtList.isEmpty();
   }
   // ----- Ogg
-  else if (TagLib::Ogg::Vorbis::File *
-           vorbisFile{dynamic_cast<TagLib::Ogg::Vorbis::File *>(f.file())}) {
+  else if (TagLib::Ogg::Vorbis::File * vorbisFile{dynamic_cast<TagLib::Ogg::Vorbis::File *>(f.file())}) {
     hasCover = !vorbisFile->tag()->pictureList().isEmpty();
   }
   // ----- Opus
-  else if (TagLib::Ogg::Opus::File *
-           opusFile{dynamic_cast<TagLib::Ogg::Opus::File *>(f.file())}) {
+  else if (TagLib::Ogg::Opus::File * opusFile{dynamic_cast<TagLib::Ogg::Opus::File *>(f.file())}) {
     hasCover = !opusFile->tag()->pictureList().isEmpty();
   }
   // ----- WMA
-  if (TagLib::ASF::File *
-      asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
+  else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
     const TagLib::ASF::Tag *tag{asfFile->tag()};
     hasCover = tag && tag->attributeListMap().contains("WM/Picture");
+  }
+  // ----- WAV
+  else if (TagLib::RIFF::WAV::File * wavFile{ dynamic_cast<TagLib::RIFF::WAV::File*>(f.file()) }) {
+    if (wavFile->hasID3v2Tag()) {
+        const auto& frameListMap{ wavFile->ID3v2Tag()->frameListMap() };
+        hasCover = !frameListMap["APIC"].isEmpty();
+    }
   }
 
   return hasCover;

@@ -53,12 +53,12 @@
                 "updatedAt": "Ultimo aggiornamento",
                 "comment": "Commento",
                 "rating": "Valutazione",
-                "createdAt": "",
-                "size": "",
+                "createdAt": "Data di creazione",
+                "size": "Dimensione",
                 "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "releaseDate": "Data di pubblicazione",
+                "releases": "Pubblicazione |||| Pubblicazioni",
+                "released": "Pubblicato"
             },
             "actions": {
                 "playAll": "Riproduci",
@@ -68,7 +68,7 @@
                 "addToPlaylist": "Aggiungi alla Playlist",
                 "download": "Scarica",
                 "info": "Informazioni",
-                "share": ""
+                "share": "Condividi"
             },
             "lists": {
                 "all": "Tutti",
@@ -89,7 +89,7 @@
                 "playCount": "Riproduzioni",
                 "rating": "Valutazione",
                 "genre": "Genere",
-                "size": ""
+                "size": "Dimensione"
             }
         },
         "user": {
@@ -160,8 +160,8 @@
                 "selectPlaylist": "Aggiungi tracce alla playlist:",
                 "addNewPlaylist": "Aggiungi \"%{name}\"",
                 "export": "Esporta",
-                "makePublic": "",
-                "makePrivate": ""
+                "makePublic": "Rendi Pubblica",
+                "makePrivate": "Rendi Privata"
             },
             "message": {
                 "duplicate_song": "Aggiungere i duplicati",
@@ -169,9 +169,9 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Radio |||| Radio",
             "fields": {
-                "name": "",
+                "name": "Nome",
                 "streamUrl": "",
                 "homePageUrl": "",
                 "updatedAt": "",

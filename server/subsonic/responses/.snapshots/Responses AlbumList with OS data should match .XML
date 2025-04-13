@@ -1,4 +1,4 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
   <albumList>
     <album id="1" isDir="false" isVideo="false" sortName="sort name" mediaType="album" musicBrainzId="00000000-0000-0000-0000-000000000000" displayArtist="Display artist" displayAlbumArtist="Display album artist" explicitStatus="explicit">
       <genres name="Genre 1"></genres>

@@ -85,7 +85,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
-	// BFR: Better way to handle this?
+	// TODO: Better way to handle this?
 	if v, ok := m["sort_artist_name"]; !ok || v.(string) == "" {
 		delete(m, "sort_artist_name")
 	}
@@ -134,7 +134,6 @@ func roleFilter(_ string, role any) Sqlizer {
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	query := r.newSelect(options...).Columns("artist.*")
 	query = r.withAnnotation(query, "artist.id")
-	// BFR How to handle counts and sizes (per role)?
 	return query
 }
 

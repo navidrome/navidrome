@@ -1,0 +1,5 @@
+musicFolder = "/toml/music"
+uiWelcomeMessage = "Welcome toml"
+
+[Tags.custom]
+aliases = ["toml", "test"]

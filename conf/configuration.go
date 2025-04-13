@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/go-viper/encoding/ini"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -129,6 +130,7 @@ type scannerOptions struct {
 	WatcherWait        time.Duration
 	ScanOnStartup      bool
 	Extractor          string
+	ArtistJoiner       string
 	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 }
@@ -309,7 +311,6 @@ func Load(noConfigDump bool) {
 		disableExternalServices()
 	}
 
-	// BFR Remove before release
 	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
 		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
 		Server.Scanner.Extractor = consts.DefaultScannerExtractor
@@ -499,6 +500,7 @@ func init() {
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
 	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
 	viper.SetDefault("scanner.scanonstartup", true)
+	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 
@@ -556,6 +558,10 @@ func init() {
 }
 
 func InitConfig(cfgFile string) {
+	codecRegistry := viper.NewCodecRegistry()
+	_ = codecRegistry.RegisterCodec("ini", ini.Codec{})
+	viper.SetOptions(viper.WithCodecRegistry(codecRegistry))
+
 	cfgFile = getConfigFile(cfgFile)
 	if cfgFile != "" {
 		// Use config file from the flag.
@@ -579,9 +585,17 @@ func InitConfig(cfgFile string) {
 	}
 }
 
+// getConfigFile returns the path to the config file, either from the flag or from the environment variable.
+// If it is defined in the environment variable, it will check if the file exists.
 func getConfigFile(cfgFile string) string {
 	if cfgFile != "" {
 		return cfgFile
 	}
-	return os.Getenv("ND_CONFIGFILE")
+	cfgFile = os.Getenv("ND_CONFIGFILE")
+	if cfgFile != "" {
+		if _, err := os.Stat(cfgFile); err == nil {
+			return cfgFile
+		}
+	}
+	return ""
 }

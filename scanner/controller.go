@@ -98,7 +98,6 @@ type ProgressInfo struct {
 
 type scanner interface {
 	scanAll(ctx context.Context, fullScan bool, progress chan<- *ProgressInfo)
-	// BFR: scanFolders(ctx context.Context, lib model.Lib, folders []string, progress chan<- *ScannerStatus)
 }
 
 type controller struct {

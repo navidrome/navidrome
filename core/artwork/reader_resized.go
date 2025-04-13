@@ -63,12 +63,12 @@ func (a *resizedArtworkReader) Reader(ctx context.Context) (io.ReadCloser, strin
 
 	resized, origSize, err := resizeImage(orig, a.size, a.square)
 	if resized == nil {
-		log.Trace(ctx, "Image smaller than requested size", "artID", a.artID, "original", origSize, "resized", a.size)
+		log.Trace(ctx, "Image smaller than requested size", "artID", a.artID, "original", origSize, "resized", a.size, "square", a.square)
 	} else {
-		log.Trace(ctx, "Resizing artwork", "artID", a.artID, "original", origSize, "resized", a.size)
+		log.Trace(ctx, "Resizing artwork", "artID", a.artID, "original", origSize, "resized", a.size, "square", a.square)
 	}
 	if err != nil {
-		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", a.artID, "size", a.size, err)
+		log.Warn(ctx, "Could not resize image. Will return image as is", "artID", a.artID, "size", a.size, "square", a.square, err)
 	}
 	if err != nil || resized == nil {
 		// if we couldn't resize the image, return the original

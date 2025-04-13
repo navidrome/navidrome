@@ -1,0 +1,7 @@
+musicFolder: "/yaml/music"
+uiWelcomeMessage: "Welcome yaml"
+Tags:
+  custom:
+    aliases:
+      - yaml
+      - test

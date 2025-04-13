@@ -201,7 +201,7 @@ func loadTagMappings() {
 			aliases = oldValue.Aliases
 		}
 		split := cfg.Split
-		if len(split) == 0 {
+		if split == nil {
 			split = oldValue.Split
 		}
 		c := TagConf{

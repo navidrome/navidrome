@@ -264,6 +264,7 @@ var _ = Describe("Metadata", func() {
 				Entry("1.2dB", "1.2dB", 1.2),
 				Entry("Infinity", "Infinity", 0.0),
 				Entry("Invalid value", "INVALID VALUE", 0.0),
+				Entry("NaN", "NaN", 0.0),
 			)
 			DescribeTable("Peak",
 				func(tagValue string, expected float64) {
@@ -275,6 +276,7 @@ var _ = Describe("Metadata", func() {
 				Entry("Invalid dB suffix", "0.7dB", 1.0),
 				Entry("Infinity", "Infinity", 1.0),
 				Entry("Invalid value", "INVALID VALUE", 1.0),
+				Entry("NaN", "NaN", 1.0),
 			)
 			DescribeTable("getR128GainValue",
 				func(tagValue string, expected float64) {

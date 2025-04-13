@@ -1,4 +1,4 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
   <album id="1" name="album" artist="artist" genre="rock" userRating="4" musicBrainzId="1234" isCompilation="true" sortName="sorted album" displayArtist="artist1 &amp; artist2" explicitStatus="clean" version="Deluxe Edition">
     <genres name="rock"></genres>
     <genres name="progressive"></genres>

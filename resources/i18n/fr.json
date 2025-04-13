@@ -26,7 +26,14 @@
         "bpm": "BPM",
         "playDate": "Derniers joués",
         "channels": "Canaux",
-        "createdAt": "Date d'ajout"
+        "createdAt": "Date d'ajout",
+        "grouping": "Regroupement",
+        "mood": "Humeur",
+        "participants": "Participants supplémentaires",
+        "tags": "Étiquettes supplémentaires",
+        "mappedTags": "Étiquettes correspondantes",
+        "rawTags": "Étiquettes brutes",
+        "bitDepth": "Profondeur de bit"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -58,7 +65,13 @@
         "originalDate": "Original",
         "releaseDate": "Sortie",
         "releases": "Sortie |||| Sorties",
-        "released": "Sortie"
+        "released": "Sortie",
+        "recordLabel": "Label",
+        "catalogNum": "Numéro de catalogue",
+        "releaseType": "Type",
+        "grouping": "Regroupement",
+        "media": "Média",
+        "mood": "Humeur"
       },
       "actions": {
         "playAll": "Lire",
@@ -89,7 +102,23 @@
         "playCount": "Lectures",
         "rating": "Classement",
         "genre": "Genre",
-        "size": "Taille"
+        "size": "Taille",
+        "role": "Rôle"
+      },
+      "roles": {
+        "albumartist": "Artiste de l'album |||| Artistes de l'album",
+        "artist": "Artiste |||| Artistes",
+        "composer": "Compositeur |||| Compositeurs",
+        "conductor": "Chef d'orchestre |||| Chefs d'orchestre",
+        "lyricist": "Parolier |||| Paroliers",
+        "arranger": "Arrangeur |||| Arrangeurs",
+        "producer": "Producteur |||| Producteurs",
+        "director": "Réalisateur |||| Réalisateurs",
+        "engineer": "Ingénieur |||| Ingénieurs",
+        "mixer": "Mixeur |||| Mixeurs",
+        "remixer": "Remixeur |||| Remixeurs",
+        "djmixer": "Mixeur DJ |||| Mixeurs DJ",
+        "performer": "Interprète |||| Interprètes"
       }
     },
     "user": {
@@ -152,7 +181,7 @@
         "public": "Publique",
         "updatedAt": "Mise à jour le",
         "createdAt": "Créée le",
-        "songCount": "Titres",
+        "songCount": "Morceaux",
         "comment": "Commentaire",
         "sync": "Import automatique",
         "path": "Importer depuis"
@@ -198,6 +227,21 @@
         "createdAt": "Créé le",
         "downloadable": "Autoriser les téléchargements ?"
       }
+    },
+    "missing": {
+      "name": "Fichier manquant|||| Fichiers manquants",
+      "fields": {
+        "path": "Chemin",
+        "size": "Taille",
+        "updatedAt": "A disparu le"
+      },
+      "actions": {
+        "remove": "Supprimer"
+      },
+      "notifications": {
+        "removed": "Fichier(s) manquant(s) supprimé(s)"
+      },
+      "empty": "Aucun fichier manquant"
     }
   },
   "ra": {
@@ -273,10 +317,10 @@
       "error": "Un problème est survenu",
       "list": "%{name}",
       "loading": "Chargement",
-      "not_found": "Page manquante",
+      "not_found": "Introuvable",
       "show": "%{name} #%{id}",
       "empty": "Pas encore de %{name}.",
-      "invite": "Voulez-vous en créer ?"
+      "invite": "Voulez-vous en créer un ?"
     },
     "input": {
       "file": {
@@ -375,7 +419,9 @@
     "shareSuccess": "Lien copié vers le presse-papier : %{url}",
     "shareFailure": "Erreur en copiant le lien %{url} vers le presse-papier",
     "downloadDialogTitle": "Télécharger %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter"
+    "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter",
+    "remove_missing_title": "Supprimer les fichiers manquants",
+    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations"
   },
   "menu": {
     "library": "Bibliothèque",

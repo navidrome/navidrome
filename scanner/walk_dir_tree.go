@@ -70,7 +70,6 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		albumIDMap: make(map[string]string),
 		updTime:    job.popLastUpdate(id),
 	}
-	f.elapsed.Start()
 	return f
 }
 
@@ -115,6 +114,8 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, ignoreP
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
+	folder.elapsed.Start()
+
 	results <- folder
 
 	return nil

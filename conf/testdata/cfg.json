@@ -1,0 +1,12 @@
+{
+  "musicFolder": "/json/music",
+  "uiWelcomeMessage": "Welcome json",
+  "Tags": {
+    "custom": {
+      "aliases": [
+        "json",
+        "test"
+      ]
+    }
+  }
+}

@@ -145,7 +145,7 @@ var _ = Describe("PlaylistRepository", func() {
 			})
 		})
 
-		// BFR Validate these tests
+		// TODO Validate these tests
 		XContext("child smart playlists", func() {
 			When("refresh day has expired", func() {
 				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {

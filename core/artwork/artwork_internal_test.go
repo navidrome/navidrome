@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// BFR Fix tests
+// TODO Fix tests
 var _ = XDescribe("Artwork", func() {
 	var aw *artwork
 	var ds model.DataStore

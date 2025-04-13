@@ -26,7 +26,14 @@
         "bpm": "BPM",
         "playDate": "Ostatnio Odtwarzane",
         "channels": "Kanały",
-        "createdAt": "Data dodania"
+        "createdAt": "Data dodania",
+        "grouping": "",
+        "mood": "",
+        "participants": "",
+        "tags": "",
+        "mappedTags": "",
+        "rawTags": "",
+        "bitDepth": ""
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -58,7 +65,13 @@
         "originalDate": "Pierwotna Data",
         "releaseDate": "Data Wydania",
         "releases": "Wydanie |||| Wydania",
-        "released": "Wydany"
+        "released": "Wydany",
+        "recordLabel": "",
+        "catalogNum": "",
+        "releaseType": "",
+        "grouping": "",
+        "media": "",
+        "mood": ""
       },
       "actions": {
         "playAll": "Odtwarzaj",
@@ -89,7 +102,23 @@
         "playCount": "Liczba Odtworzeń",
         "rating": "Ocena",
         "genre": "Gatunek",
-        "size": "Rozmiar"
+        "size": "Rozmiar",
+        "role": ""
+      },
+      "roles": {
+        "albumartist": "",
+        "artist": "",
+        "composer": "",
+        "conductor": "",
+        "lyricist": "",
+        "arranger": "",
+        "producer": "Producent |||| Producenci",
+        "director": "Reżyser |||| Reżyserzy",
+        "engineer": "Inżynier |||| Inżynierowie",
+        "mixer": "Mikser |||| Mikserzy",
+        "remixer": "Remixer |||| Remixerzy",
+        "djmixer": "Didżej |||| Didżerzy",
+        "performer": "Wykonawca |||| Wykonawcy"
       }
     },
     "user": {
@@ -198,6 +227,21 @@
         "createdAt": "Stworzono",
         "downloadable": "Zezwolić Na Pobieranie?"
       }
+    },
+    "missing": {
+      "name": "Brakujący Plik|||| Brakujące Pliki",
+      "fields": {
+        "path": "Ścieżka",
+        "size": "Rozmiar",
+        "updatedAt": "Zniknął na"
+      },
+      "actions": {
+        "remove": "Usuń"
+      },
+      "notifications": {
+        "removed": "Usunięto brakujące pliki"
+      },
+      "empty": ""
     }
   },
   "ra": {
@@ -375,7 +419,9 @@
     "shareSuccess": "Adres URL skopiowany do schowka: %{url}",
     "shareFailure": "Błąd podczas kopiowania URL %{url} do schowka",
     "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter",
+    "remove_missing_title": "Usuń brakujące dane",
+    "remove_missing_content": "Czy na pewno chcesz usunąć wybrane brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszystkich powiązań, takich jak liczba odtworzeń i oceny."
   },
   "menu": {
     "library": "Biblioteka",

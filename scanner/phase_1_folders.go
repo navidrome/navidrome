@@ -150,6 +150,14 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 					Path:      folder.path,
 					Phase:     "1",
 				})
+
+				// Log folder info
+				log.Trace(p.ctx, "Scanner: Checking folder state", " folder", folder.path, "_updTime", folder.updTime,
+					"_modTime", folder.modTime, "_lastScanStartedAt", folder.job.lib.LastScanStartedAt,
+					"numAudioFiles", len(folder.audioFiles), "numImageFiles", len(folder.imageFiles),
+					"numPlaylists", folder.numPlaylists, "numSubfolders", folder.numSubFolders)
+
+				// Check if folder is outdated
 				if folder.isOutdated() {
 					if !p.state.fullScan {
 						if folder.hasNoFiles() && folder.isNew() {
@@ -161,6 +169,8 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 					totalChanged++
 					folder.elapsed.Stop()
 					put(folder)
+				} else {
+					log.Trace(p.ctx, "Scanner: Skipping up-to-date folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
 				}
 			}
 			total += job.numFolders.Load()
