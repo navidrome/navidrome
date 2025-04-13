@@ -93,7 +93,14 @@ export const SongInfo = (props) => {
     roles.push([name, record.participants[name].length])
   }
 
-  const optionalFields = ['discSubtitle', 'comment', 'bpm', 'genre', 'bitDepth', 'sampleRate']
+  const optionalFields = [
+    'discSubtitle',
+    'comment',
+    'bpm',
+    'genre',
+    'bitDepth',
+    'sampleRate',
+  ]
   optionalFields.forEach((field) => {
     !record[field] && delete data[field]
   })
