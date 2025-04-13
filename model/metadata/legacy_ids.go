@@ -51,20 +51,6 @@ func legacyMapAlbumName(md Metadata) string {
 
 // Keep the TaggedLikePicard logic for backwards compatibility
 func legacyReleaseDate(md Metadata) string {
-	// Start with defaults
-	date := md.Date(model.TagRecordingDate)
-	year := date.Year()
-	originalDate := md.Date(model.TagOriginalDate)
-	originalYear := originalDate.Year()
-	releaseDate := md.Date(model.TagReleaseDate)
-	releaseYear := releaseDate.Year()
-
-	// MusicBrainz Picard writes the Release Date of an album to the Date tag, and leaves the Release Date tag empty
-	taggedLikePicard := (originalYear != 0) &&
-		(releaseYear == 0) &&
-		(year >= originalYear)
-	if taggedLikePicard {
-		return string(date)
-	}
+	_, _, releaseDate := md.mapDates()
 	return string(releaseDate)
 }

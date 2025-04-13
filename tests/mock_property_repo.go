@@ -5,12 +5,12 @@ import "github.com/navidrome/navidrome/model"
 type MockedPropertyRepo struct {
 	model.PropertyRepository
 	Error error
-	data  map[string]string
+	Data  map[string]string
 }
 
 func (p *MockedPropertyRepo) init() {
-	if p.data == nil {
-		p.data = make(map[string]string)
+	if p.Data == nil {
+		p.Data = make(map[string]string)
 	}
 }
 
@@ -19,7 +19,7 @@ func (p *MockedPropertyRepo) Put(id string, value string) error {
 		return p.Error
 	}
 	p.init()
-	p.data[id] = value
+	p.Data[id] = value
 	return nil
 }
 
@@ -28,7 +28,7 @@ func (p *MockedPropertyRepo) Get(id string) (string, error) {
 		return "", p.Error
 	}
 	p.init()
-	if v, ok := p.data[id]; ok {
+	if v, ok := p.Data[id]; ok {
 		return v, nil
 	}
 	return "", model.ErrNotFound
@@ -39,8 +39,8 @@ func (p *MockedPropertyRepo) Delete(id string) error {
 		return p.Error
 	}
 	p.init()
-	if _, ok := p.data[id]; ok {
-		delete(p.data, id)
+	if _, ok := p.Data[id]; ok {
+		delete(p.Data, id)
 		return nil
 	}
 	return model.ErrNotFound

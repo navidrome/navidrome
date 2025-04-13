@@ -1,4 +1,4 @@
-package core
+package external
 
 import (
 	"context"
@@ -31,7 +31,7 @@ const (
 	refreshQueueLength = 2000
 )
 
-type ExternalMetadata interface {
+type Provider interface {
 	UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error)
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
@@ -40,9 +40,9 @@ type ExternalMetadata interface {
 	AlbumImage(ctx context.Context, id string) (*url.URL, error)
 }
 
-type externalMetadata struct {
+type provider struct {
 	ds          model.DataStore
-	ag          *agents.Agents
+	ag          Agents
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -57,14 +57,24 @@ type auxArtist struct {
 	Name string
 }
 
-func NewExternalMetadata(ds model.DataStore, agents *agents.Agents) ExternalMetadata {
-	e := &externalMetadata{ds: ds, ag: agents}
+type Agents interface {
+	agents.AlbumInfoRetriever
+	agents.ArtistBiographyRetriever
+	agents.ArtistMBIDRetriever
+	agents.ArtistImageRetriever
+	agents.ArtistSimilarRetriever
+	agents.ArtistTopSongsRetriever
+	agents.ArtistURLRetriever
+}
+
+func NewProvider(ds model.DataStore, agents Agents) Provider {
+	e := &provider{ds: ds, ag: agents}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
 	return e
 }
 
-func (e *externalMetadata) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
+func (e *provider) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
 	var entity interface{}
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
@@ -81,10 +91,11 @@ func (e *externalMetadata) getAlbum(ctx context.Context, id string) (auxAlbum, e
 	default:
 		return auxAlbum{}, model.ErrNotFound
 	}
+
 	return album, nil
 }
 
-func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error) {
+func (e *provider) UpdateAlbumInfo(ctx context.Context, id string) (*model.Album, error) {
 	album, err := e.getAlbum(ctx, id)
 	if err != nil {
 		log.Info(ctx, "Not found", "id", id)
@@ -109,7 +120,7 @@ func (e *externalMetadata) UpdateAlbumInfo(ctx context.Context, id string) (*mod
 	return &album.Album, nil
 }
 
-func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAlbum, error) {
+func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAlbum, error) {
 	start := time.Now()
 	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
 	if errors.Is(err, agents.ErrNotFound) {
@@ -155,7 +166,7 @@ func (e *externalMetadata) populateAlbumInfo(ctx context.Context, album auxAlbum
 	return album, nil
 }
 
-func (e *externalMetadata) getArtist(ctx context.Context, id string) (auxArtist, error) {
+func (e *provider) getArtist(ctx context.Context, id string) (auxArtist, error) {
 	var entity interface{}
 	entity, err := model.GetEntityByID(ctx, e.ds, id)
 	if err != nil {
@@ -177,7 +188,7 @@ func (e *externalMetadata) getArtist(ctx context.Context, id string) (auxArtist,
 	return artist, nil
 }
 
-func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
+func (e *provider) UpdateArtistInfo(ctx context.Context, id string, similarCount int, includeNotPresent bool) (*model.Artist, error) {
 	artist, err := e.refreshArtistInfo(ctx, id)
 	if err != nil {
 		return nil, err
@@ -187,7 +198,7 @@ func (e *externalMetadata) UpdateArtistInfo(ctx context.Context, id string, simi
 	return &artist.Artist, err
 }
 
-func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (auxArtist, error) {
+func (e *provider) refreshArtistInfo(ctx context.Context, id string) (auxArtist, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return auxArtist{}, err
@@ -211,7 +222,7 @@ func (e *externalMetadata) refreshArtistInfo(ctx context.Context, id string) (au
 	return artist, nil
 }
 
-func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArtist) (auxArtist, error) {
+func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (auxArtist, error) {
 	start := time.Now()
 	// Get MBID first, if it is not yet available
 	if artist.MbzArtistID == "" {
@@ -246,7 +257,7 @@ func (e *externalMetadata) populateArtistInfo(ctx context.Context, artist auxArt
 	return artist, nil
 }
 
-func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -304,7 +315,7 @@ func (e *externalMetadata) SimilarSongs(ctx context.Context, id string, count in
 	return similarSongs, nil
 }
 
-func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
+func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -318,24 +329,35 @@ func (e *externalMetadata) ArtistImage(ctx context.Context, id string) (*url.URL
 
 	imageUrl := artist.ArtistImageUrl()
 	if imageUrl == "" {
-		return nil, agents.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	return url.Parse(imageUrl)
 }
 
-func (e *externalMetadata) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
+func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
 	album, err := e.getAlbum(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
-	if errors.Is(err, agents.ErrNotFound) {
+	if err != nil {
+		switch {
+		case errors.Is(err, agents.ErrNotFound):
+			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+			return nil, model.ErrNotFound
+		case errors.Is(err, context.Canceled):
+			log.Debug(ctx, "GetAlbumInfo call canceled", err)
+		default:
+			log.Warn(ctx, "Error getting album info from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
+		}
+
 		return nil, err
 	}
-	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "AlbumImage call canceled", ctx.Err())
-		return nil, ctx.Err()
+
+	if info == nil {
+		log.Warn(ctx, "Agent returned nil info without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+		return nil, model.ErrNotFound
 	}
 
 	// Return the biggest image
@@ -346,26 +368,37 @@ func (e *externalMetadata) AlbumImage(ctx context.Context, id string) (*url.URL,
 		}
 	}
 	if img.URL == "" {
-		return nil, agents.ErrNotFound
+		return nil, model.ErrNotFound
 	}
 	return url.Parse(img.URL)
 }
 
-func (e *externalMetadata) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
+func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (model.MediaFiles, error) {
 	artist, err := e.findArtistByName(ctx, artistName)
 	if err != nil {
 		log.Error(ctx, "Artist not found", "name", artistName, err)
 		return nil, nil
 	}
 
-	return e.getMatchingTopSongs(ctx, e.ag, artist, count)
+	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
+	if err != nil {
+		switch {
+		case errors.Is(err, agents.ErrNotFound):
+			log.Trace(ctx, "TopSongs not found", "name", artistName)
+			return nil, model.ErrNotFound
+		case errors.Is(err, context.Canceled):
+			log.Debug(ctx, "TopSongs call canceled", err)
+		default:
+			log.Warn(ctx, "Error getting top songs from agent", "artist", artistName, err)
+		}
+
+		return nil, err
+	}
+	return songs, nil
 }
 
-func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
+func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
-	if errors.Is(err, agents.ErrNotFound) {
-		return nil, nil
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -386,10 +419,11 @@ func (e *externalMetadata) getMatchingTopSongs(ctx context.Context, agent agents
 	} else {
 		log.Debug(ctx, "Found matching top songs", "name", artist.Name, "numSongs", len(mfs))
 	}
+
 	return mfs, nil
 }
 
-func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
+func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
 	if mbid != "" {
 		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.And{
@@ -420,7 +454,7 @@ func (e *externalMetadata) findMatchingTrack(ctx context.Context, mbid string, a
 	return &mfs[0], nil
 }
 
-func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
+func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
 	artisURL, err := agent.GetArtistURL(ctx, artist.ID, artist.Name, artist.MbzArtistID)
 	if err != nil {
 		return
@@ -428,7 +462,7 @@ func (e *externalMetadata) callGetURL(ctx context.Context, agent agents.ArtistUR
 	artist.ExternalUrl = artisURL
 }
 
-func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
+func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
 	bio, err := agent.GetArtistBiography(ctx, artist.ID, str.Clear(artist.Name), artist.MbzArtistID)
 	if err != nil {
 		return
@@ -438,7 +472,7 @@ func (e *externalMetadata) callGetBiography(ctx context.Context, agent agents.Ar
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
 
-func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
+func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
 	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name, artist.MbzArtistID)
 	if err != nil {
 		return
@@ -456,7 +490,7 @@ func (e *externalMetadata) callGetImage(ctx context.Context, agent agents.Artist
 	}
 }
 
-func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
+func (e *provider) callGetSimilar(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
 	limit int, includeNotPresent bool) {
 	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artist.Name, artist.MbzArtistID, limit)
 	if len(similar) == 0 || err != nil {
@@ -471,7 +505,7 @@ func (e *externalMetadata) callGetSimilar(ctx context.Context, agent agents.Arti
 	artist.SimilarArtists = sa
 }
 
-func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agents.Artist, includeNotPresent bool) (model.Artists, error) {
+func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, includeNotPresent bool) (model.Artists, error) {
 	var result model.Artists
 	var notPresent []string
 
@@ -515,7 +549,7 @@ func (e *externalMetadata) mapSimilarArtists(ctx context.Context, similar []agen
 	return result, nil
 }
 
-func (e *externalMetadata) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
+func (e *provider) findArtistByName(ctx context.Context, artistName string) (*auxArtist, error) {
 	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
@@ -533,7 +567,7 @@ func (e *externalMetadata) findArtistByName(ctx context.Context, artistName stri
 	return artist, nil
 }
 
-func (e *externalMetadata) loadSimilar(ctx context.Context, artist *auxArtist, count int, includeNotPresent bool) error {
+func (e *provider) loadSimilar(ctx context.Context, artist *auxArtist, count int, includeNotPresent bool) error {
 	var ids []string
 	for _, sa := range artist.SimilarArtists {
 		if sa.ID == "" {

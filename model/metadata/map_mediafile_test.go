@@ -35,7 +35,7 @@ var _ = Describe("ToMediaFile", func() {
 	}
 
 	Describe("Dates", func() {
-		It("should parse the dates like Picard", func() {
+		It("should parse properly tagged dates ", func() {
 			mf = toMediaFile(model.RawTags{
 				"ORIGINALDATE": {"1978-09-10"},
 				"DATE":         {"1977-03-04"},
@@ -48,6 +48,32 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(mf.OriginalDate).To(Equal("1978-09-10"))
 			Expect(mf.ReleaseYear).To(Equal(2002))
 			Expect(mf.ReleaseDate).To(Equal("2002-01-02"))
+		})
+
+		It("should parse dates with only year", func() {
+			mf = toMediaFile(model.RawTags{
+				"ORIGINALYEAR": {"1978"},
+				"DATE":         {"1977"},
+				"RELEASEDATE":  {"2002"},
+			})
+
+			Expect(mf.Year).To(Equal(1977))
+			Expect(mf.Date).To(Equal("1977"))
+			Expect(mf.OriginalYear).To(Equal(1978))
+			Expect(mf.OriginalDate).To(Equal("1978"))
+			Expect(mf.ReleaseYear).To(Equal(2002))
+			Expect(mf.ReleaseDate).To(Equal("2002"))
+		})
+
+		It("should parse dates tagged the legacy way (no release date)", func() {
+			mf = toMediaFile(model.RawTags{
+				"DATE":         {"2014"},
+				"ORIGINALDATE": {"1966"},
+			})
+
+			Expect(mf.Year).To(Equal(1966))
+			Expect(mf.OriginalYear).To(Equal(1966))
+			Expect(mf.ReleaseYear).To(Equal(2014))
 		})
 	})
 

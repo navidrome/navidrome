@@ -305,6 +305,101 @@ var _ = Describe("MediaFiles", func() {
 					})
 				})
 			})
+			Context("Album Art", func() {
+				When("we have media files with cover art from multiple discs", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/Disc2/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  2,
+							},
+							{
+								Path:        "Artist/Album/Disc1/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  1,
+							},
+							{
+								Path:        "Artist/Album/Disc3/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  3,
+							},
+						}
+					})
+					It("selects the cover art from the lowest disc number", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc1/01.mp3"))
+					})
+				})
+
+				When("we have media files with cover art from the same disc number", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/Disc1/02.mp3",
+								HasCoverArt: true,
+								DiscNumber:  1,
+							},
+							{
+								Path:        "Artist/Album/Disc1/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  1,
+							},
+						}
+					})
+					It("selects the cover art with the lowest path alphabetically", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc1/01.mp3"))
+					})
+				})
+
+				When("we have media files with some missing cover art", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/Disc1/01.mp3",
+								HasCoverArt: false,
+								DiscNumber:  1,
+							},
+							{
+								Path:        "Artist/Album/Disc2/01.mp3",
+								HasCoverArt: true,
+								DiscNumber:  2,
+							},
+						}
+					})
+					It("selects the file with cover art even if from a higher disc number", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/Disc2/01.mp3"))
+					})
+				})
+
+				When("we have media files with path names that don't correlate with disc numbers", func() {
+					BeforeEach(func() {
+						mfs = MediaFiles{
+							{
+								Path:        "Artist/Album/file-z.mp3", // Path would be sorted last alphabetically
+								HasCoverArt: true,
+								DiscNumber:  1, // But it has lowest disc number
+							},
+							{
+								Path:        "Artist/Album/file-a.mp3", // Path would be sorted first alphabetically
+								HasCoverArt: true,
+								DiscNumber:  2, // But it has higher disc number
+							},
+							{
+								Path:        "Artist/Album/file-m.mp3",
+								HasCoverArt: true,
+								DiscNumber:  3,
+							},
+						}
+					})
+					It("selects the cover art from the lowest disc number regardless of path", func() {
+						album := mfs.ToAlbum()
+						Expect(album.EmbedArtPath).To(Equal("Artist/Album/file-z.mp3"))
+					})
+				})
+			})
 		})
 	})
 })
