@@ -19,6 +19,7 @@
         "updatedAt": "Updated at",
         "bitRate": "Bit rate",
         "bitDepth": "Bit depth",
+        "sampleRate": "Sample rate",
         "channels": "Channels",
         "discSubtitle": "Disc Subtitle",
         "starred": "Favourite",
