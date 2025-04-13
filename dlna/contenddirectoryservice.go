@@ -476,11 +476,6 @@ type object struct {
 	Id   string
 }
 
-// Returns the actual local filesystem path for the object.
-func (o *object) FilePath() string {
-	return filepath.FromSlash(o.Path)
-}
-
 // Returns the ObjectID for the object. This is used in various ContentDirectory actions.
 func (o object) ID() string {
 	if o.Id != "" {
