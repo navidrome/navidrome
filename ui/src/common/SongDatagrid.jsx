@@ -63,8 +63,8 @@ const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
-    const handlePlaySubset = (releaseDate, discNumber) => () => {
-      onClick(releaseDate, discNumber)
+    const handlePlaySubset = (discNumber) => () => {
+      onClick(discNumber)
     }
 
     let subtitle = []
@@ -79,7 +79,7 @@ const DiscSubtitleRow = forwardRef(
       <TableRow
         hover
         ref={ref}
-        onClick={handlePlaySubset(record.releaseDate, record.discNumber)}
+        onClick={handlePlaySubset(record.discNumber)}
         className={classes.row}
       >
         <TableCell colSpan={colSpan}>
@@ -92,7 +92,6 @@ const DiscSubtitleRow = forwardRef(
           <AlbumContextMenu
             record={{ id: record.albumId }}
             discNumber={record.discNumber}
-            releaseDate={record.releaseDate}
             showLove={false}
             className={classes.contextMenu}
             hideShare={true}
@@ -128,7 +127,6 @@ export const SongDatagridRow = ({
         discs: [
           {
             albumId: record?.albumId,
-            releaseDate: record?.releaseDate,
             discNumber: record?.discNumber,
           },
         ],
@@ -204,16 +202,10 @@ const SongDatagridBody = ({
   const { ids, data } = rest
 
   const playSubset = useCallback(
-    (releaseDate, discNumber) => {
+    (discNumber) => {
       let idsToPlay = []
       if (discNumber !== undefined) {
-        idsToPlay = ids.filter(
-          (id) =>
-            data[id].releaseDate === releaseDate &&
-            data[id].discNumber === discNumber,
-        )
-      } else {
-        idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
+        idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
       }
       dispatch(
         playTracks(
