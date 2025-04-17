@@ -18,6 +18,9 @@
                 "size": "Mida del fitxer",
                 "updatedAt": "Actualitzat",
                 "bitRate": "Taxa de bits",
+                "bitDepth": "Bits",
+                "sampleRate": "Freqüencia de mostreig",
+                "channels": "Canals",
                 "discSubtitle": "Subtítol del disc",
                 "starred": "Preferit",
                 "comment": "Comentari",
@@ -25,8 +28,13 @@
                 "quality": "Qualitat",
                 "bpm": "tempo",
                 "playDate": "Darrer resproduït",
-                "channels": "Canals",
-                "createdAt": ""
+                "createdAt": "Creat el",
+                "grouping": "Agrupació",
+                "mood": "Sentiment",
+                "participants": "Participants",
+                "tags": "Etiquetes",
+                "mappedTags": "Etiquetes assignades",
+                "rawTags": "Etiquetes sense processar"
             },
             "actions": {
                 "addToQueue": "Reprodueix després",
@@ -46,6 +54,7 @@
                 "duration": "Durada",
                 "songCount": "Cançons",
                 "playCount": "Reproduccions",
+                "size": "Mida",
                 "name": "Nom",
                 "genre": "Gènere",
                 "compilation": "Compilació",
@@ -53,22 +62,28 @@
                 "updatedAt": "Actualitzat ",
                 "comment": "Comentari",
                 "rating": "Valoració",
-                "createdAt": "",
-                "size": "",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
+                "createdAt": "Creat el",
+                "size": "Mida",
+                "originalDate": "Original",
+                "releaseDate": "Publicat",
+                "releases": "LLançament |||| Llançaments",
+                "released": "Publicat",
+                "recordLabel": "Discogràfica",
+                "catalogNum": "Número de catàleg",
+                "releaseType": "Tipus de publicació",
+                "grouping": "Agrupació",
+                "media": "Mitjà",
+                "mood": "Sentiment"
             },
             "actions": {
                 "playAll": "Reprodueix",
                 "playNext": "Reprodueix la següent",
                 "addToQueue": "Reprodueix després",
+                "share": "Compartir",
                 "shuffle": "Aleatori",
                 "addToPlaylist": "Afegeix a la llista",
                 "download": "Descarrega",
-                "info": "Obtén informació",
-                "share": ""
+                "info": "Obtén informació" 
             },
             "lists": {
                 "all": "Tot",
@@ -85,11 +100,27 @@
             "fields": {
                 "name": "Nom",
                 "albumCount": "Nombre d'àlbums",
-                "songCount": "Compte de cançons",
+                "songCount": "Nombre de cançons",
+                "size": "Mida",
                 "playCount": "Reproduccions",
                 "rating": "Valoració",
                 "genre": "Gènere",
-                "size": ""
+                "role": "Rol"
+            },
+            "roles": {
+            "albumartist": "Artista de l'Àlbum |||| Artistes de l'Àlbum",
+            "artist": "Artista |||| Artistes",
+            "composer": "Compositor |||| Compositors",
+            "conductor": "Conductor |||| Conductors",
+            "lyricist": "Lletrista |||| Lletristes",
+            "arranger": "Arranjador |||| Arranjadors",
+            "producer": "Productor |||| Productors",
+            "director": "Director |||| Directors",
+            "engineer": "Enginyer |||| Enginyers",
+            "mixer": "Mesclador |||| Mescladors",
+            "remixer": "Remesclador |||| Remescladors",
+            "djmixer": "DJ Mesclador |||| DJ Mescladors",
+            "performer": "Intèrpret |||| Intèrprets"
             }
         },
         "user": {
@@ -98,6 +129,7 @@
                 "userName": "Nom d'usuari",
                 "isAdmin": "És admin",
                 "lastLoginAt": "Última connexió",
+                "lastAccessAt": "Últim Accés",
                 "updatedAt": "Actualitzat",
                 "name": "Nom",
                 "password": "Contrasenya",
@@ -169,36 +201,53 @@
             }
         },
         "radio": {
-            "name": "",
+            "name": "Ràdio |||| Ràdios",
             "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
+                "name": "Nom",
+                "streamUrl": "URL del flux",
+                "homePageUrl": "URL principal",
+                "updatedAt": "Actualitzat",
+                "createdAt": "Creat"
             },
             "actions": {
-                "playNow": ""
+                "playNow": "Reprodueix"
             }
         },
         "share": {
-            "name": "",
+            "name": "Compartir |||| Compartits",
             "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
-            }
-        }
-    },
+                "username": "Compartit per",
+                "url": "URL",
+                "description": "Descripció",
+                "downloadable": "Permet descarregar?",
+                "contents": "Continguts",
+                "expiresAt": "Caduca",
+                "lastVisitedAt": "Última Visita",
+                "visitCount": "Visites",
+                "format": "Format",
+                "maxBitRate": "Taxa de bits màx.",
+                "updatedAt": "Actualitzat",
+                "createdAt": "Creat"
+            },
+            "notifications": {},
+            "actions": {}
+        },
+      "missing": {
+      "name": "Fitxer faltant |||| Fitxers Faltants",
+      "empty": "No falten fitxers",
+      "fields": {
+        "path": "Directori",
+        "size": "Mida",
+        "updatedAt": "Desaparegut"
+      },
+      "actions": {
+        "remove": "Eliminar"
+      },
+      "notifications": {
+        "removed": "Fitxers faltants eliminats"
+      }
+    }
+  },
     "ra": {
         "auth": {
             "welcome1": "Gràcies d'haver instal·lat Navidrome!",
@@ -211,28 +260,30 @@
             "password": "Contrasenya",
             "sign_in": "Inicia sessió",
             "sign_in_error": "L'autenticació ha fallat, torneu-ho a intentar",
-            "logout": "Sortida"
+            "logout": "Sortida",
+            "insightsCollectionNote": "Navidrome recull dades d'us anonimitzades per\najudar a millorar el projecte. Clica [aquí] per a saber-ne\nmés i no participar-hi si no vols"
         },
         "validation": {
-            "invalidChars": "Si us plau, useu solament lletres i nombres",
+            "invalidChars": "Si us plau, useu només lletres i nombres",
             "passwordDoesNotMatch": "Les contrasenyes no coincideixen",
             "required": "Obligatori",
             "minLength": "Ha de tenir, si més no, %{min} caràcters",
-            "maxLength": "Ha de tenir %{max} caràcter o menys",
-            "minValue": "Ha de ser si més no %{min}",
+            "maxLength": "Ha de tenir %{max} caràcters o menys",
+            "minValue": "Ha de ser com a mínim %{min}",
             "maxValue": "Ha de ser %{max} o menys",
             "number": "Ha de ser un nombre",
             "email": "Ha de ser un correu vàlid",
             "oneOf": "Ha de ser un de: %{options}",
             "regex": "Ha de tenir el format (regexp): %{pattern}",
             "unique": "Ha de ser únic",
-            "url": ""
+            "url": "Ha de ser una URL vàlida"
         },
         "action": {
             "add_filter": "Afegeix un filtre",
             "add": "Afegeix",
             "back": "Enrere",
             "bulk_actions": "1 element seleccionat |||| %{smart_count} elements seleccionats",
+            "bulk_actions_mobile": "1 |||| %{smart_count}",
             "cancel": "Cancel·la",
             "clear_input_value": "Neteja el valor",
             "clone": "Clona",
@@ -256,9 +307,8 @@
             "close_menu": "Tanca el menú",
             "unselect": "Anul·la la selecció",
             "skip": "Omet",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
+            "share": "Compartir",
+            "download": "Descarregar"
         },
         "boolean": {
             "true": "Sí",
@@ -334,7 +384,7 @@
             "i18n_error": "No ha estat possible carregar les traduccions per a l'idioma indicat",
             "canceled": "Acció cancel·lada",
             "logged_out": "La sessió ha acabat, si us plau reconnecteu",
-            "new_version": "Hi ha una versió nova disponible! Si us plau refresqueu aquesta finestra."
+            "new_version": "Hi ha una versió nova disponible! Si us plau actualitzeu aquesta finestra."
         },
         "toggleFieldsMenu": {
             "columnsToDisplay": "Columnes a mostrar",
@@ -351,29 +401,31 @@
         "noPlaylistsAvailable": "No n'hi ha cap disponible",
         "delete_user_title": "Esborra usuari '%{nom}'",
         "delete_user_content": "Segur que voleu eliminar aquest usuari i les seues dades\n(incloent-hi llistes i preferències)",
+         "remove_missing_title": "Eliminar fitxers faltants",
+        "remove_missing_content": "Segur que vols eliminar els fitxers faltants seleccionats de la base de dades? Això eliminarà permanentment les referències a ells, incloent-hi el nombre de reproduccions i les valoracions.", 
         "notifications_blocked": "Heu blocat les notificacions d'escriptori en les preferències del navegador",
         "notifications_not_available": "El navegador no suporta les notificacions o no heu connectat a Navidrome per https",
         "lastfmLinkSuccess": "Ha reexit la vinculació amb Last.fm i se n'ha activat el seguiment",
         "lastfmLinkFailure": "No ha estat possible la vinculació amb Last.fm",
         "lastfmUnlinkSuccess": "Desvinculat de Last.fm i desactivat el seguiment",
         "lastfmUnlinkFailure": "No s'ha pogut desvincular de Last.fm",
+        "listenBrainzLinkSuccess": "Connectat correctament a ListenBrainz i seguiment activat com a: %{user}",
+        "listenBrainzLinkFailure": "No s'ha pogut connectar a ListenBrainz: %{error}",
+        "listenBrainzUnlinkSuccess": "ListenBrainz desconnectat i seguiment desactivat",
+        "listenBrainzUnlinkFailure": "No s'ha pogut desconnectar de ListenBrainz",
         "openIn": {
             "lastfm": "Obri en Last.fm",
             "musicbrainz": "Obri en MusicBrainz"
         },
         "lastfmLink": "Llegeix més...",
-        "listenBrainzLinkSuccess": "Ha reexit la vinculació amb ListenBrainz i se n'ha activat el seguiment com a usuari: %{user}",
-        "listenBrainzLinkFailure": "No ha estat possible vincular-se a ListenBrainz: %{error}",
-        "listenBrainzUnlinkSuccess": "Desvinculat de ListenBrainz i desactivat el seguiment",
-        "listenBrainzUnlinkFailure": "No s'ha pogut desvincular de ListenBrainz",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+        "shareOriginalFormat": "Compartir en format original",
+        "shareDialogTitle": "Compartir %{resource} '%{name}'",
+        "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Compartir %{smart_count} %{resource}",
+        "shareCopyToClipboard": "Copiar al porta-retalls: Ctrl+C, Enter",
+        "shareSuccess": "URL copiada al porta-retalls: %{url}",
+        "shareFailure": "Error copiant URL %{url} al porta-retalls",
+        "downloadDialogTitle": "Deascarregar %{resource} '%{name}' (%{size})",
+        "downloadOriginalFormat": "Descarregar en format original"
     },
     "menu": {
         "library": "Discoteca",
@@ -387,14 +439,15 @@
                 "language": "Llengua",
                 "defaultView": "Vista per defecte",
                 "desktop_notifications": "Notificacions d'escriptori",
+                "lastfmNotConfigured": "No s'ha configurat l'API de Last.fm",
                 "lastfmScrobbling": "Activa el seguiment de Last.fm",
                 "listenBrainzScrobbling": "Activa el seguiment de ListenBrainz",
-                "replaygain": "",
-                "preAmp": "",
+                "replaygain": "Mode ReplayGain",
+                "preAmp": "PreAmp de ReplayGain (dB)",
                 "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
+                    "none": "Cap",
+                    "album": "Guany de l'àlbum",
+                    "track": "Guany de la pista"
                 }
             }
         },
@@ -432,7 +485,12 @@
         "links": {
             "homepage": "Inici",
             "source": "Codi font",
-            "featureRequests": "Sol·licitud de funcionalitats"
+            "featureRequests": "Sol·licitud de funcionalitats",
+            "lastInsightsCollection": "Última recolecció d'informació",
+            "insights": {
+                "disabled": "Desactivada",
+                "waiting": "Esperant"
+            }
         }
     },
     "activity": {
@@ -454,7 +512,7 @@
             "vol_up": "Apuja el volum",
             "vol_down": "Abaixa el volum",
             "toggle_love": "Afegeix la pista a favorits",
-            "current_song": ""
+            "current_song": "Anar a la cançó actual"
         }
     }
 }
