@@ -35,7 +35,7 @@ const AlbumShowLayout = (props) => {
           addLabel={false}
           reference="song"
           target="album_id"
-          sort={{ field: 'album_tracks', order: 'ASC' }}
+          sort={{ field: 'album', order: 'ASC' }}
           perPage={0}
           pagination={null}
         >
