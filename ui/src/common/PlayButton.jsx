@@ -24,7 +24,6 @@ export const PlayButton = ({ record, size, className }) => {
         sort: { field: 'album', order: 'ASC' },
         filter: {
           album_id: record.id,
-          release_date: record.releaseDate,
           disc_number: record.discNumber,
         },
       })
