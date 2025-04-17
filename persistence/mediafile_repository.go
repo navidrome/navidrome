@@ -242,7 +242,7 @@ func (r *mediaFileRepository) MarkMissingByFolder(missing bool, folderIDs ...str
 
 // GetMissingAndMatching returns all mediafiles that are missing and their potential matches (comparing PIDs)
 // that were added/updated after the last scan started. The result is ordered by PID.
-// It does not need to load bookmarks, annotations and participnts, as they are not used by the scanner.
+// It does not need to load bookmarks, annotations and participants, as they are not used by the scanner.
 func (r *mediaFileRepository) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
 	subQ := r.newSelect().Columns("pid").
 		Where(And{
