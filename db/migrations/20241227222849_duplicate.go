@@ -27,4 +27,3 @@ alter table media_file
 `)
        return err
 }
-}
