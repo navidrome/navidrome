@@ -20,6 +20,11 @@ alter table media_file
 }
 
 func downDuplicate(ctx context.Context, tx *sql.Tx) error {
-   // This code is executed when the migration is rolled back.
-   return nil
+   _, err := tx.Exec(`
+alter table media_file
+   drop column is_duplicate;
+
+`)
+       return err
+}
 }
