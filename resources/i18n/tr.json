@@ -33,7 +33,8 @@
         "tags": "Ek Etiketler",
         "mappedTags": "Eşlenen etiketler",
         "rawTags": "Ham etiketler",
-        "bitDepth": "Bit derinliği"
+        "bitDepth": "Bit derinliği",
+        "sampleRate": "Örnekleme Oranı"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
