@@ -39,6 +39,7 @@ const (
 	resourceStreamPath = "s"
 	resourceArtPath    = "a"
 	serviceControlURL  = "/ctl"
+	DLNAArtSize        = 250
 )
 
 //go:embed static/*
@@ -346,8 +347,7 @@ func (s *SSDPServer) resourceHandler(w http.ResponseWriter, r *http.Request) {
 			log.Error("Failure to parse ArtworkId", "inputString", components[1], err)
 			return
 		}
-		//TODO size (250)
-		imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, 250, true)
+		imgReader, lastUpdate, err := s.art.Get(r.Context(), artId, DLNAArtSize, true)
 		if err != nil {
 			log.Error("Failure to retrieve artwork", "artid", artId, err)
 			return
