@@ -52,7 +52,7 @@ func (cds *contentDirectoryService) updateIDString() string {
 
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
-func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, isContainer bool, host string, filesize int64) (ret interface{}) {
+func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject contentDirectoryObject, isContainer bool, host string, filesize int64) (ret interface{}) {
 	obj := upnpav.Object{
 		ID:         cdsObject.ID(),
 		Restricted: 1,
@@ -96,12 +96,12 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject object, is
 }
 
 // Returns all the upnpav objects in a directory.
-func (cds *contentDirectoryService) readContainer(o object, host string) (ret []interface{}, err error) {
+func (cds *contentDirectoryService) readContainer(o contentDirectoryObject, host string) (ret []interface{}, err error) {
 	log.Debug(fmt.Sprintf("ReadContainer called '%s'", o))
 
 	if o.Path == "/" || o.Path == "" {
 		log.Debug("ReadContainer default route")
-		newObject := object{Path: "/Music"}
+		newObject := contentDirectoryObject{Path: "/Music"}
 		ret = append(ret, cds.cdsObjectToUpnpavObject(newObject, true, host, -1))
 		return ret, nil
 	}
@@ -124,17 +124,17 @@ func (cds *contentDirectoryService) readContainer(o object, host string) (ret []
 	return ret, nil
 }
 
-func handleDefault(ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Files"}, true, host, -1))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Artists"}, true, host, -1))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Albums"}, true, host, -1))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Genres"}, true, host, -1))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Recently Added"}, true, host, -1))
-	ret = append(ret, cds.cdsObjectToUpnpavObject(object{Path: "/Music/Playlists"}, true, host, -1))
+func handleDefault(ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
+	ret = append(ret, cds.cdsObjectToUpnpavObject(contentDirectoryObject{Path: "/Music/Files"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(contentDirectoryObject{Path: "/Music/Artists"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(contentDirectoryObject{Path: "/Music/Albums"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(contentDirectoryObject{Path: "/Music/Genres"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(contentDirectoryObject{Path: "/Music/Recently Added"}, true, host, -1))
+	ret = append(ret, cds.cdsObjectToUpnpavObject(contentDirectoryObject{Path: "/Music/Playlists"}, true, host, -1))
 	return ret, nil
 }
 
-func handleArtist(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+func handleArtist(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["ArtistAlbum"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["ArtistAlbum"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
@@ -150,7 +150,7 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 	for letterIndex := range indexes {
 		for artist := range indexes[letterIndex].Artists {
 			artistId := indexes[letterIndex].Artists[artist].ID
-			child := object{
+			child := contentDirectoryObject{
 				Path: path.Join(o.Path, indexes[letterIndex].Artists[artist].Name),
 				Id:   path.Join(o.Path, artistId),
 			}
@@ -160,7 +160,7 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 	return ret, nil
 }
 
-func handleAlbum(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+func handleAlbum(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["AlbumTitle"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["AlbumTitle"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
@@ -171,7 +171,7 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 		return nil, err
 	}
 	for indexItem := range indexes {
-		child := object{
+		child := contentDirectoryObject{
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
@@ -180,7 +180,7 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 	return ret, nil
 }
 
-func handleGenre(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+func handleGenre(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["GenreArtist"] != "" {
 		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
 			squirrel.Eq{"genre.id": matchResults["Genre"]},
@@ -200,7 +200,7 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 				return nil, err
 			}
 			for artistIndex := range artists {
-				child := object{
+				child := contentDirectoryObject{
 					Path: path.Join(o.Path, artists[artistIndex].Name),
 					Id:   path.Join(o.Path, artists[artistIndex].ID),
 				}
@@ -214,7 +214,7 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 		return nil, err
 	}
 	for indexItem := range indexes {
-		child := object{
+		child := contentDirectoryObject{
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
@@ -223,7 +223,7 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 	return ret, nil
 }
 
-func handleRecent(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+func handleRecent(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["RecentAlbum"] != "" {
 		tracks, _ := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": matchResults["RecentAlbum"]}})
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
@@ -234,7 +234,7 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 		return nil, err
 	}
 	for indexItem := range indexes {
-		child := object{
+		child := contentDirectoryObject{
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
@@ -243,7 +243,7 @@ func handleRecent(matchResults map[string]string, ret []interface{}, cds *conten
 	return ret, nil
 }
 
-func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o object, host string) ([]interface{}, error) {
+func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["Playlist"] != "" {
 		x, err := cds.ds.Playlist(cds.ctx).GetWithTracks(matchResults["Playlist"], false, false)
 		if err != nil {
@@ -258,7 +258,7 @@ func handlePlaylists(matchResults map[string]string, ret []interface{}, cds *con
 		return nil, err
 	}
 	for indexItem := range indexes {
-		child := object{
+		child := contentDirectoryObject{
 			Path: path.Join(o.Path, indexes[indexItem].Name),
 			Id:   path.Join(o.Path, indexes[indexItem].ID),
 		}
@@ -334,7 +334,7 @@ func floatToDurationString(totalSeconds32 float32) string {
 
 func (cds *contentDirectoryService) doAlbums(albums model.Albums, basepath string, ret []interface{}, host string) ([]interface{}, error) {
 	for _, album := range albums {
-		child := object{
+		child := contentDirectoryObject{
 			Path: path.Join(basepath, album.Name),
 			Id:   path.Join(basepath, album.ID),
 		}
@@ -354,7 +354,7 @@ func (cds *contentDirectoryService) doFiles(ret []interface{}, oPath string, hos
 
 	files, _ := os.ReadDir(localFilePath)
 	for _, file := range files {
-		child := object{
+		child := contentDirectoryObject{
 			Path: path.Join(oPath, file.Name()),
 			Id:   path.Join(oPath, file.Name()),
 		}
@@ -373,7 +373,7 @@ type browse struct {
 }
 
 // ContentDirectory object from ObjectID.
-func (cds *contentDirectoryService) objectFromID(id string) (o object, err error) {
+func (cds *contentDirectoryService) objectFromID(id string) (o contentDirectoryObject, err error) {
 	log.Debug("objectFromID called", "id", id)
 	o.Path, err = url.QueryUnescape(id)
 	if err != nil {
@@ -470,14 +470,14 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 	}
 }
 
-// Represents a ContentDirectory object.
-type object struct {
+// Represents a ContentDirectory contentDirectoryObject.
+type contentDirectoryObject struct {
 	Path string // The cleaned, absolute path for the object relative to the server.
 	Id   string
 }
 
 // Returns the ObjectID for the object. This is used in various ContentDirectory actions.
-func (o object) ID() string {
+func (o contentDirectoryObject) ID() string {
 	if o.Id != "" {
 		return o.Id
 	}
@@ -491,13 +491,13 @@ func (o object) ID() string {
 	return url.QueryEscape(o.Path)
 }
 
-func (o *object) IsRoot() bool {
+func (o *contentDirectoryObject) IsRoot() bool {
 	return o.Path == "/"
 }
 
 // Returns the object's parent ObjectID. Fortunately it can be deduced from the
 // ObjectID (for now).
-func (o object) ParentID() string {
+func (o contentDirectoryObject) ParentID() string {
 	if o.IsRoot() {
 		return "-1"
 	}
