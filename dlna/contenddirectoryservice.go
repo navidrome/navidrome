@@ -53,7 +53,7 @@ func (cds *contentDirectoryService) updateIDString() string {
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
 func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject contentDirectoryObject, isContainer bool, host string, filesize int64) (ret interface{}) {
-	obj := upnpav.Object{
+	obj := upnpav.UpnpObject{
 		ID:         cdsObject.ID(),
 		Restricted: 1,
 		ParentID:   cdsObject.ParentID(),
@@ -64,7 +64,7 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject contentDir
 		defaultChildCount := 1
 		obj.Class = "object.container.storageFolder"
 		return upnpav.Container{
-			Object:     obj,
+			UpnpObject: obj,
 			ChildCount: &defaultChildCount,
 		}
 	}
@@ -75,8 +75,8 @@ func (cds *contentDirectoryService) cdsObjectToUpnpavObject(cdsObject contentDir
 	obj.Date = upnpav.Timestamp{Time: time.Now()}
 
 	item := upnpav.Item{
-		Object: obj,
-		Res:    make([]upnpav.Resource, 0, 1),
+		UpnpObject: obj,
+		Res:        make([]upnpav.Resource, 0, 1),
 	}
 
 	item.Res = append(item.Res, upnpav.Resource{
@@ -271,7 +271,7 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 	for _, track := range tracks {
 		trackDateAsTimeObject, _ := time.Parse(time.DateOnly, track.Date)
 
-		obj := upnpav.Object{
+		obj := upnpav.UpnpObject{
 			ID:                  path.Join(basePath, track.ID),
 			Restricted:          1,
 			ParentID:            basePath,
@@ -296,8 +296,8 @@ func (cds *contentDirectoryService) doMediaFiles(tracks model.MediaFiles, basePa
 		var mimeType = "audio/mp3"
 
 		item := upnpav.Item{
-			Object: obj,
-			Res:    make([]upnpav.Resource, 0, 1),
+			UpnpObject: obj,
+			Res:        make([]upnpav.Resource, 0, 1),
 		}
 
 		streamAccessPath := path.Join(resourcePath, resourceStreamPath, track.ID)
@@ -470,7 +470,7 @@ func (cds *contentDirectoryService) Handle(action string, argsXML []byte, r *htt
 	}
 }
 
-// Represents a ContentDirectory contentDirectoryObject.
+// Represents a contentDirectoryObject.
 type contentDirectoryObject struct {
 	Path string // The cleaned, absolute path for the object relative to the server.
 	Id   string

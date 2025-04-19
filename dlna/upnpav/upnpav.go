@@ -24,21 +24,21 @@ type Resource struct {
 
 // Container description
 type Container struct {
-	Object
+	UpnpObject
 	XMLName    xml.Name `xml:"container"`
 	ChildCount *int     `xml:"childCount,attr"`
 }
 
 // Item description
 type Item struct {
-	Object
+	UpnpObject
 	XMLName  xml.Name `xml:"item"`
 	Res      []Resource
 	InnerXML string `xml:",innerxml"`
 }
 
-// Object description
-type Object struct {
+// UpnpObject description
+type UpnpObject struct {
 	ID                  string    `xml:"id,attr"`
 	ParentID            string    `xml:"parentID,attr"`
 	Restricted          int       `xml:"restricted,attr"` // indicates whether the object is modifiable
