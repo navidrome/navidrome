@@ -12,12 +12,14 @@
                 "artist": "歌手",
                 "album": "专辑",
                 "path": "文件路径",
-                "genre": "类型",
+                "genre": "流派",
                 "compilation": "合辑",
                 "year": "发行年份",
                 "size": "文件大小",
                 "updatedAt": "更新于",
                 "bitRate": "比特率",
+                "bitDepth": "比特深度",
+                "channels": "声道",
                 "discSubtitle": "字幕",
                 "starred": "收藏",
                 "comment": "注释",
@@ -25,8 +27,13 @@
                 "quality": "品质",
                 "bpm": "BPM",
                 "playDate": "最后一次播放",
-                "channels": "声道",
-                "createdAt": "创建于"
+                "createdAt": "创建于",
+                "grouping": "分组",
+                "mood": "情绪",
+                "participants": "其他参与人员",
+                "tags": "附加标签",
+                "mappedTags": "映射标签",
+                "rawTags": "原始标签"
             },
             "actions": {
                 "addToQueue": "加入播放列表",
@@ -46,29 +53,36 @@
                 "duration": "时长",
                 "songCount": "歌曲数量",
                 "playCount": "播放次数",
+                "size": "文件大小",
                 "name": "名称",
-                "genre": "类型",
+                "genre": "流派",
                 "compilation": "合辑",
                 "year": "发行年份",
+                "date": "录制日期",
+                "originalDate": "原始日期",
+                "releaseDate": "发⾏日期",
+                "releases": "发⾏",
+                "released": "已发⾏",
                 "updatedAt": "更新于",
                 "comment": "注释",
                 "rating": "评分",
                 "createdAt": "创建于",
-                "size": "文件大小",
-                "originalDate": "原始日期",
-                "releaseDate": "发⾏日期",
-                "releases": "发⾏",
-                "released": "已发⾏"
+                "recordLabel": "厂牌",
+                "catalogNum": "目录编号",
+                "releaseType": "发行类型",
+                "grouping": "分组",
+                "media": "媒体类型",
+                "mood": "情绪"
             },
             "actions": {
                 "playAll": "立即播放",
                 "playNext": "下首播放",
                 "addToQueue": "加入播放列表",
+                "share": "分享",
                 "shuffle": "随机播放",
                 "addToPlaylist": "加入歌单",
                 "download": "下载",
-                "info": "查看信息",
-                "share": "分享"
+                "info": "查看信息"
             },
             "lists": {
                 "all": "所有",
@@ -86,10 +100,26 @@
                 "name": "名称",
                 "albumCount": "专辑数",
                 "songCount": "歌曲数",
+                "size": "文件大小",
                 "playCount": "播放次数",
                 "rating": "评分",
-                "genre": "类型",
-                "size": "文件大小"
+                "genre": "流派",
+                "role": "参与角色"
+            },
+            "roles": {
+                "albumartist": "专辑歌手",
+                "artist": "歌手",
+                "composer": "作曲",
+                "conductor": "指挥",
+                "lyricist": "作词",
+                "arranger": "编曲",
+                "producer": "制作人",
+                "director": "总监",
+                "engineer": "工程师",
+                "mixer": "混音师",
+                "remixer": "重混师",
+                "djmixer": "DJ混音师",
+                "performer": "演奏家"
             }
         },
         "user": {
@@ -98,6 +128,7 @@
                 "userName": "用户名",
                 "isAdmin": "是否管理员",
                 "lastLoginAt": "上次登录",
+                "lastAccessAt": "上次访问",
                 "updatedAt": "更新于",
                 "name": "名称",
                 "password": "密码",
@@ -108,7 +139,7 @@
                 "token": "令牌"
             },
             "helperTexts": {
-                "name": "你名字的更改将在下次登录生效"
+                "name": "名称的更改将在下次登录时生效"
             },
             "notifications": {
                 "created": "用户已创建",
@@ -187,6 +218,7 @@
                 "username": "分享者",
                 "url": "链接",
                 "description": "描述",
+                "downloadable": "是否允许下载？",
                 "contents": "目录",
                 "expiresAt": "过期于",
                 "lastVisitedAt": "上次访问于",
@@ -194,8 +226,24 @@
                 "format": "格式",
                 "maxBitRate": "最大比特率",
                 "updatedAt": "更新于",
-                "createdAt": "创建于",
-                "downloadable": "是否允许下载"
+                "createdAt": "创建于"
+            },
+            "notifications": {},
+            "actions": {}
+        },
+        "missing": {
+            "name": "丢失文件",
+            "empty": "无丢失文件",
+            "fields": {
+                "path": "路径",
+                "size": "文件大小",
+                "updatedAt": "丢失于"
+            },
+            "actions": {
+                "remove": "移除"
+            },
+            "notifications": {
+                "removed": "丢失文件已移除"
             }
         }
     },
@@ -211,7 +259,8 @@
             "password": "密码",
             "sign_in": "登录",
             "sign_in_error": "验证失败，请重试",
-            "logout": "注销"
+            "logout": "注销",
+            "insightsCollectionNote": "Navidrome 会收集匿名使用数据以协助改进项目。\n点击[此处]了解详情或选择退出。"
         },
         "validation": {
             "invalidChars": "请使用字母和数字",
@@ -233,6 +282,7 @@
             "add": "添加",
             "back": "返回",
             "bulk_actions": "选中 %{smart_count} 项",
+            "bulk_actions_mobile": "%{smart_count}",
             "cancel": "取消",
             "clear_input_value": "清除",
             "clone": "复制",
@@ -256,7 +306,6 @@
             "close_menu": "关闭菜单",
             "unselect": "未选择",
             "skip": "跳过",
-            "bulk_actions_mobile": "%{smart_count}",
             "share": "分享",
             "download": "下载"
         },
@@ -351,29 +400,31 @@
         "noPlaylistsAvailable": "没有有效的歌单",
         "delete_user_title": "删除用户 %{name}",
         "delete_user_content": "您确定要删除该用户及其相关数据（包括歌单和用户配置）吗？",
+        "remove_missing_title": "移除丢失文件",
+        "remove_missing_content": "您确定要将选中的丢失文件从数据库中永久移除吗？此操作将删除所有相关信息，包括播放次数和评分。",
         "notifications_blocked": "您已在浏览器的设置中屏蔽了此网站的通知",
         "notifications_not_available": "此浏览器不支持桌面通知",
         "lastfmLinkSuccess": "Last.fm 已关联并启用喜好记录",
         "lastfmLinkFailure": "Last.fm 无法关联",
         "lastfmUnlinkSuccess": "已成功解除与 Last.fm 的链接，且喜好记录已禁用",
         "lastfmUnlinkFailure": "Last.fm 无法取消关联",
+        "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
+        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
+        "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
+        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
         "openIn": {
             "lastfm": "在 Last.fm 中打开",
             "musicbrainz": "在 MusicBrainz 中打开"
         },
         "lastfmLink": "查看更多…",
-        "listenBrainzLinkSuccess": "ListenBrainz 已关联并启用喜好记录",
-        "listenBrainzLinkFailure": "ListenBrainz 无法关联：%{error}",
-        "listenBrainzUnlinkSuccess": "已成功解除与 ListenBrainz 的链接，且喜好记录已禁用",
-        "listenBrainzUnlinkFailure": "ListenBrainz 无法取消关联",
-        "downloadOriginalFormat": "下载原始格式",
         "shareOriginalFormat": "分享原始格式",
         "shareDialogTitle": "分享 %{resource} '%{name}'",
         "shareBatchDialogTitle": "分享 %{smart_count} 个 %{resource}",
+        "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter",
         "shareSuccess": "分享链接已复制: %{url}",
         "shareFailure": "分享链接复制失败: %{url}",
         "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",
-        "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter"
+        "downloadOriginalFormat": "下载原始格式"
     },
     "menu": {
         "library": "曲库",
@@ -387,6 +438,7 @@
                 "language": "语言",
                 "defaultView": "默认界面",
                 "desktop_notifications": "桌面通知",
+                "lastfmNotConfigured": "没有配置 Last.fm 的 API-Key",
                 "lastfmScrobbling": "启用 Last.fm 的喜好记录",
                 "listenBrainzScrobbling": "启用 ListenBrainz 的喜好记录",
                 "replaygain": "回放增益",
@@ -399,9 +451,9 @@
             }
         },
         "albumList": "专辑",
-        "about": "关于",
         "playlists": "歌单",
-        "sharedPlaylists": "共享的歌单"
+        "sharedPlaylists": "共享的歌单",
+        "about": "关于"
     },
     "player": {
         "playListsText": "播放列表",
@@ -432,7 +484,12 @@
         "links": {
             "homepage": "主页",
             "source": "源代码",
-            "featureRequests": "功能需求"
+            "featureRequests": "功能需求",
+            "lastInsightsCollection": " 最近的分析收集",
+            "insights": {
+                "disabled": "禁用",
+                "waiting": "等待"
+            }
         }
     },
     "activity": {
@@ -451,10 +508,10 @@
             "toggle_play": "播放/暂停",
             "prev_song": "上一首歌",
             "next_song": "下一首歌",
+            "current_song": "转到当前播放",
             "vol_up": "增大音量",
             "vol_down": "减小音量",
-            "toggle_love": "添加/移除星标",
-            "current_song": "转到当前播放"
+            "toggle_love": "添加/移除星标"
         }
     }
 }

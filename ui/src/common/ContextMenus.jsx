@@ -231,7 +231,6 @@ export const AlbumContextMenu = (props) =>
         sort: { field: 'album', order: 'ASC' },
         filter: {
           album_id: props.record.id,
-          release_date: props.releaseDate,
           disc_number: props.discNumber,
           missing: false,
         },
