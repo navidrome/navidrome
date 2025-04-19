@@ -501,6 +501,6 @@ func (o contentDirectoryObject) ParentID() string {
 	if o.IsRoot() {
 		return "-1"
 	}
-	o.Path = path.Dir(o.Path)
-	return o.ID()
+	parentObject := contentDirectoryObject{Path: path.Dir(o.Path)}
+	return parentObject.ID()
 }
