@@ -182,6 +182,17 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 
 func handleGenre(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["GenreArtist"] != "" {
+		/*
+		SELECT
+			media_file.*,
+			json_extract(artist.value, '$.id') AS artist_id,
+			json_extract(genre.value, '$.id') AS genre_id
+		FROM
+			media_file,
+			json_each(media_file.tags, '$.genre') AS genre,
+			json_each(media_file.participants, '$.artist') AS artist
+		WHERE genre_id = $0 AND artist_id = $1
+		*/
 		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
 			squirrel.Eq{"genre.id": matchResults["Genre"]},
 			squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
@@ -193,7 +204,21 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 		}
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
 	} else if matchResults["Genre"] != "" {
-		if matchResults["GenreArtist"] == "" {	//TODO, I think this isn't possible/obvious at the moment since the bfr.
+		if matchResults["GenreArtist"] == "" {
+			/*
+			SELECT
+				json_extract(artist.value, '$.name') AS artist_name,
+				json_extract(artist.value, '$.id') AS artist_id,
+				json_extract(genre.value, '$.value') AS genre_name,
+				json_extract(genre.value, '$.id') AS genre_id
+			FROM
+				media_file,
+				json_each(media_file.tags, '$.genre') AS genre,
+				json_each(fmedia_file.participants, '$.artist') AS artist
+			WHERE genre_id = $0
+			GROUP BY artist_id
+			*/
+			cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{})
 			artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"genre.id": matchResults["Genre"]}})
 			if err != nil {
 				fmt.Printf("Error retrieving artists for genre: %+v", err)
