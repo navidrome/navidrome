@@ -193,7 +193,7 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 		}
 		return cds.doMediaFiles(tracks, o.Path, ret, host)
 	} else if matchResults["Genre"] != "" {
-		if matchResults["GenreArtist"] == "" {
+		if matchResults["GenreArtist"] == "" {	//TODO, I think this isn't possible/obvious at the moment since the bfr.
 			artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"genre.id": matchResults["Genre"]}})
 			if err != nil {
 				fmt.Printf("Error retrieving artists for genre: %+v", err)
