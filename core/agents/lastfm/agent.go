@@ -344,18 +344,10 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 func init() {
 	conf.AddHook(func() {
 		agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
-			a := lastFMConstructor(ds)
-			if a != nil {
-				return a
-			}
-			return nil
+			return lastFMConstructor(ds)
 		})
 		scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-			a := lastFMConstructor(ds)
-			if a != nil {
-				return a
-			}
-			return nil
+			return lastFMConstructor(ds)
 		})
 	})
 }
