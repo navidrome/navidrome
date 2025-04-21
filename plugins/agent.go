@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
@@ -28,13 +29,17 @@ func (w *wasmAgent) getInstance(ctx context.Context) (api.ArtistMetadataService,
 		log.Error(ctx, "wasmAgent: sync.Pool returned nil instance", "plugin", w.name, "path", w.wasmPath)
 		return nil, nil, fmt.Errorf("wasmAgent: sync.Pool returned nil instance for plugin %s", w.name)
 	}
+	log.Trace(ctx, "wasmAgent: got instance from pool", "plugin", w.name, "path", w.wasmPath)
 	inst = v.(api.ArtistMetadataService)
+	start := time.Now()
 	closer = v.(interface{ Close(context.Context) error }).Close
 	closeFn := func(e error) {
 		if e == nil {
 			w.pool.Put(v)
+			log.Trace(ctx, "wasmAgent: returned instance to pool", "plugin", w.name, "path", w.wasmPath, "elapsed", time.Since(start))
 		} else {
 			_ = closer(ctx)
+			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "path", w.wasmPath, "elapsed", time.Since(start), e)
 		}
 	}
 	return inst, closeFn, nil
@@ -160,7 +165,9 @@ func (w *wasmAgent) Close(ctx context.Context) error {
 		}
 		if closer, ok := v.(interface{ Close(context.Context) error }); ok {
 			_ = closer.Close(ctx)
+			log.Trace(ctx, "wasmAgent: closed instance during agent close", "plugin", w.name, "path", w.wasmPath)
 		}
 	}
+	log.Trace(ctx, "wasmAgent: agent closed", "plugin", w.name, "path", w.wasmPath)
 	return nil
 }

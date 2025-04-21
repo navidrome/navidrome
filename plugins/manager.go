@@ -15,8 +15,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/utils/singleton"
-	wazero "github.com/tetratelabs/wazero"
-	wasi_snapshot_preview1 "github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 // LoadAgentPlugin loads a WASM agent plugin and returns an implementation of agents.Interface and all retriever interfaces.
@@ -24,10 +24,12 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 	// Setup persistent compilation cache
 	cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
 	if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+		log.Error(ctx, "Failed to create wazero cache dir", "dir", cacheDir, err)
 		return nil, fmt.Errorf("failed to create wazero cache dir: %w", err)
 	}
 	cache, err := wazero.NewCompilationCacheWithDir(cacheDir)
 	if err != nil {
+		log.Error(ctx, "Failed to create wazero compilation cache", "dir", cacheDir, err)
 		return nil, fmt.Errorf("failed to create wazero compilation cache: %w", err)
 	}
 	customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
@@ -35,12 +37,17 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
 		// WASI imports
 		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
+			log.Error(ctx, "Failed to instantiate WASI", err)
 			return nil, err
 		}
 		return r, nil
 	}
-	pluginLoader, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime))
+	mc := wazero.NewModuleConfig().
+		WithStartFunctions("_initialize").
+		WithStderr(os.Stderr) // Redirect stderr to the host's stderr
+	pluginLoader, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime), api.WazeroModuleConfig(mc))
 	if err != nil {
+		log.Error(ctx, "Failed to create plugin loader", "wasmPath", wasmPath, err)
 		return nil, fmt.Errorf("failed to create plugin loader: %w", err)
 	}
 	pluginName := "wasm-plugin"
@@ -51,11 +58,14 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 		New: func() any {
 			inst, err := pluginLoader.Load(context.Background(), wasmPath)
 			if err != nil {
+				log.Error(nil, "pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
 				return nil // Will cause getInstance to try again on next call
 			}
+			log.Trace(nil, "pool: created new plugin instance", "plugin", pluginName, "path", wasmPath)
 			return inst
 		},
 	}
+	log.Trace(ctx, "Instantiated plugin agent", "plugin", pluginName, "path", wasmPath)
 	return &wasmAgent{
 		pool:     pool,
 		wasmPath: wasmPath,
@@ -80,7 +90,7 @@ func (m *Manager) autoRegisterPlugins() {
 	root := conf.Server.Plugins.Folder
 	entries, err := os.ReadDir(root)
 	if err != nil {
-		log.Error("Failed to read plugins folder", "folder", root, "err", err)
+		log.Error(nil, "Failed to read plugins folder", "folder", root, err)
 		return
 	}
 	for _, entry := range entries {
@@ -90,17 +100,24 @@ func (m *Manager) autoRegisterPlugins() {
 		name := entry.Name()
 		wasmPath := filepath.Join(root, name, "plugin.wasm")
 		if _, err := os.Stat(wasmPath); err != nil {
-			log.Debug("No plugin.wasm found in plugin directory", "plugin", name)
+			log.Debug(nil, "No plugin.wasm found in plugin directory", "plugin", name, "path", wasmPath)
 			continue
 		}
 		agents.Register(name, func(ds model.DataStore) agents.Interface {
 			agent, err := LoadAgentPlugin(context.Background(), wasmPath, name)
 			if err != nil {
-				log.Error("Failed to load plugin", "name", name, "err", err)
+				log.Error(nil, "Failed to load plugin", "name", name, "path", wasmPath, err)
 				return nil
 			}
+			log.Debug(nil, "Loaded plugin agent", "name", name, "path", wasmPath)
 			return agent
 		})
 		log.Info(nil, "Registered plugin agent", "name", name, "wasm", wasmPath)
 	}
+}
+
+func init() {
+	conf.AddHook(func() {
+		GetManager()
+	})
 }
