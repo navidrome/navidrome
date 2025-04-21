@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/navidrome/navidrome/log"
@@ -15,3 +17,14 @@ func TestPlugins(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
 }
+
+var _ = BeforeSuite(func() {
+	wasmPath := "plugins/testdata/agent/plugin.wasm"
+	_ = os.Remove(wasmPath)
+	cmd := exec.Command("go", "build", "-buildmode=c-shared", "-o", wasmPath, "./plugins/testdata/agent")
+	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	Expect(cmd.Run()).To(Succeed())
+	Expect(wasmPath).To(BeAnExistingFile())
+})

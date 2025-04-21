@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("Plugin Manager", func() {
-	var mgr Manager
+	var mgr *Manager
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
