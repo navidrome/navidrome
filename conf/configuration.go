@@ -93,6 +93,7 @@ type configOptions struct {
 	PID                             pidOptions
 	Inspect                         inspectOptions
 	Subsonic                        subsonicOptions
+	Plugins                         pluginsOptions
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -204,6 +205,11 @@ type inspectOptions struct {
 	BacklogTimeout int
 }
 
+type pluginsOptions struct {
+	Enabled bool
+	Folder  string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -240,6 +246,15 @@ func Load(noConfigDump bool) {
 	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
+		os.Exit(1)
+	}
+
+	if Server.Plugins.Folder == "" {
+		Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
+	}
+	err = os.MkdirAll(Server.Plugins.Folder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
 		os.Exit(1)
 	}
 
@@ -527,6 +542,9 @@ func init() {
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
+
+	viper.SetDefault("plugins.folder", "")
+	viper.SetDefault("plugins.enabled", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

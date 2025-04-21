@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
@@ -82,6 +83,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(startPluginManager(ctx))
 	if conf.Server.Scanner.Enabled {
 		g.Go(runInitialScan(ctx))
 		g.Go(startScanWatcher(ctx))
@@ -322,6 +324,19 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+// startPluginManager starts the plugin manager, if configured.
+func startPluginManager(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.Plugins.Enabled {
+			log.Debug("Plugin manager is DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Starting plugin manager")
+		_ = plugins.GetManager()
+		return nil
 	}
 }
 
