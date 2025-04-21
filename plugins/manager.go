@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -29,10 +30,6 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wazero compilation cache: %w", err)
 	}
-	// Ensure cache is closed on process exit (best effort)
-	// (In production, you may want to manage this more globally)
-	// defer cache.Close(ctx)
-
 	customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
 		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
@@ -42,26 +39,32 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 		}
 		return r, nil
 	}
-	plugin, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime))
+	pluginLoader, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create plugin loader: %w", err)
-	}
-	inst, err := plugin.Load(ctx, wasmPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load plugin: %w", err)
 	}
 	pluginName := "wasm-plugin"
 	if len(name) > 0 {
 		pluginName = name[0]
 	}
-	return &wasmAgent{inst: inst, name: pluginName}, nil
+	pool := &sync.Pool{
+		New: func() any {
+			inst, err := pluginLoader.Load(context.Background(), wasmPath)
+			if err != nil {
+				return nil // Will cause getInstance to try again on next call
+			}
+			return inst
+		},
+	}
+	return &wasmAgent{
+		pool:     pool,
+		wasmPath: wasmPath,
+		name:     pluginName,
+	}, nil
 }
 
-// Manager handles plugin discovery and registration
-// Future logic for plugin auto-registration will go here
-type Manager struct {
-	// Add fields as needed for plugin state
-}
+// Manager is a singleton that manages plugins
+type Manager struct{}
 
 // GetManager returns the singleton instance of Manager
 func GetManager() *Manager {
