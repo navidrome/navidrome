@@ -22,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/dlna/upnpav"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 	"github.com/oriser/regroup"
 )
 
@@ -183,21 +184,30 @@ func handleAlbum(matchResults map[string]string, ret []interface{}, cds *content
 func handleGenre(matchResults map[string]string, ret []interface{}, cds *contentDirectoryService, o contentDirectoryObject, host string) ([]interface{}, error) {
 	if matchResults["GenreArtist"] != "" {
 		/*
-		SELECT
-			media_file.*,
-			json_extract(artist.value, '$.id') AS artist_id,
-			json_extract(genre.value, '$.id') AS genre_id
-		FROM
-			media_file,
-			json_each(media_file.tags, '$.genre') AS genre,
-			json_each(media_file.participants, '$.artist') AS artist
-		WHERE genre_id = $0 AND artist_id = $1
+		SELECT * FROM media_file WHERE
+			EXISTS (
+				SELECT 1 FROM json_each(tags, '$.genre')
+				WHERE json_extract(value, '$.id') == '7bLYq0Np81m1Wgy5N31nuG'
+			)
+			AND EXISTS (
+				SELECT 1 FROM json_each(participants, '$.artist')
+				WHERE json_extract(value, '$.id') == '4CBFO1ymQXgsbXQgV2aPMI'
+		)
+		LIMIT 100
 		*/
-		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
-			squirrel.Eq{"genre.id": matchResults["Genre"]},
-			squirrel.Eq{"artist_id": matchResults["GenreArtist"]},
-		},
-		})
+
+		thisFilter := squirrel.And{
+			persistence.Exists("json_tree(tags, '$.genre')",  squirrel.And{
+				squirrel.Eq{"key": "id"},
+				squirrel.Eq{"value": matchResults["Genre"]},
+			}),
+			persistence.Exists("json_tree(participants, '$.artist')",  squirrel.And{
+				squirrel.Eq{"key": "id"},
+				squirrel.Eq{"value": matchResults["GenreArtist"]},
+			}),
+		}
+
+		tracks, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: thisFilter})
 		if err != nil {
 			fmt.Printf("Error retrieving tracks for artist and genre: %+v", err)
 			return nil, err
@@ -206,31 +216,48 @@ func handleGenre(matchResults map[string]string, ret []interface{}, cds *content
 	} else if matchResults["Genre"] != "" {
 		if matchResults["GenreArtist"] == "" {
 			/*
+			// slightly cleaner query:
+
 			SELECT
-				json_extract(artist.value, '$.name') AS artist_name,
-				json_extract(artist.value, '$.id') AS artist_id,
-				json_extract(genre.value, '$.value') AS genre_name,
-				json_extract(genre.value, '$.id') AS genre_id
+				json_extract(a.value, '$.name') artist_name,
+				json_extract(a.value, '$.id') artist_id,
+				COUNT(*)
 			FROM
-				media_file,
-				json_each(media_file.tags, '$.genre') AS genre,
-				json_each(fmedia_file.participants, '$.artist') AS artist
-			WHERE genre_id = $0
-			GROUP BY artist_id
+				media_file f,
+				json_each(f.tags, '$.genre') as g,
+				json_each(f.participants, '$.artist') as a
+			WHERE
+				json_extract(g.value, '$.id') = '7bLYq0Np81m1Wgy5N31nuG'
+			GROUP BY artist_id;
 			*/
-			cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{})
-			artists, err := cds.ds.Artist(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"genre.id": matchResults["Genre"]}})
+
+			thisFilter := persistence.Exists("json_tree(tags, '$.genre')",  squirrel.And{
+				squirrel.Eq{"key": "id"},
+				squirrel.Eq{"value": matchResults["Genre"]},
+			})
+			mediaFiles, err := cds.ds.MediaFile(cds.ctx).GetAll(model.QueryOptions{Filters: thisFilter })
+
 			if err != nil {
 				fmt.Printf("Error retrieving artists for genre: %+v", err)
 				return nil, err
 			}
-			for artistIndex := range artists {
-				child := contentDirectoryObject{
-					Path: path.Join(o.Path, artists[artistIndex].Name),
-					Id:   path.Join(o.Path, artists[artistIndex].ID),
+
+			artistsFound := make(map[string]string)
+			for fileIndex := range mediaFiles {
+				artists := mediaFiles[fileIndex].Participants.AllArtists()
+				for index := range artists {
+					artistsFound[artists[index].ID] = artists[index].Name
+				}
+			}
+
+			for artistId := range artistsFound {
+				child := contentDirectoryObject {
+					Path: path.Join(o.Path, artistsFound[artistId]),
+					Id:   path.Join(o.Path, artistId),
 				}
 				ret = append(ret, cds.cdsObjectToUpnpavObject(child, true, host, -1))
 			}
+			return ret, nil
 		}
 	}
 	indexes, err := cds.ds.Genre(cds.ctx).GetAll()
