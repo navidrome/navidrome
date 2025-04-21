@@ -1,0 +1,78 @@
+//go:build wasip1
+
+package main
+
+import (
+	"context"
+	"errors"
+
+	"github.com/navidrome/navidrome/plugins/api"
+)
+
+type MinimalAgent struct{}
+
+func (MinimalAgent) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
+	if req.Name != "" {
+		return &api.ArtistMBIDResponse{
+			Mbid: "1234567890",
+		}, nil
+	}
+	return nil, errors.New("not implemented")
+}
+func (MinimalAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) (*api.ArtistURLResponse, error) {
+	if req.Name != "" {
+		return &api.ArtistURLResponse{
+			Url: "https://example.com",
+		}, nil
+	}
+	return nil, errors.New("not implemented")
+}
+func (MinimalAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBiographyRequest) (*api.ArtistBiographyResponse, error) {
+	if req.Name != "" {
+		return &api.ArtistBiographyResponse{
+			Biography: "This is a test biography",
+		}, nil
+	}
+	return nil, errors.New("not implemented")
+}
+func (MinimalAgent) GetSimilarArtists(ctx context.Context, req *api.ArtistSimilarRequest) (*api.ArtistSimilarResponse, error) {
+	if req.Name != "" {
+		return &api.ArtistSimilarResponse{
+			Artists: []*api.Artist{
+				{Name: "Similar Artist 1", Mbid: "mbid1"},
+				{Name: "Similar Artist 2", Mbid: "mbid2"},
+			},
+		}, nil
+	}
+	return nil, errors.New("not implemented")
+}
+func (MinimalAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageRequest) (*api.ArtistImageResponse, error) {
+	if req.Name != "" {
+		return &api.ArtistImageResponse{
+			Images: []*api.ExternalImage{
+				{Url: "https://example.com/image1.jpg", Size: 100},
+				{Url: "https://example.com/image2.jpg", Size: 200},
+			},
+		}, nil
+	}
+	return nil, errors.New("not implemented")
+}
+func (MinimalAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopSongsRequest) (*api.ArtistTopSongsResponse, error) {
+	if req.ArtistName != "" {
+		return &api.ArtistTopSongsResponse{
+			Songs: []*api.Song{
+				{Name: "Song 1", Mbid: "mbid1"},
+				{Name: "Song 2", Mbid: "mbid2"},
+			},
+		}, nil
+	}
+	return nil, errors.New("not implemented")
+}
+
+// main is required by Go WASI build
+func main() {}
+
+// init is used by go-plugin to register the implementation
+func init() {
+	api.RegisterArtistMetadataService(MinimalAgent{})
+}

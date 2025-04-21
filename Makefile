@@ -216,6 +216,11 @@ deprecated:
 	@echo "WARNING: This target is deprecated and will be removed in future releases. Use 'make build' instead."
 .PHONY: deprecated
 
+# Generate Go code from plugins/api/api.proto
+plugins-gen:
+	go generate ./plugins/...
+.PHONY: plugins-gen
+
 .DEFAULT_GOAL := help
 
 HELP_FUN = \
