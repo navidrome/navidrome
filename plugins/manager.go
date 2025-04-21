@@ -14,11 +14,35 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/utils/singleton"
+	wazero "github.com/tetratelabs/wazero"
+	wasi_snapshot_preview1 "github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 // LoadAgentPlugin loads a WASM agent plugin and returns an implementation of agents.Interface and all retriever interfaces.
 func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agents.Interface, error) {
-	plugin, err := api.NewArtistMetadataServicePlugin(ctx)
+	// Setup persistent compilation cache
+	cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
+	if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+		return nil, fmt.Errorf("failed to create wazero cache dir: %w", err)
+	}
+	cache, err := wazero.NewCompilationCacheWithDir(cacheDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create wazero compilation cache: %w", err)
+	}
+	// Ensure cache is closed on process exit (best effort)
+	// (In production, you may want to manage this more globally)
+	// defer cache.Close(ctx)
+
+	customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
+		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
+		// WASI imports
+		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
+			return nil, err
+		}
+		return r, nil
+	}
+	plugin, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create plugin loader: %w", err)
 	}
