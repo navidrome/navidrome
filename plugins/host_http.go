@@ -37,19 +37,19 @@ func doHttp(ctx context.Context, method string, req *host.HttpRequest) (*host.Ht
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, method, req.Url, body)
 	if err != nil {
-		return &host.HttpResponse{Error: err.Error()}, nil
+		return nil, err
 	}
 	for k, v := range req.Headers {
 		httpReq.Header.Set(k, v)
 	}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		return &host.HttpResponse{Error: err.Error()}, nil
+		return nil, err
 	}
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &host.HttpResponse{Error: err.Error()}, nil
+		return nil, err
 	}
 	headers := map[string]string{}
 	for k, v := range resp.Header {

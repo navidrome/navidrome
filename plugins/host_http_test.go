@@ -98,7 +98,40 @@ var _ = Describe("HttpService", func() {
 			Url:       ts.URL,
 			TimeoutMs: 1,
 		})
-		Expect(err).To(BeNil())
-		Expect(resp.Error).NotTo(BeEmpty())
+		Expect(resp).To(BeNil())
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should return error on context timeout", func() {
+		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+		}))
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+		defer cancel()
+		resp, err := svc.Get(ctx, &hosthttp.HttpRequest{
+			Url:       ts.URL,
+			TimeoutMs: 1000,
+		})
+		Expect(resp).To(BeNil())
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+	})
+
+	It("should return error on context cancellation", func() {
+		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+		}))
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			time.Sleep(1 * time.Millisecond)
+			cancel()
+		}()
+		resp, err := svc.Get(ctx, &hosthttp.HttpRequest{
+			Url:       ts.URL,
+			TimeoutMs: 1000,
+		})
+		Expect(resp).To(BeNil())
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(MatchError(context.Canceled))
 	})
 })

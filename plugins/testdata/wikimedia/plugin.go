@@ -25,11 +25,40 @@ const (
 var (
 	ErrNotFound       = api.ErrNotFound
 	ErrNotImplemented = api.ErrNotImplemented
+
+	client = host.NewHttpService()
 )
 
+// SPARQLResult struct for all possible fields
+// Only the needed field will be non-nil in each context
+// (Sitelink, Wiki, Comment, Img)
+type SPARQLResult struct {
+	Results struct {
+		Bindings []struct {
+			Sitelink *struct{ Value string } `json:"sitelink,omitempty"`
+			Wiki     *struct{ Value string } `json:"wiki,omitempty"`
+			Comment  *struct{ Value string } `json:"comment,omitempty"`
+			Img      *struct{ Value string } `json:"img,omitempty"`
+		} `json:"bindings"`
+	} `json:"results"`
+}
+
+// MediaWikiExtractResult is used to unmarshal MediaWiki API extract responses
+// (for getWikipediaExtract)
+type MediaWikiExtractResult struct {
+	Query struct {
+		Pages map[string]struct {
+			PageID  int    `json:"pageid"`
+			Ns      int    `json:"ns"`
+			Title   string `json:"title"`
+			Extract string `json:"extract"`
+			Missing bool   `json:"missing"`
+		} `json:"pages"`
+	} `json:"query"`
+}
+
 // --- SPARQL Query Helper ---
-func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query string) ([]byte, error) {
-	// Use url.Values for proper encoding
+func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query string) (*SPARQLResult, error) {
 	form := url.Values{}
 	form.Set("query", query)
 
@@ -52,27 +81,8 @@ func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query s
 		log.Printf("[Wikimedia Query] SPARQL HTTP error %d for query to %s. Body: %s", resp.Status, endpoint, string(resp.Body))
 		return nil, fmt.Errorf("SPARQL HTTP error: status %d", resp.Status)
 	}
-	return resp.Body, nil
-}
-
-// SPARQLResult struct for all possible fields
-// Only the needed field will be non-nil in each context
-// (Sitelink, Wiki, Comment, Img)
-type SPARQLResult struct {
-	Results struct {
-		Bindings []struct {
-			Sitelink *struct{ Value string } `json:"sitelink,omitempty"`
-			Wiki     *struct{ Value string } `json:"wiki,omitempty"`
-			Comment  *struct{ Value string } `json:"comment,omitempty"`
-			Img      *struct{ Value string } `json:"img,omitempty"`
-		} `json:"bindings"`
-	} `json:"results"`
-}
-
-// Helper to unmarshal and check for empty bindings
-func parseSPARQLResult(body []byte) (*SPARQLResult, error) {
 	var result SPARQLResult
-	if err := json.Unmarshal(body, &result); err != nil {
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse SPARQL response: %w", err)
 	}
 	if len(result.Results.Bindings) == 0 {
@@ -92,7 +102,6 @@ func mediawikiQuery(ctx context.Context, client host.HttpService, params url.Val
 		},
 		TimeoutMs: requestTimeoutMs,
 	}
-	// log.Printf("[Wikimedia] MediaWiki Query: %s\n", apiURL)
 	resp, err := client.Get(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("MediaWiki request error: %w", err)
@@ -117,13 +126,9 @@ func getWikidataWikipediaURL(ctx context.Context, client host.HttpService, mbid,
 		return "", errors.New("MBID or Name required for Wikidata URL lookup")
 	}
 
-	body, err := sparqlQuery(ctx, client, wikidataEndpoint, q)
+	result, err := sparqlQuery(ctx, client, wikidataEndpoint, q)
 	if err != nil {
 		return "", fmt.Errorf("Wikidata SPARQL query failed: %w", err)
-	}
-	result, err := parseSPARQLResult(body)
-	if err != nil {
-		return "", err
 	}
 	if result.Results.Bindings[0].Sitelink != nil {
 		return result.Results.Bindings[0].Sitelink.Value, nil
@@ -138,13 +143,9 @@ func getDBpediaWikipediaURL(ctx context.Context, client host.HttpService, name s
 	}
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	q := fmt.Sprintf(`SELECT ?wiki WHERE { ?artist foaf:name "%s"@en; foaf:isPrimaryTopicOf ?wiki. FILTER regex(str(?wiki), "^https://en.wikipedia.org/") } LIMIT 1`, escapedName)
-	body, err := sparqlQuery(ctx, client, dbpediaEndpoint, q)
+	result, err := sparqlQuery(ctx, client, dbpediaEndpoint, q)
 	if err != nil {
 		return "", fmt.Errorf("DBpedia SPARQL query failed: %w", err)
-	}
-	result, err := parseSPARQLResult(body)
-	if err != nil {
-		return "", err
 	}
 	if result.Results.Bindings[0].Wiki != nil {
 		return result.Results.Bindings[0].Wiki.Value, nil
@@ -158,13 +159,9 @@ func getDBpediaComment(ctx context.Context, client host.HttpService, name string
 	}
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	q := fmt.Sprintf(`SELECT ?comment WHERE { ?artist foaf:name "%s"@en; rdfs:comment ?comment. FILTER (lang(?comment) = 'en') } LIMIT 1`, escapedName)
-	body, err := sparqlQuery(ctx, client, dbpediaEndpoint, q)
+	result, err := sparqlQuery(ctx, client, dbpediaEndpoint, q)
 	if err != nil {
 		return "", fmt.Errorf("DBpedia comment SPARQL query failed: %w", err)
-	}
-	result, err := parseSPARQLResult(body)
-	if err != nil {
-		return "", err
 	}
 	if result.Results.Bindings[0].Comment != nil {
 		return result.Results.Bindings[0].Comment.Value, nil
@@ -191,18 +188,7 @@ func getWikipediaExtract(ctx context.Context, client host.HttpService, pageTitle
 		return "", fmt.Errorf("MediaWiki query failed: %w", err)
 	}
 
-	var result struct {
-		Query struct {
-			Pages map[string]struct {
-				PageID  int    `json:"pageid"`
-				Ns      int    `json:"ns"`
-				Title   string `json:"title"`
-				Extract string `json:"extract"`
-				Missing bool   `json:"missing"` // Check if page is missing
-			} `json:"pages"`
-		} `json:"query"`
-	}
-
+	var result MediaWikiExtractResult
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", fmt.Errorf("failed to parse MediaWiki response: %w", err)
 	}
@@ -250,7 +236,6 @@ type WikimediaAgent struct{}
 // GetArtistURL fetches the Wikipedia URL.
 // Order: Wikidata(MBID/Name) -> DBpedia(Name) -> Search URL
 func (WikimediaAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) (*api.ArtistURLResponse, error) {
-	client := host.NewHttpService()
 	var wikiURL string
 	var err error
 
@@ -290,7 +275,6 @@ func (WikimediaAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLReques
 // GetArtistBiography fetches the long biography.
 // Order: Wikipedia API (via Wikidata/DBpedia URL) -> DBpedia Comment (Name)
 func (WikimediaAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBiographyRequest) (*api.ArtistBiographyResponse, error) {
-	client := host.NewHttpService()
 	var bio string
 	var err error
 
@@ -317,8 +301,8 @@ func (WikimediaAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBio
 
 	// 2. If Wikipedia URL found, try MediaWiki API
 	if wikiURL != "" {
-		pageTitle, titleErr := extractPageTitleFromURL(wikiURL)
-		if titleErr == nil {
+		pageTitle, err := extractPageTitleFromURL(wikiURL)
+		if err == nil {
 			log.Printf("[Wikimedia Bio] Extracted page title: %s", pageTitle)
 			bio, err = getWikipediaExtract(ctx, client, pageTitle)
 			if err == nil && bio != "" {
@@ -327,11 +311,11 @@ func (WikimediaAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBio
 			}
 			log.Printf("[Wikimedia Bio] Wikipedia extract failed: %v", err)
 			if err != nil && err != ErrNotFound {
-				log.Printf("[Wikimedia] Error fetching Wikipedia extract for '%s': %v", pageTitle, err)
+				log.Printf("[Wikimedia Bio] Error fetching Wikipedia extract for '%s': %v", pageTitle, err)
 				// Don't stop, try DBpedia comment
 			}
 		} else {
-			log.Printf("[Wikimedia Bio] Error extracting page title from URL '%s': %v", wikiURL, titleErr)
+			log.Printf("[Wikimedia Bio] Error extracting page title from URL '%s': %v", wikiURL, err)
 			// Don't stop, try DBpedia comment
 		}
 	}
@@ -346,7 +330,7 @@ func (WikimediaAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBio
 		}
 		log.Printf("[Wikimedia Bio] DBpedia comment failed: %v", err)
 		if err != nil && err != ErrNotFound {
-			log.Printf("[Wikimedia] Error fetching DBpedia comment for '%s': %v", req.Name, err)
+			log.Printf("[Wikimedia Bio] Error fetching DBpedia comment for '%s': %v", req.Name, err)
 		}
 	}
 
@@ -356,7 +340,6 @@ func (WikimediaAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBio
 
 // GetArtistImages fetches images (Wikidata only for now)
 func (WikimediaAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageRequest) (*api.ArtistImageResponse, error) {
-	client := host.NewHttpService()
 	var q string
 	if req.Mbid != "" {
 		q = fmt.Sprintf(`SELECT ?img WHERE { ?artist wdt:P434 "%s"; wdt:P18 ?img } LIMIT 1`, req.Mbid)
@@ -367,11 +350,7 @@ func (WikimediaAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageR
 		return nil, errors.New("MBID or Name required for Wikidata Image lookup")
 	}
 
-	body, err := sparqlQuery(ctx, client, wikidataEndpoint, q)
-	if err != nil {
-		return nil, fmt.Errorf("Wikidata image SPARQL query failed: %w", err)
-	}
-	result, err := parseSPARQLResult(body)
+	result, err := sparqlQuery(ctx, client, wikidataEndpoint, q)
 	if err != nil {
 		log.Printf("[Wikimedia] Image not found for: %s (%s)\n", req.Name, req.Mbid)
 		return nil, ErrNotFound
