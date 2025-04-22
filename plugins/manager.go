@@ -1,6 +1,7 @@
 package plugins
 
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http.proto
 
 import (
 	"context"
@@ -14,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -40,7 +42,7 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 			log.Error(ctx, "Failed to instantiate WASI", err)
 			return nil, err
 		}
-		return r, nil
+		return r, host.Instantiate(ctx, r, &HttpService{})
 	}
 	mc := wazero.NewModuleConfig().
 		WithStartFunctions("_initialize").
@@ -79,10 +81,14 @@ type Manager struct{}
 // GetManager returns the singleton instance of Manager
 func GetManager() *Manager {
 	return singleton.GetInstance(func() *Manager {
-		m := &Manager{}
-		m.autoRegisterPlugins()
-		return m
+		return createManager()
 	})
+}
+
+func createManager() *Manager {
+	m := &Manager{}
+	m.autoRegisterPlugins()
+	return m
 }
 
 // autoRegisterPlugins scans the plugins folder and registers each plugin found

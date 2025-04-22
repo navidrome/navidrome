@@ -21,7 +21,7 @@ func (w *wasmAgent) AgentName() string {
 	return w.name
 }
 
-func (w *wasmAgent) getInstance(ctx context.Context) (api.ArtistMetadataService, func(error), error) {
+func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.ArtistMetadataService, func(error), error) {
 	var inst api.ArtistMetadataService
 	var closer func(context.Context) error
 	v := w.pool.Get()
@@ -29,131 +29,112 @@ func (w *wasmAgent) getInstance(ctx context.Context) (api.ArtistMetadataService,
 		log.Error(ctx, "wasmAgent: sync.Pool returned nil instance", "plugin", w.name, "path", w.wasmPath)
 		return nil, nil, fmt.Errorf("wasmAgent: sync.Pool returned nil instance for plugin %s", w.name)
 	}
-	log.Trace(ctx, "wasmAgent: got instance from pool", "plugin", w.name, "path", w.wasmPath)
+	log.Trace(ctx, "wasmAgent: got instance from pool", "plugin", w.name, "method", methodName)
 	inst = v.(api.ArtistMetadataService)
 	start := time.Now()
 	closer = v.(interface{ Close(context.Context) error }).Close
 	closeFn := func(e error) {
 		if e == nil {
 			w.pool.Put(v)
-			log.Trace(ctx, "wasmAgent: returned instance to pool", "plugin", w.name, "path", w.wasmPath, "elapsed", time.Since(start))
+			log.Trace(ctx, "wasmAgent: returned instance to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start))
 		} else {
 			_ = closer(ctx)
-			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "path", w.wasmPath, "elapsed", time.Since(start), e)
+			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), e)
 		}
 	}
 	return inst, closeFn, nil
 }
 
-func (w *wasmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	inst, done, err := w.getInstance(ctx)
+func callMethod[R any](ctx context.Context, w *wasmAgent, methodName string, fn func(inst api.ArtistMetadataService) (R, error)) (R, error) {
+	inst, done, err := w.getInstance(ctx, methodName)
+	var r R
 	if err != nil {
-		return "", err
+		return r, err
 	}
-	var resp *api.ArtistMBIDResponse
-	var callErr error
-	defer func() { done(callErr) }()
-	resp, callErr = inst.GetArtistMBID(ctx, &api.ArtistMBIDRequest{Id: id, Name: name})
-	if callErr != nil {
-		return "", callErr
-	}
-	return resp.GetMbid(), nil
+	defer func() { done(err) }()
+	r, err = fn(inst)
+	return r, err
+}
+
+func (w *wasmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
+	return callMethod(ctx, w, "GetArtistMBID", func(inst api.ArtistMetadataService) (string, error) {
+		res, err := inst.GetArtistMBID(ctx, &api.ArtistMBIDRequest{Id: id, Name: name})
+		if err != nil {
+			return "", err
+		}
+		return res.GetMbid(), nil
+	})
 }
 
 func (w *wasmAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	inst, done, err := w.getInstance(ctx)
-	if err != nil {
-		return "", err
-	}
-	var resp *api.ArtistURLResponse
-	var callErr error
-	defer func() { done(callErr) }()
-	resp, callErr = inst.GetArtistURL(ctx, &api.ArtistURLRequest{Id: id, Name: name, Mbid: mbid})
-	if callErr != nil {
-		return "", callErr
-	}
-	return resp.GetUrl(), nil
+	return callMethod(ctx, w, "GetArtistURL", func(inst api.ArtistMetadataService) (string, error) {
+		res, err := inst.GetArtistURL(ctx, &api.ArtistURLRequest{Id: id, Name: name, Mbid: mbid})
+		if err != nil {
+			return "", err
+		}
+		return res.GetUrl(), nil
+	})
 }
 
 func (w *wasmAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	inst, done, err := w.getInstance(ctx)
-	if err != nil {
-		return "", err
-	}
-	var resp *api.ArtistBiographyResponse
-	var callErr error
-	defer func() { done(callErr) }()
-	resp, callErr = inst.GetArtistBiography(ctx, &api.ArtistBiographyRequest{Id: id, Name: name, Mbid: mbid})
-	if callErr != nil {
-		return "", callErr
-	}
-	return resp.GetBiography(), nil
+	return callMethod(ctx, w, "GetArtistBiography", func(inst api.ArtistMetadataService) (string, error) {
+		res, err := inst.GetArtistBiography(ctx, &api.ArtistBiographyRequest{Id: id, Name: name, Mbid: mbid})
+		if err != nil {
+			return "", err
+		}
+		return res.GetBiography(), nil
+	})
 }
 
 func (w *wasmAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
-	inst, done, err := w.getInstance(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var resp *api.ArtistSimilarResponse
-	var callErr error
-	defer func() { done(callErr) }()
-	resp, callErr = inst.GetSimilarArtists(ctx, &api.ArtistSimilarRequest{Id: id, Name: name, Mbid: mbid, Limit: int32(limit)})
-	if callErr != nil {
-		return nil, callErr
-	}
-	artists := make([]agents.Artist, 0, len(resp.GetArtists()))
-	for _, a := range resp.GetArtists() {
-		artists = append(artists, agents.Artist{
-			Name: a.GetName(),
-			MBID: a.GetMbid(),
-		})
-	}
-	return artists, nil
+	return callMethod(ctx, w, "GetSimilarArtists", func(inst api.ArtistMetadataService) ([]agents.Artist, error) {
+		resp, err := inst.GetSimilarArtists(ctx, &api.ArtistSimilarRequest{Id: id, Name: name, Mbid: mbid, Limit: int32(limit)})
+		if err != nil {
+			return nil, err
+		}
+		artists := make([]agents.Artist, 0, len(resp.GetArtists()))
+		for _, a := range resp.GetArtists() {
+			artists = append(artists, agents.Artist{
+				Name: a.GetName(),
+				MBID: a.GetMbid(),
+			})
+		}
+		return artists, nil
+	})
 }
 
 func (w *wasmAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
-	inst, done, err := w.getInstance(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var resp *api.ArtistImageResponse
-	var callErr error
-	defer func() { done(callErr) }()
-	resp, callErr = inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
-	if callErr != nil {
-		return nil, callErr
-	}
-	images := make([]agents.ExternalImage, 0, len(resp.GetImages()))
-	for _, img := range resp.GetImages() {
-		images = append(images, agents.ExternalImage{
-			URL:  img.GetUrl(),
-			Size: int(img.GetSize()),
-		})
-	}
-	return images, nil
+	return callMethod(ctx, w, "GetArtistImages", func(inst api.ArtistMetadataService) ([]agents.ExternalImage, error) {
+		resp, err := inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
+		if err != nil {
+			return nil, err
+		}
+		images := make([]agents.ExternalImage, 0, len(resp.GetImages()))
+		for _, img := range resp.GetImages() {
+			images = append(images, agents.ExternalImage{
+				URL:  img.GetUrl(),
+				Size: int(img.GetSize()),
+			})
+		}
+		return images, nil
+	})
 }
 
 func (w *wasmAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	inst, done, err := w.getInstance(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var resp *api.ArtistTopSongsResponse
-	var callErr error
-	defer func() { done(callErr) }()
-	resp, callErr = inst.GetArtistTopSongs(ctx, &api.ArtistTopSongsRequest{Id: id, ArtistName: artistName, Mbid: mbid, Count: int32(count)})
-	if callErr != nil {
-		return nil, callErr
-	}
-	songs := make([]agents.Song, 0, len(resp.GetSongs()))
-	for _, s := range resp.GetSongs() {
-		songs = append(songs, agents.Song{
-			Name: s.GetName(),
-			MBID: s.GetMbid(),
-		})
-	}
-	return songs, nil
+	return callMethod(ctx, w, "GetArtistTopSongs", func(inst api.ArtistMetadataService) ([]agents.Song, error) {
+		resp, err := inst.GetArtistTopSongs(ctx, &api.ArtistTopSongsRequest{Id: id, ArtistName: artistName, Mbid: mbid, Count: int32(count)})
+		if err != nil {
+			return nil, err
+		}
+		songs := make([]agents.Song, 0, len(resp.GetSongs()))
+		for _, s := range resp.GetSongs() {
+			songs = append(songs, agents.Song{
+				Name: s.GetName(),
+				MBID: s.GetMbid(),
+			})
+		}
+		return songs, nil
+	})
 }
 
 func (w *wasmAgent) Close(ctx context.Context) error {

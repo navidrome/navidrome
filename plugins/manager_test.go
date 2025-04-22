@@ -15,7 +15,7 @@ var _ = Describe("Plugin Manager", func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = "plugins/testdata"
-		mgr = GetManager()
+		mgr = createManager()
 	})
 
 	It("should auto-register and load a plugin from the testdata folder", func() {
