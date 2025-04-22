@@ -55,6 +55,32 @@ func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query s
 	return resp.Body, nil
 }
 
+// SPARQLResult struct for all possible fields
+// Only the needed field will be non-nil in each context
+// (Sitelink, Wiki, Comment, Img)
+type SPARQLResult struct {
+	Results struct {
+		Bindings []struct {
+			Sitelink *struct{ Value string } `json:"sitelink,omitempty"`
+			Wiki     *struct{ Value string } `json:"wiki,omitempty"`
+			Comment  *struct{ Value string } `json:"comment,omitempty"`
+			Img      *struct{ Value string } `json:"img,omitempty"`
+		} `json:"bindings"`
+	} `json:"results"`
+}
+
+// Helper to unmarshal and check for empty bindings
+func parseSPARQLResult(body []byte) (*SPARQLResult, error) {
+	var result SPARQLResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse SPARQL response: %w", err)
+	}
+	if len(result.Results.Bindings) == 0 {
+		return nil, ErrNotFound
+	}
+	return &result, nil
+}
+
 // --- MediaWiki API Helper ---
 func mediawikiQuery(ctx context.Context, client host.HttpService, params url.Values) ([]byte, error) {
 	apiURL := fmt.Sprintf("%s?%s", mediawikiAPIEndpoint, params.Encode())
@@ -95,19 +121,11 @@ func getWikidataWikipediaURL(ctx context.Context, client host.HttpService, mbid,
 	if err != nil {
 		return "", fmt.Errorf("Wikidata SPARQL query failed: %w", err)
 	}
-
-	var result struct {
-		Results struct {
-			Bindings []struct {
-				Sitelink struct{ Value string } `json:"sitelink"`
-			} `json:"bindings"`
-		} `json:"results"`
+	result, err := parseSPARQLResult(body)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("failed to parse Wikidata response: %w", err)
-	}
-
-	if len(result.Results.Bindings) > 0 {
+	if result.Results.Bindings[0].Sitelink != nil {
 		return result.Results.Bindings[0].Sitelink.Value, nil
 	}
 	return "", ErrNotFound
@@ -124,19 +142,11 @@ func getDBpediaWikipediaURL(ctx context.Context, client host.HttpService, name s
 	if err != nil {
 		return "", fmt.Errorf("DBpedia SPARQL query failed: %w", err)
 	}
-
-	var result struct {
-		Results struct {
-			Bindings []struct {
-				Wiki struct{ Value string } `json:"wiki"`
-			} `json:"bindings"`
-		} `json:"results"`
+	result, err := parseSPARQLResult(body)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("failed to parse DBpedia response: %w", err)
-	}
-
-	if len(result.Results.Bindings) > 0 {
+	if result.Results.Bindings[0].Wiki != nil {
 		return result.Results.Bindings[0].Wiki.Value, nil
 	}
 	return "", ErrNotFound
@@ -152,19 +162,11 @@ func getDBpediaComment(ctx context.Context, client host.HttpService, name string
 	if err != nil {
 		return "", fmt.Errorf("DBpedia comment SPARQL query failed: %w", err)
 	}
-
-	var result struct {
-		Results struct {
-			Bindings []struct {
-				Comment struct{ Value string } `json:"comment"`
-			} `json:"bindings"`
-		} `json:"results"`
+	result, err := parseSPARQLResult(body)
+	if err != nil {
+		return "", err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("failed to parse DBpedia comment response: %w", err)
-	}
-
-	if len(result.Results.Bindings) > 0 {
+	if result.Results.Bindings[0].Comment != nil {
 		return result.Results.Bindings[0].Comment.Value, nil
 	}
 	return "", ErrNotFound
@@ -369,22 +371,14 @@ func (WikimediaAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageR
 	if err != nil {
 		return nil, fmt.Errorf("Wikidata image SPARQL query failed: %w", err)
 	}
-
-	var result struct {
-		Results struct {
-			Bindings []struct {
-				Img struct{ Value string } `json:"img"`
-			} `json:"bindings"`
-		} `json:"results"`
+	result, err := parseSPARQLResult(body)
+	if err != nil {
+		log.Printf("[Wikimedia] Image not found for: %s (%s)\n", req.Name, req.Mbid)
+		return nil, ErrNotFound
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse Wikidata image response: %w", err)
-	}
-
-	if len(result.Results.Bindings) > 0 {
+	if result.Results.Bindings[0].Img != nil {
 		return &api.ArtistImageResponse{Images: []*api.ExternalImage{{Url: result.Results.Bindings[0].Img.Value, Size: 0}}}, nil
 	}
-
 	log.Printf("[Wikimedia] Image not found for: %s (%s)\n", req.Name, req.Mbid)
 	return nil, ErrNotFound
 }
