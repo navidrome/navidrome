@@ -4,13 +4,14 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log"
 
 	"github.com/navidrome/navidrome/plugins/api"
 )
 
 type MinimalAgent struct{}
+
+var ErrNotFound = api.ErrNotFound
 
 func (MinimalAgent) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
 	log.Println("MinimalAgent.GetArtistMBID called", "id:", req.Id, "name:", req.Name)
@@ -19,7 +20,7 @@ func (MinimalAgent) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDReques
 			Mbid: "1234567890",
 		}, nil
 	}
-	return nil, errors.New("not implemented")
+	return nil, ErrNotFound
 }
 func (MinimalAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) (*api.ArtistURLResponse, error) {
 	log.Println("MinimalAgent.GetArtistURL called", "id:", req.Id, "name:", req.Name, "mbid:", req.Mbid)
@@ -28,7 +29,7 @@ func (MinimalAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest)
 			Url: "https://example.com",
 		}, nil
 	}
-	return nil, errors.New("not implemented")
+	return nil, ErrNotFound
 }
 func (MinimalAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBiographyRequest) (*api.ArtistBiographyResponse, error) {
 	log.Println("MinimalAgent.GetArtistBiography called", "id:", req.Id, "name:", req.Name, "mbid:", req.Mbid)
@@ -37,7 +38,7 @@ func (MinimalAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBiogr
 			Biography: "This is a test biography",
 		}, nil
 	}
-	return nil, errors.New("not implemented")
+	return nil, ErrNotFound
 }
 func (MinimalAgent) GetSimilarArtists(ctx context.Context, req *api.ArtistSimilarRequest) (*api.ArtistSimilarResponse, error) {
 	log.Println("MinimalAgent.GetSimilarArtists called", "id:", req.Id, "name:", req.Name, "mbid:", req.Mbid, "limit:", req.Limit)
@@ -49,7 +50,7 @@ func (MinimalAgent) GetSimilarArtists(ctx context.Context, req *api.ArtistSimila
 			},
 		}, nil
 	}
-	return nil, errors.New("not implemented")
+	return nil, ErrNotFound
 }
 func (MinimalAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageRequest) (*api.ArtistImageResponse, error) {
 	log.Println("MinimalAgent.GetArtistImages called", "id:", req.Id, "name:", req.Name, "mbid:", req.Mbid)
@@ -61,7 +62,7 @@ func (MinimalAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageReq
 			},
 		}, nil
 	}
-	return nil, errors.New("not implemented")
+	return nil, ErrNotFound
 }
 func (MinimalAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopSongsRequest) (*api.ArtistTopSongsResponse, error) {
 	log.Println("MinimalAgent.GetArtistTopSongs called", "id:", req.Id, "artistName:", req.ArtistName, "mbid:", req.Mbid, "count:", req.Count)
@@ -73,7 +74,7 @@ func (MinimalAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopSon
 			},
 		}, nil
 	}
-	return nil, errors.New("not implemented")
+	return nil, ErrNotFound
 }
 
 // main is required by Go WASI build

@@ -21,7 +21,10 @@ const (
 	mediawikiAPIEndpoint = "https://en.wikipedia.org/w/api.php"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound       = api.ErrNotFound
+	ErrNotImplemented = api.ErrNotImplemented
+)
 
 // --- SPARQL Query Helper ---
 func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query string) ([]byte, error) {
@@ -278,7 +281,7 @@ func (WikimediaAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLReques
 	}
 
 	log.Printf("[Wikimedia] Could not determine Wikipedia URL for: %s (%s)\n", req.Name, req.Mbid)
-	return nil, errors.New("not found")
+	return nil, ErrNotFound
 }
 
 // GetArtistBiography fetches the long biography.
@@ -345,7 +348,7 @@ func (WikimediaAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBio
 	}
 
 	log.Printf("[Wikimedia Bio] Final: Biography not found for: %s (%s)", req.Name, req.Mbid)
-	return nil, errors.New("not found")
+	return nil, ErrNotFound
 }
 
 // GetArtistImages fetches images (Wikidata only for now)
@@ -387,13 +390,13 @@ func (WikimediaAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageR
 
 // Not implemented methods
 func (WikimediaAgent) GetArtistMBID(context.Context, *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
-	return nil, errors.New("not implemented")
+	return nil, ErrNotImplemented
 }
 func (WikimediaAgent) GetSimilarArtists(context.Context, *api.ArtistSimilarRequest) (*api.ArtistSimilarResponse, error) {
-	return nil, errors.New("not implemented")
+	return nil, ErrNotImplemented
 }
 func (WikimediaAgent) GetArtistTopSongs(context.Context, *api.ArtistTopSongsRequest) (*api.ArtistTopSongsResponse, error) {
-	return nil, errors.New("not implemented")
+	return nil, ErrNotImplemented
 }
 
 func main() {}

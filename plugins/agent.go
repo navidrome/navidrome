@@ -21,6 +21,7 @@ func (w *wasmAgent) AgentName() string {
 	return w.name
 }
 
+// getInstance gets an instance from the pool, and returns a function to return it to the pool
 func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.ArtistMetadataService, func(error), error) {
 	var inst api.ArtistMetadataService
 	var closer func(context.Context) error
@@ -33,18 +34,19 @@ func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.Art
 	inst = v.(api.ArtistMetadataService)
 	start := time.Now()
 	closer = v.(interface{ Close(context.Context) error }).Close
-	closeFn := func(e error) {
-		if e == nil {
+	closeFn := func(err error) {
+		if err == nil || err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error() {
 			w.pool.Put(v)
-			log.Trace(ctx, "wasmAgent: returned instance to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start))
+			log.Trace(ctx, "wasmAgent: returned instance to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
 		} else {
 			_ = closer(ctx)
-			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), e)
+			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
 		}
 	}
 	return inst, closeFn, nil
 }
 
+// callMethod calls the given method on the wasm instance, and returns the result
 func callMethod[R any](ctx context.Context, w *wasmAgent, methodName string, fn func(inst api.ArtistMetadataService) (R, error)) (R, error) {
 	inst, done, err := w.getInstance(ctx, methodName)
 	var r R
@@ -53,7 +55,17 @@ func callMethod[R any](ctx context.Context, w *wasmAgent, methodName string, fn 
 	}
 	defer func() { done(err) }()
 	r, err = fn(inst)
-	return r, err
+	return r, w.error(err)
+}
+
+// error maps the plugin errors to the agent errors
+// It uses the error message to match the error, since the error is serialized and deserialized and cannot be compared
+// using errors.Is
+func (w *wasmAgent) error(err error) error {
+	if err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error()) {
+		return agents.ErrNotFound
+	}
+	return err
 }
 
 func (w *wasmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
