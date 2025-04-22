@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -15,7 +16,9 @@ import (
 
 type Agents struct {
 	ds     model.DataStore
-	agents []Interface
+	names  []string             // ordered agent names
+	agents map[string]Interface // instantiated agents
+	mu     sync.Mutex           // protects agents map
 }
 
 func GetAgents(ds model.DataStore) *Agents {
@@ -30,26 +33,38 @@ func createAgents(ds model.DataStore) *Agents {
 		order = strings.Split(conf.Server.Agents, ",")
 	}
 	order = append(order, LocalAgentName)
-	var res []Interface
-	var enabled []string
+	var validNames []string
 	for _, name := range order {
-		init, ok := Map[name]
-		if !ok {
+		if _, ok := Map[name]; !ok {
 			log.Error("Invalid agent. Check `Agents` configuration", "name", name, "conf", conf.Server.Agents)
 			continue
 		}
-
-		agent := init(ds)
-		if agent == nil {
-			log.Debug("Agent not available. Missing configuration?", "name", name)
-			continue
-		}
-		enabled = append(enabled, name)
-		res = append(res, agent)
+		validNames = append(validNames, name)
 	}
-	log.Debug("List of agents enabled", "names", enabled)
+	log.Debug("List of agents enabled", "names", validNames)
+	return &Agents{ds: ds, names: validNames, agents: make(map[string]Interface)}
+}
 
-	return &Agents{ds: ds, agents: res}
+func (a *Agents) getAgent(name string) Interface {
+	a.mu.Lock()
+	ag, ok := a.agents[name]
+	a.mu.Unlock()
+	if ok {
+		return ag
+	}
+	constructor, ok := Map[name]
+	if !ok {
+		return nil
+	}
+	agent := constructor(a.ds)
+	if agent == nil {
+		log.Debug("Agent not available. Missing configuration?", "name", name)
+		return nil
+	}
+	a.mu.Lock()
+	a.agents[name] = agent
+	a.mu.Unlock()
+	return agent
 }
 
 func (a *Agents) AgentName() string {
@@ -64,15 +79,19 @@ func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (str
 		return "", nil
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(ArtistMBIDRetriever)
+		retriever, ok := ag.(ArtistMBIDRetriever)
 		if !ok {
 			continue
 		}
-		mbid, err := agent.GetArtistMBID(ctx, id, name)
+		mbid, err := retriever.GetArtistMBID(ctx, id, name)
 		if mbid != "" && err == nil {
 			log.Debug(ctx, "Got MBID", "agent", ag.AgentName(), "artist", name, "mbid", mbid, "elapsed", time.Since(start))
 			return mbid, nil
@@ -89,15 +108,19 @@ func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (strin
 		return "", nil
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(ArtistURLRetriever)
+		retriever, ok := ag.(ArtistURLRetriever)
 		if !ok {
 			continue
 		}
-		url, err := agent.GetArtistURL(ctx, id, name, mbid)
+		url, err := retriever.GetArtistURL(ctx, id, name, mbid)
 		if url != "" && err == nil {
 			log.Debug(ctx, "Got External Url", "agent", ag.AgentName(), "artist", name, "url", url, "elapsed", time.Since(start))
 			return url, nil
@@ -114,15 +137,19 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 		return "", nil
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(ArtistBiographyRetriever)
+		retriever, ok := ag.(ArtistBiographyRetriever)
 		if !ok {
 			continue
 		}
-		bio, err := agent.GetArtistBiography(ctx, id, name, mbid)
+		bio, err := retriever.GetArtistBiography(ctx, id, name, mbid)
 		if err == nil {
 			log.Debug(ctx, "Got Biography", "agent", ag.AgentName(), "artist", name, "len", len(bio), "elapsed", time.Since(start))
 			return bio, nil
@@ -139,15 +166,19 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 		return nil, nil
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(ArtistSimilarRetriever)
+		retriever, ok := ag.(ArtistSimilarRetriever)
 		if !ok {
 			continue
 		}
-		similar, err := agent.GetSimilarArtists(ctx, id, name, mbid, limit)
+		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, limit)
 		if len(similar) > 0 && err == nil {
 			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
@@ -168,15 +199,19 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 		return nil, nil
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(ArtistImageRetriever)
+		retriever, ok := ag.(ArtistImageRetriever)
 		if !ok {
 			continue
 		}
-		images, err := agent.GetArtistImages(ctx, id, name, mbid)
+		images, err := retriever.GetArtistImages(ctx, id, name, mbid)
 		if len(images) > 0 && err == nil {
 			log.Debug(ctx, "Got Images", "agent", ag.AgentName(), "artist", name, "images", images, "elapsed", time.Since(start))
 			return images, nil
@@ -193,15 +228,19 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 		return nil, nil
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(ArtistTopSongsRetriever)
+		retriever, ok := ag.(ArtistTopSongsRetriever)
 		if !ok {
 			continue
 		}
-		songs, err := agent.GetArtistTopSongs(ctx, id, artistName, mbid, count)
+		songs, err := retriever.GetArtistTopSongs(ctx, id, artistName, mbid, count)
 		if len(songs) > 0 && err == nil {
 			log.Debug(ctx, "Got Top Songs", "agent", ag.AgentName(), "artist", artistName, "songs", songs, "elapsed", time.Since(start))
 			return songs, nil
@@ -215,15 +254,19 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 		return nil, ErrNotFound
 	}
 	start := time.Now()
-	for _, ag := range a.agents {
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
 		if utils.IsCtxDone(ctx) {
 			break
 		}
-		agent, ok := ag.(AlbumInfoRetriever)
+		retriever, ok := ag.(AlbumInfoRetriever)
 		if !ok {
 			continue
 		}
-		album, err := agent.GetAlbumInfo(ctx, name, artist, mbid)
+		album, err := retriever.GetAlbumInfo(ctx, name, artist, mbid)
 		if err == nil {
 			log.Debug(ctx, "Got Album Info", "agent", ag.AgentName(), "album", name, "artist", artist,
 				"mbid", mbid, "elapsed", time.Since(start))

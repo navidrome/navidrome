@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/slice"
 
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
@@ -54,7 +53,13 @@ var _ = Describe("Agents", func() {
 		})
 
 		It("does not register disabled agents", func() {
-			ags := slice.Map(ag.agents, func(a Interface) string { return a.AgentName() })
+			var ags []string
+			for _, name := range ag.names {
+				agent := ag.getAgent(name)
+				if agent != nil {
+					ags = append(ags, agent.AgentName())
+				}
+			}
 			// local agent is always appended to the end of the agents list
 			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
 			Expect(ags).ToNot(ContainElement("disabled"))
