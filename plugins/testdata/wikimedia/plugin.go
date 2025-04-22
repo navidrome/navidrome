@@ -19,6 +19,7 @@ const (
 	wikidataEndpoint     = "https://query.wikidata.org/sparql"
 	dbpediaEndpoint      = "https://dbpedia.org/sparql"
 	mediawikiAPIEndpoint = "https://en.wikipedia.org/w/api.php"
+	requestTimeoutMs     = 5000
 )
 
 var (
@@ -36,11 +37,11 @@ func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query s
 		Url: endpoint,
 		Headers: map[string]string{
 			"Accept":       "application/sparql-results+json",
-			"Content-Type": "application/x-www-form-urlencoded", // Keep this for SPARQL
+			"Content-Type": "application/x-www-form-urlencoded", // Required by SPARQL endpoints
 			"User-Agent":   "NavidromeWikimediaPlugin/0.1",
 		},
 		Body:      []byte(form.Encode()), // Send encoded form data
-		TimeoutMs: 5000,
+		TimeoutMs: requestTimeoutMs,
 	}
 	log.Printf("[Wikimedia Query] Attempting SPARQL query to %s (query length: %d):\n%s", endpoint, len(query), query)
 	resp, err := client.Post(ctx, req)
@@ -63,7 +64,7 @@ func mediawikiQuery(ctx context.Context, client host.HttpService, params url.Val
 			"Accept":     "application/json",
 			"User-Agent": "NavidromeWikimediaPlugin/0.1",
 		},
-		TimeoutMs: 5000,
+		TimeoutMs: requestTimeoutMs,
 	}
 	// log.Printf("[Wikimedia] MediaWiki Query: %s\n", apiURL)
 	resp, err := client.Get(ctx, req)
@@ -80,11 +81,11 @@ func mediawikiQuery(ctx context.Context, client host.HttpService, params url.Val
 func getWikidataWikipediaURL(ctx context.Context, client host.HttpService, mbid, name string) (string, error) {
 	var q string
 	if mbid != "" {
-		// Adjusted property chain to match MCP server logic (?sitelink schema:about ?artist)
+		// Using property chain: ?sitelink schema:about ?artist; schema:isPartOf <https://en.wikipedia.org/>.
 		q = fmt.Sprintf(`SELECT ?sitelink WHERE { ?artist wdt:P434 "%s". ?sitelink schema:about ?artist; schema:isPartOf <https://en.wikipedia.org/>. } LIMIT 1`, mbid)
 	} else if name != "" {
 		escapedName := strings.ReplaceAll(name, "\"", "\\\"")
-		// Adjusted property chain to match MCP server logic (?sitelink schema:about ?artist)
+		// Using property chain: ?sitelink schema:about ?artist; schema:isPartOf <https://en.wikipedia.org/>.
 		q = fmt.Sprintf(`SELECT ?sitelink WHERE { ?artist rdfs:label "%s"@en. ?sitelink schema:about ?artist; schema:isPartOf <https://en.wikipedia.org/>. } LIMIT 1`, escapedName)
 	} else {
 		return "", errors.New("MBID or Name required for Wikidata URL lookup")
