@@ -165,7 +165,7 @@
         "scrobbleEnabled": "외부 서비스에 스크로블 보내기"
       }
     },
-들    "transcoding": {
+"transcoding": {
       "name": "트랜스코딩 |||| 트랜스코딩",
       "fields": {
         "name": "이름",
