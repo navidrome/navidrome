@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -96,4 +97,51 @@ func (w *wasmBasePlugin[T]) Close(ctx context.Context) error {
 	}
 	log.Trace(ctx, "wasmBasePlugin: agent closed", "plugin", w.name, "path", w.wasmPath)
 	return nil
+}
+
+// Generic plugin pool creation
+func newPluginPool[L any](loader L, wasmPath, pluginName string, loadFunc func(L, context.Context, string) (any, error)) *sync.Pool {
+	return &sync.Pool{
+		New: func() any {
+			inst, err := loadFunc(loader, context.Background(), wasmPath)
+			if err != nil {
+				log.Error("pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
+				return nil
+			}
+			closer, ok := inst.(interface{ Close(context.Context) error })
+			if !ok {
+				return &pooledInstance{instance: inst}
+			}
+			arg := cleanupArg{
+				closer:     closer,
+				pluginName: pluginName,
+				wasmPath:   wasmPath,
+			}
+			cleanup := runtime.AddCleanup(&inst, cleanupFunc, arg)
+			return &pooledInstance{instance: inst, cleanup: cleanup}
+		},
+	}
+}
+
+// pooledInstance holds a wasm instance and its associated cleanup handle
+type pooledInstance struct {
+	instance any
+	cleanup  runtime.Cleanup
+}
+
+// cleanupArg holds the necessary information for the GC cleanup function
+type cleanupArg struct {
+	closer     interface{ Close(context.Context) error }
+	pluginName string
+	wasmPath   string
+}
+
+// cleanupFunc is the function registered with runtime.AddCleanup
+func cleanupFunc(arg cleanupArg) {
+	log.Trace("pool: GC cleanup closing instance", "plugin", arg.pluginName, "path", arg.wasmPath)
+	if err := arg.closer.Close(context.Background()); err != nil {
+		log.Error("pool: GC cleanup failed to close instance", "plugin", arg.pluginName, "path", arg.wasmPath, err)
+	} else {
+		log.Trace("pool: GC cleanup closed instance successfully", "plugin", arg.pluginName, "path", arg.wasmPath)
+	}
 }
