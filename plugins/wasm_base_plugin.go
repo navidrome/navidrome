@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -40,15 +41,15 @@ func (w *wasmBasePlugin[T]) createPoolCleanupFunc(ctx context.Context, pooled *p
 	return func(err error) {
 		if err == nil || isNotFound(err) {
 			w.pool.Put(pooled)
-			log.Trace(ctx, "wasmBasePlugin: returned instance to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+			log.Trace(ctx, "wasmBasePlugin: returned instance to pool", "plugin", w.name, "instanceID", pooled.id, "method", methodName, "elapsed", time.Since(start), err)
 		} else {
 			pooled.cleanup.Stop()
-			log.Trace(ctx, "wasmBasePlugin: stopped GC cleanup", "plugin", w.name, "method", methodName)
+			log.Trace(ctx, "wasmBasePlugin: stopped GC cleanup", "plugin", w.name, "instanceID", pooled.id, "method", methodName)
 			if closer != nil {
 				_ = closer(ctx)
-				log.Trace(ctx, "wasmBasePlugin: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+				log.Trace(ctx, "wasmBasePlugin: closed instance due to error", "plugin", w.name, "instanceID", pooled.id, "method", methodName, "elapsed", time.Since(start), err)
 			} else {
-				log.Error(ctx, "wasmBasePlugin: attempted to close instance due to error, but closer was nil", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+				log.Error(ctx, "wasmBasePlugin: attempted to close instance due to error, but closer was nil", "plugin", w.name, "instanceID", pooled.id, "method", methodName, "elapsed", time.Since(start), err)
 			}
 		}
 	}
@@ -61,7 +62,7 @@ func (w *wasmBasePlugin[T]) getInstance(ctx context.Context, methodName string, 
 	if err != nil {
 		return zero, nil, err
 	}
-	log.Trace(ctx, "wasmBasePlugin: got instance from pool", "plugin", w.name, "method", methodName)
+	log.Trace(ctx, "wasmBasePlugin: got instance from pool", "plugin", w.name, "instanceID", pooled.id, "method", methodName)
 	inst := pooled.instance.(T)
 	start := time.Now()
 	closerInst := pooled.instance.(interface{ Close(context.Context) error })
@@ -87,12 +88,12 @@ func (w *wasmBasePlugin[T]) Close(ctx context.Context) error {
 			continue
 		}
 		pooled.cleanup.Stop()
-		log.Trace(ctx, "wasmBasePlugin: stopped GC cleanup during agent close", "plugin", w.name)
+		log.Trace(ctx, "wasmBasePlugin: stopped GC cleanup during agent close", "plugin", w.name, "instanceID", pooled.id)
 		if closer, ok := pooled.instance.(interface{ Close(context.Context) error }); ok {
 			_ = closer.Close(ctx)
-			log.Trace(ctx, "wasmBasePlugin: closed instance during agent close", "plugin", w.name, "path", w.wasmPath)
+			log.Trace(ctx, "wasmBasePlugin: closed instance during agent close", "plugin", w.name, "instanceID", pooled.id, "path", w.wasmPath)
 		} else {
-			log.Warn(ctx, "wasmBasePlugin: instance in pool during agent close does not implement Close", "plugin", w.name, "path", w.wasmPath)
+			log.Warn(ctx, "wasmBasePlugin: instance in pool during agent close does not implement Close", "plugin", w.name, "instanceID", pooled.id, "path", w.wasmPath)
 		}
 	}
 	log.Trace(ctx, "wasmBasePlugin: agent closed", "plugin", w.name, "path", w.wasmPath)
@@ -103,28 +104,36 @@ func (w *wasmBasePlugin[T]) Close(ctx context.Context) error {
 func newPluginPool[L any](loader L, wasmPath, pluginName string, loadFunc func(context.Context, L, string) (any, error)) *sync.Pool {
 	return &sync.Pool{
 		New: func() any {
+			instanceID, _ := gonanoid.New(10)
 			inst, err := loadFunc(context.Background(), loader, wasmPath)
 			if err != nil {
 				log.Error("pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
 				return nil
 			}
+			log.Trace("pool: created new plugin instance", "plugin", pluginName, "instanceID", instanceID, "path", wasmPath)
+
 			closer, ok := inst.(interface{ Close(context.Context) error })
 			if !ok {
-				return &pooledInstance{instance: inst}
+				return &pooledInstance{id: instanceID, instance: inst}
 			}
+
 			arg := cleanupArg{
 				closer:     closer,
 				pluginName: pluginName,
 				wasmPath:   wasmPath,
+				instanceID: instanceID,
 			}
 			cleanup := runtime.AddCleanup(&inst, cleanupFunc, arg)
-			return &pooledInstance{instance: inst, cleanup: cleanup}
+			log.Trace("pool: registered GC cleanup for instance", "plugin", pluginName, "instanceID", instanceID, "path", wasmPath)
+
+			return &pooledInstance{id: instanceID, instance: inst, cleanup: cleanup}
 		},
 	}
 }
 
 // pooledInstance holds a wasm instance and its associated cleanup handle
 type pooledInstance struct {
+	id       string
 	instance any
 	cleanup  runtime.Cleanup
 }
@@ -134,14 +143,15 @@ type cleanupArg struct {
 	closer     interface{ Close(context.Context) error }
 	pluginName string
 	wasmPath   string
+	instanceID string
 }
 
 // cleanupFunc is the function registered with runtime.AddCleanup
 func cleanupFunc(arg cleanupArg) {
-	log.Trace("pool: GC cleanup closing instance", "plugin", arg.pluginName, "path", arg.wasmPath)
+	log.Trace("pool: GC cleanup closing instance", "plugin", arg.pluginName, "instanceID", arg.instanceID, "path", arg.wasmPath)
 	if err := arg.closer.Close(context.Background()); err != nil {
-		log.Error("pool: GC cleanup failed to close instance", "plugin", arg.pluginName, "path", arg.wasmPath, err)
+		log.Error("pool: GC cleanup failed to close instance", "plugin", arg.pluginName, "instanceID", arg.instanceID, "path", arg.wasmPath, err)
 	} else {
-		log.Trace("pool: GC cleanup closed instance successfully", "plugin", arg.pluginName, "path", arg.wasmPath)
+		log.Trace("pool: GC cleanup closed instance successfully", "plugin", arg.pluginName, "instanceID", arg.instanceID, "path", arg.wasmPath)
 	}
 }
