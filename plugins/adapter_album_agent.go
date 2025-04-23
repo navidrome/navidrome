@@ -22,24 +22,8 @@ func (w *wasmAlbumAgent) error(err error) error {
 	return err
 }
 
-func isAlbumNotFound(err error) bool {
-	return err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error())
-}
-
-func callAlbumMethod[R any](ctx context.Context, w *wasmAlbumAgent, methodName string, fn func(inst api.AlbumMetadataService) (R, error)) (R, error) {
-	inst, done, err := w.getInstance(ctx, methodName, isAlbumNotFound)
-	var r R
-	if err != nil {
-		return r, err
-	}
-	defer func() { done(err) }()
-	r, err = fn(inst)
-	return r, w.error(err)
-}
-
-// AlbumMetadataService methods
 func (w *wasmAlbumAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
-	return callAlbumMethod(ctx, w, "GetAlbumInfo", func(inst api.AlbumMetadataService) (*agents.AlbumInfo, error) {
+	return callMethod(ctx, w, "GetAlbumInfo", func(inst api.AlbumMetadataService) (*agents.AlbumInfo, error) {
 		res, err := inst.GetAlbumInfo(ctx, &api.AlbumInfoRequest{Name: name, Artist: artist, Mbid: mbid})
 		if err != nil {
 			return nil, err
@@ -58,7 +42,7 @@ func (w *wasmAlbumAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid st
 }
 
 func (w *wasmAlbumAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
-	return callAlbumMethod(ctx, w, "GetAlbumImages", func(inst api.AlbumMetadataService) ([]agents.ExternalImage, error) {
+	return callMethod(ctx, w, "GetAlbumImages", func(inst api.AlbumMetadataService) ([]agents.ExternalImage, error) {
 		res, err := inst.GetAlbumImages(ctx, &api.AlbumImagesRequest{Name: name, Artist: artist, Mbid: mbid})
 		if err != nil {
 			return nil, err

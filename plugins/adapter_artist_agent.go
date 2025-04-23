@@ -22,23 +22,8 @@ func (w *wasmArtistAgent) error(err error) error {
 	return err
 }
 
-func isArtistNotFound(err error) bool {
-	return err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error())
-}
-
-func callArtistMethod[R any](ctx context.Context, w *wasmArtistAgent, methodName string, fn func(inst api.ArtistMetadataService) (R, error)) (R, error) {
-	inst, done, err := w.getInstance(ctx, methodName, isArtistNotFound)
-	var r R
-	if err != nil {
-		return r, err
-	}
-	defer func() { done(err) }()
-	r, err = fn(inst)
-	return r, w.error(err)
-}
-
 func (w *wasmArtistAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	return callArtistMethod(ctx, w, "GetArtistMBID", func(inst api.ArtistMetadataService) (string, error) {
+	return callMethod(ctx, w, "GetArtistMBID", func(inst api.ArtistMetadataService) (string, error) {
 		res, err := inst.GetArtistMBID(ctx, &api.ArtistMBIDRequest{Id: id, Name: name})
 		if err != nil {
 			return "", err
@@ -48,7 +33,7 @@ func (w *wasmArtistAgent) GetArtistMBID(ctx context.Context, id string, name str
 }
 
 func (w *wasmArtistAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	return callArtistMethod(ctx, w, "GetArtistURL", func(inst api.ArtistMetadataService) (string, error) {
+	return callMethod(ctx, w, "GetArtistURL", func(inst api.ArtistMetadataService) (string, error) {
 		res, err := inst.GetArtistURL(ctx, &api.ArtistURLRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return "", err
@@ -58,7 +43,7 @@ func (w *wasmArtistAgent) GetArtistURL(ctx context.Context, id, name, mbid strin
 }
 
 func (w *wasmArtistAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	return callArtistMethod(ctx, w, "GetArtistBiography", func(inst api.ArtistMetadataService) (string, error) {
+	return callMethod(ctx, w, "GetArtistBiography", func(inst api.ArtistMetadataService) (string, error) {
 		res, err := inst.GetArtistBiography(ctx, &api.ArtistBiographyRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return "", err
@@ -68,7 +53,7 @@ func (w *wasmArtistAgent) GetArtistBiography(ctx context.Context, id, name, mbid
 }
 
 func (w *wasmArtistAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
-	return callArtistMethod(ctx, w, "GetSimilarArtists", func(inst api.ArtistMetadataService) ([]agents.Artist, error) {
+	return callMethod(ctx, w, "GetSimilarArtists", func(inst api.ArtistMetadataService) ([]agents.Artist, error) {
 		resp, err := inst.GetSimilarArtists(ctx, &api.ArtistSimilarRequest{Id: id, Name: name, Mbid: mbid, Limit: int32(limit)})
 		if err != nil {
 			return nil, err
@@ -85,7 +70,7 @@ func (w *wasmArtistAgent) GetSimilarArtists(ctx context.Context, id, name, mbid 
 }
 
 func (w *wasmArtistAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
-	return callArtistMethod(ctx, w, "GetArtistImages", func(inst api.ArtistMetadataService) ([]agents.ExternalImage, error) {
+	return callMethod(ctx, w, "GetArtistImages", func(inst api.ArtistMetadataService) ([]agents.ExternalImage, error) {
 		resp, err := inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return nil, err
@@ -102,7 +87,7 @@ func (w *wasmArtistAgent) GetArtistImages(ctx context.Context, id, name, mbid st
 }
 
 func (w *wasmArtistAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	return callArtistMethod(ctx, w, "GetArtistTopSongs", func(inst api.ArtistMetadataService) ([]agents.Song, error) {
+	return callMethod(ctx, w, "GetArtistTopSongs", func(inst api.ArtistMetadataService) ([]agents.Song, error) {
 		resp, err := inst.GetArtistTopSongs(ctx, &api.ArtistTopSongsRequest{Id: id, ArtistName: artistName, Mbid: mbid, Count: int32(count)})
 		if err != nil {
 			return nil, err
