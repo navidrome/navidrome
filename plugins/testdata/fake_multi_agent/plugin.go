@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/navidrome/navidrome/plugins/api"
 )
@@ -15,7 +14,6 @@ var ErrNotFound = api.ErrNotFound
 
 // --- ArtistMetadataService ---
 func (FakeMultiAgent) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
-	log.Println("FakeMultiAgent.GetArtistMBID called", req.Name)
 	if req.Name != "" {
 		return &api.ArtistMBIDResponse{Mbid: "multi-artist-mbid"}, nil
 	}
@@ -39,7 +37,6 @@ func (FakeMultiAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopS
 
 // --- AlbumMetadataService ---
 func (FakeMultiAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
-	log.Println("FakeMultiAgent.GetAlbumInfo called", req.Name)
 	if req.Name != "" && req.Artist != "" {
 		return &api.AlbumInfoResponse{
 			Info: &api.AlbumInfo{

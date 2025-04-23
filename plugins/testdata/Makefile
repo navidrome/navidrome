@@ -1,6 +1,9 @@
-.PHONY: all fake_album_agent fake_artist_agent wikimedia fake_multi_agent
+.PHONY: all clean fake_album_agent fake_artist_agent wikimedia fake_multi_agent
 
 all: fake_album_agent fake_artist_agent wikimedia fake_multi_agent
+
+clean:
+	rm -f fake_album_agent/plugin.wasm fake_artist_agent/plugin.wasm wikimedia/plugin.wasm fake_multi_agent/plugin.wasm
 
 fake_album_agent: fake_album_agent/plugin.wasm
 fake_artist_agent: fake_artist_agent/plugin.wasm
