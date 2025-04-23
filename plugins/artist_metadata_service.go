@@ -117,7 +117,3 @@ func (w *wasmArtistAgent) GetArtistTopSongs(ctx context.Context, id, artistName,
 		return songs, nil
 	})
 }
-
-func (w *wasmArtistAgent) Close(ctx context.Context) error {
-	return w.wasmBasePlugin.Close(ctx)
-}

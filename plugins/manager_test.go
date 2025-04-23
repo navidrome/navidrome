@@ -1,9 +1,7 @@
 package plugins
 
 import (
-	"context"
 	"fmt"
-	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -36,11 +34,11 @@ var _ = Describe("Plugin Manager", func() {
 	})
 
 	Describe("Plugin pre-compilation and agent factory synchronization", func() {
-		var fakeAgentCtor func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface
+		var fakeAgentCtor func(loader any, wasmPath, pluginName string) agents.Interface
 
 		BeforeEach(func() {
 			// Always return a mock agent for these tests
-			fakeAgentCtor = func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface {
+			fakeAgentCtor = func(loader any, wasmPath, pluginName string) agents.Interface {
 				return &mockAgent{}
 			}
 		})
@@ -50,11 +48,9 @@ var _ = Describe("Plugin Manager", func() {
 			pluginState := &pluginState{ready: make(chan struct{})}
 			close(pluginState.ready)
 
-			// Create a mock plugin pool and agent factory
-			mockPool := newPluginPool(struct{}{}, "fake.wasm", "fake", func(ctx context.Context, loader struct{}, wasmPath string) (any, error) {
-				return &mockAgent{}, nil
-			})
-			agentFactory := createAgentFactory(pluginState, mockPool, "fake.wasm", "fake", fakeAgentCtor)
+			// Create a mock loader and agent factory
+			mockLoader := struct{}{}
+			agentFactory := createAgentFactory(pluginState, mockLoader, "fake.wasm", "fake", fakeAgentCtor)
 			mockDS := &tests.MockDataStore{}
 
 			// Agent should be created immediately
@@ -68,11 +64,9 @@ var _ = Describe("Plugin Manager", func() {
 			pluginState := &pluginState{ready: make(chan struct{}), err: fmt.Errorf("compilation failed")}
 			close(pluginState.ready)
 
-			// Create a mock plugin pool and agent factory
-			mockPool := newPluginPool(struct{}{}, "fake.wasm", "fake", func(ctx context.Context, loader struct{}, wasmPath string) (any, error) {
-				return &mockAgent{}, nil
-			})
-			agentFactory := createAgentFactory(pluginState, mockPool, "fake.wasm", "fake", fakeAgentCtor)
+			// Create a mock loader and agent factory
+			mockLoader := struct{}{}
+			agentFactory := createAgentFactory(pluginState, mockLoader, "fake.wasm", "fake", fakeAgentCtor)
 			mockDS := &tests.MockDataStore{}
 
 			// Agent factory should return nil due to compilation error
@@ -83,10 +77,8 @@ var _ = Describe("Plugin Manager", func() {
 		It("should block agent creation until pre-compilation completes", func() {
 			// Simulate a plugin that is still compiling (ready channel not closed)
 			pluginState := &pluginState{ready: make(chan struct{})}
-			mockPool := newPluginPool(struct{}{}, "fake.wasm", "fake", func(ctx context.Context, loader struct{}, wasmPath string) (any, error) {
-				return &mockAgent{}, nil
-			})
-			agentFactory := createAgentFactory(pluginState, mockPool, "fake.wasm", "fake", fakeAgentCtor)
+			mockLoader := struct{}{}
+			agentFactory := createAgentFactory(pluginState, mockLoader, "fake.wasm", "fake", fakeAgentCtor)
 			mockDS := &tests.MockDataStore{}
 
 			// Start agent creation in a goroutine; it should block until compilation completes
@@ -114,11 +106,9 @@ var _ = Describe("Plugin Manager", func() {
 				{ready: make(chan struct{})},
 				{ready: make(chan struct{})},
 			}
-			mockPool := newPluginPool(struct{}{}, "fake.wasm", "fake", func(ctx context.Context, loader struct{}, wasmPath string) (any, error) {
-				return &mockAgent{}, nil
-			})
-			factory1 := createAgentFactory(pluginStates[0], mockPool, "fake1.wasm", "fake1", fakeAgentCtor)
-			factory2 := createAgentFactory(pluginStates[1], mockPool, "fake2.wasm", "fake2", fakeAgentCtor)
+			mockLoader := struct{}{}
+			factory1 := createAgentFactory(pluginStates[0], mockLoader, "fake1.wasm", "fake1", fakeAgentCtor)
+			factory2 := createAgentFactory(pluginStates[1], mockLoader, "fake2.wasm", "fake2", fakeAgentCtor)
 			mockDS := &tests.MockDataStore{}
 
 			// Start agent creation for both plugins in parallel; both should block

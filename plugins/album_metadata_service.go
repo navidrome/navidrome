@@ -77,7 +77,3 @@ func convertExternalImages(images []*api.ExternalImage) []agents.ExternalImage {
 	}
 	return result
 }
-
-func (w *wasmAlbumAgent) Close(ctx context.Context) error {
-	return w.wasmBasePlugin.Close(ctx)
-}

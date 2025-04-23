@@ -93,14 +93,14 @@ func precompilePlugin(state *pluginState, customRuntime func(context.Context) (w
 }
 
 // createAgentFactory returns a factory that waits for precompilation before instantiating the agent.
-func createAgentFactory(state *pluginState, pool *sync.Pool, wasmPath, pluginName string, agentCtor func(*sync.Pool, string, string) agents.Interface) func(model.DataStore) agents.Interface {
+func createAgentFactory(state *pluginState, loader any, wasmPath, pluginName string, agentCtor func(any, string, string) agents.Interface) func(model.DataStore) agents.Interface {
 	return func(ds model.DataStore) agents.Interface {
 		<-state.ready
 		if state.err != nil {
 			log.Error("Failed to compile plugin", "name", pluginName, "path", wasmPath, state.err)
 			return nil
 		}
-		return agentCtor(pool, wasmPath, pluginName)
+		return agentCtor(loader, wasmPath, pluginName)
 	}
 }
 
@@ -161,9 +161,8 @@ func (m *Manager) autoRegisterPlugins() {
 				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
 				continue
 			}
-			pool := newPluginPool(loaderAny, wasmPath, pluginName, pt.loadFunc)
 			// Use createAgentFactory to wait for precompilation
-			agentFactory := createAgentFactory(state, pool, wasmPath, pluginName, pt.agentCtor)
+			agentFactory := createAgentFactory(state, loaderAny, wasmPath, pluginName, pt.agentCtor)
 			agents.Register(pluginName, agentFactory)
 			log.Info("Registered plugin agent", "name", pluginName, "service", service, "wasm", wasmPath)
 		}
