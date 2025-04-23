@@ -1,6 +1,6 @@
-# Minimal Test Agent Plugin
+# Minimal Fake Artist Test Agent Plugin
 
-This directory contains a minimal test plugin for the Navidrome plugin system, used for testing the plugin infrastructure.
+This directory contains a minimal test plugin for the Navidrome plugin system, used for testing the ArtistMetadataService plugin infrastructure.
 
 ## Requirements
 
@@ -12,7 +12,7 @@ This directory contains a minimal test plugin for the Navidrome plugin system, u
 To build the WASM plugin, run the following command from the project root:
 
 ```sh
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugins/testdata/agent/plugin.wasm ./plugins/testdata/agent
+GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugins/testdata/fake_artist_agent/plugin.wasm ./plugins/testdata/fake_artist_agent
 ```
 
 This will produce `plugin.wasm` in this directory.

@@ -1,4 +1,4 @@
-# Minimal Album Test Agent Plugin
+# Minimal Fake Album Test Agent Plugin
 
 This directory contains a minimal test plugin for the Navidrome plugin system, used for testing the AlbumMetadataService plugin infrastructure.
 
@@ -12,7 +12,7 @@ This directory contains a minimal test plugin for the Navidrome plugin system, u
 To build the WASM plugin, run the following command from the project root:
 
 ```sh
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugins/testdata/album_agent/plugin.wasm ./plugins/testdata/album_agent
+GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugins/testdata/fake_album_agent/plugin.wasm ./plugins/testdata/fake_album_agent
 ```
 
 This will produce `plugin.wasm` in this directory.

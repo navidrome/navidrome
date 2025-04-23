@@ -27,18 +27,18 @@ var _ = Describe("wasmAlbumAgent (real plugin)", func() {
 
 		// Wait for the agent to be registered, polling with a timeout
 		Eventually(func() bool {
-			_, ok := agents.Map["album_agent"]
+			_, ok := agents.Map["fake_album_agent"]
 			return ok
 		}, "5s", "100ms").Should(BeTrue(), "plugin agent should be registered")
 
-		constructor, ok := agents.Map["album_agent"]
+		constructor, ok := agents.Map["fake_album_agent"]
 		Expect(ok).To(BeTrue())
 		agent = constructor(nil)
 		Expect(agent).NotTo(BeNil(), "plugin agent should be constructible")
 	})
 
 	It("returns the correct agent name", func() {
-		Expect(agent.AgentName()).To(Equal("album_agent"))
+		Expect(agent.AgentName()).To(Equal("fake_album_agent"))
 	})
 
 	It("returns album info", func() {

@@ -9,12 +9,12 @@ import (
 	"github.com/navidrome/navidrome/plugins/api"
 )
 
-type MinimalAlbumAgent struct{}
+type FakeAlbumAgent struct{}
 
 var ErrNotFound = api.ErrNotFound
 
-func (MinimalAlbumAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
-	log.Println("MinimalAlbumAgent.GetAlbumInfo called", "name:", req.Name, "artist:", req.Artist, "mbid:", req.Mbid)
+func (FakeAlbumAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
+	log.Println("FakeAlbumAgent.GetAlbumInfo called", "name:", req.Name, "artist:", req.Artist, "mbid:", req.Mbid)
 	if req.Name != "" && req.Artist != "" {
 		return &api.AlbumInfoResponse{
 			Info: &api.AlbumInfo{
@@ -28,8 +28,8 @@ func (MinimalAlbumAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoReq
 	return nil, ErrNotFound
 }
 
-func (MinimalAlbumAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImagesRequest) (*api.AlbumImagesResponse, error) {
-	log.Println("MinimalAlbumAgent.GetAlbumImages called", "name:", req.Name, "artist:", req.Artist, "mbid:", req.Mbid)
+func (FakeAlbumAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImagesRequest) (*api.AlbumImagesResponse, error) {
+	log.Println("FakeAlbumAgent.GetAlbumImages called", "name:", req.Name, "artist:", req.Artist, "mbid:", req.Mbid)
 	if req.Name != "" && req.Artist != "" {
 		return &api.AlbumImagesResponse{
 			Images: []*api.ExternalImage{
@@ -44,5 +44,5 @@ func (MinimalAlbumAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImage
 func main() {}
 
 func init() {
-	api.RegisterAlbumMetadataService(MinimalAlbumAgent{})
+	api.RegisterAlbumMetadataService(FakeAlbumAgent{})
 }
