@@ -64,6 +64,46 @@ func createManager() *Manager {
 	return m
 }
 
+// precompilePlugin compiles the WASM module in the background and updates the pluginState.
+func precompilePlugin(state *pluginState, customRuntime func(context.Context) (wazero.Runtime, error), wasmPath, name string) {
+	compileSemaphore <- struct{}{}
+	defer func() { <-compileSemaphore }()
+	ctx := context.Background()
+	r, err := customRuntime(ctx)
+	if err != nil {
+		state.err = fmt.Errorf("failed to create runtime for plugin %s: %w", name, err)
+		close(state.ready)
+		return
+	}
+	defer r.Close(ctx)
+	b, err := os.ReadFile(wasmPath)
+	if err != nil {
+		state.err = fmt.Errorf("failed to read wasm file: %w", err)
+		close(state.ready)
+		return
+	}
+	if _, err := r.CompileModule(ctx, b); err != nil {
+		state.err = fmt.Errorf("failed to compile WASM for plugin %s: %w", name, err)
+		log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "err", err)
+	} else {
+		state.err = nil
+		log.Debug("Plugin compilation completed", "name", name, "path", wasmPath)
+	}
+	close(state.ready)
+}
+
+// createAgentFactory returns a factory that waits for precompilation before instantiating the agent.
+func createAgentFactory(state *pluginState, pool *sync.Pool, wasmPath, pluginName string, agentCtor func(*sync.Pool, string, string) agents.Interface) func(model.DataStore) agents.Interface {
+	return func(ds model.DataStore) agents.Interface {
+		<-state.ready
+		if state.err != nil {
+			log.Error("Failed to compile plugin", "name", pluginName, "path", wasmPath, state.err)
+			return nil
+		}
+		return agentCtor(pool, wasmPath, pluginName)
+	}
+}
+
 // In autoRegisterPlugins, create the loader once per plugin and pass to the pool
 func (m *Manager) autoRegisterPlugins() {
 	root := conf.Server.Plugins.Folder
@@ -112,15 +152,18 @@ func (m *Manager) autoRegisterPlugins() {
 			if len(manifest.Services) > 1 {
 				pluginName = name + "_" + service
 			}
+			// Start pre-compilation in the background
+			state := &pluginState{ready: make(chan struct{})}
+			go precompilePlugin(state, customRuntime, wasmPath, pluginName)
+
 			loaderAny, err := pt.loaderCtor(context.Background(), customRuntime, mc)
 			if err != nil {
 				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
 				continue
 			}
 			pool := newPluginPool(loaderAny, wasmPath, pluginName, pt.loadFunc)
-			agentFactory := func(ds model.DataStore) agents.Interface {
-				return pt.agentCtor(pool, wasmPath, pluginName)
-			}
+			// Use createAgentFactory to wait for precompilation
+			agentFactory := createAgentFactory(state, pool, wasmPath, pluginName, pt.agentCtor)
 			agents.Register(pluginName, agentFactory)
 			log.Info("Registered plugin agent", "name", pluginName, "service", service, "wasm", wasmPath)
 		}
