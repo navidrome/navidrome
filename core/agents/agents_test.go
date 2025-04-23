@@ -231,18 +231,6 @@ var _ = Describe("Agents", func() {
 					MBID:        "mbid444",
 					Description: "A Description",
 					URL:         "External URL",
-					Images: []ExternalImage{
-						{
-							Size: 174,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
-						}, {
-							Size: 64,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
-						}, {
-							Size: 34,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
-						},
-					},
 				}))
 				Expect(mock.Args).To(HaveExactElements("album", "artist", "mbid"))
 			})
@@ -338,18 +326,6 @@ func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string)
 		MBID:        "mbid444",
 		Description: "A Description",
 		URL:         "External URL",
-		Images: []ExternalImage{
-			{
-				Size: 174,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
-			}, {
-				Size: 64,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
-			}, {
-				Size: 34,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
-			},
-		},
 	}, nil
 }
 

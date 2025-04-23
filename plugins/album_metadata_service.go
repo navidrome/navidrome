@@ -53,7 +53,6 @@ func (w *wasmAlbumAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid st
 			MBID:        info.Mbid,
 			Description: info.Description,
 			URL:         info.Url,
-			Images:      nil, // TODO: Break agents.AlbumInfo into two, to match proto (no images here)
 		}, nil
 	})
 }

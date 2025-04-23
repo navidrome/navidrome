@@ -276,6 +276,33 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 	return nil, ErrNotFound
 }
 
+func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]ExternalImage, error) {
+	if name == consts.UnknownAlbum {
+		return nil, ErrNotFound
+	}
+	start := time.Now()
+	for _, agentName := range a.names {
+		ag := a.getAgent(agentName)
+		if ag == nil {
+			continue
+		}
+		if utils.IsCtxDone(ctx) {
+			break
+		}
+		retriever, ok := ag.(AlbumImageRetriever)
+		if !ok {
+			continue
+		}
+		images, err := retriever.GetAlbumImages(ctx, name, artist, mbid)
+		if len(images) > 0 && err == nil {
+			log.Debug(ctx, "Got Album Images", "agent", ag.AgentName(), "album", name, "artist", artist,
+				"mbid", mbid, "elapsed", time.Since(start))
+			return images, nil
+		}
+	}
+	return nil, ErrNotFound
+}
+
 var _ Interface = (*Agents)(nil)
 var _ ArtistMBIDRetriever = (*Agents)(nil)
 var _ ArtistURLRetriever = (*Agents)(nil)
@@ -284,3 +311,4 @@ var _ ArtistSimilarRetriever = (*Agents)(nil)
 var _ ArtistImageRetriever = (*Agents)(nil)
 var _ ArtistTopSongsRetriever = (*Agents)(nil)
 var _ AlbumInfoRetriever = (*Agents)(nil)
+var _ AlbumImageRetriever = (*Agents)(nil)
