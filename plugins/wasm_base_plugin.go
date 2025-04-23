@@ -8,16 +8,16 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-type wasmBasePlugin[T any] struct {
+type wasmBasePlugin[S any] struct {
 	wasmPath string
 	name     string
 	loader   any
-	loadFunc func(context.Context, any, string) (T, error)
+	loadFunc func(context.Context, any, string) (S, error)
 }
 
 // getInstance returns a new plugin instance, a cleanup function, and error
-func (w *wasmBasePlugin[T]) getInstance(ctx context.Context, methodName string) (T, func(error), error) {
-	var zero T
+func (w *wasmBasePlugin[S]) getInstance(ctx context.Context, methodName string) (S, func(error), error) {
+	var zero S
 	instanceID, _ := gonanoid.New(10)
 	inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
 	if err != nil {
@@ -38,15 +38,7 @@ func (w *wasmBasePlugin[T]) getInstance(ctx context.Context, methodName string) 
 	return inst, closeFn, nil
 }
 
-type wasmPlugin[S any] interface {
-	getInstance(ctx context.Context, methodName string) (S, func(error), error)
-}
-
-type errorMapper interface {
-	error(err error) error
-}
-
-func callMethod[R any, S any](ctx context.Context, w wasmPlugin[S], methodName string, fn func(inst S) (R, error)) (R, error) {
+func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName string, fn func(inst S) (R, error)) (R, error) {
 	inst, done, err := w.getInstance(ctx, methodName)
 	var r R
 	if err != nil {
@@ -55,7 +47,15 @@ func callMethod[R any, S any](ctx context.Context, w wasmPlugin[S], methodName s
 	defer func() { done(err) }()
 	r, err = fn(inst)
 	if em, ok := any(w).(errorMapper); ok {
-		return r, em.error(err)
+		return r, em.mapError(err)
 	}
 	return r, err
+}
+
+type wasmPlugin[S any] interface {
+	getInstance(ctx context.Context, methodName string) (S, func(error), error)
+}
+
+type errorMapper interface {
+	mapError(err error) error
 }

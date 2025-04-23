@@ -15,7 +15,7 @@ func (w *wasmArtistAgent) AgentName() string {
 	return w.name
 }
 
-func (w *wasmArtistAgent) error(err error) error {
+func (w *wasmArtistAgent) mapError(err error) error {
 	if err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error()) {
 		return agents.ErrNotFound
 	}

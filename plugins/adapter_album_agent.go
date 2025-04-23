@@ -15,7 +15,7 @@ func (w *wasmAlbumAgent) AgentName() string {
 	return w.name
 }
 
-func (w *wasmAlbumAgent) error(err error) error {
+func (w *wasmAlbumAgent) mapError(err error) error {
 	if err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error()) {
 		return agents.ErrNotFound
 	}
