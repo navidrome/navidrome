@@ -27,4 +27,13 @@ var _ = BeforeSuite(func() {
 	cmd.Stderr = os.Stderr
 	Expect(cmd.Run()).To(Succeed())
 	Expect(wasmPath).To(BeAnExistingFile())
+
+	albumWasmPath := "plugins/testdata/album_agent/plugin.wasm"
+	_ = os.Remove(albumWasmPath)
+	cmd = exec.Command("go", "build", "-buildmode=c-shared", "-o", albumWasmPath, "./plugins/testdata/album_agent")
+	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	Expect(cmd.Run()).To(Succeed())
+	Expect(albumWasmPath).To(BeAnExistingFile())
 })
