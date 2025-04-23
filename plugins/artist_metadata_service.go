@@ -2,98 +2,32 @@ package plugins
 
 import (
 	"context"
-	"fmt"
-	"sync"
-	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
 )
 
 type wasmArtistAgent struct {
-	pool     *sync.Pool
-	wasmPath string
-	name     string
+	*wasmBasePlugin[api.ArtistMetadataService]
 }
 
 func (w *wasmArtistAgent) AgentName() string {
 	return w.name
 }
 
-// getValidPooledInstance retrieves a pooledInstance from the pool and validates it.
-func (w *wasmArtistAgent) getValidPooledInstance(ctx context.Context, methodName string) (*pooledInstance, error) {
-	v := w.pool.Get()
-	if v == nil {
-		log.Error(ctx, "wasmArtistAgent: sync.Pool returned nil instance", "plugin", w.name, "path", w.wasmPath)
-		return nil, fmt.Errorf("wasmArtistAgent: sync.Pool returned nil instance for plugin %s", w.name)
+func (w *wasmArtistAgent) error(err error) error {
+	if err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error()) {
+		return agents.ErrNotFound
 	}
-
-	// Type assert to the pooledInstance struct
-	pooled, ok := v.(*pooledInstance)
-	if !ok || pooled == nil || pooled.instance == nil {
-		// This shouldn't happen if pool.New is correct, but handle defensively
-		log.Error(ctx, "wasmArtistAgent: pool returned invalid type or nil instance", "plugin", w.name, "path", w.wasmPath, "type", fmt.Sprintf("%T", v))
-		// Attempt cleanup if possible
-		if pooled != nil {
-			pooled.cleanup.Stop()
-		}
-		if closer, canClose := v.(interface{ Close(context.Context) error }); canClose {
-			_ = closer.Close(ctx)
-		}
-		return nil, fmt.Errorf("wasmArtistAgent: pool returned invalid instance for plugin %s", w.name)
-	}
-	return pooled, nil
+	return err
 }
 
-// createPoolCleanupFunc creates the cleanup function (closeFn) for a retrieved pool instance.
-func (w *wasmArtistAgent) createPoolCleanupFunc(ctx context.Context, pooled *pooledInstance, closer func(context.Context) error, start time.Time, methodName string) func(error) {
-	return func(err error) {
-		if err == nil || err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error() {
-			// Return the wrapper to the pool. Do NOT stop the GC cleanup.
-			w.pool.Put(pooled)
-			log.Trace(ctx, "wasmArtistAgent: returned instance to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
-		} else {
-			// First, stop the GC cleanup to prevent double closing.
-			// Calling Stop() on a zero Cleanup is a no-op.
-			pooled.cleanup.Stop()
-			log.Trace(ctx, "wasmArtistAgent: stopped GC cleanup", "plugin", w.name, "method", methodName)
-
-			// Now close the instance if the closer is valid
-			if closer != nil {
-				_ = closer(ctx)
-				log.Trace(ctx, "wasmArtistAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
-			} else {
-				// Should not happen if canClose check in getInstance was correct
-				log.Error(ctx, "wasmArtistAgent: attempted to close instance due to error, but closer was nil", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
-			}
-		}
-	}
+func isArtistNotFound(err error) bool {
+	return err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error())
 }
 
-// getInstance gets an instance from the pool, and returns a function to return it to the pool
-func (w *wasmArtistAgent) getInstance(ctx context.Context, methodName string) (api.ArtistMetadataService, func(error), error) {
-	pooled, err := w.getValidPooledInstance(ctx, methodName)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	log.Trace(ctx, "wasmArtistAgent: got instance from pool", "plugin", w.name, "method", methodName)
-	inst := pooled.instance.(api.ArtistMetadataService)
-	start := time.Now()
-
-	// Get the closer function (guaranteed to exist)
-	closerInst := pooled.instance.(interface{ Close(context.Context) error })
-
-	// Create the cleanup function using the helper
-	closeFn := w.createPoolCleanupFunc(ctx, pooled, closerInst.Close, start, methodName)
-
-	return inst, closeFn, nil
-}
-
-// callMethod calls the given method on the wasm instance, and returns the result
-func callMethod[R any](ctx context.Context, w *wasmArtistAgent, methodName string, fn func(inst api.ArtistMetadataService) (R, error)) (R, error) {
-	inst, done, err := w.getInstance(ctx, methodName)
+func callArtistMethod[R any](ctx context.Context, w *wasmArtistAgent, methodName string, fn func(inst api.ArtistMetadataService) (R, error)) (R, error) {
+	inst, done, err := w.getInstance(ctx, methodName, isArtistNotFound)
 	var r R
 	if err != nil {
 		return r, err
@@ -103,18 +37,8 @@ func callMethod[R any](ctx context.Context, w *wasmArtistAgent, methodName strin
 	return r, w.error(err)
 }
 
-// error maps the plugin errors to the agent errors
-// It uses the error message to match the error, since the error is serialized and deserialized and cannot be compared
-// using errors.Is
-func (w *wasmArtistAgent) error(err error) error {
-	if err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error()) {
-		return agents.ErrNotFound
-	}
-	return err
-}
-
 func (w *wasmArtistAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	return callMethod(ctx, w, "GetArtistMBID", func(inst api.ArtistMetadataService) (string, error) {
+	return callArtistMethod(ctx, w, "GetArtistMBID", func(inst api.ArtistMetadataService) (string, error) {
 		res, err := inst.GetArtistMBID(ctx, &api.ArtistMBIDRequest{Id: id, Name: name})
 		if err != nil {
 			return "", err
@@ -124,7 +48,7 @@ func (w *wasmArtistAgent) GetArtistMBID(ctx context.Context, id string, name str
 }
 
 func (w *wasmArtistAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	return callMethod(ctx, w, "GetArtistURL", func(inst api.ArtistMetadataService) (string, error) {
+	return callArtistMethod(ctx, w, "GetArtistURL", func(inst api.ArtistMetadataService) (string, error) {
 		res, err := inst.GetArtistURL(ctx, &api.ArtistURLRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return "", err
@@ -134,7 +58,7 @@ func (w *wasmArtistAgent) GetArtistURL(ctx context.Context, id, name, mbid strin
 }
 
 func (w *wasmArtistAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	return callMethod(ctx, w, "GetArtistBiography", func(inst api.ArtistMetadataService) (string, error) {
+	return callArtistMethod(ctx, w, "GetArtistBiography", func(inst api.ArtistMetadataService) (string, error) {
 		res, err := inst.GetArtistBiography(ctx, &api.ArtistBiographyRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return "", err
@@ -144,7 +68,7 @@ func (w *wasmArtistAgent) GetArtistBiography(ctx context.Context, id, name, mbid
 }
 
 func (w *wasmArtistAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
-	return callMethod(ctx, w, "GetSimilarArtists", func(inst api.ArtistMetadataService) ([]agents.Artist, error) {
+	return callArtistMethod(ctx, w, "GetSimilarArtists", func(inst api.ArtistMetadataService) ([]agents.Artist, error) {
 		resp, err := inst.GetSimilarArtists(ctx, &api.ArtistSimilarRequest{Id: id, Name: name, Mbid: mbid, Limit: int32(limit)})
 		if err != nil {
 			return nil, err
@@ -161,7 +85,7 @@ func (w *wasmArtistAgent) GetSimilarArtists(ctx context.Context, id, name, mbid 
 }
 
 func (w *wasmArtistAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
-	return callMethod(ctx, w, "GetArtistImages", func(inst api.ArtistMetadataService) ([]agents.ExternalImage, error) {
+	return callArtistMethod(ctx, w, "GetArtistImages", func(inst api.ArtistMetadataService) ([]agents.ExternalImage, error) {
 		resp, err := inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return nil, err
@@ -178,7 +102,7 @@ func (w *wasmArtistAgent) GetArtistImages(ctx context.Context, id, name, mbid st
 }
 
 func (w *wasmArtistAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	return callMethod(ctx, w, "GetArtistTopSongs", func(inst api.ArtistMetadataService) ([]agents.Song, error) {
+	return callArtistMethod(ctx, w, "GetArtistTopSongs", func(inst api.ArtistMetadataService) ([]agents.Song, error) {
 		resp, err := inst.GetArtistTopSongs(ctx, &api.ArtistTopSongsRequest{Id: id, ArtistName: artistName, Mbid: mbid, Count: int32(count)})
 		if err != nil {
 			return nil, err
@@ -195,36 +119,5 @@ func (w *wasmArtistAgent) GetArtistTopSongs(ctx context.Context, id, artistName,
 }
 
 func (w *wasmArtistAgent) Close(ctx context.Context) error {
-	// Drain and close all instances in the pool
-	for {
-		v := w.pool.Get()
-		if v == nil {
-			break // Pool is empty
-		}
-
-		pooled, ok := v.(*pooledInstance)
-		if !ok || pooled == nil || pooled.instance == nil {
-			log.Warn(ctx, "wasmArtistAgent: found invalid type or nil instance in pool during agent close", "plugin", w.name, "path", w.wasmPath, "type", fmt.Sprintf("%T", v))
-			if pooled != nil {
-				pooled.cleanup.Stop()
-			}
-			if closer, canClose := v.(interface{ Close(context.Context) error }); canClose {
-				_ = closer.Close(ctx)
-			}
-			continue
-		}
-
-		// Calling Stop() on a zero Cleanup is a no-op.
-		pooled.cleanup.Stop()
-		log.Trace(ctx, "wasmArtistAgent: stopped GC cleanup during agent close", "plugin", w.name)
-
-		if closer, ok := pooled.instance.(interface{ Close(context.Context) error }); ok {
-			_ = closer.Close(ctx)
-			log.Trace(ctx, "wasmArtistAgent: closed instance during agent close", "plugin", w.name, "path", w.wasmPath)
-		} else {
-			log.Warn(ctx, "wasmArtistAgent: instance in pool during agent close does not implement Close", "plugin", w.name, "path", w.wasmPath)
-		}
-	}
-	log.Trace(ctx, "wasmArtistAgent: agent closed", "plugin", w.name, "path", w.wasmPath)
-	return nil
+	return w.wasmBasePlugin.Close(ctx)
 }

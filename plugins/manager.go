@@ -133,9 +133,11 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 	pool := newPluginPool(pluginLoader, wasmPath, pluginName)
 	log.Trace(ctx, "Instantiated plugin agent", "plugin", pluginName, "path", wasmPath)
 	return &wasmArtistAgent{
-		pool:     pool,
-		wasmPath: wasmPath,
-		name:     pluginName,
+		wasmBasePlugin: &wasmBasePlugin[api.ArtistMetadataService]{
+			pool:     pool,
+			wasmPath: wasmPath,
+			name:     pluginName,
+		},
 	}, nil
 }
 
