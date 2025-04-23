@@ -21,13 +21,13 @@ var _ = Describe("Plugin Manager", func() {
 	It("should auto-register and load a plugin from the testdata folder", func() {
 		Expect(mgr).NotTo(BeNil())
 
-		// The plugin directory is 'agent', so the agent name should be 'agent'
-		constructor, ok := agents.Map["agent"]
+		// The plugin directory is 'agent', so the agent name should be 'artist_agent'
+		constructor, ok := agents.Map["artist_agent"]
 		Expect(ok).To(BeTrue(), "plugin agent should be registered")
 
 		ds := &tests.MockDataStore{} // Use a mock DataStore
 		agent := constructor(ds)
 		Expect(agent).NotTo(BeNil(), "plugin agent should be constructible")
-		Expect(agent.AgentName()).To(Equal("agent"))
+		Expect(agent.AgentName()).To(Equal("artist_agent"))
 	})
 })

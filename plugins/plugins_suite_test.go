@@ -21,7 +21,7 @@ func TestPlugins(t *testing.T) {
 var _ = BeforeSuite(func() {
 	wasmPath := "plugins/testdata/agent/plugin.wasm"
 	_ = os.Remove(wasmPath)
-	cmd := exec.Command("go", "build", "-buildmode=c-shared", "-o", wasmPath, "./plugins/testdata/agent")
+	cmd := exec.Command("go", "build", "-buildmode=c-shared", "-o", wasmPath, "./plugins/testdata/artist_agent")
 	cmd.Env = append(os.Environ(), "GOOS=wasip1", "GOARCH=wasm")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
