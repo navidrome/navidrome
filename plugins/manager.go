@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -69,53 +68,16 @@ func cleanupFunc(arg cleanupArg) {
 	}
 }
 
-// newWazeroRuntimeWithCache creates a custom wazero runtime with persistent cache
-func newWazeroRuntimeWithCache() func(ctx context.Context) (wazero.Runtime, error) {
-	cache := getCompilationCache()
-	return func(ctx context.Context) (wazero.Runtime, error) {
-		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
-		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
-		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
-			return nil, err
-		}
-		return r, nil
-	}
-}
-
 // Helper to create the correct ModuleConfig for plugins
 func newWazeroModuleConfig() wazero.ModuleConfig {
 	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithStderr(os.Stderr)
 }
 
-// newPluginPool creates and configures a sync.Pool for wasm plugin instances, using a pre-created loader.
-func newPluginPool(pluginLoader *api.ArtistMetadataServicePlugin, wasmPath string, pluginName string) *sync.Pool {
+// Generic plugin pool creation
+func newGenericPluginPool[L any](loader L, wasmPath, pluginName string, loadFunc func(L, context.Context, string) (any, error)) *sync.Pool {
 	return &sync.Pool{
 		New: func() any {
-			inst, err := pluginLoader.Load(context.Background(), wasmPath)
-			if err != nil {
-				log.Error("pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
-				return nil
-			}
-			closer, ok := inst.(interface{ Close(context.Context) error })
-			if !ok {
-				return &pooledInstance{instance: inst}
-			}
-			arg := cleanupArg{
-				closer:     closer,
-				pluginName: pluginName,
-				wasmPath:   wasmPath,
-			}
-			cleanup := runtime.AddCleanup(&inst, cleanupFunc, arg)
-			return &pooledInstance{instance: inst, cleanup: cleanup}
-		},
-	}
-}
-
-// newAlbumPluginPool is analogous to newPluginPool but for AlbumMetadataService
-func newAlbumPluginPool(pluginLoader *api.AlbumMetadataServicePlugin, wasmPath string, pluginName string) *sync.Pool {
-	return &sync.Pool{
-		New: func() any {
-			inst, err := pluginLoader.Load(context.Background(), wasmPath)
+			inst, err := loadFunc(loader, context.Background(), wasmPath)
 			if err != nil {
 				log.Error("pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
 				return nil
@@ -151,36 +113,47 @@ func createManager() *Manager {
 	return m
 }
 
-// precompilePlugin compiles the wasm plugin in the background and updates the state.
-func precompilePlugin(state *pluginState, wasmPath, name string) {
-	compileSemaphore <- struct{}{}        // acquire slot
-	defer func() { <-compileSemaphore }() // release slot
-	ctx := context.Background()
-	cache := getCompilationCache()
-	b, err := os.ReadFile(wasmPath)
-	if err != nil {
-		state.err = fmt.Errorf("failed to read wasm file: %w", err)
-		close(state.ready)
-		return
-	}
-	runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
-	r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
-	defer r.Close(ctx)
-	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
-		state.err = fmt.Errorf("failed to instantiate WASI: %w", err)
-		close(state.ready)
-		return
-	}
-	start := time.Now()
-	_, err = r.CompileModule(ctx, b)
-	if err != nil {
-		state.err = fmt.Errorf("failed to compile wasm: %w", err)
-		log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "elapsed", time.Since(start), state.err)
-	} else {
-		state.err = nil
-		log.Debug("Plugin compilation completed", "name", name, "path", wasmPath, "elapsed", time.Since(start))
-	}
-	close(state.ready)
+type pluginTypeInfo struct {
+	loaderCtor func(context.Context, func(context.Context) (wazero.Runtime, error), wazero.ModuleConfig) (any, error)
+	loadFunc   func(any, context.Context, string) (any, error)
+	agentCtor  func(*sync.Pool, string, string) agents.Interface
+}
+
+var pluginTypes = map[string]pluginTypeInfo{
+	"ArtistMetadataService": {
+		loaderCtor: func(ctx context.Context, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) (any, error) {
+			return api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+		},
+		loadFunc: func(loader any, ctx context.Context, wasmPath string) (any, error) {
+			return loader.(*api.ArtistMetadataServicePlugin).Load(ctx, wasmPath)
+		},
+		agentCtor: func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface {
+			return &wasmArtistAgent{
+				wasmBasePlugin: &wasmBasePlugin[api.ArtistMetadataService]{
+					pool:     pool,
+					wasmPath: wasmPath,
+					name:     pluginName,
+				},
+			}
+		},
+	},
+	"AlbumMetadataService": {
+		loaderCtor: func(ctx context.Context, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) (any, error) {
+			return api.NewAlbumMetadataServicePlugin(ctx, api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+		},
+		loadFunc: func(loader any, ctx context.Context, wasmPath string) (any, error) {
+			return loader.(*api.AlbumMetadataServicePlugin).Load(ctx, wasmPath)
+		},
+		agentCtor: func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface {
+			return &wasmAlbumAgent{
+				wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
+					pool:     pool,
+					wasmPath: wasmPath,
+					name:     pluginName,
+				},
+			}
+		},
+	},
 }
 
 // In autoRegisterPlugins, create the loader once per plugin and pass to the pool
@@ -192,6 +165,7 @@ func (m *Manager) autoRegisterPlugins() {
 		return
 	}
 	cache := getCompilationCache()
+
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -209,6 +183,11 @@ func (m *Manager) autoRegisterPlugins() {
 			continue
 		}
 		for _, service := range manifest.Services {
+			pt, ok := pluginTypes[service]
+			if !ok {
+				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", name)
+				continue
+			}
 			customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
 				runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 				r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
@@ -225,44 +204,16 @@ func (m *Manager) autoRegisterPlugins() {
 			if len(manifest.Services) > 1 {
 				pluginName = name + "_" + service
 			}
-			switch service {
-			case "ArtistMetadataService":
-				loader, err := api.NewArtistMetadataServicePlugin(context.Background(), api.WazeroRuntime(customRuntime), api.WazeroModuleConfig(mc))
-				if err != nil {
-					log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
-					continue
-				}
-				pool := newPluginPool(loader, wasmPath, pluginName)
-				agentFactory := func(ds model.DataStore) agents.Interface {
-					return &wasmArtistAgent{
-						wasmBasePlugin: &wasmBasePlugin[api.ArtistMetadataService]{
-							pool:     pool,
-							wasmPath: wasmPath,
-							name:     pluginName,
-						},
-					}
-				}
-				agents.Register(pluginName, agentFactory)
-			case "AlbumMetadataService":
-				loader, err := api.NewAlbumMetadataServicePlugin(context.Background(), api.WazeroRuntime(customRuntime), api.WazeroModuleConfig(mc))
-				if err != nil {
-					log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
-					continue
-				}
-				pool := newAlbumPluginPool(loader, wasmPath, pluginName)
-				agentFactory := func(ds model.DataStore) agents.Interface {
-					return &wasmAlbumAgent{
-						wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
-							pool:     pool,
-							wasmPath: wasmPath,
-							name:     pluginName,
-						},
-					}
-				}
-				agents.Register(pluginName, agentFactory)
-			default:
-				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", name)
+			loaderAny, err := pt.loaderCtor(context.Background(), customRuntime, mc)
+			if err != nil {
+				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
+				continue
 			}
+			pool := newGenericPluginPool(loaderAny, wasmPath, pluginName, pt.loadFunc)
+			agentFactory := func(ds model.DataStore) agents.Interface {
+				return pt.agentCtor(pool, wasmPath, pluginName)
+			}
+			agents.Register(pluginName, agentFactory)
 			log.Info("Registered plugin agent", "name", pluginName, "service", service, "wasm", wasmPath)
 		}
 	}
