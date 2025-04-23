@@ -99,4 +99,41 @@ message Song {
 
 message ArtistTopSongsResponse {
   repeated Song songs = 1;
+}
+
+// go:plugin type=plugin version=1
+service AlbumMetadataService {
+  // Retrieves album info by name, artist, and mbid
+  rpc GetAlbumInfo(AlbumInfoRequest) returns (AlbumInfoResponse);
+
+  // Retrieves images for an album by name, artist, and mbid
+  rpc GetAlbumImages(AlbumImagesRequest) returns (AlbumImagesResponse);
+}
+
+message AlbumInfoRequest {
+  string name = 1;
+  string artist = 2;
+  string mbid = 3;
+}
+
+message AlbumInfo {
+  string name = 1;
+  string mbid = 2;
+  string description = 3;
+  string url = 4;
+  repeated ExternalImage images = 5;
+}
+
+message AlbumInfoResponse {
+  AlbumInfo info = 1;
+}
+
+message AlbumImagesRequest {
+  string name = 1;
+  string artist = 2;
+  string mbid = 3;
+}
+
+message AlbumImagesResponse {
+  repeated ExternalImage images = 1;
 } 

@@ -432,6 +432,165 @@ func (x *ArtistTopSongsResponse) GetSongs() []*Song {
 	return nil
 }
 
+type AlbumInfoRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name   string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Artist string `protobuf:"bytes,2,opt,name=artist,proto3" json:"artist,omitempty"`
+	Mbid   string `protobuf:"bytes,3,opt,name=mbid,proto3" json:"mbid,omitempty"`
+}
+
+func (x *AlbumInfoRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *AlbumInfoRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AlbumInfoRequest) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *AlbumInfoRequest) GetMbid() string {
+	if x != nil {
+		return x.Mbid
+	}
+	return ""
+}
+
+type AlbumInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name        string           `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Mbid        string           `protobuf:"bytes,2,opt,name=mbid,proto3" json:"mbid,omitempty"`
+	Description string           `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Url         string           `protobuf:"bytes,4,opt,name=url,proto3" json:"url,omitempty"`
+	Images      []*ExternalImage `protobuf:"bytes,5,rep,name=images,proto3" json:"images,omitempty"`
+}
+
+func (x *AlbumInfo) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *AlbumInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AlbumInfo) GetMbid() string {
+	if x != nil {
+		return x.Mbid
+	}
+	return ""
+}
+
+func (x *AlbumInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AlbumInfo) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *AlbumInfo) GetImages() []*ExternalImage {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+type AlbumInfoResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Info *AlbumInfo `protobuf:"bytes,1,opt,name=info,proto3" json:"info,omitempty"`
+}
+
+func (x *AlbumInfoResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *AlbumInfoResponse) GetInfo() *AlbumInfo {
+	if x != nil {
+		return x.Info
+	}
+	return nil
+}
+
+type AlbumImagesRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name   string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Artist string `protobuf:"bytes,2,opt,name=artist,proto3" json:"artist,omitempty"`
+	Mbid   string `protobuf:"bytes,3,opt,name=mbid,proto3" json:"mbid,omitempty"`
+}
+
+func (x *AlbumImagesRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *AlbumImagesRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AlbumImagesRequest) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *AlbumImagesRequest) GetMbid() string {
+	if x != nil {
+		return x.Mbid
+	}
+	return ""
+}
+
+type AlbumImagesResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Images []*ExternalImage `protobuf:"bytes,1,rep,name=images,proto3" json:"images,omitempty"`
+}
+
+func (x *AlbumImagesResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *AlbumImagesResponse) GetImages() []*ExternalImage {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
 // go:plugin type=plugin version=1
 type ArtistMetadataService interface {
 	// Retrieves the MBID for an artist by id and name
@@ -446,4 +605,12 @@ type ArtistMetadataService interface {
 	GetArtistImages(context.Context, *ArtistImageRequest) (*ArtistImageResponse, error)
 	// Retrieves top songs for an artist by id, artistName, mbid, and count
 	GetArtistTopSongs(context.Context, *ArtistTopSongsRequest) (*ArtistTopSongsResponse, error)
+}
+
+// go:plugin type=plugin version=1
+type AlbumMetadataService interface {
+	// Retrieves album info by name, artist, and mbid
+	GetAlbumInfo(context.Context, *AlbumInfoRequest) (*AlbumInfoResponse, error)
+	// Retrieves images for an album by name, artist, and mbid
+	GetAlbumImages(context.Context, *AlbumImagesRequest) (*AlbumImagesResponse, error)
 }
