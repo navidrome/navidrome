@@ -16,7 +16,7 @@ type wasmBasePlugin[T any] struct {
 	name     string
 }
 
-func (w *wasmBasePlugin[T]) getValidPooledInstance(ctx context.Context, methodName string) (*pooledInstance, error) {
+func (w *wasmBasePlugin[T]) getValidPooledInstance(ctx context.Context) (*pooledInstance, error) {
 	v := w.pool.Get()
 	if v == nil {
 		log.Error(ctx, "wasmBasePlugin: sync.Pool returned nil instance", "plugin", w.name, "path", w.wasmPath)
@@ -57,7 +57,7 @@ func (w *wasmBasePlugin[T]) createPoolCleanupFunc(ctx context.Context, pooled *p
 // getInstance returns the plugin instance, a cleanup function, and error
 func (w *wasmBasePlugin[T]) getInstance(ctx context.Context, methodName string, isNotFound func(error) bool) (T, func(error), error) {
 	var zero T
-	pooled, err := w.getValidPooledInstance(ctx, methodName)
+	pooled, err := w.getValidPooledInstance(ctx)
 	if err != nil {
 		return zero, nil, err
 	}
@@ -100,10 +100,10 @@ func (w *wasmBasePlugin[T]) Close(ctx context.Context) error {
 }
 
 // Generic plugin pool creation
-func newPluginPool[L any](loader L, wasmPath, pluginName string, loadFunc func(L, context.Context, string) (any, error)) *sync.Pool {
+func newPluginPool[L any](loader L, wasmPath, pluginName string, loadFunc func(context.Context, L, string) (any, error)) *sync.Pool {
 	return &sync.Pool{
 		New: func() any {
-			inst, err := loadFunc(loader, context.Background(), wasmPath)
+			inst, err := loadFunc(context.Background(), loader, wasmPath)
 			if err != nil {
 				log.Error("pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
 				return nil
