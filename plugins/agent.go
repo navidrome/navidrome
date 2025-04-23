@@ -21,16 +21,12 @@ func (w *wasmAgent) AgentName() string {
 	return w.name
 }
 
-// getInstance gets an instance from the pool, and returns a function to return it to the pool
-func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.ArtistMetadataService, func(error), error) {
-	var inst api.ArtistMetadataService
-	var closer func(context.Context) error
-	var pooled *pooledInstance
-
+// getValidPooledInstance retrieves a pooledInstance from the pool and validates it.
+func (w *wasmAgent) getValidPooledInstance(ctx context.Context, methodName string) (*pooledInstance, error) {
 	v := w.pool.Get()
 	if v == nil {
 		log.Error(ctx, "wasmAgent: sync.Pool returned nil instance", "plugin", w.name, "path", w.wasmPath)
-		return nil, nil, fmt.Errorf("wasmAgent: sync.Pool returned nil instance for plugin %s", w.name)
+		return nil, fmt.Errorf("wasmAgent: sync.Pool returned nil instance for plugin %s", w.name)
 	}
 
 	// Type assert to the pooledInstance struct
@@ -45,32 +41,14 @@ func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.Art
 		if closer, canClose := v.(interface{ Close(context.Context) error }); canClose {
 			_ = closer.Close(ctx)
 		}
-		return nil, nil, fmt.Errorf("wasmAgent: pool returned invalid instance for plugin %s", w.name)
+		return nil, fmt.Errorf("wasmAgent: pool returned invalid instance for plugin %s", w.name)
 	}
+	return pooled, nil
+}
 
-	log.Trace(ctx, "wasmAgent: got instance from pool", "plugin", w.name, "method", methodName)
-	inst = pooled.instance.(api.ArtistMetadataService)
-	start := time.Now()
-
-	// Get the closer function if the instance supports it
-	closerInst, canClose := pooled.instance.(interface{ Close(context.Context) error })
-	if !canClose {
-		// Should not happen if pool.New logic is correct and registers cleanup
-		log.Error(ctx, "wasmAgent: pooled instance does not implement Close", "plugin", w.name, "path", w.wasmPath)
-		// Return the instance, but the closeFn won't do much
-		closeFn := func(err error) {
-			if err == nil || err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error() {
-				w.pool.Put(pooled) // Put the wrapper back
-				log.Trace(ctx, "wasmAgent: returned instance (no close) to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
-			} else {
-				log.Trace(ctx, "wasmAgent: discarding instance (no close) due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
-			}
-		}
-		return inst, closeFn, nil
-	}
-	closer = closerInst.Close
-
-	closeFn := func(err error) {
+// createPoolCleanupFunc creates the cleanup function (closeFn) for a retrieved pool instance.
+func (w *wasmAgent) createPoolCleanupFunc(ctx context.Context, pooled *pooledInstance, closer func(context.Context) error, start time.Time, methodName string) func(error) {
+	return func(err error) {
 		if err == nil || err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error() {
 			// Return the wrapper to the pool. Do NOT stop the GC cleanup.
 			w.pool.Put(pooled)
@@ -81,10 +59,35 @@ func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.Art
 			pooled.cleanup.Stop()
 			log.Trace(ctx, "wasmAgent: stopped GC cleanup", "plugin", w.name, "method", methodName)
 
-			_ = closer(ctx)
-			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+			// Now close the instance if the closer is valid
+			if closer != nil {
+				_ = closer(ctx)
+				log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+			} else {
+				// Should not happen if canClose check in getInstance was correct
+				log.Error(ctx, "wasmAgent: attempted to close instance due to error, but closer was nil", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+			}
 		}
 	}
+}
+
+// getInstance gets an instance from the pool, and returns a function to return it to the pool
+func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.ArtistMetadataService, func(error), error) {
+	pooled, err := w.getValidPooledInstance(ctx, methodName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	log.Trace(ctx, "wasmAgent: got instance from pool", "plugin", w.name, "method", methodName)
+	inst := pooled.instance.(api.ArtistMetadataService)
+	start := time.Now()
+
+	// Get the closer function (guaranteed to exist)
+	closerInst := pooled.instance.(interface{ Close(context.Context) error })
+
+	// Create the cleanup function using the helper
+	closeFn := w.createPoolCleanupFunc(ctx, pooled, closerInst.Close, start, methodName)
+
 	return inst, closeFn, nil
 }
 

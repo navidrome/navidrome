@@ -69,34 +69,9 @@ func cleanupFunc(arg cleanupArg) {
 	}
 }
 
-// LoadAgentPlugin loads a WASM agent plugin and returns an implementation of agents.Interface and all retriever interfaces.
-func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agents.Interface, error) {
-	// Setup persistent compilation cache
-	_ = os.MkdirAll(filepath.Join(conf.Server.CacheFolder, "plugins"), 0o700)
-	cache := getCompilationCache()
-	customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
-		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
-		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
-		// WASI imports
-		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
-			log.Error(ctx, "Failed to instantiate WASI", err)
-			return nil, err
-		}
-		return r, host.Instantiate(ctx, r, &HttpService{})
-	}
-	mc := wazero.NewModuleConfig().
-		WithStartFunctions("_initialize").
-		WithStderr(os.Stderr) // Redirect stderr to the host's stderr
-	pluginLoader, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime), api.WazeroModuleConfig(mc))
-	if err != nil {
-		log.Error(ctx, "Failed to create plugin loader", "wasmPath", wasmPath, err)
-		return nil, fmt.Errorf("failed to create plugin loader: %w", err)
-	}
-	pluginName := "wasm-plugin"
-	if len(name) > 0 {
-		pluginName = name[0]
-	}
-	pool := &sync.Pool{
+// newPluginPool creates and configures a sync.Pool for wasm plugin instances.
+func newPluginPool(pluginLoader *api.ArtistMetadataServicePlugin, wasmPath string, pluginName string) *sync.Pool {
+	return &sync.Pool{
 		New: func() any {
 			inst, err := pluginLoader.Load(context.Background(), wasmPath)
 			if err != nil {
@@ -125,6 +100,37 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 			return &pooledInstance{instance: inst, cleanup: cleanup}
 		},
 	}
+}
+
+// LoadAgentPlugin loads a WASM agent plugin and returns an implementation of agents.Interface and all retriever interfaces.
+func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agents.Interface, error) {
+	// Setup persistent compilation cache
+	_ = os.MkdirAll(filepath.Join(conf.Server.CacheFolder, "plugins"), 0o700)
+	cache := getCompilationCache()
+	customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
+		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
+		// WASI imports
+		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
+			log.Error(ctx, "Failed to instantiate WASI", err)
+			return nil, err
+		}
+		return r, host.Instantiate(ctx, r, &HttpService{})
+	}
+	mc := wazero.NewModuleConfig().
+		WithStartFunctions("_initialize").
+		WithStderr(os.Stderr) // Redirect stderr to the host's stderr
+	pluginLoader, err := api.NewArtistMetadataServicePlugin(ctx, api.WazeroRuntime(customRuntime), api.WazeroModuleConfig(mc))
+	if err != nil {
+		log.Error(ctx, "Failed to create plugin loader", "wasmPath", wasmPath, err)
+		return nil, fmt.Errorf("failed to create plugin loader: %w", err)
+	}
+	pluginName := "wasm-plugin"
+	if len(name) > 0 {
+		pluginName = name[0]
+	}
+	// Create the pool using the helper function
+	pool := newPluginPool(pluginLoader, wasmPath, pluginName)
 	log.Trace(ctx, "Instantiated plugin agent", "plugin", pluginName, "path", wasmPath)
 	return &wasmAgent{
 		pool:     pool,
@@ -147,6 +153,57 @@ func createManager() *Manager {
 	m := &Manager{}
 	m.autoRegisterPlugins()
 	return m
+}
+
+// precompilePlugin compiles the wasm plugin in the background and updates the state.
+func precompilePlugin(state *pluginState, wasmPath, name string) {
+	compileSemaphore <- struct{}{}        // acquire slot
+	defer func() { <-compileSemaphore }() // release slot
+	ctx := context.Background()
+	cache := getCompilationCache()
+	b, err := os.ReadFile(wasmPath)
+	if err != nil {
+		state.err = fmt.Errorf("failed to read wasm file: %w", err)
+		close(state.ready)
+		return
+	}
+	runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+	r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
+	defer r.Close(ctx)
+	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
+		state.err = fmt.Errorf("failed to instantiate WASI: %w", err)
+		close(state.ready)
+		return
+	}
+	start := time.Now()
+	_, err = r.CompileModule(ctx, b)
+	if err != nil {
+		state.err = fmt.Errorf("failed to compile wasm: %w", err)
+		log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "elapsed", time.Since(start), state.err)
+	} else {
+		state.err = nil
+		log.Debug("Plugin compilation completed", "name", name, "path", wasmPath, "elapsed", time.Since(start))
+	}
+	close(state.ready)
+}
+
+// createAgentFactory returns a function suitable for agents.Register.
+// This factory waits for pre-compilation and then loads the agent plugin.
+func createAgentFactory(state *pluginState, wasmPath, name string) func(ds model.DataStore) agents.Interface {
+	return func(ds model.DataStore) agents.Interface {
+		<-state.ready
+		if state.err != nil {
+			log.Error("Failed to compile plugin", "name", name, "path", wasmPath, state.err)
+			return nil
+		}
+		agent, err := LoadAgentPlugin(context.Background(), wasmPath, name)
+		if err != nil {
+			log.Error("Failed to load plugin", "name", name, "path", wasmPath, err)
+			return nil
+		}
+		log.Debug("Loaded plugin agent", "name", name, "path", wasmPath)
+		return agent
+	}
 }
 
 // autoRegisterPlugins scans the plugins folder and registers each plugin found
@@ -172,51 +229,13 @@ func (m *Manager) autoRegisterPlugins() {
 		localName := name
 		localWasmPath := wasmPath
 		state := &pluginState{ready: make(chan struct{})}
-		go func(state *pluginState, wasmPath, name string) {
-			compileSemaphore <- struct{}{}        // acquire slot
-			defer func() { <-compileSemaphore }() // release slot
-			ctx := context.Background()
-			cache := getCompilationCache()
-			b, err := os.ReadFile(wasmPath)
-			if err != nil {
-				state.err = fmt.Errorf("failed to read wasm file: %w", err)
-				close(state.ready)
-				return
-			}
-			runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
-			r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
-			defer r.Close(ctx)
-			if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
-				state.err = fmt.Errorf("failed to instantiate WASI: %w", err)
-				close(state.ready)
-				return
-			}
-			start := time.Now()
-			_, err = r.CompileModule(ctx, b)
-			if err != nil {
-				state.err = fmt.Errorf("failed to compile wasm: %w", err)
-				log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "elapsed", time.Since(start), state.err)
-			} else {
-				state.err = nil
-				log.Debug("Plugin compilation completed", "name", name, "path", wasmPath, "elapsed", time.Since(start))
-			}
-			close(state.ready)
-		}(state, localWasmPath, localName)
 
-		agents.Register(localName, func(ds model.DataStore) agents.Interface {
-			<-state.ready
-			if state.err != nil {
-				log.Error("Failed to compile plugin", "name", localName, "path", localWasmPath, state.err)
-				return nil
-			}
-			agent, err := LoadAgentPlugin(context.Background(), localWasmPath, localName)
-			if err != nil {
-				log.Error("Failed to load plugin", "name", localName, "path", localWasmPath, err)
-				return nil
-			}
-			log.Debug("Loaded plugin agent", "name", localName, "path", localWasmPath)
-			return agent
-		})
+		// Start pre-compilation in the background
+		go precompilePlugin(state, localWasmPath, localName)
+
+		// Register the agent factory
+		agents.Register(localName, createAgentFactory(state, localWasmPath, localName))
+
 		log.Info("Registered plugin agent", "name", localName, "wasm", localWasmPath)
 	}
 }

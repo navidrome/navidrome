@@ -22,10 +22,17 @@ var _ = Describe("wasmAgent (real plugin)", func() {
 		conf.Server.Plugins.Folder = "plugins/testdata"
 		ctx = context.Background()
 
-		mgr := GetManager()
+		mgr := createManager()
 		Expect(mgr).NotTo(BeNil())
+
+		// Wait for the agent to be registered, polling with a timeout
+		Eventually(func() bool {
+			_, ok := agents.Map["agent"]
+			return ok
+		}, "5s", "100ms").Should(BeTrue(), "plugin agent should be registered")
+
 		constructor, ok := agents.Map["agent"]
-		Expect(ok).To(BeTrue(), "plugin agent should be registered")
+		Expect(ok).To(BeTrue()) // Re-check for safety, though Eventually should guarantee it
 		agent = constructor(nil)
 		Expect(agent).NotTo(BeNil(), "plugin agent should be constructible")
 	})
