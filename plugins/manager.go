@@ -208,7 +208,79 @@ func createAgentFactory(state *pluginState, wasmPath, name string) func(ds model
 	}
 }
 
-// autoRegisterPlugins scans the plugins folder and registers each plugin found
+// PluginType holds constructors for each supported plugin service
+// Add new services here to support more plugin types
+var pluginTypes = map[string]struct {
+	LoaderConstructor func(context.Context) (any, error)
+	PoolConstructor   func(loader any, wasmPath, pluginName string) *sync.Pool
+	AgentConstructor  func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface
+	RegisterFunc      func(name string, init agents.Constructor)
+}{
+	"ArtistMetadataService": {
+		LoaderConstructor: func(ctx context.Context) (any, error) {
+			return api.NewArtistMetadataServicePlugin(ctx)
+		},
+		PoolConstructor: func(loader any, wasmPath, pluginName string) *sync.Pool {
+			return newPluginPool(loader.(*api.ArtistMetadataServicePlugin), wasmPath, pluginName)
+		},
+		AgentConstructor: func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface {
+			return &wasmArtistAgent{
+				wasmBasePlugin: &wasmBasePlugin[api.ArtistMetadataService]{
+					pool:     pool,
+					wasmPath: wasmPath,
+					name:     pluginName,
+				},
+			}
+		},
+		RegisterFunc: agents.Register,
+	},
+	"AlbumMetadataService": {
+		LoaderConstructor: func(ctx context.Context) (any, error) {
+			return api.NewAlbumMetadataServicePlugin(ctx)
+		},
+		PoolConstructor: func(loader any, wasmPath, pluginName string) *sync.Pool {
+			return newAlbumPluginPool(loader.(*api.AlbumMetadataServicePlugin), wasmPath, pluginName)
+		},
+		AgentConstructor: func(pool *sync.Pool, wasmPath, pluginName string) agents.Interface {
+			return &wasmAlbumAgent{
+				wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
+					pool:     pool,
+					wasmPath: wasmPath,
+					name:     pluginName,
+				},
+			}
+		},
+		RegisterFunc: agents.Register,
+	},
+}
+
+// newAlbumPluginPool is analogous to newPluginPool but for AlbumMetadataService
+func newAlbumPluginPool(pluginLoader *api.AlbumMetadataServicePlugin, wasmPath string, pluginName string) *sync.Pool {
+	return &sync.Pool{
+		New: func() any {
+			inst, err := pluginLoader.Load(context.Background(), wasmPath)
+			if err != nil {
+				log.Error("pool: failed to load plugin instance", "plugin", pluginName, "path", wasmPath, err)
+				return nil
+			}
+			log.Trace("pool: created new plugin instance", "plugin", pluginName, "path", wasmPath)
+			closer, ok := inst.(interface{ Close(context.Context) error })
+			if !ok {
+				log.Trace("pool: instance does not implement Close(context.Context) error", "plugin", pluginName, "path", wasmPath)
+				return &pooledInstance{instance: inst}
+			}
+			arg := cleanupArg{
+				closer:     closer,
+				pluginName: pluginName,
+				wasmPath:   wasmPath,
+			}
+			cleanup := runtime.AddCleanup(&inst, cleanupFunc, arg)
+			log.Trace("pool: registered GC cleanup for instance", "plugin", pluginName, "path", wasmPath)
+			return &pooledInstance{instance: inst, cleanup: cleanup}
+		},
+	}
+}
+
 func (m *Manager) autoRegisterPlugins() {
 	root := conf.Server.Plugins.Folder
 	entries, err := os.ReadDir(root)
@@ -221,24 +293,39 @@ func (m *Manager) autoRegisterPlugins() {
 			continue
 		}
 		name := entry.Name()
-		wasmPath := filepath.Join(root, name, "plugin.wasm")
+		pluginDir := filepath.Join(root, name)
+		wasmPath := filepath.Join(pluginDir, "plugin.wasm")
 		if _, err := os.Stat(wasmPath); err != nil {
 			log.Debug("No plugin.wasm found in plugin directory", "plugin", name, "path", wasmPath)
 			continue
 		}
-
-		// Fix closure capture: copy variables
-		localName := name
-		localWasmPath := wasmPath
-		state := &pluginState{ready: make(chan struct{})}
-
-		// Start pre-compilation in the background
-		go precompilePlugin(state, localWasmPath, localName)
-
-		// Register the agent factory
-		agents.Register(localName, createAgentFactory(state, localWasmPath, localName))
-
-		log.Info("Registered plugin agent", "name", localName, "wasm", localWasmPath)
+		manifest, err := LoadManifest(pluginDir)
+		if err != nil || len(manifest.Services) == 0 {
+			log.Warn("No manifest or no services found in plugin directory", "plugin", name, "path", pluginDir, err)
+			continue
+		}
+		for _, service := range manifest.Services {
+			pt, ok := pluginTypes[service]
+			if !ok {
+				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", name)
+				continue
+			}
+			loader, err := pt.LoaderConstructor(context.Background())
+			if err != nil {
+				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
+				continue
+			}
+			pool := pt.PoolConstructor(loader, wasmPath, name)
+			agentName := name
+			if len(manifest.Services) > 1 {
+				agentName = name + "_" + service
+			}
+			agentFactory := func(ds model.DataStore) agents.Interface {
+				return pt.AgentConstructor(pool, wasmPath, agentName)
+			}
+			pt.RegisterFunc(agentName, agentFactory)
+			log.Info("Registered plugin agent", "name", agentName, "service", service, "wasm", wasmPath)
+		}
 	}
 }
 
