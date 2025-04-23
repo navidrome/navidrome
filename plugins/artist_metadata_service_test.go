@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("wasmAgent (real plugin)", func() {
+var _ = Describe("wasmArtistAgent (real plugin)", func() {
 	var (
 		agent agents.Interface
 		ctx   context.Context

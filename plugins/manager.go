@@ -132,7 +132,7 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 	// Create the pool using the helper function
 	pool := newPluginPool(pluginLoader, wasmPath, pluginName)
 	log.Trace(ctx, "Instantiated plugin agent", "plugin", pluginName, "path", wasmPath)
-	return &wasmAgent{
+	return &wasmArtistAgent{
 		pool:     pool,
 		wasmPath: wasmPath,
 		name:     pluginName,
