@@ -825,18 +825,6 @@ func (m *AlbumInfo) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Images) > 0 {
-		for iNdEx := len(m.Images) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.Images[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-			i--
-			dAtA[i] = 0x2a
-		}
-	}
 	if len(m.Url) > 0 {
 		i -= len(m.Url)
 		copy(dAtA[i:], m.Url)
@@ -1341,12 +1329,6 @@ func (m *AlbumInfo) SizeVT() (n int) {
 	l = len(m.Url)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
-	}
-	if len(m.Images) > 0 {
-		for _, e := range m.Images {
-			l = e.SizeVT()
-			n += 1 + l + sov(uint64(l))
-		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3437,40 +3419,6 @@ func (m *AlbumInfo) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Url = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Images", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Images = append(m.Images, &ExternalImage{})
-			if err := m.Images[len(m.Images)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

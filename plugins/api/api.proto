@@ -121,7 +121,6 @@ message AlbumInfo {
   string mbid = 2;
   string description = 3;
   string url = 4;
-  repeated ExternalImage images = 5;
 }
 
 message AlbumInfoResponse {

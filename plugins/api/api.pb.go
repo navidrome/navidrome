@@ -472,11 +472,10 @@ type AlbumInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name        string           `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Mbid        string           `protobuf:"bytes,2,opt,name=mbid,proto3" json:"mbid,omitempty"`
-	Description string           `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Url         string           `protobuf:"bytes,4,opt,name=url,proto3" json:"url,omitempty"`
-	Images      []*ExternalImage `protobuf:"bytes,5,rep,name=images,proto3" json:"images,omitempty"`
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Mbid        string `protobuf:"bytes,2,opt,name=mbid,proto3" json:"mbid,omitempty"`
+	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Url         string `protobuf:"bytes,4,opt,name=url,proto3" json:"url,omitempty"` // images field removed; use GetAlbumImages instead
 }
 
 func (x *AlbumInfo) ProtoReflect() protoreflect.Message {
@@ -509,13 +508,6 @@ func (x *AlbumInfo) GetUrl() string {
 		return x.Url
 	}
 	return ""
-}
-
-func (x *AlbumInfo) GetImages() []*ExternalImage {
-	if x != nil {
-		return x.Images
-	}
-	return nil
 }
 
 type AlbumInfoResponse struct {
