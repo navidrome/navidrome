@@ -31,7 +31,7 @@ var _ = Describe("HttpService", func() {
 		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Test", "ok")
 			w.WriteHeader(201)
-			w.Write([]byte("hello"))
+			_, _ = w.Write([]byte("hello"))
 		}))
 		resp, err := svc.Get(context.Background(), &hosthttp.HttpRequest{
 			Url:       ts.URL,
@@ -48,8 +48,8 @@ var _ = Describe("HttpService", func() {
 	It("should handle POST requests with body", func() {
 		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			b := make([]byte, r.ContentLength)
-			r.Body.Read(b)
-			w.Write([]byte("got:" + string(b)))
+			_, _ = r.Body.Read(b)
+			_, _ = w.Write([]byte("got:" + string(b)))
 		}))
 		resp, err := svc.Post(context.Background(), &hosthttp.HttpRequest{
 			Url:       ts.URL,
@@ -64,8 +64,8 @@ var _ = Describe("HttpService", func() {
 	It("should handle PUT requests with body", func() {
 		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			b := make([]byte, r.ContentLength)
-			r.Body.Read(b)
-			w.Write([]byte("put:" + string(b)))
+			_, _ = r.Body.Read(b)
+			_, _ = w.Write([]byte("put:" + string(b)))
 		}))
 		resp, err := svc.Put(context.Background(), &hosthttp.HttpRequest{
 			Url:       ts.URL,

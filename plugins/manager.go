@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -45,6 +46,29 @@ type pluginState struct {
 	err   error
 }
 
+// pooledInstance holds a wasm instance and its associated cleanup handle
+type pooledInstance struct {
+	instance any
+	cleanup  runtime.Cleanup
+}
+
+// cleanupArg holds the necessary information for the GC cleanup function
+type cleanupArg struct {
+	closer     interface{ Close(context.Context) error }
+	pluginName string
+	wasmPath   string
+}
+
+// cleanupFunc is the function registered with runtime.AddCleanup
+func cleanupFunc(arg cleanupArg) {
+	log.Trace("pool: GC cleanup closing instance", "plugin", arg.pluginName, "path", arg.wasmPath)
+	if err := arg.closer.Close(context.Background()); err != nil {
+		log.Error("pool: GC cleanup failed to close instance", "plugin", arg.pluginName, "path", arg.wasmPath, err)
+	} else {
+		log.Trace("pool: GC cleanup closed instance successfully", "plugin", arg.pluginName, "path", arg.wasmPath)
+	}
+}
+
 // LoadAgentPlugin loads a WASM agent plugin and returns an implementation of agents.Interface and all retriever interfaces.
 func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agents.Interface, error) {
 	// Setup persistent compilation cache
@@ -80,7 +104,25 @@ func LoadAgentPlugin(ctx context.Context, wasmPath string, name ...string) (agen
 				return nil // Will cause getInstance to try again on next call
 			}
 			log.Trace("pool: created new plugin instance", "plugin", pluginName, "path", wasmPath)
-			return inst
+
+			// Check if the instance has a Close(context.Context) error method
+			closer, ok := inst.(interface{ Close(context.Context) error })
+			if !ok {
+				log.Trace("pool: instance does not implement Close(context.Context) error", "plugin", pluginName, "path", wasmPath)
+				// Return instance without a cleanup handle (zero value for cleanup)
+				return &pooledInstance{instance: inst}
+			}
+
+			arg := cleanupArg{
+				closer:     closer,
+				pluginName: pluginName,
+				wasmPath:   wasmPath,
+			}
+			// Pass pointer &inst
+			cleanup := runtime.AddCleanup(&inst, cleanupFunc, arg)
+			log.Trace("pool: registered GC cleanup for instance", "plugin", pluginName, "path", wasmPath)
+
+			return &pooledInstance{instance: inst, cleanup: cleanup}
 		},
 	}
 	log.Trace(ctx, "Instantiated plugin agent", "plugin", pluginName, "path", wasmPath)

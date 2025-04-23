@@ -25,20 +25,62 @@ func (w *wasmAgent) AgentName() string {
 func (w *wasmAgent) getInstance(ctx context.Context, methodName string) (api.ArtistMetadataService, func(error), error) {
 	var inst api.ArtistMetadataService
 	var closer func(context.Context) error
+	var pooled *pooledInstance
+
 	v := w.pool.Get()
 	if v == nil {
 		log.Error(ctx, "wasmAgent: sync.Pool returned nil instance", "plugin", w.name, "path", w.wasmPath)
 		return nil, nil, fmt.Errorf("wasmAgent: sync.Pool returned nil instance for plugin %s", w.name)
 	}
+
+	// Type assert to the pooledInstance struct
+	pooled, ok := v.(*pooledInstance)
+	if !ok || pooled == nil || pooled.instance == nil {
+		// This shouldn't happen if pool.New is correct, but handle defensively
+		log.Error(ctx, "wasmAgent: pool returned invalid type or nil instance", "plugin", w.name, "path", w.wasmPath, "type", fmt.Sprintf("%T", v))
+		// Attempt cleanup if possible
+		if pooled != nil {
+			pooled.cleanup.Stop()
+		}
+		if closer, canClose := v.(interface{ Close(context.Context) error }); canClose {
+			_ = closer.Close(ctx)
+		}
+		return nil, nil, fmt.Errorf("wasmAgent: pool returned invalid instance for plugin %s", w.name)
+	}
+
 	log.Trace(ctx, "wasmAgent: got instance from pool", "plugin", w.name, "method", methodName)
-	inst = v.(api.ArtistMetadataService)
+	inst = pooled.instance.(api.ArtistMetadataService)
 	start := time.Now()
-	closer = v.(interface{ Close(context.Context) error }).Close
+
+	// Get the closer function if the instance supports it
+	closerInst, canClose := pooled.instance.(interface{ Close(context.Context) error })
+	if !canClose {
+		// Should not happen if pool.New logic is correct and registers cleanup
+		log.Error(ctx, "wasmAgent: pooled instance does not implement Close", "plugin", w.name, "path", w.wasmPath)
+		// Return the instance, but the closeFn won't do much
+		closeFn := func(err error) {
+			if err == nil || err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error() {
+				w.pool.Put(pooled) // Put the wrapper back
+				log.Trace(ctx, "wasmAgent: returned instance (no close) to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+			} else {
+				log.Trace(ctx, "wasmAgent: discarding instance (no close) due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
+			}
+		}
+		return inst, closeFn, nil
+	}
+	closer = closerInst.Close
+
 	closeFn := func(err error) {
 		if err == nil || err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error() {
-			w.pool.Put(v)
+			// Return the wrapper to the pool. Do NOT stop the GC cleanup.
+			w.pool.Put(pooled)
 			log.Trace(ctx, "wasmAgent: returned instance to pool", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
 		} else {
+			// First, stop the GC cleanup to prevent double closing.
+			// Calling Stop() on a zero Cleanup is a no-op.
+			pooled.cleanup.Stop()
+			log.Trace(ctx, "wasmAgent: stopped GC cleanup", "plugin", w.name, "method", methodName)
+
 			_ = closer(ctx)
 			log.Trace(ctx, "wasmAgent: closed instance due to error", "plugin", w.name, "method", methodName, "elapsed", time.Since(start), err)
 		}
@@ -154,11 +196,30 @@ func (w *wasmAgent) Close(ctx context.Context) error {
 	for {
 		v := w.pool.Get()
 		if v == nil {
-			break
+			break // Pool is empty
 		}
-		if closer, ok := v.(interface{ Close(context.Context) error }); ok {
+
+		pooled, ok := v.(*pooledInstance)
+		if !ok || pooled == nil || pooled.instance == nil {
+			log.Warn(ctx, "wasmAgent: found invalid type or nil instance in pool during agent close", "plugin", w.name, "path", w.wasmPath, "type", fmt.Sprintf("%T", v))
+			if pooled != nil {
+				pooled.cleanup.Stop()
+			}
+			if closer, canClose := v.(interface{ Close(context.Context) error }); canClose {
+				_ = closer.Close(ctx)
+			}
+			continue
+		}
+
+		// Calling Stop() on a zero Cleanup is a no-op.
+		pooled.cleanup.Stop()
+		log.Trace(ctx, "wasmAgent: stopped GC cleanup during agent close", "plugin", w.name)
+
+		if closer, ok := pooled.instance.(interface{ Close(context.Context) error }); ok {
 			_ = closer.Close(ctx)
 			log.Trace(ctx, "wasmAgent: closed instance during agent close", "plugin", w.name, "path", w.wasmPath)
+		} else {
+			log.Warn(ctx, "wasmAgent: instance in pool during agent close does not implement Close", "plugin", w.name, "path", w.wasmPath)
 		}
 	}
 	log.Trace(ctx, "wasmAgent: agent closed", "plugin", w.name, "path", w.wasmPath)
