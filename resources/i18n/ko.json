@@ -315,7 +315,7 @@
       "false": "아니오"
     },
     "page": {
-      "create": "%{name} 만드릭",
+      "create": "%{name} 만들기",
       "dashboard": "대시보드",
       "edit": "%{name} #%{id}",
       "error": "문제가 발생하였음",
