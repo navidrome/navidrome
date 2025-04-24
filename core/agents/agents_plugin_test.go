@@ -154,9 +154,12 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			}
 
 			// Call multiple times
-			agents.GetArtistMBID(ctx, "123", "Artist")
-			agents.GetArtistMBID(ctx, "123", "Artist")
-			agents.GetArtistMBID(ctx, "123", "Artist")
+			_, err := agents.GetArtistMBID(ctx, "123", "Artist")
+			Expect(err).ToNot(HaveOccurred())
+			_, err = agents.GetArtistMBID(ctx, "123", "Artist")
+			Expect(err).ToNot(HaveOccurred())
+			_, err = agents.GetArtistMBID(ctx, "123", "Artist")
+			Expect(err).ToNot(HaveOccurred())
 
 			// Should only load once
 			Expect(mockLoader.pluginCallCount["plugin_agent"]).To(Equal(1))

@@ -28,15 +28,50 @@ type cachedAgent struct {
 	expiration time.Time
 }
 
-type Agents struct {
-	ds           model.DataStore
-	pluginLoader PluginLoader
-	cachedAgents map[string]cachedAgent // cached agent instances with expiration
-	mu           sync.Mutex             // protects cachedAgents map
+// Encapsulates agent caching logic
+// agentCache is a simple TTL cache for agents
+// Not exported, only used by Agents
+
+type agentCache struct {
+	mu    sync.Mutex
+	items map[string]cachedAgent
+	ttl   time.Duration
 }
 
 // TTL for cached agents
 const agentCacheTTL = 5 * time.Minute
+
+func newAgentCache(ttl time.Duration) *agentCache {
+	return &agentCache{
+		items: make(map[string]cachedAgent),
+		ttl:   ttl,
+	}
+}
+
+func (c *agentCache) Get(name string) Interface {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cached, ok := c.items[name]
+	if ok && cached.expiration.After(time.Now()) {
+		return cached.agent
+	}
+	return nil
+}
+
+func (c *agentCache) Set(name string, agent Interface) {
+	c.mu.Lock()
+	c.items[name] = cachedAgent{
+		agent:      agent,
+		expiration: time.Now().Add(c.ttl),
+	}
+	c.mu.Unlock()
+}
+
+type Agents struct {
+	ds           model.DataStore
+	pluginLoader PluginLoader
+	cache        *agentCache
+}
 
 // GetAgents returns the singleton instance of Agents
 func GetAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
@@ -50,7 +85,7 @@ func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 	return &Agents{
 		ds:           ds,
 		pluginLoader: pluginLoader,
-		cachedAgents: make(map[string]cachedAgent),
+		cache:        newAgentCache(agentCacheTTL),
 	}
 }
 
@@ -103,29 +138,18 @@ func (a *Agents) getEnabledAgentNames() []string {
 }
 
 func (a *Agents) getAgent(name string) Interface {
-	now := time.Now()
-
 	// Check cache first
-	a.mu.Lock()
-	cached, ok := a.cachedAgents[name]
-	if ok && cached.expiration.After(now) {
-		a.mu.Unlock()
-		return cached.agent
+	agent := a.cache.Get(name)
+	if agent != nil {
+		return agent
 	}
-	a.mu.Unlock()
 
 	// Try to get built-in agent
 	constructor, ok := Map[name]
 	if ok {
 		agent := constructor(a.ds)
 		if agent != nil {
-			// Cache the agent with expiration
-			a.mu.Lock()
-			a.cachedAgents[name] = cachedAgent{
-				agent:      agent,
-				expiration: now.Add(agentCacheTTL),
-			}
-			a.mu.Unlock()
+			a.cache.Set(name, agent)
 			return agent
 		}
 		log.Debug("Built-in agent not available. Missing configuration?", "name", name)
@@ -135,13 +159,7 @@ func (a *Agents) getAgent(name string) Interface {
 	if a.pluginLoader != nil {
 		agent, ok := a.pluginLoader.LoadMediaAgent(name)
 		if ok && agent != nil {
-			// Cache the plugin agent with expiration
-			a.mu.Lock()
-			a.cachedAgents[name] = cachedAgent{
-				agent:      agent,
-				expiration: now.Add(agentCacheTTL),
-			}
-			a.mu.Unlock()
+			a.cache.Set(name, agent)
 			return agent
 		}
 	}
