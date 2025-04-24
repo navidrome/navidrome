@@ -1,8 +1,10 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/navidrome/navidrome/log"
@@ -19,8 +21,11 @@ func TestPlugins(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	cmd := exec.Command("make", "-C", "plugins/testdata")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	Expect(cmd.Run()).To(Succeed())
+	cwd, _ := os.Getwd()
+	fmt.Printf("[BeforeSuite] Current working directory: %s\n", cwd)
+	absPath, err := filepath.Abs("./testdata")
+	Expect(err).To(BeNil())
+	cmd := exec.Command("make", "-C", absPath)
+	out, err := cmd.CombinedOutput()
+	Expect(err).To(BeNil(), "make output:\n%s", string(out))
 })

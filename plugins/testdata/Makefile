@@ -25,7 +25,7 @@ fake_multi_agent/plugin.wasm: fake_multi_agent/plugin.go
 	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./fake_multi_agent
 
 coverartarchive/plugin.wasm: coverartarchive/plugin.go
-	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./coverartarchive
+	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./coverartarchive 
 
 fake_scrobbler/plugin.wasm: fake_scrobbler/plugin.go
 	GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o $@ ./fake_scrobbler 
