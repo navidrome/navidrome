@@ -15,10 +15,14 @@ var _ = Describe("BufferedScrobbler", func() {
 	var scr *fakeScrobbler
 	var bs *bufferedScrobbler
 	var ctx context.Context
+	var buffer *tests.MockedScrobbleBufferRepo
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		ds = &tests.MockDataStore{}
+		buffer = tests.CreateMockedScrobbleBufferRepo()
+		ds = &tests.MockDataStore{
+			MockedScrobbleBuffer: buffer,
+		}
 		scr = &fakeScrobbler{Authorized: true}
 		bs = newBufferedScrobbler(ds, scr, "test")
 	})
@@ -40,20 +44,20 @@ var _ = Describe("BufferedScrobbler", func() {
 	})
 
 	It("enqueues scrobbles to buffer", func() {
-		buffer := tests.CreateMockedScrobbleBufferRepo()
-		mockDS := ds.(*tests.MockDataStore)
-		mockDS.MockedScrobbleBuffer = buffer
-
 		track := model.MediaFile{ID: "123", Title: "Test Track"}
 		scrobble := Scrobble{MediaFile: track, TimeStamp: time.Now()}
+		Expect(buffer.Length()).To(Equal(int64(0)))
 
 		Expect(bs.Scrobble(ctx, "user1", scrobble)).To(Succeed())
+		Expect(buffer.Length()).To(Equal(int64(1)))
 
 		// Verify it was added to the buffer
-		Expect(buffer.Data).To(HaveLen(1))
-		Expect(buffer.Data[0].Service).To(Equal("test"))
-		Expect(buffer.Data[0].UserID).To(Equal("user1"))
-		Expect(buffer.Data[0].MediaFile.ID).To(Equal("123"))
+		data, err := buffer.Next("test", "user1")
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(data.Service).To(Equal("test"))
+		Expect(data.UserID).To(Equal("user1"))
+		Expect(data.MediaFile.ID).To(Equal("123"))
 	})
 
 	It("stops the background goroutine when Stop is called", func() {
