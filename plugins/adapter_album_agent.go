@@ -5,7 +5,22 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/tetratelabs/wazero"
 )
+
+func NewWasmAlbumAgent(wasmPath, pluginName string, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) *wasmAlbumAgent {
+	loader, _ := api.NewAlbumMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+	return &wasmAlbumAgent{
+		wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
+			wasmPath: wasmPath,
+			name:     pluginName,
+			loader:   loader,
+			loadFunc: func(ctx context.Context, l any, path string) (api.AlbumMetadataService, error) {
+				return l.(*api.AlbumMetadataServicePlugin).Load(ctx, path)
+			},
+		},
+	}
+}
 
 type wasmAlbumAgent struct {
 	*wasmBasePlugin[api.AlbumMetadataService]

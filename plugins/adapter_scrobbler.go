@@ -6,7 +6,22 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/tetratelabs/wazero"
 )
+
+func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) *wasmScrobblerPlugin {
+	loader, _ := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+	return &wasmScrobblerPlugin{
+		wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService]{
+			wasmPath: wasmPath,
+			name:     pluginName,
+			loader:   loader,
+			loadFunc: func(ctx context.Context, l any, path string) (api.ScrobblerService, error) {
+				return l.(*api.ScrobblerServicePlugin).Load(ctx, path)
+			},
+		},
+	}
+}
 
 type wasmScrobblerPlugin struct {
 	*wasmBasePlugin[api.ScrobblerService]

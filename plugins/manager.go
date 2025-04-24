@@ -16,11 +16,26 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
+
+type createAdapterFunc func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any
+
+var pluginTypes = map[string]createAdapterFunc{
+	"ArtistMetadataService": func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any {
+		return NewWasmArtistAgent(wasmPath, pluginName, runtime, mc)
+	},
+	"AlbumMetadataService": func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any {
+		return NewWasmAlbumAgent(wasmPath, pluginName, runtime, mc)
+	},
+	"ScrobblerService": func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any {
+		return NewWasmScrobblerPlugin(wasmPath, pluginName, runtime, mc)
+	},
+}
 
 var (
 	compileSemaphore = make(chan struct{}, 2) // Limit to 2 concurrent compilations; adjust as needed
@@ -67,7 +82,7 @@ func createManager() *Manager {
 }
 
 // precompilePlugin compiles the WASM module in the background and updates the pluginState.
-func precompilePlugin(state *pluginState, customRuntime func(context.Context) (wazero.Runtime, error), wasmPath, name string) {
+func precompilePlugin(state *pluginState, customRuntime api.WazeroNewRuntime, wasmPath, name string) {
 	compileSemaphore <- struct{}{}
 	defer func() { <-compileSemaphore }()
 	ctx := context.Background()
@@ -111,16 +126,20 @@ func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
 	return true
 }
 
-// In autoRegisterPlugins, create the loader once per plugin and pass to the pool
+// autoRegisterPlugins scans the plugins directory and registers all valid plugins.
+// It handles both scrobbler and agent type plugins, pre-compiling WASM modules in the background.
 func (m *Manager) autoRegisterPlugins() {
+	// Get plugins directory from config and read its contents
 	root := conf.Server.Plugins.Folder
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		log.Error("Failed to read plugins folder", "folder", root, err)
 		return
 	}
+	// Get compilation cache to speed up WASM module loading
 	cache := getCompilationCache()
 
+	// Process each directory in the plugins folder
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -128,21 +147,29 @@ func (m *Manager) autoRegisterPlugins() {
 		name := entry.Name()
 		pluginDir := filepath.Join(root, name)
 		wasmPath := filepath.Join(pluginDir, "plugin.wasm")
+
+		// Skip if no WASM file found
 		if _, err := os.Stat(wasmPath); err != nil {
 			log.Debug("No plugin.wasm found in plugin directory", "plugin", name, "path", wasmPath)
 			continue
 		}
+
+		// Load and validate plugin manifest
 		manifest, err := LoadManifest(pluginDir)
 		if err != nil || len(manifest.Services) == 0 {
 			log.Warn("No manifest or no services found in plugin directory", "plugin", name, "path", pluginDir, err)
 			continue
 		}
+
+		// Process each service defined in the manifest
 		for _, service := range manifest.Services {
-			pt, ok := pluginTypes[service]
+			createAdapter, ok := pluginTypes[service]
 			if !ok {
 				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", name)
 				continue
 			}
+
+			// Create a custom WASM runtime with caching and required host functions
 			customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
 				runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 				r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
@@ -154,27 +181,26 @@ func (m *Manager) autoRegisterPlugins() {
 				}
 				return r, nil
 			}
+
+			// Configure module and determine plugin name
 			mc := newWazeroModuleConfig()
 			pluginName := name
 			if len(manifest.Services) > 1 {
 				pluginName = name + "_" + service
 			}
-			// Start pre-compilation in the background
+
+			// Start pre-compilation of WASM module in background
 			state := &pluginState{ready: make(chan struct{})}
 			go precompilePlugin(state, customRuntime, wasmPath, pluginName)
 
-			loader, err := pt.loaderCtor(context.Background(), customRuntime, mc)
-			if err != nil {
-				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
-				continue
-			}
-
+			// Register plugin based on service type
 			if service == "ScrobblerService" {
+				// Register scrobbler plugin
 				scrobbler.Register(pluginName, func(ds model.DataStore) scrobbler.Scrobbler {
 					if !waitForPluginReady(state, pluginName, wasmPath) {
 						return nil
 					}
-					adapter := pt.createAdapter(loader, wasmPath, pluginName)
+					adapter := createAdapter(wasmPath, pluginName, customRuntime, mc)
 					if s, ok := adapter.(scrobbler.Scrobbler); ok {
 						return s
 					}
@@ -182,12 +208,13 @@ func (m *Manager) autoRegisterPlugins() {
 					return nil
 				})
 				log.Info("Registered plugin scrobbler", "name", pluginName, "wasm", wasmPath)
-			} else if pt.createAdapter != nil {
+			} else if createAdapter != nil {
+				// Register agent plugin
 				agentFactory := func(ds model.DataStore) agents.Interface {
 					if !waitForPluginReady(state, pluginName, wasmPath) {
 						return nil
 					}
-					adapter := pt.createAdapter(loader, wasmPath, pluginName)
+					adapter := createAdapter(wasmPath, pluginName, customRuntime, mc)
 					if a, ok := adapter.(agents.Interface); ok {
 						return a
 					}

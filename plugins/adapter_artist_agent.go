@@ -5,7 +5,22 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/tetratelabs/wazero"
 )
+
+func NewWasmArtistAgent(wasmPath, pluginName string, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) *wasmArtistAgent {
+	loader, _ := api.NewArtistMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+	return &wasmArtistAgent{
+		wasmBasePlugin: &wasmBasePlugin[api.ArtistMetadataService]{
+			wasmPath: wasmPath,
+			name:     pluginName,
+			loader:   loader,
+			loadFunc: func(ctx context.Context, l any, path string) (api.ArtistMetadataService, error) {
+				return l.(*api.ArtistMetadataServicePlugin).Load(ctx, path)
+			},
+		},
+	}
+}
 
 type wasmArtistAgent struct {
 	*wasmBasePlugin[api.ArtistMetadataService]
