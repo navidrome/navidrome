@@ -1,29 +1,28 @@
-# Fake Multi Agent Plugin
+# Fake Multi Agent
 
-This directory contains a test plugin for the Navidrome plugin system, implementing both the ArtistMetadataService and AlbumMetadataService interfaces.
+This directory contains a test plugin for the Navidrome plugin system, implementing the MediaMetadataService interface, which provides both artist and album metadata capabilities.
 
-## Requirements
+## Overview
 
-- Go 1.24 or newer (with WASI support)
-- The Navidrome repository (with generated plugin API code in `plugins/api`)
+This test plugin is used for ensuring that the Navidrome plugin system correctly handles plugins that implement the MediaMetadataService interface. It provides mock implementations for all the required methods.
 
-## How to Compile
+## Files
 
-To build the WASM plugin, run the following command from the project root:
-
-```sh
-GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o plugins/testdata/fake_multi_agent/plugin.wasm ./plugins/testdata/fake_multi_agent
-```
-
-## Behavior
-
-Implements both services. Example responses:
-
-- **GetArtistMBID**: returns `{ Mbid: "multi-artist-mbid" }` if `Name` is not empty
-- **GetAlbumInfo**: returns `{ Info: { Name: <name>, Mbid: "multi-album-mbid", Description: "Multi agent album description", Url: "https://multi.example.com/album" } }` if `Name` and `Artist` are not empty
-
-Other methods return simple static or empty responses.
+- `plugin.go`: Contains the plugin implementation
+- `manifest.json`: Defines the plugin metadata and declares the implemented service
 
 ## Usage
 
-This plugin can be loaded by the Navidrome host for integration and end-to-end tests of the plugin system.
+This plugin is used primarily for testing. It returns hardcoded responses for various metadata requests:
+
+- Artist metadata: MBID, URL, biography, similar artists, images, top songs
+- Album metadata: album info, album images
+
+To build the plugin:
+
+```
+cd plugins/testdata
+make
+```
+
+The plugin is not meant for production use and only serves as a testing tool and example for plugin development.

@@ -26,25 +26,27 @@ var _ = Describe("Plugin Manager", func() {
 
 	It("should scan and discover plugins from the testdata folder", func() {
 		Expect(mgr).NotTo(BeNil())
-		// Check if plugin names are correctly scanned
-		artistAgentNames := mgr.PluginNames("MediaMetadataService")
-		Expect(artistAgentNames).To(ContainElement("fake_artist_agent"))
 
-		albumAgentNames := mgr.PluginNames("MediaMetadataService")
-		Expect(albumAgentNames).To(ContainElement("fake_album_agent"))
+		// Should find MediaMetadataService plugins
+		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
+		Expect(mediaAgentNames).To(ContainElement("fake_artist_agent"))
+		Expect(mediaAgentNames).To(ContainElement("fake_album_agent"))
+		Expect(mediaAgentNames).To(ContainElement("fake_multi_agent"))
 
+		// Should find ScrobblerService plugins
 		scrobblerNames := mgr.PluginNames("ScrobblerService")
 		Expect(scrobblerNames).To(ContainElement("fake_scrobbler"))
 	})
 
-	It("should be able to load a plugin by name", func() {
+	It("should load a MediaMetadataService plugin and invoke artist-related methods", func() {
 		plugin := mgr.LoadPlugin("fake_artist_agent")
 		Expect(plugin).NotTo(BeNil())
+
 		agent, ok := plugin.(agents.Interface)
 		Expect(ok).To(BeTrue(), "plugin should implement agents.Interface")
 		Expect(agent.AgentName()).To(Equal("fake_artist_agent"))
 
-		// Test a specific method
+		// Test artist metadata method
 		mbidRetriever, ok := agent.(agents.ArtistMBIDRetriever)
 		Expect(ok).To(BeTrue())
 		mbid, err := mbidRetriever.GetArtistMBID(ctx, "id", "Test Artist")
@@ -52,18 +54,14 @@ var _ = Describe("Plugin Manager", func() {
 		Expect(mbid).To(Equal("1234567890"))
 	})
 
-	It("should load plugins of a specific service type", func() {
-		// Get the names of album metadata plugins
-		albumAgentNames := mgr.PluginNames("MediaMetadataService")
-		// Ensure there's at least one plugin (from our testdata)
-		Expect(albumAgentNames).To(ContainElement("fake_album_agent"))
-
-		// Count how many we expect
-		expectedPluginCount := len(albumAgentNames)
+	It("should load all MediaMetadataService plugins and invoke methods", func() {
+		// Get all MediaMetadataService plugins
+		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
+		Expect(mediaAgentNames).NotTo(BeEmpty())
 
 		// Load all plugins
 		plugins := mgr.LoadAllPlugins("MediaMetadataService")
-		Expect(plugins).To(HaveLen(expectedPluginCount))
+		Expect(plugins).To(HaveLen(len(mediaAgentNames)))
 
 		// Find our test plugin in the loaded plugins
 		var fakeAlbumPlugin agents.Interface
@@ -78,7 +76,7 @@ var _ = Describe("Plugin Manager", func() {
 
 		Expect(fakeAlbumPlugin).NotTo(BeNil(), "fake_album_agent should be loaded")
 
-		// Test a specific method to ensure the plugin is working
+		// Test album info method
 		albumInfo, err := fakeAlbumPlugin.(agents.AlbumInfoRetriever).GetAlbumInfo(ctx, "Test Album", "Test Artist", "mbid")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(albumInfo.Name).To(Equal("Test Album"))

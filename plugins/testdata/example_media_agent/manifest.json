@@ -1,7 +1,0 @@
-{
-  "name": "example_media_agent",
-  "version": "0.1.0",
-  "author": "Navidrome",
-  "description": "Example plugin that implements the combined MediaMetadataService",
-  "services": ["MediaMetadataService"]
-}

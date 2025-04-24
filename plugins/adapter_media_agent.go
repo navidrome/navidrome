@@ -8,6 +8,7 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
+// NewWasmMediaAgent creates a new adapter for a MediaMetadataService plugin
 func NewWasmMediaAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, _ := api.NewMediaMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	return &wasmMediaAgent{
@@ -22,6 +23,7 @@ func NewWasmMediaAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime
 	}
 }
 
+// wasmMediaAgent adapts a MediaMetadataService plugin to implement the agents.Interface
 type wasmMediaAgent struct {
 	*wasmBasePlugin[api.MediaMetadataService, *api.MediaMetadataServicePlugin]
 }
@@ -41,7 +43,7 @@ func (w *wasmMediaAgent) mapError(err error) error {
 	return err
 }
 
-// Album methods
+// Album-related methods
 
 func (w *wasmMediaAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
 	return callMethod(ctx, w, "GetAlbumInfo", func(inst api.MediaMetadataService) (*agents.AlbumInfo, error) {
@@ -72,7 +74,7 @@ func (w *wasmMediaAgent) GetAlbumImages(ctx context.Context, name, artist, mbid 
 	})
 }
 
-// Artist methods
+// Artist-related methods
 
 func (w *wasmMediaAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
 	return callMethod(ctx, w, "GetArtistMBID", func(inst api.MediaMetadataService) (string, error) {
@@ -123,18 +125,11 @@ func (w *wasmMediaAgent) GetSimilarArtists(ctx context.Context, id, name, mbid s
 
 func (w *wasmMediaAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
 	return callMethod(ctx, w, "GetArtistImages", func(inst api.MediaMetadataService) ([]agents.ExternalImage, error) {
-		resp, err := inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
+		res, err := inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return nil, w.mapError(err)
 		}
-		images := make([]agents.ExternalImage, 0, len(resp.GetImages()))
-		for _, img := range resp.GetImages() {
-			images = append(images, agents.ExternalImage{
-				URL:  img.GetUrl(),
-				Size: int(img.GetSize()),
-			})
-		}
-		return images, nil
+		return convertExternalImages(res.Images), nil
 	})
 }
 
@@ -155,6 +150,7 @@ func (w *wasmMediaAgent) GetArtistTopSongs(ctx context.Context, id, artistName, 
 	})
 }
 
+// Helper function to convert ExternalImage objects from the API to the agents package
 func convertExternalImages(images []*api.ExternalImage) []agents.ExternalImage {
 	result := make([]agents.ExternalImage, 0, len(images))
 	for _, img := range images {
