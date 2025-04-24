@@ -60,11 +60,11 @@ func (c *agentCache) Get(name string) Interface {
 
 func (c *agentCache) Set(name string, agent Interface) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.items[name] = cachedAgent{
 		agent:      agent,
 		expiration: time.Now().Add(c.ttl),
 	}
-	c.mu.Unlock()
 }
 
 type Agents struct {
