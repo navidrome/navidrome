@@ -11,19 +11,19 @@ import (
 func NewWasmAlbumAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, _ := api.NewAlbumMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	return &wasmAlbumAgent{
-		wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
+		wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService, *api.AlbumMetadataServicePlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
 			loader:   loader,
-			loadFunc: func(ctx context.Context, l any, path string) (api.AlbumMetadataService, error) {
-				return l.(*api.AlbumMetadataServicePlugin).Load(ctx, path)
+			loadFunc: func(ctx context.Context, l *api.AlbumMetadataServicePlugin, path string) (api.AlbumMetadataService, error) {
+				return l.Load(ctx, path)
 			},
 		},
 	}
 }
 
 type wasmAlbumAgent struct {
-	*wasmBasePlugin[api.AlbumMetadataService]
+	*wasmBasePlugin[api.AlbumMetadataService, *api.AlbumMetadataServicePlugin]
 }
 
 func (w *wasmAlbumAgent) AgentName() string {

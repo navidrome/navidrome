@@ -12,19 +12,19 @@ import (
 func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, _ := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	return &wasmScrobblerPlugin{
-		wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService]{
+		wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService, *api.ScrobblerServicePlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
 			loader:   loader,
-			loadFunc: func(ctx context.Context, l any, path string) (api.ScrobblerService, error) {
-				return l.(*api.ScrobblerServicePlugin).Load(ctx, path)
+			loadFunc: func(ctx context.Context, l *api.ScrobblerServicePlugin, path string) (api.ScrobblerService, error) {
+				return l.Load(ctx, path)
 			},
 		},
 	}
 }
 
 type wasmScrobblerPlugin struct {
-	*wasmBasePlugin[api.ScrobblerService]
+	*wasmBasePlugin[api.ScrobblerService, *api.ScrobblerServicePlugin]
 }
 
 func (w *wasmScrobblerPlugin) PluginName() string {

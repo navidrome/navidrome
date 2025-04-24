@@ -30,21 +30,123 @@ func (m *mockScrobblerService) Scrobble(ctx context.Context, req *api.ScrobblerS
 	return m.scrobbleResp, m.scrobbleErr
 }
 
+// Mock loader for tests
+type mockLoader struct {
+	mockService *mockScrobblerService
+}
+
+// Define a test-specific version of wasmScrobblerPlugin that uses mockLoader
+type testWasmScrobblerPlugin struct {
+	*wasmBasePlugin[api.ScrobblerService, *mockLoader]
+}
+
+// Implement the same methods as wasmScrobblerPlugin
+func (w *testWasmScrobblerPlugin) PluginName() string {
+	return w.name
+}
+
+func (w *testWasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
+	result, err := callMethod(ctx, w, "IsAuthorized", func(inst api.ScrobblerService) (bool, error) {
+		resp, err := inst.IsAuthorized(ctx, &api.ScrobblerIsAuthorizedRequest{UserId: userId})
+		if err != nil {
+			return false, err
+		}
+		if resp.Error != "" {
+			return false, nil
+		}
+		return resp.Authorized, nil
+	})
+	return err == nil && result
+}
+
+func (w *testWasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
+	for _, a := range track.Participants[model.RoleArtist] {
+		artists = append(artists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
+	}
+	albumArtists := make([]*api.Artist, 0, len(track.Participants[model.RoleAlbumArtist]))
+	for _, a := range track.Participants[model.RoleAlbumArtist] {
+		albumArtists = append(albumArtists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
+	}
+	trackInfo := &api.TrackInfo{
+		Id:           track.ID,
+		Mbid:         track.MbzRecordingID,
+		Name:         track.Title,
+		Album:        track.Album,
+		AlbumMbid:    track.MbzAlbumID,
+		Artists:      artists,
+		AlbumArtists: albumArtists,
+		Length:       int32(track.Duration),
+	}
+	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.ScrobblerService) (struct{}, error) {
+		resp, err := inst.NowPlaying(ctx, &api.ScrobblerNowPlayingRequest{
+			UserId: userId,
+			Track:  trackInfo,
+		})
+		if err != nil {
+			return struct{}{}, err
+		}
+		if resp.Error != "" {
+			return struct{}{}, nil
+		}
+		return struct{}{}, nil
+	})
+	return err
+}
+
+func (w *testWasmScrobblerPlugin) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
+	track := &s.MediaFile
+	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
+	for _, a := range track.Participants[model.RoleArtist] {
+		artists = append(artists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
+	}
+	albumArtists := make([]*api.Artist, 0, len(track.Participants[model.RoleAlbumArtist]))
+	for _, a := range track.Participants[model.RoleAlbumArtist] {
+		albumArtists = append(albumArtists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
+	}
+	trackInfo := &api.TrackInfo{
+		Id:           track.ID,
+		Mbid:         track.MbzRecordingID,
+		Name:         track.Title,
+		Album:        track.Album,
+		AlbumMbid:    track.MbzAlbumID,
+		Artists:      artists,
+		AlbumArtists: albumArtists,
+		Length:       int32(track.Duration),
+	}
+	_, err := callMethod(ctx, w, "Scrobble", func(inst api.ScrobblerService) (struct{}, error) {
+		resp, err := inst.Scrobble(ctx, &api.ScrobblerScrobbleRequest{
+			UserId:    userId,
+			Track:     trackInfo,
+			Timestamp: s.TimeStamp.Unix(),
+		})
+		if err != nil {
+			return struct{}{}, err
+		}
+		if resp.Error != "" {
+			return struct{}{}, nil
+		}
+		return struct{}{}, nil
+	})
+	return err
+}
+
 var _ = Describe("wasmScrobblerPlugin", func() {
 	var (
 		ctx    context.Context
-		plugin *wasmScrobblerPlugin
+		plugin *testWasmScrobblerPlugin
 		mock   *mockScrobblerService
 	)
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		mock = &mockScrobblerService{}
-		plugin = &wasmScrobblerPlugin{
-			wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService]{
-				name: "test-plugin",
-				loadFunc: func(_ context.Context, _ any, _ string) (api.ScrobblerService, error) {
-					return mock, nil
+		plugin = &testWasmScrobblerPlugin{
+			wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService, *mockLoader]{
+				name:   "test-plugin",
+				loader: &mockLoader{mockService: mock},
+				loadFunc: func(_ context.Context, l *mockLoader, _ string) (api.ScrobblerService, error) {
+					return l.mockService, nil
 				},
 			},
 		}

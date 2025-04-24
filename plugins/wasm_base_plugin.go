@@ -8,15 +8,29 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-type wasmBasePlugin[S any] struct {
+// LoaderFunc is a generic function type that loads a plugin
+// This function is needed to bridge the type gap between the non-exported interface returned
+// by the plugin loader's Load() method and the public interface we use in our code.
+type LoaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (S, error)
+
+// wasmBasePlugin is a generic base implementation for WASM plugins.
+// It requires two generic type parameters:
+// - S: The service interface type that the plugin implements
+// - P: The plugin loader type that creates plugin instances
+//
+// Note: Both loader and loadFunc are necessary due to a limitation in the code generated
+// by protoc-gen-go-plugin. The plugin loaders (like ScrobblerServicePlugin) have Load() methods
+// that return non-exported interface types (like scrobblerService), while our code works
+// with the exported interfaces (like ScrobblerService). The loadFunc bridges this gap.
+type wasmBasePlugin[S any, P any] struct {
 	wasmPath string
 	name     string
-	loader   any
-	loadFunc func(context.Context, any, string) (S, error)
+	loader   P
+	loadFunc LoaderFunc[S, P]
 }
 
 // getInstance returns a new plugin instance, a cleanup function, and error
-func (w *wasmBasePlugin[S]) getInstance(ctx context.Context, methodName string) (S, func(error), error) {
+func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName string) (S, func(error), error) {
 	var zero S
 	instanceID, _ := gonanoid.New(10)
 	inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
