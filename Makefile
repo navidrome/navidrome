@@ -217,9 +217,13 @@ deprecated:
 .PHONY: deprecated
 
 # Generate Go code from plugins/api/api.proto
-plugins-gen:
+plugin-gen: check_go_env ##@Development Generate Go code from plugins protobuf files
 	go generate ./plugins/...
-.PHONY: plugins-gen
+.PHONY: plugin-gen
+
+plugin-examples: check_go_env ##@Development Build all example plugins
+	$(MAKE) -C plugins/examples
+.PHONY: plugin-examples
 
 .DEFAULT_GOAL := help
 
