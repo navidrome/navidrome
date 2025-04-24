@@ -15,6 +15,23 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// mockPluginLoader is a test implementation of PluginLoader for plugin scrobbler tests
+// Moved to top-level scope to avoid linter issues
+
+type mockPluginLoader struct {
+	names      []string
+	scrobblers map[string]Scrobbler
+}
+
+func (m *mockPluginLoader) PluginNames(service string) []string {
+	return m.names
+}
+
+func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
+	s, ok := m.scrobblers[name]
+	return s, ok
+}
+
 var _ = Describe("PlayTracker", func() {
 	var ctx context.Context
 	var ds model.DataStore
@@ -37,8 +54,8 @@ var _ = Describe("PlayTracker", func() {
 		Register("disabled", func(model.DataStore) Scrobbler {
 			return nil
 		})
-		tracker = newPlayTracker(ds, events.GetBroker())
-		tracker.(*playTracker).scrobblers["fake"] = &fake // Bypass buffering for tests
+		tracker = newPlayTracker(ds, events.GetBroker(), nil)
+		tracker.(*playTracker).builtinScrobblers["fake"] = &fake // Bypass buffering for tests
 
 		track = model.MediaFile{
 			ID:             "123",
@@ -62,8 +79,8 @@ var _ = Describe("PlayTracker", func() {
 	})
 
 	It("does not register disabled scrobblers", func() {
-		Expect(tracker.(*playTracker).scrobblers).To(HaveKey("fake"))
-		Expect(tracker.(*playTracker).scrobblers).ToNot(HaveKey("disabled"))
+		Expect(tracker.(*playTracker).builtinScrobblers).To(HaveKey("fake"))
+		Expect(tracker.(*playTracker).builtinScrobblers).ToNot(HaveKey("disabled"))
 	})
 
 	Describe("NowPlaying", func() {
@@ -200,6 +217,56 @@ var _ = Describe("PlayTracker", func() {
 		})
 	})
 
+	Describe("Plugin scrobbler logic", func() {
+		var pluginLoader *mockPluginLoader
+		var pluginFake fakeScrobbler
+
+		BeforeEach(func() {
+			pluginFake = fakeScrobbler{Authorized: true}
+			pluginLoader = &mockPluginLoader{
+				names:      []string{"plugin1"},
+				scrobblers: map[string]Scrobbler{"plugin1": &pluginFake},
+			}
+			tracker = newPlayTracker(ds, events.GetBroker(), pluginLoader)
+
+			// Bypass buffering for both built-in and plugin scrobblers
+			tracker.(*playTracker).builtinScrobblers["fake"] = &fake
+			tracker.(*playTracker).pluginScrobblers["plugin1"] = &pluginFake
+		})
+
+		It("registers and uses plugin scrobbler for NowPlaying", func() {
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pluginFake.NowPlayingCalled).To(BeTrue())
+		})
+
+		It("removes plugin scrobbler if not present anymore", func() {
+			// First call: plugin present
+			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			Expect(pluginFake.NowPlayingCalled).To(BeTrue())
+			pluginFake.NowPlayingCalled = false
+			// Remove plugin
+			pluginLoader.names = []string{}
+			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			Expect(pluginFake.NowPlayingCalled).To(BeFalse())
+		})
+
+		It("calls both builtin and plugin scrobblers for NowPlaying", func() {
+			fake.NowPlayingCalled = false
+			pluginFake.NowPlayingCalled = false
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.NowPlayingCalled).To(BeTrue())
+			Expect(pluginFake.NowPlayingCalled).To(BeTrue())
+		})
+
+		It("calls plugin scrobbler for Submit", func() {
+			ts := time.Now()
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pluginFake.ScrobbleCalled).To(BeTrue())
+		})
+	})
 })
 
 type fakeScrobbler struct {
