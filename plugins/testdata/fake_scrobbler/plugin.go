@@ -12,17 +12,17 @@ import (
 type FakeScrobbler struct{}
 
 func (FakeScrobbler) IsAuthorized(ctx context.Context, req *api.ScrobblerIsAuthorizedRequest) (*api.ScrobblerIsAuthorizedResponse, error) {
-	log.Printf("[FakeScrobbler] IsAuthorized called for user: %s", req.UserId)
+	log.Printf("[FakeScrobbler] IsAuthorized called for user: %s (%s)", req.Username, req.UserId)
 	return &api.ScrobblerIsAuthorizedResponse{Authorized: true}, nil
 }
 
 func (FakeScrobbler) NowPlaying(ctx context.Context, req *api.ScrobblerNowPlayingRequest) (*api.ScrobblerNowPlayingResponse, error) {
-	log.Printf("[FakeScrobbler] NowPlaying called for user: %s, track: %s", req.UserId, req.Track.Name)
+	log.Printf("[FakeScrobbler] NowPlaying called for user: %s (%s), track: %s", req.Username, req.UserId, req.Track.Name)
 	return &api.ScrobblerNowPlayingResponse{}, nil
 }
 
 func (FakeScrobbler) Scrobble(ctx context.Context, req *api.ScrobblerScrobbleRequest) (*api.ScrobblerScrobbleResponse, error) {
-	log.Printf("[FakeScrobbler] Scrobble called for user: %s, track: %s, timestamp: %d", req.UserId, req.Track.Name, req.Timestamp)
+	log.Printf("[FakeScrobbler] Scrobble called for user: %s (%s), track: %s, timestamp: %d", req.Username, req.UserId, req.Track.Name, req.Timestamp)
 	return &api.ScrobblerScrobbleResponse{}, nil
 }
 

@@ -588,7 +588,8 @@ type ScrobblerIsAuthorizedRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId   string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 }
 
 func (x *ScrobblerIsAuthorizedRequest) ProtoReflect() protoreflect.Message {
@@ -598,6 +599,13 @@ func (x *ScrobblerIsAuthorizedRequest) ProtoReflect() protoreflect.Message {
 func (x *ScrobblerIsAuthorizedRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
+	}
+	return ""
+}
+
+func (x *ScrobblerIsAuthorizedRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
 	}
 	return ""
 }
@@ -709,8 +717,9 @@ type ScrobblerNowPlayingRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Track  *TrackInfo `protobuf:"bytes,2,opt,name=track,proto3" json:"track,omitempty"`
+	UserId   string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username string     `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Track    *TrackInfo `protobuf:"bytes,3,opt,name=track,proto3" json:"track,omitempty"`
 }
 
 func (x *ScrobblerNowPlayingRequest) ProtoReflect() protoreflect.Message {
@@ -720,6 +729,13 @@ func (x *ScrobblerNowPlayingRequest) ProtoReflect() protoreflect.Message {
 func (x *ScrobblerNowPlayingRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
+	}
+	return ""
+}
+
+func (x *ScrobblerNowPlayingRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
 	}
 	return ""
 }
@@ -756,8 +772,9 @@ type ScrobblerScrobbleRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	UserId    string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Track     *TrackInfo `protobuf:"bytes,2,opt,name=track,proto3" json:"track,omitempty"`
-	Timestamp int64      `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Username  string     `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Track     *TrackInfo `protobuf:"bytes,3,opt,name=track,proto3" json:"track,omitempty"`
+	Timestamp int64      `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 }
 
 func (x *ScrobblerScrobbleRequest) ProtoReflect() protoreflect.Message {
@@ -767,6 +784,13 @@ func (x *ScrobblerScrobbleRequest) ProtoReflect() protoreflect.Message {
 func (x *ScrobblerScrobbleRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
+	}
+	return ""
+}
+
+func (x *ScrobblerScrobbleRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
 	}
 	return ""
 }

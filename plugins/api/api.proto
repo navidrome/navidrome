@@ -131,6 +131,7 @@ service ScrobblerService {
 
 message ScrobblerIsAuthorizedRequest {
   string user_id = 1;
+  string username = 2;
 }
 
 message ScrobblerIsAuthorizedResponse {
@@ -151,7 +152,8 @@ message TrackInfo {
 
 message ScrobblerNowPlayingRequest {
   string user_id = 1;
-  TrackInfo track = 2;
+  string username = 2;
+  TrackInfo track = 3;
 }
 
 message ScrobblerNowPlayingResponse {
@@ -160,8 +162,9 @@ message ScrobblerNowPlayingResponse {
 
 message ScrobblerScrobbleRequest {
   string user_id = 1;
-  TrackInfo track = 2;
-  int64 timestamp = 3;
+  string username = 2;
+  TrackInfo track = 3;
+  int64 timestamp = 4;
 }
 
 message ScrobblerScrobbleResponse {

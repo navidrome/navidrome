@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/api"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -46,8 +47,19 @@ func (w *testWasmScrobblerPlugin) PluginName() string {
 }
 
 func (w *testWasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
+	username, _ := request.UsernameFrom(ctx)
+	if username == "" {
+		u, ok := request.UserFrom(ctx)
+		if ok {
+			username = u.UserName
+		}
+	}
+
 	result, err := callMethod(ctx, w, "IsAuthorized", func(inst api.ScrobblerService) (bool, error) {
-		resp, err := inst.IsAuthorized(ctx, &api.ScrobblerIsAuthorizedRequest{UserId: userId})
+		resp, err := inst.IsAuthorized(ctx, &api.ScrobblerIsAuthorizedRequest{
+			UserId:   userId,
+			Username: username,
+		})
 		if err != nil {
 			return false, err
 		}
@@ -60,6 +72,14 @@ func (w *testWasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId strin
 }
 
 func (w *testWasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+	username, _ := request.UsernameFrom(ctx)
+	if username == "" {
+		u, ok := request.UserFrom(ctx)
+		if ok {
+			username = u.UserName
+		}
+	}
+
 	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
 	for _, a := range track.Participants[model.RoleArtist] {
 		artists = append(artists, &api.Artist{Name: a.Name, Mbid: a.MbzArtistID})
@@ -80,8 +100,9 @@ func (w *testWasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string,
 	}
 	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.ScrobblerService) (struct{}, error) {
 		resp, err := inst.NowPlaying(ctx, &api.ScrobblerNowPlayingRequest{
-			UserId: userId,
-			Track:  trackInfo,
+			UserId:   userId,
+			Username: username,
+			Track:    trackInfo,
 		})
 		if err != nil {
 			return struct{}{}, err
@@ -95,6 +116,14 @@ func (w *testWasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string,
 }
 
 func (w *testWasmScrobblerPlugin) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
+	username, _ := request.UsernameFrom(ctx)
+	if username == "" {
+		u, ok := request.UserFrom(ctx)
+		if ok {
+			username = u.UserName
+		}
+	}
+
 	track := &s.MediaFile
 	artists := make([]*api.Artist, 0, len(track.Participants[model.RoleArtist]))
 	for _, a := range track.Participants[model.RoleArtist] {
@@ -117,6 +146,7 @@ func (w *testWasmScrobblerPlugin) Scrobble(ctx context.Context, userId string, s
 	_, err := callMethod(ctx, w, "Scrobble", func(inst api.ScrobblerService) (struct{}, error) {
 		resp, err := inst.Scrobble(ctx, &api.ScrobblerScrobbleRequest{
 			UserId:    userId,
+			Username:  username,
 			Track:     trackInfo,
 			Timestamp: s.TimeStamp.Unix(),
 		})
