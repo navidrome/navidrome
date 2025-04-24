@@ -438,7 +438,7 @@
         "theme": "테마",
         "language": "언어",
         "defaultView": "기본 보기",
-        "desktop_notifications": "테스크톱 알림",
+        "desktop_notifications": "데스크톱 알림",
         "lastfmNotConfigured": "Last.fm API 키가 구성되지 않았음",
         "lastfmScrobbling": "Last.fm으로 스크로블",
         "listenBrainzScrobbling": "ListenBrainz로 스크로블",
