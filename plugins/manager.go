@@ -126,14 +126,20 @@ func precompilePlugin(state *pluginState, customRuntime api.WazeroNewRuntime, wa
 	close(state.ready)
 }
 
-const compilationTimeout = time.Minute
+func pluginCompilationTimeout() time.Duration {
+	if conf.Server.DevPluginCompilationTimeout > 0 {
+		return conf.Server.DevPluginCompilationTimeout
+	}
+	return time.Minute
+}
 
 // waitForPluginReady blocks until the plugin is compiled and returns true if ready, false otherwise.
 func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
+	timeout := pluginCompilationTimeout()
 	select {
 	case <-state.ready:
-	case <-time.After(compilationTimeout):
-		log.Error("Timed out waiting for plugin compilation", "name", pluginName, "path", wasmPath, "timeout", compilationTimeout)
+	case <-time.After(timeout):
+		log.Error("Timed out waiting for plugin compilation", "name", pluginName, "path", wasmPath, "timeout", timeout)
 		return false
 	}
 	if state.err != nil {

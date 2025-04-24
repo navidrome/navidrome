@@ -121,6 +121,7 @@ type configOptions struct {
 	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
+	DevPluginCompilationTimeout      time.Duration
 }
 
 type scannerOptions struct {
@@ -565,6 +566,7 @@ func init() {
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
+	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 }
 
 func InitConfig(cfgFile string) {

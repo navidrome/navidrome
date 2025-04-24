@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -73,5 +74,14 @@ var _ = Describe("Plugin Manager", func() {
 		albumInfo, err := fakeAlbumPlugin.(agents.AlbumInfoRetriever).GetAlbumInfo(ctx, "Test Album", "Test Artist", "mbid")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(albumInfo.Name).To(Equal("Test Album"))
+	})
+
+	It("should use DevPluginCompilationTimeout config for plugin compilation timeout", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DevPluginCompilationTimeout = 123 * time.Second
+		Expect(pluginCompilationTimeout()).To(Equal(123 * time.Second))
+
+		conf.Server.DevPluginCompilationTimeout = 0
+		Expect(pluginCompilationTimeout()).To(Equal(time.Minute))
 	})
 })
