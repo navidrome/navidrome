@@ -2,7 +2,7 @@ package agents
 
 import (
 	"context"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -57,78 +57,49 @@ func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 // getEnabledAgentNames returns the current list of enabled agent names, including:
 // 1. Built-in agents and plugins from config (in the specified order)
 // 2. Always include LocalAgentName
-// 3. If config is empty, include all available agents and plugins in a default order
+// 3. If config is empty, include ONLY LocalAgentName
 func (a *Agents) getEnabledAgentNames() []string {
+	// If no agents configured, ONLY use the local agent
+	if conf.Server.Agents == "" {
+		return []string{LocalAgentName}
+	}
+
 	// Get all available plugin names
 	var availablePlugins []string
 	if a.pluginLoader != nil {
 		availablePlugins = a.pluginLoader.PluginNames("MediaMetadataService")
 	}
 
-	// If agents are explicitly configured, use that order
-	if conf.Server.Agents != "" {
-		configuredAgents := strings.Split(conf.Server.Agents, ",")
+	configuredAgents := strings.Split(conf.Server.Agents, ",")
 
-		// Always add LocalAgentName if not already included
-		hasLocalAgent := false
-		for _, name := range configuredAgents {
-			if name == LocalAgentName {
-				hasLocalAgent = true
-				break
-			}
-		}
-		if !hasLocalAgent {
-			configuredAgents = append(configuredAgents, LocalAgentName)
-		}
-
-		// Filter to only include valid agents (built-in or plugins)
-		var validNames []string
-		for _, name := range configuredAgents {
-			isBuiltIn := false
-			isPlugin := false
-
-			// Check if it's a built-in agent
-			if _, ok := Map[name]; ok {
-				isBuiltIn = true
-			}
-
-			// Check if it's a plugin
-			for _, pluginName := range availablePlugins {
-				if pluginName == name {
-					isPlugin = true
-					break
-				}
-			}
-
-			if isBuiltIn || isPlugin {
-				validNames = append(validNames, name)
-			} else {
-				log.Warn("Unknown agent ignored", "name", name)
-			}
-		}
-		return validNames
-	}
-
-	// If no agents configured, use all available built-in agents and plugins
-	var allAgents []string
-
-	// Add all built-in agents except local (which will be added at the end)
-	for name := range Map {
-		if name != LocalAgentName {
-			allAgents = append(allAgents, name)
+	// Always add LocalAgentName if not already included
+	hasLocalAgent := false
+	for _, name := range configuredAgents {
+		if name == LocalAgentName {
+			hasLocalAgent = true
+			break
 		}
 	}
+	if !hasLocalAgent {
+		configuredAgents = append(configuredAgents, LocalAgentName)
+	}
 
-	// Add all plugins
-	allAgents = append(allAgents, availablePlugins...)
+	// Filter to only include valid agents (built-in or plugins)
+	var validNames []string
+	for _, name := range configuredAgents {
+		// Check if it's a built-in agent
+		isBuiltIn := Map[name] != nil
 
-	// Sort for consistent ordering
-	sort.Strings(allAgents)
+		// Check if it's a plugin
+		isPlugin := slices.Contains(availablePlugins, name)
 
-	// Always add LocalAgentName last
-	allAgents = append(allAgents, LocalAgentName)
-
-	return allAgents
+		if isBuiltIn || isPlugin {
+			validNames = append(validNames, name)
+		} else {
+			log.Warn("Unknown agent ignored", "name", name)
+		}
+	}
+	return validNames
 }
 
 func (a *Agents) getAgent(name string) Interface {

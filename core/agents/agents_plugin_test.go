@@ -65,18 +65,45 @@ var _ = Describe("Agents with Plugin Loading", func() {
 	})
 
 	Context("Dynamic agent discovery", func() {
-		It("should include plugin agents in the enabled agents list when no config is specified", func() {
+		It("should include ONLY local agent when no config is specified", func() {
 			// Ensure no specific agents are configured
 			conf.Server.Agents = ""
 
-			// Initially no plugin agents
+			// Add some plugin agents that should be ignored
+			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent", "another_plugin")
+
+			// Should only include the local agent
 			agentNames := agents.getEnabledAgentNames()
-			Expect(agentNames).To(ContainElement(LocalAgentName))
+			Expect(agentNames).To(HaveExactElements(LocalAgentName))
+		})
+
+		It("should NOT include plugin agents when no config is specified", func() {
+			// Ensure no specific agents are configured
+			conf.Server.Agents = ""
 
 			// Add a plugin agent
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
+
+			// Should only include the local agent
+			agentNames := agents.getEnabledAgentNames()
+			Expect(agentNames).To(HaveExactElements(LocalAgentName))
+			Expect(agentNames).NotTo(ContainElement("plugin_agent"))
+		})
+
+		It("should include plugin agents in the enabled agents list ONLY when explicitly configured", func() {
+			// Add a plugin agent
+			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
+
+			// With no config, should not include plugin
+			conf.Server.Agents = ""
+			agentNames := agents.getEnabledAgentNames()
+			Expect(agentNames).To(HaveExactElements(LocalAgentName))
+			Expect(agentNames).NotTo(ContainElement("plugin_agent"))
+
+			// When explicitly configured, should include plugin
+			conf.Server.Agents = "plugin_agent"
 			agentNames = agents.getEnabledAgentNames()
-			Expect(agentNames).To(ContainElement("plugin_agent"))
+			Expect(agentNames).To(ContainElements(LocalAgentName, "plugin_agent"))
 		})
 
 		It("should only include configured plugin agents when config is specified", func() {
