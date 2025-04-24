@@ -27,10 +27,10 @@ var _ = Describe("Plugin Manager", func() {
 	It("should scan and discover plugins from the testdata folder", func() {
 		Expect(mgr).NotTo(BeNil())
 		// Check if plugin names are correctly scanned
-		artistAgentNames := mgr.PluginNames("ArtistMetadataService")
+		artistAgentNames := mgr.PluginNames("MediaMetadataService")
 		Expect(artistAgentNames).To(ContainElement("fake_artist_agent"))
 
-		albumAgentNames := mgr.PluginNames("AlbumMetadataService")
+		albumAgentNames := mgr.PluginNames("MediaMetadataService")
 		Expect(albumAgentNames).To(ContainElement("fake_album_agent"))
 
 		scrobblerNames := mgr.PluginNames("ScrobblerService")
@@ -54,7 +54,7 @@ var _ = Describe("Plugin Manager", func() {
 
 	It("should load plugins of a specific service type", func() {
 		// Get the names of album metadata plugins
-		albumAgentNames := mgr.PluginNames("AlbumMetadataService")
+		albumAgentNames := mgr.PluginNames("MediaMetadataService")
 		// Ensure there's at least one plugin (from our testdata)
 		Expect(albumAgentNames).To(ContainElement("fake_album_agent"))
 
@@ -62,7 +62,7 @@ var _ = Describe("Plugin Manager", func() {
 		expectedPluginCount := len(albumAgentNames)
 
 		// Load all plugins
-		plugins := mgr.LoadAllPlugins("AlbumMetadataService")
+		plugins := mgr.LoadAllPlugins("MediaMetadataService")
 		Expect(plugins).To(HaveLen(expectedPluginCount))
 
 		// Find our test plugin in the loaded plugins

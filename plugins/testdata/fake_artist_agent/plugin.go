@@ -64,10 +64,19 @@ func (FakeArtistAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTop
 	return nil, ErrNotFound
 }
 
+// Add empty implementations for the album methods to satisfy the MediaMetadataService interface
+func (FakeArtistAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (FakeArtistAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImagesRequest) (*api.AlbumImagesResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
 // main is required by Go WASI build
 func main() {}
 
 // init is used by go-plugin to register the implementation
 func init() {
-	api.RegisterArtistMetadataService(FakeArtistAgent{})
+	api.RegisterMediaMetadataService(FakeArtistAgent{})
 }

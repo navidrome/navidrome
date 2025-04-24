@@ -805,26 +805,16 @@ func (x *ScrobblerScrobbleResponse) GetError() string {
 }
 
 // go:plugin type=plugin version=1
-type ArtistMetadataService interface {
-	// Retrieves the MBID for an artist by id and name
+type MediaMetadataService interface {
+	// Artist metadata methods
 	GetArtistMBID(context.Context, *ArtistMBIDRequest) (*ArtistMBIDResponse, error)
-	// Retrieves the URL for an artist by id, name, and mbid
 	GetArtistURL(context.Context, *ArtistURLRequest) (*ArtistURLResponse, error)
-	// Retrieves the biography for an artist by id, name, and mbid
 	GetArtistBiography(context.Context, *ArtistBiographyRequest) (*ArtistBiographyResponse, error)
-	// Retrieves similar artists by id, name, mbid, and limit
 	GetSimilarArtists(context.Context, *ArtistSimilarRequest) (*ArtistSimilarResponse, error)
-	// Retrieves images for an artist by id, name, and mbid
 	GetArtistImages(context.Context, *ArtistImageRequest) (*ArtistImageResponse, error)
-	// Retrieves top songs for an artist by id, artistName, mbid, and count
 	GetArtistTopSongs(context.Context, *ArtistTopSongsRequest) (*ArtistTopSongsResponse, error)
-}
-
-// go:plugin type=plugin version=1
-type AlbumMetadataService interface {
-	// Retrieves album info by name, artist, and mbid
+	// Album metadata methods
 	GetAlbumInfo(context.Context, *AlbumInfoRequest) (*AlbumInfoResponse, error)
-	// Retrieves images for an album by name, artist, and mbid
 	GetAlbumImages(context.Context, *AlbumImagesRequest) (*AlbumImagesResponse, error)
 }
 

@@ -27,9 +27,8 @@ import (
 type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
-	"ArtistMetadataService": NewWasmArtistAgent,
-	"AlbumMetadataService":  NewWasmAlbumAgent,
-	"ScrobblerService":      NewWasmScrobblerPlugin,
+	"MediaMetadataService": NewWasmMediaAgent,
+	"ScrobblerService":     NewWasmScrobblerPlugin,
 }
 
 var (
@@ -284,23 +283,13 @@ func (m *Manager) LoadPlugin(name string) WasmPlugin {
 	return adapter
 }
 
-// LoadArtistAgent instantiates and returns an artist agent plugin by name
-func (m *Manager) LoadArtistAgent(name string) (agents.Interface, bool) {
+// LoadMediaAgent instantiates and returns a media agent plugin by name
+func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 	plugin := m.LoadPlugin(name)
 	if plugin == nil {
 		return nil, false
 	}
-	agent, ok := plugin.(WasmArtistAgent)
-	return agent, ok
-}
-
-// LoadAlbumAgent instantiates and returns an album agent plugin by name
-func (m *Manager) LoadAlbumAgent(name string) (agents.Interface, bool) {
-	plugin := m.LoadPlugin(name)
-	if plugin == nil {
-		return nil, false
-	}
-	agent, ok := plugin.(WasmAlbumAgent)
+	agent, ok := plugin.(*wasmMediaAgent)
 	return agent, ok
 }
 
@@ -369,8 +358,8 @@ func (m *Manager) RegisterPlugin(name string, ds model.DataStore) bool {
 		})
 		log.Info("Registered plugin scrobbler", "name", name, "wasm", plugin.WasmPath)
 		return true
-	} else {
-		// Register agent plugin
+	} else if service == "MediaMetadataService" {
+		// Register media agent plugin
 		agentFactory := func(ds model.DataStore) agents.Interface {
 			if !waitForPluginReady(plugin.State, name, plugin.WasmPath) {
 				return nil
@@ -379,13 +368,15 @@ func (m *Manager) RegisterPlugin(name string, ds model.DataStore) bool {
 			if a, ok := adapter.(agents.Interface); ok {
 				return a
 			}
-			log.Error("Agent plugin adapter does not implement agents.Interface", "name", name, "wasm", plugin.WasmPath)
+			log.Error("Media agent plugin adapter does not implement agents.Interface", "name", name, "wasm", plugin.WasmPath)
 			return nil
 		}
 		agents.Register(name, agentFactory)
-		log.Info("Registered plugin agent", "name", name, "service", service, "wasm", plugin.WasmPath)
+		log.Info("Registered plugin media agent", "name", name, "service", service, "wasm", plugin.WasmPath)
 		return true
 	}
+
+	return false
 }
 
 // RegisterAllPlugins registers all scanned plugins with their respective registries
@@ -398,33 +389,16 @@ func (m *Manager) RegisterAllPlugins(ds model.DataStore) {
 	}
 }
 
-// LoadAllArtistAgents instantiates and returns all artist agent plugins
-func (m *Manager) LoadAllArtistAgents() []agents.Interface {
-	names := m.PluginNames("ArtistMetadataService")
+// LoadAllMediaAgents instantiates and returns all media agent plugins
+func (m *Manager) LoadAllMediaAgents() []agents.Interface {
+	names := m.PluginNames("MediaMetadataService")
 	if len(names) == 0 {
 		return nil
 	}
 
 	var agents []agents.Interface
 	for _, name := range names {
-		agent, ok := m.LoadArtistAgent(name)
-		if ok {
-			agents = append(agents, agent)
-		}
-	}
-	return agents
-}
-
-// LoadAllAlbumAgents instantiates and returns all album agent plugins
-func (m *Manager) LoadAllAlbumAgents() []agents.Interface {
-	names := m.PluginNames("AlbumMetadataService")
-	if len(names) == 0 {
-		return nil
-	}
-
-	var agents []agents.Interface
-	for _, name := range names {
-		agent, ok := m.LoadAlbumAgent(name)
+		agent, ok := m.LoadMediaAgent(name)
 		if ok {
 			agents = append(agents, agent)
 		}

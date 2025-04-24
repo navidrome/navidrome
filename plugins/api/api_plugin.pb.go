@@ -13,27 +13,27 @@ import (
 	wasm "github.com/knqyf263/go-plugin/wasm"
 )
 
-const ArtistMetadataServicePluginAPIVersion = 1
+const MediaMetadataServicePluginAPIVersion = 1
 
-//go:wasmexport artist_metadata_service_api_version
-func _artist_metadata_service_api_version() uint64 {
-	return ArtistMetadataServicePluginAPIVersion
+//go:wasmexport media_metadata_service_api_version
+func _media_metadata_service_api_version() uint64 {
+	return MediaMetadataServicePluginAPIVersion
 }
 
-var artistMetadataService ArtistMetadataService
+var mediaMetadataService MediaMetadataService
 
-func RegisterArtistMetadataService(p ArtistMetadataService) {
-	artistMetadataService = p
+func RegisterMediaMetadataService(p MediaMetadataService) {
+	mediaMetadataService = p
 }
 
-//go:wasmexport artist_metadata_service_get_artist_mbid
-func _artist_metadata_service_get_artist_mbid(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_artist_mbid
+func _media_metadata_service_get_artist_mbid(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistMBIDRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := artistMetadataService.GetArtistMBID(context.Background(), req)
+	response, err := mediaMetadataService.GetArtistMBID(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -50,14 +50,14 @@ func _artist_metadata_service_get_artist_mbid(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport artist_metadata_service_get_artist_url
-func _artist_metadata_service_get_artist_url(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_artist_url
+func _media_metadata_service_get_artist_url(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistURLRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := artistMetadataService.GetArtistURL(context.Background(), req)
+	response, err := mediaMetadataService.GetArtistURL(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -74,14 +74,14 @@ func _artist_metadata_service_get_artist_url(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport artist_metadata_service_get_artist_biography
-func _artist_metadata_service_get_artist_biography(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_artist_biography
+func _media_metadata_service_get_artist_biography(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistBiographyRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := artistMetadataService.GetArtistBiography(context.Background(), req)
+	response, err := mediaMetadataService.GetArtistBiography(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -98,14 +98,14 @@ func _artist_metadata_service_get_artist_biography(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport artist_metadata_service_get_similar_artists
-func _artist_metadata_service_get_similar_artists(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_similar_artists
+func _media_metadata_service_get_similar_artists(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistSimilarRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := artistMetadataService.GetSimilarArtists(context.Background(), req)
+	response, err := mediaMetadataService.GetSimilarArtists(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -122,14 +122,14 @@ func _artist_metadata_service_get_similar_artists(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport artist_metadata_service_get_artist_images
-func _artist_metadata_service_get_artist_images(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_artist_images
+func _media_metadata_service_get_artist_images(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistImageRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := artistMetadataService.GetArtistImages(context.Background(), req)
+	response, err := mediaMetadataService.GetArtistImages(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -146,14 +146,14 @@ func _artist_metadata_service_get_artist_images(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport artist_metadata_service_get_artist_top_songs
-func _artist_metadata_service_get_artist_top_songs(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_artist_top_songs
+func _media_metadata_service_get_artist_top_songs(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistTopSongsRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := artistMetadataService.GetArtistTopSongs(context.Background(), req)
+	response, err := mediaMetadataService.GetArtistTopSongs(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -170,27 +170,14 @@ func _artist_metadata_service_get_artist_top_songs(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-const AlbumMetadataServicePluginAPIVersion = 1
-
-//go:wasmexport album_metadata_service_api_version
-func _album_metadata_service_api_version() uint64 {
-	return AlbumMetadataServicePluginAPIVersion
-}
-
-var albumMetadataService AlbumMetadataService
-
-func RegisterAlbumMetadataService(p AlbumMetadataService) {
-	albumMetadataService = p
-}
-
-//go:wasmexport album_metadata_service_get_album_info
-func _album_metadata_service_get_album_info(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_album_info
+func _media_metadata_service_get_album_info(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(AlbumInfoRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := albumMetadataService.GetAlbumInfo(context.Background(), req)
+	response, err := mediaMetadataService.GetAlbumInfo(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -207,14 +194,14 @@ func _album_metadata_service_get_album_info(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport album_metadata_service_get_album_images
-func _album_metadata_service_get_album_images(ptr, size uint32) uint64 {
+//go:wasmexport media_metadata_service_get_album_images
+func _media_metadata_service_get_album_images(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(AlbumImagesRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := albumMetadataService.GetAlbumImages(context.Background(), req)
+	response, err := mediaMetadataService.GetAlbumImages(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |

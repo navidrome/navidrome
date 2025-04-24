@@ -56,6 +56,5 @@ func (FakeMultiAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImagesRe
 func main() {}
 
 func init() {
-	api.RegisterArtistMetadataService(FakeMultiAgent{})
-	api.RegisterAlbumMetadataService(FakeMultiAgent{})
+	api.RegisterMediaMetadataService(FakeMultiAgent{})
 }

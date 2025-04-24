@@ -38,8 +38,32 @@ func (FakeAlbumAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImagesRe
 	return nil, ErrNotFound
 }
 
+func (FakeAlbumAgent) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (FakeAlbumAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) (*api.ArtistURLResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (FakeAlbumAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBiographyRequest) (*api.ArtistBiographyResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (FakeAlbumAgent) GetSimilarArtists(ctx context.Context, req *api.ArtistSimilarRequest) (*api.ArtistSimilarResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (FakeAlbumAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageRequest) (*api.ArtistImageResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (FakeAlbumAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopSongsRequest) (*api.ArtistTopSongsResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
 func main() {}
 
 func init() {
-	api.RegisterAlbumMetadataService(FakeAlbumAgent{})
+	api.RegisterMediaMetadataService(FakeAlbumAgent{})
 }

@@ -5,24 +5,18 @@ package api;
 option go_package = "github.com/navidrome/navidrome/plugins/api;api";
 
 // go:plugin type=plugin version=1
-service ArtistMetadataService {
-  // Retrieves the MBID for an artist by id and name
+service MediaMetadataService {
+  // Artist metadata methods
   rpc GetArtistMBID(ArtistMBIDRequest) returns (ArtistMBIDResponse);
-
-  // Retrieves the URL for an artist by id, name, and mbid
   rpc GetArtistURL(ArtistURLRequest) returns (ArtistURLResponse);
-
-  // Retrieves the biography for an artist by id, name, and mbid
   rpc GetArtistBiography(ArtistBiographyRequest) returns (ArtistBiographyResponse);
-
-  // Retrieves similar artists by id, name, mbid, and limit
   rpc GetSimilarArtists(ArtistSimilarRequest) returns (ArtistSimilarResponse);
-
-  // Retrieves images for an artist by id, name, and mbid
   rpc GetArtistImages(ArtistImageRequest) returns (ArtistImageResponse);
-
-  // Retrieves top songs for an artist by id, artistName, mbid, and count
   rpc GetArtistTopSongs(ArtistTopSongsRequest) returns (ArtistTopSongsResponse);
+
+  // Album metadata methods
+  rpc GetAlbumInfo(AlbumInfoRequest) returns (AlbumInfoResponse);
+  rpc GetAlbumImages(AlbumImagesRequest) returns (AlbumImagesResponse);
 }
 
 message ArtistMBIDRequest {
@@ -99,15 +93,6 @@ message Song {
 
 message ArtistTopSongsResponse {
   repeated Song songs = 1;
-}
-
-// go:plugin type=plugin version=1
-service AlbumMetadataService {
-  // Retrieves album info by name, artist, and mbid
-  rpc GetAlbumInfo(AlbumInfoRequest) returns (AlbumInfoResponse);
-
-  // Retrieves images for an album by name, artist, and mbid
-  rpc GetAlbumImages(AlbumImagesRequest) returns (AlbumImagesResponse);
 }
 
 message AlbumInfoRequest {

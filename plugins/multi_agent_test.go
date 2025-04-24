@@ -31,8 +31,8 @@ var _ = Describe("wasmMultiAgent (real plugin)", func() {
 		log.Debug("Scanning plugins")
 		mgr.ScanPlugins()
 
-		// Check if plugin was discovered - looking for the ArtistMetadataService plugin
-		multiAgentName := "fake_multi_agent_ArtistMetadataService"
+		// Check if plugin was discovered - looking for the MediaMetadataService plugin
+		multiAgentName := "fake_multi_agent"
 		found := false
 		for name := range mgr.plugins {
 			log.Debug("Plugin found", "name", name)
@@ -53,15 +53,12 @@ var _ = Describe("wasmMultiAgent (real plugin)", func() {
 	})
 
 	It("returns the correct agent name", func() {
-		Expect(agent.AgentName()).To(Equal("fake_multi_agent_ArtistMetadataService"))
+		Expect(agent.AgentName()).To(Equal("fake_multi_agent"))
 	})
 
 	It("returns album info", func() {
-		// To test album info, we need to load the AlbumMetadataService plugin
-		pluginInstance := mgr.LoadPlugin("fake_multi_agent_AlbumMetadataService")
-		Expect(pluginInstance).NotTo(BeNil(), "should be able to load the album plugin")
-
-		albumAgent, ok := pluginInstance.(agents.AlbumInfoRetriever)
+		// Use the same plugin instance for testing album info
+		albumAgent, ok := agent.(agents.AlbumInfoRetriever)
 		Expect(ok).To(BeTrue(), "plugin should implement agents.AlbumInfoRetriever")
 
 		info, err := albumAgent.GetAlbumInfo(ctx, "Test Album", "Test Artist", "mbid")
@@ -91,5 +88,44 @@ var _ = Describe("wasmMultiAgent (real plugin)", func() {
 		biography, err := biographyRetriever.GetArtistBiography(ctx, "id", "Test Artist", "mbid")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(biography).To(Equal("Multi agent artist bio"))
+	})
+
+	It("loads multi-service plugins", func() {
+		mgr := createManager()
+
+		// Get plugin path from the test data directory
+		pluginPath := "plugins/testdata/fake_multi_agent"
+		wasmPath := pluginPath + "/plugin.wasm"
+
+		// Setup test plugin with proper state
+		pluginInfo := &PluginInfo{
+			Name:     "fake_multi_agent",
+			Path:     pluginPath,
+			Services: []string{"MediaMetadataService"},
+			WasmPath: wasmPath,
+			Manifest: &PluginManifest{
+				Services: []string{"MediaMetadataService"},
+			},
+			State: &pluginState{ready: make(chan struct{})},
+		}
+		// Mark plugin as ready
+		close(pluginInfo.State.ready)
+
+		// Setup manager with our manually created plugin
+		mgr.plugins = make(map[string]*PluginInfo)
+		mgr.plugins[pluginInfo.Name] = pluginInfo
+
+		// Check if we can retrieve the MediaMetadataService plugin
+		multiAgentName := "fake_multi_agent"
+		pluginInstance := mgr.LoadPlugin(multiAgentName)
+		Expect(pluginInstance).NotTo(BeNil())
+
+		// Test that it implements the agent interface
+		agent, ok := pluginInstance.(agents.Interface)
+		Expect(ok).To(BeTrue())
+		Expect(agent).NotTo(BeNil())
+
+		// Check the agent name
+		Expect(agent.AgentName()).To(Equal("fake_multi_agent"))
 	})
 })

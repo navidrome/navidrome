@@ -18,14 +18,14 @@ import (
 	os "os"
 )
 
-const ArtistMetadataServicePluginAPIVersion = 1
+const MediaMetadataServicePluginAPIVersion = 1
 
-type ArtistMetadataServicePlugin struct {
+type MediaMetadataServicePlugin struct {
 	newRuntime   func(context.Context) (wazero.Runtime, error)
 	moduleConfig wazero.ModuleConfig
 }
 
-func NewArtistMetadataServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*ArtistMetadataServicePlugin, error) {
+func NewMediaMetadataServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*MediaMetadataServicePlugin, error) {
 	o := &WazeroConfig{
 		newRuntime:   DefaultWazeroRuntime(),
 		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
@@ -35,18 +35,18 @@ func NewArtistMetadataServicePlugin(ctx context.Context, opts ...wazeroConfigOpt
 		opt(o)
 	}
 
-	return &ArtistMetadataServicePlugin{
+	return &MediaMetadataServicePlugin{
 		newRuntime:   o.newRuntime,
 		moduleConfig: o.moduleConfig,
 	}, nil
 }
 
-type artistMetadataService interface {
+type mediaMetadataService interface {
 	Close(ctx context.Context) error
-	ArtistMetadataService
+	MediaMetadataService
 }
 
-func (p *ArtistMetadataServicePlugin) Load(ctx context.Context, pluginPath string) (artistMetadataService, error) {
+func (p *MediaMetadataServicePlugin) Load(ctx context.Context, pluginPath string) (mediaMetadataService, error) {
 	b, err := os.ReadFile(pluginPath)
 	if err != nil {
 		return nil, err
@@ -77,43 +77,51 @@ func (p *ArtistMetadataServicePlugin) Load(ctx context.Context, pluginPath strin
 	}
 
 	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("artist_metadata_service_api_version")
+	apiVersion := module.ExportedFunction("media_metadata_service_api_version")
 	if apiVersion == nil {
-		return nil, errors.New("artist_metadata_service_api_version is not exported")
+		return nil, errors.New("media_metadata_service_api_version is not exported")
 	}
 	results, err := apiVersion.Call(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(results) != 1 {
-		return nil, errors.New("invalid artist_metadata_service_api_version signature")
+		return nil, errors.New("invalid media_metadata_service_api_version signature")
 	}
-	if results[0] != ArtistMetadataServicePluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", ArtistMetadataServicePluginAPIVersion, results[0])
+	if results[0] != MediaMetadataServicePluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", MediaMetadataServicePluginAPIVersion, results[0])
 	}
 
-	getartistmbid := module.ExportedFunction("artist_metadata_service_get_artist_mbid")
+	getartistmbid := module.ExportedFunction("media_metadata_service_get_artist_mbid")
 	if getartistmbid == nil {
-		return nil, errors.New("artist_metadata_service_get_artist_mbid is not exported")
+		return nil, errors.New("media_metadata_service_get_artist_mbid is not exported")
 	}
-	getartisturl := module.ExportedFunction("artist_metadata_service_get_artist_url")
+	getartisturl := module.ExportedFunction("media_metadata_service_get_artist_url")
 	if getartisturl == nil {
-		return nil, errors.New("artist_metadata_service_get_artist_url is not exported")
+		return nil, errors.New("media_metadata_service_get_artist_url is not exported")
 	}
-	getartistbiography := module.ExportedFunction("artist_metadata_service_get_artist_biography")
+	getartistbiography := module.ExportedFunction("media_metadata_service_get_artist_biography")
 	if getartistbiography == nil {
-		return nil, errors.New("artist_metadata_service_get_artist_biography is not exported")
+		return nil, errors.New("media_metadata_service_get_artist_biography is not exported")
 	}
-	getsimilarartists := module.ExportedFunction("artist_metadata_service_get_similar_artists")
+	getsimilarartists := module.ExportedFunction("media_metadata_service_get_similar_artists")
 	if getsimilarartists == nil {
-		return nil, errors.New("artist_metadata_service_get_similar_artists is not exported")
+		return nil, errors.New("media_metadata_service_get_similar_artists is not exported")
 	}
-	getartistimages := module.ExportedFunction("artist_metadata_service_get_artist_images")
+	getartistimages := module.ExportedFunction("media_metadata_service_get_artist_images")
 	if getartistimages == nil {
-		return nil, errors.New("artist_metadata_service_get_artist_images is not exported")
+		return nil, errors.New("media_metadata_service_get_artist_images is not exported")
 	}
-	getartisttopsongs := module.ExportedFunction("artist_metadata_service_get_artist_top_songs")
+	getartisttopsongs := module.ExportedFunction("media_metadata_service_get_artist_top_songs")
 	if getartisttopsongs == nil {
-		return nil, errors.New("artist_metadata_service_get_artist_top_songs is not exported")
+		return nil, errors.New("media_metadata_service_get_artist_top_songs is not exported")
+	}
+	getalbuminfo := module.ExportedFunction("media_metadata_service_get_album_info")
+	if getalbuminfo == nil {
+		return nil, errors.New("media_metadata_service_get_album_info is not exported")
+	}
+	getalbumimages := module.ExportedFunction("media_metadata_service_get_album_images")
+	if getalbumimages == nil {
+		return nil, errors.New("media_metadata_service_get_album_images is not exported")
 	}
 
 	malloc := module.ExportedFunction("malloc")
@@ -125,7 +133,7 @@ func (p *ArtistMetadataServicePlugin) Load(ctx context.Context, pluginPath strin
 	if free == nil {
 		return nil, errors.New("free is not exported")
 	}
-	return &artistMetadataServicePlugin{
+	return &mediaMetadataServicePlugin{
 		runtime:            r,
 		module:             module,
 		malloc:             malloc,
@@ -136,17 +144,19 @@ func (p *ArtistMetadataServicePlugin) Load(ctx context.Context, pluginPath strin
 		getsimilarartists:  getsimilarartists,
 		getartistimages:    getartistimages,
 		getartisttopsongs:  getartisttopsongs,
+		getalbuminfo:       getalbuminfo,
+		getalbumimages:     getalbumimages,
 	}, nil
 }
 
-func (p *artistMetadataServicePlugin) Close(ctx context.Context) (err error) {
+func (p *mediaMetadataServicePlugin) Close(ctx context.Context) (err error) {
 	if r := p.runtime; r != nil {
 		r.Close(ctx)
 	}
 	return
 }
 
-type artistMetadataServicePlugin struct {
+type mediaMetadataServicePlugin struct {
 	runtime            wazero.Runtime
 	module             api.Module
 	malloc             api.Function
@@ -157,9 +167,11 @@ type artistMetadataServicePlugin struct {
 	getsimilarartists  api.Function
 	getartistimages    api.Function
 	getartisttopsongs  api.Function
+	getalbuminfo       api.Function
+	getalbumimages     api.Function
 }
 
-func (p *artistMetadataServicePlugin) GetArtistMBID(ctx context.Context, request *ArtistMBIDRequest) (*ArtistMBIDResponse, error) {
+func (p *mediaMetadataServicePlugin) GetArtistMBID(ctx context.Context, request *ArtistMBIDRequest) (*ArtistMBIDResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -220,7 +232,7 @@ func (p *artistMetadataServicePlugin) GetArtistMBID(ctx context.Context, request
 
 	return response, nil
 }
-func (p *artistMetadataServicePlugin) GetArtistURL(ctx context.Context, request *ArtistURLRequest) (*ArtistURLResponse, error) {
+func (p *mediaMetadataServicePlugin) GetArtistURL(ctx context.Context, request *ArtistURLRequest) (*ArtistURLResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -281,7 +293,7 @@ func (p *artistMetadataServicePlugin) GetArtistURL(ctx context.Context, request 
 
 	return response, nil
 }
-func (p *artistMetadataServicePlugin) GetArtistBiography(ctx context.Context, request *ArtistBiographyRequest) (*ArtistBiographyResponse, error) {
+func (p *mediaMetadataServicePlugin) GetArtistBiography(ctx context.Context, request *ArtistBiographyRequest) (*ArtistBiographyResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -342,7 +354,7 @@ func (p *artistMetadataServicePlugin) GetArtistBiography(ctx context.Context, re
 
 	return response, nil
 }
-func (p *artistMetadataServicePlugin) GetSimilarArtists(ctx context.Context, request *ArtistSimilarRequest) (*ArtistSimilarResponse, error) {
+func (p *mediaMetadataServicePlugin) GetSimilarArtists(ctx context.Context, request *ArtistSimilarRequest) (*ArtistSimilarResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -403,7 +415,7 @@ func (p *artistMetadataServicePlugin) GetSimilarArtists(ctx context.Context, req
 
 	return response, nil
 }
-func (p *artistMetadataServicePlugin) GetArtistImages(ctx context.Context, request *ArtistImageRequest) (*ArtistImageResponse, error) {
+func (p *mediaMetadataServicePlugin) GetArtistImages(ctx context.Context, request *ArtistImageRequest) (*ArtistImageResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -464,7 +476,7 @@ func (p *artistMetadataServicePlugin) GetArtistImages(ctx context.Context, reque
 
 	return response, nil
 }
-func (p *artistMetadataServicePlugin) GetArtistTopSongs(ctx context.Context, request *ArtistTopSongsRequest) (*ArtistTopSongsResponse, error) {
+func (p *mediaMetadataServicePlugin) GetArtistTopSongs(ctx context.Context, request *ArtistTopSongsRequest) (*ArtistTopSongsResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -525,125 +537,7 @@ func (p *artistMetadataServicePlugin) GetArtistTopSongs(ctx context.Context, req
 
 	return response, nil
 }
-
-const AlbumMetadataServicePluginAPIVersion = 1
-
-type AlbumMetadataServicePlugin struct {
-	newRuntime   func(context.Context) (wazero.Runtime, error)
-	moduleConfig wazero.ModuleConfig
-}
-
-func NewAlbumMetadataServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*AlbumMetadataServicePlugin, error) {
-	o := &WazeroConfig{
-		newRuntime:   DefaultWazeroRuntime(),
-		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
-	}
-
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	return &AlbumMetadataServicePlugin{
-		newRuntime:   o.newRuntime,
-		moduleConfig: o.moduleConfig,
-	}, nil
-}
-
-type albumMetadataService interface {
-	Close(ctx context.Context) error
-	AlbumMetadataService
-}
-
-func (p *AlbumMetadataServicePlugin) Load(ctx context.Context, pluginPath string) (albumMetadataService, error) {
-	b, err := os.ReadFile(pluginPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create a new runtime so that multiple modules will not conflict
-	r, err := p.newRuntime(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Compile the WebAssembly module using the default configuration.
-	code, err := r.CompileModule(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-
-	// InstantiateModule runs the "_start" function, WASI's "main".
-	module, err := r.InstantiateModule(ctx, code, p.moduleConfig)
-	if err != nil {
-		// Note: Most compilers do not exit the module after running "_start",
-		// unless there was an Error. This allows you to call exported functions.
-		if exitErr, ok := err.(*sys.ExitError); ok && exitErr.ExitCode() != 0 {
-			return nil, fmt.Errorf("unexpected exit_code: %d", exitErr.ExitCode())
-		} else if !ok {
-			return nil, err
-		}
-	}
-
-	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("album_metadata_service_api_version")
-	if apiVersion == nil {
-		return nil, errors.New("album_metadata_service_api_version is not exported")
-	}
-	results, err := apiVersion.Call(ctx)
-	if err != nil {
-		return nil, err
-	} else if len(results) != 1 {
-		return nil, errors.New("invalid album_metadata_service_api_version signature")
-	}
-	if results[0] != AlbumMetadataServicePluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", AlbumMetadataServicePluginAPIVersion, results[0])
-	}
-
-	getalbuminfo := module.ExportedFunction("album_metadata_service_get_album_info")
-	if getalbuminfo == nil {
-		return nil, errors.New("album_metadata_service_get_album_info is not exported")
-	}
-	getalbumimages := module.ExportedFunction("album_metadata_service_get_album_images")
-	if getalbumimages == nil {
-		return nil, errors.New("album_metadata_service_get_album_images is not exported")
-	}
-
-	malloc := module.ExportedFunction("malloc")
-	if malloc == nil {
-		return nil, errors.New("malloc is not exported")
-	}
-
-	free := module.ExportedFunction("free")
-	if free == nil {
-		return nil, errors.New("free is not exported")
-	}
-	return &albumMetadataServicePlugin{
-		runtime:        r,
-		module:         module,
-		malloc:         malloc,
-		free:           free,
-		getalbuminfo:   getalbuminfo,
-		getalbumimages: getalbumimages,
-	}, nil
-}
-
-func (p *albumMetadataServicePlugin) Close(ctx context.Context) (err error) {
-	if r := p.runtime; r != nil {
-		r.Close(ctx)
-	}
-	return
-}
-
-type albumMetadataServicePlugin struct {
-	runtime        wazero.Runtime
-	module         api.Module
-	malloc         api.Function
-	free           api.Function
-	getalbuminfo   api.Function
-	getalbumimages api.Function
-}
-
-func (p *albumMetadataServicePlugin) GetAlbumInfo(ctx context.Context, request *AlbumInfoRequest) (*AlbumInfoResponse, error) {
+func (p *mediaMetadataServicePlugin) GetAlbumInfo(ctx context.Context, request *AlbumInfoRequest) (*AlbumInfoResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -704,7 +598,7 @@ func (p *albumMetadataServicePlugin) GetAlbumInfo(ctx context.Context, request *
 
 	return response, nil
 }
-func (p *albumMetadataServicePlugin) GetAlbumImages(ctx context.Context, request *AlbumImagesRequest) (*AlbumImagesResponse, error) {
+func (p *mediaMetadataServicePlugin) GetAlbumImages(ctx context.Context, request *AlbumImagesRequest) (*AlbumImagesResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
