@@ -135,4 +135,50 @@ message AlbumImagesRequest {
 
 message AlbumImagesResponse {
   repeated ExternalImage images = 1;
+}
+
+// go:plugin type=plugin version=1
+service ScrobblerService {
+  rpc IsAuthorized(ScrobblerIsAuthorizedRequest) returns (ScrobblerIsAuthorizedResponse);
+  rpc NowPlaying(ScrobblerNowPlayingRequest) returns (ScrobblerNowPlayingResponse);
+  rpc Scrobble(ScrobblerScrobbleRequest) returns (ScrobblerScrobbleResponse);
+}
+
+message ScrobblerIsAuthorizedRequest {
+  string user_id = 1;
+}
+
+message ScrobblerIsAuthorizedResponse {
+  bool authorized = 1;
+  string error = 2;
+}
+
+message TrackInfo {
+  string id = 1;
+  string mbid = 2;
+  string name = 3;
+  string album = 4;
+  string album_mbid = 5;
+  repeated Artist artists = 6;
+  repeated Artist album_artists = 7;
+  int32 length = 8; // seconds
+}
+
+message ScrobblerNowPlayingRequest {
+  string user_id = 1;
+  TrackInfo track = 2;
+}
+
+message ScrobblerNowPlayingResponse {
+  string error = 1;
+}
+
+message ScrobblerScrobbleRequest {
+  string user_id = 1;
+  TrackInfo track = 2;
+  int64 timestamp = 3;
+}
+
+message ScrobblerScrobbleResponse {
+  string error = 1;
 } 

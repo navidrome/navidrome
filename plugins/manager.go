@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
@@ -95,21 +96,19 @@ func precompilePlugin(state *pluginState, customRuntime func(context.Context) (w
 
 const compilationTimeout = 30 * time.Second
 
-// createAgentFactory returns a factory that waits for precompilation before instantiating the agent.
-func createAgentFactory(state *pluginState, loader any, wasmPath, pluginName string, agentCtor func(any, string, string) agents.Interface) func(model.DataStore) agents.Interface {
-	return func(ds model.DataStore) agents.Interface {
-		select {
-		case <-state.ready:
-		case <-time.After(compilationTimeout):
-			log.Error("Timed out waiting for plugin compilation", "name", pluginName, "path", wasmPath, "timeout", compilationTimeout)
-			return nil
-		}
-		if state.err != nil {
-			log.Error("Failed to compile plugin", "name", pluginName, "path", wasmPath, state.err)
-			return nil
-		}
-		return agentCtor(loader, wasmPath, pluginName)
+// waitForPluginReady blocks until the plugin is compiled and returns true if ready, false otherwise.
+func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
+	select {
+	case <-state.ready:
+	case <-time.After(compilationTimeout):
+		log.Error("Timed out waiting for plugin compilation", "name", pluginName, "path", wasmPath, "timeout", compilationTimeout)
+		return false
 	}
+	if state.err != nil {
+		log.Error("Failed to compile plugin", "name", pluginName, "path", wasmPath, state.err)
+		return false
+	}
+	return true
 }
 
 // In autoRegisterPlugins, create the loader once per plugin and pass to the pool
@@ -169,14 +168,35 @@ func (m *Manager) autoRegisterPlugins() {
 				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
 				continue
 			}
-			// Use createAgentFactory to wait for precompilation
-			agentFactory := createAgentFactory(state, loader, wasmPath, pluginName, pt.agentCtor)
-			if agentFactory == nil {
-				log.Error("Failed to create agent factory", "service", service, "plugin", name)
-				continue
+
+			if service == "ScrobblerService" {
+				scrobbler.Register(pluginName, func(ds model.DataStore) scrobbler.Scrobbler {
+					if !waitForPluginReady(state, pluginName, wasmPath) {
+						return nil
+					}
+					adapter := pt.createAdapter(loader, wasmPath, pluginName)
+					if s, ok := adapter.(scrobbler.Scrobbler); ok {
+						return s
+					}
+					log.Error("Scrobbler plugin adapter does not implement scrobbler.Scrobbler", "name", pluginName, "wasm", wasmPath)
+					return nil
+				})
+				log.Info("Registered plugin scrobbler", "name", pluginName, "wasm", wasmPath)
+			} else if pt.createAdapter != nil {
+				agentFactory := func(ds model.DataStore) agents.Interface {
+					if !waitForPluginReady(state, pluginName, wasmPath) {
+						return nil
+					}
+					adapter := pt.createAdapter(loader, wasmPath, pluginName)
+					if a, ok := adapter.(agents.Interface); ok {
+						return a
+					}
+					log.Error("Agent plugin adapter does not implement agents.Interface", "name", pluginName, "wasm", wasmPath)
+					return nil
+				}
+				agents.Register(pluginName, agentFactory)
+				log.Info("Registered plugin agent", "name", pluginName, "service", service, "wasm", wasmPath)
 			}
-			agents.Register(pluginName, agentFactory)
-			log.Info("Registered plugin agent", "name", pluginName, "service", service, "wasm", wasmPath)
 		}
 	}
 }

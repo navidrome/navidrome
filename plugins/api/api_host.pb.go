@@ -765,3 +765,310 @@ func (p *albumMetadataServicePlugin) GetAlbumImages(ctx context.Context, request
 
 	return response, nil
 }
+
+const ScrobblerServicePluginAPIVersion = 1
+
+type ScrobblerServicePlugin struct {
+	newRuntime   func(context.Context) (wazero.Runtime, error)
+	moduleConfig wazero.ModuleConfig
+}
+
+func NewScrobblerServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*ScrobblerServicePlugin, error) {
+	o := &WazeroConfig{
+		newRuntime:   DefaultWazeroRuntime(),
+		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return &ScrobblerServicePlugin{
+		newRuntime:   o.newRuntime,
+		moduleConfig: o.moduleConfig,
+	}, nil
+}
+
+type scrobblerService interface {
+	Close(ctx context.Context) error
+	ScrobblerService
+}
+
+func (p *ScrobblerServicePlugin) Load(ctx context.Context, pluginPath string) (scrobblerService, error) {
+	b, err := os.ReadFile(pluginPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new runtime so that multiple modules will not conflict
+	r, err := p.newRuntime(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compile the WebAssembly module using the default configuration.
+	code, err := r.CompileModule(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+
+	// InstantiateModule runs the "_start" function, WASI's "main".
+	module, err := r.InstantiateModule(ctx, code, p.moduleConfig)
+	if err != nil {
+		// Note: Most compilers do not exit the module after running "_start",
+		// unless there was an Error. This allows you to call exported functions.
+		if exitErr, ok := err.(*sys.ExitError); ok && exitErr.ExitCode() != 0 {
+			return nil, fmt.Errorf("unexpected exit_code: %d", exitErr.ExitCode())
+		} else if !ok {
+			return nil, err
+		}
+	}
+
+	// Compare API versions with the loading plugin
+	apiVersion := module.ExportedFunction("scrobbler_service_api_version")
+	if apiVersion == nil {
+		return nil, errors.New("scrobbler_service_api_version is not exported")
+	}
+	results, err := apiVersion.Call(ctx)
+	if err != nil {
+		return nil, err
+	} else if len(results) != 1 {
+		return nil, errors.New("invalid scrobbler_service_api_version signature")
+	}
+	if results[0] != ScrobblerServicePluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", ScrobblerServicePluginAPIVersion, results[0])
+	}
+
+	isauthorized := module.ExportedFunction("scrobbler_service_is_authorized")
+	if isauthorized == nil {
+		return nil, errors.New("scrobbler_service_is_authorized is not exported")
+	}
+	nowplaying := module.ExportedFunction("scrobbler_service_now_playing")
+	if nowplaying == nil {
+		return nil, errors.New("scrobbler_service_now_playing is not exported")
+	}
+	scrobble := module.ExportedFunction("scrobbler_service_scrobble")
+	if scrobble == nil {
+		return nil, errors.New("scrobbler_service_scrobble is not exported")
+	}
+
+	malloc := module.ExportedFunction("malloc")
+	if malloc == nil {
+		return nil, errors.New("malloc is not exported")
+	}
+
+	free := module.ExportedFunction("free")
+	if free == nil {
+		return nil, errors.New("free is not exported")
+	}
+	return &scrobblerServicePlugin{
+		runtime:      r,
+		module:       module,
+		malloc:       malloc,
+		free:         free,
+		isauthorized: isauthorized,
+		nowplaying:   nowplaying,
+		scrobble:     scrobble,
+	}, nil
+}
+
+func (p *scrobblerServicePlugin) Close(ctx context.Context) (err error) {
+	if r := p.runtime; r != nil {
+		r.Close(ctx)
+	}
+	return
+}
+
+type scrobblerServicePlugin struct {
+	runtime      wazero.Runtime
+	module       api.Module
+	malloc       api.Function
+	free         api.Function
+	isauthorized api.Function
+	nowplaying   api.Function
+	scrobble     api.Function
+}
+
+func (p *scrobblerServicePlugin) IsAuthorized(ctx context.Context, request *ScrobblerIsAuthorizedRequest) (*ScrobblerIsAuthorizedResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.isauthorized.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(ScrobblerIsAuthorizedResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+func (p *scrobblerServicePlugin) NowPlaying(ctx context.Context, request *ScrobblerNowPlayingRequest) (*ScrobblerNowPlayingResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.nowplaying.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(ScrobblerNowPlayingResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+func (p *scrobblerServicePlugin) Scrobble(ctx context.Context, request *ScrobblerScrobbleRequest) (*ScrobblerScrobbleResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.scrobble.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(ScrobblerScrobbleResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}

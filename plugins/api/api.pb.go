@@ -475,7 +475,7 @@ type AlbumInfo struct {
 	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Mbid        string `protobuf:"bytes,2,opt,name=mbid,proto3" json:"mbid,omitempty"`
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Url         string `protobuf:"bytes,4,opt,name=url,proto3" json:"url,omitempty"` // images field removed; use GetAlbumImages instead
+	Url         string `protobuf:"bytes,4,opt,name=url,proto3" json:"url,omitempty"`
 }
 
 func (x *AlbumInfo) ProtoReflect() protoreflect.Message {
@@ -583,6 +583,227 @@ func (x *AlbumImagesResponse) GetImages() []*ExternalImage {
 	return nil
 }
 
+type ScrobblerIsAuthorizedRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+}
+
+func (x *ScrobblerIsAuthorizedRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *ScrobblerIsAuthorizedRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ScrobblerIsAuthorizedResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Authorized bool   `protobuf:"varint,1,opt,name=authorized,proto3" json:"authorized,omitempty"`
+	Error      string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *ScrobblerIsAuthorizedResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *ScrobblerIsAuthorizedResponse) GetAuthorized() bool {
+	if x != nil {
+		return x.Authorized
+	}
+	return false
+}
+
+func (x *ScrobblerIsAuthorizedResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type TrackInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id           string    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Mbid         string    `protobuf:"bytes,2,opt,name=mbid,proto3" json:"mbid,omitempty"`
+	Name         string    `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Album        string    `protobuf:"bytes,4,opt,name=album,proto3" json:"album,omitempty"`
+	AlbumMbid    string    `protobuf:"bytes,5,opt,name=album_mbid,json=albumMbid,proto3" json:"album_mbid,omitempty"`
+	Artists      []*Artist `protobuf:"bytes,6,rep,name=artists,proto3" json:"artists,omitempty"`
+	AlbumArtists []*Artist `protobuf:"bytes,7,rep,name=album_artists,json=albumArtists,proto3" json:"album_artists,omitempty"`
+	Length       int32     `protobuf:"varint,8,opt,name=length,proto3" json:"length,omitempty"` // seconds
+}
+
+func (x *TrackInfo) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *TrackInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TrackInfo) GetMbid() string {
+	if x != nil {
+		return x.Mbid
+	}
+	return ""
+}
+
+func (x *TrackInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *TrackInfo) GetAlbum() string {
+	if x != nil {
+		return x.Album
+	}
+	return ""
+}
+
+func (x *TrackInfo) GetAlbumMbid() string {
+	if x != nil {
+		return x.AlbumMbid
+	}
+	return ""
+}
+
+func (x *TrackInfo) GetArtists() []*Artist {
+	if x != nil {
+		return x.Artists
+	}
+	return nil
+}
+
+func (x *TrackInfo) GetAlbumArtists() []*Artist {
+	if x != nil {
+		return x.AlbumArtists
+	}
+	return nil
+}
+
+func (x *TrackInfo) GetLength() int32 {
+	if x != nil {
+		return x.Length
+	}
+	return 0
+}
+
+type ScrobblerNowPlayingRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Track  *TrackInfo `protobuf:"bytes,2,opt,name=track,proto3" json:"track,omitempty"`
+}
+
+func (x *ScrobblerNowPlayingRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *ScrobblerNowPlayingRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ScrobblerNowPlayingRequest) GetTrack() *TrackInfo {
+	if x != nil {
+		return x.Track
+	}
+	return nil
+}
+
+type ScrobblerNowPlayingResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *ScrobblerNowPlayingResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *ScrobblerNowPlayingResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ScrobblerScrobbleRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	UserId    string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Track     *TrackInfo `protobuf:"bytes,2,opt,name=track,proto3" json:"track,omitempty"`
+	Timestamp int64      `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+}
+
+func (x *ScrobblerScrobbleRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *ScrobblerScrobbleRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ScrobblerScrobbleRequest) GetTrack() *TrackInfo {
+	if x != nil {
+		return x.Track
+	}
+	return nil
+}
+
+func (x *ScrobblerScrobbleRequest) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+type ScrobblerScrobbleResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *ScrobblerScrobbleResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *ScrobblerScrobbleResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // go:plugin type=plugin version=1
 type ArtistMetadataService interface {
 	// Retrieves the MBID for an artist by id and name
@@ -605,4 +826,11 @@ type AlbumMetadataService interface {
 	GetAlbumInfo(context.Context, *AlbumInfoRequest) (*AlbumInfoResponse, error)
 	// Retrieves images for an album by name, artist, and mbid
 	GetAlbumImages(context.Context, *AlbumImagesRequest) (*AlbumImagesResponse, error)
+}
+
+// go:plugin type=plugin version=1
+type ScrobblerService interface {
+	IsAuthorized(context.Context, *ScrobblerIsAuthorizedRequest) (*ScrobblerIsAuthorizedResponse, error)
+	NowPlaying(context.Context, *ScrobblerNowPlayingRequest) (*ScrobblerNowPlayingResponse, error)
+	Scrobble(context.Context, *ScrobblerScrobbleRequest) (*ScrobblerScrobbleResponse, error)
 }

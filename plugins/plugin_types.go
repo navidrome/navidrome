@@ -3,19 +3,14 @@ package plugins
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/tetratelabs/wazero"
 )
 
 type pluginTypeInfo struct {
-	// loaderCtor is a constructor function that creates a new plugin loader.
-	loaderCtor func(context.Context, func(context.Context) (wazero.Runtime, error), wazero.ModuleConfig) (any, error)
-	// loadFunc is a function that loads a plugin instance using the given loader.
-	// It takes a context, the loader, and the path to the wasm file, returning the plugin instance or an error.
-	loadFunc func(context.Context, any, string) (any, error)
-	// agentCtor is a constructor function that creates a new agent for the plugin.
-	agentCtor func(any, string, string) agents.Interface
+	loaderCtor    func(context.Context, func(context.Context) (wazero.Runtime, error), wazero.ModuleConfig) (any, error)
+	loadFunc      func(context.Context, any, string) (any, error)
+	createAdapter func(any, string, string) any
 }
 
 var pluginTypes = map[string]pluginTypeInfo{
@@ -26,7 +21,7 @@ var pluginTypes = map[string]pluginTypeInfo{
 		loadFunc: func(ctx context.Context, loader any, wasmPath string) (any, error) {
 			return loader.(*api.ArtistMetadataServicePlugin).Load(ctx, wasmPath)
 		},
-		agentCtor: func(loader any, wasmPath, pluginName string) agents.Interface {
+		createAdapter: func(loader any, wasmPath, pluginName string) any {
 			return &wasmArtistAgent{
 				wasmBasePlugin: &wasmBasePlugin[api.ArtistMetadataService]{
 					wasmPath: wasmPath,
@@ -46,7 +41,7 @@ var pluginTypes = map[string]pluginTypeInfo{
 		loadFunc: func(ctx context.Context, loader any, wasmPath string) (any, error) {
 			return loader.(*api.AlbumMetadataServicePlugin).Load(ctx, wasmPath)
 		},
-		agentCtor: func(loader any, wasmPath, pluginName string) agents.Interface {
+		createAdapter: func(loader any, wasmPath, pluginName string) any {
 			return &wasmAlbumAgent{
 				wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
 					wasmPath: wasmPath,
@@ -54,6 +49,26 @@ var pluginTypes = map[string]pluginTypeInfo{
 					loader:   loader,
 					loadFunc: func(ctx context.Context, l any, path string) (api.AlbumMetadataService, error) {
 						return l.(*api.AlbumMetadataServicePlugin).Load(ctx, path)
+					},
+				},
+			}
+		},
+	},
+	"ScrobblerService": {
+		loaderCtor: func(ctx context.Context, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) (any, error) {
+			return api.NewScrobblerServicePlugin(ctx, api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+		},
+		loadFunc: func(ctx context.Context, loader any, wasmPath string) (any, error) {
+			return loader.(*api.ScrobblerServicePlugin).Load(ctx, wasmPath)
+		},
+		createAdapter: func(loader any, wasmPath, pluginName string) any {
+			return &wasmScrobblerPlugin{
+				wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService]{
+					wasmPath: wasmPath,
+					name:     pluginName,
+					loader:   loader,
+					loadFunc: func(ctx context.Context, l any, path string) (api.ScrobblerService, error) {
+						return l.(*api.ScrobblerServicePlugin).Load(ctx, path)
 					},
 				},
 			}
