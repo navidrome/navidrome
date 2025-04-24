@@ -8,8 +8,8 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-func NewWasmAlbumAgent(wasmPath, pluginName string, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) *wasmAlbumAgent {
-	loader, _ := api.NewAlbumMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+func NewWasmAlbumAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+	loader, _ := api.NewAlbumMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	return &wasmAlbumAgent{
 		wasmBasePlugin: &wasmBasePlugin[api.AlbumMetadataService]{
 			wasmPath: wasmPath,
@@ -27,6 +27,10 @@ type wasmAlbumAgent struct {
 }
 
 func (w *wasmAlbumAgent) AgentName() string {
+	return w.name
+}
+
+func (w *wasmAlbumAgent) PluginName() string {
 	return w.name
 }
 

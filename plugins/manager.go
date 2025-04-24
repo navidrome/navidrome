@@ -23,18 +23,13 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
-type createAdapterFunc func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any
+// pluginCreators maps service types to their respective creator functions
+type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
-var pluginTypes = map[string]createAdapterFunc{
-	"ArtistMetadataService": func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any {
-		return NewWasmArtistAgent(wasmPath, pluginName, runtime, mc)
-	},
-	"AlbumMetadataService": func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any {
-		return NewWasmAlbumAgent(wasmPath, pluginName, runtime, mc)
-	},
-	"ScrobblerService": func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) any {
-		return NewWasmScrobblerPlugin(wasmPath, pluginName, runtime, mc)
-	},
+var pluginCreators = map[string]pluginConstructor{
+	"ArtistMetadataService": NewWasmArtistAgent,
+	"AlbumMetadataService":  NewWasmAlbumAgent,
+	"ScrobblerService":      NewWasmScrobblerPlugin,
 }
 
 var (
@@ -65,7 +60,7 @@ func newWazeroModuleConfig() wazero.ModuleConfig {
 	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithStderr(os.Stderr)
 }
 
-// Represents a plugin that has been discovered but not yet instantiated
+// PluginInfo represents a plugin that has been discovered but not yet instantiated
 type PluginInfo struct {
 	Name      string
 	Path      string
@@ -90,6 +85,7 @@ func GetManager() *Manager {
 	})
 }
 
+// createManager creates a new Manager instance. Used in tests
 func createManager() *Manager {
 	m := &Manager{
 		plugins: make(map[string]*PluginInfo),
@@ -183,7 +179,7 @@ func (m *Manager) ScanPlugins() {
 
 		// Process each service defined in the manifest
 		for _, service := range manifest.Services {
-			_, ok := pluginTypes[service]
+			_, ok := pluginCreators[service]
 			if !ok {
 				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", name)
 				continue
@@ -250,7 +246,7 @@ func (m *Manager) PluginNames(svcName string) []string {
 }
 
 // LoadPlugin instantiates and returns a plugin by name
-func (m *Manager) LoadPlugin(name string) any {
+func (m *Manager) LoadPlugin(name string) WasmPlugin {
 	m.mu.RLock()
 	plugin, ok := m.plugins[name]
 	m.mu.RUnlock()
@@ -272,27 +268,60 @@ func (m *Manager) LoadPlugin(name string) any {
 		return nil
 	}
 
-	createAdapter, ok := pluginTypes[plugin.Services[0]]
+	serviceType := plugin.Services[0]
+	creator, ok := pluginCreators[serviceType]
 	if !ok {
-		log.Warn("Unknown plugin service type", "service", plugin.Services[0], "plugin", name)
+		log.Warn("Unknown plugin service type", "service", serviceType, "plugin", name)
 		return nil
 	}
 
-	adapter := createAdapter(plugin.WasmPath, plugin.Name, plugin.Runtime, plugin.ModConfig)
+	// Use the creator based on the service type
+	adapter := creator(plugin.WasmPath, plugin.Name, plugin.Runtime, plugin.ModConfig)
+
 	if adapter == nil {
 		log.Warn("Failed to create adapter for plugin", "name", name)
 	}
 	return adapter
 }
 
+// LoadArtistAgent instantiates and returns an artist agent plugin by name
+func (m *Manager) LoadArtistAgent(name string) (agents.Interface, bool) {
+	plugin := m.LoadPlugin(name)
+	if plugin == nil {
+		return nil, false
+	}
+	agent, ok := plugin.(WasmArtistAgent)
+	return agent, ok
+}
+
+// LoadAlbumAgent instantiates and returns an album agent plugin by name
+func (m *Manager) LoadAlbumAgent(name string) (agents.Interface, bool) {
+	plugin := m.LoadPlugin(name)
+	if plugin == nil {
+		return nil, false
+	}
+	agent, ok := plugin.(WasmAlbumAgent)
+	return agent, ok
+}
+
+// LoadScrobbler instantiates and returns a scrobbler plugin by name
+func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
+	plugin := m.LoadPlugin(name)
+	if plugin == nil {
+		return nil, false
+	}
+	s, ok := plugin.(WasmScrobbler)
+	return s, ok
+}
+
 // LoadAllPlugins instantiates and returns all plugins that implement the specified service
-func (m *Manager) LoadAllPlugins(svcName string) []any {
+func (m *Manager) LoadAllPlugins(svcName string) []WasmPlugin {
 	names := m.PluginNames(svcName)
 	if len(names) == 0 {
 		return nil
 	}
 
-	var plugins []any
+	var plugins []WasmPlugin
 	for _, name := range names {
 		plugin := m.LoadPlugin(name)
 		if plugin != nil {
@@ -319,7 +348,7 @@ func (m *Manager) RegisterPlugin(name string, ds model.DataStore) bool {
 	}
 
 	service := plugin.Services[0]
-	createAdapter, ok := pluginTypes[service]
+	creator, ok := pluginCreators[service]
 	if !ok {
 		log.Warn("Cannot register plugin: unknown service type", "service", service, "plugin", name)
 		return false
@@ -331,7 +360,7 @@ func (m *Manager) RegisterPlugin(name string, ds model.DataStore) bool {
 			if !waitForPluginReady(plugin.State, name, plugin.WasmPath) {
 				return nil
 			}
-			adapter := createAdapter(plugin.WasmPath, name, plugin.Runtime, plugin.ModConfig)
+			adapter := creator(plugin.WasmPath, name, plugin.Runtime, plugin.ModConfig)
 			if s, ok := adapter.(scrobbler.Scrobbler); ok {
 				return s
 			}
@@ -346,7 +375,7 @@ func (m *Manager) RegisterPlugin(name string, ds model.DataStore) bool {
 			if !waitForPluginReady(plugin.State, name, plugin.WasmPath) {
 				return nil
 			}
-			adapter := createAdapter(plugin.WasmPath, name, plugin.Runtime, plugin.ModConfig)
+			adapter := creator(plugin.WasmPath, name, plugin.Runtime, plugin.ModConfig)
 			if a, ok := adapter.(agents.Interface); ok {
 				return a
 			}
@@ -369,6 +398,53 @@ func (m *Manager) RegisterAllPlugins(ds model.DataStore) {
 	}
 }
 
-func init() {
-	// No longer automatically register plugins on initialization
+// LoadAllArtistAgents instantiates and returns all artist agent plugins
+func (m *Manager) LoadAllArtistAgents() []agents.Interface {
+	names := m.PluginNames("ArtistMetadataService")
+	if len(names) == 0 {
+		return nil
+	}
+
+	var agents []agents.Interface
+	for _, name := range names {
+		agent, ok := m.LoadArtistAgent(name)
+		if ok {
+			agents = append(agents, agent)
+		}
+	}
+	return agents
+}
+
+// LoadAllAlbumAgents instantiates and returns all album agent plugins
+func (m *Manager) LoadAllAlbumAgents() []agents.Interface {
+	names := m.PluginNames("AlbumMetadataService")
+	if len(names) == 0 {
+		return nil
+	}
+
+	var agents []agents.Interface
+	for _, name := range names {
+		agent, ok := m.LoadAlbumAgent(name)
+		if ok {
+			agents = append(agents, agent)
+		}
+	}
+	return agents
+}
+
+// LoadAllScrobblers instantiates and returns all scrobbler plugins
+func (m *Manager) LoadAllScrobblers() []scrobbler.Scrobbler {
+	names := m.PluginNames("ScrobblerService")
+	if len(names) == 0 {
+		return nil
+	}
+
+	var scrobblers []scrobbler.Scrobbler
+	for _, name := range names {
+		scrobbler, ok := m.LoadScrobbler(name)
+		if ok {
+			scrobblers = append(scrobblers, scrobbler)
+		}
+	}
+	return scrobblers
 }

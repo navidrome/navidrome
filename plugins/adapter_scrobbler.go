@@ -9,8 +9,8 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtimeCtor func(context.Context) (wazero.Runtime, error), mc wazero.ModuleConfig) *wasmScrobblerPlugin {
-	loader, _ := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtimeCtor), api.WazeroModuleConfig(mc))
+func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+	loader, _ := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	return &wasmScrobblerPlugin{
 		wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService]{
 			wasmPath: wasmPath,
@@ -25,6 +25,10 @@ func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtimeCtor func(contex
 
 type wasmScrobblerPlugin struct {
 	*wasmBasePlugin[api.ScrobblerService]
+}
+
+func (w *wasmScrobblerPlugin) PluginName() string {
+	return w.name
 }
 
 func (w *wasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
