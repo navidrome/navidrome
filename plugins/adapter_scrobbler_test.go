@@ -139,7 +139,7 @@ var _ = Describe("wasmScrobblerPlugin", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		mock = &mockScrobblerService{}
 		plugin = &testWasmScrobblerPlugin{
 			wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService, *mockLoader]{

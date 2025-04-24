@@ -19,7 +19,7 @@ var _ = Describe("Plugin Manager", func() {
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = "./plugins/testdata"
 
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		mgr = createManager()
 		mgr.ScanPlugins()
 	})
@@ -27,13 +27,11 @@ var _ = Describe("Plugin Manager", func() {
 	It("should scan and discover plugins from the testdata folder", func() {
 		Expect(mgr).NotTo(BeNil())
 
-		// Should find MediaMetadataService plugins
 		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
 		Expect(mediaAgentNames).To(ContainElement("fake_artist_agent"))
 		Expect(mediaAgentNames).To(ContainElement("fake_album_agent"))
 		Expect(mediaAgentNames).To(ContainElement("fake_multi_agent"))
 
-		// Should find ScrobblerService plugins
 		scrobblerNames := mgr.PluginNames("ScrobblerService")
 		Expect(scrobblerNames).To(ContainElement("fake_scrobbler"))
 	})
@@ -46,7 +44,6 @@ var _ = Describe("Plugin Manager", func() {
 		Expect(ok).To(BeTrue(), "plugin should implement agents.Interface")
 		Expect(agent.AgentName()).To(Equal("fake_artist_agent"))
 
-		// Test artist metadata method
 		mbidRetriever, ok := agent.(agents.ArtistMBIDRetriever)
 		Expect(ok).To(BeTrue())
 		mbid, err := mbidRetriever.GetArtistMBID(ctx, "id", "Test Artist")
@@ -55,15 +52,12 @@ var _ = Describe("Plugin Manager", func() {
 	})
 
 	It("should load all MediaMetadataService plugins and invoke methods", func() {
-		// Get all MediaMetadataService plugins
 		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
 		Expect(mediaAgentNames).NotTo(BeEmpty())
 
-		// Load all plugins
 		plugins := mgr.LoadAllPlugins("MediaMetadataService")
 		Expect(plugins).To(HaveLen(len(mediaAgentNames)))
 
-		// Find our test plugin in the loaded plugins
 		var fakeAlbumPlugin agents.Interface
 		for _, p := range plugins {
 			if agent, ok := p.(agents.Interface); ok {
@@ -76,7 +70,6 @@ var _ = Describe("Plugin Manager", func() {
 
 		Expect(fakeAlbumPlugin).NotTo(BeNil(), "fake_album_agent should be loaded")
 
-		// Test album info method
 		albumInfo, err := fakeAlbumPlugin.(agents.AlbumInfoRetriever).GetAlbumInfo(ctx, "Test Album", "Test Artist", "mbid")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(albumInfo.Name).To(Equal("Test Album"))

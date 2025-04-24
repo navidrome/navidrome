@@ -31,6 +31,12 @@ var pluginCreators = map[string]pluginConstructor{
 	"ScrobblerService":     NewWasmScrobblerPlugin,
 }
 
+// WasmPlugin is the base interface that all WASM plugins implement
+type WasmPlugin interface {
+	// PluginName returns the name of the plugin
+	PluginName() string
+}
+
 var (
 	compileSemaphore = make(chan struct{}, 2) // Limit to 2 concurrent compilations; adjust as needed
 	compilationCache wazero.CompilationCache
@@ -299,7 +305,7 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	if plugin == nil {
 		return nil, false
 	}
-	s, ok := plugin.(WasmScrobbler)
+	s, ok := plugin.(scrobbler.Scrobbler)
 	return s, ok
 }
 
