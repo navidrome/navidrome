@@ -233,8 +233,15 @@ char has_cover(const TagLib::FileRef f) {
   // ----- WAV
   else if (TagLib::RIFF::WAV::File * wavFile{ dynamic_cast<TagLib::RIFF::WAV::File*>(f.file()) }) {
     if (wavFile->hasID3v2Tag()) {
-        const auto& frameListMap{ wavFile->ID3v2Tag()->frameListMap() };
-        hasCover = !frameListMap["APIC"].isEmpty();
+      const auto& frameListMap{ wavFile->ID3v2Tag()->frameListMap() };
+      hasCover = !frameListMap["APIC"].isEmpty();
+    }
+  }
+  // ----- AIFF 
+  else if (TagLib::RIFF::AIFF::File * aiffFile{ dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file())}) {
+    if (aiffFile->hasID3v2Tag()) {
+      const auto& frameListMap{ aiffFile->tag()->frameListMap() };
+      hasCover = !frameListMap["APIC"].isEmpty();
     }
   }
 
