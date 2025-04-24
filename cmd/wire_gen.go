@@ -22,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
@@ -66,7 +67,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	agentsAgents := agents.GetAgents(dataStore)
+	manager := plugins.GetManager()
+	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
@@ -90,7 +92,8 @@ func CreatePublicRouter() *public.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	agentsAgents := agents.GetAgents(dataStore)
+	manager := plugins.GetManager()
+	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
@@ -134,7 +137,8 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	agentsAgents := agents.GetAgents(dataStore)
+	manager := plugins.GetManager()
+	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
@@ -150,7 +154,8 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	agentsAgents := agents.GetAgents(dataStore)
+	manager := plugins.GetManager()
+	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
@@ -171,4 +176,4 @@ func GetPlaybackServer() playback.PlaybackServer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, metrics.NewPrometheusInstance, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), metrics.NewPrometheusInstance, db.Db)

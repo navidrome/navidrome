@@ -372,9 +372,16 @@ func (WikimediaAgent) GetSimilarArtists(context.Context, *api.ArtistSimilarReque
 func (WikimediaAgent) GetArtistTopSongs(context.Context, *api.ArtistTopSongsRequest) (*api.ArtistTopSongsResponse, error) {
 	return nil, ErrNotImplemented
 }
+func (WikimediaAgent) GetAlbumInfo(context.Context, *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
+	return nil, ErrNotImplemented
+}
+
+func (WikimediaAgent) GetAlbumImages(context.Context, *api.AlbumImagesRequest) (*api.AlbumImagesResponse, error) {
+	return nil, ErrNotImplemented
+}
 
 func main() {}
 
 func init() {
-	api.RegisterArtistMetadataService(WikimediaAgent{})
+	api.RegisterMediaMetadataService(WikimediaAgent{})
 }

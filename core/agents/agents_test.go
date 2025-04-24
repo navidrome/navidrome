@@ -28,7 +28,7 @@ var _ = Describe("Agents", func() {
 		var ag *Agents
 		BeforeEach(func() {
 			conf.Server.Agents = ""
-			ag = createAgents(ds)
+			ag = createAgents(ds, nil)
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
@@ -48,13 +48,13 @@ var _ = Describe("Agents", func() {
 			Register("disabled", func(model.DataStore) Interface { return nil })
 			Register("empty", func(model.DataStore) Interface { return &emptyAgent{} })
 			conf.Server.Agents = "empty,fake,disabled"
-			ag = createAgents(ds)
+			ag = createAgents(ds, nil)
 			Expect(ag.AgentName()).To(Equal("agents"))
 		})
 
 		It("does not register disabled agents", func() {
 			var ags []string
-			for _, name := range ag.names {
+			for _, name := range ag.getEnabledAgentNames() {
 				agent := ag.getAgent(name)
 				if agent != nil {
 					ags = append(ags, agent.AgentName())

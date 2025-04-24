@@ -116,9 +116,32 @@ func buildImageList(img *caaImage) []*api.ExternalImage {
 func (CoverArtArchiveAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
 	return nil, api.ErrNotImplemented
 }
+func (CoverArtArchiveAgent) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (CoverArtArchiveAgent) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) (*api.ArtistURLResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (CoverArtArchiveAgent) GetArtistBiography(ctx context.Context, req *api.ArtistBiographyRequest) (*api.ArtistBiographyResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (CoverArtArchiveAgent) GetSimilarArtists(ctx context.Context, req *api.ArtistSimilarRequest) (*api.ArtistSimilarResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (CoverArtArchiveAgent) GetArtistImages(ctx context.Context, req *api.ArtistImageRequest) (*api.ArtistImageResponse, error) {
+	return nil, api.ErrNotImplemented
+}
+
+func (CoverArtArchiveAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopSongsRequest) (*api.ArtistTopSongsResponse, error) {
+	return nil, api.ErrNotImplemented
+}
 
 func main() {}
 
 func init() {
-	api.RegisterAlbumMetadataService(CoverArtArchiveAgent{})
+	api.RegisterMediaMetadataService(CoverArtArchiveAgent{})
 }

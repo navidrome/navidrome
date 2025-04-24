@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -14,57 +15,167 @@ import (
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
-type Agents struct {
-	ds     model.DataStore
-	names  []string             // ordered agent names
-	agents map[string]Interface // instantiated agents
-	mu     sync.Mutex           // protects agents map
+// PluginLoader defines an interface for loading plugins
+type PluginLoader interface {
+	// PluginNames returns the names of all plugins that implement a particular service
+	PluginNames(serviceName string) []string
+	// LoadMediaAgent loads and returns a media agent plugin
+	LoadMediaAgent(name string) (Interface, bool)
 }
 
-func GetAgents(ds model.DataStore) *Agents {
+type cachedAgent struct {
+	agent      Interface
+	expiration time.Time
+}
+
+type Agents struct {
+	ds           model.DataStore
+	pluginLoader PluginLoader
+	cachedAgents map[string]cachedAgent // cached agent instances with expiration
+	mu           sync.Mutex             // protects cachedAgents map
+}
+
+// TTL for cached agents
+const agentCacheTTL = 5 * time.Minute
+
+// GetAgents returns the singleton instance of Agents
+func GetAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 	return singleton.GetInstance(func() *Agents {
-		return createAgents(ds)
+		return createAgents(ds, pluginLoader)
 	})
 }
 
-func createAgents(ds model.DataStore) *Agents {
-	var order []string
+// createAgents creates a new Agents instance. Used in tests
+func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
+	return &Agents{
+		ds:           ds,
+		pluginLoader: pluginLoader,
+		cachedAgents: make(map[string]cachedAgent),
+	}
+}
+
+// getEnabledAgentNames returns the current list of enabled agent names, including:
+// 1. Built-in agents and plugins from config (in the specified order)
+// 2. Always include LocalAgentName
+// 3. If config is empty, include all available agents and plugins in a default order
+func (a *Agents) getEnabledAgentNames() []string {
+	// Get all available plugin names
+	var availablePlugins []string
+	if a.pluginLoader != nil {
+		availablePlugins = a.pluginLoader.PluginNames("MediaMetadataService")
+	}
+
+	// If agents are explicitly configured, use that order
 	if conf.Server.Agents != "" {
-		order = strings.Split(conf.Server.Agents, ",")
-	}
-	order = append(order, LocalAgentName)
-	var validNames []string
-	for _, name := range order {
-		if _, ok := Map[name]; !ok {
-			log.Error("Invalid agent. Check `Agents` configuration", "name", name, "conf", conf.Server.Agents)
-			continue
+		configuredAgents := strings.Split(conf.Server.Agents, ",")
+
+		// Always add LocalAgentName if not already included
+		hasLocalAgent := false
+		for _, name := range configuredAgents {
+			if name == LocalAgentName {
+				hasLocalAgent = true
+				break
+			}
 		}
-		validNames = append(validNames, name)
+		if !hasLocalAgent {
+			configuredAgents = append(configuredAgents, LocalAgentName)
+		}
+
+		// Filter to only include valid agents (built-in or plugins)
+		var validNames []string
+		for _, name := range configuredAgents {
+			isBuiltIn := false
+			isPlugin := false
+
+			// Check if it's a built-in agent
+			if _, ok := Map[name]; ok {
+				isBuiltIn = true
+			}
+
+			// Check if it's a plugin
+			for _, pluginName := range availablePlugins {
+				if pluginName == name {
+					isPlugin = true
+					break
+				}
+			}
+
+			if isBuiltIn || isPlugin {
+				validNames = append(validNames, name)
+			} else {
+				log.Warn("Unknown agent ignored", "name", name)
+			}
+		}
+		return validNames
 	}
-	log.Debug("List of agents enabled", "names", validNames)
-	return &Agents{ds: ds, names: validNames, agents: make(map[string]Interface)}
+
+	// If no agents configured, use all available built-in agents and plugins
+	var allAgents []string
+
+	// Add all built-in agents except local (which will be added at the end)
+	for name := range Map {
+		if name != LocalAgentName {
+			allAgents = append(allAgents, name)
+		}
+	}
+
+	// Add all plugins
+	allAgents = append(allAgents, availablePlugins...)
+
+	// Sort for consistent ordering
+	sort.Strings(allAgents)
+
+	// Always add LocalAgentName last
+	allAgents = append(allAgents, LocalAgentName)
+
+	return allAgents
 }
 
 func (a *Agents) getAgent(name string) Interface {
+	now := time.Now()
+
+	// Check cache first
 	a.mu.Lock()
-	ag, ok := a.agents[name]
-	a.mu.Unlock()
-	if ok {
-		return ag
+	cached, ok := a.cachedAgents[name]
+	if ok && cached.expiration.After(now) {
+		a.mu.Unlock()
+		return cached.agent
 	}
+	a.mu.Unlock()
+
+	// Try to get built-in agent
 	constructor, ok := Map[name]
-	if !ok {
-		return nil
+	if ok {
+		agent := constructor(a.ds)
+		if agent != nil {
+			// Cache the agent with expiration
+			a.mu.Lock()
+			a.cachedAgents[name] = cachedAgent{
+				agent:      agent,
+				expiration: now.Add(agentCacheTTL),
+			}
+			a.mu.Unlock()
+			return agent
+		}
+		log.Debug("Built-in agent not available. Missing configuration?", "name", name)
 	}
-	agent := constructor(a.ds)
-	if agent == nil {
-		log.Debug("Agent not available. Missing configuration?", "name", name)
-		return nil
+
+	// Try to load WASM plugin agent (if plugin loader is available)
+	if a.pluginLoader != nil {
+		agent, ok := a.pluginLoader.LoadMediaAgent(name)
+		if ok && agent != nil {
+			// Cache the plugin agent with expiration
+			a.mu.Lock()
+			a.cachedAgents[name] = cachedAgent{
+				agent:      agent,
+				expiration: now.Add(agentCacheTTL),
+			}
+			a.mu.Unlock()
+			return agent
+		}
 	}
-	a.mu.Lock()
-	a.agents[name] = agent
-	a.mu.Unlock()
-	return agent
+
+	return nil
 }
 
 func (a *Agents) AgentName() string {
@@ -79,7 +190,7 @@ func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (str
 		return "", nil
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -108,7 +219,7 @@ func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (strin
 		return "", nil
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -137,7 +248,7 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 		return "", nil
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -166,7 +277,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 		return nil, nil
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -199,7 +310,7 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 		return nil, nil
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -228,7 +339,7 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 		return nil, nil
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -254,7 +365,7 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 		return nil, ErrNotFound
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
@@ -281,7 +392,7 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 		return nil, ErrNotFound
 	}
 	start := time.Now()
-	for _, agentName := range a.names {
+	for _, agentName := range a.getEnabledAgentNames() {
 		ag := a.getAgent(agentName)
 		if ag == nil {
 			continue
