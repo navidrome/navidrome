@@ -267,6 +267,51 @@ var _ = Describe("PlayTracker", func() {
 			Expect(pluginFake.ScrobbleCalled).To(BeTrue())
 		})
 	})
+
+	Describe("Plugin Scrobbler Management", func() {
+		var pluginScr *fakeScrobbler
+		var mockPlugin *mockPluginLoader
+		var pTracker *playTracker
+		var mockedBS *mockBufferedScrobbler
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			ctx = request.WithUser(ctx, model.User{ID: "u-1"})
+			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
+			ds = &tests.MockDataStore{}
+
+			// Setup plugin scrobbler
+			pluginScr = &fakeScrobbler{Authorized: true}
+			mockPlugin = &mockPluginLoader{
+				names:      []string{"plugin1"},
+				scrobblers: map[string]Scrobbler{"plugin1": pluginScr},
+			}
+
+			// Create a tracker with the mock plugin loader
+			pTracker = newPlayTracker(ds, events.GetBroker(), mockPlugin)
+
+			// Create a mock buffered scrobbler and explicitly cast it to Scrobbler
+			mockedBS = &mockBufferedScrobbler{
+				wrapped: pluginScr,
+			}
+			// Make sure the instance is added with its concrete type preserved
+			pTracker.pluginScrobblers["plugin1"] = mockedBS
+		})
+
+		It("calls Stop on scrobblers when removing them", func() {
+			// Change the plugin names to simulate a plugin being removed
+			mockPlugin.names = []string{}
+
+			// Call refreshPluginScrobblers which should detect the removed plugin
+			pTracker.refreshPluginScrobblers()
+
+			// Verify the Stop method was called
+			Expect(mockedBS.stopCalled).To(BeTrue())
+
+			// Verify the scrobbler was removed from the map
+			Expect(pTracker.pluginScrobblers).NotTo(HaveKey("plugin1"))
+		})
+	})
 })
 
 type fakeScrobbler struct {
@@ -309,4 +354,26 @@ func _p(id, name string, sortName ...string) model.Participant {
 		p.Artist.SortArtistName = sortName[0]
 	}
 	return p
+}
+
+// mockBufferedScrobbler used to test that Stop is called
+type mockBufferedScrobbler struct {
+	wrapped    Scrobbler
+	stopCalled bool
+}
+
+func (m *mockBufferedScrobbler) Stop() {
+	m.stopCalled = true
+}
+
+func (m *mockBufferedScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
+	return m.wrapped.IsAuthorized(ctx, userId)
+}
+
+func (m *mockBufferedScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+	return m.wrapped.NowPlaying(ctx, userId, track)
+}
+
+func (m *mockBufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
+	return m.wrapped.Scrobble(ctx, userId, s)
 }

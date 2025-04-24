@@ -10,9 +10,16 @@ import (
 )
 
 func newBufferedScrobbler(ds model.DataStore, s Scrobbler, service string) *bufferedScrobbler {
-	b := &bufferedScrobbler{ds: ds, wrapped: s, service: service}
-	b.wakeSignal = make(chan struct{}, 1)
-	go b.run(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
+	b := &bufferedScrobbler{
+		ds:         ds,
+		wrapped:    s,
+		service:    service,
+		wakeSignal: make(chan struct{}, 1),
+		ctx:        ctx,
+		cancel:     cancel,
+	}
+	go b.run(ctx)
 	return b
 }
 
@@ -21,6 +28,14 @@ type bufferedScrobbler struct {
 	wrapped    Scrobbler
 	service    string
 	wakeSignal chan struct{}
+	ctx        context.Context
+	cancel     context.CancelFunc
+}
+
+func (b *bufferedScrobbler) Stop() {
+	if b.cancel != nil {
+		b.cancel()
+	}
 }
 
 func (b *bufferedScrobbler) IsAuthorized(ctx context.Context, userId string) bool {

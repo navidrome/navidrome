@@ -130,8 +130,23 @@ func (p *playTracker) refreshPluginScrobblers() {
 	}
 
 	// Process removals - remove plugins that no longer exist
-	for name := range p.pluginScrobblers {
+	for name, scrobbler := range p.pluginScrobblers {
 		if _, exists := current[name]; !exists {
+			// Type assertion to access the Stop method
+			// We need to ensure this works even with interface objects
+			if bs, ok := scrobbler.(*bufferedScrobbler); ok {
+				log.Debug("Stopping buffered scrobbler goroutine", "name", name)
+				bs.Stop()
+			} else {
+				// For tests - try to see if this is a mock with a Stop method
+				type stoppable interface {
+					Stop()
+				}
+				if s, ok := scrobbler.(stoppable); ok {
+					log.Debug("Stopping mock scrobbler", "name", name)
+					s.Stop()
+				}
+			}
 			delete(p.pluginScrobblers, name)
 		}
 	}
