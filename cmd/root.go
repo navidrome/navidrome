@@ -335,7 +335,9 @@ func startPluginManager(ctx context.Context) func() error {
 			return nil
 		}
 		log.Info(ctx, "Starting plugin manager")
-		_ = plugins.GetManager()
+		// Get the manager instance and scan for plugins
+		manager := plugins.GetManager()
+		manager.ScanPlugins()
 		return nil
 	}
 }

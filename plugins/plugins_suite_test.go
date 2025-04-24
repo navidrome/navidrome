@@ -2,9 +2,7 @@ package plugins
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"github.com/navidrome/navidrome/log"
@@ -15,17 +13,19 @@ import (
 
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
+	buildTestPlugins(t, "plugins/testdata")
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
 }
 
-var _ = BeforeSuite(func() {
-	cwd, _ := os.Getwd()
+func buildTestPlugins(t *testing.T, path string) {
+	cwd := path
 	fmt.Printf("[BeforeSuite] Current working directory: %s\n", cwd)
-	absPath, err := filepath.Abs("./testdata")
-	Expect(err).To(BeNil())
-	cmd := exec.Command("make", "-C", absPath)
+	cmd := exec.Command("make", "-C", path)
 	out, err := cmd.CombinedOutput()
-	Expect(err).To(BeNil(), "make output:\n%s", string(out))
-})
+	fmt.Printf("Make output: %s", string(out))
+	if err != nil {
+		Fail(fmt.Sprintf("Failed to build test plugins: %v", err))
+	}
+}

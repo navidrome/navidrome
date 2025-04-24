@@ -26,9 +26,3 @@ type Scrobbler interface {
 }
 
 type Constructor func(ds model.DataStore) Scrobbler
-
-// IsScrobblerRegistered returns true if a scrobbler with the given name is registered (for testing only)
-func IsScrobblerRegistered(name string) bool {
-	_, ok := constructors[name]
-	return ok
-}

@@ -3,7 +3,6 @@ package plugins
 import (
 	"context"
 	"errors"
-	"testing"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -90,8 +89,3 @@ var _ = Describe("wasmScrobblerPlugin", func() {
 		Expect(plugin.Scrobble(ctx, "user1", s)).ToNot(Succeed())
 	})
 })
-
-func TestScrobblerPlugin(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "ScrobblerPlugin Suite")
-}

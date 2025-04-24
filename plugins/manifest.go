@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 )
 
@@ -13,7 +13,7 @@ type PluginManifest struct {
 // LoadManifest loads and parses the manifest.json file from the given plugin directory.
 func LoadManifest(pluginDir string) (*PluginManifest, error) {
 	manifestPath := filepath.Join(pluginDir, "manifest.json")
-	data, err := ioutil.ReadFile(manifestPath)
+	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, err
 	}

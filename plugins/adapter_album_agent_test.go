@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"context"
-	"sync"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -15,27 +15,30 @@ var _ = Describe("wasmAlbumAgent (real plugin)", func() {
 	var (
 		agent agents.Interface
 		ctx   context.Context
+		mgr   *Manager
 	)
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
+		absPath, err := filepath.Abs("plugins/testdata")
+		Expect(err).To(BeNil())
+		conf.Server.Plugins.Folder = absPath
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = "plugins/testdata"
+
 		ctx = context.Background()
 
-		mgr := createManager()
+		mgr = createManager()
 		Expect(mgr).NotTo(BeNil())
+		mgr.ScanPlugins()
 
-		// Wait for the agent to be registered, polling with a timeout
-		Eventually(func() bool {
-			_, ok := agents.Map["fake_album_agent"]
-			return ok
-		}, "5s", "100ms").Should(BeTrue(), "plugin agent should be registered")
+		// Load the plugin directly
+		pluginInstance := mgr.LoadPlugin("fake_album_agent")
+		Expect(pluginInstance).NotTo(BeNil(), "should be able to load the plugin")
 
-		constructor, ok := agents.Map["fake_album_agent"]
-		Expect(ok).To(BeTrue())
-		agent = constructor(nil)
-		Expect(agent).NotTo(BeNil(), "plugin agent should be constructible")
+		var ok bool
+		agent, ok = pluginInstance.(agents.Interface)
+		Expect(ok).To(BeTrue(), "plugin should implement agents.Interface")
+		Expect(agent).NotTo(BeNil(), "plugin agent should be instantiated")
 	})
 
 	It("returns the correct agent name", func() {
@@ -83,62 +86,5 @@ var _ = Describe("wasmAlbumAgent (real plugin)", func() {
 			_, err = imagesRetriever.GetAlbumImages(ctx, "Test Album", "", "mbid")
 			Expect(err).To(HaveOccurred())
 		})
-	})
-})
-
-// Concurrency stress test for CoverArtArchive plugin
-var _ = XDescribe("wasmAlbumAgent (coverartarchive concurrency)", func() {
-	var (
-		agent agents.Interface
-		ctx   context.Context
-	)
-
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = "plugins/testdata"
-		ctx = context.Background()
-
-		mgr := createManager()
-		Expect(mgr).NotTo(BeNil())
-
-		// Wait for the agent to be registered, polling with a timeout
-		Eventually(func() bool {
-			_, ok := agents.Map["coverartarchive"]
-			return ok
-		}, "5s", "100ms").Should(BeTrue(), "plugin agent should be registered")
-
-		constructor, ok := agents.Map["coverartarchive"]
-		Expect(ok).To(BeTrue())
-		agent = constructor(nil)
-		Expect(agent).NotTo(BeNil(), "plugin agent should be constructible")
-	})
-
-	It("handles many concurrent GetAlbumImages calls without crashing", func() {
-		imagesRetriever := agent.(interface {
-			GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error)
-		})
-		mbid := "08a8025e-8fb9-4e1b-b8a5-c59f66a99006" // Use a real MBID for stress
-		wg := sync.WaitGroup{}
-		const numThreads = 50
-		errs := make(chan error, numThreads)
-		for i := 0; i < numThreads; i++ {
-			wg.Add(1)
-			go func() {
-				defer GinkgoRecover()
-				defer wg.Done()
-				_, err := imagesRetriever.GetAlbumImages(ctx, "", "", mbid)
-				if err != nil {
-					errs <- err
-				}
-			}()
-		}
-		wg.Wait()
-		close(errs)
-		// All errors should be handled, and there should be no panics or plugin crashes
-		for err := range errs {
-			println(err.Error())
-			Expect(err).ToNot(MatchError("module closed with exit_code(0)"))
-		}
 	})
 })

@@ -14,27 +14,28 @@ var _ = Describe("wasmArtistAgent (real plugin)", func() {
 	var (
 		agent agents.Interface
 		ctx   context.Context
+		mgr   *Manager
 	)
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = "plugins/testdata"
+		conf.Server.Plugins.Folder = "./plugins/testdata"
+
 		ctx = context.Background()
 
-		mgr := createManager()
+		mgr = createManager()
 		Expect(mgr).NotTo(BeNil())
+		mgr.ScanPlugins()
 
-		// Wait for the agent to be registered, polling with a timeout
-		Eventually(func() bool {
-			_, ok := agents.Map["fake_artist_agent"]
-			return ok
-		}, "5s", "100ms").Should(BeTrue(), "plugin agent should be registered")
+		// Load the plugin directly
+		pluginInstance := mgr.LoadPlugin("fake_artist_agent")
+		Expect(pluginInstance).NotTo(BeNil(), "should be able to load the plugin")
 
-		constructor, ok := agents.Map["fake_artist_agent"]
-		Expect(ok).To(BeTrue())
-		agent = constructor(nil)
-		Expect(agent).NotTo(BeNil(), "plugin agent should be constructible")
+		var ok bool
+		agent, ok = pluginInstance.(agents.Interface)
+		Expect(ok).To(BeTrue(), "plugin should implement agents.Interface")
+		Expect(agent).NotTo(BeNil(), "plugin agent should be instantiated")
 	})
 
 	It("returns the correct agent name", func() {
@@ -56,10 +57,10 @@ var _ = Describe("wasmArtistAgent (real plugin)", func() {
 	})
 
 	It("returns artist biography", func() {
-		bioRetriever := agent.(agents.ArtistBiographyRetriever)
-		bio, err := bioRetriever.GetArtistBiography(ctx, "id", "Test Artist", "mbid")
+		biographyRetriever := agent.(agents.ArtistBiographyRetriever)
+		biography, err := biographyRetriever.GetArtistBiography(ctx, "id", "Test Artist", "mbid")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(bio).To(Equal("This is a test biography"))
+		Expect(biography).To(Equal("This is a test biography"))
 	})
 
 	It("returns similar artists", func() {
@@ -95,36 +96,41 @@ var _ = Describe("wasmArtistAgent (real plugin)", func() {
 		Expect(songs[1].MBID).To(Equal("mbid2"))
 	})
 
-	Describe("error cases", func() {
+	Context("error cases", func() {
 		It("returns error for empty name in MBID", func() {
 			mbidRetriever := agent.(agents.ArtistMBIDRetriever)
 			_, err := mbidRetriever.GetArtistMBID(ctx, "id", "")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
+
 		It("returns error for empty name in URL", func() {
 			urlRetriever := agent.(agents.ArtistURLRetriever)
 			_, err := urlRetriever.GetArtistURL(ctx, "id", "", "mbid")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
+
 		It("returns error for empty name in Biography", func() {
-			bioRetriever := agent.(agents.ArtistBiographyRetriever)
-			_, err := bioRetriever.GetArtistBiography(ctx, "id", "", "mbid")
-			Expect(err).To(HaveOccurred())
+			biographyRetriever := agent.(agents.ArtistBiographyRetriever)
+			_, err := biographyRetriever.GetArtistBiography(ctx, "id", "", "mbid")
+			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
+
 		It("returns error for empty name in SimilarArtists", func() {
 			similarRetriever := agent.(agents.ArtistSimilarRetriever)
-			_, err := similarRetriever.GetSimilarArtists(ctx, "id", "", "mbid", 2)
-			Expect(err).To(HaveOccurred())
+			_, err := similarRetriever.GetSimilarArtists(ctx, "id", "", "mbid", 10)
+			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
+
 		It("returns error for empty name in Images", func() {
 			imageRetriever := agent.(agents.ArtistImageRetriever)
 			_, err := imageRetriever.GetArtistImages(ctx, "id", "", "mbid")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
+
 		It("returns error for empty artistName in TopSongs", func() {
 			topSongsRetriever := agent.(agents.ArtistTopSongsRetriever)
-			_, err := topSongsRetriever.GetArtistTopSongs(ctx, "id", "", "mbid", 2)
-			Expect(err).To(HaveOccurred())
+			_, err := topSongsRetriever.GetArtistTopSongs(ctx, "id", "", "mbid", 10)
+			Expect(err).To(MatchError(agents.ErrNotFound))
 		})
 	})
 })
