@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -92,10 +93,17 @@ func precompilePlugin(state *pluginState, customRuntime func(context.Context) (w
 	close(state.ready)
 }
 
+const compilationTimeout = 30 * time.Second
+
 // createAgentFactory returns a factory that waits for precompilation before instantiating the agent.
 func createAgentFactory(state *pluginState, loader any, wasmPath, pluginName string, agentCtor func(any, string, string) agents.Interface) func(model.DataStore) agents.Interface {
 	return func(ds model.DataStore) agents.Interface {
-		<-state.ready
+		select {
+		case <-state.ready:
+		case <-time.After(compilationTimeout):
+			log.Error("Timed out waiting for plugin compilation", "name", pluginName, "path", wasmPath, "timeout", compilationTimeout)
+			return nil
+		}
 		if state.err != nil {
 			log.Error("Failed to compile plugin", "name", pluginName, "path", wasmPath, state.err)
 			return nil
@@ -156,13 +164,17 @@ func (m *Manager) autoRegisterPlugins() {
 			state := &pluginState{ready: make(chan struct{})}
 			go precompilePlugin(state, customRuntime, wasmPath, pluginName)
 
-			loaderAny, err := pt.loaderCtor(context.Background(), customRuntime, mc)
+			loader, err := pt.loaderCtor(context.Background(), customRuntime, mc)
 			if err != nil {
 				log.Error("Failed to create plugin loader", "service", service, "plugin", name, err)
 				continue
 			}
 			// Use createAgentFactory to wait for precompilation
-			agentFactory := createAgentFactory(state, loaderAny, wasmPath, pluginName, pt.agentCtor)
+			agentFactory := createAgentFactory(state, loader, wasmPath, pluginName, pt.agentCtor)
+			if agentFactory == nil {
+				log.Error("Failed to create agent factory", "service", service, "plugin", name)
+				continue
+			}
 			agents.Register(pluginName, agentFactory)
 			log.Info("Registered plugin agent", "name", pluginName, "service", service, "wasm", wasmPath)
 		}
