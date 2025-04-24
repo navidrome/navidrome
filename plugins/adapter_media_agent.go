@@ -4,13 +4,18 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/tetratelabs/wazero"
 )
 
 // NewWasmMediaAgent creates a new adapter for a MediaMetadataService plugin
 func NewWasmMediaAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
-	loader, _ := api.NewMediaMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	loader, err := api.NewMediaMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	if err != nil {
+		log.Error("Error creating media metadata service plugin", "plugin", pluginName, "path", wasmPath, err)
+		return nil
+	}
 	return &wasmMediaAgent{
 		wasmBasePlugin: &wasmBasePlugin[api.MediaMetadataService, *api.MediaMetadataServicePlugin]{
 			wasmPath: wasmPath,

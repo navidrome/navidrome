@@ -4,13 +4,18 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/tetratelabs/wazero"
 )
 
 func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
-	loader, _ := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	loader, err := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	if err != nil {
+		log.Error("Error creating scrobbler service plugin", "plugin", pluginName, "path", wasmPath, err)
+		return nil
+	}
 	return &wasmScrobblerPlugin{
 		wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService, *api.ScrobblerServicePlugin]{
 			wasmPath: wasmPath,
