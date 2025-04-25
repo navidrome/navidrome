@@ -1,7 +1,12 @@
 import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
 import { createHashHistory } from 'history'
-import { Admin as RAAdmin, Resource, useSetLocale, useRefresh } from 'react-admin'
+import {
+  Admin as RAAdmin,
+  Resource,
+  useSetLocale,
+  useRefresh,
+} from 'react-admin'
 import { HotKeys } from 'react-hotkeys'
 import dataProvider from './dataProvider'
 import authProvider from './authProvider'
@@ -158,7 +163,7 @@ const AppWithHotkeys = () => {
         })
         .catch((e) => {
           throw new Error(
-            'Cannot load language "' + config.defaultLanguage + '": ' + e
+            'Cannot load language "' + config.defaultLanguage + '": ' + e,
           )
         })
     }
