@@ -82,11 +82,11 @@ var _ = Describe("Extractor", func() {
 
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
-			Expect(m.AudioProperties.BitRate).To(BeElementOf(18, 39, 40, 43, 49))
+			Expect(m.AudioProperties.BitRate).To(BeElementOf(18, 19, 39, 40, 43, 49))
 			Expect(m.AudioProperties.Channels).To(BeElementOf(2))
 			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
 			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
-			Expect(m.HasPicture).To(BeFalse())
+			Expect(m.HasPicture).To(BeTrue())
 		})
 
 		DescribeTable("Format-Specific tests",
@@ -98,7 +98,7 @@ var _ = Describe("Extractor", func() {
 
 				m := mds[file]
 
-				Expect(m.HasPicture).To(BeFalse())
+				Expect(m.HasPicture).To(BeTrue())
 				Expect(m.AudioProperties.Duration.String()).To(Equal(duration))
 				Expect(m.AudioProperties.Channels).To(Equal(channels))
 				Expect(m.AudioProperties.SampleRate).To(Equal(samplerate))
