@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -19,6 +20,34 @@ var _ = Describe("Plugin CLI Commands", func() {
 	var origStdout *os.File
 	var outReader *os.File
 
+	// Helper to create a test plugin with the given name and details
+	createTestPlugin := func(name, author, version string, services []string) string {
+		pluginDir := filepath.Join(tempDir, name)
+		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+		// Create a properly formatted services JSON array
+		servicesJSON := `"` + strings.Join(services, `", "`) + `"`
+
+		manifest := `{
+			"name": "` + name + `",
+			"author": "` + author + `",
+			"version": "` + version + `",
+			"description": "Plugin for testing",
+			"services": [` + servicesJSON + `]
+		}`
+
+		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+		return pluginDir
+	}
+
+	// Helper to execute a command and return captured output
+	captureOutput := func(reader io.Reader) string {
+		stdOut.Close()
+		outputBytes, err := io.ReadAll(reader)
+		Expect(err).NotTo(HaveOccurred())
+		return string(outputBytes)
+	}
+
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		tempDir = GinkgoT().TempDir()
@@ -30,28 +59,20 @@ var _ = Describe("Plugin CLI Commands", func() {
 		// Create a command for testing
 		cmd = &cobra.Command{Use: "test"}
 
-		// Save original stdout
+		// Setup stdout capture
 		origStdout = os.Stdout
-
-		// Create a pipe to capture stdout
 		var err error
 		outReader, stdOut, err = os.Pipe()
 		Expect(err).NotTo(HaveOccurred())
-
-		// Replace stdout with our pipe
 		os.Stdout = stdOut
 
 		DeferCleanup(func() {
-			// Restore original stdout
 			os.Stdout = origStdout
 		})
 	})
 
 	AfterEach(func() {
-		// Restore original stdout after each test
 		os.Stdout = origStdout
-
-		// Close pipe
 		if stdOut != nil {
 			stdOut.Close()
 		}
@@ -62,41 +83,16 @@ var _ = Describe("Plugin CLI Commands", func() {
 
 	Describe("Plugin list command", func() {
 		It("should list installed plugins", func() {
-			// Create test plugin directories with manifest files
-			plugin1Dir := filepath.Join(tempDir, "plugin1")
-			Expect(os.MkdirAll(plugin1Dir, 0755)).To(Succeed())
-			manifest1 := `{
-				"name": "plugin1",
-				"author": "Test Author",
-				"version": "1.0.0",
-				"description": "Test Plugin 1",
-				"services": ["MediaMetadataService"]
-			}`
-			Expect(os.WriteFile(filepath.Join(plugin1Dir, "manifest.json"), []byte(manifest1), 0600)).To(Succeed())
+			// Create test plugins
+			createTestPlugin("plugin1", "Test Author", "1.0.0", []string{"MediaMetadataService"})
+			createTestPlugin("plugin2", "Another Author", "2.1.0", []string{"ScrobblerService"})
 
-			plugin2Dir := filepath.Join(tempDir, "plugin2")
-			Expect(os.MkdirAll(plugin2Dir, 0755)).To(Succeed())
-			manifest2 := `{
-				"name": "plugin2",
-				"author": "Another Author",
-				"version": "2.1.0",
-				"description": "Test Plugin 2",
-				"services": ["ScrobblerService"]
-			}`
-			Expect(os.WriteFile(filepath.Join(plugin2Dir, "manifest.json"), []byte(manifest2), 0600)).To(Succeed())
-
-			// Execute the list command that prints to stdout
+			// Execute command
 			pluginList(cmd, []string{})
 
-			// Make sure output is flushed
-			stdOut.Close()
+			// Verify output
+			output := captureOutput(outReader)
 
-			// Read the output
-			outputBytes, err := io.ReadAll(outReader)
-			Expect(err).NotTo(HaveOccurred())
-			output := string(outputBytes)
-
-			// Check output
 			Expect(output).To(ContainSubstring("plugin1"))
 			Expect(output).To(ContainSubstring("Test Author"))
 			Expect(output).To(ContainSubstring("1.0.0"))
@@ -111,35 +107,74 @@ var _ = Describe("Plugin CLI Commands", func() {
 
 	Describe("Plugin info command", func() {
 		It("should display information about an installed plugin", func() {
-			// Create test plugin directory with manifest
-			pluginDir := filepath.Join(tempDir, "test-plugin")
-			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-			manifest := `{
-				"name": "test-plugin",
-				"author": "Test Author",
-				"version": "1.0.0",
-				"description": "Plugin for testing",
-				"services": ["MediaMetadataService", "ScrobblerService"]
-			}`
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+			// Create test plugin with multiple services
+			createTestPlugin("test-plugin", "Test Author", "1.0.0",
+				[]string{"MediaMetadataService", "ScrobblerService"})
 
-			// Execute the info command
+			// Execute command
 			pluginInfo(cmd, []string{"test-plugin"})
 
-			// Make sure output is flushed
-			stdOut.Close()
+			// Verify output
+			output := captureOutput(outReader)
 
-			// Read the output
-			outputBytes, err := io.ReadAll(outReader)
-			Expect(err).NotTo(HaveOccurred())
-			output := string(outputBytes)
-
-			// Check output
 			Expect(output).To(ContainSubstring("Name:        test-plugin"))
 			Expect(output).To(ContainSubstring("Author:      Test Author"))
 			Expect(output).To(ContainSubstring("Version:     1.0.0"))
 			Expect(output).To(ContainSubstring("Description: Plugin for testing"))
 			Expect(output).To(ContainSubstring("Services:    MediaMetadataService, ScrobblerService"))
+		})
+	})
+
+	Describe("Plugin remove command", func() {
+		It("should remove a regular plugin directory", func() {
+			// Create test plugin
+			pluginDir := createTestPlugin("regular-plugin", "Test Author", "1.0.0",
+				[]string{"MediaMetadataService"})
+
+			// Execute command
+			pluginRemove(cmd, []string{"regular-plugin"})
+
+			// Verify output
+			output := captureOutput(outReader)
+			Expect(output).To(ContainSubstring("Plugin 'regular-plugin' removed successfully"))
+
+			// Verify directory is actually removed
+			_, err := os.Stat(pluginDir)
+			Expect(os.IsNotExist(err)).To(BeTrue())
+		})
+
+		It("should remove only the symlink for a development plugin", func() {
+			// Create a real source directory
+			sourceDir := filepath.Join(GinkgoT().TempDir(), "dev-plugin-source")
+			Expect(os.MkdirAll(sourceDir, 0755)).To(Succeed())
+
+			manifest := `{
+				"name": "dev-plugin",
+				"author": "Dev Author",
+				"version": "0.1.0",
+				"description": "Development plugin for testing",
+				"services": ["ScrobblerService"]
+			}`
+			Expect(os.WriteFile(filepath.Join(sourceDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+
+			// Create a symlink in the plugins directory
+			symlinkPath := filepath.Join(tempDir, "dev-plugin")
+			Expect(os.Symlink(sourceDir, symlinkPath)).To(Succeed())
+
+			// Execute command
+			pluginRemove(cmd, []string{"dev-plugin"})
+
+			// Verify output
+			output := captureOutput(outReader)
+			Expect(output).To(ContainSubstring("Development plugin symlink 'dev-plugin' removed successfully"))
+			Expect(output).To(ContainSubstring("target directory preserved"))
+
+			// Verify the symlink is removed but source directory exists
+			_, err := os.Lstat(symlinkPath)
+			Expect(os.IsNotExist(err)).To(BeTrue())
+
+			_, err = os.Stat(sourceDir)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

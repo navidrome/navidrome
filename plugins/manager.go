@@ -148,10 +148,67 @@ func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
 	return true
 }
 
+// createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
+// and instantiates the required host functions
+func createCustomRuntime(cache wazero.CompilationCache) api.WazeroNewRuntime {
+	return func(ctx context.Context) (wazero.Runtime, error) {
+		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
+		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
+			return nil, err
+		}
+		if err := host.Instantiate(ctx, r, &HttpService{}); err != nil {
+			return nil, err
+		}
+		return r, nil
+	}
+}
+
+// registerPlugin adds a plugin to the registry with the given parameters
+// Used internally by ScanPlugins to register plugins
+func (m *Manager) registerPlugin(name, pluginDir, wasmPath string, manifest *PluginManifest, service string, cache wazero.CompilationCache, logAction string) {
+	// Create custom runtime function
+	customRuntime := createCustomRuntime(cache)
+
+	// Configure module and determine plugin name
+	mc := newWazeroModuleConfig()
+	pluginName := name
+	if len(manifest.Services) > 1 {
+		pluginName = name + "_" + service
+	}
+
+	// Check if it's a symlink, indicating development mode
+	isSymlink := false
+	if fileInfo, err := os.Lstat(pluginDir); err == nil {
+		isSymlink = fileInfo.Mode()&os.ModeSymlink != 0
+	}
+
+	// Start pre-compilation of WASM module in background
+	state := &pluginState{ready: make(chan struct{})}
+	go precompilePlugin(state, customRuntime, wasmPath, pluginName)
+
+	// Store plugin info
+	m.mu.Lock()
+	m.plugins[pluginName] = &PluginInfo{
+		Name:      pluginName,
+		Path:      pluginDir,
+		Services:  []string{service},
+		WasmPath:  wasmPath,
+		Manifest:  manifest,
+		State:     state,
+		Runtime:   customRuntime,
+		ModConfig: mc,
+	}
+	m.mu.Unlock()
+
+	log.Info(logAction+" plugin", "name", pluginName, "service", service, "wasm", wasmPath, "dev_mode", isSymlink)
+}
+
 // ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
 func (m *Manager) ScanPlugins() {
 	// Get plugins directory from config and read its contents
 	root := conf.Server.Plugins.Folder
+	log.Debug("Scanning plugins folder", "root", root)
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		log.Error("Failed to read plugins folder", "folder", root, err)
@@ -166,26 +223,90 @@ func (m *Manager) ScanPlugins() {
 	m.mu.Unlock()
 
 	// Process each directory in the plugins folder
+	log.Debug("Found entries", "count", len(entries))
 	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
 		name := entry.Name()
 		pluginDir := filepath.Join(root, name)
+
+		// First check if it's a hidden file (starting with .)
+		if name[0] == '.' {
+			log.Debug("Skipping hidden entry", "name", name)
+			continue
+		}
+
+		// Check if it's a symlink
+		info, err := os.Lstat(pluginDir)
+		if err != nil {
+			log.Error("Failed to stat entry", "path", pluginDir, err)
+			continue
+		}
+
+		isSymlink := info.Mode()&os.ModeSymlink != 0
+		isDir := info.IsDir()
+
+		log.Debug("Processing entry", "name", name, "isDir", isDir, "isSymlink", isSymlink)
+
+		// Skip if not a directory or symlink
+		if !isDir && !isSymlink {
+			log.Debug("Skipping non-directory, non-symlink entry", "name", name)
+			continue
+		}
+
+		// Check if it's a symlink and resolve it if needed
+		if isSymlink {
+			// Resolve the symlink target
+			targetDir, err := os.Readlink(pluginDir)
+			if err != nil {
+				log.Error("Failed to resolve symlink", "path", pluginDir, err)
+				continue
+			}
+			log.Debug("Processing symlinked plugin directory", "name", name, "path", pluginDir, "target", targetDir)
+
+			// If target is a relative path, make it absolute
+			if !filepath.IsAbs(targetDir) {
+				targetDir = filepath.Join(filepath.Dir(pluginDir), targetDir)
+			}
+
+			// Update the plugin directory to the resolved target
+			pluginDir = targetDir
+			log.Debug("Updated plugin directory to resolved target", "name", name, "path", pluginDir)
+
+			// Verify that the target is a directory
+			targetInfo, err := os.Stat(pluginDir)
+			if err != nil {
+				log.Error("Failed to stat symlink target", "path", pluginDir, err)
+				continue
+			}
+
+			if !targetInfo.IsDir() {
+				log.Debug("Symlink target is not a directory, skipping", "name", name, "target", pluginDir)
+				continue
+			}
+		}
+
 		wasmPath := filepath.Join(pluginDir, "plugin.wasm")
+		log.Debug("Checking for plugin.wasm", "wasmPath", wasmPath)
 
 		// Skip if no WASM file found
 		if _, err := os.Stat(wasmPath); err != nil {
-			log.Debug("No plugin.wasm found in plugin directory", "plugin", name, "path", wasmPath)
+			log.Debug("No plugin.wasm found in plugin directory", "plugin", name, "path", wasmPath, "error", err)
 			continue
 		}
 
 		// Load and validate plugin manifest
+		manifestPath := filepath.Join(pluginDir, "manifest.json")
+		log.Debug("Loading manifest", "manifestPath", manifestPath)
 		manifest, err := LoadManifest(pluginDir)
-		if err != nil || len(manifest.Services) == 0 {
-			log.Warn("No manifest or no services found in plugin directory", "plugin", name, "path", pluginDir, err)
+		if err != nil {
+			log.Error("Failed to load manifest", "path", manifestPath, err)
 			continue
 		}
+
+		if len(manifest.Services) == 0 {
+			log.Warn("No services found in plugin manifest", "plugin", name, "path", pluginDir)
+			continue
+		}
+		log.Debug("Manifest loaded successfully", "name", manifest.Name, "services", manifest.Services)
 
 		// Process each service defined in the manifest
 		for _, service := range manifest.Services {
@@ -195,45 +316,7 @@ func (m *Manager) ScanPlugins() {
 				continue
 			}
 
-			// Create a custom WASM runtime with caching and required host functions
-			customRuntime := func(ctx context.Context) (wazero.Runtime, error) {
-				runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
-				r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
-				if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
-					return nil, err
-				}
-				if err := host.Instantiate(ctx, r, &HttpService{}); err != nil {
-					return nil, err
-				}
-				return r, nil
-			}
-
-			// Configure module and determine plugin name
-			mc := newWazeroModuleConfig()
-			pluginName := name
-			if len(manifest.Services) > 1 {
-				pluginName = name + "_" + service
-			}
-
-			// Start pre-compilation of WASM module in background
-			state := &pluginState{ready: make(chan struct{})}
-			go precompilePlugin(state, customRuntime, wasmPath, pluginName)
-
-			// Store plugin info
-			m.mu.Lock()
-			m.plugins[pluginName] = &PluginInfo{
-				Name:      pluginName,
-				Path:      pluginDir,
-				Services:  []string{service},
-				WasmPath:  wasmPath,
-				Manifest:  manifest,
-				State:     state,
-				Runtime:   customRuntime,
-				ModConfig: mc,
-			}
-			m.mu.Unlock()
-
-			log.Info("Discovered plugin", "name", pluginName, "service", service, "wasm", wasmPath)
+			m.registerPlugin(name, pluginDir, wasmPath, manifest, service, cache, "Discovered")
 		}
 	}
 }

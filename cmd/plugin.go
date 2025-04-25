@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -64,7 +65,23 @@ func init() {
 		Run:   pluginUpdate,
 	}
 
-	pluginCmd.AddCommand(listCmd, infoCmd, installCmd, removeCmd, updateCmd)
+	refreshCmd := &cobra.Command{
+		Use:   "refresh [pluginName]",
+		Short: "Reload a plugin without restarting Navidrome",
+		Long:  "Reload and recompile a plugin without needing to restart Navidrome",
+		Args:  cobra.ExactArgs(1),
+		Run:   pluginRefresh,
+	}
+
+	devCmd := &cobra.Command{
+		Use:   "dev [folder_path]",
+		Short: "Create symlink to development folder",
+		Long:  "Create a symlink from a plugin development folder to the plugins directory for easier development",
+		Args:  cobra.ExactArgs(1),
+		Run:   pluginDev,
+	}
+
+	pluginCmd.AddCommand(listCmd, infoCmd, installCmd, removeCmd, updateCmd, refreshCmd, devCmd)
 	rootCmd.AddCommand(pluginCmd)
 }
 
@@ -84,14 +101,60 @@ func pluginList(cmd *cobra.Command, args []string) {
 	}
 
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		name := entry.Name()
+
+		// Skip hidden files
+		if name[0] == '.' {
 			continue
 		}
 
-		pluginDir := filepath.Join(pluginsDir, entry.Name())
+		pluginPath := filepath.Join(pluginsDir, name)
+
+		// Get file info to check if it's a directory or symlink
+		info, err := os.Lstat(pluginPath)
+		if err != nil {
+			log.Error("Failed to stat entry", "path", pluginPath, err)
+			continue
+		}
+
+		isSymlink := info.Mode()&os.ModeSymlink != 0
+		isDir := info.IsDir()
+
+		// Skip if not a directory or symlink
+		if !isDir && !isSymlink {
+			continue
+		}
+
+		// If it's a symlink, resolve it
+		pluginDir := pluginPath
+		if isSymlink {
+			targetDir, err := os.Readlink(pluginPath)
+			if err != nil {
+				log.Error("Failed to resolve symlink", "path", pluginPath, err)
+				continue
+			}
+
+			// If target is a relative path, make it absolute
+			if !filepath.IsAbs(targetDir) {
+				targetDir = filepath.Join(filepath.Dir(pluginPath), targetDir)
+			}
+
+			// Verify that the target is a directory
+			targetInfo, err := os.Stat(targetDir)
+			if err != nil {
+				log.Error("Failed to stat symlink target", "path", targetDir, err)
+				continue
+			}
+
+			if !targetInfo.IsDir() {
+				log.Debug("Symlink target is not a directory, skipping", "name", name, "target", targetDir)
+				continue
+			}
+		}
+
 		manifest, err := plugins.LoadManifest(pluginDir)
 		if err != nil {
-			fmt.Fprintf(w, "%s\tERROR\tERROR\tERROR\t%v\n", entry.Name(), err)
+			fmt.Fprintf(w, "%s\tERROR\tERROR\tERROR\t%v\n", name, err)
 			continue
 		}
 
@@ -101,8 +164,14 @@ func pluginList(cmd *cobra.Command, args []string) {
 			services += ", " + manifest.Services[i]
 		}
 
+		// Mark symlinks with an indicator
+		nameDisplay := manifest.Name
+		if isSymlink {
+			nameDisplay = nameDisplay + " (dev)"
+		}
+
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-			manifest.Name,
+			nameDisplay,
 			cmp.Or(manifest.Author, "-"),
 			cmp.Or(manifest.Version, "-"),
 			services,
@@ -229,18 +298,39 @@ func pluginRemove(cmd *cobra.Command, args []string) {
 		log.Fatal("Plugin not found", "name", pluginName, "path", pluginDir)
 	}
 
-	// Check if it's a directory
-	info, err := os.Stat(pluginDir)
-	if err != nil || !info.IsDir() {
-		log.Fatal("Not a valid plugin directory", "path", pluginDir)
+	// Check if it's a directory or a symlink
+	info, err := os.Lstat(pluginDir)
+	if err != nil {
+		log.Fatal("Failed to stat plugin", "name", pluginName, "path", pluginDir, err)
 	}
 
-	// Remove the plugin directory
-	if err := os.RemoveAll(pluginDir); err != nil {
-		log.Fatal("Failed to remove plugin", "name", pluginName, err)
+	isSymlink := info.Mode()&os.ModeSymlink != 0
+	isDir := info.IsDir()
+
+	if !isDir && !isSymlink {
+		log.Fatal("Not a valid plugin directory or symlink", "path", pluginDir)
 	}
 
-	fmt.Printf("Plugin '%s' removed successfully\n", pluginName)
+	if isSymlink {
+		// For symlinked plugins (dev mode), just remove the symlink
+		targetDir, err := os.Readlink(pluginDir)
+		if err != nil {
+			log.Error("Failed to resolve symlink", "path", pluginDir, err)
+		} else {
+			log.Debug("Removing symlink only, keeping target directory", "symlink", pluginDir, "target", targetDir)
+		}
+
+		if err := os.Remove(pluginDir); err != nil {
+			log.Fatal("Failed to remove plugin symlink", "name", pluginName, err)
+		}
+		fmt.Printf("Development plugin symlink '%s' removed successfully (target directory preserved)\n", pluginName)
+	} else {
+		// For regular plugins, remove the entire directory
+		if err := os.RemoveAll(pluginDir); err != nil {
+			log.Fatal("Failed to remove plugin directory", "name", pluginName, err)
+		}
+		fmt.Printf("Plugin '%s' removed successfully\n", pluginName)
+	}
 }
 
 func pluginUpdate(cmd *cobra.Command, args []string) {
@@ -342,4 +432,148 @@ func calculateSHA256(filePath string) string {
 	}
 
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func pluginRefresh(cmd *cobra.Command, args []string) {
+	pluginName := args[0]
+	pluginsDir := conf.Server.Plugins.Folder
+	pluginDir := filepath.Join(pluginsDir, pluginName)
+
+	// Check if plugin exists
+	if !utils.FileExists(pluginDir) {
+		log.Fatal("Plugin not found", "name", pluginName, "path", pluginDir)
+	}
+
+	// Check if it's a directory or a symlink to a directory
+	lstat, err := os.Lstat(pluginDir)
+	if err != nil {
+		log.Fatal("Failed to stat plugin", "name", pluginName, "path", pluginDir, err)
+	}
+
+	isSymlink := lstat.Mode()&os.ModeSymlink != 0
+
+	// If it's a symlink, verify the target is a directory
+	if isSymlink {
+		// Resolve the symlink target
+		targetDir, err := os.Readlink(pluginDir)
+		if err != nil {
+			log.Fatal("Failed to resolve symlink", "path", pluginDir, err)
+		}
+
+		// If target is a relative path, make it absolute
+		if !filepath.IsAbs(targetDir) {
+			targetDir = filepath.Join(filepath.Dir(pluginDir), targetDir)
+		}
+
+		// Verify the target exists and is a directory
+		targetInfo, err := os.Stat(targetDir)
+		if err != nil {
+			log.Fatal("Failed to access symlink target", "target", targetDir, err)
+		}
+
+		if !targetInfo.IsDir() {
+			log.Fatal("Symlink target is not a directory", "path", targetDir)
+		}
+
+		log.Debug("Processing symlinked plugin", "name", pluginName, "link", pluginDir, "target", targetDir)
+	} else if !lstat.IsDir() {
+		// If it's not a symlink and not a directory, it's invalid
+		log.Fatal("Not a valid plugin directory", "path", pluginDir)
+	}
+
+	fmt.Printf("Refreshing plugin '%s'...\n", pluginName)
+
+	// Get the plugin manager
+	mgr := plugins.GetManager()
+
+	// Scan all plugins (this will clear and recompile all plugins including the target one)
+	log.Debug("Scanning plugins directory", "path", pluginsDir)
+	mgr.ScanPlugins()
+
+	log.Info("Waiting for plugin compilation to complete", "name", pluginName)
+
+	// Load the plugin to wait for compilation to complete
+	plugin := mgr.LoadPlugin(pluginName)
+	if plugin == nil {
+		log.Fatal("Failed to load refreshed plugin - compilation may have failed", "name", pluginName)
+	}
+
+	log.Info("Plugin compilation completed successfully", "name", pluginName)
+	fmt.Printf("Plugin '%s' refreshed successfully\n", pluginName)
+}
+
+func pluginDev(cmd *cobra.Command, args []string) {
+	sourcePath, err := filepath.Abs(args[0])
+	if err != nil {
+		log.Fatal("Invalid path", "path", args[0], err)
+	}
+	pluginsDir := conf.Server.Plugins.Folder
+
+	// Check if source folder exists
+	sourceInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		log.Fatal("Source folder not found", "path", sourcePath, err)
+	}
+	if !sourceInfo.IsDir() {
+		log.Fatal("Source path is not a directory", "path", sourcePath)
+	}
+
+	// Validate that the source folder has the required plugin files
+	manifestPath := filepath.Join(sourcePath, "manifest.json")
+	if !utils.FileExists(manifestPath) {
+		log.Fatal("Source folder missing manifest.json", "path", sourcePath)
+	}
+
+	// Load and validate manifest to extract plugin name
+	manifest, err := plugins.LoadManifest(sourcePath)
+	if err != nil {
+		log.Fatal("Failed to load plugin manifest", "path", manifestPath, err)
+	}
+
+	// Use the plugin name from the manifest if available
+	pluginName := manifest.Name
+	if pluginName == "" {
+		// Fall back to directory name if manifest doesn't have a name
+		pluginName = filepath.Base(sourcePath)
+	}
+
+	targetPath := filepath.Join(pluginsDir, pluginName)
+
+	// Check if target already exists
+	if utils.FileExists(targetPath) {
+		// Check if it's already a symlink to our source
+		existingLink, err := os.Readlink(targetPath)
+		if err == nil && existingLink == sourcePath {
+			fmt.Printf("Symlink already exists and points to the correct source\n")
+			return
+		}
+
+		// Handle case where target exists but is not a symlink to our source
+		fmt.Printf("Target path '%s' already exists.\n", targetPath)
+		fmt.Print("Do you want to replace it? (y/N): ")
+		var response string
+		fmt.Scanln(&response)
+		if strings.ToLower(response) != "y" {
+			fmt.Println("Operation canceled")
+			return
+		}
+
+		// Remove existing target
+		if err := os.RemoveAll(targetPath); err != nil {
+			log.Fatal("Failed to remove existing target", "path", targetPath, err)
+		}
+	}
+
+	// Create target directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		log.Fatal("Failed to create plugins directory", "path", filepath.Dir(targetPath), err)
+	}
+
+	// Create the symlink
+	if err := os.Symlink(sourcePath, targetPath); err != nil {
+		log.Fatal("Failed to create symlink", "source", sourcePath, "target", targetPath, err)
+	}
+
+	fmt.Printf("Development symlink created: '%s' -> '%s'\n", targetPath, sourcePath)
+	fmt.Println("Plugin can be refreshed with: navidrome plugin refresh", pluginName)
 }

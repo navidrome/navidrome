@@ -118,7 +118,34 @@ navidrome plugin remove plugin-name
 
 # Update an existing plugin
 navidrome plugin update /path/to/updated-plugin.ndp
+
+# Reload a plugin without restarting Navidrome
+navidrome plugin refresh plugin-name
+
+# Create a symlink to a plugin development folder
+navidrome plugin dev /path/to/dev/folder
 ```
+
+### Plugin Development
+
+The `dev` and `refresh` commands are particularly useful for plugin development:
+
+#### Development Workflow
+
+1. Create a plugin development folder with required files (`manifest.json` and `plugin.wasm`)
+2. Run `navidrome plugin dev /path/to/your/plugin` to create a symlink in the plugins directory
+3. Make changes to your plugin code
+4. Recompile the WebAssembly module
+5. Run `navidrome plugin refresh your-plugin-name` to reload the plugin without restarting Navidrome
+
+The `dev` command creates a symlink from your development folder to the plugins directory, allowing you to edit the plugin files directly in your development environment without copying them to the plugins directory after each change.
+
+The refresh process:
+
+- Reloads the plugin manifest
+- Recompiles the WebAssembly module
+- Updates the plugin registration
+- Makes the updated plugin immediately available to Navidrome
 
 ### Plugin Security
 
