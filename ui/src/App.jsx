@@ -82,6 +82,25 @@ const App = () => (
 )
 
 const Admin = (props) => {
+  const setLocale = useSetLocale()
+  const refresh = useRefresh()
+  useEffect(() => {
+    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
+      retrieveTranslation(config.defaultLanguage)
+        .then(() => {
+          setLocale(config.defaultLanguage).then(() => {
+            localStorage.setItem('locale', config.defaultLanguage)
+          })
+          refresh(true)
+        })
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error(
+            'Cannot load language "' + config.defaultLanguage + '": ' + e,
+          )
+        })
+    }
+  }, [setLocale, refresh])
   useChangeThemeColor()
   /* eslint-disable react/jsx-key */
   return (
@@ -149,25 +168,6 @@ const Admin = (props) => {
 }
 
 const AppWithHotkeys = () => {
-  // Initialize default language on app mount
-  const setLocale = useSetLocale()
-  const refresh = useRefresh()
-  useEffect(() => {
-    if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
-      retrieveTranslation(config.defaultLanguage)
-        .then(() => {
-          setLocale(config.defaultLanguage).then(() => {
-            localStorage.setItem('locale', config.defaultLanguage)
-          })
-          refresh(true)
-        })
-        .catch((e) => {
-          throw new Error(
-            'Cannot load language "' + config.defaultLanguage + '": ' + e,
-          )
-        })
-    }
-  }, [setLocale, refresh])
   let language = localStorage.getItem('locale') || 'en'
   document.documentElement.lang = language
   if (config.enableSharing && shareInfo) {
