@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go-plugin v0.1.0
 // 	protoc               v5.29.3
-// source: host/http.proto
+// source: host/host.proto
 
 package host
 

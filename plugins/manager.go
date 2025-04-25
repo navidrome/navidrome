@@ -1,7 +1,7 @@
 package plugins
 
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/host.proto
 
 import (
 	"context"
