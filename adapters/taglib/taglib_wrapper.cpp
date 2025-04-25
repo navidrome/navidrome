@@ -243,11 +243,6 @@ char has_cover(const TagLib::FileRef f) {
   else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
     const TagLib::ASF::Tag *tag{ asfFile->tag() };
     hasCover = tag && asfFile->tag()->attributeListMap().contains("WM/Picture");
-  } else if (TagLib::WavPack::File * wavpackFile{ dynamic_cast<TagLib::WavPack::File*>(f.file())}) {
-    if (wavpackFile->hasAPETag()) {
-      const auto& itemListMap { wavpackFile->APETag()->itemListMap() };
-      hasCover = itemListMap.contains("COVER ART (FRONT)");
-    }
   }
 
   return hasCover;
