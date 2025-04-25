@@ -87,11 +87,12 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 
 var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
-		"id":       idFilter("media_file"),
-		"title":    fullTextFilter("media_file"),
-		"starred":  booleanFilter,
-		"genre_id": tagIDFilter,
-		"missing":  booleanFilter,
+		"id":         idFilter("media_file"),
+		"title":      fullTextFilter("media_file"),
+		"starred":    booleanFilter,
+		"genre_id":   tagIDFilter,
+		"missing":    booleanFilter,
+		"artists_id": artistFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
