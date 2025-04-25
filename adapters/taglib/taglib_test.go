@@ -82,15 +82,15 @@ var _ = Describe("Extractor", func() {
 
 			// TabLib 1.12 returns 18, previous versions return 39.
 			// See https://github.com/taglib/taglib/commit/2f238921824741b2cfe6fbfbfc9701d9827ab06b
-			Expect(m.AudioProperties.BitRate).To(BeElementOf(18, 39, 40, 43, 49))
+			Expect(m.AudioProperties.BitRate).To(BeElementOf(18, 19, 39, 40, 43, 49))
 			Expect(m.AudioProperties.Channels).To(BeElementOf(2))
 			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
 			Expect(m.AudioProperties.SampleRate).To(BeElementOf(8000))
-			Expect(m.HasPicture).To(BeFalse())
+			Expect(m.HasPicture).To(BeTrue())
 		})
 
 		DescribeTable("Format-Specific tests",
-			func(file, duration string, channels, samplerate, bitdepth int, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool) {
+			func(file, duration string, channels, samplerate, bitdepth int, albumGain, albumPeak, trackGain, trackPeak string, id3Lyrics bool, image bool) {
 				file = "tests/fixtures/" + file
 				mds, err := e.Parse(file)
 				Expect(err).NotTo(HaveOccurred())
@@ -98,7 +98,7 @@ var _ = Describe("Extractor", func() {
 
 				m := mds[file]
 
-				Expect(m.HasPicture).To(BeFalse())
+				Expect(m.HasPicture).To(Equal(image))
 				Expect(m.AudioProperties.Duration.String()).To(Equal(duration))
 				Expect(m.AudioProperties.Channels).To(Equal(channels))
 				Expect(m.AudioProperties.SampleRate).To(Equal(samplerate))
@@ -168,24 +168,24 @@ var _ = Describe("Extractor", func() {
 			},
 
 			// ffmpeg -f lavfi -i "sine=frequency=1200:duration=1" test.flac
-			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, 16, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false),
+			Entry("correctly parses flac tags", "test.flac", "1s", 1, 44100, 16, "+4.06 dB", "0.12496948", "+4.06 dB", "0.12496948", false, true),
 
-			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false),
-			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false),
-			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, 0, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false),
+			Entry("correctly parses m4a (aac) gain tags", "01 Invisible (RED) Edit Version.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false, true),
+			Entry("correctly parses m4a (aac) gain tags (uppercase)", "test.m4a", "1.04s", 2, 44100, 16, "0.37", "0.48", "0.37", "0.48", false, true),
+			Entry("correctly parses ogg (vorbis) tags", "test.ogg", "1.04s", 2, 8000, 0, "+7.64 dB", "0.11772506", "+7.64 dB", "0.11772506", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=900:duration=1" test.wma
 			// Weird note: for the tag parsing to work, the lyrics are actually stored in the reverse order
-			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false),
+			Entry("correctly parses wma/asf tags", "test.wma", "1.02s", 1, 44100, 16, "3.27 dB", "0.132914", "3.27 dB", "0.132914", false, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=800:duration=1" test.wv
-			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false),
+			Entry("correctly parses wv (wavpak) tags", "test.wv", "1s", 1, 44100, 16, "3.43 dB", "0.125061", "3.43 dB", "0.125061", false, false),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" test.wav
-			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, 16, "3.06 dB", "0.125056", "3.06 dB", "0.125056", true),
+			Entry("correctly parses wav tags", "test.wav", "1s", 1, 44100, 16, "3.06 dB", "0.125056", "3.06 dB", "0.125056", true, true),
 
 			// ffmpeg -f lavfi -i "sine=frequency=1400:duration=1" test.aiff
-			Entry("correctly parses aiff tags", "test.aiff", "1s", 1, 44100, 16, "2.00 dB", "0.124972", "2.00 dB", "0.124972", true),
+			Entry("correctly parses aiff tags", "test.aiff", "1s", 1, 44100, 16, "2.00 dB", "0.124972", "2.00 dB", "0.124972", true, true),
 		)
 
 		// Skip these tests when running as root
