@@ -92,6 +92,7 @@ type configOptions struct {
 	Backup                          backupOptions
 	PID                             pidOptions
 	Inspect                         inspectOptions
+	DLNAServer                      dlnaServerOptions
 	Subsonic                        subsonicOptions
 
 	Agents       string
@@ -201,6 +202,10 @@ type inspectOptions struct {
 	MaxRequests    int
 	BacklogLimit   int
 	BacklogTimeout int
+}
+
+type dlnaServerOptions struct {
+	Enabled bool
 }
 
 var (
@@ -527,6 +532,8 @@ func init() {
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
+
+	viper.SetDefault("dlnaserver.enabled", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
