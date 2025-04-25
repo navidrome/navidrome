@@ -61,15 +61,96 @@ plugins/
 │   └── manifest.json
 ```
 
+## Plugin Package Format (.ndp)
+
+Navidrome Plugin Packages (.ndp) are ZIP archives that bundle all files needed for a plugin. They can be installed using the `navidrome plugin install` command.
+
+### Package Structure
+
+A valid .ndp file must contain:
+
+```
+plugin-name.ndp (ZIP file)
+├── plugin.wasm         # Required: The compiled WebAssembly module
+├── manifest.json       # Required: Plugin manifest with metadata
+├── README.md           # Optional: Documentation
+└── LICENSE             # Optional: License information
+```
+
+### Creating a Plugin Package
+
+To create a plugin package:
+
+1. Compile your plugin to WebAssembly (plugin.wasm)
+2. Create a manifest.json file with required fields
+3. Include any documentation files you want to bundle
+4. Create a ZIP archive of all files
+5. Rename the ZIP file to have a .ndp extension
+
+### Installing a Plugin Package
+
+Use the Navidrome CLI to install plugins:
+
+```bash
+navidrome plugin install /path/to/plugin-name.ndp
+```
+
+This will extract the plugin to a directory in your configured plugins folder.
+
+## Plugin Management
+
+Navidrome provides a command-line interface for managing plugins. To use these commands, the plugin system must be enabled in your configuration.
+
+### Available Commands
+
+```bash
+# List all installed plugins
+navidrome plugin list
+
+# Show detailed information about a plugin package or installed plugin
+navidrome plugin info plugin-name-or-package.ndp
+
+# Install a plugin from a .ndp file
+navidrome plugin install /path/to/plugin.ndp
+
+# Remove an installed plugin
+navidrome plugin remove plugin-name
+
+# Update an existing plugin
+navidrome plugin update /path/to/updated-plugin.ndp
+```
+
+### Plugin Security
+
+Plugins are executed in a WebAssembly sandbox, but for additional security:
+
+1. The plugins folder is configured with restricted permissions (0700) accessible only by the user running Navidrome
+2. All plugin files are also restricted with appropriate permissions
+3. Plugins can only access resources through the provided host functions
+
+Always ensure you trust the source of any plugins you install, as they run with the same user permissions as Navidrome itself.
+
 ## Plugin Manifest
 
-Every plugin must provide a `manifest.json` file that declares which services it implements:
+Every plugin must provide a `manifest.json` file that declares metadata and which services it implements:
 
 ```json
 {
+  "name": "my-awesome-plugin",
+  "author": "Your Name",
+  "version": "1.0.0",
+  "description": "A plugin that does awesome things",
   "services": ["MediaMetadataService", "ScrobblerService"]
 }
 ```
+
+Required fields:
+
+- `name`: The name of the plugin
+- `services`: Array of service types the plugin implements
+- `author`: The creator or organization behind the plugin
+- `version`: Version identifier (recommended to follow semantic versioning)
+- `description`: A brief description of what the plugin does
 
 Currently supported service types:
 

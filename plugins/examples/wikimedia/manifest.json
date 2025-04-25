@@ -1,3 +1,7 @@
 {
+  "name": "wikimedia",
+  "author": "Navidrome",
+  "version": "1.0.0",
+  "description": "Artist information and images from Wikimedia Commons",
   "services": ["MediaMetadataService"]
 }

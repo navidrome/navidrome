@@ -257,6 +257,11 @@ func Load(noConfigDump bool) {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
 		os.Exit(1)
 	}
+	// Set restrictive permissions on plugins folder (user only)
+	if err := os.Chmod(Server.Plugins.Folder, 0700); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error setting plugins folder permissions:", err)
+		os.Exit(1)
+	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
