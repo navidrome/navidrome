@@ -966,3 +966,176 @@ func (p *scrobblerServicePlugin) Scrobble(ctx context.Context, request *Scrobble
 
 	return response, nil
 }
+
+const TimerCallbackServicePluginAPIVersion = 1
+
+type TimerCallbackServicePlugin struct {
+	newRuntime   func(context.Context) (wazero.Runtime, error)
+	moduleConfig wazero.ModuleConfig
+}
+
+func NewTimerCallbackServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*TimerCallbackServicePlugin, error) {
+	o := &WazeroConfig{
+		newRuntime:   DefaultWazeroRuntime(),
+		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return &TimerCallbackServicePlugin{
+		newRuntime:   o.newRuntime,
+		moduleConfig: o.moduleConfig,
+	}, nil
+}
+
+type timerCallbackService interface {
+	Close(ctx context.Context) error
+	TimerCallbackService
+}
+
+func (p *TimerCallbackServicePlugin) Load(ctx context.Context, pluginPath string) (timerCallbackService, error) {
+	b, err := os.ReadFile(pluginPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new runtime so that multiple modules will not conflict
+	r, err := p.newRuntime(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compile the WebAssembly module using the default configuration.
+	code, err := r.CompileModule(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+
+	// InstantiateModule runs the "_start" function, WASI's "main".
+	module, err := r.InstantiateModule(ctx, code, p.moduleConfig)
+	if err != nil {
+		// Note: Most compilers do not exit the module after running "_start",
+		// unless there was an Error. This allows you to call exported functions.
+		if exitErr, ok := err.(*sys.ExitError); ok && exitErr.ExitCode() != 0 {
+			return nil, fmt.Errorf("unexpected exit_code: %d", exitErr.ExitCode())
+		} else if !ok {
+			return nil, err
+		}
+	}
+
+	// Compare API versions with the loading plugin
+	apiVersion := module.ExportedFunction("timer_callback_service_api_version")
+	if apiVersion == nil {
+		return nil, errors.New("timer_callback_service_api_version is not exported")
+	}
+	results, err := apiVersion.Call(ctx)
+	if err != nil {
+		return nil, err
+	} else if len(results) != 1 {
+		return nil, errors.New("invalid timer_callback_service_api_version signature")
+	}
+	if results[0] != TimerCallbackServicePluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", TimerCallbackServicePluginAPIVersion, results[0])
+	}
+
+	ontimercallback := module.ExportedFunction("timer_callback_service_on_timer_callback")
+	if ontimercallback == nil {
+		return nil, errors.New("timer_callback_service_on_timer_callback is not exported")
+	}
+
+	malloc := module.ExportedFunction("malloc")
+	if malloc == nil {
+		return nil, errors.New("malloc is not exported")
+	}
+
+	free := module.ExportedFunction("free")
+	if free == nil {
+		return nil, errors.New("free is not exported")
+	}
+	return &timerCallbackServicePlugin{
+		runtime:         r,
+		module:          module,
+		malloc:          malloc,
+		free:            free,
+		ontimercallback: ontimercallback,
+	}, nil
+}
+
+func (p *timerCallbackServicePlugin) Close(ctx context.Context) (err error) {
+	if r := p.runtime; r != nil {
+		r.Close(ctx)
+	}
+	return
+}
+
+type timerCallbackServicePlugin struct {
+	runtime         wazero.Runtime
+	module          api.Module
+	malloc          api.Function
+	free            api.Function
+	ontimercallback api.Function
+}
+
+func (p *timerCallbackServicePlugin) OnTimerCallback(ctx context.Context, request *TimerCallbackRequest) (*TimerCallbackResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.ontimercallback.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(TimerCallbackResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}

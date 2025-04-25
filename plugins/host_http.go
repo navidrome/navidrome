@@ -7,29 +7,29 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/plugins/host"
+	hosthttp "github.com/navidrome/navidrome/plugins/host/http"
 )
 
-type HttpService struct {
+type HttpServiceImpl struct {
 }
 
-func (s *HttpService) Get(ctx context.Context, req *host.HttpRequest) (*host.HttpResponse, error) {
+func (s *HttpServiceImpl) Get(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	return doHttp(ctx, http.MethodGet, req)
 }
 
-func (s *HttpService) Post(ctx context.Context, req *host.HttpRequest) (*host.HttpResponse, error) {
+func (s *HttpServiceImpl) Post(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	return doHttp(ctx, http.MethodPost, req)
 }
 
-func (s *HttpService) Put(ctx context.Context, req *host.HttpRequest) (*host.HttpResponse, error) {
+func (s *HttpServiceImpl) Put(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	return doHttp(ctx, http.MethodPut, req)
 }
 
-func (s *HttpService) Delete(ctx context.Context, req *host.HttpRequest) (*host.HttpResponse, error) {
+func (s *HttpServiceImpl) Delete(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	return doHttp(ctx, http.MethodDelete, req)
 }
 
-func doHttp(ctx context.Context, method string, req *host.HttpRequest) (*host.HttpResponse, error) {
+func doHttp(ctx context.Context, method string, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	client := &http.Client{Timeout: time.Duration(req.TimeoutMs) * time.Millisecond}
 	var body io.Reader
 	if method == http.MethodPost || method == http.MethodPut {
@@ -57,7 +57,7 @@ func doHttp(ctx context.Context, method string, req *host.HttpRequest) (*host.Ht
 			headers[k] = v[0]
 		}
 	}
-	return &host.HttpResponse{
+	return &hosthttp.HttpResponse{
 		Status:  int32(resp.StatusCode),
 		Body:    respBody,
 		Headers: headers,

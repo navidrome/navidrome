@@ -828,6 +828,52 @@ func (x *ScrobblerScrobbleResponse) GetError() string {
 	return ""
 }
 
+type TimerCallbackRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	TimerId string `protobuf:"bytes,1,opt,name=timer_id,json=timerId,proto3" json:"timer_id,omitempty"` // ID of the timer that triggered this callback
+	Payload []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                // The data passed when the timer was registered
+}
+
+func (x *TimerCallbackRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *TimerCallbackRequest) GetTimerId() string {
+	if x != nil {
+		return x.TimerId
+	}
+	return ""
+}
+
+func (x *TimerCallbackRequest) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+type TimerCallbackResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"` // Error message if the callback failed
+}
+
+func (x *TimerCallbackResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *TimerCallbackResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // go:plugin type=plugin version=1
 type MediaMetadataService interface {
 	// Artist metadata methods
@@ -847,4 +893,9 @@ type ScrobblerService interface {
 	IsAuthorized(context.Context, *ScrobblerIsAuthorizedRequest) (*ScrobblerIsAuthorizedResponse, error)
 	NowPlaying(context.Context, *ScrobblerNowPlayingRequest) (*ScrobblerNowPlayingResponse, error)
 	Scrobble(context.Context, *ScrobblerScrobbleRequest) (*ScrobblerScrobbleResponse, error)
+}
+
+// go:plugin type=plugin version=1
+type TimerCallbackService interface {
+	OnTimerCallback(context.Context, *TimerCallbackRequest) (*TimerCallbackResponse, error)
 }

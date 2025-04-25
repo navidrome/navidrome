@@ -80,7 +80,6 @@ var _ = Describe("Plugin Manager", func() {
 	})
 
 	It("should use DevPluginCompilationTimeout config for plugin compilation timeout", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DevPluginCompilationTimeout = 123 * time.Second
 		Expect(pluginCompilationTimeout()).To(Equal(123 * time.Second))
 
@@ -93,15 +92,12 @@ var _ = Describe("Plugin Manager", func() {
 		var m *Manager
 
 		BeforeEach(func() {
-			var err error
-			tempPluginsDir, err = os.MkdirTemp("", "navidrome-plugins-test-*")
-			Expect(err).ToNot(HaveOccurred())
+			tempPluginsDir, _ = os.MkdirTemp("", "navidrome-plugins-test-*")
 			DeferCleanup(func() {
 				_ = os.RemoveAll(tempPluginsDir)
 			})
 
 			conf.Server.Plugins.Folder = tempPluginsDir
-			log.SetLevel(log.LevelDebug)
 			m = createManager()
 		})
 

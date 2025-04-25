@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package timer;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/timer;timer";
+
+// go:plugin type=host version=1
+service TimerService {
+    rpc RegisterTimer(TimerRequest) returns (TimerResponse);
+    rpc CancelTimer(CancelTimerRequest) returns (CancelTimerResponse);
+}
+
+message TimerRequest {
+    string plugin_name = 1;    // Plugin name
+    bytes payload = 2;         // Serialized data to pass to the callback
+    int32 delay = 3;           // Delay in seconds
+}
+
+message TimerResponse {
+    string timer_id = 1;       // ID to reference this timer
+    string error = 2;          // Error message if registration failed
+}
+
+message CancelTimerRequest {
+    string timer_id = 1;       // ID of timer to cancel
+}
+
+message CancelTimerResponse {
+    bool success = 1;          // Whether cancellation was successful
+    string error = 2;          // Error message if cancellation failed
+} 

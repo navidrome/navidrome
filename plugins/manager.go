@@ -1,11 +1,13 @@
 package plugins
 
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/host.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/timer/timer.proto
 
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,9 +18,11 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/plugins/host/http"
+	"github.com/navidrome/navidrome/plugins/host/timer"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/tetratelabs/wazero"
+	wazeroapi "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
@@ -78,8 +82,9 @@ type PluginInfo struct {
 
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins map[string]*PluginInfo // Map of plugin name to plugin info
-	mu      sync.RWMutex           // Protects plugins map
+	plugins      map[string]*PluginInfo // Map of plugin name to plugin info
+	mu           sync.RWMutex           // Protects plugins map
+	timerService *TimerService          // Service for handling plugin timers
 }
 
 // GetManager returns the singleton instance of Manager
@@ -94,6 +99,8 @@ func createManager() *Manager {
 	m := &Manager{
 		plugins: make(map[string]*PluginInfo),
 	}
+	// Create the timer service and set the manager reference
+	m.timerService = NewTimerService(m)
 	return m
 }
 
@@ -148,16 +155,58 @@ func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
 	return true
 }
 
+// getHostLibrary returns the host library (function definitions) for the given host service
+func getHostLibrary[S any](
+	ctx context.Context,
+	instantiateFn func(context.Context, wazero.Runtime, S) error,
+	service S,
+) (map[string]wazeroapi.FunctionDefinition, error) {
+	r := wazero.NewRuntime(ctx)
+	if err := instantiateFn(ctx, r, service); err != nil {
+		return nil, err
+	}
+	m := r.Module("env")
+	return m.ExportedFunctionDefinitions(), nil
+}
+
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func createCustomRuntime(cache wazero.CompilationCache) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(cache wazero.CompilationCache) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
 		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
 			return nil, err
 		}
-		if err := host.Instantiate(ctx, r, &HttpService{}); err != nil {
+
+		// Load each host library
+		httpLib, err := getHostLibrary[http.HttpService](ctx, http.Instantiate, &HttpServiceImpl{})
+		if err != nil {
+			return nil, err
+		}
+		timerLib, err := getHostLibrary[timer.TimerService](ctx, timer.Instantiate, m.timerService)
+		if err != nil {
+			return nil, err
+		}
+
+		// Merge the libraries
+		hostLib := maps.Clone(httpLib)
+		maps.Copy(hostLib, timerLib)
+
+		// Create the combined host module
+		envBuilder := r.NewHostModuleBuilder("env")
+		for name, fd := range hostLib {
+			fn, ok := fd.GoFunction().(wazeroapi.GoModuleFunction)
+			if !ok {
+				return nil, fmt.Errorf("invalid function devinition: %s", fd.DebugName())
+			}
+			envBuilder.NewFunctionBuilder().
+				WithGoModuleFunction(fn, fd.ParamTypes(), fd.ResultTypes()).
+				WithParameterNames(fd.ParamNames()...).Export(name)
+		}
+
+		// Instantiate the combined host module
+		if _, err = envBuilder.Instantiate(ctx); err != nil {
 			return nil, err
 		}
 		return r, nil
@@ -166,9 +215,9 @@ func createCustomRuntime(cache wazero.CompilationCache) api.WazeroNewRuntime {
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(name, pluginDir, wasmPath string, manifest *PluginManifest, service string, cache wazero.CompilationCache, logAction string) {
+func (m *Manager) registerPlugin(name, pluginDir, wasmPath string, manifest *PluginManifest, service string, cache wazero.CompilationCache) {
 	// Create custom runtime function
-	customRuntime := createCustomRuntime(cache)
+	customRuntime := m.createCustomRuntime(cache)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()
@@ -201,7 +250,7 @@ func (m *Manager) registerPlugin(name, pluginDir, wasmPath string, manifest *Plu
 	}
 	m.mu.Unlock()
 
-	log.Info(logAction+" plugin", "name", pluginName, "service", service, "wasm", wasmPath, "dev_mode", isSymlink)
+	log.Info("Discovered plugin", "name", pluginName, "service", service, "wasm", wasmPath, "dev_mode", isSymlink)
 }
 
 // ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
@@ -312,11 +361,11 @@ func (m *Manager) ScanPlugins() {
 		for _, service := range manifest.Services {
 			_, ok := pluginCreators[service]
 			if !ok {
-				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", name)
+				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", manifest.Name)
 				continue
 			}
 
-			m.registerPlugin(name, pluginDir, wasmPath, manifest, service, cache, "Discovered")
+			m.registerPlugin(manifest.Name, pluginDir, wasmPath, manifest, service, cache)
 		}
 	}
 }
@@ -338,8 +387,7 @@ func (m *Manager) PluginNames(svcName string) []string {
 	return names
 }
 
-// LoadPlugin instantiates and returns a plugin by name
-func (m *Manager) LoadPlugin(name string) WasmPlugin {
+func (m *Manager) GetPluginInfo(name string) *PluginInfo {
 	m.mu.RLock()
 	plugin, ok := m.plugins[name]
 	m.mu.RUnlock()
@@ -348,6 +396,12 @@ func (m *Manager) LoadPlugin(name string) WasmPlugin {
 		log.Warn("Plugin not found", "name", name)
 		return nil
 	}
+	return plugin
+}
+
+// LoadPlugin instantiates and returns a plugin by name
+func (m *Manager) LoadPlugin(name string) WasmPlugin {
+	plugin := m.GetPluginInfo(name)
 
 	log.Debug("Loading plugin", "name", name, "path", plugin.WasmPath)
 

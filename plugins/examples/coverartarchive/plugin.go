@@ -7,10 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/navidrome/navidrome/plugins/api"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/plugins/host/http"
 )
 
 type CoverArtArchiveAgent struct{}
@@ -24,15 +23,16 @@ type caaImage struct {
 	Thumbnails map[string]string `json:"thumbnails"`
 }
 
+var client = http.NewHttpService()
+
 func (CoverArtArchiveAgent) GetAlbumImages(ctx context.Context, req *api.AlbumImagesRequest) (*api.AlbumImagesResponse, error) {
 	if req.Mbid == "" {
 		return nil, ErrNotFound
 	}
 
 	url := "https://coverartarchive.org/release/" + req.Mbid
-	client := host.NewHttpService()
-	resp, err := client.Get(ctx, &host.HttpRequest{Url: url, TimeoutMs: 5000})
-	if err != nil || resp.Status != http.StatusOK {
+	resp, err := client.Get(ctx, &http.HttpRequest{Url: url, TimeoutMs: 5000})
+	if err != nil || resp.Status != 200 {
 		log.Printf("[CAA] Error getting album images from CoverArtArchive (status: %d): %v", resp.Status, err)
 		return nil, ErrNotFound
 	}

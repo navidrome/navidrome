@@ -169,4 +169,18 @@ message ScrobblerScrobbleRequest {
 
 message ScrobblerScrobbleResponse {
   string error = 1;
+}
+
+// go:plugin type=plugin version=1
+service TimerCallbackService {
+  rpc OnTimerCallback(TimerCallbackRequest) returns (TimerCallbackResponse);
+}
+
+message TimerCallbackRequest {
+  string timer_id = 1;  // ID of the timer that triggered this callback
+  bytes payload = 2;    // The data passed when the timer was registered
+}
+
+message TimerCallbackResponse {
+  string error = 1;     // Error message if the callback failed
 } 

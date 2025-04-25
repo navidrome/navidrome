@@ -26,3 +26,4 @@ binaries
 navidrome-master
 *.exe
 *.test
+*.wasm

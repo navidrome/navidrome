@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/plugins/api"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/plugins/host/http"
 )
 
 const (
@@ -26,7 +26,7 @@ var (
 	ErrNotFound       = api.ErrNotFound
 	ErrNotImplemented = api.ErrNotImplemented
 
-	client = host.NewHttpService()
+	client = http.NewHttpService()
 )
 
 // SPARQLResult struct for all possible fields
@@ -58,11 +58,11 @@ type MediaWikiExtractResult struct {
 }
 
 // --- SPARQL Query Helper ---
-func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query string) (*SPARQLResult, error) {
+func sparqlQuery(ctx context.Context, client http.HttpService, endpoint, query string) (*SPARQLResult, error) {
 	form := url.Values{}
 	form.Set("query", query)
 
-	req := &host.HttpRequest{
+	req := &http.HttpRequest{
 		Url: endpoint,
 		Headers: map[string]string{
 			"Accept":       "application/sparql-results+json",
@@ -92,9 +92,9 @@ func sparqlQuery(ctx context.Context, client host.HttpService, endpoint, query s
 }
 
 // --- MediaWiki API Helper ---
-func mediawikiQuery(ctx context.Context, client host.HttpService, params url.Values) ([]byte, error) {
+func mediawikiQuery(ctx context.Context, client http.HttpService, params url.Values) ([]byte, error) {
 	apiURL := fmt.Sprintf("%s?%s", mediawikiAPIEndpoint, params.Encode())
-	req := &host.HttpRequest{
+	req := &http.HttpRequest{
 		Url: apiURL,
 		Headers: map[string]string{
 			"Accept":     "application/json",
@@ -113,7 +113,7 @@ func mediawikiQuery(ctx context.Context, client host.HttpService, params url.Val
 }
 
 // --- Wikidata Fetch Functions ---
-func getWikidataWikipediaURL(ctx context.Context, client host.HttpService, mbid, name string) (string, error) {
+func getWikidataWikipediaURL(ctx context.Context, client http.HttpService, mbid, name string) (string, error) {
 	var q string
 	if mbid != "" {
 		// Using property chain: ?sitelink schema:about ?artist; schema:isPartOf <https://en.wikipedia.org/>.
@@ -137,7 +137,7 @@ func getWikidataWikipediaURL(ctx context.Context, client host.HttpService, mbid,
 }
 
 // --- DBpedia Fetch Functions ---
-func getDBpediaWikipediaURL(ctx context.Context, client host.HttpService, name string) (string, error) {
+func getDBpediaWikipediaURL(ctx context.Context, client http.HttpService, name string) (string, error) {
 	if name == "" {
 		return "", ErrNotFound
 	}
@@ -153,7 +153,7 @@ func getDBpediaWikipediaURL(ctx context.Context, client host.HttpService, name s
 	return "", ErrNotFound
 }
 
-func getDBpediaComment(ctx context.Context, client host.HttpService, name string) (string, error) {
+func getDBpediaComment(ctx context.Context, client http.HttpService, name string) (string, error) {
 	if name == "" {
 		return "", ErrNotFound
 	}
@@ -170,7 +170,7 @@ func getDBpediaComment(ctx context.Context, client host.HttpService, name string
 }
 
 // --- Wikipedia API Fetch Function ---
-func getWikipediaExtract(ctx context.Context, client host.HttpService, pageTitle string) (string, error) {
+func getWikipediaExtract(ctx context.Context, client http.HttpService, pageTitle string) (string, error) {
 	if pageTitle == "" {
 		return "", errors.New("page title required for Wikipedia API lookup")
 	}

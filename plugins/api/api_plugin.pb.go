@@ -302,3 +302,40 @@ func _scrobbler_service_scrobble(ptr, size uint32) uint64 {
 	ptr, size = wasm.ByteToPtr(b)
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
+
+const TimerCallbackServicePluginAPIVersion = 1
+
+//go:wasmexport timer_callback_service_api_version
+func _timer_callback_service_api_version() uint64 {
+	return TimerCallbackServicePluginAPIVersion
+}
+
+var timerCallbackService TimerCallbackService
+
+func RegisterTimerCallbackService(p TimerCallbackService) {
+	timerCallbackService = p
+}
+
+//go:wasmexport timer_callback_service_on_timer_callback
+func _timer_callback_service_on_timer_callback(ptr, size uint32) uint64 {
+	b := wasm.PtrToByte(ptr, size)
+	req := new(TimerCallbackRequest)
+	if err := req.UnmarshalVT(b); err != nil {
+		return 0
+	}
+	response, err := timerCallbackService.OnTimerCallback(context.Background(), req)
+	if err != nil {
+		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
+		return (uint64(ptr) << uint64(32)) | uint64(size) |
+			// Indicate that this is the error string by setting the 32-th bit, assuming that
+			// no data exceeds 31-bit size (2 GiB).
+			(1 << 31)
+	}
+
+	b, err = response.MarshalVT()
+	if err != nil {
+		return 0
+	}
+	ptr, size = wasm.ByteToPtr(b)
+	return (uint64(ptr) << uint64(32)) | uint64(size)
+}

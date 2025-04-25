@@ -6,19 +6,19 @@ import (
 	"net/http/httptest"
 	"time"
 
-	hosthttp "github.com/navidrome/navidrome/plugins/host"
+	hosthttp "github.com/navidrome/navidrome/plugins/host/http"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("HttpService", func() {
+var _ = Describe("HttpServiceImpl", func() {
 	var (
-		svc *HttpService
+		svc *HttpServiceImpl
 		ts  *httptest.Server
 	)
 
 	BeforeEach(func() {
-		svc = &HttpService{}
+		svc = &HttpServiceImpl{}
 	})
 
 	AfterEach(func() {
