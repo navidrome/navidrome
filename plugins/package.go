@@ -43,9 +43,14 @@ func ExtractPackage(ndpPath, targetDir string) error {
 		}
 
 		// Create the file path for extraction
+		// Validate the file name to prevent directory traversal or absolute paths
+		if strings.Contains(f.Name, "..") || filepath.IsAbs(f.Name) {
+			return fmt.Errorf("illegal file path in plugin package: %s", f.Name)
+		}
+
+		// Create the file path for extraction
 		targetPath := filepath.Join(targetDir, f.Name) // #nosec G305
 
-		// Security: Prevent path traversal (ZipSlip)
 		// Clean the path to prevent directory traversal.
 		cleanedPath := filepath.Clean(targetPath)
 		// Ensure the cleaned path is still within the target directory.
