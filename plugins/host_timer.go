@@ -1,5 +1,3 @@
-//go:build !wasip1
-
 package plugins
 
 import (
@@ -35,6 +33,23 @@ func NewTimerService(manager *Manager) *TimerService {
 		timers:  make(map[string]*TimerCallback),
 		manager: manager,
 	}
+}
+
+// Safe accessor methods for tests
+
+// HasTimer safely checks if a timer exists
+func (t *TimerService) HasTimer(id string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	_, exists := t.timers[id]
+	return exists
+}
+
+// TimerCount safely returns the number of timers
+func (t *TimerService) TimerCount() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.timers)
 }
 
 // RegisterTimer implements the TimerService interface

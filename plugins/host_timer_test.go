@@ -62,7 +62,7 @@ var _ = Describe("TimerService", func() {
 
 			Expect(err).To(BeNil())
 			// Check internal map
-			Expect(ts.timers).To(HaveKey("test_plugin:custom-id"))
+			Expect(ts.HasTimer("test_plugin:custom-id")).To(BeTrue())
 		})
 
 		It("should fail if manager is not initialized", func() {
@@ -100,7 +100,7 @@ var _ = Describe("TimerService", func() {
 			Expect(cancelResp.Error).To(BeEmpty())
 
 			// Timer should be removed from map
-			Expect(ts.timers).NotTo(HaveKey("test_plugin:custom-id"))
+			Expect(ts.HasTimer("test_plugin:custom-id")).To(BeFalse())
 		})
 
 		It("should fail when canceling non-existent timer", func() {
@@ -128,13 +128,13 @@ var _ = Describe("TimerService", func() {
 			Expect(resp.TimerId).To(Equal("short-timer"))
 
 			// Check that timer exists in map
-			Expect(ts.timers).To(HaveKey("test_plugin:short-timer"))
+			Expect(ts.HasTimer("test_plugin:short-timer")).To(BeTrue())
 
 			// Wait for timer to fire
 			time.Sleep(1500 * time.Millisecond)
 
 			// Timer should be removed from map after firing
-			Expect(ts.timers).NotTo(HaveKey("test_plugin:short-timer"))
+			Expect(ts.HasTimer("test_plugin:short-timer")).To(BeFalse())
 		})
 	})
 
@@ -160,8 +160,8 @@ var _ = Describe("TimerService", func() {
 			Expect(resp2.TimerId).To(Equal("same-id"))
 
 			// Both timers should exist with prefixed IDs
-			Expect(ts.timers).To(HaveKey("plugin1:same-id"))
-			Expect(ts.timers).To(HaveKey("plugin2:same-id"))
+			Expect(ts.HasTimer("plugin1:same-id")).To(BeTrue())
+			Expect(ts.HasTimer("plugin2:same-id")).To(BeTrue())
 
 			// Cancel one timer
 			cancelResp, err := ts.CancelTimer(ctx, &timer.CancelTimerRequest{
@@ -171,7 +171,7 @@ var _ = Describe("TimerService", func() {
 			Expect(cancelResp.Success).To(BeTrue())
 
 			// One timer should remain (we don't know which one will be canceled first)
-			Expect(ts.timers).To(HaveLen(1))
+			Expect(ts.TimerCount()).To(Equal(1))
 		})
 	})
 })
