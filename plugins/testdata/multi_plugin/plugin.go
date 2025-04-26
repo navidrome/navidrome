@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/timer"
@@ -27,15 +28,22 @@ func (MultiPlugin) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) 
 	log.Printf("GetArtistURL received: %v", req)
 
 	var tmr = timer.NewTimerService()
+
+	// Use an ID that could potentially clash with other plugins
+	// The host will ensure this doesn't conflict by prefixing with plugin name
+	customTimerId := "artist:" + req.Name
+	log.Printf("Registering timer with custom ID: %s", customTimerId)
+
 	resp, err := tmr.RegisterTimer(ctx, &timer.TimerRequest{
 		PluginName: "multi_plugin",
+		TimerId:    customTimerId,
 		Delay:      6,
 		Payload:    []byte("test-payload"),
 	})
 	if err != nil {
 		log.Printf("Error registering timer: %v", err)
 	} else {
-		log.Printf("Timer registered: %v", resp)
+		log.Printf("Timer registered with ID: %s", resp.TimerId)
 	}
 	return &api.ArtistURLResponse{Url: "https://multi.example.com/artist"}, nil
 }
@@ -77,7 +85,17 @@ func (MultiPlugin) GetAlbumImages(ctx context.Context, req *api.AlbumImagesReque
 
 // Timer-related methods
 func (MultiPlugin) OnTimerCallback(ctx context.Context, req *api.TimerCallbackRequest) (*api.TimerCallbackResponse, error) {
-	log.Printf("Timer callback received: %s: %s", req.TimerId, string(req.Payload))
+	log.Printf("Timer callback received with ID: %s, payload: %s", req.TimerId, string(req.Payload))
+
+	// Demonstrate how to parse the custom timer ID format
+	if strings.HasPrefix(req.TimerId, "artist:") {
+		parts := strings.Split(req.TimerId, ":")
+		if len(parts) == 2 {
+			artistName := parts[1]
+			log.Printf("This timer was for artist: %s", artistName)
+		}
+	}
+
 	return &api.TimerCallbackResponse{}, nil
 }
 

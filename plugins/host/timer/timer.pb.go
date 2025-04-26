@@ -27,6 +27,7 @@ type TimerRequest struct {
 	PluginName string `protobuf:"bytes,1,opt,name=plugin_name,json=pluginName,proto3" json:"plugin_name,omitempty"` // Plugin name
 	Payload    []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                         // Serialized data to pass to the callback
 	Delay      int32  `protobuf:"varint,3,opt,name=delay,proto3" json:"delay,omitempty"`                            // Delay in seconds
+	TimerId    string `protobuf:"bytes,4,opt,name=timer_id,json=timerId,proto3" json:"timer_id,omitempty"`          // Optional custom timer ID (if not provided, one will be generated)
 }
 
 func (x *TimerRequest) ProtoReflect() protoreflect.Message {
@@ -52,6 +53,13 @@ func (x *TimerRequest) GetDelay() int32 {
 		return x.Delay
 	}
 	return 0
+}
+
+func (x *TimerRequest) GetTimerId() string {
+	if x != nil {
+		return x.TimerId
+	}
+	return ""
 }
 
 type TimerResponse struct {

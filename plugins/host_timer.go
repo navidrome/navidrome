@@ -1,7 +1,10 @@
+//go:build !wasip1
+
 package plugins
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,23 +48,32 @@ func (t *TimerService) RegisterTimer(ctx context.Context, req *timer.TimerReques
 		}, nil
 	}
 
-	timerID, _ := gonanoid.New(10)
+	// Original timerId (what the plugin will see)
+	originalTimerId := req.TimerId
+	if originalTimerId == "" {
+		// Generate a random ID if one wasn't provided
+		originalTimerId, _ = gonanoid.New(10)
+	}
+
+	// Internal timerId (prefixed with plugin name to avoid conflicts)
+	internalTimerId := req.PluginName + ":" + originalTimerId
 
 	// Create a context with cancel for this timer
 	timerCtx, cancel := context.WithCancel(context.Background())
 
-	// Store the callback info
-	t.timers[timerID] = &TimerCallback{
+	// Store the callback info using the prefixed internal ID
+	t.timers[internalTimerId] = &TimerCallback{
 		PluginName: req.PluginName,
 		Payload:    req.Payload,
 		Cancel:     cancel,
 	}
 
-	// Start the timer goroutine
-	go t.runTimer(timerCtx, timerID, time.Duration(req.Delay)*time.Second)
+	// Start the timer goroutine with the internal ID
+	go t.runTimer(timerCtx, internalTimerId, originalTimerId, time.Duration(req.Delay)*time.Second)
 
+	// Return the original ID to the plugin
 	return &timer.TimerResponse{
-		TimerId: timerID,
+		TimerId: originalTimerId,
 	}, nil
 }
 
@@ -70,8 +82,24 @@ func (t *TimerService) CancelTimer(ctx context.Context, req *timer.CancelTimerRe
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	callback, exists := t.timers[req.TimerId]
-	if !exists {
+	// Extract plugin name from context or request somehow
+	// For now, we'll need to look for all possible keys
+	var found bool
+	var callback *TimerCallback
+
+	// Try to find a timer with this ID from any plugin
+	for key, cb := range t.timers {
+		// Check if the key ends with the requested timer ID
+		parts := strings.Split(key, ":")
+		if len(parts) == 2 && parts[1] == req.TimerId {
+			found = true
+			callback = cb
+			delete(t.timers, key)
+			break
+		}
+	}
+
+	if !found {
 		return &timer.CancelTimerResponse{
 			Success: false,
 			Error:   "timer not found",
@@ -81,16 +109,13 @@ func (t *TimerService) CancelTimer(ctx context.Context, req *timer.CancelTimerRe
 	// Cancel the timer
 	callback.Cancel()
 
-	// Remove from map
-	delete(t.timers, req.TimerId)
-
 	return &timer.CancelTimerResponse{
 		Success: true,
 	}, nil
 }
 
 // runTimer handles the timer execution and callback
-func (t *TimerService) runTimer(ctx context.Context, timerID string, delay time.Duration) {
+func (t *TimerService) runTimer(ctx context.Context, internalTimerId, originalTimerId string, delay time.Duration) {
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
 
@@ -98,7 +123,7 @@ func (t *TimerService) runTimer(ctx context.Context, timerID string, delay time.
 	case <-ctx.Done():
 		// Timer was cancelled
 		t.mu.Lock()
-		delete(t.timers, timerID)
+		delete(t.timers, internalTimerId)
 		t.mu.Unlock()
 		return
 
@@ -107,24 +132,25 @@ func (t *TimerService) runTimer(ctx context.Context, timerID string, delay time.
 		var callback *TimerCallback
 
 		t.mu.Lock()
-		callback = t.timers[timerID]
-		delete(t.timers, timerID)
+		callback = t.timers[internalTimerId]
+		delete(t.timers, internalTimerId)
 		t.mu.Unlock()
 
 		if callback != nil {
-			t.executeCallback(ctx, timerID, callback)
+			// Pass the original (non-prefixed) timer ID to the callback
+			t.executeCallback(ctx, originalTimerId, callback)
 		}
 	}
 }
 
 // executeCallback calls the plugin's OnTimerCallback method
-func (t *TimerService) executeCallback(ctx context.Context, timerID string, callback *TimerCallback) {
-	log.Debug("Executing timer callback", "plugin", callback.PluginName, "timerID", timerID)
+func (t *TimerService) executeCallback(ctx context.Context, originalTimerId string, callback *TimerCallback) {
+	log.Debug("Executing timer callback", "plugin", callback.PluginName, "timerID", originalTimerId)
 	start := time.Now()
 
-	// Create a TimerCallbackRequest
+	// Create a TimerCallbackRequest with the original (unprefixed) timer ID
 	req := &api.TimerCallbackRequest{
-		TimerId: timerID,
+		TimerId: originalTimerId,
 		Payload: callback.Payload,
 	}
 
