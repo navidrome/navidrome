@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"maps"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 type initializedPlugins struct {
 	plugins map[string]bool
 	mu      sync.RWMutex
+	confMu  sync.RWMutex // Mutex to protect configuration access
 }
 
 // newInitializedPlugins creates a new initialized plugins tracker
@@ -39,7 +41,7 @@ func (i *initializedPlugins) markInitialized(info *PluginInfo) {
 }
 
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
-func (m *initializedPlugins) callOnInit(info *PluginInfo) {
+func (i *initializedPlugins) callOnInit(info *PluginInfo) {
 	ctx := context.Background()
 	log.Debug("Initializing plugin", "name", info.Name)
 	start := time.Now()
@@ -62,9 +64,11 @@ func (m *initializedPlugins) callOnInit(info *PluginInfo) {
 	req := &api.InitRequest{}
 
 	// Add plugin configuration if available
+	i.confMu.Lock()
+	defer i.confMu.Unlock()
 	if conf.Server.PluginConfig != nil {
 		if pluginConfig, ok := conf.Server.PluginConfig[info.Name]; ok && len(pluginConfig) > 0 {
-			req.Config = pluginConfig
+			req.Config = maps.Clone(pluginConfig)
 			log.Debug("Passing configuration to plugin", "plugin", info.Name, "configKeys", len(pluginConfig))
 		}
 	}
