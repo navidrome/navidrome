@@ -65,7 +65,7 @@ type pluginState struct {
 
 // Helper to create the correct ModuleConfig for plugins
 func newWazeroModuleConfig() wazero.ModuleConfig {
-	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithStderr(os.Stderr)
+	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithStderr(log.Writer())
 }
 
 // PluginInfo represents a plugin that has been discovered but not yet instantiated
