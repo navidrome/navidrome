@@ -33,10 +33,6 @@ type wasmScrobblerPlugin struct {
 	*wasmBasePlugin[api.Scrobbler, *api.ScrobblerPlugin]
 }
 
-func (w *wasmScrobblerPlugin) PluginName() string {
-	return w.name
-}
-
 func (w *wasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) bool {
 	username, _ := request.UsernameFrom(ctx)
 	if username == "" {

@@ -37,10 +37,6 @@ func (w *wasmMediaAgent) AgentName() string {
 	return w.name
 }
 
-func (w *wasmMediaAgent) PluginName() string {
-	return w.name
-}
-
 func (w *wasmMediaAgent) mapError(err error) error {
 	if err != nil && (err.Error() == api.ErrNotFound.Error() || err.Error() == api.ErrNotImplemented.Error()) {
 		return agents.ErrNotFound

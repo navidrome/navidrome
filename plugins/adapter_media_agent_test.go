@@ -22,7 +22,7 @@ var _ = Describe("Adapter Media Agent", func() {
 
 	Describe("AgentName and PluginName", func() {
 		It("should return the plugin name", func() {
-			agent := mgr.LoadPlugin("multi_plugin")
+			agent := mgr.LoadPlugin("multi_plugin", "MetadataAgent")
 			Expect(agent.PluginName()).To(Equal("multi_plugin"))
 		})
 		It("should return the agent name", func() {

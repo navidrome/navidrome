@@ -51,7 +51,7 @@ var _ = Describe("Plugin Manager", func() {
 	})
 
 	It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
-		plugin := mgr.LoadPlugin("fake_artist_agent")
+		plugin := mgr.LoadPlugin("fake_artist_agent", ServiceTypeMetadataAgent)
 		Expect(plugin).NotTo(BeNil())
 
 		agent, ok := plugin.(agents.Interface)
@@ -154,7 +154,7 @@ var _ = Describe("Plugin Manager", func() {
 
 	Describe("LoadPlugin", func() {
 		It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
-			plugin := mgr.LoadPlugin("fake_artist_agent")
+			plugin := mgr.LoadPlugin("fake_artist_agent", ServiceTypeMetadataAgent)
 			Expect(plugin).NotTo(BeNil())
 
 			agent, ok := plugin.(agents.Interface)

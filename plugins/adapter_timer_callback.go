@@ -31,7 +31,3 @@ func NewWasmTimerCallback(wasmPath, pluginName string, runtime api.WazeroNewRunt
 type wasmTimerCallback struct {
 	*wasmBasePlugin[api.TimerCallback, *api.TimerCallbackPlugin]
 }
-
-func (w *wasmTimerCallback) PluginName() string {
-	return w.name
-}

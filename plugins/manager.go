@@ -10,6 +10,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,19 +27,26 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
+const (
+	ServiceTypeMetadataAgent = "MetadataAgent"
+	ServiceTypeScrobbler     = "Scrobbler"
+	ServiceTypeTimerCallback = "TimerCallback"
+)
+
 // pluginCreators maps service types to their respective creator functions
 type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
-	"MetadataAgent": NewWasmMediaAgent,
-	"Scrobbler":     NewWasmScrobblerPlugin,
-	"TimerCallback": NewWasmTimerCallback,
+	ServiceTypeMetadataAgent: NewWasmMediaAgent,
+	ServiceTypeScrobbler:     NewWasmScrobblerPlugin,
+	ServiceTypeTimerCallback: NewWasmTimerCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement
 type WasmPlugin interface {
 	// PluginName returns the name of the plugin
 	PluginName() string
+	GetInstance(ctx context.Context) (any, func(), error)
 }
 
 var (
@@ -416,7 +424,7 @@ func (m *Manager) GetPluginInfo(name string) *PluginInfo {
 }
 
 // LoadPlugin instantiates and returns a plugin by name
-func (m *Manager) LoadPlugin(name string) WasmPlugin {
+func (m *Manager) LoadPlugin(name string, serviceType string) WasmPlugin {
 	plugin := m.GetPluginInfo(name)
 	if plugin == nil {
 		log.Warn("Plugin not found", "name", name)
@@ -435,7 +443,19 @@ func (m *Manager) LoadPlugin(name string) WasmPlugin {
 		return nil
 	}
 
-	serviceType := plugin.Services[0]
+	if serviceType == "" {
+		serviceType = plugin.Services[0]
+		log.Debug("No service type specified. Loading first service", "name", name, "service", serviceType)
+	}
+
+	if slices.Contains(plugin.Services, serviceType) {
+		log.Trace("Plugin implements service", "name", name, "service", serviceType)
+	} else {
+		log.Error("Plugin does not implement service", "name", name, "service", serviceType)
+		return nil
+	}
+
+	// Get the creator function for the service type
 	creator, ok := pluginCreators[serviceType]
 	if !ok {
 		log.Warn("Unknown plugin service type", "service", serviceType, "plugin", name)
@@ -453,7 +473,7 @@ func (m *Manager) LoadPlugin(name string) WasmPlugin {
 
 // LoadMediaAgent instantiates and returns a media agent plugin by name
 func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
-	plugin := m.LoadPlugin(name)
+	plugin := m.LoadPlugin(name, ServiceTypeMetadataAgent)
 	if plugin == nil {
 		return nil, false
 	}
@@ -463,7 +483,7 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 
 // LoadScrobbler instantiates and returns a scrobbler plugin by name
 func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
-	plugin := m.LoadPlugin(name)
+	plugin := m.LoadPlugin(name, ServiceTypeScrobbler)
 	if plugin == nil {
 		return nil, false
 	}
@@ -480,7 +500,7 @@ func (m *Manager) LoadAllPlugins(svcName string) []WasmPlugin {
 
 	var plugins []WasmPlugin
 	for _, name := range names {
-		plugin := m.LoadPlugin(name)
+		plugin := m.LoadPlugin(name, svcName)
 		if plugin != nil {
 			plugins = append(plugins, plugin)
 		}

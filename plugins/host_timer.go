@@ -170,14 +170,22 @@ func (t *TimerService) executeCallback(ctx context.Context, originalTimerId stri
 	}
 
 	// Get the plugin
-	p := t.manager.LoadPlugin(callback.PluginName)
+	p := t.manager.LoadPlugin(callback.PluginName, ServiceTypeTimerCallback)
 	if p == nil {
 		log.Error("Plugin not found for callback", "plugin", callback.PluginName)
 		return
 	}
 
+	// Get instance
+	inst, closeFn, err := p.GetInstance(ctx)
+	if err != nil {
+		log.Error("Error getting plugin instance for callback", "plugin", callback.PluginName, err)
+		return
+	}
+	defer closeFn()
+
 	// Type-check the plugin
-	plugin, ok := p.(api.TimerCallback)
+	plugin, ok := inst.(api.TimerCallback)
 	if !ok {
 		log.Error("Plugin does not implement TimerCallback", "plugin", callback.PluginName)
 		return

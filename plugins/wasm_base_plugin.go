@@ -29,6 +29,17 @@ type wasmBasePlugin[S any, P any] struct {
 	loadFunc LoaderFunc[S, P]
 }
 
+func (w *wasmBasePlugin[S, P]) PluginName() string {
+	return w.name
+}
+
+func (w *wasmBasePlugin[S, P]) GetInstance(ctx context.Context) (any, func(), error) {
+	instance, closeFn, err := w.getInstance(ctx, "<none>")
+	return instance, func() {
+		closeFn(nil)
+	}, err
+}
+
 // getInstance returns a new plugin instance, a cleanup function, and error
 func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName string) (S, func(error), error) {
 	var zero S
