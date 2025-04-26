@@ -46,6 +46,7 @@ var pluginCreators = map[string]pluginConstructor{
 type WasmPlugin interface {
 	// PluginName returns the name of the plugin
 	PluginName() string
+	ServiceType() string
 	GetInstance(ctx context.Context) (any, func(), error)
 }
 

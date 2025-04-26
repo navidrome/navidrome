@@ -21,6 +21,7 @@ func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRu
 		wasmBasePlugin: &wasmBasePlugin[api.Scrobbler, *api.ScrobblerPlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
+			service:  ServiceTypeScrobbler,
 			loader:   loader,
 			loadFunc: func(ctx context.Context, l *api.ScrobblerPlugin, path string) (api.Scrobbler, error) {
 				return l.Load(ctx, path)

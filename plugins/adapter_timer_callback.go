@@ -19,6 +19,7 @@ func NewWasmTimerCallback(wasmPath, pluginName string, runtime api.WazeroNewRunt
 		wasmBasePlugin: &wasmBasePlugin[api.TimerCallback, *api.TimerCallbackPlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
+			service:  ServiceTypeTimerCallback,
 			loader:   loader,
 			loadFunc: func(ctx context.Context, l *api.TimerCallbackPlugin, path string) (api.TimerCallback, error) {
 				return l.Load(ctx, path)
