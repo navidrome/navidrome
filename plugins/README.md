@@ -30,6 +30,7 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 - `wasmMediaAgent` adapts `MediaMetadataService` to the internal `agents.Interface`
 - `wasmScrobblerPlugin` adapts `ScrobblerService` to the internal `scrobbler.Scrobbler`
+- `wasmTimerCallback` adapts `TimerCallbackService` for timer callbacks
 
 ### 4. Host Services
 

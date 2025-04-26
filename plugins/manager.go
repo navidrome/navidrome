@@ -32,6 +32,7 @@ type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRu
 var pluginCreators = map[string]pluginConstructor{
 	"MediaMetadataService": NewWasmMediaAgent,
 	"ScrobblerService":     NewWasmScrobblerPlugin,
+	"TimerCallbackService": NewWasmTimerCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement

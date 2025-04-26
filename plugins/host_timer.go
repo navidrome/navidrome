@@ -169,26 +169,19 @@ func (t *TimerService) executeCallback(ctx context.Context, originalTimerId stri
 		Payload: callback.Payload,
 	}
 
-	// Get the callback plugin info
-	pluginInfo := t.manager.GetPluginInfo(callback.PluginName)
-	if pluginInfo == nil {
-		log.Error("Plugin not registered for timer callback", "plugin", callback.PluginName)
+	// Get the plugin instance directly from the manager
+	p := t.manager.LoadPlugin(callback.PluginName)
+	if p == nil {
+		log.Error("Plugin not found for timer callback", "plugin", callback.PluginName)
 		return
 	}
 
-	// It must be a TimerCallbackPlugin
-	loader, err := api.NewTimerCallbackServicePlugin(ctx, api.WazeroRuntime(pluginInfo.Runtime), api.WazeroModuleConfig(pluginInfo.ModConfig))
-	if loader == nil || err != nil {
-		log.Error("Plugin not found for timer callback", "plugin", callback.PluginName, err)
+	// Type assert to wasmTimerCallback
+	plugin, ok := p.(api.TimerCallbackService)
+	if !ok {
+		log.Error("Plugin does not implement TimerCallbackService", "plugin", callback.PluginName)
 		return
 	}
-
-	plugin, err := loader.Load(ctx, pluginInfo.WasmPath)
-	if err != nil {
-		log.Error("Error loading plugin", "plugin", callback.PluginName, "path", pluginInfo.WasmPath, err)
-		return
-	}
-	defer plugin.Close(ctx)
 
 	// Call the plugin's OnTimerCallback method
 	resp, err := plugin.OnTimerCallback(ctx, req)
