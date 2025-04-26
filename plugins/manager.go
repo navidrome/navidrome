@@ -215,16 +215,12 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache) api.WazeroN
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(name, pluginDir, wasmPath string, manifest *PluginManifest, service string, cache wazero.CompilationCache) {
+func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) {
 	// Create custom runtime function
 	customRuntime := m.createCustomRuntime(cache)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()
-	pluginName := name
-	if len(manifest.Services) > 1 {
-		pluginName = name + "_" + service
-	}
 
 	// Check if it's a symlink, indicating development mode
 	isSymlink := false
@@ -234,23 +230,24 @@ func (m *Manager) registerPlugin(name, pluginDir, wasmPath string, manifest *Plu
 
 	// Start pre-compilation of WASM module in background
 	state := &pluginState{ready: make(chan struct{})}
-	go precompilePlugin(state, customRuntime, wasmPath, pluginName)
+	go precompilePlugin(state, customRuntime, wasmPath, manifest.Name)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	// Store plugin info
-	m.mu.Lock()
-	m.plugins[pluginName] = &PluginInfo{
-		Name:      pluginName,
+	m.plugins[manifest.Name] = &PluginInfo{
+		Name:      manifest.Name,
 		Path:      pluginDir,
-		Services:  []string{service},
+		Services:  manifest.Services,
 		WasmPath:  wasmPath,
 		Manifest:  manifest,
 		State:     state,
 		Runtime:   customRuntime,
 		ModConfig: mc,
 	}
-	m.mu.Unlock()
 
-	log.Info("Discovered plugin", "name", pluginName, "service", service, "wasm", wasmPath, "dev_mode", isSymlink)
+	log.Info("Discovered plugin", "name", manifest.Name, "services", manifest.Services, "wasm", wasmPath, "dev_mode", isSymlink)
 }
 
 // ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
@@ -357,16 +354,8 @@ func (m *Manager) ScanPlugins() {
 		}
 		log.Debug("Manifest loaded successfully", "name", manifest.Name, "services", manifest.Services)
 
-		// Process each service defined in the manifest
-		for _, service := range manifest.Services {
-			_, ok := pluginCreators[service]
-			if !ok {
-				log.Trace("Unknown plugin service type in manifest", "service", service, "plugin", manifest.Name)
-				continue
-			}
-
-			m.registerPlugin(manifest.Name, pluginDir, wasmPath, manifest, service, cache)
-		}
+		// Register the plugin
+		m.registerPlugin(pluginDir, wasmPath, manifest, cache)
 	}
 }
 

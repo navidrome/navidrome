@@ -120,6 +120,7 @@ func (t *TimerService) runTimer(ctx context.Context, timerID string, delay time.
 // executeCallback calls the plugin's OnTimerCallback method
 func (t *TimerService) executeCallback(ctx context.Context, timerID string, callback *TimerCallback) {
 	log.Debug("Executing timer callback", "plugin", callback.PluginName, "timerID", timerID)
+	start := time.Now()
 
 	// Create a TimerCallbackRequest
 	req := &api.TimerCallbackRequest{
@@ -151,9 +152,10 @@ func (t *TimerService) executeCallback(ctx context.Context, timerID string, call
 	// Call the plugin's OnTimerCallback method
 	resp, err := plugin.OnTimerCallback(ctx, req)
 	if err != nil {
-		log.Error("Error executing timer callback", "plugin", callback.PluginName, err)
+		log.Error("Error executing timer callback", "plugin", callback.PluginName, "elapsed", time.Since(start), err)
 		return
 	}
+	log.Debug("Timer callback executed", "plugin", callback.PluginName, "elapsed", time.Since(start))
 
 	if resp.Error != "" {
 		log.Error("Plugin reported error in timer callback", "plugin", callback.PluginName, resp.Error)
