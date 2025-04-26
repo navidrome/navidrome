@@ -11,7 +11,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host/timer"
 )
 
-// MultiPlugin implements the MediaMetadataService interface for testing
+// MultiPlugin implements the MetadataAgent interface for testing
 type MultiPlugin struct{}
 
 var ErrNotFound = api.ErrNotFound
@@ -113,9 +113,9 @@ func (MultiPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*api.InitR
 // Required by Go WASI build
 func main() {}
 
-// Register the MediaMetadataService implementation
+// Register the service implementations
 func init() {
-	api.RegisterMediaMetadataService(MultiPlugin{})
-	api.RegisterTimerCallbackService(MultiPlugin{})
-	api.RegisterInitService(MultiPlugin{})
+	api.RegisterMetadataAgent(MultiPlugin{})
+	api.RegisterTimerCallback(MultiPlugin{})
+	api.RegisterLifecycleManagement(MultiPlugin{})
 }

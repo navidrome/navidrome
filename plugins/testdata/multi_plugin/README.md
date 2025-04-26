@@ -1,6 +1,6 @@
 # Multi Service Plugin
 
-This directory contains a test plugin for the Navidrome plugin system, implementing the MediaMetadataService interface, which provides both artist and album metadata capabilities, as well as the TimerCallbackService interface for handling scheduled callbacks.
+This directory contains a test plugin for the Navidrome plugin system, implementing the MetadataAgent interface, which provides both artist and album metadata capabilities, as well as the TimerCallback interface for handling scheduled callbacks.
 
 ## Overview
 
@@ -13,16 +13,16 @@ This test plugin is used for ensuring that the Navidrome plugin system correctly
 
 ## Services
 
-### Media Metadata Service
+### Metadata Agent
 
 This plugin returns hardcoded responses for various metadata requests:
 
 - Artist metadata: MBID, URL, biography, similar artists, images, top songs
 - Album metadata: album info, album images
 
-### Timer Callback Service
+### Timer Callback
 
-The plugin also implements the TimerCallbackService interface, which allows it to:
+The plugin also implements the TimerCallback interface, which allows it to:
 
 1. Register timers with the host system
 2. Receive callbacks when timers expire

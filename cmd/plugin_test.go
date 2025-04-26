@@ -84,8 +84,8 @@ var _ = Describe("Plugin CLI Commands", func() {
 	Describe("Plugin list command", func() {
 		It("should list installed plugins", func() {
 			// Create test plugins
-			createTestPlugin("plugin1", "Test Author", "1.0.0", []string{"MediaMetadataService"})
-			createTestPlugin("plugin2", "Another Author", "2.1.0", []string{"ScrobblerService"})
+			createTestPlugin("plugin1", "Test Author", "1.0.0", []string{"MetadataAgent"})
+			createTestPlugin("plugin2", "Another Author", "2.1.0", []string{"Scrobbler"})
 
 			// Execute command
 			pluginList(cmd, []string{})
@@ -96,12 +96,12 @@ var _ = Describe("Plugin CLI Commands", func() {
 			Expect(output).To(ContainSubstring("plugin1"))
 			Expect(output).To(ContainSubstring("Test Author"))
 			Expect(output).To(ContainSubstring("1.0.0"))
-			Expect(output).To(ContainSubstring("MediaMetadataService"))
+			Expect(output).To(ContainSubstring("MetadataAgent"))
 
 			Expect(output).To(ContainSubstring("plugin2"))
 			Expect(output).To(ContainSubstring("Another Author"))
 			Expect(output).To(ContainSubstring("2.1.0"))
-			Expect(output).To(ContainSubstring("ScrobblerService"))
+			Expect(output).To(ContainSubstring("Scrobbler"))
 		})
 	})
 
@@ -109,7 +109,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 		It("should display information about an installed plugin", func() {
 			// Create test plugin with multiple services
 			createTestPlugin("test-plugin", "Test Author", "1.0.0",
-				[]string{"MediaMetadataService", "ScrobblerService"})
+				[]string{"MetadataAgent", "Scrobbler"})
 
 			// Execute command
 			pluginInfo(cmd, []string{"test-plugin"})
@@ -121,7 +121,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 			Expect(output).To(ContainSubstring("Author:      Test Author"))
 			Expect(output).To(ContainSubstring("Version:     1.0.0"))
 			Expect(output).To(ContainSubstring("Description: Plugin for testing"))
-			Expect(output).To(ContainSubstring("Services:    MediaMetadataService, ScrobblerService"))
+			Expect(output).To(ContainSubstring("Services:    MetadataAgent, Scrobbler"))
 		})
 	})
 
@@ -129,7 +129,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 		It("should remove a regular plugin directory", func() {
 			// Create test plugin
 			pluginDir := createTestPlugin("regular-plugin", "Test Author", "1.0.0",
-				[]string{"MediaMetadataService"})
+				[]string{"MetadataAgent"})
 
 			// Execute command
 			pluginRemove(cmd, []string{"regular-plugin"})
@@ -153,7 +153,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 				"author": "Dev Author",
 				"version": "0.1.0",
 				"description": "Development plugin for testing",
-				"services": ["ScrobblerService"]
+				"services": ["Scrobbler"]
 			}`
 			Expect(os.WriteFile(filepath.Join(sourceDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 

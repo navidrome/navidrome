@@ -27,7 +27,12 @@
       "minItems": 1,
       "items": {
         "type": "string",
-        "enum": ["MediaMetadataService", "ScrobblerService", "TimerCallbackService", "InitService"]
+        "enum": [
+          "MetadataAgent",
+          "Scrobbler",
+          "TimerCallback",
+          "LifecycleManagement"
+        ]
       }
     }
   }

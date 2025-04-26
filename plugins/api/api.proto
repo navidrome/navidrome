@@ -5,7 +5,7 @@ package api;
 option go_package = "github.com/navidrome/navidrome/plugins/api;api";
 
 // go:plugin type=plugin version=1
-service MediaMetadataService {
+service MetadataAgent {
   // Artist metadata methods
   rpc GetArtistMBID(ArtistMBIDRequest) returns (ArtistMBIDResponse);
   rpc GetArtistURL(ArtistURLRequest) returns (ArtistURLResponse);
@@ -123,7 +123,7 @@ message AlbumImagesResponse {
 }
 
 // go:plugin type=plugin version=1
-service ScrobblerService {
+service Scrobbler {
   rpc IsAuthorized(ScrobblerIsAuthorizedRequest) returns (ScrobblerIsAuthorizedResponse);
   rpc NowPlaying(ScrobblerNowPlayingRequest) returns (ScrobblerNowPlayingResponse);
   rpc Scrobble(ScrobblerScrobbleRequest) returns (ScrobblerScrobbleResponse);
@@ -172,7 +172,7 @@ message ScrobblerScrobbleResponse {
 }
 
 // go:plugin type=plugin version=1
-service TimerCallbackService {
+service TimerCallback {
   rpc OnTimerCallback(TimerCallbackRequest) returns (TimerCallbackResponse);
 }
 
@@ -186,7 +186,7 @@ message TimerCallbackResponse {
 }
 
 // go:plugin type=plugin version=1
-service InitService {
+service LifecycleManagement {
   rpc OnInit(InitRequest) returns (InitResponse);
 }
 
@@ -197,4 +197,4 @@ message InitRequest {
 
 message InitResponse {
   string error = 1;     // Error message if initialization failed
-} 
+}

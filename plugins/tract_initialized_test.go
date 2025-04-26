@@ -118,7 +118,7 @@ var _ = Describe("InitService", func() {
 			// Plugin that doesn't implement InitService
 			regularPlugin := &PluginInfo{
 				Name:     "regular-plugin",
-				Services: []string{"MediaMetadataService"},
+				Services: []string{"MetadataAgent"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},

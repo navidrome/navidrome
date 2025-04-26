@@ -53,7 +53,7 @@ func (t *TimerService) TimerCount() int {
 }
 
 // RegisterTimer implements the TimerService interface
-func (t *TimerService) RegisterTimer(ctx context.Context, req *timer.TimerRequest) (*timer.TimerResponse, error) {
+func (t *TimerService) RegisterTimer(_ context.Context, req *timer.TimerRequest) (*timer.TimerResponse, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -169,17 +169,17 @@ func (t *TimerService) executeCallback(ctx context.Context, originalTimerId stri
 		Payload: callback.Payload,
 	}
 
-	// Get the plugin instance directly from the manager
+	// Get the plugin
 	p := t.manager.LoadPlugin(callback.PluginName)
 	if p == nil {
-		log.Error("Plugin not found for timer callback", "plugin", callback.PluginName)
+		log.Error("Plugin not found for callback", "plugin", callback.PluginName)
 		return
 	}
 
-	// Type assert to wasmTimerCallback
-	plugin, ok := p.(api.TimerCallbackService)
+	// Type-check the plugin
+	plugin, ok := p.(api.TimerCallback)
 	if !ok {
-		log.Error("Plugin does not implement TimerCallbackService", "plugin", callback.PluginName)
+		log.Error("Plugin does not implement TimerCallback", "plugin", callback.PluginName)
 		return
 	}
 

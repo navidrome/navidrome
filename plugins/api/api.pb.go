@@ -914,7 +914,7 @@ func (x *InitResponse) GetError() string {
 }
 
 // go:plugin type=plugin version=1
-type MediaMetadataService interface {
+type MetadataAgent interface {
 	// Artist metadata methods
 	GetArtistMBID(context.Context, *ArtistMBIDRequest) (*ArtistMBIDResponse, error)
 	GetArtistURL(context.Context, *ArtistURLRequest) (*ArtistURLResponse, error)
@@ -928,18 +928,18 @@ type MediaMetadataService interface {
 }
 
 // go:plugin type=plugin version=1
-type ScrobblerService interface {
+type Scrobbler interface {
 	IsAuthorized(context.Context, *ScrobblerIsAuthorizedRequest) (*ScrobblerIsAuthorizedResponse, error)
 	NowPlaying(context.Context, *ScrobblerNowPlayingRequest) (*ScrobblerNowPlayingResponse, error)
 	Scrobble(context.Context, *ScrobblerScrobbleRequest) (*ScrobblerScrobbleResponse, error)
 }
 
 // go:plugin type=plugin version=1
-type TimerCallbackService interface {
+type TimerCallback interface {
 	OnTimerCallback(context.Context, *TimerCallbackRequest) (*TimerCallbackResponse, error)
 }
 
 // go:plugin type=plugin version=1
-type InitService interface {
+type LifecycleManagement interface {
 	OnInit(context.Context, *InitRequest) (*InitResponse, error)
 }

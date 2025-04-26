@@ -4,9 +4,10 @@
 
 Navidrome's plugin system is a WebAssembly (WASM) based extension mechanism that enables developers to expand Navidrome's functionality without modifying the core codebase. The plugin system supports several service types that can be implemented by plugins:
 
-1. **Media Metadata Service** - For fetching artist and album information, images, etc.
-2. **Scrobbler Service** - For implementing scrobbling functionality with external services
-3. **Timer Callback Service** - For executing code after a specified delay
+1. **Metadata Agent** - For fetching artist and album information, images, etc.
+2. **Scrobbler** - For implementing scrobbling functionality with external services
+3. **Timer Callback** - For executing code after a specified delay
+4. **Lifecycle Management** - For plugin initialization and configuration
 
 ## Plugin Architecture
 
@@ -28,9 +29,9 @@ Plugins communicate with Navidrome using Protocol Buffers (protobuf) over a WASM
 
 Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
-- `wasmMediaAgent` adapts `MediaMetadataService` to the internal `agents.Interface`
-- `wasmScrobblerPlugin` adapts `ScrobblerService` to the internal `scrobbler.Scrobbler`
-- `wasmTimerCallback` adapts `TimerCallbackService` for timer callbacks
+- `wasmMediaAgent` adapts `MetadataAgent` to the internal `agents.Interface`
+- `wasmScrobblerPlugin` adapts `Scrobbler` to the internal `scrobbler.Scrobbler`
+- `wasmTimerCallback` adapts `TimerCallback` for timer callbacks
 
 ### 4. Host Services
 
@@ -252,9 +253,10 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
   "version": "1.0.0",
   "description": "A plugin that does awesome things",
   "services": [
-    "MediaMetadataService",
-    "ScrobblerService",
-    "TimerCallbackService"
+    "MetadataAgent",
+    "Scrobbler",
+    "TimerCallback",
+    "LifecycleManagement"
   ]
 }
 ```
@@ -269,9 +271,10 @@ Required fields:
 
 Currently supported service types:
 
-- `MediaMetadataService` - For implementing media metadata providers
-- `ScrobblerService` - For implementing scrobbling services
-- `TimerCallbackService` - For implementing plugins that use the timer service
+- `MetadataAgent` - For implementing media metadata providers
+- `Scrobbler` - For implementing scrobbling services
+- `TimerCallback` - For implementing plugins that use the timer service
+- `LifecycleManagement` - For handling plugin initialization and configuration
 
 ## Plugin Loading Process
 
@@ -292,12 +295,12 @@ Currently supported service types:
 
 ### Service Interfaces
 
-#### Media Metadata Service
+#### Metadata Agent
 
 This service fetches metadata about artists and albums. Implement this interface to add support for fetching data from external sources.
 
 ```protobuf
-service MediaMetadataService {
+service MetadataAgent {
   // Artist metadata methods
   rpc GetArtistMBID(ArtistMBIDRequest) returns (ArtistMBIDResponse);
   rpc GetArtistURL(ArtistURLRequest) returns (ArtistURLResponse);
@@ -312,24 +315,24 @@ service MediaMetadataService {
 }
 ```
 
-#### Scrobbler Service
+#### Scrobbler
 
 This service enables scrobbling to external services. Implement this interface to add support for custom scrobblers.
 
 ```protobuf
-service ScrobblerService {
+service Scrobbler {
   rpc IsAuthorized(ScrobblerIsAuthorizedRequest) returns (ScrobblerIsAuthorizedResponse);
   rpc NowPlaying(ScrobblerNowPlayingRequest) returns (ScrobblerNowPlayingResponse);
   rpc Scrobble(ScrobblerScrobbleRequest) returns (ScrobblerScrobbleResponse);
 }
 ```
 
-#### Timer Callback Service
+#### Timer Callback
 
 This service allows plugins to receive timer callbacks after a specified delay. Implement this interface to add support for delayed operations.
 
 ```protobuf
-service TimerCallbackService {
+service TimerCallback {
   rpc OnTimerCallback(TimerCallbackRequest) returns (TimerCallbackResponse);
 }
 ```
@@ -394,7 +397,7 @@ When developing plugins, keep these guidelines in mind:
 
 ### Using Plugin Configuration
 
-Since plugins are stateless, you can use the `InitService` to read configuration when your plugin is loaded and perform any necessary setup:
+Since plugins are stateless, you can use the `LifecycleManagement` interface to read configuration when your plugin is loaded and perform any necessary setup:
 
 ```go
 func (p *myPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*api.InitResponse, error) {

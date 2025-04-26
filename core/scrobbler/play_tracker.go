@@ -107,7 +107,7 @@ func (p *playTracker) refreshPluginScrobblers() {
 	}
 
 	// Get the list of available plugin names
-	pluginNames := p.pluginLoader.PluginNames("ScrobblerService")
+	pluginNames := p.pluginLoader.PluginNames("Scrobbler")
 
 	// Early return if plugin names match existing scrobblers (no change)
 	if pluginNamesMatchScrobblers(pluginNames, p.pluginScrobblers) {

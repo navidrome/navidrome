@@ -31,20 +31,21 @@ var _ = Describe("Plugin Manager", func() {
 	It("should scan and discover plugins from the testdata folder", func() {
 		Expect(mgr).NotTo(BeNil())
 
-		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
+		mediaAgentNames := mgr.PluginNames("MetadataAgent")
+		Expect(mediaAgentNames).To(HaveLen(3))
 		Expect(mediaAgentNames).To(ContainElement("fake_artist_agent"))
 		Expect(mediaAgentNames).To(ContainElement("fake_album_agent"))
 		Expect(mediaAgentNames).To(ContainElement("multi_plugin"))
 
-		scrobblerNames := mgr.PluginNames("ScrobblerService")
+		scrobblerNames := mgr.PluginNames("Scrobbler")
 		Expect(scrobblerNames).To(ContainElement("fake_scrobbler"))
 
-		initServiceNames := mgr.PluginNames("InitService")
+		initServiceNames := mgr.PluginNames("LifecycleManagement")
 		Expect(initServiceNames).To(ContainElement("multi_plugin"))
 		Expect(initServiceNames).To(ContainElement("fake_init_service"))
 	})
 
-	It("should load a MediaMetadataService plugin and invoke artist-related methods", func() {
+	It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
 		plugin := mgr.LoadPlugin("fake_artist_agent")
 		Expect(plugin).NotTo(BeNil())
 
@@ -54,33 +55,19 @@ var _ = Describe("Plugin Manager", func() {
 
 		mbidRetriever, ok := agent.(agents.ArtistMBIDRetriever)
 		Expect(ok).To(BeTrue())
-		mbid, err := mbidRetriever.GetArtistMBID(ctx, "id", "Test Artist")
+		mbid, err := mbidRetriever.GetArtistMBID(ctx, "123", "The Beatles")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(mbid).To(Equal("1234567890"))
 	})
 
-	It("should load all MediaMetadataService plugins and invoke methods", func() {
-		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
-		Expect(mediaAgentNames).NotTo(BeEmpty())
-
-		plugins := mgr.LoadAllPlugins("MediaMetadataService")
-		Expect(plugins).To(HaveLen(len(mediaAgentNames)))
-
-		var fakeAlbumPlugin agents.Interface
-		for _, p := range plugins {
-			if agent, ok := p.(agents.Interface); ok {
-				if agent.AgentName() == "fake_album_agent" {
-					fakeAlbumPlugin = agent
-					break
-				}
-			}
+	It("should load all MetadataAgent plugins", func() {
+		agents := mgr.LoadAllMediaAgents()
+		Expect(agents).To(HaveLen(3))
+		var names []string
+		for _, a := range agents {
+			names = append(names, a.AgentName())
 		}
-
-		Expect(fakeAlbumPlugin).NotTo(BeNil(), "fake_album_agent should be loaded")
-
-		albumInfo, err := fakeAlbumPlugin.(agents.AlbumInfoRetriever).GetAlbumInfo(ctx, "Test Album", "Test Artist", "mbid")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(albumInfo.Name).To(Equal("Test Album"))
+		Expect(names).To(ContainElements("fake_artist_agent", "fake_album_agent", "multi_plugin"))
 	})
 
 	It("should use DevPluginCompilationTimeout config for plugin compilation timeout", func() {
@@ -121,7 +108,7 @@ var _ = Describe("Plugin Manager", func() {
 			manifestContent := `{
 				"name": "real-plugin",
 				"version": "1.0.0",
-				"services": ["MediaMetadataService"],
+				"services": ["MetadataAgent"],
 				"author": "Test Author",
 				"description": "Test Plugin"
 			}`
@@ -154,14 +141,14 @@ var _ = Describe("Plugin Manager", func() {
 			Expect(m.plugins).To(HaveLen(1), "should only find one plugin, not duplicates")
 
 			// Verify the plugin was loaded with correct name
-			pluginNames = m.PluginNames("MediaMetadataService")
-			Expect(pluginNames).To(HaveLen(1), "should only have one MediaMetadataService plugin")
+			pluginNames = m.PluginNames("MetadataAgent")
+			Expect(pluginNames).To(HaveLen(1), "should only have one MetadataAgent plugin")
 			Expect(pluginNames).To(ContainElement("real-plugin"), "should have loaded the real-plugin")
 		})
 	})
 
 	Describe("LoadPlugin", func() {
-		It("should load a MediaMetadataService plugin and invoke artist-related methods", func() {
+		It("should load a MetadataAgent plugin and invoke artist-related methods", func() {
 			plugin := mgr.LoadPlugin("fake_artist_agent")
 			Expect(plugin).NotTo(BeNil())
 
@@ -178,11 +165,11 @@ var _ = Describe("Plugin Manager", func() {
 	})
 
 	Describe("Invoke Methods", func() {
-		It("should load all MediaMetadataService plugins and invoke methods", func() {
-			mediaAgentNames := mgr.PluginNames("MediaMetadataService")
+		It("should load all MetadataAgent plugins and invoke methods", func() {
+			mediaAgentNames := mgr.PluginNames("MetadataAgent")
 			Expect(mediaAgentNames).NotTo(BeEmpty())
 
-			plugins := mgr.LoadAllPlugins("MediaMetadataService")
+			plugins := mgr.LoadAllPlugins("MetadataAgent")
 			Expect(plugins).To(HaveLen(len(mediaAgentNames)))
 
 			var fakeAlbumPlugin agents.Interface

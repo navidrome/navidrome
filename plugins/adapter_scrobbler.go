@@ -12,17 +12,17 @@ import (
 )
 
 func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
-	loader, err := api.NewScrobblerServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	loader, err := api.NewScrobblerPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating scrobbler service plugin", "plugin", pluginName, "path", wasmPath, err)
 		return nil
 	}
 	return &wasmScrobblerPlugin{
-		wasmBasePlugin: &wasmBasePlugin[api.ScrobblerService, *api.ScrobblerServicePlugin]{
+		wasmBasePlugin: &wasmBasePlugin[api.Scrobbler, *api.ScrobblerPlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
 			loader:   loader,
-			loadFunc: func(ctx context.Context, l *api.ScrobblerServicePlugin, path string) (api.ScrobblerService, error) {
+			loadFunc: func(ctx context.Context, l *api.ScrobblerPlugin, path string) (api.Scrobbler, error) {
 				return l.Load(ctx, path)
 			},
 		},
@@ -30,7 +30,7 @@ func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRu
 }
 
 type wasmScrobblerPlugin struct {
-	*wasmBasePlugin[api.ScrobblerService, *api.ScrobblerServicePlugin]
+	*wasmBasePlugin[api.Scrobbler, *api.ScrobblerPlugin]
 }
 
 func (w *wasmScrobblerPlugin) PluginName() string {
@@ -46,7 +46,7 @@ func (w *wasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) b
 		}
 	}
 
-	result, err := callMethod(ctx, w, "IsAuthorized", func(inst api.ScrobblerService) (bool, error) {
+	result, err := callMethod(ctx, w, "IsAuthorized", func(inst api.Scrobbler) (bool, error) {
 		resp, err := inst.IsAuthorized(ctx, &api.ScrobblerIsAuthorizedRequest{
 			UserId:   userId,
 			Username: username,
@@ -89,7 +89,7 @@ func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, tra
 		AlbumArtists: albumArtists,
 		Length:       int32(track.Duration),
 	}
-	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.ScrobblerService) (struct{}, error) {
+	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.Scrobbler) (struct{}, error) {
 		resp, err := inst.NowPlaying(ctx, &api.ScrobblerNowPlayingRequest{
 			UserId:   userId,
 			Username: username,
@@ -134,7 +134,7 @@ func (w *wasmScrobblerPlugin) Scrobble(ctx context.Context, userId string, s scr
 		AlbumArtists: albumArtists,
 		Length:       int32(track.Duration),
 	}
-	_, err := callMethod(ctx, w, "Scrobble", func(inst api.ScrobblerService) (struct{}, error) {
+	_, err := callMethod(ctx, w, "Scrobble", func(inst api.Scrobbler) (struct{}, error) {
 		resp, err := inst.Scrobble(ctx, &api.ScrobblerScrobbleRequest{
 			UserId:    userId,
 			Username:  username,

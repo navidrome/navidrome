@@ -19,7 +19,7 @@ func (p *initServicePlugin) OnInit(ctx context.Context, req *api.InitRequest) (*
 // Required by Go WASI build
 func main() {}
 
-// Register the InitService implementation
+// Register the LifecycleManagement implementation
 func init() {
-	api.RegisterInitService(&initServicePlugin{})
+	api.RegisterLifecycleManagement(&initServicePlugin{})
 }

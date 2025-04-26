@@ -9,28 +9,28 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-// NewWasmMediaAgent creates a new adapter for a MediaMetadataService plugin
+// NewWasmMediaAgent creates a new adapter for a MetadataAgent plugin
 func NewWasmMediaAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
-	loader, err := api.NewMediaMetadataServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	loader, err := api.NewMetadataAgentPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating media metadata service plugin", "plugin", pluginName, "path", wasmPath, err)
 		return nil
 	}
 	return &wasmMediaAgent{
-		wasmBasePlugin: &wasmBasePlugin[api.MediaMetadataService, *api.MediaMetadataServicePlugin]{
+		wasmBasePlugin: &wasmBasePlugin[api.MetadataAgent, *api.MetadataAgentPlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
 			loader:   loader,
-			loadFunc: func(ctx context.Context, l *api.MediaMetadataServicePlugin, path string) (api.MediaMetadataService, error) {
+			loadFunc: func(ctx context.Context, l *api.MetadataAgentPlugin, path string) (api.MetadataAgent, error) {
 				return l.Load(ctx, path)
 			},
 		},
 	}
 }
 
-// wasmMediaAgent adapts a MediaMetadataService plugin to implement the agents.Interface
+// wasmMediaAgent adapts a MetadataAgent plugin to implement the agents.Interface
 type wasmMediaAgent struct {
-	*wasmBasePlugin[api.MediaMetadataService, *api.MediaMetadataServicePlugin]
+	*wasmBasePlugin[api.MetadataAgent, *api.MetadataAgentPlugin]
 }
 
 func (w *wasmMediaAgent) AgentName() string {
@@ -51,7 +51,7 @@ func (w *wasmMediaAgent) mapError(err error) error {
 // Album-related methods
 
 func (w *wasmMediaAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*agents.AlbumInfo, error) {
-	return callMethod(ctx, w, "GetAlbumInfo", func(inst api.MediaMetadataService) (*agents.AlbumInfo, error) {
+	return callMethod(ctx, w, "GetAlbumInfo", func(inst api.MetadataAgent) (*agents.AlbumInfo, error) {
 		res, err := inst.GetAlbumInfo(ctx, &api.AlbumInfoRequest{Name: name, Artist: artist, Mbid: mbid})
 		if err != nil {
 			return nil, w.mapError(err)
@@ -70,7 +70,7 @@ func (w *wasmMediaAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid st
 }
 
 func (w *wasmMediaAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
-	return callMethod(ctx, w, "GetAlbumImages", func(inst api.MediaMetadataService) ([]agents.ExternalImage, error) {
+	return callMethod(ctx, w, "GetAlbumImages", func(inst api.MetadataAgent) ([]agents.ExternalImage, error) {
 		res, err := inst.GetAlbumImages(ctx, &api.AlbumImagesRequest{Name: name, Artist: artist, Mbid: mbid})
 		if err != nil {
 			return nil, w.mapError(err)
@@ -82,7 +82,7 @@ func (w *wasmMediaAgent) GetAlbumImages(ctx context.Context, name, artist, mbid 
 // Artist-related methods
 
 func (w *wasmMediaAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
-	return callMethod(ctx, w, "GetArtistMBID", func(inst api.MediaMetadataService) (string, error) {
+	return callMethod(ctx, w, "GetArtistMBID", func(inst api.MetadataAgent) (string, error) {
 		res, err := inst.GetArtistMBID(ctx, &api.ArtistMBIDRequest{Id: id, Name: name})
 		if err != nil {
 			return "", w.mapError(err)
@@ -92,7 +92,7 @@ func (w *wasmMediaAgent) GetArtistMBID(ctx context.Context, id string, name stri
 }
 
 func (w *wasmMediaAgent) GetArtistURL(ctx context.Context, id, name, mbid string) (string, error) {
-	return callMethod(ctx, w, "GetArtistURL", func(inst api.MediaMetadataService) (string, error) {
+	return callMethod(ctx, w, "GetArtistURL", func(inst api.MetadataAgent) (string, error) {
 		res, err := inst.GetArtistURL(ctx, &api.ArtistURLRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return "", w.mapError(err)
@@ -102,7 +102,7 @@ func (w *wasmMediaAgent) GetArtistURL(ctx context.Context, id, name, mbid string
 }
 
 func (w *wasmMediaAgent) GetArtistBiography(ctx context.Context, id, name, mbid string) (string, error) {
-	return callMethod(ctx, w, "GetArtistBiography", func(inst api.MediaMetadataService) (string, error) {
+	return callMethod(ctx, w, "GetArtistBiography", func(inst api.MetadataAgent) (string, error) {
 		res, err := inst.GetArtistBiography(ctx, &api.ArtistBiographyRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return "", w.mapError(err)
@@ -112,7 +112,7 @@ func (w *wasmMediaAgent) GetArtistBiography(ctx context.Context, id, name, mbid 
 }
 
 func (w *wasmMediaAgent) GetSimilarArtists(ctx context.Context, id, name, mbid string, limit int) ([]agents.Artist, error) {
-	return callMethod(ctx, w, "GetSimilarArtists", func(inst api.MediaMetadataService) ([]agents.Artist, error) {
+	return callMethod(ctx, w, "GetSimilarArtists", func(inst api.MetadataAgent) ([]agents.Artist, error) {
 		resp, err := inst.GetSimilarArtists(ctx, &api.ArtistSimilarRequest{Id: id, Name: name, Mbid: mbid, Limit: int32(limit)})
 		if err != nil {
 			return nil, w.mapError(err)
@@ -129,7 +129,7 @@ func (w *wasmMediaAgent) GetSimilarArtists(ctx context.Context, id, name, mbid s
 }
 
 func (w *wasmMediaAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
-	return callMethod(ctx, w, "GetArtistImages", func(inst api.MediaMetadataService) ([]agents.ExternalImage, error) {
+	return callMethod(ctx, w, "GetArtistImages", func(inst api.MetadataAgent) ([]agents.ExternalImage, error) {
 		res, err := inst.GetArtistImages(ctx, &api.ArtistImageRequest{Id: id, Name: name, Mbid: mbid})
 		if err != nil {
 			return nil, w.mapError(err)
@@ -139,7 +139,7 @@ func (w *wasmMediaAgent) GetArtistImages(ctx context.Context, id, name, mbid str
 }
 
 func (w *wasmMediaAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]agents.Song, error) {
-	return callMethod(ctx, w, "GetArtistTopSongs", func(inst api.MediaMetadataService) ([]agents.Song, error) {
+	return callMethod(ctx, w, "GetArtistTopSongs", func(inst api.MetadataAgent) ([]agents.Song, error) {
 		resp, err := inst.GetArtistTopSongs(ctx, &api.ArtistTopSongsRequest{Id: id, ArtistName: artistName, Mbid: mbid, Count: int32(count)})
 		if err != nil {
 			return nil, w.mapError(err)

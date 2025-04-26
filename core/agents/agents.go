@@ -102,7 +102,7 @@ func (a *Agents) getEnabledAgentNames() []string {
 	// Get all available plugin names
 	var availablePlugins []string
 	if a.pluginLoader != nil {
-		availablePlugins = a.pluginLoader.PluginNames("MediaMetadataService")
+		availablePlugins = a.pluginLoader.PluginNames("MetadataAgent")
 	}
 
 	configuredAgents := strings.Split(conf.Server.Agents, ",")

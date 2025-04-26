@@ -64,7 +64,7 @@ func (FakeArtistAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTop
 	return nil, ErrNotFound
 }
 
-// Add empty implementations for the album methods to satisfy the MediaMetadataService interface
+// Add empty implementations for the album methods to satisfy the MetadataAgent interface
 func (FakeArtistAgent) GetAlbumInfo(ctx context.Context, req *api.AlbumInfoRequest) (*api.AlbumInfoResponse, error) {
 	return nil, api.ErrNotImplemented
 }
@@ -78,5 +78,5 @@ func main() {}
 
 // init is used by go-plugin to register the implementation
 func init() {
-	api.RegisterMediaMetadataService(FakeArtistAgent{})
+	api.RegisterMetadataAgent(FakeArtistAgent{})
 }

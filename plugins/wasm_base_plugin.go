@@ -19,9 +19,9 @@ type LoaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (
 // - P: The plugin loader type that creates plugin instances
 //
 // Note: Both loader and loadFunc are necessary due to a limitation in the code generated
-// by protoc-gen-go-plugin. The plugin loaders (like ScrobblerServicePlugin) have Load() methods
-// that return non-exported interface types (like scrobblerService), while our code works
-// with the exported interfaces (like ScrobblerService). The loadFunc bridges this gap.
+// by protoc-gen-go-plugin. The plugin loaders (like ScrobblerPlugin) have Load() methods
+// that return non-exported interface types (like Scrobbler), while our code works
+// with the exported interfaces (like Scrobbler). The loadFunc bridges this gap.
 type wasmBasePlugin[S any, P any] struct {
 	wasmPath string
 	name     string

@@ -3,5 +3,5 @@
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test data for album agent",
-  "services": ["MediaMetadataService"]
+  "services": ["MetadataAgent"]
 }

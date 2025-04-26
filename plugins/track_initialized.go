@@ -38,22 +38,22 @@ func (i *initializedPlugins) markInitialized(info *PluginInfo) {
 	i.plugins[info.Name+consts.Zwsp+info.Manifest.Version] = true
 }
 
-// callOnInit calls the OnInit method on a plugin that implements InitService
+// callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
 func (m *initializedPlugins) callOnInit(info *PluginInfo) {
 	ctx := context.Background()
 	log.Debug("Initializing plugin", "name", info.Name)
 	start := time.Now()
 
-	// Create InitService plugin instance
-	loader, err := api.NewInitServicePlugin(ctx, api.WazeroRuntime(info.Runtime), api.WazeroModuleConfig(info.ModConfig))
+	// Create LifecycleManagement plugin instance
+	loader, err := api.NewLifecycleManagementPlugin(ctx, api.WazeroRuntime(info.Runtime), api.WazeroModuleConfig(info.ModConfig))
 	if loader == nil || err != nil {
-		log.Error("Error creating InitService plugin", "plugin", info.Name, err)
+		log.Error("Error creating LifecycleManagement plugin", "plugin", info.Name, err)
 		return
 	}
 
 	initPlugin, err := loader.Load(ctx, info.WasmPath)
 	if err != nil {
-		log.Error("Error loading InitService plugin", "plugin", info.Name, "path", info.WasmPath, err)
+		log.Error("Error loading LifecycleManagement plugin", "plugin", info.Name, "path", info.WasmPath, err)
 		return
 	}
 	defer initPlugin.Close(ctx)

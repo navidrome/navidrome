@@ -30,9 +30,9 @@ import (
 type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
-	"MediaMetadataService": NewWasmMediaAgent,
-	"ScrobblerService":     NewWasmScrobblerPlugin,
-	"TimerCallbackService": NewWasmTimerCallback,
+	"MetadataAgent": NewWasmMediaAgent,
+	"Scrobbler":     NewWasmScrobblerPlugin,
+	"TimerCallback": NewWasmTimerCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement
@@ -260,16 +260,16 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 	return m.plugins[manifest.Name]
 }
 
-// initializePluginIfNeeded calls OnInit on plugins that implement InitService
+// initializePluginIfNeeded calls OnInit on plugins that implement LifecycleManagement
 func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
 	// Skip if already initialized
 	if m.initialized.isInitialized(plugin) {
 		return
 	}
 
-	// Check if the plugin implements InitService
+	// Check if the plugin implements LifecycleManagement
 	for _, svc := range plugin.Services {
-		if svc == "InitService" {
+		if svc == "LifecycleManagement" {
 			m.initialized.callOnInit(plugin)
 			m.initialized.markInitialized(plugin)
 			break
@@ -490,7 +490,7 @@ func (m *Manager) LoadAllPlugins(svcName string) []WasmPlugin {
 
 // LoadAllMediaAgents instantiates and returns all media agent plugins
 func (m *Manager) LoadAllMediaAgents() []agents.Interface {
-	names := m.PluginNames("MediaMetadataService")
+	names := m.PluginNames("MetadataAgent")
 	if len(names) == 0 {
 		return nil
 	}
@@ -507,7 +507,7 @@ func (m *Manager) LoadAllMediaAgents() []agents.Interface {
 
 // LoadAllScrobblers instantiates and returns all scrobbler plugins
 func (m *Manager) LoadAllScrobblers() []scrobbler.Scrobbler {
-	names := m.PluginNames("ScrobblerService")
+	names := m.PluginNames("Scrobbler")
 	if len(names) == 0 {
 		return nil
 	}

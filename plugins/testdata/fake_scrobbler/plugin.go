@@ -29,5 +29,5 @@ func (FakeScrobbler) Scrobble(ctx context.Context, req *api.ScrobblerScrobbleReq
 func main() {}
 
 func init() {
-	api.RegisterScrobblerService(FakeScrobbler{})
+	api.RegisterScrobbler(FakeScrobbler{})
 }

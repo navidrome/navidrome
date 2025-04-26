@@ -64,6 +64,7 @@ func (FakeAlbumAgent) GetArtistTopSongs(ctx context.Context, req *api.ArtistTopS
 
 func main() {}
 
+// Register the plugin implementation
 func init() {
-	api.RegisterMediaMetadataService(FakeAlbumAgent{})
+	api.RegisterMetadataAgent(FakeAlbumAgent{})
 }

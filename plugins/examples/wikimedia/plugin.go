@@ -383,5 +383,5 @@ func (WikimediaAgent) GetAlbumImages(context.Context, *api.AlbumImagesRequest) (
 func main() {}
 
 func init() {
-	api.RegisterMediaMetadataService(WikimediaAgent{})
+	api.RegisterMetadataAgent(WikimediaAgent{})
 }

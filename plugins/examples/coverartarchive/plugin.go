@@ -143,5 +143,5 @@ func (CoverArtArchiveAgent) GetArtistTopSongs(ctx context.Context, req *api.Arti
 func main() {}
 
 func init() {
-	api.RegisterMediaMetadataService(CoverArtArchiveAgent{})
+	api.RegisterMetadataAgent(CoverArtArchiveAgent{})
 }

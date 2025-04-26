@@ -8,28 +8,28 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-// NewWasmTimerCallback creates a new adapter for a TimerCallbackService plugin
+// NewWasmTimerCallback creates a new adapter for a TimerCallback plugin
 func NewWasmTimerCallback(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
-	loader, err := api.NewTimerCallbackServicePlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	loader, err := api.NewTimerCallbackPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
-		log.Error("Error creating timer callback service plugin", "plugin", pluginName, "path", wasmPath, err)
+		log.Error("Error creating timer callback plugin", "plugin", pluginName, "path", wasmPath, err)
 		return nil
 	}
 	return &wasmTimerCallback{
-		wasmBasePlugin: &wasmBasePlugin[api.TimerCallbackService, *api.TimerCallbackServicePlugin]{
+		wasmBasePlugin: &wasmBasePlugin[api.TimerCallback, *api.TimerCallbackPlugin]{
 			wasmPath: wasmPath,
 			name:     pluginName,
 			loader:   loader,
-			loadFunc: func(ctx context.Context, l *api.TimerCallbackServicePlugin, path string) (api.TimerCallbackService, error) {
+			loadFunc: func(ctx context.Context, l *api.TimerCallbackPlugin, path string) (api.TimerCallback, error) {
 				return l.Load(ctx, path)
 			},
 		},
 	}
 }
 
-// wasmTimerCallback adapts a TimerCallbackService plugin
+// wasmTimerCallback adapts a TimerCallback plugin
 type wasmTimerCallback struct {
-	*wasmBasePlugin[api.TimerCallbackService, *api.TimerCallbackServicePlugin]
+	*wasmBasePlugin[api.TimerCallback, *api.TimerCallbackPlugin]
 }
 
 func (w *wasmTimerCallback) PluginName() string {

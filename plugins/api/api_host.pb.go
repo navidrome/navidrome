@@ -18,14 +18,14 @@ import (
 	os "os"
 )
 
-const MediaMetadataServicePluginAPIVersion = 1
+const MetadataAgentPluginAPIVersion = 1
 
-type MediaMetadataServicePlugin struct {
+type MetadataAgentPlugin struct {
 	newRuntime   func(context.Context) (wazero.Runtime, error)
 	moduleConfig wazero.ModuleConfig
 }
 
-func NewMediaMetadataServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*MediaMetadataServicePlugin, error) {
+func NewMetadataAgentPlugin(ctx context.Context, opts ...wazeroConfigOption) (*MetadataAgentPlugin, error) {
 	o := &WazeroConfig{
 		newRuntime:   DefaultWazeroRuntime(),
 		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
@@ -35,18 +35,18 @@ func NewMediaMetadataServicePlugin(ctx context.Context, opts ...wazeroConfigOpti
 		opt(o)
 	}
 
-	return &MediaMetadataServicePlugin{
+	return &MetadataAgentPlugin{
 		newRuntime:   o.newRuntime,
 		moduleConfig: o.moduleConfig,
 	}, nil
 }
 
-type mediaMetadataService interface {
+type metadataAgent interface {
 	Close(ctx context.Context) error
-	MediaMetadataService
+	MetadataAgent
 }
 
-func (p *MediaMetadataServicePlugin) Load(ctx context.Context, pluginPath string) (mediaMetadataService, error) {
+func (p *MetadataAgentPlugin) Load(ctx context.Context, pluginPath string) (metadataAgent, error) {
 	b, err := os.ReadFile(pluginPath)
 	if err != nil {
 		return nil, err
@@ -77,51 +77,51 @@ func (p *MediaMetadataServicePlugin) Load(ctx context.Context, pluginPath string
 	}
 
 	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("media_metadata_service_api_version")
+	apiVersion := module.ExportedFunction("metadata_agent_api_version")
 	if apiVersion == nil {
-		return nil, errors.New("media_metadata_service_api_version is not exported")
+		return nil, errors.New("metadata_agent_api_version is not exported")
 	}
 	results, err := apiVersion.Call(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(results) != 1 {
-		return nil, errors.New("invalid media_metadata_service_api_version signature")
+		return nil, errors.New("invalid metadata_agent_api_version signature")
 	}
-	if results[0] != MediaMetadataServicePluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", MediaMetadataServicePluginAPIVersion, results[0])
+	if results[0] != MetadataAgentPluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", MetadataAgentPluginAPIVersion, results[0])
 	}
 
-	getartistmbid := module.ExportedFunction("media_metadata_service_get_artist_mbid")
+	getartistmbid := module.ExportedFunction("metadata_agent_get_artist_mbid")
 	if getartistmbid == nil {
-		return nil, errors.New("media_metadata_service_get_artist_mbid is not exported")
+		return nil, errors.New("metadata_agent_get_artist_mbid is not exported")
 	}
-	getartisturl := module.ExportedFunction("media_metadata_service_get_artist_url")
+	getartisturl := module.ExportedFunction("metadata_agent_get_artist_url")
 	if getartisturl == nil {
-		return nil, errors.New("media_metadata_service_get_artist_url is not exported")
+		return nil, errors.New("metadata_agent_get_artist_url is not exported")
 	}
-	getartistbiography := module.ExportedFunction("media_metadata_service_get_artist_biography")
+	getartistbiography := module.ExportedFunction("metadata_agent_get_artist_biography")
 	if getartistbiography == nil {
-		return nil, errors.New("media_metadata_service_get_artist_biography is not exported")
+		return nil, errors.New("metadata_agent_get_artist_biography is not exported")
 	}
-	getsimilarartists := module.ExportedFunction("media_metadata_service_get_similar_artists")
+	getsimilarartists := module.ExportedFunction("metadata_agent_get_similar_artists")
 	if getsimilarartists == nil {
-		return nil, errors.New("media_metadata_service_get_similar_artists is not exported")
+		return nil, errors.New("metadata_agent_get_similar_artists is not exported")
 	}
-	getartistimages := module.ExportedFunction("media_metadata_service_get_artist_images")
+	getartistimages := module.ExportedFunction("metadata_agent_get_artist_images")
 	if getartistimages == nil {
-		return nil, errors.New("media_metadata_service_get_artist_images is not exported")
+		return nil, errors.New("metadata_agent_get_artist_images is not exported")
 	}
-	getartisttopsongs := module.ExportedFunction("media_metadata_service_get_artist_top_songs")
+	getartisttopsongs := module.ExportedFunction("metadata_agent_get_artist_top_songs")
 	if getartisttopsongs == nil {
-		return nil, errors.New("media_metadata_service_get_artist_top_songs is not exported")
+		return nil, errors.New("metadata_agent_get_artist_top_songs is not exported")
 	}
-	getalbuminfo := module.ExportedFunction("media_metadata_service_get_album_info")
+	getalbuminfo := module.ExportedFunction("metadata_agent_get_album_info")
 	if getalbuminfo == nil {
-		return nil, errors.New("media_metadata_service_get_album_info is not exported")
+		return nil, errors.New("metadata_agent_get_album_info is not exported")
 	}
-	getalbumimages := module.ExportedFunction("media_metadata_service_get_album_images")
+	getalbumimages := module.ExportedFunction("metadata_agent_get_album_images")
 	if getalbumimages == nil {
-		return nil, errors.New("media_metadata_service_get_album_images is not exported")
+		return nil, errors.New("metadata_agent_get_album_images is not exported")
 	}
 
 	malloc := module.ExportedFunction("malloc")
@@ -133,7 +133,7 @@ func (p *MediaMetadataServicePlugin) Load(ctx context.Context, pluginPath string
 	if free == nil {
 		return nil, errors.New("free is not exported")
 	}
-	return &mediaMetadataServicePlugin{
+	return &metadataAgentPlugin{
 		runtime:            r,
 		module:             module,
 		malloc:             malloc,
@@ -149,14 +149,14 @@ func (p *MediaMetadataServicePlugin) Load(ctx context.Context, pluginPath string
 	}, nil
 }
 
-func (p *mediaMetadataServicePlugin) Close(ctx context.Context) (err error) {
+func (p *metadataAgentPlugin) Close(ctx context.Context) (err error) {
 	if r := p.runtime; r != nil {
 		r.Close(ctx)
 	}
 	return
 }
 
-type mediaMetadataServicePlugin struct {
+type metadataAgentPlugin struct {
 	runtime            wazero.Runtime
 	module             api.Module
 	malloc             api.Function
@@ -171,7 +171,7 @@ type mediaMetadataServicePlugin struct {
 	getalbumimages     api.Function
 }
 
-func (p *mediaMetadataServicePlugin) GetArtistMBID(ctx context.Context, request *ArtistMBIDRequest) (*ArtistMBIDResponse, error) {
+func (p *metadataAgentPlugin) GetArtistMBID(ctx context.Context, request *ArtistMBIDRequest) (*ArtistMBIDResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ func (p *mediaMetadataServicePlugin) GetArtistMBID(ctx context.Context, request 
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetArtistURL(ctx context.Context, request *ArtistURLRequest) (*ArtistURLResponse, error) {
+func (p *metadataAgentPlugin) GetArtistURL(ctx context.Context, request *ArtistURLRequest) (*ArtistURLResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (p *mediaMetadataServicePlugin) GetArtistURL(ctx context.Context, request *
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetArtistBiography(ctx context.Context, request *ArtistBiographyRequest) (*ArtistBiographyResponse, error) {
+func (p *metadataAgentPlugin) GetArtistBiography(ctx context.Context, request *ArtistBiographyRequest) (*ArtistBiographyResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -354,7 +354,7 @@ func (p *mediaMetadataServicePlugin) GetArtistBiography(ctx context.Context, req
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetSimilarArtists(ctx context.Context, request *ArtistSimilarRequest) (*ArtistSimilarResponse, error) {
+func (p *metadataAgentPlugin) GetSimilarArtists(ctx context.Context, request *ArtistSimilarRequest) (*ArtistSimilarResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -415,7 +415,7 @@ func (p *mediaMetadataServicePlugin) GetSimilarArtists(ctx context.Context, requ
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetArtistImages(ctx context.Context, request *ArtistImageRequest) (*ArtistImageResponse, error) {
+func (p *metadataAgentPlugin) GetArtistImages(ctx context.Context, request *ArtistImageRequest) (*ArtistImageResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -476,7 +476,7 @@ func (p *mediaMetadataServicePlugin) GetArtistImages(ctx context.Context, reques
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetArtistTopSongs(ctx context.Context, request *ArtistTopSongsRequest) (*ArtistTopSongsResponse, error) {
+func (p *metadataAgentPlugin) GetArtistTopSongs(ctx context.Context, request *ArtistTopSongsRequest) (*ArtistTopSongsResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -537,7 +537,7 @@ func (p *mediaMetadataServicePlugin) GetArtistTopSongs(ctx context.Context, requ
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetAlbumInfo(ctx context.Context, request *AlbumInfoRequest) (*AlbumInfoResponse, error) {
+func (p *metadataAgentPlugin) GetAlbumInfo(ctx context.Context, request *AlbumInfoRequest) (*AlbumInfoResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -598,7 +598,7 @@ func (p *mediaMetadataServicePlugin) GetAlbumInfo(ctx context.Context, request *
 
 	return response, nil
 }
-func (p *mediaMetadataServicePlugin) GetAlbumImages(ctx context.Context, request *AlbumImagesRequest) (*AlbumImagesResponse, error) {
+func (p *metadataAgentPlugin) GetAlbumImages(ctx context.Context, request *AlbumImagesRequest) (*AlbumImagesResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -660,14 +660,14 @@ func (p *mediaMetadataServicePlugin) GetAlbumImages(ctx context.Context, request
 	return response, nil
 }
 
-const ScrobblerServicePluginAPIVersion = 1
+const ScrobblerPluginAPIVersion = 1
 
-type ScrobblerServicePlugin struct {
+type ScrobblerPlugin struct {
 	newRuntime   func(context.Context) (wazero.Runtime, error)
 	moduleConfig wazero.ModuleConfig
 }
 
-func NewScrobblerServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*ScrobblerServicePlugin, error) {
+func NewScrobblerPlugin(ctx context.Context, opts ...wazeroConfigOption) (*ScrobblerPlugin, error) {
 	o := &WazeroConfig{
 		newRuntime:   DefaultWazeroRuntime(),
 		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
@@ -677,18 +677,18 @@ func NewScrobblerServicePlugin(ctx context.Context, opts ...wazeroConfigOption) 
 		opt(o)
 	}
 
-	return &ScrobblerServicePlugin{
+	return &ScrobblerPlugin{
 		newRuntime:   o.newRuntime,
 		moduleConfig: o.moduleConfig,
 	}, nil
 }
 
-type scrobblerService interface {
+type scrobbler interface {
 	Close(ctx context.Context) error
-	ScrobblerService
+	Scrobbler
 }
 
-func (p *ScrobblerServicePlugin) Load(ctx context.Context, pluginPath string) (scrobblerService, error) {
+func (p *ScrobblerPlugin) Load(ctx context.Context, pluginPath string) (scrobbler, error) {
 	b, err := os.ReadFile(pluginPath)
 	if err != nil {
 		return nil, err
@@ -719,31 +719,31 @@ func (p *ScrobblerServicePlugin) Load(ctx context.Context, pluginPath string) (s
 	}
 
 	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("scrobbler_service_api_version")
+	apiVersion := module.ExportedFunction("scrobbler_api_version")
 	if apiVersion == nil {
-		return nil, errors.New("scrobbler_service_api_version is not exported")
+		return nil, errors.New("scrobbler_api_version is not exported")
 	}
 	results, err := apiVersion.Call(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(results) != 1 {
-		return nil, errors.New("invalid scrobbler_service_api_version signature")
+		return nil, errors.New("invalid scrobbler_api_version signature")
 	}
-	if results[0] != ScrobblerServicePluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", ScrobblerServicePluginAPIVersion, results[0])
+	if results[0] != ScrobblerPluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", ScrobblerPluginAPIVersion, results[0])
 	}
 
-	isauthorized := module.ExportedFunction("scrobbler_service_is_authorized")
+	isauthorized := module.ExportedFunction("scrobbler_is_authorized")
 	if isauthorized == nil {
-		return nil, errors.New("scrobbler_service_is_authorized is not exported")
+		return nil, errors.New("scrobbler_is_authorized is not exported")
 	}
-	nowplaying := module.ExportedFunction("scrobbler_service_now_playing")
+	nowplaying := module.ExportedFunction("scrobbler_now_playing")
 	if nowplaying == nil {
-		return nil, errors.New("scrobbler_service_now_playing is not exported")
+		return nil, errors.New("scrobbler_now_playing is not exported")
 	}
-	scrobble := module.ExportedFunction("scrobbler_service_scrobble")
+	scrobble := module.ExportedFunction("scrobbler_scrobble")
 	if scrobble == nil {
-		return nil, errors.New("scrobbler_service_scrobble is not exported")
+		return nil, errors.New("scrobbler_scrobble is not exported")
 	}
 
 	malloc := module.ExportedFunction("malloc")
@@ -755,7 +755,7 @@ func (p *ScrobblerServicePlugin) Load(ctx context.Context, pluginPath string) (s
 	if free == nil {
 		return nil, errors.New("free is not exported")
 	}
-	return &scrobblerServicePlugin{
+	return &scrobblerPlugin{
 		runtime:      r,
 		module:       module,
 		malloc:       malloc,
@@ -766,14 +766,14 @@ func (p *ScrobblerServicePlugin) Load(ctx context.Context, pluginPath string) (s
 	}, nil
 }
 
-func (p *scrobblerServicePlugin) Close(ctx context.Context) (err error) {
+func (p *scrobblerPlugin) Close(ctx context.Context) (err error) {
 	if r := p.runtime; r != nil {
 		r.Close(ctx)
 	}
 	return
 }
 
-type scrobblerServicePlugin struct {
+type scrobblerPlugin struct {
 	runtime      wazero.Runtime
 	module       api.Module
 	malloc       api.Function
@@ -783,7 +783,7 @@ type scrobblerServicePlugin struct {
 	scrobble     api.Function
 }
 
-func (p *scrobblerServicePlugin) IsAuthorized(ctx context.Context, request *ScrobblerIsAuthorizedRequest) (*ScrobblerIsAuthorizedResponse, error) {
+func (p *scrobblerPlugin) IsAuthorized(ctx context.Context, request *ScrobblerIsAuthorizedRequest) (*ScrobblerIsAuthorizedResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -844,7 +844,7 @@ func (p *scrobblerServicePlugin) IsAuthorized(ctx context.Context, request *Scro
 
 	return response, nil
 }
-func (p *scrobblerServicePlugin) NowPlaying(ctx context.Context, request *ScrobblerNowPlayingRequest) (*ScrobblerNowPlayingResponse, error) {
+func (p *scrobblerPlugin) NowPlaying(ctx context.Context, request *ScrobblerNowPlayingRequest) (*ScrobblerNowPlayingResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -905,7 +905,7 @@ func (p *scrobblerServicePlugin) NowPlaying(ctx context.Context, request *Scrobb
 
 	return response, nil
 }
-func (p *scrobblerServicePlugin) Scrobble(ctx context.Context, request *ScrobblerScrobbleRequest) (*ScrobblerScrobbleResponse, error) {
+func (p *scrobblerPlugin) Scrobble(ctx context.Context, request *ScrobblerScrobbleRequest) (*ScrobblerScrobbleResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -967,14 +967,14 @@ func (p *scrobblerServicePlugin) Scrobble(ctx context.Context, request *Scrobble
 	return response, nil
 }
 
-const TimerCallbackServicePluginAPIVersion = 1
+const TimerCallbackPluginAPIVersion = 1
 
-type TimerCallbackServicePlugin struct {
+type TimerCallbackPlugin struct {
 	newRuntime   func(context.Context) (wazero.Runtime, error)
 	moduleConfig wazero.ModuleConfig
 }
 
-func NewTimerCallbackServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*TimerCallbackServicePlugin, error) {
+func NewTimerCallbackPlugin(ctx context.Context, opts ...wazeroConfigOption) (*TimerCallbackPlugin, error) {
 	o := &WazeroConfig{
 		newRuntime:   DefaultWazeroRuntime(),
 		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
@@ -984,18 +984,18 @@ func NewTimerCallbackServicePlugin(ctx context.Context, opts ...wazeroConfigOpti
 		opt(o)
 	}
 
-	return &TimerCallbackServicePlugin{
+	return &TimerCallbackPlugin{
 		newRuntime:   o.newRuntime,
 		moduleConfig: o.moduleConfig,
 	}, nil
 }
 
-type timerCallbackService interface {
+type timerCallback interface {
 	Close(ctx context.Context) error
-	TimerCallbackService
+	TimerCallback
 }
 
-func (p *TimerCallbackServicePlugin) Load(ctx context.Context, pluginPath string) (timerCallbackService, error) {
+func (p *TimerCallbackPlugin) Load(ctx context.Context, pluginPath string) (timerCallback, error) {
 	b, err := os.ReadFile(pluginPath)
 	if err != nil {
 		return nil, err
@@ -1026,23 +1026,23 @@ func (p *TimerCallbackServicePlugin) Load(ctx context.Context, pluginPath string
 	}
 
 	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("timer_callback_service_api_version")
+	apiVersion := module.ExportedFunction("timer_callback_api_version")
 	if apiVersion == nil {
-		return nil, errors.New("timer_callback_service_api_version is not exported")
+		return nil, errors.New("timer_callback_api_version is not exported")
 	}
 	results, err := apiVersion.Call(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(results) != 1 {
-		return nil, errors.New("invalid timer_callback_service_api_version signature")
+		return nil, errors.New("invalid timer_callback_api_version signature")
 	}
-	if results[0] != TimerCallbackServicePluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", TimerCallbackServicePluginAPIVersion, results[0])
+	if results[0] != TimerCallbackPluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", TimerCallbackPluginAPIVersion, results[0])
 	}
 
-	ontimercallback := module.ExportedFunction("timer_callback_service_on_timer_callback")
+	ontimercallback := module.ExportedFunction("timer_callback_on_timer_callback")
 	if ontimercallback == nil {
-		return nil, errors.New("timer_callback_service_on_timer_callback is not exported")
+		return nil, errors.New("timer_callback_on_timer_callback is not exported")
 	}
 
 	malloc := module.ExportedFunction("malloc")
@@ -1054,7 +1054,7 @@ func (p *TimerCallbackServicePlugin) Load(ctx context.Context, pluginPath string
 	if free == nil {
 		return nil, errors.New("free is not exported")
 	}
-	return &timerCallbackServicePlugin{
+	return &timerCallbackPlugin{
 		runtime:         r,
 		module:          module,
 		malloc:          malloc,
@@ -1063,14 +1063,14 @@ func (p *TimerCallbackServicePlugin) Load(ctx context.Context, pluginPath string
 	}, nil
 }
 
-func (p *timerCallbackServicePlugin) Close(ctx context.Context) (err error) {
+func (p *timerCallbackPlugin) Close(ctx context.Context) (err error) {
 	if r := p.runtime; r != nil {
 		r.Close(ctx)
 	}
 	return
 }
 
-type timerCallbackServicePlugin struct {
+type timerCallbackPlugin struct {
 	runtime         wazero.Runtime
 	module          api.Module
 	malloc          api.Function
@@ -1078,7 +1078,7 @@ type timerCallbackServicePlugin struct {
 	ontimercallback api.Function
 }
 
-func (p *timerCallbackServicePlugin) OnTimerCallback(ctx context.Context, request *TimerCallbackRequest) (*TimerCallbackResponse, error) {
+func (p *timerCallbackPlugin) OnTimerCallback(ctx context.Context, request *TimerCallbackRequest) (*TimerCallbackResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -1140,14 +1140,14 @@ func (p *timerCallbackServicePlugin) OnTimerCallback(ctx context.Context, reques
 	return response, nil
 }
 
-const InitServicePluginAPIVersion = 1
+const LifecycleManagementPluginAPIVersion = 1
 
-type InitServicePlugin struct {
+type LifecycleManagementPlugin struct {
 	newRuntime   func(context.Context) (wazero.Runtime, error)
 	moduleConfig wazero.ModuleConfig
 }
 
-func NewInitServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*InitServicePlugin, error) {
+func NewLifecycleManagementPlugin(ctx context.Context, opts ...wazeroConfigOption) (*LifecycleManagementPlugin, error) {
 	o := &WazeroConfig{
 		newRuntime:   DefaultWazeroRuntime(),
 		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
@@ -1157,18 +1157,18 @@ func NewInitServicePlugin(ctx context.Context, opts ...wazeroConfigOption) (*Ini
 		opt(o)
 	}
 
-	return &InitServicePlugin{
+	return &LifecycleManagementPlugin{
 		newRuntime:   o.newRuntime,
 		moduleConfig: o.moduleConfig,
 	}, nil
 }
 
-type initService interface {
+type lifecycleManagement interface {
 	Close(ctx context.Context) error
-	InitService
+	LifecycleManagement
 }
 
-func (p *InitServicePlugin) Load(ctx context.Context, pluginPath string) (initService, error) {
+func (p *LifecycleManagementPlugin) Load(ctx context.Context, pluginPath string) (lifecycleManagement, error) {
 	b, err := os.ReadFile(pluginPath)
 	if err != nil {
 		return nil, err
@@ -1199,23 +1199,23 @@ func (p *InitServicePlugin) Load(ctx context.Context, pluginPath string) (initSe
 	}
 
 	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("init_service_api_version")
+	apiVersion := module.ExportedFunction("lifecycle_management_api_version")
 	if apiVersion == nil {
-		return nil, errors.New("init_service_api_version is not exported")
+		return nil, errors.New("lifecycle_management_api_version is not exported")
 	}
 	results, err := apiVersion.Call(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(results) != 1 {
-		return nil, errors.New("invalid init_service_api_version signature")
+		return nil, errors.New("invalid lifecycle_management_api_version signature")
 	}
-	if results[0] != InitServicePluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", InitServicePluginAPIVersion, results[0])
+	if results[0] != LifecycleManagementPluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", LifecycleManagementPluginAPIVersion, results[0])
 	}
 
-	oninit := module.ExportedFunction("init_service_on_init")
+	oninit := module.ExportedFunction("lifecycle_management_on_init")
 	if oninit == nil {
-		return nil, errors.New("init_service_on_init is not exported")
+		return nil, errors.New("lifecycle_management_on_init is not exported")
 	}
 
 	malloc := module.ExportedFunction("malloc")
@@ -1227,7 +1227,7 @@ func (p *InitServicePlugin) Load(ctx context.Context, pluginPath string) (initSe
 	if free == nil {
 		return nil, errors.New("free is not exported")
 	}
-	return &initServicePlugin{
+	return &lifecycleManagementPlugin{
 		runtime: r,
 		module:  module,
 		malloc:  malloc,
@@ -1236,14 +1236,14 @@ func (p *InitServicePlugin) Load(ctx context.Context, pluginPath string) (initSe
 	}, nil
 }
 
-func (p *initServicePlugin) Close(ctx context.Context) (err error) {
+func (p *lifecycleManagementPlugin) Close(ctx context.Context) (err error) {
 	if r := p.runtime; r != nil {
 		r.Close(ctx)
 	}
 	return
 }
 
-type initServicePlugin struct {
+type lifecycleManagementPlugin struct {
 	runtime wazero.Runtime
 	module  api.Module
 	malloc  api.Function
@@ -1251,7 +1251,7 @@ type initServicePlugin struct {
 	oninit  api.Function
 }
 
-func (p *initServicePlugin) OnInit(ctx context.Context, request *InitRequest) (*InitResponse, error) {
+func (p *lifecycleManagementPlugin) OnInit(ctx context.Context, request *InitRequest) (*InitResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err

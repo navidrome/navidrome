@@ -3,5 +3,5 @@
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test data for scrobbler",
-  "services": ["ScrobblerService"]
+  "services": ["Scrobbler"]
 }

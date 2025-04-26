@@ -22,7 +22,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": ["MediaMetadataService", "ScrobblerService"]
+			"services": ["MetadataAgent", "Scrobbler"]
 		}`
 
 		pluginDir := filepath.Join(tempDir, "test-plugin")
@@ -37,7 +37,7 @@ var _ = Describe("Plugin Manifest", func() {
 		Expect(manifest.Author).To(Equal("Test Author"))
 		Expect(manifest.Version).To(Equal("1.0.0"))
 		Expect(manifest.Description).To(Equal("A test plugin"))
-		Expect(manifest.Services).To(ConsistOf("MediaMetadataService", "ScrobblerService"))
+		Expect(manifest.Services).To(ConsistOf("MetadataAgent", "Scrobbler"))
 	})
 
 	It("should fail with proper error for non-existent manifest", func() {
@@ -53,7 +53,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author"
 			"version": "1.0.0"
 			"description": "A test plugin",
-			"services": ["MediaMetadataService"]
+			"services": ["MetadataAgent"]
 		}`
 
 		pluginDir := filepath.Join(tempDir, "invalid-json")
@@ -72,7 +72,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": ["MediaMetadataService"]
+			"services": ["MetadataAgent"]
 		}`
 
 		pluginDir := filepath.Join(tempDir, "missing-name")

@@ -13,27 +13,27 @@ import (
 	wasm "github.com/knqyf263/go-plugin/wasm"
 )
 
-const MediaMetadataServicePluginAPIVersion = 1
+const MetadataAgentPluginAPIVersion = 1
 
-//go:wasmexport media_metadata_service_api_version
-func _media_metadata_service_api_version() uint64 {
-	return MediaMetadataServicePluginAPIVersion
+//go:wasmexport metadata_agent_api_version
+func _metadata_agent_api_version() uint64 {
+	return MetadataAgentPluginAPIVersion
 }
 
-var mediaMetadataService MediaMetadataService
+var metadataAgent MetadataAgent
 
-func RegisterMediaMetadataService(p MediaMetadataService) {
-	mediaMetadataService = p
+func RegisterMetadataAgent(p MetadataAgent) {
+	metadataAgent = p
 }
 
-//go:wasmexport media_metadata_service_get_artist_mbid
-func _media_metadata_service_get_artist_mbid(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_artist_mbid
+func _metadata_agent_get_artist_mbid(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistMBIDRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetArtistMBID(context.Background(), req)
+	response, err := metadataAgent.GetArtistMBID(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -50,14 +50,14 @@ func _media_metadata_service_get_artist_mbid(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_artist_url
-func _media_metadata_service_get_artist_url(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_artist_url
+func _metadata_agent_get_artist_url(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistURLRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetArtistURL(context.Background(), req)
+	response, err := metadataAgent.GetArtistURL(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -74,14 +74,14 @@ func _media_metadata_service_get_artist_url(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_artist_biography
-func _media_metadata_service_get_artist_biography(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_artist_biography
+func _metadata_agent_get_artist_biography(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistBiographyRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetArtistBiography(context.Background(), req)
+	response, err := metadataAgent.GetArtistBiography(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -98,14 +98,14 @@ func _media_metadata_service_get_artist_biography(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_similar_artists
-func _media_metadata_service_get_similar_artists(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_similar_artists
+func _metadata_agent_get_similar_artists(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistSimilarRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetSimilarArtists(context.Background(), req)
+	response, err := metadataAgent.GetSimilarArtists(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -122,14 +122,14 @@ func _media_metadata_service_get_similar_artists(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_artist_images
-func _media_metadata_service_get_artist_images(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_artist_images
+func _metadata_agent_get_artist_images(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistImageRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetArtistImages(context.Background(), req)
+	response, err := metadataAgent.GetArtistImages(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -146,14 +146,14 @@ func _media_metadata_service_get_artist_images(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_artist_top_songs
-func _media_metadata_service_get_artist_top_songs(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_artist_top_songs
+func _metadata_agent_get_artist_top_songs(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ArtistTopSongsRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetArtistTopSongs(context.Background(), req)
+	response, err := metadataAgent.GetArtistTopSongs(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -170,14 +170,14 @@ func _media_metadata_service_get_artist_top_songs(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_album_info
-func _media_metadata_service_get_album_info(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_album_info
+func _metadata_agent_get_album_info(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(AlbumInfoRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetAlbumInfo(context.Background(), req)
+	response, err := metadataAgent.GetAlbumInfo(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -194,14 +194,14 @@ func _media_metadata_service_get_album_info(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport media_metadata_service_get_album_images
-func _media_metadata_service_get_album_images(ptr, size uint32) uint64 {
+//go:wasmexport metadata_agent_get_album_images
+func _metadata_agent_get_album_images(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(AlbumImagesRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := mediaMetadataService.GetAlbumImages(context.Background(), req)
+	response, err := metadataAgent.GetAlbumImages(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -218,27 +218,27 @@ func _media_metadata_service_get_album_images(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-const ScrobblerServicePluginAPIVersion = 1
+const ScrobblerPluginAPIVersion = 1
 
-//go:wasmexport scrobbler_service_api_version
-func _scrobbler_service_api_version() uint64 {
-	return ScrobblerServicePluginAPIVersion
+//go:wasmexport scrobbler_api_version
+func _scrobbler_api_version() uint64 {
+	return ScrobblerPluginAPIVersion
 }
 
-var scrobblerService ScrobblerService
+var scrobbler Scrobbler
 
-func RegisterScrobblerService(p ScrobblerService) {
-	scrobblerService = p
+func RegisterScrobbler(p Scrobbler) {
+	scrobbler = p
 }
 
-//go:wasmexport scrobbler_service_is_authorized
-func _scrobbler_service_is_authorized(ptr, size uint32) uint64 {
+//go:wasmexport scrobbler_is_authorized
+func _scrobbler_is_authorized(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ScrobblerIsAuthorizedRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := scrobblerService.IsAuthorized(context.Background(), req)
+	response, err := scrobbler.IsAuthorized(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -255,14 +255,14 @@ func _scrobbler_service_is_authorized(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport scrobbler_service_now_playing
-func _scrobbler_service_now_playing(ptr, size uint32) uint64 {
+//go:wasmexport scrobbler_now_playing
+func _scrobbler_now_playing(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ScrobblerNowPlayingRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := scrobblerService.NowPlaying(context.Background(), req)
+	response, err := scrobbler.NowPlaying(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -279,14 +279,14 @@ func _scrobbler_service_now_playing(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-//go:wasmexport scrobbler_service_scrobble
-func _scrobbler_service_scrobble(ptr, size uint32) uint64 {
+//go:wasmexport scrobbler_scrobble
+func _scrobbler_scrobble(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(ScrobblerScrobbleRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := scrobblerService.Scrobble(context.Background(), req)
+	response, err := scrobbler.Scrobble(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -303,27 +303,27 @@ func _scrobbler_service_scrobble(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-const TimerCallbackServicePluginAPIVersion = 1
+const TimerCallbackPluginAPIVersion = 1
 
-//go:wasmexport timer_callback_service_api_version
-func _timer_callback_service_api_version() uint64 {
-	return TimerCallbackServicePluginAPIVersion
+//go:wasmexport timer_callback_api_version
+func _timer_callback_api_version() uint64 {
+	return TimerCallbackPluginAPIVersion
 }
 
-var timerCallbackService TimerCallbackService
+var timerCallback TimerCallback
 
-func RegisterTimerCallbackService(p TimerCallbackService) {
-	timerCallbackService = p
+func RegisterTimerCallback(p TimerCallback) {
+	timerCallback = p
 }
 
-//go:wasmexport timer_callback_service_on_timer_callback
-func _timer_callback_service_on_timer_callback(ptr, size uint32) uint64 {
+//go:wasmexport timer_callback_on_timer_callback
+func _timer_callback_on_timer_callback(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(TimerCallbackRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := timerCallbackService.OnTimerCallback(context.Background(), req)
+	response, err := timerCallback.OnTimerCallback(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
@@ -340,27 +340,27 @@ func _timer_callback_service_on_timer_callback(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-const InitServicePluginAPIVersion = 1
+const LifecycleManagementPluginAPIVersion = 1
 
-//go:wasmexport init_service_api_version
-func _init_service_api_version() uint64 {
-	return InitServicePluginAPIVersion
+//go:wasmexport lifecycle_management_api_version
+func _lifecycle_management_api_version() uint64 {
+	return LifecycleManagementPluginAPIVersion
 }
 
-var initService InitService
+var lifecycleManagement LifecycleManagement
 
-func RegisterInitService(p InitService) {
-	initService = p
+func RegisterLifecycleManagement(p LifecycleManagement) {
+	lifecycleManagement = p
 }
 
-//go:wasmexport init_service_on_init
-func _init_service_on_init(ptr, size uint32) uint64 {
+//go:wasmexport lifecycle_management_on_init
+func _lifecycle_management_on_init(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
 	req := new(InitRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := initService.OnInit(context.Background(), req)
+	response, err := lifecycleManagement.OnInit(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |
