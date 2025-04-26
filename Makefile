@@ -222,7 +222,11 @@ plugin-gen: check_go_env ##@Development Generate Go code from plugins protobuf f
 .PHONY: plugin-gen
 
 plugin-examples: check_go_env ##@Development Build all example plugins
-	$(MAKE) -C plugins/examples
+	$(MAKE) -C plugins/examples clean all
+.PHONY: plugin-examples
+
+plugin-tests: check_go_env ##@Development Build all test plugins
+	$(MAKE) -C plugins/testdata clean all
 .PHONY: plugin-examples
 
 .DEFAULT_GOAL := help
