@@ -552,8 +552,11 @@ func pluginDev(cmd *cobra.Command, args []string) {
 		fmt.Printf("Target path '%s' already exists.\n", targetPath)
 		fmt.Print("Do you want to replace it? (y/N): ")
 		var response string
-		fmt.Scanln(&response)
-		if strings.ToLower(response) != "y" {
+		_, err = fmt.Scanln(&response)
+		if err != nil || strings.ToLower(response) != "y" {
+			if err != nil {
+				log.Debug("Error reading input, assuming 'no'", err)
+			}
 			fmt.Println("Operation canceled")
 			return
 		}

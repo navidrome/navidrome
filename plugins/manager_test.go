@@ -109,7 +109,7 @@ var _ = Describe("Plugin Manager", func() {
 
 			// Create plugin.wasm (empty file for testing)
 			wasmPath := filepath.Join(pluginDir, "plugin.wasm")
-			err = os.WriteFile(wasmPath, []byte{}, 0644)
+			err = os.WriteFile(wasmPath, []byte{}, 0644) //nolint:gosec
 			Expect(err).ToNot(HaveOccurred())
 
 			// Create manifest.json
@@ -121,7 +121,7 @@ var _ = Describe("Plugin Manager", func() {
 				"author": "Test Author",
 				"description": "Test Plugin"
 			}`
-			err = os.WriteFile(manifestPath, []byte(manifestContent), 0644)
+			err = os.WriteFile(manifestPath, []byte(manifestContent), 0644) //nolint:gosec
 			Expect(err).ToNot(HaveOccurred())
 
 			// Create a symlink to the real plugin
