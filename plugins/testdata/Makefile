@@ -1,5 +1,5 @@
 # Fake sample plugins used for testing
-PLUGINS := fake_album_agent fake_artist_agent fake_scrobbler multi_plugin
+PLUGINS := fake_album_agent fake_artist_agent fake_scrobbler multi_plugin fake_init_service
 
 all: $(PLUGINS:%=%/plugin.wasm)
 

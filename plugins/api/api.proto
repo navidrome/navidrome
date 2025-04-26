@@ -183,4 +183,17 @@ message TimerCallbackRequest {
 
 message TimerCallbackResponse {
   string error = 1;     // Error message if the callback failed
+}
+
+// go:plugin type=plugin version=1
+service InitService {
+  rpc OnInit(InitRequest) returns (InitResponse);
+}
+
+message InitRequest {
+  // Empty for now
+}
+
+message InitResponse {
+  string error = 1;     // Error message if initialization failed
 } 

@@ -874,6 +874,35 @@ func (x *TimerCallbackResponse) GetError() string {
 	return ""
 }
 
+type InitRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *InitRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+type InitResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"` // Error message if initialization failed
+}
+
+func (x *InitResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *InitResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 // go:plugin type=plugin version=1
 type MediaMetadataService interface {
 	// Artist metadata methods
@@ -898,4 +927,9 @@ type ScrobblerService interface {
 // go:plugin type=plugin version=1
 type TimerCallbackService interface {
 	OnTimerCallback(context.Context, *TimerCallbackRequest) (*TimerCallbackResponse, error)
+}
+
+// go:plugin type=plugin version=1
+type InitService interface {
+	OnInit(context.Context, *InitRequest) (*InitResponse, error)
 }

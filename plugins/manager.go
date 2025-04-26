@@ -85,6 +85,7 @@ type Manager struct {
 	plugins      map[string]*PluginInfo // Map of plugin name to plugin info
 	mu           sync.RWMutex           // Protects plugins map
 	timerService *TimerService          // Service for handling plugin timers
+	initialized  *initializedPlugins    // Tracks which plugins have been initialized
 }
 
 // GetManager returns the singleton instance of Manager
@@ -97,7 +98,8 @@ func GetManager() *Manager {
 // createManager creates a new Manager instance. Used in tests
 func createManager() *Manager {
 	m := &Manager{
-		plugins: make(map[string]*PluginInfo),
+		plugins:     make(map[string]*PluginInfo),
+		initialized: newInitializedPlugins(),
 	}
 	// Create the timer service and set the manager reference
 	m.timerService = NewTimerService(m)
@@ -215,7 +217,7 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache) api.WazeroN
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) {
+func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *PluginInfo {
 	// Create custom runtime function
 	customRuntime := m.createCustomRuntime(cache)
 
@@ -228,15 +230,9 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 		isSymlink = fileInfo.Mode()&os.ModeSymlink != 0
 	}
 
-	// Start pre-compilation of WASM module in background
-	state := &pluginState{ready: make(chan struct{})}
-	go precompilePlugin(state, customRuntime, wasmPath, manifest.Name)
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	// Store plugin info
-	m.plugins[manifest.Name] = &PluginInfo{
+	state := &pluginState{ready: make(chan struct{})}
+	pluginInfo := &PluginInfo{
 		Name:      manifest.Name,
 		Path:      pluginDir,
 		Services:  manifest.Services,
@@ -247,7 +243,37 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 		ModConfig: mc,
 	}
 
+	// Start pre-compilation of WASM module in background
+	go func() {
+		precompilePlugin(state, customRuntime, wasmPath, manifest.Name)
+
+		// Check if this plugin implements InitService and hasn't been initialized yet
+		m.initializePluginIfNeeded(pluginInfo)
+	}()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.plugins[manifest.Name] = pluginInfo
+
 	log.Info("Discovered plugin", "name", manifest.Name, "services", manifest.Services, "wasm", wasmPath, "dev_mode", isSymlink)
+	return m.plugins[manifest.Name]
+}
+
+// initializePluginIfNeeded calls OnInit on plugins that implement InitService
+func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
+	// Skip if already initialized
+	if m.initialized.isInitialized(plugin) {
+		return
+	}
+
+	// Check if the plugin implements InitService
+	for _, svc := range plugin.Services {
+		if svc == "InitService" {
+			m.initialized.callOnInit(plugin)
+			m.initialized.markInitialized(plugin)
+			break
+		}
+	}
 }
 
 // ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
@@ -391,6 +417,10 @@ func (m *Manager) GetPluginInfo(name string) *PluginInfo {
 // LoadPlugin instantiates and returns a plugin by name
 func (m *Manager) LoadPlugin(name string) WasmPlugin {
 	plugin := m.GetPluginInfo(name)
+	if plugin == nil {
+		log.Warn("Plugin not found", "name", name)
+		return nil
+	}
 
 	log.Debug("Loading plugin", "name", name, "path", plugin.WasmPath)
 
@@ -413,9 +443,9 @@ func (m *Manager) LoadPlugin(name string) WasmPlugin {
 
 	// Use the creator based on the service type
 	adapter := creator(plugin.WasmPath, plugin.Name, plugin.Runtime, plugin.ModConfig)
-
 	if adapter == nil {
 		log.Warn("Failed to create adapter for plugin", "name", name)
+		return nil
 	}
 	return adapter
 }

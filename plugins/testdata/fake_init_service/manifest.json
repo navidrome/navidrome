@@ -1,0 +1,7 @@
+{
+  "name": "fake_init_service",
+  "version": "1.0.0",
+  "services": ["InitService"],
+  "author": "Test Author",
+  "description": "Test InitService Plugin"
+}

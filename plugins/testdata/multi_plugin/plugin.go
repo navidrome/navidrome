@@ -16,6 +16,8 @@ type MultiPlugin struct{}
 
 var ErrNotFound = api.ErrNotFound
 
+var tmr = timer.NewTimerService()
+
 // Artist-related methods
 func (MultiPlugin) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
 	if req.Name != "" {
@@ -26,8 +28,6 @@ func (MultiPlugin) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest
 
 func (MultiPlugin) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) (*api.ArtistURLResponse, error) {
 	log.Printf("GetArtistURL received: %v", req)
-
-	var tmr = timer.NewTimerService()
 
 	// Use an ID that could potentially clash with other plugins
 	// The host will ensure this doesn't conflict by prefixing with plugin name
@@ -85,7 +85,7 @@ func (MultiPlugin) GetAlbumImages(ctx context.Context, req *api.AlbumImagesReque
 
 // Timer-related methods
 func (MultiPlugin) OnTimerCallback(ctx context.Context, req *api.TimerCallbackRequest) (*api.TimerCallbackResponse, error) {
-	log.Printf("Timer callback received with ID: %s, payload: %s", req.TimerId, string(req.Payload))
+	log.Printf("Timer callback received with ID: %s, payload: '%s'", req.TimerId, string(req.Payload))
 
 	// Demonstrate how to parse the custom timer ID format
 	if strings.HasPrefix(req.TimerId, "artist:") {
@@ -99,6 +99,17 @@ func (MultiPlugin) OnTimerCallback(ctx context.Context, req *api.TimerCallbackRe
 	return &api.TimerCallbackResponse{}, nil
 }
 
+func (MultiPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*api.InitResponse, error) {
+	log.Printf("OnInit called with %v", req)
+	_, _ = tmr.RegisterTimer(ctx, &timer.TimerRequest{
+		PluginName: "multi_plugin",
+		Delay:      2,
+		Payload:    []byte("2 seconds after init"),
+	})
+
+	return &api.InitResponse{}, nil
+}
+
 // Required by Go WASI build
 func main() {}
 
@@ -106,4 +117,5 @@ func main() {}
 func init() {
 	api.RegisterMediaMetadataService(MultiPlugin{})
 	api.RegisterTimerCallbackService(MultiPlugin{})
+	api.RegisterInitService(MultiPlugin{})
 }
