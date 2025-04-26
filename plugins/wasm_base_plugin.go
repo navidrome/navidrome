@@ -104,7 +104,7 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 	if err != nil {
 		return r, err
 	}
-	defer func() { done(err) }()
+	defer func(err error) { done(err) }(err)
 	r, err = fn(inst)
 	if em, ok := any(w).(errorMapper); ok {
 		return r, em.mapError(err)
