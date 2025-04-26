@@ -94,6 +94,7 @@ type configOptions struct {
 	Inspect                         inspectOptions
 	Subsonic                        subsonicOptions
 	Plugins                         pluginsOptions
+	PluginConfig                    map[string]map[string]string
 
 	Agents       string
 	LastFM       lastfmOptions

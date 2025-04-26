@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
@@ -57,8 +58,19 @@ func (m *initializedPlugins) callOnInit(info *PluginInfo) {
 	}
 	defer initPlugin.Close(ctx)
 
+	// Prepare the request with plugin-specific configuration
+	req := &api.InitRequest{}
+
+	// Add plugin configuration if available
+	if conf.Server.PluginConfig != nil {
+		if pluginConfig, ok := conf.Server.PluginConfig[info.Name]; ok && len(pluginConfig) > 0 {
+			req.Config = pluginConfig
+			log.Debug("Passing configuration to plugin", "plugin", info.Name, "configKeys", len(pluginConfig))
+		}
+	}
+
 	// Call OnInit
-	resp, err := initPlugin.OnInit(ctx, &api.InitRequest{})
+	resp, err := initPlugin.OnInit(ctx, req)
 	if err != nil {
 		log.Error("Error initializing plugin", "plugin", info.Name, "elapsed", time.Since(start), err)
 		return

@@ -878,10 +878,20 @@ type InitRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	// Empty for now
+	Config map[string]string `protobuf:"bytes,1,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"` // Configuration specific to this plugin
 }
 
 func (x *InitRequest) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
+}
+
+func (x *InitRequest) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
 }
 
 type InitResponse struct {

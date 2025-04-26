@@ -30,7 +30,6 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 - `wasmMediaAgent` adapts `MediaMetadataService` to the internal `agents.Interface`
 - `wasmScrobblerPlugin` adapts `ScrobblerService` to the internal `scrobbler.Scrobbler`
-- `TimerService` provides timer functionality to plugins that implement `TimerCallbackService`
 
 ### 4. Host Services
 
@@ -112,6 +111,24 @@ Enabled = true
 # Directory where plugins are stored (defaults to [DataFolder]/plugins)
 Folder = "/path/to/plugins"
 ```
+
+### Plugin-specific Configuration
+
+You can also provide plugin-specific configuration using the `PluginConfig` section. Each plugin can have its own configuration map:
+
+```toml
+[PluginConfig.my-plugin-name]
+api_key = "your-api-key"
+user_id = "your-user-id"
+enable_feature = "true"
+
+[PluginConfig.another-plugin]
+server_url = "https://example.com/api"
+timeout = "30"
+```
+
+These configuration values are passed to plugins during initialization through the `OnInit` method in the `InitService` interface.
+Plugins that implement the `InitService` will receive their configuration as a map of string keys and values.
 
 ## Plugin Directory Structure
 
@@ -373,6 +390,48 @@ When developing plugins, keep these guidelines in mind:
 - Don't store authentication tokens or session data in variables
 - If persistence is needed, use external storage or the host's HTTP interface
 - Performance optimizations should focus on efficient per-call execution
+
+### Using Plugin Configuration
+
+Since plugins are stateless, you can use the `InitService` to read configuration when your plugin is loaded and perform any necessary setup:
+
+```go
+func (p *myPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*api.InitResponse, error) {
+    // Access plugin configuration
+    apiKey := req.Config["api_key"]
+    if apiKey == "" {
+        return &api.InitResponse{Error: "Missing API key in configuration"}, nil
+    }
+
+    // Validate configuration
+    serverURL := req.Config["server_url"]
+    if serverURL == "" {
+        serverURL = "https://default-api.example.com" // Use default if not specified
+    }
+
+    // Perform initialization tasks (e.g., validate API key)
+    httpClient := &http.HttpServiceClient{}
+    resp, err := httpClient.Get(ctx, &http.HttpRequest{
+        Url: serverURL + "/validate?key=" + apiKey,
+    })
+    if err != nil {
+        return &api.InitResponse{Error: "Failed to validate API key: " + err.Error()}, nil
+    }
+
+    if resp.StatusCode != 200 {
+        return &api.InitResponse{Error: "Invalid API key"}, nil
+    }
+
+    return &api.InitResponse{}, nil
+}
+```
+
+Remember, the `OnInit` method is called only once when the plugin is loaded. It cannot store any state that needs to persist between method calls. It's primarily useful for:
+
+1. Validating required configuration
+2. Checking API credentials
+3. Verifying connectivity to external services
+4. Initializing any external resources
 
 ## Caching
 
