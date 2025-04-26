@@ -39,6 +39,67 @@ Navidrome provides host services that plugins can call to access functionality l
 - HTTP service (in `plugins/host_http.go`) for making external requests
 - Timer service (in `plugins/host_timer.go`) for scheduling delayed callbacks
 
+## Plugin System Implementation
+
+Navidrome's plugin system is built using the following key libraries:
+
+### 1. WebAssembly Runtime (Wazero)
+
+The plugin system uses [Wazero](https://github.com/tetratelabs/wazero), a WebAssembly runtime written in pure Go. Wazero was chosen for several reasons:
+
+- **No CGO dependency**: Unlike other WebAssembly runtimes, Wazero is implemented in pure Go, which simplifies cross-compilation and deployment.
+- **Performance**: It provides efficient compilation and caching of WebAssembly modules.
+- **Security**: Wazero enforces strict sandboxing, which is important for running third-party plugin code safely.
+
+The plugin manager uses Wazero to:
+
+- Compile and cache WebAssembly modules
+- Create isolated runtime environments for each plugin
+- Instantiate plugin modules when they're called
+- Provide host functions that plugins can call
+
+### 2. Go-plugin Framework
+
+Navidrome builds on [go-plugin](https://github.com/knqyf263/go-plugin), a Go plugin system over WebAssembly that provides:
+
+- **Code generation**: Custom Protocol Buffer compiler plugin (`protoc-gen-go-plugin`) that generates Go code for both the host and WebAssembly plugins
+- **Host function system**: Framework for exposing host functionality to plugins safely
+- **Interface versioning**: Built-in mechanism for handling API compatibility between the host and plugins
+- **Type conversion**: Utilities for marshaling and unmarshaling data between Go and WebAssembly
+
+This framework significantly simplifies plugin development by handling the low-level details of WebAssembly communication, allowing plugin developers to focus on implementing service interfaces.
+
+### 3. Protocol Buffers (Protobuf)
+
+[Protocol Buffers](https://developers.google.com/protocol-buffers) serve as the interface definition language for the plugin system. Navidrome uses:
+
+- **protoc-gen-go-plugin**: A custom protobuf compiler plugin that generates Go code for both the Navidrome host and WebAssembly plugins
+- Protobuf messages for structured data exchange between the host and plugins
+
+The protobuf definitions are located in:
+
+- `plugins/api/api.proto`: Core plugin service interfaces
+- `plugins/host/http/http.proto`: HTTP service interface
+- `plugins/host/timer/timer.proto`: Timer service interface
+
+### 4. Integration Architecture
+
+The plugin system integrates these libraries through several key components:
+
+- **Plugin Manager**: Manages the lifecycle of plugins, from discovery to loading
+- **Compilation Cache**: Improves performance by caching compiled WebAssembly modules
+- **Host Function Bridge**: Exposes Navidrome functionality to plugins through WebAssembly imports
+- **Service Adapters**: Convert between the plugin API and Navidrome's internal interfaces
+
+Each plugin method call:
+
+1. Creates a new isolated plugin instance using Wazero
+2. Executes the method in the sandboxed environment
+3. Converts data between Go and WebAssembly formats using the protobuf-generated code
+4. Cleans up the instance after the call completes
+
+This stateless design ensures that plugins remain isolated and can't interfere with Navidrome's core functionality or each other.
+
 ## Configuration
 
 Plugins are configured in Navidrome's main configuration via the `Plugins` section:
