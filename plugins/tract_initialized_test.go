@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,10 +17,6 @@ func hasInitService(info *PluginInfo) bool {
 }
 
 var _ = Describe("InitService", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
-
 	Describe("Plugin Initialization Tracking", func() {
 		var initializedTracker *initializedPlugins
 

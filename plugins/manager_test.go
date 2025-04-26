@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
@@ -19,7 +18,13 @@ var _ = Describe("Plugin Manager", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		// We change the plugins folder to random location to avoid conflicts with other tests,
+		// but, as this is an integration test, we can't use configtest.SetupConfig() as it causes
+		// data races.
+		originalPluginsFolder := conf.Server.Plugins.Folder
+		DeferCleanup(func() {
+			conf.Server.Plugins.Folder = originalPluginsFolder
+		})
 		conf.Server.Plugins.Enabled = true
 		conf.Server.Plugins.Folder = "./plugins/testdata"
 

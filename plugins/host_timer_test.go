@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/plugins/host/timer"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,8 +17,6 @@ var _ = Describe("TimerService", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Folder = "testdata"
 		ctx = context.Background()
 		manager = createManager()
 		ts = NewTimerService(manager)
