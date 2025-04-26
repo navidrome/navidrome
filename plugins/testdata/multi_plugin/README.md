@@ -1,22 +1,38 @@
 # Multi Service Plugin
 
-This directory contains a test plugin for the Navidrome plugin system, implementing the MediaMetadataService interface, which provides both artist and album metadata capabilities.
+This directory contains a test plugin for the Navidrome plugin system, implementing the MediaMetadataService interface, which provides both artist and album metadata capabilities, as well as the TimerCallbackService interface for handling scheduled callbacks.
 
 ## Overview
 
-This test plugin is used for ensuring that the Navidrome plugin system correctly handles plugins that implement the MediaMetadataService interface. It provides mock implementations for all the required methods.
+This test plugin is used for ensuring that the Navidrome plugin system correctly handles plugins that implement multiple service interfaces. It provides test implementations for all the required methods, including the timer callback functionality.
 
 ## Files
 
 - `plugin.go`: Contains the plugin implementation
-- `manifest.json`: Defines the plugin metadata and declares the implemented service
+- `manifest.json`: Defines the plugin metadata and declares the implemented services
 
-## Usage
+## Services
 
-This plugin is used primarily for testing. It returns hardcoded responses for various metadata requests:
+### Media Metadata Service
+
+This plugin returns hardcoded responses for various metadata requests:
 
 - Artist metadata: MBID, URL, biography, similar artists, images, top songs
 - Album metadata: album info, album images
+
+### Timer Callback Service
+
+The plugin also implements the TimerCallbackService interface, which allows it to:
+
+1. Register timers with the host system
+2. Receive callbacks when timers expire
+3. Process timer-related payloads
+
+This demonstrates how plugins can implement scheduled or delayed operations even with the stateless plugin architecture.
+
+## Usage
+
+This plugin is used primarily for testing. It provides examples of how to implement various service interfaces in the Navidrome plugin system.
 
 To build the plugin:
 

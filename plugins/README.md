@@ -6,6 +6,7 @@ Navidrome's plugin system is a WebAssembly (WASM) based extension mechanism that
 
 1. **Media Metadata Service** - For fetching artist and album information, images, etc.
 2. **Scrobbler Service** - For implementing scrobbling functionality with external services
+3. **Timer Callback Service** - For executing code after a specified delay
 
 ## Plugin Architecture
 
@@ -29,10 +30,14 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 - `wasmMediaAgent` adapts `MediaMetadataService` to the internal `agents.Interface`
 - `wasmScrobblerPlugin` adapts `ScrobblerService` to the internal `scrobbler.Scrobbler`
+- `TimerService` provides timer functionality to plugins that implement `TimerCallbackService`
 
 ### 4. Host Services
 
-Navidrome provides host services that plugins can call to access functionality like HTTP requests. These services are defined in `plugins/host/` and implemented in `plugins/host_http.go`.
+Navidrome provides host services that plugins can call to access functionality like HTTP requests and timers. These services are defined in `plugins/host/` and implemented in corresponding host files:
+
+- HTTP service (in `plugins/host_http.go`) for making external requests
+- Timer service (in `plugins/host_timer.go`) for scheduling delayed callbacks
 
 ## Configuration
 
@@ -167,7 +172,11 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
   "author": "Your Name",
   "version": "1.0.0",
   "description": "A plugin that does awesome things",
-  "services": ["MediaMetadataService", "ScrobblerService"]
+  "services": [
+    "MediaMetadataService",
+    "ScrobblerService",
+    "TimerCallbackService"
+  ]
 }
 ```
 
@@ -183,6 +192,7 @@ Currently supported service types:
 
 - `MediaMetadataService` - For implementing media metadata providers
 - `ScrobblerService` - For implementing scrobbling services
+- `TimerCallbackService` - For implementing plugins that use the timer service
 
 ## Plugin Loading Process
 
@@ -235,9 +245,19 @@ service ScrobblerService {
 }
 ```
 
+#### Timer Callback Service
+
+This service allows plugins to receive timer callbacks after a specified delay. Implement this interface to add support for delayed operations.
+
+```protobuf
+service TimerCallbackService {
+  rpc OnTimerCallback(TimerCallbackRequest) returns (TimerCallbackResponse);
+}
+```
+
 ### Host Functions
 
-Plugins can access host functionality through the host interface, which currently provides HTTP request capabilities:
+Plugins can access host functionality through the host interface:
 
 ```protobuf
 // HTTP methods available to plugins
@@ -247,7 +267,19 @@ service Http {
   rpc Put(HttpRequest) returns (HttpResponse);
   rpc Delete(HttpRequest) returns (HttpResponse);
 }
+
+// Timer methods available to plugins
+service TimerService {
+  rpc RegisterTimer(TimerRequest) returns (TimerResponse);
+  rpc CancelTimer(CancelTimerRequest) returns (CancelTimerResponse);
+}
 ```
+
+The Timer service allows plugins to:
+
+- Register timers that will trigger a callback after a specified delay
+- Cancel previously registered timers
+- Receive callbacks through the `OnTimerCallback` method when timers expire
 
 ### Error Handling
 
