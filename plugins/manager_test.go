@@ -34,7 +34,7 @@ var _ = Describe("Plugin Manager", func() {
 		mediaAgentNames := mgr.PluginNames("MediaMetadataService")
 		Expect(mediaAgentNames).To(ContainElement("fake_artist_agent"))
 		Expect(mediaAgentNames).To(ContainElement("fake_album_agent"))
-		Expect(mediaAgentNames).To(ContainElement("fake_multi_agent"))
+		Expect(mediaAgentNames).To(ContainElement("multi_plugin"))
 
 		scrobblerNames := mgr.PluginNames("ScrobblerService")
 		Expect(scrobblerNames).To(ContainElement("fake_scrobbler"))

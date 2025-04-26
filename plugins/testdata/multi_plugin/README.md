@@ -1,4 +1,4 @@
-# Fake Multi Agent
+# Multi Service Plugin
 
 This directory contains a test plugin for the Navidrome plugin system, implementing the MediaMetadataService interface, which provides both artist and album metadata capabilities.
 

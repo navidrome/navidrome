@@ -1,7 +1,7 @@
 {
-  "name": "fake_multi_agent",
+  "name": "multi_plugin",
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test data for multiple services",
-  "services": ["MediaMetadataService"]
+  "services": ["MediaMetadataService", "TimerCallbackService"]
 }

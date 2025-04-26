@@ -361,7 +361,7 @@ func (m *Manager) ScanPlugins() {
 		for _, service := range manifest.Services {
 			_, ok := pluginCreators[service]
 			if !ok {
-				log.Warn("Unknown plugin service type in manifest", "service", service, "plugin", manifest.Name)
+				log.Trace("Unknown plugin service type in manifest", "service", service, "plugin", manifest.Name)
 				continue
 			}
 

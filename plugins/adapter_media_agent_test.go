@@ -22,13 +22,13 @@ var _ = Describe("Adapter Media Agent", func() {
 
 	Describe("AgentName and PluginName", func() {
 		It("should return the plugin name", func() {
-			agent := mgr.LoadPlugin("fake_multi_agent")
-			Expect(agent.PluginName()).To(Equal("fake_multi_agent"))
+			agent := mgr.LoadPlugin("multi_plugin")
+			Expect(agent.PluginName()).To(Equal("multi_plugin"))
 		})
 		It("should return the agent name", func() {
-			agent, ok := mgr.LoadMediaAgent("fake_multi_agent")
+			agent, ok := mgr.LoadMediaAgent("multi_plugin")
 			Expect(ok).To(BeTrue())
-			Expect(agent.AgentName()).To(Equal("fake_multi_agent"))
+			Expect(agent.AgentName()).To(Equal("multi_plugin"))
 		})
 	})
 
