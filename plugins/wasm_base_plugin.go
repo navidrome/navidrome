@@ -63,7 +63,7 @@ func (w *wasmBasePlugin[S, P]) initPool(ctx context.Context) {
 			defaultTTL,
 			func(ctx context.Context) (S, error) {
 				inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
-				log.Trace(ctx, "wasmBasePlugin: created new instance", "plugin", w.serviceName(), "instanceID", fmt.Sprintf("%p", &inst), err)
+				log.Trace(ctx, "wasmBasePlugin: created new instance", "plugin", w.serviceName(), "instanceID", fmt.Sprintf("%p", inst), err)
 				return inst, err
 			},
 		)
@@ -79,7 +79,7 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 	if err != nil {
 		return inst, func() {}, fmt.Errorf("wasmBasePlugin: failed to get instance for %s: %w", w.serviceName(), err)
 	}
-	instanceID := fmt.Sprintf("%p", &inst)
+	instanceID := fmt.Sprintf("%p", inst)
 	log.Trace(ctx, "wasmBasePlugin: got instance from pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))
 	return inst, func() {
 		log.Trace(ctx, "wasmBasePlugin: returning instance to pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName)
