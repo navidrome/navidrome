@@ -2,7 +2,7 @@ package plugins
 
 import (
 	"context"
-	"strings"
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,48 +19,67 @@ type TimerCallback struct {
 	Cancel     context.CancelFunc
 }
 
-// TimerService implements the timer.TimerService interface
-type TimerService struct {
+type TimerHostFunctions struct {
+	ts         *timerService
+	pluginName string
+}
+
+// RegisterTimer implements the TimerService interface
+func (t TimerHostFunctions) RegisterTimer(ctx context.Context, req *timer.TimerRequest) (*timer.TimerResponse, error) {
+	return t.ts.register(ctx, t.pluginName, req)
+}
+
+// CancelTimer implements the TimerService interface
+func (t TimerHostFunctions) CancelTimer(ctx context.Context, req *timer.CancelTimerRequest) (*timer.CancelTimerResponse, error) {
+	return t.ts.cancel(ctx, t.pluginName, req)
+}
+
+// timerService implements the timer.TimerService interface
+type timerService struct {
 	// Map of timer IDs to their callback info
 	timers  map[string]*TimerCallback
 	manager *Manager
 	mu      sync.Mutex
 }
 
-// NewTimerService creates a new TimerService instance
-func NewTimerService(manager *Manager) *TimerService {
-	return &TimerService{
+// newTimerService creates a new timerService instance
+func newTimerService(manager *Manager) *timerService {
+	return &timerService{
 		timers:  make(map[string]*TimerCallback),
 		manager: manager,
 	}
 }
 
+func (t *timerService) HostFunctions(pluginName string) TimerHostFunctions {
+	return TimerHostFunctions{
+		ts:         t,
+		pluginName: pluginName,
+	}
+}
+
 // Safe accessor methods for tests
 
-// HasTimer safely checks if a timer exists
-func (t *TimerService) HasTimer(id string) bool {
+// hasTimer safely checks if a timer exists
+func (t *timerService) hasTimer(id string) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	_, exists := t.timers[id]
 	return exists
 }
 
-// TimerCount safely returns the number of timers
-func (t *TimerService) TimerCount() int {
+// timerCount safely returns the number of timers
+func (t *timerService) timerCount() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return len(t.timers)
 }
 
-// RegisterTimer implements the TimerService interface
-func (t *TimerService) RegisterTimer(_ context.Context, req *timer.TimerRequest) (*timer.TimerResponse, error) {
+func (t *timerService) register(_ context.Context, pluginName string, req *timer.TimerRequest) (*timer.TimerResponse, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if t.manager == nil {
-		return &timer.TimerResponse{
-			Error: "timer service not properly initialized",
-		}, nil
+		return nil, fmt.Errorf("timer service not properly initialized")
 	}
 
 	// Original timerId (what the plugin will see)
@@ -71,14 +90,14 @@ func (t *TimerService) RegisterTimer(_ context.Context, req *timer.TimerRequest)
 	}
 
 	// Internal timerId (prefixed with plugin name to avoid conflicts)
-	internalTimerId := req.PluginName + ":" + originalTimerId
+	internalTimerId := pluginName + ":" + originalTimerId
 
 	// Create a context with cancel for this timer
 	timerCtx, cancel := context.WithCancel(context.Background())
 
 	// Store the callback info using the prefixed internal ID
 	t.timers[internalTimerId] = &TimerCallback{
-		PluginName: req.PluginName,
+		PluginName: pluginName,
 		Payload:    req.Payload,
 		Cancel:     cancel,
 	}
@@ -92,37 +111,21 @@ func (t *TimerService) RegisterTimer(_ context.Context, req *timer.TimerRequest)
 	}, nil
 }
 
-// CancelTimer implements the TimerService interface
-func (t *TimerService) CancelTimer(ctx context.Context, req *timer.CancelTimerRequest) (*timer.CancelTimerResponse, error) {
+func (t *timerService) cancel(_ context.Context, pluginName string, req *timer.CancelTimerRequest) (*timer.CancelTimerResponse, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// Extract plugin name from context or request somehow
-	// For now, we'll need to look for all possible keys
-	var found bool
-	var callback *TimerCallback
-
-	// Try to find a timer with this ID from any plugin
-	for key, cb := range t.timers {
-		// Check if the key ends with the requested timer ID
-		parts := strings.Split(key, ":")
-		if len(parts) == 2 && parts[1] == req.TimerId {
-			found = true
-			callback = cb
-			delete(t.timers, key)
-			break
-		}
-	}
-
-	if !found {
+	cb := t.timers[pluginName+":"+req.TimerId]
+	if cb == nil {
 		return &timer.CancelTimerResponse{
 			Success: false,
-			Error:   "timer not found",
-		}, nil
+		}, fmt.Errorf("timer not found")
 	}
 
+	delete(t.timers, pluginName+":"+req.TimerId)
+
 	// Cancel the timer
-	callback.Cancel()
+	cb.Cancel()
 
 	return &timer.CancelTimerResponse{
 		Success: true,
@@ -130,9 +133,9 @@ func (t *TimerService) CancelTimer(ctx context.Context, req *timer.CancelTimerRe
 }
 
 // runTimer handles the timer execution and callback
-func (t *TimerService) runTimer(ctx context.Context, internalTimerId, originalTimerId string, delay time.Duration) {
-	timer := time.NewTimer(delay)
-	defer timer.Stop()
+func (t *timerService) runTimer(ctx context.Context, internalTimerId, originalTimerId string, delay time.Duration) {
+	tmr := time.NewTimer(delay)
+	defer tmr.Stop()
 
 	select {
 	case <-ctx.Done():
@@ -142,7 +145,7 @@ func (t *TimerService) runTimer(ctx context.Context, internalTimerId, originalTi
 		t.mu.Unlock()
 		return
 
-	case <-timer.C:
+	case <-tmr.C:
 		// Timer fired, execute the callback
 		var callback *TimerCallback
 
@@ -159,7 +162,7 @@ func (t *TimerService) runTimer(ctx context.Context, internalTimerId, originalTi
 }
 
 // executeCallback calls the plugin's OnTimerCallback method
-func (t *TimerService) executeCallback(ctx context.Context, originalTimerId string, callback *TimerCallback) {
+func (t *timerService) executeCallback(ctx context.Context, originalTimerId string, callback *TimerCallback) {
 	log.Debug("Executing timer callback", "plugin", callback.PluginName, "timerID", originalTimerId)
 	start := time.Now()
 

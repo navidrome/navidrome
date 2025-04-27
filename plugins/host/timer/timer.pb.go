@@ -24,21 +24,13 @@ type TimerRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	PluginName string `protobuf:"bytes,1,opt,name=plugin_name,json=pluginName,proto3" json:"plugin_name,omitempty"` // Plugin name
-	Payload    []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                         // Serialized data to pass to the callback
-	Delay      int32  `protobuf:"varint,3,opt,name=delay,proto3" json:"delay,omitempty"`                            // Delay in seconds
-	TimerId    string `protobuf:"bytes,4,opt,name=timer_id,json=timerId,proto3" json:"timer_id,omitempty"`          // Optional custom timer ID (if not provided, one will be generated)
+	Payload []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                // Serialized data to pass to the callback
+	Delay   int32  `protobuf:"varint,3,opt,name=delay,proto3" json:"delay,omitempty"`                   // Delay in seconds
+	TimerId string `protobuf:"bytes,4,opt,name=timer_id,json=timerId,proto3" json:"timer_id,omitempty"` // Optional custom timer ID (if not provided, one will be generated)
 }
 
 func (x *TimerRequest) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
-}
-
-func (x *TimerRequest) GetPluginName() string {
-	if x != nil {
-		return x.PluginName
-	}
-	return ""
 }
 
 func (x *TimerRequest) GetPayload() []byte {
@@ -68,7 +60,6 @@ type TimerResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	TimerId string `protobuf:"bytes,1,opt,name=timer_id,json=timerId,proto3" json:"timer_id,omitempty"` // ID to reference this timer
-	Error   string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`                    // Error message if registration failed
 }
 
 func (x *TimerResponse) ProtoReflect() protoreflect.Message {
@@ -78,13 +69,6 @@ func (x *TimerResponse) ProtoReflect() protoreflect.Message {
 func (x *TimerResponse) GetTimerId() string {
 	if x != nil {
 		return x.TimerId
-	}
-	return ""
-}
-
-func (x *TimerResponse) GetError() string {
-	if x != nil {
-		return x.Error
 	}
 	return ""
 }
@@ -113,8 +97,7 @@ type CancelTimerResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Success bool   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // Whether cancellation was successful
-	Error   string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`      // Error message if cancellation failed
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // Whether cancellation was successful
 }
 
 func (x *CancelTimerResponse) ProtoReflect() protoreflect.Message {
@@ -126,13 +109,6 @@ func (x *CancelTimerResponse) GetSuccess() bool {
 		return x.Success
 	}
 	return false
-}
-
-func (x *CancelTimerResponse) GetError() string {
-	if x != nil {
-		return x.Error
-	}
-	return ""
 }
 
 // go:plugin type=host version=1

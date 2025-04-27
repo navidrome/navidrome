@@ -94,7 +94,7 @@ type PluginInfo struct {
 type Manager struct {
 	plugins      map[string]*PluginInfo // Map of plugin name to plugin info
 	mu           sync.RWMutex           // Protects plugins map
-	timerService *TimerService          // Service for handling plugin timers
+	timerService *timerService          // Service for handling plugin timers
 	initialized  *initializedPlugins    // Tracks which plugins have been initialized
 }
 
@@ -112,7 +112,7 @@ func createManager() *Manager {
 		initialized: newInitializedPlugins(),
 	}
 	// Create the timer service and set the manager reference
-	m.timerService = NewTimerService(m)
+	m.timerService = newTimerService(m)
 	return m
 }
 
@@ -183,7 +183,7 @@ func getHostLibrary[S any](
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func (m *Manager) createCustomRuntime(cache wazero.CompilationCache) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName string) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
@@ -196,7 +196,7 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache) api.WazeroN
 		if err != nil {
 			return nil, err
 		}
-		timerLib, err := getHostLibrary[timer.TimerService](ctx, timer.Instantiate, m.timerService)
+		timerLib, err := getHostLibrary[timer.TimerService](ctx, timer.Instantiate, m.timerService.HostFunctions(pluginName))
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +229,7 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache) api.WazeroN
 // Used internally by ScanPlugins to register plugins
 func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *PluginInfo {
 	// Create custom runtime function
-	customRuntime := m.createCustomRuntime(cache)
+	customRuntime := m.createCustomRuntime(cache, manifest.Name)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()

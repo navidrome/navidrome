@@ -11,7 +11,6 @@ service TimerService {
 }
 
 message TimerRequest {
-    string plugin_name = 1;    // Plugin name
     bytes payload = 2;         // Serialized data to pass to the callback
     int32 delay = 3;           // Delay in seconds
     string timer_id = 4;       // Optional custom timer ID (if not provided, one will be generated)
@@ -19,7 +18,6 @@ message TimerRequest {
 
 message TimerResponse {
     string timer_id = 1;       // ID to reference this timer
-    string error = 2;          // Error message if registration failed
 }
 
 message CancelTimerRequest {
@@ -28,5 +26,4 @@ message CancelTimerRequest {
 
 message CancelTimerResponse {
     bool success = 1;          // Whether cancellation was successful
-    string error = 2;          // Error message if cancellation failed
-} 
+}

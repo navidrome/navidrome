@@ -35,10 +35,9 @@ func (MultiPlugin) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) 
 	log.Printf("Registering timer with custom ID: %s", customTimerId)
 
 	resp, err := tmr.RegisterTimer(ctx, &timer.TimerRequest{
-		PluginName: "multi_plugin",
-		TimerId:    customTimerId,
-		Delay:      6,
-		Payload:    []byte("test-payload"),
+		TimerId: customTimerId,
+		Delay:   6,
+		Payload: []byte("test-payload"),
 	})
 	if err != nil {
 		log.Printf("Error registering timer: %v", err)
@@ -102,9 +101,8 @@ func (MultiPlugin) OnTimerCallback(ctx context.Context, req *api.TimerCallbackRe
 func (MultiPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*api.InitResponse, error) {
 	log.Printf("OnInit called with %v", req)
 	_, _ = tmr.RegisterTimer(ctx, &timer.TimerRequest{
-		PluginName: "multi_plugin",
-		Delay:      2,
-		Payload:    []byte("2 seconds after init"),
+		Delay:   2,
+		Payload: []byte("2 seconds after init"),
 	})
 
 	return &api.InitResponse{}, nil
