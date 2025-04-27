@@ -11,7 +11,7 @@ import (
 // wasmInstancePool is a generic pool with max size and TTL, similar to sync.Pool but with expiration and Close support.
 type wasmInstancePool[T any] struct {
 	name         string
-	new          func(ctx context.Context) T
+	new          func(ctx context.Context) (T, error)
 	maxInstances int
 	ttl          time.Duration
 
@@ -26,7 +26,7 @@ type poolItem[T any] struct {
 	lastUsed time.Time
 }
 
-func NewWasmInstancePool[T any](name string, maxInstances int, ttl time.Duration, newFn func(ctx context.Context) T) *wasmInstancePool[T] {
+func NewWasmInstancePool[T any](name string, maxInstances int, ttl time.Duration, newFn func(ctx context.Context) (T, error)) *wasmInstancePool[T] {
 	p := &wasmInstancePool[T]{
 		name:         name,
 		new:          newFn,
@@ -39,7 +39,7 @@ func NewWasmInstancePool[T any](name string, maxInstances int, ttl time.Duration
 	return p
 }
 
-func (p *wasmInstancePool[T]) Get(ctx context.Context) T {
+func (p *wasmInstancePool[T]) Get(ctx context.Context) (T, error) {
 	p.mu.Lock()
 	n := len(p.items)
 	if n > 0 {
@@ -47,12 +47,10 @@ func (p *wasmInstancePool[T]) Get(ctx context.Context) T {
 		p.items = p.items[:n-1]
 		p.mu.Unlock()
 		log.Trace(ctx, "wasmInstancePool: got instance from pool", "pool", p.name)
-		return item.value
+		return item.value, nil
 	}
 	p.mu.Unlock()
-	inst := p.new(ctx)
-	// If creation fails, log error (cannot check nil for all types)
-	return inst
+	return p.new(ctx)
 }
 
 func (p *wasmInstancePool[T]) Put(ctx context.Context, v T) {

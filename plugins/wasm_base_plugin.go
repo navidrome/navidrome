@@ -61,10 +61,10 @@ func (w *wasmBasePlugin[S, P]) initPool(ctx context.Context) {
 			w.serviceName(),
 			defaultMaxInstances,
 			defaultTTL,
-			func(ctx context.Context) S {
-				inst, _ := w.loadFunc(ctx, w.loader, w.wasmPath)
-				log.Trace(ctx, "wasmBasePlugin: created new instance", "plugin", w.serviceName(), "instanceID", fmt.Sprintf("%p", &inst))
-				return inst
+			func(ctx context.Context) (S, error) {
+				inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
+				log.Trace(ctx, "wasmBasePlugin: created new instance", "plugin", w.serviceName(), "instanceID", fmt.Sprintf("%p", &inst), err)
+				return inst, err
 			},
 		)
 	})
@@ -75,9 +75,9 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 	w.initPool(ctx)
 	start := time.Now()
 
-	inst := w.pool.Get(ctx)
-	if any(inst) == nil {
-		return inst, func() {}, fmt.Errorf("wasmBasePlugin: failed to get instance for %s", w.serviceName())
+	inst, err := w.pool.Get(ctx)
+	if err != nil {
+		return inst, func() {}, fmt.Errorf("wasmBasePlugin: failed to get instance for %s: %w", w.serviceName(), err)
 	}
 	instanceID := fmt.Sprintf("%p", &inst)
 	log.Trace(ctx, "wasmBasePlugin: got instance from pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))

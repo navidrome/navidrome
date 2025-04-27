@@ -24,22 +24,25 @@ var _ = Describe("wasmInstancePool", func() {
 	)
 
 	It("should Get and Put instances", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) *testInstance {
-			return &testInstance{}
+		pool := NewWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) (*testInstance, error) {
+			return &testInstance{}, nil
 		})
-		inst := pool.Get(ctx)
+		inst, err := pool.Get(ctx)
+		Expect(err).To(BeNil())
 		Expect(inst).ToNot(BeNil())
 		pool.Put(ctx, inst)
-		inst2 := pool.Get(ctx)
+		inst2, err := pool.Get(ctx)
+		Expect(err).To(BeNil())
 		Expect(inst2).To(Equal(inst))
 		pool.Close(ctx)
 	})
 
 	It("should not exceed max instances", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 1, time.Second, func(ctx context.Context) *testInstance {
-			return &testInstance{}
+		pool := NewWasmInstancePool[*testInstance]("test", 1, time.Second, func(ctx context.Context) (*testInstance, error) {
+			return &testInstance{}, nil
 		})
-		inst1 := pool.Get(ctx)
+		inst1, err := pool.Get(ctx)
+		Expect(err).To(BeNil())
 		inst2 := &testInstance{}
 		pool.Put(ctx, inst1)
 		pool.Put(ctx, inst2) // should close inst2
@@ -48,10 +51,11 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should expire and close instances after TTL", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 2, 100*time.Millisecond, func(ctx context.Context) *testInstance {
-			return &testInstance{}
+		pool := NewWasmInstancePool[*testInstance]("test", 2, 100*time.Millisecond, func(ctx context.Context) (*testInstance, error) {
+			return &testInstance{}, nil
 		})
-		inst := pool.Get(ctx)
+		inst, err := pool.Get(ctx)
+		Expect(err).To(BeNil())
 		pool.Put(ctx, inst)
 		// Wait for TTL cleanup
 		time.Sleep(300 * time.Millisecond)
@@ -60,11 +64,13 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should close all on pool Close", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) *testInstance {
-			return &testInstance{}
+		pool := NewWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) (*testInstance, error) {
+			return &testInstance{}, nil
 		})
-		inst1 := pool.Get(ctx)
-		inst2 := pool.Get(ctx)
+		inst1, err := pool.Get(ctx)
+		Expect(err).To(BeNil())
+		inst2, err := pool.Get(ctx)
+		Expect(err).To(BeNil())
 		pool.Put(ctx, inst1)
 		pool.Put(ctx, inst2)
 		pool.Close(ctx)
@@ -73,13 +79,14 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should be safe for concurrent Get/Put", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 4, time.Second, func(ctx context.Context) *testInstance {
-			return &testInstance{}
+		pool := NewWasmInstancePool[*testInstance]("test", 4, time.Second, func(ctx context.Context) (*testInstance, error) {
+			return &testInstance{}, nil
 		})
 		done := make(chan struct{})
 		for i := 0; i < 8; i++ {
 			go func() {
-				inst := pool.Get(ctx)
+				inst, err := pool.Get(ctx)
+				Expect(err).To(BeNil())
 				pool.Put(ctx, inst)
 				done <- struct{}{}
 			}()
