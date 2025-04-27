@@ -11,14 +11,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("HttpServiceImpl", func() {
+var _ = Describe("httpServiceImpl", func() {
 	var (
-		svc *HttpServiceImpl
+		svc *httpServiceImpl
 		ts  *httptest.Server
 	)
 
 	BeforeEach(func() {
-		svc = &HttpServiceImpl{}
+		svc = &httpServiceImpl{}
 	})
 
 	AfterEach(func() {

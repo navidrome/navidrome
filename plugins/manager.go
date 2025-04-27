@@ -192,7 +192,7 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName 
 		}
 
 		// Load each host library
-		httpLib, err := getHostLibrary[http.HttpService](ctx, http.Instantiate, &HttpServiceImpl{})
+		httpLib, err := getHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
 		if err != nil {
 			return nil, err
 		}
