@@ -33,7 +33,7 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 - `wasmScrobblerPlugin` adapts `Scrobbler` to the internal `scrobbler.Scrobbler`
 - `wasmTimerCallback` adapts `TimerCallback` for timer callbacks
 
-* **Plugin Instance Pooling**: Instances are managed in an internal pool (default 8 max, 1m TTL). Errors during method execution close the instance instead of returning it to the pool.
+* **Plugin Instance Pooling**: Instances are managed in an internal pool (default 8 max, 1m TTL).
 * **WASM Compilation & Caching**: Modules are pre-compiled concurrently (max 2) and cached in `[CacheFolder]/plugins`, reducing startup time. The compilation timeout can be configured via `DevPluginCompilationTimeout` in development.
 
 ### 4. Host Services

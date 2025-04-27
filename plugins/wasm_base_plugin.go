@@ -48,10 +48,7 @@ func (w *wasmBasePlugin[S, P]) ServiceType() string {
 }
 
 func (w *wasmBasePlugin[S, P]) GetInstance(ctx context.Context) (any, func(), error) {
-	instance, closeFn, err := w.getInstance(ctx, "<none>")
-	return instance, func() {
-		closeFn(nil)
-	}, err
+	return w.getInstance(ctx, "<none>")
 }
 
 func (w *wasmBasePlugin[S, P]) serviceName() string {
@@ -66,6 +63,7 @@ func (w *wasmBasePlugin[S, P]) initPool(ctx context.Context) {
 			defaultTTL,
 			func(ctx context.Context) S {
 				inst, _ := w.loadFunc(ctx, w.loader, w.wasmPath)
+				log.Trace(ctx, "wasmBasePlugin: created new instance", "plugin", w.serviceName(), "instanceID", fmt.Sprintf("%p", &inst))
 				return inst
 			},
 		)
@@ -73,28 +71,19 @@ func (w *wasmBasePlugin[S, P]) initPool(ctx context.Context) {
 }
 
 // getInstance returns a new plugin instance, a cleanup function, and error
-func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName string) (S, func(error), error) {
+func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName string) (S, func(), error) {
 	w.initPool(ctx)
 	start := time.Now()
 
 	inst := w.pool.Get(ctx)
+	if any(inst) == nil {
+		return inst, func() {}, fmt.Errorf("wasmBasePlugin: failed to get instance for %s", w.serviceName())
+	}
 	instanceID := fmt.Sprintf("%p", &inst)
 	log.Trace(ctx, "wasmBasePlugin: got instance from pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))
-	return inst, func(opErr error) {
-		if opErr == nil {
-			log.Trace(ctx, "wasmBasePlugin: returning instance to pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName)
-			w.pool.Put(ctx, inst)
-			return
-		}
-		log.Error(ctx, "wasmBasePlugin: error in method, closing instance", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, opErr)
-		start := time.Now()
-		if closer, ok := any(inst).(interface{ Close(context.Context) error }); ok {
-			if closeErr := closer.Close(ctx); closeErr != nil {
-				log.Error(ctx, "wasmBasePlugin: error closing instance", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start), "closeErr", closeErr)
-			} else {
-				log.Trace(ctx, "wasmBasePlugin: closed instance", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start), "closeErr", nil)
-			}
-		}
+	return inst, func() {
+		log.Trace(ctx, "wasmBasePlugin: returning instance to pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName)
+		w.pool.Put(ctx, inst)
 	}, nil
 }
 
@@ -104,7 +93,7 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 	if err != nil {
 		return r, err
 	}
-	defer func(err error) { done(err) }(err)
+	defer done()
 	r, err = fn(inst)
 	if em, ok := any(w).(errorMapper); ok {
 		return r, em.mapError(err)
@@ -113,7 +102,7 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 }
 
 type wasmPlugin[S any] interface {
-	getInstance(ctx context.Context, methodName string) (S, func(error), error)
+	getInstance(ctx context.Context, methodName string) (S, func(), error)
 }
 
 type errorMapper interface {
