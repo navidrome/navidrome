@@ -25,7 +25,7 @@ var _ = Describe("Plugin Package", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": ["MetadataAgent"]
+			"capabilities": ["MetadataAgent"]
 		}`)
 
 		wasmContent := []byte("dummy wasm content")
@@ -68,7 +68,7 @@ var _ = Describe("Plugin Package", func() {
 		Expect(pkg.Manifest.Name).To(Equal("test-plugin"))
 		Expect(pkg.Manifest.Author).To(Equal("Test Author"))
 		Expect(pkg.Manifest.Version).To(Equal("1.0.0"))
-		Expect(pkg.Manifest.Services).To(ContainElement("MetadataAgent"))
+		Expect(pkg.Manifest.Capabilities).To(ContainElement("MetadataAgent"))
 
 		// Check WASM file was loaded
 		Expect(pkg.WasmBytes).NotTo(BeEmpty())

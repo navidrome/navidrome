@@ -2,12 +2,12 @@
 
 ## Overview
 
-Navidrome's plugin system is a WebAssembly (WASM) based extension mechanism that enables developers to expand Navidrome's functionality without modifying the core codebase. The plugin system supports several service types that can be implemented by plugins:
+Navidrome's plugin system is a WebAssembly (WASM) based extension mechanism that enables developers to expand Navidrome's functionality without modifying the core codebase. The plugin system supports several capabilities that can be implemented by plugins:
 
-1. **Metadata Agent** - For fetching artist and album information, images, etc.
+1. **MetadataAgent** - For fetching artist and album information, images, etc.
 2. **Scrobbler** - For implementing scrobbling functionality with external services
-3. **Timer Callback** - For executing code after a specified delay
-4. **Lifecycle Management** - For plugin initialization and configuration
+3. **TimerCallback** - For executing code after a specified delay
+4. **LifecycleManagement** - For plugin initialization and configuration (one-time `OnInit` only; not invoked per-request)
 
 ## Plugin Architecture
 
@@ -19,19 +19,22 @@ The `Manager` (implemented in `plugins/manager.go`) is the core component that:
 
 - Scans for plugins in the configured plugins directory
 - Loads and compiles plugins
-- Provides access to loaded plugins through service-specific interfaces
+- Provides access to loaded plugins through capability-specific interfaces
 
 ### 2. Plugin Protocol
 
-Plugins communicate with Navidrome using Protocol Buffers (protobuf) over a WASM runtime. The protocol is defined in `plugins/api/api.proto` which specifies the services and messages that plugins can implement.
+Plugins communicate with Navidrome using Protocol Buffers (protobuf) over a WASM runtime. The protocol is defined in `plugins/api/api.proto` which specifies the capabilities and messages that plugins can implement.
 
-### 3. Service Adapters
+### 3. Plugin Adapters
 
 Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 - `wasmMediaAgent` adapts `MetadataAgent` to the internal `agents.Interface`
 - `wasmScrobblerPlugin` adapts `Scrobbler` to the internal `scrobbler.Scrobbler`
 - `wasmTimerCallback` adapts `TimerCallback` for timer callbacks
+
+* **Plugin Instance Pooling**: Instances are managed in an internal pool (default 8 max, 1m TTL). Errors during method execution close the instance instead of returning it to the pool.
+* **WASM Compilation & Caching**: Modules are pre-compiled concurrently (max 2) and cached in `[CacheFolder]/plugins`, reducing startup time. The compilation timeout can be configured via `DevPluginCompilationTimeout` in development.
 
 ### 4. Host Services
 
@@ -68,7 +71,7 @@ Navidrome builds on [go-plugin](https://github.com/knqyf263/go-plugin), a Go plu
 - **Interface versioning**: Built-in mechanism for handling API compatibility between the host and plugins
 - **Type conversion**: Utilities for marshaling and unmarshaling data between Go and WebAssembly
 
-This framework significantly simplifies plugin development by handling the low-level details of WebAssembly communication, allowing plugin developers to focus on implementing service interfaces.
+This framework significantly simplifies plugin development by handling the low-level details of WebAssembly communication, allowing plugin developers to focus on implementing capabilities interfaces.
 
 ### 3. Protocol Buffers (Protobuf)
 
@@ -79,7 +82,7 @@ This framework significantly simplifies plugin development by handling the low-l
 
 The protobuf definitions are located in:
 
-- `plugins/api/api.proto`: Core plugin service interfaces
+- `plugins/api/api.proto`: Core plugin capability interfaces
 - `plugins/host/http/http.proto`: HTTP service interface
 - `plugins/host/timer/timer.proto`: Timer service interface
 
@@ -90,7 +93,7 @@ The plugin system integrates these libraries through several key components:
 - **Plugin Manager**: Manages the lifecycle of plugins, from discovery to loading
 - **Compilation Cache**: Improves performance by caching compiled WebAssembly modules
 - **Host Function Bridge**: Exposes Navidrome functionality to plugins through WebAssembly imports
-- **Service Adapters**: Convert between the plugin API and Navidrome's internal interfaces
+- **Capability Adapters**: Convert between the plugin API and Navidrome's internal interfaces
 
 Each plugin method call:
 
@@ -114,6 +117,8 @@ Enabled = true
 Folder = "/path/to/plugins"
 ```
 
+By default, the plugins folder is created under `[DataFolder]/plugins` with restrictive permissions (`0700`) to limit access to the Navidrome user.
+
 ### Plugin-specific Configuration
 
 You can also provide plugin-specific configuration using the `PluginConfig` section. Each plugin can have its own configuration map:
@@ -129,8 +134,8 @@ server_url = "https://example.com/api"
 timeout = "30"
 ```
 
-These configuration values are passed to plugins during initialization through the `OnInit` method in the `InitService` interface.
-Plugins that implement the `InitService` will receive their configuration as a map of string keys and values.
+These configuration values are passed to plugins during initialization through the `OnInit` method in the `LifecycleManagement` capability.
+Plugins that implement the `LifecycleManagement` capability will receive their configuration as a map of string keys and values.
 
 ## Plugin Directory Structure
 
@@ -140,11 +145,13 @@ Each plugin must be located in its own directory under the plugins folder:
 plugins/
 ├── my-plugin/
 │   ├── plugin.wasm         # Compiled WebAssembly module
-│   └── manifest.json       # Plugin manifest defining services
+│   └── manifest.json       # Plugin manifest defining metadata and capabilities
 ├── another-plugin/
 │   ├── plugin.wasm
 │   └── manifest.json
 ```
+
+**Note**: The folder name does not need to match the `name` field in `manifest.json`. Navidrome registers plugins by the manifest `name`, which must be unique across all plugins.
 
 ## Plugin Package Format (.ndp)
 
@@ -244,7 +251,10 @@ Always ensure you trust the source of any plugins you install, as they run with 
 
 ## Plugin Manifest
 
-Every plugin must provide a `manifest.json` file that declares metadata and which services it implements:
+**Capability Names Are Case-Sensitive**: Entries in the `capabilities` array must exactly match one of the supported capabilities: `MetadataAgent`, `Scrobbler`, `TimerCallback`, or `LifecycleManagement`.
+**Manifest Validation**: The `manifest.json` is validated against the embedded JSON schema (`plugins/schema/manifest.schema.json`). Invalid manifests will be rejected during plugin discovery.
+
+Every plugin must provide a `manifest.json` file that declares metadata and which capabilities it implements:
 
 ```json
 {
@@ -252,7 +262,7 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
   "author": "Your Name",
   "version": "1.0.0",
   "description": "A plugin that does awesome things",
-  "services": [
+  "capabilities": [
     "MetadataAgent",
     "Scrobbler",
     "TimerCallback",
@@ -264,15 +274,15 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
 Required fields:
 
 - `name`: The name of the plugin
-- `services`: Array of service types the plugin implements
+- `capabilities`: Array of capability types the plugin implements
 - `author`: The creator or organization behind the plugin
 - `version`: Version identifier (recommended to follow semantic versioning)
 - `description`: A brief description of what the plugin does
 
-Currently supported service types:
+Currently supported capabilities:
 
 - `MetadataAgent` - For implementing media metadata providers
-- `Scrobbler` - For implementing scrobbling services
+- `Scrobbler` - For implementing scrobbling plugins
 - `TimerCallback` - For implementing plugins that use the timer service
 - `LifecycleManagement` - For handling plugin initialization and configuration
 
@@ -280,9 +290,9 @@ Currently supported service types:
 
 1. The Plugin Manager scans the plugins directory and all subdirectories
 2. For each subdirectory containing a `plugin.wasm` file and valid `manifest.json`, the manager:
-   - Validates the manifest and checks for supported services
+   - Validates the manifest and checks for supported capabilities
    - Pre-compiles the WASM module in the background
-   - Registers the plugin and its services in the plugin registry
+   - Registers the plugin and its capabilities in the plugin registry
 3. Plugins can be loaded on-demand or all at once, depending on the manager's method calls
 
 ## Writing a Plugin
@@ -290,14 +300,14 @@ Currently supported service types:
 ### Requirements
 
 1. Your plugin must be compiled to WebAssembly (WASM)
-2. Your plugin must implement at least one of the service interfaces defined in `api.proto`
+2. Your plugin must implement at least one of the capability interfaces defined in `api.proto`
 3. Your plugin must be placed in its own directory with a proper `manifest.json`
 
-### Service Interfaces
+### Capability Interfaces
 
 #### Metadata Agent
 
-This service fetches metadata about artists and albums. Implement this interface to add support for fetching data from external sources.
+A capability fetches metadata about artists and albums. Implement this interface to add support for fetching data from external sources.
 
 ```protobuf
 service MetadataAgent {
@@ -317,7 +327,7 @@ service MetadataAgent {
 
 #### Scrobbler
 
-This service enables scrobbling to external services. Implement this interface to add support for custom scrobblers.
+This capability enables scrobbling to external services. Implement this interface to add support for custom scrobblers.
 
 ```protobuf
 service Scrobbler {
@@ -329,7 +339,7 @@ service Scrobbler {
 
 #### Timer Callback
 
-This service allows plugins to receive timer callbacks after a specified delay. Implement this interface to add support for delayed operations.
+This capability allows plugins to receive timer callbacks after a specified delay. Implement this interface to add support for delayed operations.
 
 ```protobuf
 service TimerCallback {
@@ -343,7 +353,7 @@ Plugins can access host functionality through the host interface:
 
 ```protobuf
 // HTTP methods available to plugins
-service Http {
+service HttpService {
   rpc Get(HttpRequest) returns (HttpResponse);
   rpc Post(HttpRequest) returns (HttpResponse);
   rpc Put(HttpRequest) returns (HttpResponse);
@@ -365,14 +375,7 @@ The Timer service allows plugins to:
 
 ### Error Handling
 
-Plugins should return standardized errors when certain conditions occur:
-
-```go
-ErrNotFound       = errors.New("plugin:not_found")       // When a requested resource isn't found
-ErrNotImplemented = errors.New("plugin:not_implemented") // For unimplemented methods
-```
-
-However, plugins can also return arbitrary errors when needed, which will be propagated to the caller.
+Plugins should use the standard error values (`plugin:not_found`, `plugin:not_implemented`) to indicate resource-not-found and unimplemented-method scenarios. All other errors will be propagated directly to the caller. Ensure your capability methods return errors via the response message `error` fields rather than panicking or relying on transport errors.
 
 ## Plugin Lifecycle and Statelessness
 
@@ -437,6 +440,8 @@ Remember, the `OnInit` method is called only once when the plugin is loaded. It 
 3. Verifying connectivity to external services
 4. Initializing any external resources
 
+**Initialization Semantics**: The `OnInit` call is invoked once when the plugin is first loaded for a given version. If the plugin's version changes, initialization will run again for that new version.
+
 ## Caching
 
 The plugin system implements a compilation cache to improve performance:
@@ -470,7 +475,7 @@ The plugin system implements a compilation cache to improve performance:
 
 1. WASM plugins have limited access to system resources
 2. Plugin compilation has an initial overhead on first load
-3. New plugin service types require changes to the core codebase
+3. New plugin capabilities types require changes to the core codebase
 4. Stateless nature prevents certain optimizations
 
 ## Troubleshooting
@@ -478,7 +483,7 @@ The plugin system implements a compilation cache to improve performance:
 1. **Plugin not detected**:
 
    - Ensure `plugin.wasm` and `manifest.json` exist in the plugin directory
-   - Check that the manifest contains valid service names
+   - Check that the manifest contains valid capabilities names
 
 2. **Compilation errors**:
 

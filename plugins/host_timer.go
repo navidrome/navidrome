@@ -170,7 +170,7 @@ func (t *TimerService) executeCallback(ctx context.Context, originalTimerId stri
 	}
 
 	// Get the plugin
-	p := t.manager.LoadPlugin(callback.PluginName, ServiceTypeTimerCallback)
+	p := t.manager.LoadPlugin(callback.PluginName, CapabilityTimerCallback)
 	if p == nil {
 		log.Error("Plugin not found for callback", "plugin", callback.PluginName)
 		return

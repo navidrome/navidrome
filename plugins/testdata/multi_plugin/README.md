@@ -9,9 +9,9 @@ This test plugin is used for ensuring that the Navidrome plugin system correctly
 ## Files
 
 - `plugin.go`: Contains the plugin implementation
-- `manifest.json`: Defines the plugin metadata and declares the implemented services
+- `manifest.json`: Defines the plugin metadata and declares the implemented capabilities
 
-## Services
+## Capabilities
 
 ### Metadata Agent
 

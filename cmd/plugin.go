@@ -91,7 +91,7 @@ func pluginList(cmd *cobra.Command, args []string) {
 
 	// Create a tab writer for aligned output
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tAUTHOR\tVERSION\tSERVICES\tDESCRIPTION")
+	fmt.Fprintln(w, "NAME\tAUTHOR\tVERSION\tCAPABILITIES\tDESCRIPTION")
 
 	// Scan plugin directories
 	entries, err := os.ReadDir(pluginsDir)
@@ -158,10 +158,10 @@ func pluginList(cmd *cobra.Command, args []string) {
 			continue
 		}
 
-		// Format services as comma-separated list
-		services := manifest.Services[0]
-		for i := 1; i < len(manifest.Services); i++ {
-			services += ", " + manifest.Services[i]
+		// Format capabilities as comma-separated list
+		capabilities := manifest.Capabilities[0]
+		for i := 1; i < len(manifest.Capabilities); i++ {
+			capabilities += ", " + manifest.Capabilities[i]
 		}
 
 		// Mark symlinks with an indicator
@@ -174,7 +174,7 @@ func pluginList(cmd *cobra.Command, args []string) {
 			nameDisplay,
 			cmp.Or(manifest.Author, "-"),
 			cmp.Or(manifest.Version, "-"),
-			services,
+			capabilities,
 			cmp.Or(manifest.Description, "-"))
 	}
 	w.Flush()
@@ -231,12 +231,12 @@ func pluginInfo(cmd *cobra.Command, args []string) {
 	fmt.Printf("  Version:     %s\n", manifest.Version)
 	fmt.Printf("  Description: %s\n", manifest.Description)
 
-	fmt.Print("  Services:    ")
-	for i, service := range manifest.Services {
+	fmt.Print("  Capabilities:    ")
+	for i, capability := range manifest.Capabilities {
 		if i > 0 {
 			fmt.Print(", ")
 		}
-		fmt.Print(service)
+		fmt.Print(capability)
 	}
 	fmt.Println()
 

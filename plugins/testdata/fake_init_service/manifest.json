@@ -1,7 +1,7 @@
 {
   "name": "fake_init_service",
   "version": "1.0.0",
-  "services": ["LifecycleManagement"],
+  "capabilities": ["LifecycleManagement"],
   "author": "Test Author",
   "description": "Test LifecycleManagement Callback"
 }

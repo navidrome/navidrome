@@ -22,7 +22,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": ["MetadataAgent", "Scrobbler"]
+			"capabilities": ["MetadataAgent", "Scrobbler"]
 		}`
 
 		pluginDir := filepath.Join(tempDir, "test-plugin")
@@ -37,7 +37,7 @@ var _ = Describe("Plugin Manifest", func() {
 		Expect(manifest.Author).To(Equal("Test Author"))
 		Expect(manifest.Version).To(Equal("1.0.0"))
 		Expect(manifest.Description).To(Equal("A test plugin"))
-		Expect(manifest.Services).To(ConsistOf("MetadataAgent", "Scrobbler"))
+		Expect(manifest.Capabilities).To(ConsistOf("MetadataAgent", "Scrobbler"))
 	})
 
 	It("should fail with proper error for non-existent manifest", func() {
@@ -53,7 +53,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author"
 			"version": "1.0.0"
 			"description": "A test plugin",
-			"services": ["MetadataAgent"]
+			"capabilities": ["MetadataAgent"]
 		}`
 
 		pluginDir := filepath.Join(tempDir, "invalid-json")
@@ -72,7 +72,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": ["MetadataAgent"]
+			"capabilities": ["MetadataAgent"]
 		}`
 
 		pluginDir := filepath.Join(tempDir, "missing-name")
@@ -85,44 +85,44 @@ var _ = Describe("Plugin Manifest", func() {
 		Expect(err.Error()).To(ContainSubstring("(root): name is required"))
 	})
 
-	It("should validate manifest with wrong service type", func() {
-		// Create invalid manifest with invalid service type
+	It("should validate manifest with wrong capability type", func() {
+		// Create invalid manifest with invalid capability type
 		invalidManifest := `{
 			"name": "test-plugin",
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": ["UnsupportedService"]
+			"capabilities": ["UnsupportedService"]
 		}`
 
-		pluginDir := filepath.Join(tempDir, "invalid-service")
+		pluginDir := filepath.Join(tempDir, "invalid-capability")
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0600)).To(Succeed())
 
 		// Test validation fails
 		_, err := LoadManifest(pluginDir)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("services.0: services.0 must be one of the following"))
+		Expect(err.Error()).To(ContainSubstring("capabilities.0: capabilities.0 must be one of the following"))
 		Expect(err.Error()).To(ContainSubstring("UnsupportedService"))
 	})
 
-	It("should validate manifest with empty services array", func() {
-		// Create invalid manifest with empty services array
+	It("should validate manifest with empty capabilities array", func() {
+		// Create invalid manifest with empty capabilities array
 		invalidManifest := `{
 			"name": "test-plugin",
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"services": []
+			"capabilities": []
 		}`
 
-		pluginDir := filepath.Join(tempDir, "empty-services")
+		pluginDir := filepath.Join(tempDir, "empty-capabilities")
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0600)).To(Succeed())
 
 		// Test validation fails
 		_, err := LoadManifest(pluginDir)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("services: Array must have at least 1 items"))
+		Expect(err.Error()).To(ContainSubstring("capabilities: Array must have at least 1 items"))
 	})
 })

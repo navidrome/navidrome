@@ -8,7 +8,7 @@ import (
 
 // Helper function to check if a plugin implements InitService
 func hasInitService(info *PluginInfo) bool {
-	for _, s := range info.Services {
+	for _, s := range info.Capabilities {
 		if s == "InitService" {
 			return true
 		}
@@ -27,16 +27,16 @@ var _ = Describe("InitService", func() {
 		It("should track initialization state of plugins", func() {
 			// Create test plugins
 			plugin1 := &PluginInfo{
-				Name:     "test-plugin",
-				Services: []string{"InitService"},
+				Name:         "test-plugin",
+				Capabilities: []string{"InitService"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
 			}
 
 			plugin2 := &PluginInfo{
-				Name:     "another-plugin",
-				Services: []string{"InitService"},
+				Name:         "another-plugin",
+				Capabilities: []string{"InitService"},
 				Manifest: &PluginManifest{
 					Version: "0.5.0",
 				},
@@ -63,16 +63,16 @@ var _ = Describe("InitService", func() {
 
 		It("should handle plugins with same name but different versions", func() {
 			plugin1 := &PluginInfo{
-				Name:     "test-plugin",
-				Services: []string{"InitService"},
+				Name:         "test-plugin",
+				Capabilities: []string{"InitService"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
 			}
 
 			plugin2 := &PluginInfo{
-				Name:     "test-plugin", // Same name
-				Services: []string{"InitService"},
+				Name:         "test-plugin", // Same name
+				Capabilities: []string{"InitService"},
 				Manifest: &PluginManifest{
 					Version: "2.0.0", // Different version
 				},
@@ -103,8 +103,8 @@ var _ = Describe("InitService", func() {
 		It("should only consider plugins that implement InitService", func() {
 			// Plugin that implements InitService
 			initPlugin := &PluginInfo{
-				Name:     "init-plugin",
-				Services: []string{"InitService"},
+				Name:         "init-plugin",
+				Capabilities: []string{"InitService"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
@@ -112,8 +112,8 @@ var _ = Describe("InitService", func() {
 
 			// Plugin that doesn't implement InitService
 			regularPlugin := &PluginInfo{
-				Name:     "regular-plugin",
-				Services: []string{"MetadataAgent"},
+				Name:         "regular-plugin",
+				Capabilities: []string{"MetadataAgent"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},

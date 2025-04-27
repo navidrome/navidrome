@@ -28,18 +28,18 @@ import (
 )
 
 const (
-	ServiceTypeMetadataAgent = "MetadataAgent"
-	ServiceTypeScrobbler     = "Scrobbler"
-	ServiceTypeTimerCallback = "TimerCallback"
+	CapabilityMetadataAgent = "MetadataAgent"
+	CapabilityScrobbler     = "Scrobbler"
+	CapabilityTimerCallback = "TimerCallback"
 )
 
-// pluginCreators maps service types to their respective creator functions
+// pluginCreators maps capability types to their respective creator functions
 type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
-	ServiceTypeMetadataAgent: NewWasmMediaAgent,
-	ServiceTypeScrobbler:     NewWasmScrobblerPlugin,
-	ServiceTypeTimerCallback: NewWasmTimerCallback,
+	CapabilityMetadataAgent: NewWasmMediaAgent,
+	CapabilityScrobbler:     NewWasmScrobblerPlugin,
+	CapabilityTimerCallback: NewWasmTimerCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement
@@ -80,14 +80,14 @@ func newWazeroModuleConfig() wazero.ModuleConfig {
 
 // PluginInfo represents a plugin that has been discovered but not yet instantiated
 type PluginInfo struct {
-	Name      string
-	Path      string
-	Services  []string
-	WasmPath  string
-	Manifest  *PluginManifest
-	State     *pluginState
-	Runtime   api.WazeroNewRuntime
-	ModConfig wazero.ModuleConfig
+	Name         string
+	Path         string
+	Capabilities []string
+	WasmPath     string
+	Manifest     *PluginManifest
+	State        *pluginState
+	Runtime      api.WazeroNewRuntime
+	ModConfig    wazero.ModuleConfig
 }
 
 // Manager is a singleton that manages plugins
@@ -243,14 +243,14 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 	// Store plugin info
 	state := &pluginState{ready: make(chan struct{})}
 	pluginInfo := &PluginInfo{
-		Name:      manifest.Name,
-		Path:      pluginDir,
-		Services:  manifest.Services,
-		WasmPath:  wasmPath,
-		Manifest:  manifest,
-		State:     state,
-		Runtime:   customRuntime,
-		ModConfig: mc,
+		Name:         manifest.Name,
+		Path:         pluginDir,
+		Capabilities: manifest.Capabilities,
+		WasmPath:     wasmPath,
+		Manifest:     manifest,
+		State:        state,
+		Runtime:      customRuntime,
+		ModConfig:    mc,
 	}
 
 	// Start pre-compilation of WASM module in background
@@ -265,7 +265,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 	defer m.mu.Unlock()
 	m.plugins[manifest.Name] = pluginInfo
 
-	log.Info("Discovered plugin", "name", manifest.Name, "services", manifest.Services, "wasm", wasmPath, "dev_mode", isSymlink)
+	log.Info("Discovered plugin", "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
 	return m.plugins[manifest.Name]
 }
 
@@ -277,8 +277,8 @@ func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
 	}
 
 	// Check if the plugin implements LifecycleManagement
-	for _, svc := range plugin.Services {
-		if svc == "LifecycleManagement" {
+	for _, capability := range plugin.Capabilities {
+		if capability == "LifecycleManagement" {
 			m.initialized.callOnInit(plugin)
 			m.initialized.markInitialized(plugin)
 			break
@@ -384,26 +384,26 @@ func (m *Manager) ScanPlugins() {
 			continue
 		}
 
-		if len(manifest.Services) == 0 {
-			log.Warn("No services found in plugin manifest", "plugin", name, "path", pluginDir)
+		if len(manifest.Capabilities) == 0 {
+			log.Warn("No capabilities found in plugin manifest", "plugin", name, "path", pluginDir)
 			continue
 		}
-		log.Debug("Manifest loaded successfully", "name", manifest.Name, "services", manifest.Services)
+		log.Debug("Manifest loaded successfully", "name", manifest.Name, "capabilities", manifest.Capabilities)
 
 		// Register the plugin
 		m.registerPlugin(pluginDir, wasmPath, manifest, cache)
 	}
 }
 
-// PluginNames returns the names of all plugins that implement the specified service
-func (m *Manager) PluginNames(svcName string) []string {
+// PluginNames returns the names of all plugins that implement the specified capability
+func (m *Manager) PluginNames(capability string) []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	var names []string
 	for name, plugin := range m.plugins {
-		for _, svc := range plugin.Services {
-			if svc == svcName {
+		for _, c := range plugin.Capabilities {
+			if c == capability {
 				names = append(names, name)
 				break
 			}
@@ -425,7 +425,7 @@ func (m *Manager) GetPluginInfo(name string) *PluginInfo {
 }
 
 // LoadPlugin instantiates and returns a plugin by name
-func (m *Manager) LoadPlugin(name string, serviceType string) WasmPlugin {
+func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
 	plugin := m.GetPluginInfo(name)
 	if plugin == nil {
 		log.Warn("Plugin not found", "name", name)
@@ -439,31 +439,31 @@ func (m *Manager) LoadPlugin(name string, serviceType string) WasmPlugin {
 		return nil
 	}
 
-	if len(plugin.Services) == 0 {
-		log.Warn("Plugin has no services", "name", name)
+	if len(plugin.Capabilities) == 0 {
+		log.Warn("Plugin has no capabilities", "name", name)
 		return nil
 	}
 
-	if serviceType == "" {
-		serviceType = plugin.Services[0]
-		log.Debug("No service type specified. Loading first service", "name", name, "service", serviceType)
+	if capability == "" {
+		capability = plugin.Capabilities[0]
+		log.Debug("No capability specified. Loading first capability", "name", name, "capability", capability)
 	}
 
-	if slices.Contains(plugin.Services, serviceType) {
-		log.Trace("Plugin implements service", "name", name, "service", serviceType)
+	if slices.Contains(plugin.Capabilities, capability) {
+		log.Trace("Plugin implements capability", "name", name, "capability", capability)
 	} else {
-		log.Error("Plugin does not implement service", "name", name, "service", serviceType)
+		log.Error("Plugin does not implement capability", "name", name, "capability", capability)
 		return nil
 	}
 
-	// Get the creator function for the service type
-	creator, ok := pluginCreators[serviceType]
+	// Get the creator function for the capability type
+	creator, ok := pluginCreators[capability]
 	if !ok {
-		log.Warn("Unknown plugin service type", "service", serviceType, "plugin", name)
+		log.Warn("Unknown plugin capability type", "capability", capability, "plugin", name)
 		return nil
 	}
 
-	// Use the creator based on the service type
+	// Use the creator based on the capability
 	adapter := creator(plugin.WasmPath, plugin.Name, plugin.Runtime, plugin.ModConfig)
 	if adapter == nil {
 		log.Warn("Failed to create adapter for plugin", "name", name)
@@ -474,7 +474,7 @@ func (m *Manager) LoadPlugin(name string, serviceType string) WasmPlugin {
 
 // LoadMediaAgent instantiates and returns a media agent plugin by name
 func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
-	plugin := m.LoadPlugin(name, ServiceTypeMetadataAgent)
+	plugin := m.LoadPlugin(name, CapabilityMetadataAgent)
 	if plugin == nil {
 		return nil, false
 	}
@@ -484,7 +484,7 @@ func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
 
 // LoadScrobbler instantiates and returns a scrobbler plugin by name
 func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
-	plugin := m.LoadPlugin(name, ServiceTypeScrobbler)
+	plugin := m.LoadPlugin(name, CapabilityScrobbler)
 	if plugin == nil {
 		return nil, false
 	}
@@ -492,16 +492,16 @@ func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
 	return s, ok
 }
 
-// LoadAllPlugins instantiates and returns all plugins that implement the specified service
-func (m *Manager) LoadAllPlugins(svcName string) []WasmPlugin {
-	names := m.PluginNames(svcName)
+// LoadAllPlugins instantiates and returns all plugins that implement the specified capability
+func (m *Manager) LoadAllPlugins(capability string) []WasmPlugin {
+	names := m.PluginNames(capability)
 	if len(names) == 0 {
 		return nil
 	}
 
 	var plugins []WasmPlugin
 	for _, name := range names {
-		plugin := m.LoadPlugin(name, svcName)
+		plugin := m.LoadPlugin(name, capability)
 		if plugin != nil {
 			plugins = append(plugins, plugin)
 		}

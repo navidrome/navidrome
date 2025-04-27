@@ -21,19 +21,19 @@ var _ = Describe("Plugin CLI Commands", func() {
 	var outReader *os.File
 
 	// Helper to create a test plugin with the given name and details
-	createTestPlugin := func(name, author, version string, services []string) string {
+	createTestPlugin := func(name, author, version string, capabilities []string) string {
 		pluginDir := filepath.Join(tempDir, name)
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
-		// Create a properly formatted services JSON array
-		servicesJSON := `"` + strings.Join(services, `", "`) + `"`
+		// Create a properly formatted capabilities JSON array
+		capabilitiesJSON := `"` + strings.Join(capabilities, `", "`) + `"`
 
 		manifest := `{
 			"name": "` + name + `",
 			"author": "` + author + `",
 			"version": "` + version + `",
 			"description": "Plugin for testing",
-			"services": [` + servicesJSON + `]
+			"capabilities": [` + capabilitiesJSON + `]
 		}`
 
 		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
@@ -107,7 +107,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 
 	Describe("Plugin info command", func() {
 		It("should display information about an installed plugin", func() {
-			// Create test plugin with multiple services
+			// Create test plugin with multiple capabilities
 			createTestPlugin("test-plugin", "Test Author", "1.0.0",
 				[]string{"MetadataAgent", "Scrobbler"})
 
@@ -121,7 +121,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 			Expect(output).To(ContainSubstring("Author:      Test Author"))
 			Expect(output).To(ContainSubstring("Version:     1.0.0"))
 			Expect(output).To(ContainSubstring("Description: Plugin for testing"))
-			Expect(output).To(ContainSubstring("Services:    MetadataAgent, Scrobbler"))
+			Expect(output).To(ContainSubstring("Capabilities:    MetadataAgent, Scrobbler"))
 		})
 	})
 
@@ -153,7 +153,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 				"author": "Dev Author",
 				"version": "0.1.0",
 				"description": "Development plugin for testing",
-				"services": ["Scrobbler"]
+				"capabilities": ["Scrobbler"]
 			}`
 			Expect(os.WriteFile(filepath.Join(sourceDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 

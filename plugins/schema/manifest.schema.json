@@ -3,7 +3,7 @@
   "title": "Navidrome Plugin Manifest",
   "description": "Schema for Navidrome Plugin manifest.json files",
   "type": "object",
-  "required": ["name", "author", "version", "description", "services"],
+  "required": ["name", "author", "version", "description", "capabilities"],
   "properties": {
     "name": {
       "type": "string",
@@ -21,9 +21,9 @@
       "type": "string",
       "description": "A brief description of the plugin's functionality"
     },
-    "services": {
+    "capabilities": {
       "type": "array",
-      "description": "List of services implemented by this plugin",
+      "description": "List of capabilities implemented by this plugin",
       "minItems": 1,
       "items": {
         "type": "string",
