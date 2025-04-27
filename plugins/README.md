@@ -38,10 +38,12 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 ### 4. Host Services
 
-Navidrome provides host services that plugins can call to access functionality like HTTP requests and timers. These services are defined in `plugins/host/` and implemented in corresponding host files:
+Navidrome provides host services that plugins can call to access functionality like HTTP requests and timers. 
+These services are defined in `plugins/host/` and implemented in corresponding host files:
 
 - HTTP service (in `plugins/host_http.go`) for making external requests
 - Timer service (in `plugins/host_timer.go`) for scheduling delayed callbacks
+- Config service (in `plugins/host_config.go`) for accessing plugin-specific configuration
 
 ## Plugin System Implementation
 

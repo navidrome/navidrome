@@ -3,6 +3,7 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/timer/timer.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
 
 import (
 	"context"
@@ -19,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/navidrome/navidrome/plugins/host/config"
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/timer"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -167,8 +169,8 @@ func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
 	return true
 }
 
-// getHostLibrary returns the host library (function definitions) for the given host service
-func getHostLibrary[S any](
+// loadHostLibrary loads the given host library and returns its exported functions
+func loadHostLibrary[S any](
 	ctx context.Context,
 	instantiateFn func(context.Context, wazero.Runtime, S) error,
 	service S,
@@ -179,6 +181,33 @@ func getHostLibrary[S any](
 	}
 	m := r.Module("env")
 	return m.ExportedFunctionDefinitions(), nil
+}
+
+// combineLibraries combines the given host libraries into a single "env" module
+func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs ...map[string]wazeroapi.FunctionDefinition) error {
+	// Merge the libraries
+	hostLib := map[string]wazeroapi.FunctionDefinition{}
+	for _, lib := range libs[1:] {
+		maps.Copy(hostLib, lib)
+	}
+
+	// Create the combined host module
+	envBuilder := r.NewHostModuleBuilder("env")
+	for name, fd := range hostLib {
+		fn, ok := fd.GoFunction().(wazeroapi.GoModuleFunction)
+		if !ok {
+			return fmt.Errorf("invalid function devinition: %s", fd.DebugName())
+		}
+		envBuilder.NewFunctionBuilder().
+			WithGoModuleFunction(fn, fd.ParamTypes(), fd.ResultTypes()).
+			WithParameterNames(fd.ParamNames()...).Export(name)
+	}
+
+	// Instantiate the combined host module
+	if _, err := envBuilder.Instantiate(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
@@ -192,33 +221,21 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName 
 		}
 
 		// Load each host library
-		httpLib, err := getHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
+		configLib, err := loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
 		if err != nil {
 			return nil, err
 		}
-		timerLib, err := getHostLibrary[timer.TimerService](ctx, timer.Instantiate, m.timerService.HostFunctions(pluginName))
+		httpLib, err := loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
+		if err != nil {
+			return nil, err
+		}
+		timerLib, err := loadHostLibrary[timer.TimerService](ctx, timer.Instantiate, m.timerService.HostFunctions(pluginName))
 		if err != nil {
 			return nil, err
 		}
 
-		// Merge the libraries
-		hostLib := maps.Clone(httpLib)
-		maps.Copy(hostLib, timerLib)
-
-		// Create the combined host module
-		envBuilder := r.NewHostModuleBuilder("env")
-		for name, fd := range hostLib {
-			fn, ok := fd.GoFunction().(wazeroapi.GoModuleFunction)
-			if !ok {
-				return nil, fmt.Errorf("invalid function devinition: %s", fd.DebugName())
-			}
-			envBuilder.NewFunctionBuilder().
-				WithGoModuleFunction(fn, fd.ParamTypes(), fd.ResultTypes()).
-				WithParameterNames(fd.ParamNames()...).Export(name)
-		}
-
-		// Instantiate the combined host module
-		if _, err = envBuilder.Instantiate(ctx); err != nil {
+		err = m.combineLibraries(ctx, r, configLib, httpLib, timerLib)
+		if err != nil {
 			return nil, err
 		}
 		return r, nil
