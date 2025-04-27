@@ -101,6 +101,7 @@ func (t *timerService) register(_ context.Context, pluginName string, req *timer
 		Payload:    req.Payload,
 		Cancel:     cancel,
 	}
+	log.Debug("Timer registered", "plugin", pluginName, "timerID", originalTimerId, "internalID", internalTimerId)
 
 	// Start the timer goroutine with the internal ID
 	go t.runTimer(timerCtx, internalTimerId, originalTimerId, time.Duration(req.Delay)*time.Second)
@@ -143,6 +144,7 @@ func (t *timerService) runTimer(ctx context.Context, internalTimerId, originalTi
 		t.mu.Lock()
 		delete(t.timers, internalTimerId)
 		t.mu.Unlock()
+		log.Debug("Timer canceled", "internalID", internalTimerId)
 		return
 
 	case <-tmr.C:
@@ -195,6 +197,7 @@ func (t *timerService) executeCallback(ctx context.Context, originalTimerId stri
 	}
 
 	// Call the plugin's OnTimerCallback method
+	log.Trace(ctx, "Executing timer callback", "plugin", callback.PluginName, "timerID", originalTimerId)
 	resp, err := plugin.OnTimerCallback(ctx, req)
 	if err != nil {
 		log.Error("Error executing timer callback", "plugin", callback.PluginName, "elapsed", time.Since(start), err)

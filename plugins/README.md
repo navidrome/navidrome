@@ -370,8 +370,9 @@ service TimerService {
 The Timer service allows plugins to:
 
 - Register timers that will trigger a callback after a specified delay
-- Cancel previously registered timers
 - Receive callbacks through the `OnTimerCallback` method when timers expire
+- Optionally provide custom timer IDs for better identification and management
+- Cancel previously registered timers using their timer ID
 
 ### Error Handling
 
