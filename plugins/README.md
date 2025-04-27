@@ -38,7 +38,7 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 ### 4. Host Services
 
-Navidrome provides host services that plugins can call to access functionality like HTTP requests and timers. 
+Navidrome provides host services that plugins can call to access functionality like HTTP requests and timers.
 These services are defined in `plugins/host/` and implemented in corresponding host files:
 
 - HTTP service (in `plugins/host_http.go`) for making external requests
@@ -367,6 +367,12 @@ service TimerService {
   rpc RegisterTimer(TimerRequest) returns (TimerResponse);
   rpc CancelTimer(CancelTimerRequest) returns (CancelTimerResponse);
 }
+
+// Crontab methods available to plugins
+service CrontabService {
+  rpc ScheduleJob(ScheduleJobRequest) returns (ScheduleJobResponse);
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+}
 ```
 
 The Timer service allows plugins to:
@@ -375,6 +381,13 @@ The Timer service allows plugins to:
 - Receive callbacks through the `OnTimerCallback` method when timers expire
 - Optionally provide custom timer IDs for better identification and management
 - Cancel previously registered timers using their timer ID
+
+The Crontab service allows plugins to:
+
+- Schedule jobs to run on a regular basis using cron expressions (e.g. "0 0 \* \* \*" for daily at midnight)
+- Receive callbacks through the `OnTimerCallback` method when jobs are triggered (reusing the timer callback mechanism)
+- Optionally provide custom job IDs for better identification and management
+- Cancel previously scheduled jobs using their job ID
 
 ### Error Handling
 

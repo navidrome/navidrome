@@ -4,6 +4,7 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/timer/timer.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/crontab/crontab.proto
 
 import (
 	"context"
@@ -21,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/config"
+	"github.com/navidrome/navidrome/plugins/host/crontab"
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/timer"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -94,10 +96,11 @@ type PluginInfo struct {
 
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins      map[string]*PluginInfo // Map of plugin name to plugin info
-	mu           sync.RWMutex           // Protects plugins map
-	timerService *timerService          // Service for handling plugin timers
-	initialized  *initializedPlugins    // Tracks which plugins have been initialized
+	plugins        map[string]*PluginInfo // Map of plugin name to plugin info
+	mu             sync.RWMutex           // Protects plugins map
+	timerService   *timerService          // Service for handling plugin timers
+	crontabService *crontabService        // Service for handling plugin cron jobs
+	initialized    *initializedPlugins    // Tracks which plugins have been initialized
 }
 
 // GetManager returns the singleton instance of Manager
@@ -115,6 +118,8 @@ func createManager() *Manager {
 	}
 	// Create the timer service and set the manager reference
 	m.timerService = newTimerService(m)
+	// Create the crontab service and set the manager reference
+	m.crontabService = newCrontabService(m)
 	return m
 }
 
@@ -233,8 +238,12 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName 
 		if err != nil {
 			return nil, err
 		}
+		crontabLib, err := loadHostLibrary[crontab.CrontabService](ctx, crontab.Instantiate, m.crontabService.HostFunctions(pluginName))
+		if err != nil {
+			return nil, err
+		}
 
-		err = m.combineLibraries(ctx, r, configLib, httpLib, timerLib)
+		err = m.combineLibraries(ctx, r, configLib, httpLib, timerLib, crontabLib)
 		if err != nil {
 			return nil, err
 		}

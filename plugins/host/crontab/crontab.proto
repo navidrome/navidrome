@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package crontab;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/crontab;crontab";
+
+// go:plugin type=host version=1
+service CrontabService {
+    rpc ScheduleJob(ScheduleJobRequest) returns (ScheduleJobResponse);
+    rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+}
+
+message ScheduleJobRequest {
+    string cron_expression = 1;      // Cron expression (e.g. "0 0 * * *" for daily at midnight)
+    bytes payload = 2;               // Serialized data to pass to the callback
+    string job_id = 3;               // Optional custom job ID (if not provided, one will be generated)
+}
+
+message ScheduleJobResponse {
+    string job_id = 1;               // ID to reference this scheduled job
+}
+
+message CancelJobRequest {
+    string job_id = 1;               // ID of the job to cancel
+}
+
+message CancelJobResponse {
+    bool success = 1;                // Whether cancellation was successful
+} 

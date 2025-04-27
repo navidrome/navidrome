@@ -149,7 +149,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
-		err := schedulerInstance.Add(schedule, func() {
+		_, err := schedulerInstance.Add(schedule, func() {
 			_, err := s.ScanAll(ctx, false)
 			if err != nil {
 				log.Error(ctx, "Error executing periodic scan", err)
@@ -245,7 +245,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic backup", "schedule", schedule)
-		err := schedulerInstance.Add(schedule, func() {
+		_, err := schedulerInstance.Add(schedule, func() {
 			start := time.Now()
 			path, err := db.Backup(ctx)
 			elapsed := time.Since(start)
@@ -273,7 +273,7 @@ func scheduleDBOptimizer(ctx context.Context) func() error {
 	return func() error {
 		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
 		schedulerInstance := scheduler.GetInstance()
-		err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
+		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
 			if scanner.IsScanning() {
 				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
 				return
