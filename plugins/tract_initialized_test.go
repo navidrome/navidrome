@@ -6,17 +6,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Helper function to check if a plugin implements InitService
+// Helper function to check if a plugin implements LifecycleManagement
 func hasInitService(info *PluginInfo) bool {
 	for _, s := range info.Capabilities {
-		if s == "InitService" {
+		if s == "LifecycleManagement" {
 			return true
 		}
 	}
 	return false
 }
 
-var _ = Describe("InitService", func() {
+var _ = Describe("LifecycleManagement", func() {
 	Describe("Plugin Initialization Tracking", func() {
 		var initializedTracker *initializedPlugins
 
@@ -28,7 +28,7 @@ var _ = Describe("InitService", func() {
 			// Create test plugins
 			plugin1 := &PluginInfo{
 				Name:         "test-plugin",
-				Capabilities: []string{"InitService"},
+				Capabilities: []string{"LifecycleManagement"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
@@ -36,7 +36,7 @@ var _ = Describe("InitService", func() {
 
 			plugin2 := &PluginInfo{
 				Name:         "another-plugin",
-				Capabilities: []string{"InitService"},
+				Capabilities: []string{"LifecycleManagement"},
 				Manifest: &PluginManifest{
 					Version: "0.5.0",
 				},
@@ -64,7 +64,7 @@ var _ = Describe("InitService", func() {
 		It("should handle plugins with same name but different versions", func() {
 			plugin1 := &PluginInfo{
 				Name:         "test-plugin",
-				Capabilities: []string{"InitService"},
+				Capabilities: []string{"LifecycleManagement"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
@@ -72,7 +72,7 @@ var _ = Describe("InitService", func() {
 
 			plugin2 := &PluginInfo{
 				Name:         "test-plugin", // Same name
-				Capabilities: []string{"InitService"},
+				Capabilities: []string{"LifecycleManagement"},
 				Manifest: &PluginManifest{
 					Version: "2.0.0", // Different version
 				},
@@ -100,17 +100,17 @@ var _ = Describe("InitService", func() {
 			Expect(key1).NotTo(Equal(key2))
 		})
 
-		It("should only consider plugins that implement InitService", func() {
-			// Plugin that implements InitService
+		It("should only consider plugins that implement LifecycleManagement", func() {
+			// Plugin that implements LifecycleManagement
 			initPlugin := &PluginInfo{
 				Name:         "init-plugin",
-				Capabilities: []string{"InitService"},
+				Capabilities: []string{"LifecycleManagement"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
 			}
 
-			// Plugin that doesn't implement InitService
+			// Plugin that doesn't implement LifecycleManagement
 			regularPlugin := &PluginInfo{
 				Name:         "regular-plugin",
 				Capabilities: []string{"MetadataAgent"},
