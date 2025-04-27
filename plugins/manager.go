@@ -196,7 +196,7 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 	for name, fd := range hostLib {
 		fn, ok := fd.GoFunction().(wazeroapi.GoModuleFunction)
 		if !ok {
-			return fmt.Errorf("invalid function devinition: %s", fd.DebugName())
+			return fmt.Errorf("invalid function definition: %s", fd.DebugName())
 		}
 		envBuilder.NewFunctionBuilder().
 			WithGoModuleFunction(fn, fd.ParamTypes(), fd.ResultTypes()).
