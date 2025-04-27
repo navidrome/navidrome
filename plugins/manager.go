@@ -187,7 +187,7 @@ func loadHostLibrary[S any](
 func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs ...map[string]wazeroapi.FunctionDefinition) error {
 	// Merge the libraries
 	hostLib := map[string]wazeroapi.FunctionDefinition{}
-	for _, lib := range libs[1:] {
+	for _, lib := range libs {
 		maps.Copy(hostLib, lib)
 	}
 
