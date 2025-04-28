@@ -9,10 +9,10 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
@@ -95,9 +95,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	artist, _ := p.String("artist")
 	title, _ := p.String("title")
 	response := newResponse()
-	lyrics := responses.Lyrics{}
-	response.Lyrics = &lyrics
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongWithLyrics(artist, title))
+	lyricsResponse := responses.Lyrics{}
+	response.Lyrics = &lyricsResponse
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll()
 
 	if err != nil {
 		return nil, err
@@ -107,24 +107,22 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	structuredLyrics, err := mediaFiles[0].StructuredLyrics()
+	structuredLyrics, err := lyrics.GetLyrics(r.Context(), &mediaFiles[0])
 	if err != nil {
 		return nil, err
-	}
-
-	if len(structuredLyrics) == 0 {
+	} else if len(structuredLyrics) == 0 {
 		return response, nil
 	}
 
-	lyrics.Artist = artist
-	lyrics.Title = title
+	lyricsResponse.Artist = artist
+	lyricsResponse.Title = title
 
 	lyricsText := ""
 	for _, line := range structuredLyrics[0].Line {
 		lyricsText += line.Value + "\n"
 	}
 
-	lyrics.Value = lyricsText
+	lyricsResponse.Value = lyricsText
 
 	return response, nil
 }
@@ -140,13 +138,13 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	lyrics, err := mediaFile.StructuredLyrics()
+	structuredLyrics, err := lyrics.GetLyrics(r.Context(), mediaFile)
 	if err != nil {
 		return nil, err
 	}
 
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, lyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
 
 	return response, nil
 }
