@@ -1,0 +1,34 @@
+package plugins
+
+import (
+	"context"
+
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/tetratelabs/wazero"
+)
+
+// NewWasmWebSocketCallback creates a new adapter for a WebSocketCallback plugin
+func NewWasmWebSocketCallback(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+	loader, err := api.NewWebSocketCallbackPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
+	if err != nil {
+		log.Error("Error creating WebSocket callback plugin", "plugin", pluginName, "path", wasmPath, err)
+		return nil
+	}
+	return &wasmWebSocketCallback{
+		wasmBasePlugin: &wasmBasePlugin[api.WebSocketCallback, *api.WebSocketCallbackPlugin]{
+			wasmPath: wasmPath,
+			name:     pluginName,
+			service:  CapabilityWebSocketCallback,
+			loader:   loader,
+			loadFunc: func(ctx context.Context, l *api.WebSocketCallbackPlugin, path string) (api.WebSocketCallback, error) {
+				return l.Load(ctx, path)
+			},
+		},
+	}
+}
+
+// wasmWebSocketCallback adapts a WebSocketCallback plugin
+type wasmWebSocketCallback struct {
+	*wasmBasePlugin[api.WebSocketCallback, *api.WebSocketCallbackPlugin]
+}

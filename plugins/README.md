@@ -7,7 +7,8 @@ Navidrome's plugin system is a WebAssembly (WASM) based extension mechanism that
 1. **MetadataAgent** - For fetching artist and album information, images, etc.
 2. **Scrobbler** - For implementing scrobbling functionality with external services
 3. **SchedulerCallback** - For executing code after a specified delay or on a recurring schedule
-4. **LifecycleManagement** - For plugin initialization and configuration (one-time `OnInit` only; not invoked per-request)
+4. **WebSocketCallback** - For interacting with WebSocket endpoints and handling WebSocket events
+5. **LifecycleManagement** - For plugin initialization and configuration (one-time `OnInit` only; not invoked per-request)
 
 ## Plugin Architecture
 
@@ -44,6 +45,7 @@ These services are defined in `plugins/host/` and implemented in corresponding h
 - HTTP service (in `plugins/host_http.go`) for making external requests
 - Scheduler service (in `plugins/host_scheduler.go`) for scheduling timed events
 - Config service (in `plugins/host_config.go`) for accessing plugin-specific configuration
+- WebSocket service (in `plugins/host_websocket.go`) for WebSocket communication
 
 ## Plugin System Implementation
 
@@ -87,6 +89,8 @@ The protobuf definitions are located in:
 - `plugins/api/api.proto`: Core plugin capability interfaces
 - `plugins/host/http/http.proto`: HTTP service interface
 - `plugins/host/scheduler/scheduler.proto`: Scheduler service interface
+- `plugins/host/config/config.proto`: Config service interface
+- `plugins/host/websocket/websocket.proto`: WebSocket service interface
 
 ### 4. Integration Architecture
 
@@ -253,7 +257,7 @@ Always ensure you trust the source of any plugins you install, as they run with 
 
 ## Plugin Manifest
 
-**Capability Names Are Case-Sensitive**: Entries in the `capabilities` array must exactly match one of the supported capabilities: `MetadataAgent`, `Scrobbler`, `SchedulerCallback`, or `LifecycleManagement`.
+**Capability Names Are Case-Sensitive**: Entries in the `capabilities` array must exactly match one of the supported capabilities: `MetadataAgent`, `Scrobbler`, `SchedulerCallback`, `WebSocketCallback`, or `LifecycleManagement`.
 **Manifest Validation**: The `manifest.json` is validated against the embedded JSON schema (`plugins/schema/manifest.schema.json`). Invalid manifests will be rejected during plugin discovery.
 
 Every plugin must provide a `manifest.json` file that declares metadata and which capabilities it implements:
@@ -268,6 +272,7 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
     "MetadataAgent",
     "Scrobbler",
     "SchedulerCallback",
+    "WebSocketCallback",
     "LifecycleManagement"
   ]
 }
@@ -286,6 +291,7 @@ Currently supported capabilities:
 - `MetadataAgent` - For implementing media metadata providers
 - `Scrobbler` - For implementing scrobbling plugins
 - `SchedulerCallback` - For implementing timed callbacks
+- `WebSocketCallback` - For interacting with WebSocket endpoints and handling WebSocket events
 - `LifecycleManagement` - For handling plugin initialization and configuration
 
 ## Plugin Loading Process
@@ -341,13 +347,63 @@ service Scrobbler {
 
 #### Scheduler Callback
 
-This capability allows plugins to receive one-time or recurring scheduled callbacks. Implement this interface to add 
-support for scheduled tasks. See the [SchedulerService](#scheduler-service) for more information. 
+This capability allows plugins to receive one-time or recurring scheduled callbacks. Implement this interface to add
+support for scheduled tasks. See the [SchedulerService](#scheduler-service) for more information.
 
 ```protobuf
 service SchedulerCallback {
   rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
 }
+```
+
+#### WebSocket Callback
+
+This capability allows plugins to interact with WebSocket endpoints and handle WebSocket events. Implement this interface to add support for WebSocket-based communication.
+
+```protobuf
+service WebSocketCallback {
+  // Called when a text message is received
+  rpc OnTextMessage(OnTextMessageRequest) returns (OnTextMessageResponse);
+
+  // Called when a binary message is received
+  rpc OnBinaryMessage(OnBinaryMessageRequest) returns (OnBinaryMessageResponse);
+
+  // Called when an error occurs
+  rpc OnError(OnErrorRequest) returns (OnErrorResponse);
+
+  // Called when the connection is closed
+  rpc OnClose(OnCloseRequest) returns (OnCloseResponse);
+}
+```
+
+Plugins can use the WebSocket host service to connect to WebSocket endpoints, send messages, and handle responses:
+
+```go
+// Connect to a WebSocket server
+connectResp, err := websocket.Connect(ctx, &websocket.ConnectRequest{
+    Url:        "wss://example.com/ws",
+    Headers:    map[string]string{"Authorization": "Bearer token"},
+    ConnectionId: connectionID,
+})
+if err != nil {
+    return err
+}
+
+// Store the connection ID for later use
+connectionID := "mu-connection-id"
+
+// Send a text message
+_, err = websocket.SendText(ctx, &websocket.SendTextRequest{
+    ConnectionId: connectionID,
+    Message:      "Hello WebSocket",
+})
+
+// Close the connection when done
+_, err = websocket.Close(ctx, &websocket.CloseRequest{
+    ConnectionId: connectionID,
+    Code:         1000, // Normal closure
+    Reason:       "Done",
+})
 ```
 
 ### Host Functions
@@ -364,6 +420,7 @@ service HttpService {
   rpc Put(HttpRequest) returns (HttpResponse);
   rpc Delete(HttpRequest) returns (HttpResponse);
 }
+```
 
 #### ConfigService
 
@@ -377,14 +434,14 @@ The ConfigService allows plugins to access Navidrome's configuration. See the [c
 
 // Scheduler methods available to plugins
 service SchedulerService {
-  // One-time event scheduling
-  rpc ScheduleOneTime(ScheduleOneTimeRequest) returns (ScheduleResponse);
+// One-time event scheduling
+rpc ScheduleOneTime(ScheduleOneTimeRequest) returns (ScheduleResponse);
 
-  // Recurring event scheduling
-  rpc ScheduleRecurring(ScheduleRecurringRequest) returns (ScheduleResponse);
+// Recurring event scheduling
+rpc ScheduleRecurring(ScheduleRecurringRequest) returns (ScheduleResponse);
 
-  // Cancel any scheduled job
-  rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+// Cancel any scheduled job
+rpc CancelSchedule(CancelRequest) returns (CancelResponse);
 }
 
 #### SchedulerService

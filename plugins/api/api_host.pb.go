@@ -1312,3 +1312,377 @@ func (p *lifecycleManagementPlugin) OnInit(ctx context.Context, request *InitReq
 
 	return response, nil
 }
+
+const WebSocketCallbackPluginAPIVersion = 1
+
+type WebSocketCallbackPlugin struct {
+	newRuntime   func(context.Context) (wazero.Runtime, error)
+	moduleConfig wazero.ModuleConfig
+}
+
+func NewWebSocketCallbackPlugin(ctx context.Context, opts ...wazeroConfigOption) (*WebSocketCallbackPlugin, error) {
+	o := &WazeroConfig{
+		newRuntime:   DefaultWazeroRuntime(),
+		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return &WebSocketCallbackPlugin{
+		newRuntime:   o.newRuntime,
+		moduleConfig: o.moduleConfig,
+	}, nil
+}
+
+type webSocketCallback interface {
+	Close(ctx context.Context) error
+	WebSocketCallback
+}
+
+func (p *WebSocketCallbackPlugin) Load(ctx context.Context, pluginPath string) (webSocketCallback, error) {
+	b, err := os.ReadFile(pluginPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new runtime so that multiple modules will not conflict
+	r, err := p.newRuntime(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Compile the WebAssembly module using the default configuration.
+	code, err := r.CompileModule(ctx, b)
+	if err != nil {
+		return nil, err
+	}
+
+	// InstantiateModule runs the "_start" function, WASI's "main".
+	module, err := r.InstantiateModule(ctx, code, p.moduleConfig)
+	if err != nil {
+		// Note: Most compilers do not exit the module after running "_start",
+		// unless there was an Error. This allows you to call exported functions.
+		if exitErr, ok := err.(*sys.ExitError); ok && exitErr.ExitCode() != 0 {
+			return nil, fmt.Errorf("unexpected exit_code: %d", exitErr.ExitCode())
+		} else if !ok {
+			return nil, err
+		}
+	}
+
+	// Compare API versions with the loading plugin
+	apiVersion := module.ExportedFunction("web_socket_callback_api_version")
+	if apiVersion == nil {
+		return nil, errors.New("web_socket_callback_api_version is not exported")
+	}
+	results, err := apiVersion.Call(ctx)
+	if err != nil {
+		return nil, err
+	} else if len(results) != 1 {
+		return nil, errors.New("invalid web_socket_callback_api_version signature")
+	}
+	if results[0] != WebSocketCallbackPluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", WebSocketCallbackPluginAPIVersion, results[0])
+	}
+
+	ontextmessage := module.ExportedFunction("web_socket_callback_on_text_message")
+	if ontextmessage == nil {
+		return nil, errors.New("web_socket_callback_on_text_message is not exported")
+	}
+	onbinarymessage := module.ExportedFunction("web_socket_callback_on_binary_message")
+	if onbinarymessage == nil {
+		return nil, errors.New("web_socket_callback_on_binary_message is not exported")
+	}
+	onerror := module.ExportedFunction("web_socket_callback_on_error")
+	if onerror == nil {
+		return nil, errors.New("web_socket_callback_on_error is not exported")
+	}
+	onclose := module.ExportedFunction("web_socket_callback_on_close")
+	if onclose == nil {
+		return nil, errors.New("web_socket_callback_on_close is not exported")
+	}
+
+	malloc := module.ExportedFunction("malloc")
+	if malloc == nil {
+		return nil, errors.New("malloc is not exported")
+	}
+
+	free := module.ExportedFunction("free")
+	if free == nil {
+		return nil, errors.New("free is not exported")
+	}
+	return &webSocketCallbackPlugin{
+		runtime:         r,
+		module:          module,
+		malloc:          malloc,
+		free:            free,
+		ontextmessage:   ontextmessage,
+		onbinarymessage: onbinarymessage,
+		onerror:         onerror,
+		onclose:         onclose,
+	}, nil
+}
+
+func (p *webSocketCallbackPlugin) Close(ctx context.Context) (err error) {
+	if r := p.runtime; r != nil {
+		r.Close(ctx)
+	}
+	return
+}
+
+type webSocketCallbackPlugin struct {
+	runtime         wazero.Runtime
+	module          api.Module
+	malloc          api.Function
+	free            api.Function
+	ontextmessage   api.Function
+	onbinarymessage api.Function
+	onerror         api.Function
+	onclose         api.Function
+}
+
+func (p *webSocketCallbackPlugin) OnTextMessage(ctx context.Context, request *OnTextMessageRequest) (*OnTextMessageResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.ontextmessage.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(OnTextMessageResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+func (p *webSocketCallbackPlugin) OnBinaryMessage(ctx context.Context, request *OnBinaryMessageRequest) (*OnBinaryMessageResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.onbinarymessage.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(OnBinaryMessageResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+func (p *webSocketCallbackPlugin) OnError(ctx context.Context, request *OnErrorRequest) (*OnErrorResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.onerror.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(OnErrorResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+func (p *webSocketCallbackPlugin) OnClose(ctx context.Context, request *OnCloseRequest) (*OnCloseResponse, error) {
+	data, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	dataSize := uint64(len(data))
+
+	var dataPtr uint64
+	// If the input data is not empty, we must allocate the in-Wasm memory to store it, and pass to the plugin.
+	if dataSize != 0 {
+		results, err := p.malloc.Call(ctx, dataSize)
+		if err != nil {
+			return nil, err
+		}
+		dataPtr = results[0]
+		// This pointer is managed by the Wasm module, which is unaware of external usage.
+		// So, we have to free it when finished
+		defer p.free.Call(ctx, dataPtr)
+
+		// The pointer is a linear memory offset, which is where we write the name.
+		if !p.module.Memory().Write(uint32(dataPtr), data) {
+			return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d", dataPtr, dataSize, p.module.Memory().Size())
+		}
+	}
+
+	ptrSize, err := p.onclose.Call(ctx, dataPtr, dataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	resPtr := uint32(ptrSize[0] >> 32)
+	resSize := uint32(ptrSize[0])
+	var isErrResponse bool
+	if (resSize & (1 << 31)) > 0 {
+		isErrResponse = true
+		resSize &^= (1 << 31)
+	}
+
+	// We don't need the memory after deserialization: make sure it is freed.
+	if resPtr != 0 {
+		defer p.free.Call(ctx, uint64(resPtr))
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := p.module.Memory().Read(resPtr, resSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Read(%d, %d) out of range of memory size %d",
+			resPtr, resSize, p.module.Memory().Size())
+	}
+
+	if isErrResponse {
+		return nil, errors.New(string(bytes))
+	}
+
+	response := new(OnCloseResponse)
+	if err = response.UnmarshalVT(bytes); err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}

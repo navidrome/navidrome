@@ -31,7 +31,8 @@
           "MetadataAgent",
           "Scrobbler",
           "SchedulerCallback",
-          "LifecycleManagement"
+          "LifecycleManagement",
+          "WebSocketCallback"
         ]
       }
     }

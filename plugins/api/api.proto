@@ -199,3 +199,47 @@ message InitRequest {
 message InitResponse {
   string error = 1;     // Error message if initialization failed
 }
+
+// go:plugin type=plugin version=1
+service WebSocketCallback {
+  // Called when a text message is received
+  rpc OnTextMessage(OnTextMessageRequest) returns (OnTextMessageResponse);
+
+  // Called when a binary message is received
+  rpc OnBinaryMessage(OnBinaryMessageRequest) returns (OnBinaryMessageResponse);
+
+  // Called when an error occurs
+  rpc OnError(OnErrorRequest) returns (OnErrorResponse);
+
+  // Called when the connection is closed
+  rpc OnClose(OnCloseRequest) returns (OnCloseResponse);
+}
+
+message OnTextMessageRequest {
+  string connection_id = 1;
+  string message = 2;
+}
+
+message OnTextMessageResponse {}
+
+message OnBinaryMessageRequest {
+  string connection_id = 1;
+  bytes data = 2;
+}
+
+message OnBinaryMessageResponse {}
+
+message OnErrorRequest {
+  string connection_id = 1;
+  string error = 2;
+}
+
+message OnErrorResponse {}
+
+message OnCloseRequest {
+  string connection_id = 1;
+  int32 code = 2;
+  string reason = 3;
+}
+
+message OnCloseResponse {}

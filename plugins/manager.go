@@ -4,6 +4,7 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/websocket/websocket.proto
 
 import (
 	"context"
@@ -23,6 +24,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host/config"
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
+	"github.com/navidrome/navidrome/plugins/host/websocket"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/tetratelabs/wazero"
 	wazeroapi "github.com/tetratelabs/wazero/api"
@@ -33,6 +35,7 @@ const (
 	CapabilityMetadataAgent     = "MetadataAgent"
 	CapabilityScrobbler         = "Scrobbler"
 	CapabilitySchedulerCallback = "SchedulerCallback"
+	CapabilityWebSocketCallback = "WebSocketCallback"
 )
 
 // pluginCreators maps capability types to their respective creator functions
@@ -42,6 +45,7 @@ var pluginCreators = map[string]pluginConstructor{
 	CapabilityMetadataAgent:     NewWasmMediaAgent,
 	CapabilityScrobbler:         NewWasmScrobblerPlugin,
 	CapabilitySchedulerCallback: NewWasmSchedulerCallback,
+	CapabilityWebSocketCallback: NewWasmWebSocketCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement
@@ -97,6 +101,7 @@ type Manager struct {
 	plugins          map[string]*PluginInfo // Map of plugin name to plugin info
 	mu               sync.RWMutex           // Protects plugins map
 	schedulerService *schedulerService      // Service for handling scheduled tasks
+	websocketService *websocketService      // Service for handling WebSocket connections
 	initialized      *initializedPlugins    // Tracks which plugins have been initialized
 }
 
@@ -116,6 +121,8 @@ func createManager() *Manager {
 
 	// Create the scheduler service
 	m.schedulerService = newSchedulerService(m)
+	m.websocketService = newWebsocketService(m)
+
 	return m
 }
 
@@ -230,15 +237,17 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName 
 		if err != nil {
 			return nil, err
 		}
-
-		// Load the scheduler library
 		schedulerLib, err := loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
+		if err != nil {
+			return nil, err
+		}
+		websocketLib, err := loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName))
 		if err != nil {
 			return nil, err
 		}
 
 		// Combine the libraries
-		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib)
+		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib, websocketLib)
 		if err != nil {
 			return nil, err
 		}

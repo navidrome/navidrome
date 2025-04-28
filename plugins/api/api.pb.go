@@ -921,6 +921,162 @@ func (x *InitResponse) GetError() string {
 	return ""
 }
 
+type OnTextMessageRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ConnectionId string `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Message      string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+}
+
+func (x *OnTextMessageRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *OnTextMessageRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *OnTextMessageRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type OnTextMessageResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *OnTextMessageResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+type OnBinaryMessageRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ConnectionId string `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Data         []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+}
+
+func (x *OnBinaryMessageRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *OnBinaryMessageRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *OnBinaryMessageRequest) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type OnBinaryMessageResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *OnBinaryMessageResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+type OnErrorRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ConnectionId string `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Error        string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *OnErrorRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *OnErrorRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *OnErrorRequest) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type OnErrorResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *OnErrorResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+type OnCloseRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ConnectionId string `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Code         int32  `protobuf:"varint,2,opt,name=code,proto3" json:"code,omitempty"`
+	Reason       string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+}
+
+func (x *OnCloseRequest) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
+func (x *OnCloseRequest) GetConnectionId() string {
+	if x != nil {
+		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *OnCloseRequest) GetCode() int32 {
+	if x != nil {
+		return x.Code
+	}
+	return 0
+}
+
+func (x *OnCloseRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type OnCloseResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *OnCloseResponse) ProtoReflect() protoreflect.Message {
+	panic(`not implemented`)
+}
+
 // go:plugin type=plugin version=1
 type MetadataAgent interface {
 	// Artist metadata methods
@@ -950,4 +1106,16 @@ type SchedulerCallback interface {
 // go:plugin type=plugin version=1
 type LifecycleManagement interface {
 	OnInit(context.Context, *InitRequest) (*InitResponse, error)
+}
+
+// go:plugin type=plugin version=1
+type WebSocketCallback interface {
+	// Called when a text message is received
+	OnTextMessage(context.Context, *OnTextMessageRequest) (*OnTextMessageResponse, error)
+	// Called when a binary message is received
+	OnBinaryMessage(context.Context, *OnBinaryMessageRequest) (*OnBinaryMessageResponse, error)
+	// Called when an error occurs
+	OnError(context.Context, *OnErrorRequest) (*OnErrorResponse, error)
+	// Called when the connection is closed
+	OnClose(context.Context, *OnCloseRequest) (*OnCloseResponse, error)
 }
