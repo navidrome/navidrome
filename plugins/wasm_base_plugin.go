@@ -47,7 +47,7 @@ func (w *wasmBasePlugin[S, P]) ServiceType() string {
 	return w.service
 }
 
-func (w *wasmBasePlugin[S, P]) GetInstance(ctx context.Context) (any, func(), error) {
+func (w *wasmBasePlugin[S, P]) Instantiate(ctx context.Context) (any, func(), error) {
 	return w.getInstance(ctx, "<none>")
 }
 

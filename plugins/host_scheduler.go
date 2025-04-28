@@ -323,7 +323,7 @@ func (s *schedulerService) executeCallback(ctx context.Context, internalSchedule
 	}
 
 	// Get instance
-	inst, closeFn, err := p.GetInstance(ctx)
+	inst, closeFn, err := p.Instantiate(ctx)
 	if err != nil {
 		log.Error("Error getting plugin instance for callback", "plugin", callback.PluginID, err)
 		return
