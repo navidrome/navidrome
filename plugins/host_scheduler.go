@@ -97,17 +97,14 @@ func (s *schedulerService) getScheduleType(id string) string {
 	return ""
 }
 
-// scheduleOneTime registers a new one-time scheduled job
-func (s *schedulerService) scheduleOneTime(_ context.Context, pluginName string, req *scheduler.ScheduleOneTimeRequest) (*scheduler.ScheduleResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+// scheduleJob is a helper function that handles the common logic for scheduling jobs
+func (s *schedulerService) scheduleJob(pluginName string, scheduleId string, jobType string, payload []byte) (string, *ScheduledCallback, context.CancelFunc, error) {
 	if s.manager == nil {
-		return nil, fmt.Errorf("scheduler service not properly initialized")
+		return "", nil, nil, fmt.Errorf("scheduler service not properly initialized")
 	}
 
 	// Original scheduleId (what the plugin will see)
-	originalScheduleId := req.ScheduleId
+	originalScheduleId := scheduleId
 	if originalScheduleId == "" {
 		// Generate a random ID if one wasn't provided
 		originalScheduleId, _ = gonanoid.New(10)
@@ -136,17 +133,33 @@ func (s *schedulerService) scheduleOneTime(_ context.Context, pluginName string,
 		}
 	}
 
-	// Create a context with cancel for this one-time schedule
-	scheduleCtx, cancel := context.WithCancel(context.Background())
-
-	// Store the callback info (this must happen before canceling the existing one)
-	s.schedules[internalScheduleId] = &ScheduledCallback{
+	// Create the callback object
+	callback := &ScheduledCallback{
 		ID:       originalScheduleId,
 		PluginID: pluginName,
-		Type:     ScheduleTypeOneTime,
-		Payload:  req.Payload,
-		Cancel:   cancel,
+		Type:     jobType,
+		Payload:  payload,
 	}
+
+	return internalScheduleId, callback, cancelExisting, nil
+}
+
+// scheduleOneTime registers a new one-time scheduled job
+func (s *schedulerService) scheduleOneTime(_ context.Context, pluginName string, req *scheduler.ScheduleOneTimeRequest) (*scheduler.ScheduleResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	internalScheduleId, callback, cancelExisting, err := s.scheduleJob(pluginName, req.ScheduleId, ScheduleTypeOneTime, req.Payload)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a context with cancel for this one-time schedule
+	scheduleCtx, cancel := context.WithCancel(context.Background())
+	callback.Cancel = cancel
+
+	// Store the callback info
+	s.schedules[internalScheduleId] = callback
 
 	// Now that the new job is in the map, we can safely cancel the old one
 	if cancelExisting != nil {
@@ -156,14 +169,14 @@ func (s *schedulerService) scheduleOneTime(_ context.Context, pluginName string,
 		}()
 	}
 
-	log.Debug("One-time schedule registered", "plugin", pluginName, "scheduleID", originalScheduleId, "internalID", internalScheduleId)
+	log.Debug("One-time schedule registered", "plugin", pluginName, "scheduleID", callback.ID, "internalID", internalScheduleId)
 
 	// Start the timer goroutine with the internal ID
 	go s.runOneTimeSchedule(scheduleCtx, internalScheduleId, time.Duration(req.DelaySeconds)*time.Second)
 
 	// Return the original ID to the plugin
 	return &scheduler.ScheduleResponse{
-		ScheduleId: originalScheduleId,
+		ScheduleId: callback.ID,
 	}, nil
 }
 
@@ -172,45 +185,9 @@ func (s *schedulerService) scheduleRecurring(_ context.Context, pluginName strin
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.manager == nil {
-		return nil, fmt.Errorf("scheduler service not properly initialized")
-	}
-
-	// Original scheduleId (what the plugin will see)
-	originalScheduleId := req.ScheduleId
-	if originalScheduleId == "" {
-		// Generate a random ID if one wasn't provided
-		originalScheduleId, _ = gonanoid.New(10)
-	}
-
-	// Internal scheduleId (prefixed with plugin name to avoid conflicts)
-	internalScheduleId := pluginName + ":" + originalScheduleId
-
-	// Store any existing cancellation function to call after we've updated the map
-	var cancelExisting context.CancelFunc
-
-	// Check if there's an existing schedule with the same ID, we'll cancel it after updating the map
-	if existingSchedule, ok := s.schedules[internalScheduleId]; ok {
-		log.Debug("Replacing existing schedule with same ID", "plugin", pluginName, "scheduleID", originalScheduleId)
-
-		// Store cancel information but don't call it yet
-		if existingSchedule.Type == ScheduleTypeOneTime && existingSchedule.Cancel != nil {
-			// We'll set the Cancel to nil to prevent the old job from removing the new one
-			cancelExisting = existingSchedule.Cancel
-			existingSchedule.Cancel = nil
-		} else if existingSchedule.Type == ScheduleTypeRecurring {
-			existingRecurringEntryID := existingSchedule.EntryID
-			if existingRecurringEntryID != 0 {
-				s.navidSched.Remove(existingRecurringEntryID)
-			}
-		}
-	}
-
-	callback := &ScheduledCallback{
-		ID:       originalScheduleId,
-		PluginID: pluginName,
-		Type:     ScheduleTypeRecurring,
-		Payload:  req.Payload,
+	internalScheduleId, callback, cancelExisting, err := s.scheduleJob(pluginName, req.ScheduleId, ScheduleTypeRecurring, req.Payload)
+	if err != nil {
+		return nil, err
 	}
 
 	// Schedule the job with the Navidrome scheduler
@@ -223,6 +200,8 @@ func (s *schedulerService) scheduleRecurring(_ context.Context, pluginName strin
 
 	// Store the entry ID so we can cancel it later
 	callback.EntryID = entryID
+
+	// Store the callback info
 	s.schedules[internalScheduleId] = callback
 
 	// Now that the new job is in the map, we can safely cancel the old one
@@ -233,11 +212,11 @@ func (s *schedulerService) scheduleRecurring(_ context.Context, pluginName strin
 		}()
 	}
 
-	log.Debug("Recurring schedule registered", "plugin", pluginName, "scheduleID", originalScheduleId, "internalID", internalScheduleId, "cron", req.CronExpression)
+	log.Debug("Recurring schedule registered", "plugin", pluginName, "scheduleID", callback.ID, "internalID", internalScheduleId, "cron", req.CronExpression)
 
 	// Return the original ID to the plugin
 	return &scheduler.ScheduleResponse{
-		ScheduleId: originalScheduleId,
+		ScheduleId: callback.ID,
 	}, nil
 }
 
