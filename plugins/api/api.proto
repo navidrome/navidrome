@@ -172,17 +172,18 @@ message ScrobblerScrobbleResponse {
 }
 
 // go:plugin type=plugin version=1
-service TimerCallback {
-  rpc OnTimerCallback(TimerCallbackRequest) returns (TimerCallbackResponse);
+service SchedulerCallback {
+  rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
 }
 
-message TimerCallbackRequest {
-  string timer_id = 1;  // ID of the timer that triggered this callback
-  bytes payload = 2;    // The data passed when the timer was registered
+message SchedulerCallbackRequest {
+  string schedule_id = 1;  // ID of the scheduled job that triggered this callback
+  bytes payload = 2;       // The data passed when the job was scheduled
+  bool is_recurring = 3;   // Whether this is from a recurring schedule (cron job)
 }
 
-message TimerCallbackResponse {
-  string error = 1;     // Error message if the callback failed
+message SchedulerCallbackResponse {
+  string error = 1;        // Error message if the callback failed
 }
 
 // go:plugin type=plugin version=1

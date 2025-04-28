@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/plugins/api"
-	"github.com/navidrome/navidrome/plugins/host/timer"
+	"github.com/navidrome/navidrome/plugins/host/scheduler"
 )
 
 // MultiPlugin implements the MetadataAgent interface for testing
@@ -16,7 +16,7 @@ type MultiPlugin struct{}
 
 var ErrNotFound = api.ErrNotFound
 
-var tmr = timer.NewTimerService()
+var sched = scheduler.NewSchedulerService()
 
 // Artist-related methods
 func (MultiPlugin) GetArtistMBID(ctx context.Context, req *api.ArtistMBIDRequest) (*api.ArtistMBIDResponse, error) {
@@ -31,19 +31,21 @@ func (MultiPlugin) GetArtistURL(ctx context.Context, req *api.ArtistURLRequest) 
 
 	// Use an ID that could potentially clash with other plugins
 	// The host will ensure this doesn't conflict by prefixing with plugin name
-	customTimerId := "artist:" + req.Name
-	log.Printf("Registering timer with custom ID: %s", customTimerId)
+	customId := "artist:" + req.Name
+	log.Printf("Registering scheduler with custom ID: %s", customId)
 
-	resp, err := tmr.RegisterTimer(ctx, &timer.TimerRequest{
-		TimerId: customTimerId,
-		Delay:   6,
-		Payload: []byte("test-payload"),
+	// Use the scheduler service for one-time scheduling
+	resp, err := sched.ScheduleOneTime(ctx, &scheduler.ScheduleOneTimeRequest{
+		ScheduleId:   customId,
+		DelaySeconds: 6,
+		Payload:      []byte("test-payload"),
 	})
 	if err != nil {
-		log.Printf("Error registering timer: %v", err)
+		log.Printf("Error scheduling one-time job: %v", err)
 	} else {
-		log.Printf("Timer registered with ID: %s", resp.TimerId)
+		log.Printf("One-time schedule registered with ID: %s", resp.ScheduleId)
 	}
+
 	return &api.ArtistURLResponse{Url: "https://multi.example.com/artist"}, nil
 }
 
@@ -82,27 +84,30 @@ func (MultiPlugin) GetAlbumImages(ctx context.Context, req *api.AlbumImagesReque
 	return &api.AlbumImagesResponse{}, nil
 }
 
-// Timer-related methods
-func (MultiPlugin) OnTimerCallback(ctx context.Context, req *api.TimerCallbackRequest) (*api.TimerCallbackResponse, error) {
-	log.Printf("Timer callback received with ID: %s, payload: '%s'", req.TimerId, string(req.Payload))
+// Scheduler callback
+func (MultiPlugin) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
+	log.Printf("Scheduler callback received with ID: %s, payload: '%s', isRecurring: %v",
+		req.ScheduleId, string(req.Payload), req.IsRecurring)
 
-	// Demonstrate how to parse the custom timer ID format
-	if strings.HasPrefix(req.TimerId, "artist:") {
-		parts := strings.Split(req.TimerId, ":")
+	// Demonstrate how to parse the custom ID format
+	if strings.HasPrefix(req.ScheduleId, "artist:") {
+		parts := strings.Split(req.ScheduleId, ":")
 		if len(parts) == 2 {
 			artistName := parts[1]
-			log.Printf("This timer was for artist: %s", artistName)
+			log.Printf("This schedule was for artist: %s", artistName)
 		}
 	}
 
-	return &api.TimerCallbackResponse{}, nil
+	return &api.SchedulerCallbackResponse{}, nil
 }
 
 func (MultiPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*api.InitResponse, error) {
 	log.Printf("OnInit called with %v", req)
-	_, _ = tmr.RegisterTimer(ctx, &timer.TimerRequest{
-		Delay:   2,
-		Payload: []byte("2 seconds after init"),
+
+	// Schedule a recurring every 5 seconds
+	_, _ = sched.ScheduleRecurring(ctx, &scheduler.ScheduleRecurringRequest{
+		CronExpression: "@every 5s",
+		Payload:        []byte("every 5 seconds"),
 	})
 
 	return &api.InitResponse{}, nil
@@ -113,7 +118,7 @@ func main() {}
 
 // Register the service implementations
 func init() {
-	api.RegisterMetadataAgent(MultiPlugin{})
-	api.RegisterTimerCallback(MultiPlugin{})
 	api.RegisterLifecycleManagement(MultiPlugin{})
+	api.RegisterMetadataAgent(MultiPlugin{})
+	api.RegisterSchedulerCallback(MultiPlugin{})
 }

@@ -2,9 +2,8 @@ package plugins
 
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/timer/timer.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/crontab/crontab.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
 
 import (
 	"context"
@@ -22,9 +21,8 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/config"
-	"github.com/navidrome/navidrome/plugins/host/crontab"
 	"github.com/navidrome/navidrome/plugins/host/http"
-	"github.com/navidrome/navidrome/plugins/host/timer"
+	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/tetratelabs/wazero"
 	wazeroapi "github.com/tetratelabs/wazero/api"
@@ -32,18 +30,18 @@ import (
 )
 
 const (
-	CapabilityMetadataAgent = "MetadataAgent"
-	CapabilityScrobbler     = "Scrobbler"
-	CapabilityTimerCallback = "TimerCallback"
+	CapabilityMetadataAgent     = "MetadataAgent"
+	CapabilityScrobbler         = "Scrobbler"
+	CapabilitySchedulerCallback = "SchedulerCallback"
 )
 
 // pluginCreators maps capability types to their respective creator functions
 type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
-	CapabilityMetadataAgent: NewWasmMediaAgent,
-	CapabilityScrobbler:     NewWasmScrobblerPlugin,
-	CapabilityTimerCallback: NewWasmTimerCallback,
+	CapabilityMetadataAgent:     NewWasmMediaAgent,
+	CapabilityScrobbler:         NewWasmScrobblerPlugin,
+	CapabilitySchedulerCallback: NewWasmSchedulerCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement
@@ -96,11 +94,10 @@ type PluginInfo struct {
 
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins        map[string]*PluginInfo // Map of plugin name to plugin info
-	mu             sync.RWMutex           // Protects plugins map
-	timerService   *timerService          // Service for handling plugin timers
-	crontabService *crontabService        // Service for handling plugin cron jobs
-	initialized    *initializedPlugins    // Tracks which plugins have been initialized
+	plugins          map[string]*PluginInfo // Map of plugin name to plugin info
+	mu               sync.RWMutex           // Protects plugins map
+	schedulerService *schedulerService      // Service for handling scheduled tasks
+	initialized      *initializedPlugins    // Tracks which plugins have been initialized
 }
 
 // GetManager returns the singleton instance of Manager
@@ -116,10 +113,9 @@ func createManager() *Manager {
 		plugins:     make(map[string]*PluginInfo),
 		initialized: newInitializedPlugins(),
 	}
-	// Create the timer service and set the manager reference
-	m.timerService = newTimerService(m)
-	// Create the crontab service and set the manager reference
-	m.crontabService = newCrontabService(m)
+
+	// Create the scheduler service
+	m.schedulerService = newSchedulerService(m)
 	return m
 }
 
@@ -234,16 +230,15 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName 
 		if err != nil {
 			return nil, err
 		}
-		timerLib, err := loadHostLibrary[timer.TimerService](ctx, timer.Instantiate, m.timerService.HostFunctions(pluginName))
-		if err != nil {
-			return nil, err
-		}
-		crontabLib, err := loadHostLibrary[crontab.CrontabService](ctx, crontab.Instantiate, m.crontabService.HostFunctions(pluginName))
+
+		// Load the scheduler library
+		schedulerLib, err := loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
 		if err != nil {
 			return nil, err
 		}
 
-		err = m.combineLibraries(ctx, r, configLib, httpLib, timerLib, crontabLib)
+		// Combine the libraries
+		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib)
 		if err != nil {
 			return nil, err
 		}

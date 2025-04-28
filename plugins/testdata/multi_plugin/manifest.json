@@ -3,5 +3,5 @@
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test data for multiple services",
-  "capabilities": ["MetadataAgent", "TimerCallback", "LifecycleManagement"]
+  "capabilities": ["MetadataAgent", "SchedulerCallback", "LifecycleManagement"]
 }

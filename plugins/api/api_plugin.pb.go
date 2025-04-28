@@ -303,27 +303,27 @@ func _scrobbler_scrobble(ptr, size uint32) uint64 {
 	return (uint64(ptr) << uint64(32)) | uint64(size)
 }
 
-const TimerCallbackPluginAPIVersion = 1
+const SchedulerCallbackPluginAPIVersion = 1
 
-//go:wasmexport timer_callback_api_version
-func _timer_callback_api_version() uint64 {
-	return TimerCallbackPluginAPIVersion
+//go:wasmexport scheduler_callback_api_version
+func _scheduler_callback_api_version() uint64 {
+	return SchedulerCallbackPluginAPIVersion
 }
 
-var timerCallback TimerCallback
+var schedulerCallback SchedulerCallback
 
-func RegisterTimerCallback(p TimerCallback) {
-	timerCallback = p
+func RegisterSchedulerCallback(p SchedulerCallback) {
+	schedulerCallback = p
 }
 
-//go:wasmexport timer_callback_on_timer_callback
-func _timer_callback_on_timer_callback(ptr, size uint32) uint64 {
+//go:wasmexport scheduler_callback_on_scheduler_callback
+func _scheduler_callback_on_scheduler_callback(ptr, size uint32) uint64 {
 	b := wasm.PtrToByte(ptr, size)
-	req := new(TimerCallbackRequest)
+	req := new(SchedulerCallbackRequest)
 	if err := req.UnmarshalVT(b); err != nil {
 		return 0
 	}
-	response, err := timerCallback.OnTimerCallback(context.Background(), req)
+	response, err := schedulerCallback.OnSchedulerCallback(context.Background(), req)
 	if err != nil {
 		ptr, size = wasm.ByteToPtr([]byte(err.Error()))
 		return (uint64(ptr) << uint64(32)) | uint64(size) |

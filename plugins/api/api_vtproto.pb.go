@@ -1391,7 +1391,7 @@ func (m *ScrobblerScrobbleResponse) MarshalToSizedBufferVT(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *TimerCallbackRequest) MarshalVT() (dAtA []byte, err error) {
+func (m *SchedulerCallbackRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1404,12 +1404,12 @@ func (m *TimerCallbackRequest) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *TimerCallbackRequest) MarshalToVT(dAtA []byte) (int, error) {
+func (m *SchedulerCallbackRequest) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *TimerCallbackRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *SchedulerCallbackRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1421,6 +1421,16 @@ func (m *TimerCallbackRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.IsRecurring {
+		i--
+		if m.IsRecurring {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x18
+	}
 	if len(m.Payload) > 0 {
 		i -= len(m.Payload)
 		copy(dAtA[i:], m.Payload)
@@ -1428,17 +1438,17 @@ func (m *TimerCallbackRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i--
 		dAtA[i] = 0x12
 	}
-	if len(m.TimerId) > 0 {
-		i -= len(m.TimerId)
-		copy(dAtA[i:], m.TimerId)
-		i = encodeVarint(dAtA, i, uint64(len(m.TimerId)))
+	if len(m.ScheduleId) > 0 {
+		i -= len(m.ScheduleId)
+		copy(dAtA[i:], m.ScheduleId)
+		i = encodeVarint(dAtA, i, uint64(len(m.ScheduleId)))
 		i--
 		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
 
-func (m *TimerCallbackResponse) MarshalVT() (dAtA []byte, err error) {
+func (m *SchedulerCallbackResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1451,12 +1461,12 @@ func (m *TimerCallbackResponse) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *TimerCallbackResponse) MarshalToVT(dAtA []byte) (int, error) {
+func (m *SchedulerCallbackResponse) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *TimerCallbackResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *SchedulerCallbackResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -2113,13 +2123,13 @@ func (m *ScrobblerScrobbleResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *TimerCallbackRequest) SizeVT() (n int) {
+func (m *SchedulerCallbackRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = len(m.TimerId)
+	l = len(m.ScheduleId)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
@@ -2127,11 +2137,14 @@ func (m *TimerCallbackRequest) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
+	if m.IsRecurring {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
 
-func (m *TimerCallbackResponse) SizeVT() (n int) {
+func (m *SchedulerCallbackResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -5555,7 +5568,7 @@ func (m *ScrobblerScrobbleResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *TimerCallbackRequest) UnmarshalVT(dAtA []byte) error {
+func (m *SchedulerCallbackRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5578,15 +5591,15 @@ func (m *TimerCallbackRequest) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: TimerCallbackRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: SchedulerCallbackRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TimerCallbackRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SchedulerCallbackRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TimerId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ScheduleId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -5614,7 +5627,7 @@ func (m *TimerCallbackRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TimerId = string(dAtA[iNdEx:postIndex])
+			m.ScheduleId = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -5650,6 +5663,26 @@ func (m *TimerCallbackRequest) UnmarshalVT(dAtA []byte) error {
 				m.Payload = []byte{}
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IsRecurring", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.IsRecurring = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -5672,7 +5705,7 @@ func (m *TimerCallbackRequest) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *TimerCallbackResponse) UnmarshalVT(dAtA []byte) error {
+func (m *SchedulerCallbackResponse) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5695,10 +5728,10 @@ func (m *TimerCallbackResponse) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: TimerCallbackResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: SchedulerCallbackResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: TimerCallbackResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SchedulerCallbackResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

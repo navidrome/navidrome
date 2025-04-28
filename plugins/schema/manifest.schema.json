@@ -30,7 +30,7 @@
         "enum": [
           "MetadataAgent",
           "Scrobbler",
-          "TimerCallback",
+          "SchedulerCallback",
           "LifecycleManagement"
         ]
       }

@@ -20,13 +20,13 @@ This plugin returns hardcoded responses for various metadata requests:
 - Artist metadata: MBID, URL, biography, similar artists, images, top songs
 - Album metadata: album info, album images
 
-### Timer Callback
+### Scheduler Callback
 
-The plugin also implements the TimerCallback interface, which allows it to:
+The plugin also implements the SchedulerCallback interface, which allows it to:
 
-1. Register timers with the host system
-2. Receive callbacks when timers expire
-3. Process timer-related payloads
+1. Register scheduled jobs with the host system
+2. Receive callbacks when the scheduled jobs are executed
+3. Process scheduler-related payloads
 
 This demonstrates how plugins can implement scheduled or delayed operations even with the stateless plugin architecture.
 

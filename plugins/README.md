@@ -6,7 +6,7 @@ Navidrome's plugin system is a WebAssembly (WASM) based extension mechanism that
 
 1. **MetadataAgent** - For fetching artist and album information, images, etc.
 2. **Scrobbler** - For implementing scrobbling functionality with external services
-3. **TimerCallback** - For executing code after a specified delay
+3. **SchedulerCallback** - For executing code after a specified delay or on a recurring schedule
 4. **LifecycleManagement** - For plugin initialization and configuration (one-time `OnInit` only; not invoked per-request)
 
 ## Plugin Architecture
@@ -31,18 +31,18 @@ Adapters bridge between the plugin API and Navidrome's internal interfaces:
 
 - `wasmMediaAgent` adapts `MetadataAgent` to the internal `agents.Interface`
 - `wasmScrobblerPlugin` adapts `Scrobbler` to the internal `scrobbler.Scrobbler`
-- `wasmTimerCallback` adapts `TimerCallback` for timer callbacks
+- `wasmSchedulerCallback` adapts `SchedulerCallback` to the internal `SchedulerCallback`
 
 * **Plugin Instance Pooling**: Instances are managed in an internal pool (default 8 max, 1m TTL).
 * **WASM Compilation & Caching**: Modules are pre-compiled concurrently (max 2) and cached in `[CacheFolder]/plugins`, reducing startup time. The compilation timeout can be configured via `DevPluginCompilationTimeout` in development.
 
 ### 4. Host Services
 
-Navidrome provides host services that plugins can call to access functionality like HTTP requests and timers.
+Navidrome provides host services that plugins can call to access functionality like HTTP requests and scheduling.
 These services are defined in `plugins/host/` and implemented in corresponding host files:
 
 - HTTP service (in `plugins/host_http.go`) for making external requests
-- Timer service (in `plugins/host_timer.go`) for scheduling delayed callbacks
+- Scheduler service (in `plugins/host_scheduler.go`) for scheduling timed events
 - Config service (in `plugins/host_config.go`) for accessing plugin-specific configuration
 
 ## Plugin System Implementation
@@ -86,7 +86,7 @@ The protobuf definitions are located in:
 
 - `plugins/api/api.proto`: Core plugin capability interfaces
 - `plugins/host/http/http.proto`: HTTP service interface
-- `plugins/host/timer/timer.proto`: Timer service interface
+- `plugins/host/scheduler/scheduler.proto`: Scheduler service interface
 
 ### 4. Integration Architecture
 
@@ -253,7 +253,7 @@ Always ensure you trust the source of any plugins you install, as they run with 
 
 ## Plugin Manifest
 
-**Capability Names Are Case-Sensitive**: Entries in the `capabilities` array must exactly match one of the supported capabilities: `MetadataAgent`, `Scrobbler`, `TimerCallback`, or `LifecycleManagement`.
+**Capability Names Are Case-Sensitive**: Entries in the `capabilities` array must exactly match one of the supported capabilities: `MetadataAgent`, `Scrobbler`, `SchedulerCallback`, or `LifecycleManagement`.
 **Manifest Validation**: The `manifest.json` is validated against the embedded JSON schema (`plugins/schema/manifest.schema.json`). Invalid manifests will be rejected during plugin discovery.
 
 Every plugin must provide a `manifest.json` file that declares metadata and which capabilities it implements:
@@ -267,7 +267,7 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
   "capabilities": [
     "MetadataAgent",
     "Scrobbler",
-    "TimerCallback",
+    "SchedulerCallback",
     "LifecycleManagement"
   ]
 }
@@ -285,7 +285,7 @@ Currently supported capabilities:
 
 - `MetadataAgent` - For implementing media metadata providers
 - `Scrobbler` - For implementing scrobbling plugins
-- `TimerCallback` - For implementing plugins that use the timer service
+- `SchedulerCallback` - For implementing timed callbacks
 - `LifecycleManagement` - For handling plugin initialization and configuration
 
 ## Plugin Loading Process
@@ -339,19 +339,22 @@ service Scrobbler {
 }
 ```
 
-#### Timer Callback
+#### Scheduler Callback
 
-This capability allows plugins to receive timer callbacks after a specified delay. Implement this interface to add support for delayed operations.
+This capability allows plugins to receive one-time or recurring scheduled callbacks. Implement this interface to add 
+support for scheduled tasks. See the [SchedulerService](#scheduler-service) for more information. 
 
 ```protobuf
-service TimerCallback {
-  rpc OnTimerCallback(TimerCallbackRequest) returns (TimerCallbackResponse);
+service SchedulerCallback {
+  rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
 }
 ```
 
 ### Host Functions
 
 Plugins can access host functionality through the host interface:
+
+#### HttpService
 
 ```protobuf
 // HTTP methods available to plugins
@@ -362,32 +365,44 @@ service HttpService {
   rpc Delete(HttpRequest) returns (HttpResponse);
 }
 
-// Timer methods available to plugins
-service TimerService {
-  rpc RegisterTimer(TimerRequest) returns (TimerResponse);
-  rpc CancelTimer(CancelTimerRequest) returns (CancelTimerResponse);
-}
+#### ConfigService
 
-// Crontab methods available to plugins
-service CrontabService {
-  rpc ScheduleJob(ScheduleJobRequest) returns (ScheduleJobResponse);
-  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse);
+```protobuf
+service ConfigService {
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
 }
 ```
 
-The Timer service allows plugins to:
+The ConfigService allows plugins to access Navidrome's configuration. See the [config.proto](host/config/config.proto) file for the full API.
 
-- Register timers that will trigger a callback after a specified delay
-- Receive callbacks through the `OnTimerCallback` method when timers expire
-- Optionally provide custom timer IDs for better identification and management
-- Cancel previously registered timers using their timer ID
+// Scheduler methods available to plugins
+service SchedulerService {
+  // One-time event scheduling
+  rpc ScheduleOneTime(ScheduleOneTimeRequest) returns (ScheduleResponse);
 
-The Crontab service allows plugins to:
+  // Recurring event scheduling
+  rpc ScheduleRecurring(ScheduleRecurringRequest) returns (ScheduleResponse);
 
-- Schedule jobs to run on a regular basis using cron expressions (e.g. "0 0 \* \* \*" for daily at midnight)
-- Receive callbacks through the `OnTimerCallback` method when jobs are triggered (reusing the timer callback mechanism)
-- Optionally provide custom job IDs for better identification and management
-- Cancel previously scheduled jobs using their job ID
+  // Cancel any scheduled job
+  rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+}
+
+#### SchedulerService
+
+The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
+
+- **One-time scheduling**: Schedule a callback to be executed once after a specified delay.
+- **Recurring scheduling**: Schedule a callback to be executed repeatedly according to a cron expression.
+
+Plugins using this service must implement the `SchedulerCallback` interface:
+
+```protobuf
+service SchedulerCallback {
+    rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
+}
+```
+
+The `IsRecurring` field in the request allows plugins to differentiate between one-time and recurring callbacks.
 
 ### Error Handling
 

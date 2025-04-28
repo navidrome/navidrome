@@ -828,34 +828,42 @@ func (x *ScrobblerScrobbleResponse) GetError() string {
 	return ""
 }
 
-type TimerCallbackRequest struct {
+type SchedulerCallbackRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	TimerId string `protobuf:"bytes,1,opt,name=timer_id,json=timerId,proto3" json:"timer_id,omitempty"` // ID of the timer that triggered this callback
-	Payload []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                // The data passed when the timer was registered
+	ScheduleId  string `protobuf:"bytes,1,opt,name=schedule_id,json=scheduleId,proto3" json:"schedule_id,omitempty"`     // ID of the scheduled job that triggered this callback
+	Payload     []byte `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`                             // The data passed when the job was scheduled
+	IsRecurring bool   `protobuf:"varint,3,opt,name=is_recurring,json=isRecurring,proto3" json:"is_recurring,omitempty"` // Whether this is from a recurring schedule (cron job)
 }
 
-func (x *TimerCallbackRequest) ProtoReflect() protoreflect.Message {
+func (x *SchedulerCallbackRequest) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
 }
 
-func (x *TimerCallbackRequest) GetTimerId() string {
+func (x *SchedulerCallbackRequest) GetScheduleId() string {
 	if x != nil {
-		return x.TimerId
+		return x.ScheduleId
 	}
 	return ""
 }
 
-func (x *TimerCallbackRequest) GetPayload() []byte {
+func (x *SchedulerCallbackRequest) GetPayload() []byte {
 	if x != nil {
 		return x.Payload
 	}
 	return nil
 }
 
-type TimerCallbackResponse struct {
+func (x *SchedulerCallbackRequest) GetIsRecurring() bool {
+	if x != nil {
+		return x.IsRecurring
+	}
+	return false
+}
+
+type SchedulerCallbackResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -863,11 +871,11 @@ type TimerCallbackResponse struct {
 	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"` // Error message if the callback failed
 }
 
-func (x *TimerCallbackResponse) ProtoReflect() protoreflect.Message {
+func (x *SchedulerCallbackResponse) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
 }
 
-func (x *TimerCallbackResponse) GetError() string {
+func (x *SchedulerCallbackResponse) GetError() string {
 	if x != nil {
 		return x.Error
 	}
@@ -935,8 +943,8 @@ type Scrobbler interface {
 }
 
 // go:plugin type=plugin version=1
-type TimerCallback interface {
-	OnTimerCallback(context.Context, *TimerCallbackRequest) (*TimerCallbackResponse, error)
+type SchedulerCallback interface {
+	OnSchedulerCallback(context.Context, *SchedulerCallbackRequest) (*SchedulerCallbackResponse, error)
 }
 
 // go:plugin type=plugin version=1

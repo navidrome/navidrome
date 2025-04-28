@@ -967,14 +967,14 @@ func (p *scrobblerPlugin) Scrobble(ctx context.Context, request *ScrobblerScrobb
 	return response, nil
 }
 
-const TimerCallbackPluginAPIVersion = 1
+const SchedulerCallbackPluginAPIVersion = 1
 
-type TimerCallbackPlugin struct {
+type SchedulerCallbackPlugin struct {
 	newRuntime   func(context.Context) (wazero.Runtime, error)
 	moduleConfig wazero.ModuleConfig
 }
 
-func NewTimerCallbackPlugin(ctx context.Context, opts ...wazeroConfigOption) (*TimerCallbackPlugin, error) {
+func NewSchedulerCallbackPlugin(ctx context.Context, opts ...wazeroConfigOption) (*SchedulerCallbackPlugin, error) {
 	o := &WazeroConfig{
 		newRuntime:   DefaultWazeroRuntime(),
 		moduleConfig: wazero.NewModuleConfig().WithStartFunctions("_initialize"),
@@ -984,18 +984,18 @@ func NewTimerCallbackPlugin(ctx context.Context, opts ...wazeroConfigOption) (*T
 		opt(o)
 	}
 
-	return &TimerCallbackPlugin{
+	return &SchedulerCallbackPlugin{
 		newRuntime:   o.newRuntime,
 		moduleConfig: o.moduleConfig,
 	}, nil
 }
 
-type timerCallback interface {
+type schedulerCallback interface {
 	Close(ctx context.Context) error
-	TimerCallback
+	SchedulerCallback
 }
 
-func (p *TimerCallbackPlugin) Load(ctx context.Context, pluginPath string) (timerCallback, error) {
+func (p *SchedulerCallbackPlugin) Load(ctx context.Context, pluginPath string) (schedulerCallback, error) {
 	b, err := os.ReadFile(pluginPath)
 	if err != nil {
 		return nil, err
@@ -1026,23 +1026,23 @@ func (p *TimerCallbackPlugin) Load(ctx context.Context, pluginPath string) (time
 	}
 
 	// Compare API versions with the loading plugin
-	apiVersion := module.ExportedFunction("timer_callback_api_version")
+	apiVersion := module.ExportedFunction("scheduler_callback_api_version")
 	if apiVersion == nil {
-		return nil, errors.New("timer_callback_api_version is not exported")
+		return nil, errors.New("scheduler_callback_api_version is not exported")
 	}
 	results, err := apiVersion.Call(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(results) != 1 {
-		return nil, errors.New("invalid timer_callback_api_version signature")
+		return nil, errors.New("invalid scheduler_callback_api_version signature")
 	}
-	if results[0] != TimerCallbackPluginAPIVersion {
-		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", TimerCallbackPluginAPIVersion, results[0])
+	if results[0] != SchedulerCallbackPluginAPIVersion {
+		return nil, fmt.Errorf("API version mismatch, host: %d, plugin: %d", SchedulerCallbackPluginAPIVersion, results[0])
 	}
 
-	ontimercallback := module.ExportedFunction("timer_callback_on_timer_callback")
-	if ontimercallback == nil {
-		return nil, errors.New("timer_callback_on_timer_callback is not exported")
+	onschedulercallback := module.ExportedFunction("scheduler_callback_on_scheduler_callback")
+	if onschedulercallback == nil {
+		return nil, errors.New("scheduler_callback_on_scheduler_callback is not exported")
 	}
 
 	malloc := module.ExportedFunction("malloc")
@@ -1054,31 +1054,31 @@ func (p *TimerCallbackPlugin) Load(ctx context.Context, pluginPath string) (time
 	if free == nil {
 		return nil, errors.New("free is not exported")
 	}
-	return &timerCallbackPlugin{
-		runtime:         r,
-		module:          module,
-		malloc:          malloc,
-		free:            free,
-		ontimercallback: ontimercallback,
+	return &schedulerCallbackPlugin{
+		runtime:             r,
+		module:              module,
+		malloc:              malloc,
+		free:                free,
+		onschedulercallback: onschedulercallback,
 	}, nil
 }
 
-func (p *timerCallbackPlugin) Close(ctx context.Context) (err error) {
+func (p *schedulerCallbackPlugin) Close(ctx context.Context) (err error) {
 	if r := p.runtime; r != nil {
 		r.Close(ctx)
 	}
 	return
 }
 
-type timerCallbackPlugin struct {
-	runtime         wazero.Runtime
-	module          api.Module
-	malloc          api.Function
-	free            api.Function
-	ontimercallback api.Function
+type schedulerCallbackPlugin struct {
+	runtime             wazero.Runtime
+	module              api.Module
+	malloc              api.Function
+	free                api.Function
+	onschedulercallback api.Function
 }
 
-func (p *timerCallbackPlugin) OnTimerCallback(ctx context.Context, request *TimerCallbackRequest) (*TimerCallbackResponse, error) {
+func (p *schedulerCallbackPlugin) OnSchedulerCallback(ctx context.Context, request *SchedulerCallbackRequest) (*SchedulerCallbackResponse, error) {
 	data, err := request.MarshalVT()
 	if err != nil {
 		return nil, err
@@ -1103,7 +1103,7 @@ func (p *timerCallbackPlugin) OnTimerCallback(ctx context.Context, request *Time
 		}
 	}
 
-	ptrSize, err := p.ontimercallback.Call(ctx, dataPtr, dataSize)
+	ptrSize, err := p.onschedulercallback.Call(ctx, dataPtr, dataSize)
 	if err != nil {
 		return nil, err
 	}
@@ -1132,7 +1132,7 @@ func (p *timerCallbackPlugin) OnTimerCallback(ctx context.Context, request *Time
 		return nil, errors.New(string(bytes))
 	}
 
-	response := new(TimerCallbackResponse)
+	response := new(SchedulerCallbackResponse)
 	if err = response.UnmarshalVT(bytes); err != nil {
 		return nil, err
 	}
