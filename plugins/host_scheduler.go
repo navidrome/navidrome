@@ -116,28 +116,44 @@ func (s *schedulerService) scheduleOneTime(_ context.Context, pluginName string,
 	// Internal scheduleId (prefixed with plugin name to avoid conflicts)
 	internalScheduleId := pluginName + ":" + originalScheduleId
 
-	// Check if there's an existing schedule with the same ID, cancel it first
+	// Store any existing cancellation function to call after we've updated the map
+	var cancelExisting context.CancelFunc
+
+	// Check if there's an existing schedule with the same ID, we'll cancel it after updating the map
 	if existingSchedule, ok := s.schedules[internalScheduleId]; ok {
 		log.Debug("Replacing existing schedule with same ID", "plugin", pluginName, "scheduleID", originalScheduleId)
 
-		// Cancel based on type
+		// Store cancel information but don't call it yet
 		if existingSchedule.Type == ScheduleTypeOneTime && existingSchedule.Cancel != nil {
-			existingSchedule.Cancel()
+			// We'll set the Cancel to nil to prevent the old job from removing the new one
+			cancelExisting = existingSchedule.Cancel
+			existingSchedule.Cancel = nil
 		} else if existingSchedule.Type == ScheduleTypeRecurring {
-			s.navidSched.Remove(existingSchedule.EntryID)
+			existingRecurringEntryID := existingSchedule.EntryID
+			if existingRecurringEntryID != 0 {
+				s.navidSched.Remove(existingRecurringEntryID)
+			}
 		}
 	}
 
 	// Create a context with cancel for this one-time schedule
 	scheduleCtx, cancel := context.WithCancel(context.Background())
 
-	// Store the callback info
+	// Store the callback info (this must happen before canceling the existing one)
 	s.schedules[internalScheduleId] = &ScheduledCallback{
 		ID:       originalScheduleId,
 		PluginID: pluginName,
 		Type:     ScheduleTypeOneTime,
 		Payload:  req.Payload,
 		Cancel:   cancel,
+	}
+
+	// Now that the new job is in the map, we can safely cancel the old one
+	if cancelExisting != nil {
+		go func() {
+			// Cancel in a goroutine to avoid deadlock since we're already holding the lock
+			cancelExisting()
+		}()
 	}
 
 	log.Debug("One-time schedule registered", "plugin", pluginName, "scheduleID", originalScheduleId, "internalID", internalScheduleId)
@@ -170,15 +186,23 @@ func (s *schedulerService) scheduleRecurring(_ context.Context, pluginName strin
 	// Internal scheduleId (prefixed with plugin name to avoid conflicts)
 	internalScheduleId := pluginName + ":" + originalScheduleId
 
-	// Check if there's an existing schedule with the same ID, cancel it first
+	// Store any existing cancellation function to call after we've updated the map
+	var cancelExisting context.CancelFunc
+
+	// Check if there's an existing schedule with the same ID, we'll cancel it after updating the map
 	if existingSchedule, ok := s.schedules[internalScheduleId]; ok {
 		log.Debug("Replacing existing schedule with same ID", "plugin", pluginName, "scheduleID", originalScheduleId)
 
-		// Cancel based on type
+		// Store cancel information but don't call it yet
 		if existingSchedule.Type == ScheduleTypeOneTime && existingSchedule.Cancel != nil {
-			existingSchedule.Cancel()
+			// We'll set the Cancel to nil to prevent the old job from removing the new one
+			cancelExisting = existingSchedule.Cancel
+			existingSchedule.Cancel = nil
 		} else if existingSchedule.Type == ScheduleTypeRecurring {
-			s.navidSched.Remove(existingSchedule.EntryID)
+			existingRecurringEntryID := existingSchedule.EntryID
+			if existingRecurringEntryID != 0 {
+				s.navidSched.Remove(existingRecurringEntryID)
+			}
 		}
 	}
 
@@ -201,6 +225,14 @@ func (s *schedulerService) scheduleRecurring(_ context.Context, pluginName strin
 	callback.EntryID = entryID
 	s.schedules[internalScheduleId] = callback
 
+	// Now that the new job is in the map, we can safely cancel the old one
+	if cancelExisting != nil {
+		go func() {
+			// Cancel in a goroutine to avoid deadlock since we're already holding the lock
+			cancelExisting()
+		}()
+	}
+
 	log.Debug("Recurring schedule registered", "plugin", pluginName, "scheduleID", originalScheduleId, "internalID", internalScheduleId, "cron", req.CronExpression)
 
 	// Return the original ID to the plugin
@@ -222,14 +254,31 @@ func (s *schedulerService) cancelSchedule(_ context.Context, pluginName string, 
 		}, fmt.Errorf("schedule not found")
 	}
 
-	// Cancel based on type
+	// Store the cancel functions to call after we've updated the schedule map
+	var cancelFunc context.CancelFunc
+	var recurringEntryID int
+
+	// Store cancel information but don't call it yet
 	if callback.Type == ScheduleTypeOneTime && callback.Cancel != nil {
-		callback.Cancel()
+		cancelFunc = callback.Cancel
+		callback.Cancel = nil // Set to nil to prevent the cancel handler from removing the job
 	} else if callback.Type == ScheduleTypeRecurring {
-		s.navidSched.Remove(callback.EntryID)
+		recurringEntryID = callback.EntryID
 	}
 
+	// First remove from the map
 	delete(s.schedules, internalScheduleId)
+
+	// Now perform the cancellation safely
+	if cancelFunc != nil {
+		go func() {
+			// Execute in a goroutine to avoid deadlock since we're already holding the lock
+			cancelFunc()
+		}()
+	}
+	if recurringEntryID != 0 {
+		s.navidSched.Remove(recurringEntryID)
+	}
 
 	log.Debug("Schedule canceled", "plugin", pluginName, "scheduleID", req.ScheduleId, "internalID", internalScheduleId, "type", callback.Type)
 
@@ -245,11 +294,10 @@ func (s *schedulerService) runOneTimeSchedule(ctx context.Context, internalSched
 
 	select {
 	case <-ctx.Done():
-		// Schedule was cancelled
-		s.mu.Lock()
-		delete(s.schedules, internalScheduleId)
-		s.mu.Unlock()
-		log.Debug("One-time schedule canceled", "internalID", internalScheduleId)
+		// Schedule was cancelled via its context
+		// We're no longer removing the schedule here because that's handled by the code that
+		// cancelled the context
+		log.Debug("One-time schedule context canceled", "internalID", internalScheduleId)
 		return
 
 	case <-tmr.C:

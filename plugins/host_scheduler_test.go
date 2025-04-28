@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	. "github.com/onsi/ginkgo/v2"
@@ -113,19 +114,27 @@ var _ = Describe("SchedulerService", func() {
 			_, err := ss.scheduleOneTime(context.Background(), pluginName, req1)
 			Expect(err).ToNot(HaveOccurred())
 
+			// Verify that the initial job exists
+			scheduleId := pluginName + ":" + "replace-job"
+			Expect(ss.hasSchedule(scheduleId)).To(BeTrue(), "Initial schedule should exist")
+
 			beforeCount := ss.scheduleCount()
 
 			// Replace with second job using same ID
 			req2 := &scheduler.ScheduleOneTimeRequest{
-				DelaySeconds: 5,
+				DelaySeconds: 60, // Use a longer delay to ensure it doesn't execute during the test
 				Payload:      []byte("test payload 2"),
 				ScheduleId:   "replace-job",
 			}
 
 			_, err = ss.scheduleOneTime(context.Background(), pluginName, req2)
 			Expect(err).ToNot(HaveOccurred())
+
+			// Wait a moment to ensure the schedule is updated after cancellation
+			time.Sleep(200 * time.Millisecond)
+
+			Expect(ss.hasSchedule(scheduleId)).To(BeTrue(), "Schedule should exist after replacement")
 			Expect(ss.scheduleCount()).To(Equal(beforeCount), "Job count should remain the same after replacement")
-			Expect(ss.hasSchedule(pluginName + ":" + "replace-job")).To(BeTrue())
 		})
 
 		It("replaces recurring jobs with new ones", func() {
@@ -149,8 +158,12 @@ var _ = Describe("SchedulerService", func() {
 
 			_, err = ss.scheduleRecurring(context.Background(), pluginName, req2)
 			Expect(err).ToNot(HaveOccurred())
+
+			// Wait a moment to ensure the schedule is updated after cancellation
+			time.Sleep(200 * time.Millisecond)
+
+			Expect(ss.hasSchedule(pluginName+":"+"replace-cron")).To(BeTrue(), "Schedule should exist after replacement")
 			Expect(ss.scheduleCount()).To(Equal(beforeCount), "Job count should remain the same after replacement")
-			Expect(ss.hasSchedule(pluginName + ":" + "replace-cron")).To(BeTrue())
 		})
 	})
 })
