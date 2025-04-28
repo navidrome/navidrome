@@ -87,10 +87,9 @@ const Admin = (props) => {
   useEffect(() => {
     if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
       retrieveTranslation(config.defaultLanguage)
+        .then(() => setLocale(config.defaultLanguage))
         .then(() => {
-          setLocale(config.defaultLanguage).then(() => {
-            localStorage.setItem('locale', config.defaultLanguage)
-          })
+          localStorage.setItem('locale', config.defaultLanguage)
           refresh(true)
         })
         .catch((e) => {
