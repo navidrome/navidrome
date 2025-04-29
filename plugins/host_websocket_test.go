@@ -63,7 +63,7 @@ var _ = Describe("WebSocket Host Service", func() {
 
 			// If message is "close", close the connection
 			if mt == gorillaws.TextMessage && string(message) == "close" {
-				conn.WriteControl(
+				_ = conn.WriteControl(
 					gorillaws.CloseMessage,
 					gorillaws.FormatCloseMessage(gorillaws.CloseNormalClosure, "bye"),
 					time.Now().Add(time.Second),
@@ -79,7 +79,7 @@ var _ = Describe("WebSocket Host Service", func() {
 		serverMu = sync.Mutex{}
 
 		// Create a test WebSocket server
-		upgrader = gorillaws.Upgrader{}
+		//upgrader = gorillaws.Upgrader{}
 		server = httptest.NewServer(http.HandlerFunc(echoHandler))
 		DeferCleanup(server.Close)
 

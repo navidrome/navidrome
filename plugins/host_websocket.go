@@ -126,10 +126,11 @@ func (s *websocketService) connect(ctx context.Context, pluginName string, req *
 	}
 
 	// Connect to the WebSocket server
-	conn, _, err := dialer.DialContext(ctx, req.Url, header)
+	conn, resp, err := dialer.DialContext(ctx, req.Url, header)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to WebSocket server: %w", err)
 	}
+	defer resp.Body.Close()
 
 	// Generate a connection ID
 	if req.ConnectionId == "" {
@@ -148,8 +149,8 @@ func (s *websocketService) connect(ctx context.Context, pluginName string, req *
 
 	// Store the connection
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.connections[internal] = wsConn
-	s.mu.Unlock()
 
 	log.Debug("WebSocket connection established", "plugin", pluginName, "connectionID", connectionID, "url", req.Url)
 

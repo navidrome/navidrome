@@ -106,6 +106,7 @@ func (p *wasmInstancePool[T]) cleanupExpired() {
 	ctx := context.Background()
 	now := time.Now()
 	p.mu.Lock()
+	defer p.mu.Unlock()
 	var keep []poolItem[T]
 	for _, item := range p.items {
 		if now.Sub(item.lastUsed) > p.ttl {
@@ -121,7 +122,6 @@ func (p *wasmInstancePool[T]) cleanupExpired() {
 		log.Trace(ctx, "wasmInstancePool: cleaned up expired instances", "pool", p.name, "numExpired", len(p.items)-len(keep), "numRemaining", len(keep))
 	}
 	p.items = keep
-	p.mu.Unlock()
 }
 
 func (p *wasmInstancePool[T]) closeItem(ctx context.Context, v T) {
