@@ -26,6 +26,9 @@ var (
 	tickers []string
 )
 
+// WebSocketService instance used to manage WebSocket connections and communication.
+var wsService = websocket.NewWebSocketService()
+
 // CryptoTickerPlugin implements both WebSocketCallback and LifecycleManagement interfaces
 type CryptoTickerPlugin struct{}
 
@@ -79,7 +82,6 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 	log.Printf("Configured tickers: %v", tickers)
 
 	// Connect to the WebSocket API using the WebSocketService interface
-	wsService := &websocketService{}
 	_, err := wsService.Connect(ctx, &websocket.ConnectRequest{
 		Url:          coinbaseWSEndpoint,
 		ConnectionId: connectionID,
@@ -119,27 +121,6 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 	log.Printf("Subscription message sent to Coinbase WebSocket API")
 
 	return &api.InitResponse{}, nil
-}
-
-// Wrapper for websocket service to implement the WebSocketService interface
-type websocketService struct{}
-
-func (w *websocketService) Connect(ctx context.Context, req *websocket.ConnectRequest) (*websocket.ConnectResponse, error) {
-	// In plugins, we don't implement these methods directly - they are provided by the host
-	// This is just a stub that will be replaced with the actual implementation at runtime
-	return nil, fmt.Errorf("not implemented directly in plugins")
-}
-
-func (w *websocketService) SendText(ctx context.Context, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
-	return nil, fmt.Errorf("not implemented directly in plugins")
-}
-
-func (w *websocketService) SendBinary(ctx context.Context, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
-	return nil, fmt.Errorf("not implemented directly in plugins")
-}
-
-func (w *websocketService) Close(ctx context.Context, req *websocket.CloseRequest) (*websocket.CloseResponse, error) {
-	return nil, fmt.Errorf("not implemented directly in plugins")
 }
 
 // OnTextMessage is called when a text message is received from the WebSocket
@@ -198,7 +179,6 @@ func (CryptoTickerPlugin) OnClose(ctx context.Context, req *api.OnCloseRequest) 
 		log.Printf("Attempting to reconnect to Coinbase WebSocket API...")
 
 		// Connect to the WebSocket API
-		wsService := &websocketService{}
 		_, err := wsService.Connect(ctx, &websocket.ConnectRequest{
 			Url:          coinbaseWSEndpoint,
 			ConnectionId: connectionID,
@@ -264,10 +244,7 @@ func calculatePercentChange(open, current string) string {
 // Required by Go WASI build
 func main() {}
 
-// Make the plugin instance available to the host
-var (
-	// Exported WebSocketCallback implementation
-	_ api.WebSocketCallback = CryptoTickerPlugin{}
-	// Exported LifecycleManagement implementation
-	_ api.LifecycleManagement = CryptoTickerPlugin{}
-)
+func init() {
+	api.RegisterWebSocketCallback(CryptoTickerPlugin{})
+	api.RegisterLifecycleManagement(CryptoTickerPlugin{})
+}

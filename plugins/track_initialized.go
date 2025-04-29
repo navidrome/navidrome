@@ -81,7 +81,7 @@ func (i *initializedPlugins) callOnInit(info *PluginInfo) {
 	}
 
 	if resp.Error != "" {
-		log.Error("Plugin reported error during initialization", "plugin", info.Name, resp.Error)
+		log.Error("Plugin reported error during initialization", "plugin", info.Name, "error", resp.Error)
 		return
 	}
 
