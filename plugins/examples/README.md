@@ -6,6 +6,7 @@ This directory contains example plugins for Navidrome, intended for demonstratio
 
 - `wikimedia/`: Example plugin that retrieves artist information from Wikidata.
 - `coverartarchive/`: Example plugin that retrieves album cover images from the Cover Art Archive.
+- `crypto-ticker/`: Example plugin using websockets to log real-time crypto currency prices.
 
 ## Building
 
@@ -20,6 +21,7 @@ Or to build a specific plugin:
 ```
 make wikimedia
 make coverartarchive
+make crypto-ticker
 ```
 
 This will produce the corresponding `plugin.wasm` files in each plugin's directory.
