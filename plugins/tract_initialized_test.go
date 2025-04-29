@@ -9,7 +9,7 @@ import (
 // Helper function to check if a plugin implements LifecycleManagement
 func hasInitService(info *PluginInfo) bool {
 	for _, s := range info.Capabilities {
-		if s == "LifecycleManagement" {
+		if s == CapabilityLifecycleManagement {
 			return true
 		}
 	}
@@ -28,7 +28,7 @@ var _ = Describe("LifecycleManagement", func() {
 			// Create test plugins
 			plugin1 := &PluginInfo{
 				Name:         "test-plugin",
-				Capabilities: []string{"LifecycleManagement"},
+				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
@@ -36,7 +36,7 @@ var _ = Describe("LifecycleManagement", func() {
 
 			plugin2 := &PluginInfo{
 				Name:         "another-plugin",
-				Capabilities: []string{"LifecycleManagement"},
+				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "0.5.0",
 				},
@@ -64,7 +64,7 @@ var _ = Describe("LifecycleManagement", func() {
 		It("should handle plugins with same name but different versions", func() {
 			plugin1 := &PluginInfo{
 				Name:         "test-plugin",
-				Capabilities: []string{"LifecycleManagement"},
+				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
@@ -72,7 +72,7 @@ var _ = Describe("LifecycleManagement", func() {
 
 			plugin2 := &PluginInfo{
 				Name:         "test-plugin", // Same name
-				Capabilities: []string{"LifecycleManagement"},
+				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "2.0.0", // Different version
 				},
@@ -104,7 +104,7 @@ var _ = Describe("LifecycleManagement", func() {
 			// Plugin that implements LifecycleManagement
 			initPlugin := &PluginInfo{
 				Name:         "init-plugin",
-				Capabilities: []string{"LifecycleManagement"},
+				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},

@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"sync"
@@ -24,13 +25,16 @@ type LoaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (
 // that return non-exported interface types (like Scrobbler), while our code works
 // with the exported interfaces (like Scrobbler). The loadFunc bridges this gap.
 type wasmBasePlugin[S any, P any] struct {
+	wasmPath   string
+	name       string
+	capability string
+	loader     P
+	loadFunc   LoaderFunc[S, P]
+	poolSize   int
+	poolTTL    time.Duration
+
 	pool     *wasmInstancePool[S]
 	poolOnce sync.Once
-	wasmPath string
-	name     string
-	service  string
-	loader   P
-	loadFunc LoaderFunc[S, P]
 }
 
 // Instance pool configuration
@@ -44,7 +48,7 @@ func (w *wasmBasePlugin[S, P]) PluginName() string {
 }
 
 func (w *wasmBasePlugin[S, P]) ServiceType() string {
-	return w.service
+	return w.capability
 }
 
 func (w *wasmBasePlugin[S, P]) Instantiate(ctx context.Context) (any, func(), error) {
@@ -52,15 +56,15 @@ func (w *wasmBasePlugin[S, P]) Instantiate(ctx context.Context) (any, func(), er
 }
 
 func (w *wasmBasePlugin[S, P]) serviceName() string {
-	return w.name + "_" + w.service
+	return w.name + "_" + w.capability
 }
 
 func (w *wasmBasePlugin[S, P]) initPool(ctx context.Context) {
 	w.poolOnce.Do(func() {
 		w.pool = NewWasmInstancePool[S](
 			w.serviceName(),
-			defaultMaxInstances,
-			defaultTTL,
+			cmp.Or(w.poolSize, defaultMaxInstances),
+			cmp.Or(w.poolTTL, defaultTTL),
 			func(ctx context.Context) (S, error) {
 				inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
 				log.Trace(

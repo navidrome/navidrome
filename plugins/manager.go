@@ -12,7 +12,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"sync"
 	"time"
 
@@ -32,10 +31,11 @@ import (
 )
 
 const (
-	CapabilityMetadataAgent     = "MetadataAgent"
-	CapabilityScrobbler         = "Scrobbler"
-	CapabilitySchedulerCallback = "SchedulerCallback"
-	CapabilityWebSocketCallback = "WebSocketCallback"
+	CapabilityMetadataAgent       = "MetadataAgent"
+	CapabilityScrobbler           = "Scrobbler"
+	CapabilitySchedulerCallback   = "SchedulerCallback"
+	CapabilityWebSocketCallback   = "WebSocketCallback"
+	CapabilityLifecycleManagement = "LifecycleManagement"
 )
 
 // pluginCreators maps capability types to their respective creator functions
@@ -103,6 +103,7 @@ type Manager struct {
 	schedulerService *schedulerService      // Service for handling scheduled tasks
 	websocketService *websocketService      // Service for handling WebSocket connections
 	initialized      *initializedPlugins    // Tracks which plugins have been initialized
+	adapters         map[string]WasmPlugin  // Map of plugin name + capability to adapter
 }
 
 // GetManager returns the singleton instance of Manager
@@ -291,9 +292,24 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 		m.initializePluginIfNeeded(pluginInfo)
 	}()
 
+	// Register the plugin
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.plugins[manifest.Name] = pluginInfo
+
+	// Register one plugin adapter for each capability
+	for _, capability := range manifest.Capabilities {
+		constructor := pluginCreators[capability]
+		if constructor == nil {
+			// Warn about unknown capabilities, except for LifecycleManagement (it does not have an adapter)
+			if capability != CapabilityLifecycleManagement {
+				log.Warn("Unknown plugin capability type", "capability", capability, "plugin", manifest.Name)
+			}
+			continue
+		}
+		adapter := constructor(wasmPath, manifest.Name, customRuntime, mc)
+		m.adapters[manifest.Name+"_"+capability] = adapter
+	}
 
 	log.Info("Discovered plugin", "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
 	return m.plugins[manifest.Name]
@@ -308,7 +324,7 @@ func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
 
 	// Check if the plugin implements LifecycleManagement
 	for _, capability := range plugin.Capabilities {
-		if capability == "LifecycleManagement" {
+		if capability == CapabilityLifecycleManagement {
 			m.initialized.callOnInit(plugin)
 			m.initialized.markInitialized(plugin)
 			break
@@ -332,6 +348,7 @@ func (m *Manager) ScanPlugins() {
 	// Clear existing plugins
 	m.mu.Lock()
 	m.plugins = make(map[string]*PluginInfo)
+	m.adapters = make(map[string]WasmPlugin)
 	m.mu.Unlock()
 
 	// Process each directory in the plugins folder
@@ -442,61 +459,40 @@ func (m *Manager) PluginNames(capability string) []string {
 	return names
 }
 
-func (m *Manager) GetPluginInfo(name string) *PluginInfo {
+func (m *Manager) getPlugin(name string, capability string) (*PluginInfo, WasmPlugin) {
 	m.mu.RLock()
-	plugin, ok := m.plugins[name]
-	m.mu.RUnlock()
+	defer m.mu.RUnlock()
+	info, infoOk := m.plugins[name]
+	adapter, adapterOk := m.adapters[name+"_"+capability]
 
-	if !ok {
+	if !infoOk {
 		log.Warn("Plugin not found", "name", name)
-		return nil
+		return nil, nil
 	}
-	return plugin
+	if !adapterOk {
+		log.Warn("Plugin adapter not found", "name", name, "capability", capability)
+		return nil, nil
+	}
+	return info, adapter
 }
 
 // LoadPlugin instantiates and returns a plugin by name
 func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
-	plugin := m.GetPluginInfo(name)
-	if plugin == nil {
-		log.Warn("Plugin not found", "name", name)
+	info, adapter := m.getPlugin(name, capability)
+	if info == nil {
+		log.Warn("Plugin not found", "name", name, "capability", capability)
 		return nil
 	}
 
-	log.Debug("Loading plugin", "name", name, "path", plugin.WasmPath)
+	log.Debug("Loading plugin", "name", name, "path", info.WasmPath)
 
-	if !waitForPluginReady(plugin.State, plugin.Name, plugin.WasmPath) {
-		log.Warn("Plugin not ready", "name", name)
+	if !waitForPluginReady(info.State, info.Name, info.WasmPath) {
+		log.Warn("Plugin not ready", "name", name, "capability", capability)
 		return nil
 	}
 
-	if len(plugin.Capabilities) == 0 {
-		log.Warn("Plugin has no capabilities", "name", name)
-		return nil
-	}
-
-	if capability == "" {
-		capability = plugin.Capabilities[0]
-		log.Debug("No capability specified. Loading first capability", "name", name, "capability", capability)
-	}
-
-	if slices.Contains(plugin.Capabilities, capability) {
-		log.Trace("Plugin implements capability", "name", name, "capability", capability)
-	} else {
-		log.Error("Plugin does not implement capability", "name", name, "capability", capability)
-		return nil
-	}
-
-	// Get the creator function for the capability type
-	creator, ok := pluginCreators[capability]
-	if !ok {
-		log.Warn("Unknown plugin capability type", "capability", capability, "plugin", name)
-		return nil
-	}
-
-	// Use the creator based on the capability
-	adapter := creator(plugin.WasmPath, plugin.Name, plugin.Runtime, plugin.ModConfig)
 	if adapter == nil {
-		log.Warn("Failed to create adapter for plugin", "name", name)
+		log.Warn("Plugin adapter not found", "name", name, "capability", capability)
 		return nil
 	}
 	return adapter

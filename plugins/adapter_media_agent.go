@@ -18,10 +18,10 @@ func NewWasmMediaAgent(wasmPath, pluginName string, runtime api.WazeroNewRuntime
 	}
 	return &wasmMediaAgent{
 		wasmBasePlugin: &wasmBasePlugin[api.MetadataAgent, *api.MetadataAgentPlugin]{
-			wasmPath: wasmPath,
-			name:     pluginName,
-			service:  CapabilityMetadataAgent,
-			loader:   loader,
+			wasmPath:   wasmPath,
+			name:       pluginName,
+			capability: CapabilityMetadataAgent,
+			loader:     loader,
 			loadFunc: func(ctx context.Context, l *api.MetadataAgentPlugin, path string) (api.MetadataAgent, error) {
 				return l.Load(ctx, path)
 			},

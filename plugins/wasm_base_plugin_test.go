@@ -19,10 +19,10 @@ var _ = Describe("wasmBasePlugin", func() {
 			return nil, fmt.Errorf("forced nil instance")
 		})
 		plugin := &wasmBasePlugin[*nilInstance, any]{
-			pool:     pool,
-			wasmPath: "",
-			name:     "test-nil-pool",
-			service:  "test",
+			pool:       pool,
+			wasmPath:   "",
+			name:       "test-nil-pool",
+			capability: "test",
 		}
 		plugin.poolOnce.Do(func() {}) // Don't init pool again
 		inst, done, err := plugin.getInstance(ctx, "testMethod")

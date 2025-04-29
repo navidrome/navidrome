@@ -17,10 +17,10 @@ func NewWasmWebSocketCallback(wasmPath, pluginName string, runtime api.WazeroNew
 	}
 	return &wasmWebSocketCallback{
 		wasmBasePlugin: &wasmBasePlugin[api.WebSocketCallback, *api.WebSocketCallbackPlugin]{
-			wasmPath: wasmPath,
-			name:     pluginName,
-			service:  CapabilityWebSocketCallback,
-			loader:   loader,
+			wasmPath:   wasmPath,
+			name:       pluginName,
+			capability: CapabilityWebSocketCallback,
+			loader:     loader,
 			loadFunc: func(ctx context.Context, l *api.WebSocketCallbackPlugin, path string) (api.WebSocketCallback, error) {
 				return l.Load(ctx, path)
 			},
