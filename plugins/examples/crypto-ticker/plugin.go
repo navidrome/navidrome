@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/navidrome/navidrome/plugins/host/config"
+	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
 )
 
@@ -19,6 +21,9 @@ const (
 
 	// Connection ID for our WebSocket connection
 	connectionID = "crypto-ticker-connection"
+
+	// ID for the reconnection schedule
+	reconnectScheduleID = "crypto-ticker-reconnect"
 )
 
 var (
@@ -29,7 +34,13 @@ var (
 // WebSocketService instance used to manage WebSocket connections and communication.
 var wsService = websocket.NewWebSocketService()
 
-// CryptoTickerPlugin implements both WebSocketCallback and LifecycleManagement interfaces
+// ConfigService instance for accessing plugin configuration.
+var configService = config.NewConfigService()
+
+// SchedulerService instance for scheduling tasks.
+var schedService = scheduler.NewSchedulerService()
+
+// CryptoTickerPlugin implements WebSocketCallback, LifecycleManagement, and SchedulerCallback interfaces
 type CryptoTickerPlugin struct{}
 
 // Coinbase subscription message structure
@@ -68,8 +79,22 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 		return &api.InitResponse{Error: "Missing 'tickers' configuration"}, nil
 	}
 
-	// Parse ticker symbols (comma-separated list)
-	tickers = strings.Split(tickerConfig, ",")
+	// Parse ticker symbols
+	tickers := parseTickerSymbols(tickerConfig)
+	log.Printf("Configured tickers: %v", tickers)
+
+	// Connect to WebSocket and subscribe to tickers
+	err := connectAndSubscribe(ctx, tickers)
+	if err != nil {
+		return &api.InitResponse{Error: err.Error()}, nil
+	}
+
+	return &api.InitResponse{}, nil
+}
+
+// Helper function to parse ticker symbols from a comma-separated string
+func parseTickerSymbols(tickerConfig string) []string {
+	tickers := strings.Split(tickerConfig, ",")
 	for i, ticker := range tickers {
 		tickers[i] = strings.TrimSpace(ticker)
 
@@ -78,10 +103,12 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 			tickers[i] = tickers[i] + "-USD"
 		}
 	}
+	return tickers
+}
 
-	log.Printf("Configured tickers: %v", tickers)
-
-	// Connect to the WebSocket API using the WebSocketService interface
+// Helper function to connect to WebSocket and subscribe to tickers
+func connectAndSubscribe(ctx context.Context, tickers []string) error {
+	// Connect to the WebSocket API
 	_, err := wsService.Connect(ctx, &websocket.ConnectRequest{
 		Url:          coinbaseWSEndpoint,
 		ConnectionId: connectionID,
@@ -89,7 +116,7 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 
 	if err != nil {
 		log.Printf("Failed to connect to Coinbase WebSocket API: %v", err)
-		return &api.InitResponse{Error: fmt.Sprintf("WebSocket connection error: %v", err)}, nil
+		return fmt.Errorf("WebSocket connection error: %v", err)
 	}
 
 	log.Printf("Connected to Coinbase WebSocket API")
@@ -104,7 +131,7 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 	subscriptionJSON, err := json.Marshal(subscription)
 	if err != nil {
 		log.Printf("Failed to marshal subscription message: %v", err)
-		return &api.InitResponse{Error: fmt.Sprintf("JSON marshal error: %v", err)}, nil
+		return fmt.Errorf("JSON marshal error: %v", err)
 	}
 
 	// Send subscription message
@@ -115,12 +142,11 @@ func (CryptoTickerPlugin) OnInit(ctx context.Context, req *api.InitRequest) (*ap
 
 	if err != nil {
 		log.Printf("Failed to send subscription message: %v", err)
-		return &api.InitResponse{Error: fmt.Sprintf("WebSocket send error: %v", err)}, nil
+		return fmt.Errorf("WebSocket send error: %v", err)
 	}
 
 	log.Printf("Subscription message sent to Coinbase WebSocket API")
-
-	return &api.InitResponse{}, nil
+	return nil
 }
 
 // OnTextMessage is called when a text message is received from the WebSocket
@@ -176,49 +202,72 @@ func (CryptoTickerPlugin) OnClose(ctx context.Context, req *api.OnCloseRequest) 
 
 	// Try to reconnect if this is our connection
 	if req.ConnectionId == connectionID {
-		log.Printf("Attempting to reconnect to Coinbase WebSocket API...")
+		log.Printf("Scheduling reconnection attempts every 2 seconds...")
 
-		// Connect to the WebSocket API
-		_, err := wsService.Connect(ctx, &websocket.ConnectRequest{
-			Url:          coinbaseWSEndpoint,
-			ConnectionId: connectionID,
+		// Create a recurring schedule to attempt reconnection every 2 seconds
+		resp, err := schedService.ScheduleRecurring(ctx, &scheduler.ScheduleRecurringRequest{
+			// Run every 2 seconds using cron expression
+			CronExpression: "*/2 * * * * *",
+			ScheduleId:     reconnectScheduleID,
 		})
 
 		if err != nil {
-			log.Printf("Failed to reconnect to Coinbase WebSocket API: %v", err)
-			return &api.OnCloseResponse{}, nil
+			log.Printf("Failed to schedule reconnection attempts: %v", err)
+		} else {
+			log.Printf("Reconnection schedule created with ID: %s", resp.ScheduleId)
 		}
-
-		log.Printf("Reconnected to Coinbase WebSocket API")
-
-		// Resubscribe to ticker channel
-		subscription := CoinbaseSubscription{
-			Type:       "subscribe",
-			ProductIDs: tickers,
-			Channels:   []string{"ticker"},
-		}
-
-		subscriptionJSON, err := json.Marshal(subscription)
-		if err != nil {
-			log.Printf("Failed to marshal subscription message: %v", err)
-			return &api.OnCloseResponse{}, nil
-		}
-
-		// Send subscription message
-		_, err = wsService.SendText(ctx, &websocket.SendTextRequest{
-			ConnectionId: connectionID,
-			Message:      string(subscriptionJSON),
-		})
-
-		if err != nil {
-			log.Printf("Failed to send subscription message: %v", err)
-			return &api.OnCloseResponse{}, nil
-		}
-
-		log.Printf("Resubscription message sent")
 	}
 
 	return &api.OnCloseResponse{}, nil
+}
+
+// OnSchedulerCallback is called when a scheduled event triggers
+func (CryptoTickerPlugin) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
+	// Only handle our reconnection schedule
+	if req.ScheduleId != reconnectScheduleID {
+		log.Printf("Received callback for unknown schedule: %s", req.ScheduleId)
+		return &api.SchedulerCallbackResponse{}, nil
+	}
+
+	log.Printf("Attempting to reconnect to Coinbase WebSocket API...")
+
+	// Get the current ticker configuration
+	configResp, err := configService.GetPluginConfig(ctx, &config.GetPluginConfigRequest{})
+	if err != nil {
+		log.Printf("Failed to get plugin configuration: %v", err)
+		return &api.SchedulerCallbackResponse{Error: fmt.Sprintf("Config error: %v", err)}, nil
+	}
+
+	// Check if ticker configuration exists
+	tickerConfig, ok := configResp.Config["tickers"]
+	if !ok {
+		log.Printf("Missing 'tickers' configuration")
+		return &api.SchedulerCallbackResponse{Error: "Missing 'tickers' configuration"}, nil
+	}
+
+	// Parse ticker symbols
+	tickers := parseTickerSymbols(tickerConfig)
+	log.Printf("Reconnecting with tickers: %v", tickers)
+
+	// Try to connect and subscribe
+	err = connectAndSubscribe(ctx, tickers)
+	if err != nil {
+		log.Printf("Reconnection attempt failed: %v", err)
+		return &api.SchedulerCallbackResponse{Error: err.Error()}, nil
+	}
+
+	// Successfully reconnected, cancel the reconnection schedule
+	_, err = schedService.CancelSchedule(ctx, &scheduler.CancelRequest{
+		ScheduleId: reconnectScheduleID,
+	})
+
+	if err != nil {
+		log.Printf("Failed to cancel reconnection schedule: %v", err)
+	} else {
+		log.Printf("Reconnection schedule canceled after successful reconnection")
+	}
+
+	return &api.SchedulerCallbackResponse{}, nil
 }
 
 // Helper function to calculate percent change
@@ -247,4 +296,5 @@ func main() {}
 func init() {
 	api.RegisterWebSocketCallback(CryptoTickerPlugin{})
 	api.RegisterLifecycleManagement(CryptoTickerPlugin{})
+	api.RegisterSchedulerCallback(CryptoTickerPlugin{})
 }

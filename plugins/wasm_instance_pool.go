@@ -63,11 +63,11 @@ func (p *wasmInstancePool[T]) Put(ctx context.Context, v T) {
 	}
 	if len(p.items) < p.maxInstances {
 		p.items = append(p.items, poolItem[T]{value: v, lastUsed: time.Now()})
+		log.Trace(ctx, "wasmInstancePool: returned instance to pool", "pool", p.name, "poolSize", len(p.items))
 		p.mu.Unlock()
-		log.Trace(ctx, "wasmInstancePool: returned instance to pool", "pool", p.name)
 	} else {
+		log.Trace(ctx, "wasmInstancePool: pool full, closing instance", "pool", p.name, "poolSize", len(p.items))
 		p.mu.Unlock()
-		log.Trace(ctx, "wasmInstancePool: pool full, closing instance", "pool", p.name)
 		p.closeItem(ctx, v)
 	}
 }

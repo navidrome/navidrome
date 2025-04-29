@@ -5,6 +5,7 @@
   "description": "A plugin that tracks crypto currency prices using Coinbase WebSocket API",
   "capabilities": [
     "WebSocketCallback",
-    "LifecycleManagement"
+    "LifecycleManagement",
+    "SchedulerCallback"
   ]
 }
