@@ -1,0 +1,10 @@
+{
+  "name": "crypto-ticker",
+  "author": "Navidrome Plugin",
+  "version": "1.0.0",
+  "description": "A plugin that tracks crypto currency prices using Coinbase WebSocket API",
+  "capabilities": [
+    "WebSocketCallback",
+    "LifecycleManagement"
+  ]
+}
