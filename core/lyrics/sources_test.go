@@ -1,6 +1,7 @@
 package lyrics
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/navidrome/navidrome/model"
@@ -10,10 +11,12 @@ import (
 )
 
 var _ = Describe("sources", func() {
+	ctx := context.Background()
+
 	Describe("fromEmbedded", func() {
 		It("should return nothing for a media file with no lyrics", func() {
 			mf := model.MediaFile{}
-			lyrics, err := fromEmbedded(&mf)
+			lyrics, err := fromEmbedded(ctx, &mf)
 
 			Expect(err).To(BeNil())
 			Expect(lyrics).To(HaveLen(0))
@@ -35,7 +38,7 @@ var _ = Describe("sources", func() {
 				Lyrics: string(lyricsJson),
 			}
 
-			lyrics, err := fromEmbedded(&mf)
+			lyrics, err := fromEmbedded(ctx, &mf)
 			Expect(err).To(BeNil())
 			Expect(lyrics).ToNot(BeNil())
 			Expect(lyrics).To(Equal(expectedList))
@@ -43,7 +46,7 @@ var _ = Describe("sources", func() {
 
 		It("should return an error if somehow the JSON is bad", func() {
 			mf := model.MediaFile{Lyrics: "["}
-			lyrics, err := fromEmbedded(&mf)
+			lyrics, err := fromEmbedded(ctx, &mf)
 
 			Expect(lyrics).To(HaveLen(0))
 			Expect(err).ToNot(BeNil())
@@ -53,7 +56,7 @@ var _ = Describe("sources", func() {
 	Describe("fromExternalFile", func() {
 		It("should return nil for lyrics that don't exist", func() {
 			mf := model.MediaFile{Path: "tests/fixtures/01 Invisible (RED) Edit Version.mp3"}
-			lyrics, err := fromExternalFile(&mf, ".lrc")
+			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
 
 			Expect(err).To(BeNil())
 			Expect(lyrics).To(HaveLen(0))
@@ -61,7 +64,7 @@ var _ = Describe("sources", func() {
 
 		It("should return synchronized lyrics from a file", func() {
 			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
-			lyrics, err := fromExternalFile(&mf, ".lrc")
+			lyrics, err := fromExternalFile(ctx, &mf, ".lrc")
 
 			Expect(err).To(BeNil())
 			Expect(lyrics).To(Equal(model.LyricList{
@@ -87,7 +90,7 @@ var _ = Describe("sources", func() {
 
 		It("should return unsynchronized lyrics from a file", func() {
 			mf := model.MediaFile{Path: "tests/fixtures/test.mp3"}
-			lyrics, err := fromExternalFile(&mf, ".txt")
+			lyrics, err := fromExternalFile(ctx, &mf, ".txt")
 
 			Expect(err).To(BeNil())
 			Expect(lyrics).To(Equal(model.LyricList{
