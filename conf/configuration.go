@@ -93,6 +93,8 @@ type configOptions struct {
 	PID                             pidOptions
 	Inspect                         inspectOptions
 	Subsonic                        subsonicOptions
+	Plugins                         pluginsOptions
+	PluginConfig                    map[string]map[string]string
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -120,6 +122,7 @@ type configOptions struct {
 	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
+	DevPluginCompilationTimeout      time.Duration
 }
 
 type scannerOptions struct {
@@ -203,6 +206,11 @@ type inspectOptions struct {
 	BacklogTimeout int
 }
 
+type pluginsOptions struct {
+	Enabled bool
+	Folder  string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -239,6 +247,20 @@ func Load(noConfigDump bool) {
 	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
+		os.Exit(1)
+	}
+
+	if Server.Plugins.Folder == "" {
+		Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
+	}
+	err = os.MkdirAll(Server.Plugins.Folder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
+		os.Exit(1)
+	}
+	// Set restrictive permissions on plugins folder (user only)
+	if err := os.Chmod(Server.Plugins.Folder, 0700); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error setting plugins folder permissions:", err)
 		os.Exit(1)
 	}
 
@@ -528,6 +550,9 @@ func init() {
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 
+	viper.SetDefault("plugins.folder", "")
+	viper.SetDefault("plugins.enabled", false)
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devenableprofiler", false)
@@ -547,6 +572,7 @@ func init() {
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
+	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 }
 
 func InitConfig(cfgFile string) {

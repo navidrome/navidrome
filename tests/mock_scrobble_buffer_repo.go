@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -9,6 +10,7 @@ import (
 type MockedScrobbleBufferRepo struct {
 	Error error
 	Data  model.ScrobbleEntries
+	mu    sync.Mutex
 }
 
 func CreateMockedScrobbleBufferRepo() *MockedScrobbleBufferRepo {
@@ -16,6 +18,8 @@ func CreateMockedScrobbleBufferRepo() *MockedScrobbleBufferRepo {
 }
 
 func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -33,6 +37,8 @@ func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
 }
 
 func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Error != nil {
 		return m.Error
 	}
@@ -47,6 +53,8 @@ func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, 
 }
 
 func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.ScrobbleEntry, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -59,6 +67,8 @@ func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.Scrobble
 }
 
 func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Error != nil {
 		return m.Error
 	}
@@ -74,6 +84,8 @@ func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
 }
 
 func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.Error != nil {
 		return 0, m.Error
 	}
