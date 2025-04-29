@@ -53,13 +53,13 @@ var _ = Describe("BufferedScrobbler", func() {
 
 		// Verify it was added to the buffer
 		var data *model.ScrobbleEntry
+		var err error
 		Eventually(func() bool {
-			var err error
 			data, err = buffer.Next("test", "user1")
-			Expect(err).ToNot(HaveOccurred())
-			return data != nil
+			return data != nil || err != nil
 		}).Should(BeTrue())
 
+		Expect(err).ToNot(HaveOccurred())
 		Expect(data.Service).To(Equal("test"))
 		Expect(data.UserID).To(Equal("user1"))
 		Expect(data.MediaFile.ID).To(Equal("123"))
