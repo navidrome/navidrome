@@ -529,7 +529,7 @@ func init() {
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 
-	viper.SetDefault("lyricspriority", "embedded,.lrc,.txt")
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

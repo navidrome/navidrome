@@ -26,7 +26,9 @@ func GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error
 
 		if err != nil {
 			return nil, err
-		} else if len(lyricsList) > 0 {
+		}
+
+		if len(lyricsList) > 0 {
 			return lyricsList, nil
 		}
 	}

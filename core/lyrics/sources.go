@@ -3,7 +3,7 @@ package lyrics
 import (
 	"errors"
 	"os"
-	"path/filepath"
+	"path"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -18,7 +18,7 @@ func fromEmbedded(mf *model.MediaFile) (model.LyricList, error) {
 
 func fromExternalFile(mf *model.MediaFile, suffix string) (model.LyricList, error) {
 	basePath := mf.AbsolutePath()
-	ext := filepath.Ext(basePath)
+	ext := path.Ext(basePath)
 
 	externalLyric := basePath[0:len(basePath)-len(ext)] + suffix
 

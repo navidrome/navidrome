@@ -55,7 +55,6 @@ const (
 
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
-	LyricsInfoTimeToLive      = 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
 	UpdatePlayerFrequency     = time.Minute
 
