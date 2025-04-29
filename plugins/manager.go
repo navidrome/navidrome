@@ -25,6 +25,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/tetratelabs/wazero"
 	wazeroapi "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -498,26 +499,6 @@ func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
 	return adapter
 }
 
-// LoadMediaAgent instantiates and returns a media agent plugin by name
-func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
-	plugin := m.LoadPlugin(name, CapabilityMetadataAgent)
-	if plugin == nil {
-		return nil, false
-	}
-	agent, ok := plugin.(*wasmMediaAgent)
-	return agent, ok
-}
-
-// LoadScrobbler instantiates and returns a scrobbler plugin by name
-func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
-	plugin := m.LoadPlugin(name, CapabilityScrobbler)
-	if plugin == nil {
-		return nil, false
-	}
-	s, ok := plugin.(scrobbler.Scrobbler)
-	return s, ok
-}
-
 // LoadAllPlugins instantiates and returns all plugins that implement the specified capability
 func (m *Manager) LoadAllPlugins(capability string) []WasmPlugin {
 	names := m.PluginNames(capability)
@@ -535,36 +516,40 @@ func (m *Manager) LoadAllPlugins(capability string) []WasmPlugin {
 	return plugins
 }
 
+// LoadMediaAgent instantiates and returns a media agent plugin by name
+func (m *Manager) LoadMediaAgent(name string) (agents.Interface, bool) {
+	plugin := m.LoadPlugin(name, CapabilityMetadataAgent)
+	if plugin == nil {
+		return nil, false
+	}
+	agent, ok := plugin.(*wasmMediaAgent)
+	return agent, ok
+}
+
 // LoadAllMediaAgents instantiates and returns all media agent plugins
 func (m *Manager) LoadAllMediaAgents() []agents.Interface {
-	names := m.PluginNames("MetadataAgent")
-	if len(names) == 0 {
-		return nil
-	}
+	plugins := m.LoadAllPlugins(CapabilityMetadataAgent)
 
-	var agents []agents.Interface
-	for _, name := range names {
-		agent, ok := m.LoadMediaAgent(name)
-		if ok {
-			agents = append(agents, agent)
-		}
+	return slice.Map(plugins, func(p WasmPlugin) agents.Interface {
+		return p.(agents.Interface)
+	})
+}
+
+// LoadScrobbler instantiates and returns a scrobbler plugin by name
+func (m *Manager) LoadScrobbler(name string) (scrobbler.Scrobbler, bool) {
+	plugin := m.LoadPlugin(name, CapabilityScrobbler)
+	if plugin == nil {
+		return nil, false
 	}
-	return agents
+	s, ok := plugin.(scrobbler.Scrobbler)
+	return s, ok
 }
 
 // LoadAllScrobblers instantiates and returns all scrobbler plugins
 func (m *Manager) LoadAllScrobblers() []scrobbler.Scrobbler {
-	names := m.PluginNames("Scrobbler")
-	if len(names) == 0 {
-		return nil
-	}
+	plugins := m.LoadAllPlugins(CapabilityScrobbler)
 
-	var scrobblers []scrobbler.Scrobbler
-	for _, name := range names {
-		scrobbler, ok := m.LoadScrobbler(name)
-		if ok {
-			scrobblers = append(scrobblers, scrobbler)
-		}
-	}
-	return scrobblers
+	return slice.Map(plugins, func(p WasmPlugin) scrobbler.Scrobbler {
+		return p.(scrobbler.Scrobbler)
+	})
 }
