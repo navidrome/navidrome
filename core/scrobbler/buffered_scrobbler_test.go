@@ -52,8 +52,13 @@ var _ = Describe("BufferedScrobbler", func() {
 		Expect(buffer.Length()).To(Equal(int64(1)))
 
 		// Verify it was added to the buffer
-		data, err := buffer.Next("test", "user1")
-		Expect(err).ToNot(HaveOccurred())
+		var data *model.ScrobbleEntry
+		Eventually(func() bool {
+			var err error
+			data, err = buffer.Next("test", "user1")
+			Expect(err).ToNot(HaveOccurred())
+			return data != nil
+		}).Should(BeTrue())
 
 		Expect(data.Service).To(Equal("test"))
 		Expect(data.UserID).To(Equal("user1"))
