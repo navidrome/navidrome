@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server/subsonic/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
@@ -97,7 +98,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll()
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongWithArtistTitle(artist, title))
 
 	if err != nil {
 		return nil, err

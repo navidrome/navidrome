@@ -35,7 +35,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LyricsPriority = "embedded"
+		conf.Server.LyricsPriority = "embedded,.lrc"
 	})
 
 	Describe("GetCoverArt", func() {
@@ -112,6 +112,22 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(response.Lyrics.Artist).To(Equal(""))
 			Expect(response.Lyrics.Title).To(Equal(""))
 			Expect(response.Lyrics.Value).To(Equal(""))
+		})
+		It("should return lyric file when finding mediafile with no embedded lyrics but present on filesystem", func() {
+			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
+			mockRepo.SetData(model.MediaFiles{
+				{
+					Path:   "tests/fixtures/test.mp3",
+					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+				},
+			})
+			response, err := router.GetLyrics(r)
+			Expect(err).To(BeNil())
+			Expect(response.Lyrics.Artist).To(Equal("Rick Astley"))
+			Expect(response.Lyrics.Title).To(Equal("Never Gonna Give You Up"))
+			Expect(response.Lyrics.Value).To(Equal("We're no strangers to love\nYou know the rules and so do I\n"))
 		})
 	})
 
