@@ -110,7 +110,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	structuredLyrics, err := lyrics.GetLyrics(r.Context(), &mediaFiles[0])
 	if err != nil {
 		return nil, err
-	} else if len(structuredLyrics) == 0 {
+	}
+
+	if len(structuredLyrics) == 0 {
 		return response, nil
 	}
 
