@@ -44,6 +44,7 @@ func (a *playlistArtworkReader) LastUpdated() time.Time {
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	ff := []sourceFunc{
+		fromNamedArtwork(ctx, "playlist", a.pl.ID, a.pl.Name),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	}
