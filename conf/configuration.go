@@ -93,6 +93,7 @@ type configOptions struct {
 	PID                             pidOptions
 	Inspect                         inspectOptions
 	Subsonic                        subsonicOptions
+	LyricsPriority                  string
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -527,6 +528,8 @@ func init() {
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
+
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
