@@ -26,7 +26,6 @@ func GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error
 
 		if err != nil {
 			log.Error(ctx, "error parsing lyrics", "source", pattern, err)
-			return nil, err
 		}
 
 		if len(lyricsList) > 0 {
