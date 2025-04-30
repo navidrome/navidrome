@@ -224,13 +224,38 @@ func (md Metadata) mapDisplayArtist() string {
 }
 
 func (md Metadata) mapDisplayAlbumArtist(mf model.MediaFile) string {
+	// 1. Check for explicit album artist tags first
+	albumArtistDisplay := md.mapDisplayName(model.TagAlbumArtist, model.TagAlbumArtists)
+	if albumArtistDisplay != "" {
+		return albumArtistDisplay
+	}
+
+	// 2. No explicit album artist, check for track artist tags
+	artistTag := model.TagTrackArtist
+	artistsTag := model.TagTrackArtists
+	hasMultiValuedArtistTag := len(md.tags[artistTag]) > 1 || len(md.tags[artistsTag]) > 1
+	hasSingleValuedArtistTag := len(md.tags[artistTag]) == 1 || len(md.tags[artistsTag]) == 1
+
+	if hasMultiValuedArtistTag {
+		// Special case from tests: Use only the first artist if ARTIST/ARTISTS tag is multi-valued
+		if len(md.tags[artistTag]) > 1 {
+			return md.tags[artistTag][0]
+		}
+		// We know artistsTag must have > 1 here
+		return md.tags[artistsTag][0]
+	}
+	// If execution reaches here, hasMultiValuedArtistTag is false
+	if hasSingleValuedArtistTag {
+		// For single artist values (including those with separators like ';'), use the artist display name
+		return md.mapDisplayArtist()
+	}
+
+	// 3. Neither album artist nor track artist tags found. Fallback logic:
 	fallbackName := consts.UnknownArtist
 	if md.Bool(model.TagCompilation) {
 		fallbackName = consts.VariousArtists
 	}
-	return cmp.Or(
-		md.mapDisplayName(model.TagAlbumArtist, model.TagAlbumArtists),
-		mf.Participants.First(model.RoleAlbumArtist).Name,
-		fallbackName,
-	)
+
+	// Use the name from the first participant found for RoleAlbumArtist, or the default fallback
+	return cmp.Or(mf.Participants.First(model.RoleAlbumArtist).Name, fallbackName)
 }
