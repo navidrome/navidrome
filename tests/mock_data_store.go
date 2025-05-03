@@ -28,6 +28,7 @@ type MockDataStore struct {
 	MockedRadio          model.RadioRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
+	MockedAPIKey         model.APIKeyRepository
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
@@ -169,7 +170,8 @@ func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
 		if db.RealDS != nil {
 			db.MockedUser = db.RealDS.User(ctx)
 		} else {
-			db.MockedUser = CreateMockUserRepo()
+			apiKeyRepo := db.APIKey(ctx).(*MockedAPIKeyRepo)
+			db.MockedUser = CreateMockUserRepo(apiKeyRepo)
 		}
 	}
 	return db.MockedUser
@@ -219,6 +221,17 @@ func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
 		}
 	}
 	return db.MockedRadio
+}
+
+func (db *MockDataStore) APIKey(ctx context.Context) model.APIKeyRepository {
+	if db.MockedAPIKey == nil {
+		if db.RealDS != nil {
+			db.MockedAPIKey = db.RealDS.APIKey(ctx)
+		} else {
+			db.MockedAPIKey = CreateMockApiKeyRepo()
+		}
+	}
+	return db.MockedAPIKey
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {

@@ -56,4 +56,6 @@ type UserRepository interface {
 	// Library association methods
 	GetUserLibraries(userID string) (Libraries, error)
 	SetUserLibraries(userID string, libraryIDs []int) error
+	// FindByAPIKey finds a user by the provided API key
+	FindByAPIKey(key string) (*User, error)
 }

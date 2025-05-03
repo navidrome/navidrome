@@ -306,6 +306,65 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeFalse())
 			})
 		})
+
+		When("using api key authentication", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+
+				ur := ds.User(context.TODO())
+				user := &model.User{
+					UserName:    "user-api",
+					NewPassword: "wordpass-api",
+				}
+				_ = ur.Put(user)
+
+				ar := ds.APIKey(context.TODO())
+				apiKey := &model.APIKey{
+					ID:     "api-key-id",
+					UserID: user.ID,
+					Name:   "API Key",
+					Key:    "api-key",
+				}
+				_ = ar.Put(apiKey)
+			})
+
+			It("passes authentication with correct api key", func() {
+				r := newGetRequest("apiKey=api-key")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				user, _ := request.UserFrom(next.req.Context())
+				Expect(user.UserName).To(Equal("user-api"))
+			})
+
+			It("fails authentication with invalid api key", func() {
+				r := newGetRequest("apiKey=invalid-api-key")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("fails authentication with empty api key", func() {
+				r := newGetRequest("apiKey=")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("fails authentication if both api key and username are provided", func() {
+				r := newGetRequest("apiKey=api-key", "u=user-api")
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="43"`))
+				Expect(next.called).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("GetPlayer", func() {
