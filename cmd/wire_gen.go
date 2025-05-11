@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
@@ -66,8 +67,8 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
@@ -80,7 +81,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker)
 	playbackServer := playback.GetInstance(dataStore)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, externalMetadata, scannerScanner, broker, playlists, playTracker, share, playbackServer)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, scannerScanner, broker, playlists, playTracker, share, playbackServer)
 	return router
 }
 
@@ -90,8 +91,8 @@ func CreatePublicRouter() *public.Router {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	transcodingCache := core.GetTranscodingCache()
 	mediaStreamer := core.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
@@ -134,8 +135,8 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
@@ -150,8 +151,8 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
 	agentsAgents := agents.GetAgents(dataStore)
-	externalMetadata := core.NewExternalMetadata(dataStore, agentsAgents)
-	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, externalMetadata)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)

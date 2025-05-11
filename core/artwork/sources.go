@@ -20,7 +20,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -160,9 +160,9 @@ func fromAlbumPlaceholder() sourceFunc {
 		return r, consts.PlaceholderAlbumArt, nil
 	}
 }
-func fromArtistExternalSource(ctx context.Context, ar model.Artist, em core.ExternalMetadata) sourceFunc {
+func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := em.ArtistImage(ctx, ar.ID)
+		imageUrl, err := provider.ArtistImage(ctx, ar.ID)
 		if err != nil {
 			return nil, "", err
 		}
@@ -171,9 +171,9 @@ func fromArtistExternalSource(ctx context.Context, ar model.Artist, em core.Exte
 	}
 }
 
-func fromAlbumExternalSource(ctx context.Context, al model.Album, em core.ExternalMetadata) sourceFunc {
+func fromAlbumExternalSource(ctx context.Context, al model.Album, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := em.AlbumImage(ctx, al.ID)
+		imageUrl, err := provider.AlbumImage(ctx, al.ID)
 		if err != nil {
 			return nil, "", err
 		}

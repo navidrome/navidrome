@@ -32,7 +32,7 @@ var (
 	// Should either be at the beginning of file, or beginning of line
 	syncRegex  = regexp.MustCompile(`(^|\n)\s*` + timeRegexString)
 	timeRegex  = regexp.MustCompile(timeRegexString)
-	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset):([^]]+)]`)
+	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset|lang):([^]]+)]`)
 )
 
 func (l Lyrics) IsEmpty() bool {
@@ -72,6 +72,8 @@ func ToLyrics(language, text string) (*Lyrics, error) {
 				switch idTag[1] {
 				case "ar":
 					artist = str.SanitizeText(strings.TrimSpace(idTag[2]))
+				case "lang":
+					language = str.SanitizeText(strings.TrimSpace(idTag[2]))
 				case "offset":
 					{
 						off, err := strconv.ParseInt(strings.TrimSpace(idTag[2]), 10, 64)

@@ -33,7 +33,8 @@
         "tags": "Ek Etiketler",
         "mappedTags": "Eşlenen etiketler",
         "rawTags": "Ham etiketler",
-        "bitDepth": ""
+        "bitDepth": "Bit derinliği",
+        "sampleRate": "Örnekleme Oranı"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -71,7 +72,8 @@
         "releaseType": "Tür",
         "grouping": "Gruplama",
         "media": "Medya",
-        "mood": "Mod"
+        "mood": "Mod",
+        "date": "Kayıt Tarihi"
       },
       "actions": {
         "playAll": "Oynat",
