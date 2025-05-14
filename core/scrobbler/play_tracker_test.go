@@ -3,6 +3,7 @@ package scrobbler
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
@@ -152,10 +153,12 @@ var _ = Describe("PlayTracker", func() {
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.ScrobbleCalled).To(BeTrue())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
-			Expect(fake.LastScrobble.ID).To(Equal("123"))
-			Expect(fake.LastScrobble.Participants).To(Equal(track.Participants))
+			lastScrobble := fake.LastScrobble.Load()
+			Expect(lastScrobble.TimeStamp).To(BeTemporally("~", ts, 1*time.Second))
+			Expect(lastScrobble.ID).To(Equal("123"))
+			Expect(lastScrobble.Participants).To(Equal(track.Participants))
 		})
 
 		It("increments play counts in the DB", func() {
@@ -179,7 +182,7 @@ var _ = Describe("PlayTracker", func() {
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.ScrobbleCalled).To(BeFalse())
+			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
 		It("does not send track to agent if player is not enabled to send scrobbles", func() {
@@ -188,7 +191,7 @@ var _ = Describe("PlayTracker", func() {
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.ScrobbleCalled).To(BeFalse())
+			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
 		It("does not send track to agent if artist is unknown", func() {
@@ -197,7 +200,7 @@ var _ = Describe("PlayTracker", func() {
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.ScrobbleCalled).To(BeFalse())
+			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
 		It("increments play counts even if it cannot scrobble", func() {
@@ -206,7 +209,7 @@ var _ = Describe("PlayTracker", func() {
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(fake.ScrobbleCalled).To(BeFalse())
+			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 
 			Expect(track.PlayCount).To(Equal(int64(1)))
 			Expect(album.PlayCount).To(Equal(int64(1)))
@@ -264,7 +267,7 @@ var _ = Describe("PlayTracker", func() {
 			ts := time.Now()
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: ts}})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(pluginFake.ScrobbleCalled).To(BeTrue())
+			Expect(pluginFake.ScrobbleCalled.Load()).To(BeTrue())
 		})
 	})
 
@@ -317,10 +320,10 @@ var _ = Describe("PlayTracker", func() {
 type fakeScrobbler struct {
 	Authorized       bool
 	NowPlayingCalled bool
-	ScrobbleCalled   bool
+	ScrobbleCalled   atomic.Bool
 	UserID           string
 	Track            *model.MediaFile
-	LastScrobble     Scrobble
+	LastScrobble     atomic.Pointer[Scrobble]
 	Error            error
 }
 
@@ -339,12 +342,12 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 }
 
 func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
-	f.ScrobbleCalled = true
+	f.ScrobbleCalled.Store(true)
 	if f.Error != nil {
 		return f.Error
 	}
 	f.UserID = userId
-	f.LastScrobble = s
+	f.LastScrobble.Store(&s)
 	return nil
 }
 

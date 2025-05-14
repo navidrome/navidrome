@@ -45,24 +45,20 @@ var _ = Describe("BufferedScrobbler", func() {
 
 	It("enqueues scrobbles to buffer", func() {
 		track := model.MediaFile{ID: "123", Title: "Test Track"}
-		scrobble := Scrobble{MediaFile: track, TimeStamp: time.Now()}
+		now := time.Now()
+		scrobble := Scrobble{MediaFile: track, TimeStamp: now}
 		Expect(buffer.Length()).To(Equal(int64(0)))
+		Expect(scr.ScrobbleCalled.Load()).To(BeFalse())
 
 		Expect(bs.Scrobble(ctx, "user1", scrobble)).To(Succeed())
 		Expect(buffer.Length()).To(Equal(int64(1)))
 
-		// Verify it was added to the buffer
-		var data *model.ScrobbleEntry
-		var err error
-		Eventually(func() bool {
-			data, err = buffer.Next("test", "user1")
-			return data != nil || err != nil
-		}).Should(BeTrue())
+		// Wait for the scrobble to be sent
+		Eventually(scr.ScrobbleCalled.Load).Should(BeTrue())
 
-		Expect(err).ToNot(HaveOccurred())
-		Expect(data.Service).To(Equal("test"))
-		Expect(data.UserID).To(Equal("user1"))
-		Expect(data.MediaFile.ID).To(Equal("123"))
+		lastScrobble := scr.LastScrobble.Load()
+		Expect(lastScrobble.MediaFile.ID).To(Equal("123"))
+		Expect(lastScrobble.TimeStamp).To(BeTemporally("==", now))
 	})
 
 	It("stops the background goroutine when Stop is called", func() {
