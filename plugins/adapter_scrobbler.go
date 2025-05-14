@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
@@ -88,9 +89,10 @@ func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, tra
 	}
 	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.Scrobbler) (struct{}, error) {
 		resp, err := inst.NowPlaying(ctx, &api.ScrobblerNowPlayingRequest{
-			UserId:   userId,
-			Username: username,
-			Track:    trackInfo,
+			UserId:    userId,
+			Username:  username,
+			Track:     trackInfo,
+			Timestamp: time.Now().Unix(),
 		})
 		if err != nil {
 			return struct{}{}, err

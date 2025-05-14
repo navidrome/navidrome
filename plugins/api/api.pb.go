@@ -717,9 +717,10 @@ type ScrobblerNowPlayingRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UserId   string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Username string     `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Track    *TrackInfo `protobuf:"bytes,3,opt,name=track,proto3" json:"track,omitempty"`
+	UserId    string     `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username  string     `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Track     *TrackInfo `protobuf:"bytes,3,opt,name=track,proto3" json:"track,omitempty"`
+	Timestamp int64      `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 }
 
 func (x *ScrobblerNowPlayingRequest) ProtoReflect() protoreflect.Message {
@@ -745,6 +746,13 @@ func (x *ScrobblerNowPlayingRequest) GetTrack() *TrackInfo {
 		return x.Track
 	}
 	return nil
+}
+
+func (x *ScrobblerNowPlayingRequest) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
 }
 
 type ScrobblerNowPlayingResponse struct {
