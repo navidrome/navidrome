@@ -259,8 +259,7 @@ on conflict (user_id, item_id, item_type) do update
 	return r.executeSQL(query)
 }
 
-// RefreshStats updates the stats field for all artists, based on the media files associated with them.
-// BFR Maybe filter by "touched" artists?
+// RefreshStats updates the stats field for artists whose associated media files were updated after the oldest recorded library scan time.
 func (r *artistRepository) RefreshStats() (int64, error) {
 	// First get all counters, one query groups by artist/role, and another with totals per artist.
 	// Union both queries and group by artist to get a single row of counters per artist/role.
@@ -268,67 +267,80 @@ func (r *artistRepository) RefreshStats() (int64, error) {
 	// Finally update the artist table with the new counters
 	// In all queries, atom is the artist ID and path is the role (or "total" for the totals)
 	query := rawSQL(`
+-- CTE to identify artists with recently updated media files
+WITH touched_artists AS (
+    SELECT DISTINCT mfa.artist_id
+    FROM media_file_artists mfa
+    JOIN media_file mf ON mfa.media_file_id = mf.id
+    WHERE mf.updated_at > (SELECT last_scan_at FROM library ORDER BY last_scan_at ASC LIMIT 1)
+    UNION
+    SELECT DISTINCT jt.atom AS artist_id
+    FROM media_file mf
+    JOIN json_tree(mf.participants) jt ON jt.key = 'id' AND jt.atom IS NOT NULL
+    WHERE mf.updated_at > (SELECT last_scan_at FROM library ORDER BY last_scan_at ASC LIMIT 1)
+),
+
 -- CTE to get counters for each artist, grouped by role
-with artist_role_counters as (
-    -- Get counters for each artist, grouped by role
-    -- (remove the index from the role: composer[0] => composer
-    select atom as artist_id,
+artist_role_counters AS (
+    SELECT jt.atom AS artist_id,
            substr(
                    replace(jt.path, '$.', ''),
                    1,
-                   case when instr(replace(jt.path, '$.', ''), '[') > 0
-                            then instr(replace(jt.path, '$.', ''), '[') - 1
-                        else length(replace(jt.path, '$.', ''))
-                       end
-           ) as role,
-           count(distinct album_id) as album_count,
-           count(mf.id) as count,
-           sum(size) as size
-    from media_file mf
-             left join json_tree(participants) jt
-    where atom is not null and key = 'id'
-    group by atom, role
+                   CASE WHEN instr(replace(jt.path, '$.', ''), '[') > 0
+                            THEN instr(replace(jt.path, '$.', ''), '[') - 1
+                        ELSE length(replace(jt.path, '$.', ''))
+                       END
+           ) AS role,
+           count(DISTINCT mf.album_id) AS album_count,
+           count(mf.id) AS count,
+           sum(mf.size) AS size
+    FROM media_file mf
+    JOIN json_tree(mf.participants) jt ON jt.key = 'id' AND jt.atom IS NOT NULL
+    WHERE jt.atom IN (SELECT artist_id FROM touched_artists) -- Process only "touched" artists
+    GROUP BY jt.atom, role
 ),
 
 -- CTE to get the totals for each artist
-artist_total_counters as (
-	select mfa.artist_id,
-		   'total' as role,
-		   count(distinct mf.album_id) as album_count,
-		   count(distinct mf.id) as count,
-		   sum(mf.size) as size
-	from (select artist_id, media_file_id
-		  from main.media_file_artists) as mfa
-			 join main.media_file mf on mfa.media_file_id = mf.id
-	group by mfa.artist_id
+artist_total_counters AS (
+	SELECT mfa.artist_id,
+		   'total' AS role,
+		   count(DISTINCT mf.album_id) AS album_count,
+		   count(DISTINCT mf.id) AS count,
+		   sum(mf.size) AS size
+	FROM media_file_artists mfa
+	JOIN media_file mf ON mfa.media_file_id = mf.id
+	WHERE mfa.artist_id IN (SELECT artist_id FROM touched_artists) -- Process only "touched" artists
+	GROUP BY mfa.artist_id
 ),
 
 -- CTE to combine role and total counters
-combined_counters as (
-	select artist_id, role, album_count, count, size
-	from artist_role_counters
-	union
-	select artist_id, role, album_count, count, size
-	from artist_total_counters
+combined_counters AS (
+	SELECT artist_id, role, album_count, count, size
+	FROM artist_role_counters
+	UNION
+	SELECT artist_id, role, album_count, count, size
+	FROM artist_total_counters
 ),
 
 -- CTE to format the counters in a JSON object
-artist_counters as (
-	select artist_id as id,
+artist_counters AS (
+	SELECT artist_id AS id,
 		   json_group_object(
 				   replace(role, '"', ''),
 				   json_object('a', album_count, 'm', count, 's', size)
-		   ) as counters
-	from combined_counters
-	group by artist_id
+		   ) AS counters
+	FROM combined_counters
+	GROUP BY artist_id
 )
 
 -- Update the artist table with the new counters
-update artist
-set stats = coalesce((select counters from artist_counters where artist_counters.id = artist.id), '{}'),
+UPDATE artist
+SET stats = coalesce((SELECT counters FROM artist_counters ac WHERE ac.id = artist.id), '{}'),
    updated_at = datetime(current_timestamp, 'localtime')
-where id <> ''; -- always true, to avoid warnings`)
-	return r.executeSQL(query)
+WHERE artist.id IN (SELECT artist_id FROM touched_artists) AND artist.id <> ''; -- Ensure we only try to update relevant artists
+`)
+	sqlizer := Expr(string(query))
+	return r.executeSQL(sqlizer)
 }
 
 func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
