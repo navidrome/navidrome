@@ -5,6 +5,7 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/websocket/websocket.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/cache/cache.proto
 
 import (
 	"context"
@@ -20,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/navidrome/navidrome/plugins/host/cache"
 	"github.com/navidrome/navidrome/plugins/host/config"
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
@@ -103,6 +105,7 @@ type Manager struct {
 	mu               sync.RWMutex           // Protects plugins map
 	schedulerService *schedulerService      // Service for handling scheduled tasks
 	websocketService *websocketService      // Service for handling WebSocket connections
+	cacheService     *cacheService          // Service for handling in-memory cache operations
 	initialized      *initializedPlugins    // Tracks which plugins have been initialized
 	adapters         map[string]WasmPlugin  // Map of plugin name + capability to adapter
 }
@@ -121,9 +124,10 @@ func createManager() *Manager {
 		initialized: newInitializedPlugins(),
 	}
 
-	// Create the scheduler service
+	// Create the host services
 	m.schedulerService = newSchedulerService(m)
 	m.websocketService = newWebsocketService(m)
+	m.cacheService = newCacheService(m)
 
 	return m
 }
@@ -222,9 +226,9 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName string) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
-		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(compCache)
 		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
 		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
 			return nil, err
@@ -247,9 +251,13 @@ func (m *Manager) createCustomRuntime(cache wazero.CompilationCache, pluginName 
 		if err != nil {
 			return nil, err
 		}
+		cacheLib, err := loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, m.cacheService.HostFunctions(pluginName))
+		if err != nil {
+			return nil, err
+		}
 
 		// Combine the libraries
-		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib, websocketLib)
+		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib, websocketLib, cacheLib)
 		if err != nil {
 			return nil, err
 		}

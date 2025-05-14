@@ -432,17 +432,95 @@ service ConfigService {
 
 The ConfigService allows plugins to access Navidrome's configuration. See the [config.proto](host/config/config.proto) file for the full API.
 
-// Scheduler methods available to plugins
-service SchedulerService {
-// One-time event scheduling
-rpc ScheduleOneTime(ScheduleOneTimeRequest) returns (ScheduleResponse);
+#### CacheService
 
-// Recurring event scheduling
-rpc ScheduleRecurring(ScheduleRecurringRequest) returns (ScheduleResponse);
+```protobuf
+service CacheService {
+    // Set a string value in the cache
+    rpc SetString(SetStringRequest) returns (SetResponse);
 
-// Cancel any scheduled job
-rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+    // Get a string value from the cache
+    rpc GetString(GetRequest) returns (GetStringResponse);
+
+    // Set an integer value in the cache
+    rpc SetInt(SetIntRequest) returns (SetResponse);
+
+    // Get an integer value from the cache
+    rpc GetInt(GetRequest) returns (GetIntResponse);
+
+    // Set a float value in the cache
+    rpc SetFloat(SetFloatRequest) returns (SetResponse);
+
+    // Get a float value from the cache
+    rpc GetFloat(GetRequest) returns (GetFloatResponse);
+
+    // Set a byte slice value in the cache
+    rpc SetBytes(SetBytesRequest) returns (SetResponse);
+
+    // Get a byte slice value from the cache
+    rpc GetBytes(GetRequest) returns (GetBytesResponse);
+
+    // Remove a value from the cache
+    rpc Remove(RemoveRequest) returns (RemoveResponse);
+
+    // Check if a key exists in the cache
+    rpc Has(HasRequest) returns (HasResponse);
 }
+```
+
+The CacheService provides a TTL-based cache for plugins. Each plugin gets its own isolated cache instance. By default, cached items expire after 24 hours unless a custom TTL is specified.
+
+Key features:
+
+- **Isolated Caches**: Each plugin has its own cache namespace, so different plugins can use the same key names without conflicts
+- **Typed Values**: Store and retrieve values with their proper types (string, int64, float64, or byte slice)
+- **Configurable TTL**: Set custom expiration times per item, or use the default 24-hour TTL
+- **Type Safety**: The system handles type checking, returning "not exists" if there's a type mismatch
+
+Example usage:
+
+```go
+// Store a string value with default TTL (24 hours)
+cacheService.SetString(ctx, &cache.SetStringRequest{
+    Key:   "user_preference",
+    Value: "dark_mode",
+})
+
+// Store an integer with custom TTL (5 minutes)
+cacheService.SetInt(ctx, &cache.SetIntRequest{
+    Key:        "api_call_count",
+    Value:      42,
+    TtlSeconds: 300, // 5 minutes
+})
+
+// Retrieve a value
+resp, err := cacheService.GetString(ctx, &cache.GetRequest{
+    Key: "user_preference",
+})
+if err != nil {
+    // Handle error
+}
+if resp.Exists {
+    // Use resp.Value
+} else {
+    // Key doesn't exist or has expired
+}
+
+// Check if a key exists
+hasResp, err := cacheService.Has(ctx, &cache.HasRequest{
+    Key: "api_call_count",
+})
+if hasResp.Exists {
+    // Key exists and hasn't expired
+}
+
+// Remove a value
+cacheService.Remove(ctx, &cache.RemoveRequest{
+    Key: "user_preference",
+})
+```
+
+See the [cache.proto](host/cache/cache.proto) file for the full API definition.
 
 #### SchedulerService
 

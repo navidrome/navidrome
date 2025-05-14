@@ -184,7 +184,7 @@ func (s *websocketService) writeMessage(pluginName string, connID string, messag
 // sendText sends a text message over a WebSocket connection
 func (s *websocketService) sendText(_ context.Context, pluginName string, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
 	if err := s.writeMessage(pluginName, req.ConnectionId, gorillaws.TextMessage, []byte(req.Message)); err != nil {
-		return &websocket.SendTextResponse{Error: err.Error()}, nil
+		return &websocket.SendTextResponse{Error: err.Error()}, nil //nolint:nilerr
 	}
 	return &websocket.SendTextResponse{}, nil
 }
@@ -192,7 +192,7 @@ func (s *websocketService) sendText(_ context.Context, pluginName string, req *w
 // sendBinary sends binary data over a WebSocket connection
 func (s *websocketService) sendBinary(_ context.Context, pluginName string, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
 	if err := s.writeMessage(pluginName, req.ConnectionId, gorillaws.BinaryMessage, req.Data); err != nil {
-		return &websocket.SendBinaryResponse{Error: err.Error()}, nil
+		return &websocket.SendBinaryResponse{Error: err.Error()}, nil //nolint:nilerr
 	}
 	return &websocket.SendBinaryResponse{}, nil
 }
