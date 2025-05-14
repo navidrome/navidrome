@@ -1,4 +1,4 @@
-package subsonic
+package lyrics_test
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestSubsonicApi(t *testing.T) {
+func TestLyrics(t *testing.T) {
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Subsonic API Suite")
+	RunSpecs(t, "Lyrics Suite")
 }

@@ -108,7 +108,7 @@ main:
   bpm:
     aliases: [ tbpm, bpm, tmpo, wm/beatsperminute ]
   lyrics:
-    aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics ]
+    aliases: [ uslt:description, lyrics, ©lyr, wm/lyrics, unsyncedlyrics ]
     maxLength: 32768
     type: pair # ex: lyrics:eng, lyrics:xxx
   comment:

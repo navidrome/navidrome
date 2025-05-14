@@ -9,8 +9,9 @@ import (
 var _ = Describe("ToLyrics", func() {
 	It("should parse tags with spaces", func() {
 		num := int64(1551)
-		lyrics, err := ToLyrics("xxx", "[offset: 1551 ]\n[ti: A title ]\n[ar: An artist ]\n[00:00.00]Hi there")
+		lyrics, err := ToLyrics("xxx", "[lang:  eng  ]\n[offset: 1551 ]\n[ti: A title ]\n[ar: An artist ]\n[00:00.00]Hi there")
 		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Lang).To(Equal("eng"))
 		Expect(lyrics.Synced).To(BeTrue())
 		Expect(lyrics.DisplayArtist).To(Equal("An artist"))
 		Expect(lyrics.DisplayTitle).To(Equal("A title"))

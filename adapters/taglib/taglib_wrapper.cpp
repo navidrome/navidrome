@@ -225,17 +225,24 @@ char has_cover(const TagLib::FileRef f) {
   else if (TagLib::Ogg::Opus::File * opusFile{dynamic_cast<TagLib::Ogg::Opus::File *>(f.file())}) {
     hasCover = !opusFile->tag()->pictureList().isEmpty();
   }
-  // ----- WMA
-  else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
-    const TagLib::ASF::Tag *tag{asfFile->tag()};
-    hasCover = tag && tag->attributeListMap().contains("WM/Picture");
-  }
   // ----- WAV
   else if (TagLib::RIFF::WAV::File * wavFile{ dynamic_cast<TagLib::RIFF::WAV::File*>(f.file()) }) {
     if (wavFile->hasID3v2Tag()) {
-        const auto& frameListMap{ wavFile->ID3v2Tag()->frameListMap() };
-        hasCover = !frameListMap["APIC"].isEmpty();
+      const auto& frameListMap{ wavFile->ID3v2Tag()->frameListMap() };
+      hasCover = !frameListMap["APIC"].isEmpty();
     }
+  }
+  // ----- AIFF 
+  else if (TagLib::RIFF::AIFF::File * aiffFile{ dynamic_cast<TagLib::RIFF::AIFF::File *>(f.file())}) {
+    if (aiffFile->hasID3v2Tag()) {
+      const auto& frameListMap{ aiffFile->tag()->frameListMap() };
+      hasCover = !frameListMap["APIC"].isEmpty();
+    }
+  }
+  // ----- WMA
+  else if (TagLib::ASF::File * asfFile{dynamic_cast<TagLib::ASF::File *>(f.file())}) {
+    const TagLib::ASF::Tag *tag{ asfFile->tag() };
+    hasCover = tag && asfFile->tag()->attributeListMap().contains("WM/Picture");
   }
 
   return hasCover;

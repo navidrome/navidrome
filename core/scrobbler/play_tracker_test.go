@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
@@ -27,9 +26,6 @@ var _ = Describe("PlayTracker", func() {
 	var fake fakeScrobbler
 
 	BeforeEach(func() {
-		// Remove buffering to simplify tests
-		conf.Server.DevEnableBufferedScrobble = false
-
 		ctx = context.Background()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
@@ -42,6 +38,7 @@ var _ = Describe("PlayTracker", func() {
 			return nil
 		})
 		tracker = newPlayTracker(ds, events.GetBroker())
+		tracker.(*playTracker).scrobblers["fake"] = &fake // Bypass buffering for tests
 
 		track = model.MediaFile{
 			ID:             "123",
