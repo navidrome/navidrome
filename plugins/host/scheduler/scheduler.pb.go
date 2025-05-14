@@ -132,7 +132,8 @@ type CancelResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // Whether cancellation was successful
+	Success bool   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"` // Whether cancellation was successful
+	Error   string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`      // Error message if cancellation failed
 }
 
 func (x *CancelResponse) ProtoReflect() protoreflect.Message {
@@ -144,6 +145,13 @@ func (x *CancelResponse) GetSuccess() bool {
 		return x.Success
 	}
 	return false
+}
+
+func (x *CancelResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 // go:plugin type=host version=1

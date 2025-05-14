@@ -163,10 +163,8 @@ func (s *schedulerService) scheduleOneTime(_ context.Context, pluginName string,
 
 	// Now that the new job is in the map, we can safely cancel the old one
 	if cancelExisting != nil {
-		go func() {
-			// Cancel in a goroutine to avoid deadlock since we're already holding the lock
-			cancelExisting()
-		}()
+		// Cancel in a goroutine to avoid deadlock since we're already holding the lock
+		go cancelExisting()
 	}
 
 	log.Debug("One-time schedule registered", "plugin", pluginName, "scheduleID", callback.ID, "internalID", internalScheduleId)
@@ -206,10 +204,8 @@ func (s *schedulerService) scheduleRecurring(_ context.Context, pluginName strin
 
 	// Now that the new job is in the map, we can safely cancel the old one
 	if cancelExisting != nil {
-		go func() {
-			// Cancel in a goroutine to avoid deadlock since we're already holding the lock
-			cancelExisting()
-		}()
+		// Cancel in a goroutine to avoid deadlock since we're already holding the lock
+		go cancelExisting()
 	}
 
 	log.Debug("Recurring schedule registered", "plugin", pluginName, "scheduleID", callback.ID, "internalID", internalScheduleId, "cron", req.CronExpression)
@@ -230,7 +226,8 @@ func (s *schedulerService) cancelSchedule(_ context.Context, pluginName string, 
 	if !exists {
 		return &scheduler.CancelResponse{
 			Success: false,
-		}, fmt.Errorf("schedule not found")
+			Error:   "schedule not found",
+		}, nil
 	}
 
 	// Store the cancel functions to call after we've updated the schedule map
@@ -250,10 +247,8 @@ func (s *schedulerService) cancelSchedule(_ context.Context, pluginName string, 
 
 	// Now perform the cancellation safely
 	if cancelFunc != nil {
-		go func() {
-			// Execute in a goroutine to avoid deadlock since we're already holding the lock
-			cancelFunc()
-		}()
+		// Execute in a goroutine to avoid deadlock since we're already holding the lock
+		go cancelFunc()
 	}
 	if recurringEntryID != 0 {
 		s.navidSched.Remove(recurringEntryID)

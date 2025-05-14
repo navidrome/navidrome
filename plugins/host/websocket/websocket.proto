@@ -25,6 +25,7 @@ message ConnectRequest {
 
 message ConnectResponse {
   string connection_id = 1;
+  string error = 2;
 }
 
 message SendTextRequest {
@@ -32,14 +33,18 @@ message SendTextRequest {
   string message = 2;
 }
 
-message SendTextResponse {}
+message SendTextResponse {
+  string error = 1;
+}
 
 message SendBinaryRequest {
   string connection_id = 1;
   bytes data = 2;
 }
 
-message SendBinaryResponse {}
+message SendBinaryResponse {
+  string error = 1;
+}
 
 message CloseRequest {
   string connection_id = 1;
@@ -47,4 +52,6 @@ message CloseRequest {
   string reason = 3;
 }
 
-message CloseResponse {} 
+message CloseResponse {
+  string error = 1;
+}

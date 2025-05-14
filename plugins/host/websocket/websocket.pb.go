@@ -60,6 +60,7 @@ type ConnectResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	ConnectionId string `protobuf:"bytes,1,opt,name=connection_id,json=connectionId,proto3" json:"connection_id,omitempty"`
+	Error        string `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
@@ -69,6 +70,13 @@ func (x *ConnectResponse) ProtoReflect() protoreflect.Message {
 func (x *ConnectResponse) GetConnectionId() string {
 	if x != nil {
 		return x.ConnectionId
+	}
+	return ""
+}
+
+func (x *ConnectResponse) GetError() string {
+	if x != nil {
+		return x.Error
 	}
 	return ""
 }
@@ -104,10 +112,19 @@ type SendTextResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (x *SendTextResponse) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
+}
+
+func (x *SendTextResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 type SendBinaryRequest struct {
@@ -141,10 +158,19 @@ type SendBinaryResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (x *SendBinaryResponse) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
+}
+
+func (x *SendBinaryResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 type CloseRequest struct {
@@ -186,10 +212,19 @@ type CloseResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 }
 
 func (x *CloseResponse) ProtoReflect() protoreflect.Message {
 	panic(`not implemented`)
+}
+
+func (x *CloseResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
 }
 
 // go:plugin type=host version=1

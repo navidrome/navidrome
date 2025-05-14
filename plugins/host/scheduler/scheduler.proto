@@ -38,4 +38,5 @@ message CancelRequest {
 
 message CancelResponse {
     bool success = 1;              // Whether cancellation was successful
+    string error = 2;              // Error message if cancellation failed
 } 

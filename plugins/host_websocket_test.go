@@ -206,9 +206,9 @@ var _ = Describe("WebSocket Host Service", func() {
 				Message:      "this should fail",
 			}
 
-			_, err := wsService.sendText(ctx, pluginName, textReq)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("connection not found"))
+			sendResp, err := wsService.sendText(ctx, pluginName, textReq)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sendResp.Error).To(ContainSubstring("connection not found"))
 
 			// Try to close a non-existent connection
 			closeReq := &websocket.CloseRequest{
@@ -217,9 +217,9 @@ var _ = Describe("WebSocket Host Service", func() {
 				Reason:       "test complete",
 			}
 
-			_, err = wsService.close(ctx, pluginName, closeReq)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("connection not found"))
+			closeResp, err := wsService.close(ctx, pluginName, closeReq)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(closeResp.Error).To(ContainSubstring("connection not found"))
 		})
 	})
 })

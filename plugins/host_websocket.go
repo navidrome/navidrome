@@ -184,7 +184,7 @@ func (s *websocketService) writeMessage(pluginName string, connID string, messag
 // sendText sends a text message over a WebSocket connection
 func (s *websocketService) sendText(_ context.Context, pluginName string, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
 	if err := s.writeMessage(pluginName, req.ConnectionId, gorillaws.TextMessage, []byte(req.Message)); err != nil {
-		return nil, err
+		return &websocket.SendTextResponse{Error: err.Error()}, nil
 	}
 	return &websocket.SendTextResponse{}, nil
 }
@@ -192,7 +192,7 @@ func (s *websocketService) sendText(_ context.Context, pluginName string, req *w
 // sendBinary sends binary data over a WebSocket connection
 func (s *websocketService) sendBinary(_ context.Context, pluginName string, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
 	if err := s.writeMessage(pluginName, req.ConnectionId, gorillaws.BinaryMessage, req.Data); err != nil {
-		return nil, err
+		return &websocket.SendBinaryResponse{Error: err.Error()}, nil
 	}
 	return &websocket.SendBinaryResponse{}, nil
 }
@@ -205,7 +205,7 @@ func (s *websocketService) close(_ context.Context, pluginName string, req *webs
 	conn, exists := s.connections[internal]
 	if !exists {
 		s.mu.Unlock()
-		return nil, fmt.Errorf("connection not found")
+		return &websocket.CloseResponse{Error: "connection not found"}, nil
 	}
 	delete(s.connections, internal)
 	s.mu.Unlock()
