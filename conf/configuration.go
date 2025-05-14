@@ -93,6 +93,7 @@ type configOptions struct {
 	PID                             pidOptions
 	Inspect                         inspectOptions
 	Subsonic                        subsonicOptions
+	LyricsPriority                  string
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -109,7 +110,6 @@ type configOptions struct {
 	DevActivityPanel                 bool
 	DevActivityPanelUpdateRate       time.Duration
 	DevSidebarPlaylists              bool
-	DevEnableBufferedScrobble        bool
 	DevShowArtistPage                bool
 	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
@@ -312,6 +312,7 @@ func Load(noConfigDump bool) {
 	}
 	logDeprecatedOptions("Scanner.GenreSeparators")
 	logDeprecatedOptions("Scanner.GroupAlbumReleases")
+	logDeprecatedOptions("DevEnableBufferedScrobble") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -528,6 +529,8 @@ func init() {
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
+
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devenableprofiler", false)
@@ -535,7 +538,6 @@ func init() {
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devactivitypanelupdaterate", 300*time.Millisecond)
-	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devoffsetoptimize", 50000)

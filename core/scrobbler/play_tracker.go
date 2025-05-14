@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -61,9 +60,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
 			continue
 		}
 		enabled = append(enabled, name)
-		if conf.Server.DevEnableBufferedScrobble {
-			s = newBufferedScrobbler(ds, s, name)
-		}
+		s = newBufferedScrobbler(ds, s, name)
 		p.scrobblers[name] = s
 	}
 	log.Debug("List of scrobblers enabled", "names", enabled)
@@ -183,11 +180,7 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 		if !s.IsAuthorized(ctx, u.ID) {
 			continue
 		}
-		if conf.Server.DevEnableBufferedScrobble {
-			log.Debug(ctx, "Buffering Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-		} else {
-			log.Debug(ctx, "Sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-		}
+		log.Debug(ctx, "Buffering Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		err := s.Scrobble(ctx, u.ID, scrobble)
 		if err != nil {
 			log.Error(ctx, "Error sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)

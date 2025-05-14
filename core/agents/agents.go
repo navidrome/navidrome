@@ -45,7 +45,7 @@ func createAgents(ds model.DataStore) *Agents {
 			continue
 		}
 		enabled = append(enabled, name)
-		res = append(res, init(ds))
+		res = append(res, agent)
 	}
 	log.Debug("List of agents enabled", "names", enabled)
 
