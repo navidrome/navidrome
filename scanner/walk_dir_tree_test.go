@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing/fstest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
@@ -32,46 +34,111 @@ var _ = Describe("walk_dir_tree", func() {
 					"root/d/f1.mp3":          {},
 					"root/d/f2.mp3":          {},
 					"root/d/f3.mp3":          {},
+					"root/e/original/f1.mp3": {},
+					"root/e/symlink":         {Mode: fs.ModeSymlink},
+				},
+				symlinks: map[string]string{
+					"root/e/symlink": "root/e/original",
 				},
 			}
 		})
 
-		It("walks all directories", func() {
-			job := &scanJob{
-				fs:  fsys,
-				lib: model.Library{Path: "/music"},
-			}
-			ctx := context.Background()
-			results, err := walkDirTree(ctx, job)
-			Expect(err).ToNot(HaveOccurred())
-
-			folders := map[string]*folderEntry{}
-
-			g := errgroup.Group{}
-			g.Go(func() error {
-				for folder := range results {
-					folders[folder.path] = folder
-				}
-				return nil
+		Context("with symlinks enabled", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.FollowSymlinks = true
 			})
-			_ = g.Wait()
 
-			Expect(folders).To(HaveLen(6))
-			Expect(folders["root/a/ignored"].audioFiles).To(BeEmpty())
-			Expect(folders["root/a"].audioFiles).To(SatisfyAll(
-				HaveLen(2),
-				HaveKey("f1.mp3"),
-				HaveKey("f2.mp3"),
-			))
-			Expect(folders["root/a"].imageFiles).To(BeEmpty())
-			Expect(folders["root/b"].audioFiles).To(BeEmpty())
-			Expect(folders["root/b"].imageFiles).To(SatisfyAll(
-				HaveLen(1),
-				HaveKey("cover.jpg"),
-			))
-			Expect(folders["root/c"].audioFiles).To(BeEmpty())
-			Expect(folders["root/c"].imageFiles).To(BeEmpty())
-			Expect(folders).ToNot(HaveKey("root/d"))
+			It("walks all directories including symlinks", func() {
+				job := &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+				ctx := context.Background()
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						if folder.path == "." || folder.path == "root" {
+							continue // Skip root folders
+						}
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				Expect(folders).To(HaveLen(7))
+				Expect(folders["root/a/ignored"].audioFiles).To(BeEmpty())
+				Expect(folders["root/a"].audioFiles).To(SatisfyAll(
+					HaveLen(2),
+					HaveKey("f1.mp3"),
+					HaveKey("f2.mp3"),
+				))
+				Expect(folders["root/a"].imageFiles).To(BeEmpty())
+				Expect(folders["root/b"].audioFiles).To(BeEmpty())
+				Expect(folders["root/b"].imageFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("cover.jpg"),
+				))
+				Expect(folders["root/c"].audioFiles).To(BeEmpty())
+				Expect(folders["root/c"].imageFiles).To(BeEmpty())
+				Expect(folders).ToNot(HaveKey("root/d"))
+				Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
+			})
+		})
+
+		Context("with symlinks disabled", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.FollowSymlinks = false
+			})
+
+			It("skips symlinks", func() {
+				job := &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+				ctx := context.Background()
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+
+				g := errgroup.Group{}
+				g.Go(func() error {
+					for folder := range results {
+						if folder.path == "." || folder.path == "root" {
+							continue // Skip root folders
+						}
+						folders[folder.path] = folder
+					}
+					return nil
+				})
+				_ = g.Wait()
+
+				Expect(folders).To(HaveLen(6))
+				Expect(folders["root/a/ignored"].audioFiles).To(BeEmpty())
+				Expect(folders["root/a"].audioFiles).To(SatisfyAll(
+					HaveLen(2),
+					HaveKey("f1.mp3"),
+					HaveKey("f2.mp3"),
+				))
+				Expect(folders["root/a"].imageFiles).To(BeEmpty())
+				Expect(folders["root/b"].audioFiles).To(BeEmpty())
+				Expect(folders["root/b"].imageFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("cover.jpg"),
+				))
+				Expect(folders["root/c"].audioFiles).To(BeEmpty())
+				Expect(folders["root/c"].imageFiles).To(BeEmpty())
+				Expect(folders).ToNot(HaveKey("root/d"))
+				Expect(folders).ToNot(HaveKey("root/e/symlink"))
+			})
 		})
 	})
 
@@ -81,21 +148,42 @@ var _ = Describe("walk_dir_tree", func() {
 		baseDir := filepath.Join("tests", "fixtures")
 
 		Describe("isDirOrSymlinkToDir", func() {
-			It("returns true for normal dirs", func() {
-				dirEntry := getDirEntry("tests", "fixtures")
-				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeTrue())
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
 			})
-			It("returns true for symlinks to dirs", func() {
-				dirEntry := getDirEntry(baseDir, "symlink2dir")
-				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeTrue())
+
+			Context("with symlinks enabled", func() {
+				BeforeEach(func() {
+					conf.Server.Scanner.FollowSymlinks = true
+				})
+
+				DescribeTable("returns expected result",
+					func(dirName string, expected bool) {
+						dirEntry := getDirEntry("tests/fixtures", dirName)
+						Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(Equal(expected))
+					},
+					Entry("normal dir", "empty_folder", true),
+					Entry("symlink to dir", "symlink2dir", true),
+					Entry("regular file", "test.mp3", false),
+					Entry("symlink to file", "symlink", false),
+				)
 			})
-			It("returns false for files", func() {
-				dirEntry := getDirEntry(baseDir, "test.mp3")
-				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeFalse())
-			})
-			It("returns false for symlinks to files", func() {
-				dirEntry := getDirEntry(baseDir, "symlink")
-				Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(BeFalse())
+
+			Context("with symlinks disabled", func() {
+				BeforeEach(func() {
+					conf.Server.Scanner.FollowSymlinks = false
+				})
+
+				DescribeTable("returns expected result",
+					func(dirName string, expected bool) {
+						dirEntry := getDirEntry("tests/fixtures", dirName)
+						Expect(isDirOrSymlinkToDir(fsys, baseDir, dirEntry)).To(Equal(expected))
+					},
+					Entry("normal dir", "empty_folder", true),
+					Entry("symlink to dir", "symlink2dir", false),
+					Entry("regular file", "test.mp3", false),
+					Entry("symlink to file", "symlink", false),
+				)
 			})
 		})
 		Describe("isDirIgnored", func() {
@@ -208,8 +296,52 @@ func getDirEntry(baseDir, name string) os.DirEntry {
 type mockMusicFS struct {
 	storage.MusicFS
 	fs.FS
+	symlinks map[string]string
 }
 
 func (m *mockMusicFS) Open(name string) (fs.File, error) {
+	if target, ok := m.symlinks[name]; ok && conf.Server.Scanner.FollowSymlinks {
+		return m.FS.Open(target)
+	}
 	return m.FS.Open(name)
+}
+
+func (m *mockMusicFS) Stat(name string) (fs.FileInfo, error) {
+	if target, ok := m.symlinks[name]; ok && conf.Server.Scanner.FollowSymlinks {
+		f, err := m.FS.Open(target)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return f.Stat()
+	}
+	f, err := m.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return f.Stat()
+}
+
+func (m *mockMusicFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	if target, ok := m.symlinks[name]; ok && conf.Server.Scanner.FollowSymlinks {
+		f, err := m.FS.Open(target)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		if dirFile, ok := f.(fs.ReadDirFile); ok {
+			return dirFile.ReadDir(-1)
+		}
+		return nil, fmt.Errorf("not a directory")
+	}
+	f, err := m.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	if dirFile, ok := f.(fs.ReadDirFile); ok {
+		return dirFile.ReadDir(-1)
+	}
+	return nil, fmt.Errorf("not a directory")
 }
