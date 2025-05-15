@@ -239,7 +239,7 @@ func (r *artistRepository) purgeEmpty() error {
 // RefreshPlayCounts updates the play count and last play date annotations for all artists, based
 // on the media files associated with them.
 func (r *artistRepository) RefreshPlayCounts() (int64, error) {
-	query := rawSQL(`
+	query := Expr(`
 with play_counts as (
     select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
@@ -259,76 +259,123 @@ on conflict (user_id, item_id, item_type) do update
 	return r.executeSQL(query)
 }
 
-// RefreshStats updates the stats field for all artists, based on the media files associated with them.
-// BFR Maybe filter by "touched" artists?
+// RefreshStats updates the stats field for artists whose associated media files were updated after the oldest recorded library scan time.
+// It processes artists in batches to handle potentially large updates.
 func (r *artistRepository) RefreshStats() (int64, error) {
-	// First get all counters, one query groups by artist/role, and another with totals per artist.
-	// Union both queries and group by artist to get a single row of counters per artist/role.
-	// Then format the counters in a JSON object, one key for each role.
-	// Finally update the artist table with the new counters
-	// In all queries, atom is the artist ID and path is the role (or "total" for the totals)
-	query := rawSQL(`
--- CTE to get counters for each artist, grouped by role
-with artist_role_counters as (
-    -- Get counters for each artist, grouped by role
-    -- (remove the index from the role: composer[0] => composer
-    select atom as artist_id,
-           substr(
-                   replace(jt.path, '$.', ''),
-                   1,
-                   case when instr(replace(jt.path, '$.', ''), '[') > 0
-                            then instr(replace(jt.path, '$.', ''), '[') - 1
-                        else length(replace(jt.path, '$.', ''))
-                       end
-           ) as role,
-           count(distinct album_id) as album_count,
-           count(mf.id) as count,
-           sum(size) as size
-    from media_file mf
-             left join json_tree(participants) jt
-    where atom is not null and key = 'id'
-    group by atom, role
-),
+	touchedArtistsQuerySQL := `
+        SELECT DISTINCT mfa.artist_id
+        FROM media_file_artists mfa
+        JOIN media_file mf ON mfa.media_file_id = mf.id
+        WHERE mf.updated_at > (SELECT last_scan_at FROM library ORDER BY last_scan_at ASC LIMIT 1)
+        `
 
--- CTE to get the totals for each artist
-artist_total_counters as (
-	select mfa.artist_id,
-		   'total' as role,
-		   count(distinct mf.album_id) as album_count,
-		   count(distinct mf.id) as count,
-		   sum(mf.size) as size
-	from (select artist_id, media_file_id
-		  from main.media_file_artists) as mfa
-			 join main.media_file mf on mfa.media_file_id = mf.id
-	group by mfa.artist_id
-),
+	var allTouchedArtistIDs []string
+	if err := r.db.NewQuery(touchedArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
+		return 0, fmt.Errorf("fetching touched artist IDs: %w", err)
+	}
 
--- CTE to combine role and total counters
-combined_counters as (
-	select artist_id, role, album_count, count, size
-	from artist_role_counters
-	union
-	select artist_id, role, album_count, count, size
-	from artist_total_counters
-),
+	if len(allTouchedArtistIDs) == 0 {
+		log.Debug(r.ctx, "RefreshStats: No artists to update.")
+		return 0, nil
+	}
+	log.Debug(r.ctx, "RefreshStats: Found artists to update.", "count", len(allTouchedArtistIDs))
 
--- CTE to format the counters in a JSON object
-artist_counters as (
-	select artist_id as id,
-		   json_group_object(
-				   replace(role, '"', ''),
-				   json_object('a', album_count, 'm', count, 's', size)
-		   ) as counters
-	from combined_counters
-	group by artist_id
-)
+	// Template for the batch update with placeholder markers that we'll replace
+	batchUpdateStatsSQL := `
+    WITH artist_role_counters AS (
+        SELECT jt.atom AS artist_id,
+               substr(
+                       replace(jt.path, '$.', ''),
+                       1,
+                       CASE WHEN instr(replace(jt.path, '$.', ''), '[') > 0
+                                THEN instr(replace(jt.path, '$.', ''), '[') - 1
+                            ELSE length(replace(jt.path, '$.', ''))
+                           END
+               ) AS role,
+               count(DISTINCT mf.album_id) AS album_count,
+               count(mf.id) AS count,
+               sum(mf.size) AS size
+        FROM media_file mf
+        JOIN json_tree(mf.participants) jt ON jt.key = 'id' AND jt.atom IS NOT NULL
+        WHERE jt.atom IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        GROUP BY jt.atom, role
+    ),
+    artist_total_counters AS (
+        SELECT mfa.artist_id,
+               'total' AS role,
+               count(DISTINCT mf.album_id) AS album_count,
+               count(DISTINCT mf.id) AS count,
+               sum(mf.size) AS size
+        FROM media_file_artists mfa
+        JOIN media_file mf ON mfa.media_file_id = mf.id
+        WHERE mfa.artist_id IN (TOTAL_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        GROUP BY mfa.artist_id
+    ),
+    combined_counters AS (
+        SELECT artist_id, role, album_count, count, size FROM artist_role_counters
+        UNION
+        SELECT artist_id, role, album_count, count, size FROM artist_total_counters
+    ),
+    artist_counters AS (
+        SELECT artist_id AS id,
+               json_group_object(
+                       replace(role, '"', ''),
+                       json_object('a', album_count, 'm', count, 's', size)
+               ) AS counters
+        FROM combined_counters
+        GROUP BY artist_id
+    )
+    UPDATE artist
+    SET stats = coalesce((SELECT counters FROM artist_counters ac WHERE ac.id = artist.id), '{}'),
+       updated_at = datetime(current_timestamp, 'localtime')
+    WHERE artist.id IN (UPDATE_IDS_PLACEHOLDER) AND artist.id <> '';` // Will replace with actual placeholders
 
--- Update the artist table with the new counters
-update artist
-set stats = coalesce((select counters from artist_counters where artist_counters.id = artist.id), '{}'),
-   updated_at = datetime(current_timestamp, 'localtime')
-where id <> ''; -- always true, to avoid warnings`)
-	return r.executeSQL(query)
+	var totalRowsAffected int64 = 0
+	const batchSize = 1000
+
+	batchCounter := 0
+	for artistIDBatch := range slice.CollectChunks(slices.Values(allTouchedArtistIDs), batchSize) {
+		batchCounter++
+		log.Trace(r.ctx, "RefreshStats: Processing batch", "batchNum", batchCounter, "batchSize", len(artistIDBatch))
+
+		// Create placeholders for each ID in the IN clauses
+		placeholders := make([]string, len(artistIDBatch))
+		for i := range artistIDBatch {
+			placeholders[i] = "?"
+		}
+		// Don't add extra parentheses, the IN clause already expects them in SQL syntax
+		inClause := strings.Join(placeholders, ",")
+
+		// Replace the placeholder markers with actual SQL placeholders
+		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 1)
+		batchSQL = strings.Replace(batchSQL, "TOTAL_IDS_PLACEHOLDER", inClause, 1)
+		batchSQL = strings.Replace(batchSQL, "UPDATE_IDS_PLACEHOLDER", inClause, 1)
+
+		// Create a single parameter array with all IDs (repeated 3 times for each IN clause)
+		// We need to repeat each ID 3 times (once for each IN clause)
+		var args []interface{}
+		for _, id := range artistIDBatch {
+			args = append(args, id) // For ROLE_IDS_PLACEHOLDER
+		}
+		for _, id := range artistIDBatch {
+			args = append(args, id) // For TOTAL_IDS_PLACEHOLDER
+		}
+		for _, id := range artistIDBatch {
+			args = append(args, id) // For UPDATE_IDS_PLACEHOLDER
+		}
+
+		// Now use Expr with the expanded SQL and all parameters
+		sqlizer := Expr(batchSQL, args...)
+
+		rowsAffected, err := r.executeSQL(sqlizer)
+		if err != nil {
+			return totalRowsAffected, fmt.Errorf("executing batch update for artist stats (batch %d): %w", batchCounter, err)
+		}
+		totalRowsAffected += rowsAffected
+	}
+
+	log.Debug(r.ctx, "RefreshStats: Successfully updated stats.", "totalArtistsProcessed", len(allTouchedArtistIDs), "totalDBRowsAffected", totalRowsAffected)
+	return totalRowsAffected, nil
 }
 
 func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
