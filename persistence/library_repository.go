@@ -136,7 +136,7 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		return err
 	}
 	// https://www.sqlite.org/pragma.html#pragma_optimize
-	_, err = r.executeSQL(rawSQL("PRAGMA optimize=0x10012;"))
+	_, err = r.executeSQL(Expr("PRAGMA optimize=0x10012;"))
 	return err
 }
 

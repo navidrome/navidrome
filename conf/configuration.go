@@ -66,6 +66,7 @@ type configOptions struct {
 	CoverArtPriority                string
 	CoverJpegQuality                int
 	ArtistArtPriority               string
+	LyricsPriority                  string
 	EnableGravatar                  bool
 	EnableFavourites                bool
 	EnableStarRating                bool
@@ -481,6 +482,7 @@ func init() {
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
