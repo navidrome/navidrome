@@ -17,3 +17,9 @@ func BaseName(filePath string) string {
 	p := path.Base(filePath)
 	return strings.TrimSuffix(p, path.Ext(p))
 }
+
+// FileExists checks if a file or directory exists
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || !os.IsNotExist(err)
+}

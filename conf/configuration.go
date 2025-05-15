@@ -66,6 +66,7 @@ type configOptions struct {
 	CoverArtPriority                string
 	CoverJpegQuality                int
 	ArtistArtPriority               string
+	LyricsPriority                  string
 	EnableGravatar                  bool
 	EnableFavourites                bool
 	EnableStarRating                bool
@@ -93,7 +94,8 @@ type configOptions struct {
 	PID                             pidOptions
 	Inspect                         inspectOptions
 	Subsonic                        subsonicOptions
-	LyricsPriority                  string
+	Plugins                         pluginsOptions
+	PluginConfig                    map[string]map[string]string
 
 	Agents       string
 	LastFM       lastfmOptions
@@ -121,6 +123,7 @@ type configOptions struct {
 	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
+	DevPluginCompilationTimeout      time.Duration
 }
 
 type scannerOptions struct {
@@ -205,6 +208,11 @@ type inspectOptions struct {
 	BacklogTimeout int
 }
 
+type pluginsOptions struct {
+	Enabled bool
+	Folder  string
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -241,6 +249,20 @@ func Load(noConfigDump bool) {
 	err = os.MkdirAll(Server.CacheFolder, os.ModePerm)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
+		os.Exit(1)
+	}
+
+	if Server.Plugins.Folder == "" {
+		Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
+	}
+	err = os.MkdirAll(Server.Plugins.Folder, os.ModePerm)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
+		os.Exit(1)
+	}
+	// Set restrictive permissions on plugins folder (user only)
+	if err := os.Chmod(Server.Plugins.Folder, 0700); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error setting plugins folder permissions:", err)
 		os.Exit(1)
 	}
 
@@ -461,6 +483,7 @@ func init() {
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("enablegravatar", false)
 	viper.SetDefault("enablefavourites", true)
 	viper.SetDefault("enablestarrating", true)
@@ -531,7 +554,8 @@ func init() {
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 
-	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
+	viper.SetDefault("plugins.folder", "")
+	viper.SetDefault("plugins.enabled", false)
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)
@@ -552,6 +576,7 @@ func init() {
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
+	viper.SetDefault("devplugincompilationtimeout", time.Minute)
 }
 
 func InitConfig(cfgFile string) {
