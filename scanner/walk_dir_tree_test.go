@@ -19,8 +19,15 @@ import (
 
 var _ = Describe("walk_dir_tree", func() {
 	Describe("walkDirTree", func() {
-		var fsys storage.MusicFS
+		var (
+			fsys storage.MusicFS
+			job  *scanJob
+			ctx  context.Context
+		)
+
 		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			ctx = GinkgoT().Context()
 			fsys = &mockMusicFS{
 				FS: fstest.MapFS{
 					"root/a/.ndignore":       {Data: []byte("ignored/*")},
@@ -38,39 +45,37 @@ var _ = Describe("walk_dir_tree", func() {
 					"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("root/e/original")},
 				},
 			}
+			job = &scanJob{
+				fs:  fsys,
+				lib: model.Library{Path: "/music"},
+			}
 		})
 
-		Context("with symlinks enabled", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Scanner.FollowSymlinks = true
-			})
+		// Helper function to call walkDirTree and collect folders from the results channel
+		getFolders := func() map[string]*folderEntry {
+			results, err := walkDirTree(ctx, job)
+			Expect(err).ToNot(HaveOccurred())
 
-			It("walks all directories including symlinks", func() {
-				job := &scanJob{
-					fs:  fsys,
-					lib: model.Library{Path: "/music"},
+			folders := map[string]*folderEntry{}
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
 				}
-				ctx := context.Background()
-				results, err := walkDirTree(ctx, job)
-				Expect(err).ToNot(HaveOccurred())
+				return nil
+			})
+			_ = g.Wait()
+			return folders
+		}
 
-				folders := map[string]*folderEntry{}
+		DescribeTable("symlink handling",
+			func(followSymlinks bool, expectedFolderCount int) {
+				conf.Server.Scanner.FollowSymlinks = followSymlinks
+				folders := getFolders()
 
-				g := errgroup.Group{}
-				g.Go(func() error {
-					for folder := range results {
-						if folder.path == "." || folder.path == "root" {
-							continue // Skip root folders
-						}
-						folders[folder.path] = folder
-					}
-					return nil
-				})
-				_ = g.Wait()
+				Expect(folders).To(HaveLen(expectedFolderCount + 2)) // +2 for `.` and `root`
 
-				Expect(folders).To(HaveLen(7))
-				Expect(folders["root/a/ignored"].audioFiles).To(BeEmpty())
+				// Basic folder structure checks
 				Expect(folders["root/a"].audioFiles).To(SatisfyAll(
 					HaveLen(2),
 					HaveKey("f1.mp3"),
@@ -85,58 +90,17 @@ var _ = Describe("walk_dir_tree", func() {
 				Expect(folders["root/c"].audioFiles).To(BeEmpty())
 				Expect(folders["root/c"].imageFiles).To(BeEmpty())
 				Expect(folders).ToNot(HaveKey("root/d"))
-				Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
-			})
-		})
 
-		Context("with symlinks disabled", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Scanner.FollowSymlinks = false
-			})
-
-			It("skips symlinks", func() {
-				job := &scanJob{
-					fs:  fsys,
-					lib: model.Library{Path: "/music"},
+				// Symlink specific checks
+				if followSymlinks {
+					Expect(folders["root/e/symlink"].audioFiles).To(HaveLen(1))
+				} else {
+					Expect(folders).ToNot(HaveKey("root/e/symlink"))
 				}
-				ctx := context.Background()
-				results, err := walkDirTree(ctx, job)
-				Expect(err).ToNot(HaveOccurred())
-
-				folders := map[string]*folderEntry{}
-
-				g := errgroup.Group{}
-				g.Go(func() error {
-					for folder := range results {
-						if folder.path == "." || folder.path == "root" {
-							continue // Skip root folders
-						}
-						folders[folder.path] = folder
-					}
-					return nil
-				})
-				_ = g.Wait()
-
-				Expect(folders).To(HaveLen(6))
-				Expect(folders["root/a/ignored"].audioFiles).To(BeEmpty())
-				Expect(folders["root/a"].audioFiles).To(SatisfyAll(
-					HaveLen(2),
-					HaveKey("f1.mp3"),
-					HaveKey("f2.mp3"),
-				))
-				Expect(folders["root/a"].imageFiles).To(BeEmpty())
-				Expect(folders["root/b"].audioFiles).To(BeEmpty())
-				Expect(folders["root/b"].imageFiles).To(SatisfyAll(
-					HaveLen(1),
-					HaveKey("cover.jpg"),
-				))
-				Expect(folders["root/c"].audioFiles).To(BeEmpty())
-				Expect(folders["root/c"].imageFiles).To(BeEmpty())
-				Expect(folders).ToNot(HaveKey("root/d"))
-				Expect(folders).ToNot(HaveKey("root/e/symlink"))
-			})
-		})
+			},
+			Entry("with symlinks enabled", true, 7),
+			Entry("with symlinks disabled", false, 6),
+		)
 	})
 
 	Describe("helper functions", func() {
@@ -183,57 +147,50 @@ var _ = Describe("walk_dir_tree", func() {
 				)
 			})
 		})
-		Describe("isDirIgnored", func() {
-			It("returns false for normal dirs", func() {
-				Expect(isDirIgnored("empty_folder")).To(BeFalse())
-			})
-			It("returns true when folder name starts with a `.`", func() {
-				Expect(isDirIgnored(".hidden_folder")).To(BeTrue())
-			})
-			It("returns false when folder name starts with ellipses", func() {
-				Expect(isDirIgnored("...unhidden_folder")).To(BeFalse())
-			})
-			It("returns true when folder name is $Recycle.Bin", func() {
-				Expect(isDirIgnored("$Recycle.Bin")).To(BeTrue())
-			})
-			It("returns true when folder name is #snapshot", func() {
-				Expect(isDirIgnored("#snapshot")).To(BeTrue())
-			})
-		})
-	})
 
-	Describe("fullReadDir", func() {
-		var fsys fakeFS
-		var ctx context.Context
-		BeforeEach(func() {
-			ctx = context.Background()
-			fsys = fakeFS{MapFS: fstest.MapFS{
-				"root/a/f1": {},
-				"root/b/f2": {},
-				"root/c/f3": {},
-			}}
+		Describe("isDirIgnored", func() {
+			DescribeTable("returns expected result",
+				func(dirName string, expected bool) {
+					Expect(isDirIgnored(dirName)).To(Equal(expected))
+				},
+				Entry("normal dir", "empty_folder", false),
+				Entry("hidden dir", ".hidden_folder", true),
+				Entry("dir starting with ellipsis", "...unhidden_folder", false),
+				Entry("recycle bin", "$Recycle.Bin", true),
+				Entry("snapshot dir", "#snapshot", true),
+			)
 		})
-		It("reads all entries", func() {
-			dir, _ := fsys.Open("root")
-			entries := fullReadDir(ctx, dir.(fs.ReadDirFile))
-			Expect(entries).To(HaveLen(3))
-			Expect(entries[0].Name()).To(Equal("a"))
-			Expect(entries[1].Name()).To(Equal("b"))
-			Expect(entries[2].Name()).To(Equal("c"))
-		})
-		It("skips entries with permission error", func() {
-			fsys.failOn = "b"
-			dir, _ := fsys.Open("root")
-			entries := fullReadDir(ctx, dir.(fs.ReadDirFile))
-			Expect(entries).To(HaveLen(2))
-			Expect(entries[0].Name()).To(Equal("a"))
-			Expect(entries[1].Name()).To(Equal("c"))
-		})
-		It("aborts if it keeps getting 'readdirent: no such file or directory'", func() {
-			fsys.err = fs.ErrNotExist
-			dir, _ := fsys.Open("root")
-			entries := fullReadDir(ctx, dir.(fs.ReadDirFile))
-			Expect(entries).To(BeEmpty())
+
+		Describe("fullReadDir", func() {
+			var (
+				fsys fakeFS
+				ctx  context.Context
+			)
+
+			BeforeEach(func() {
+				ctx = GinkgoT().Context()
+				fsys = fakeFS{MapFS: fstest.MapFS{
+					"root/a/f1": {},
+					"root/b/f2": {},
+					"root/c/f3": {},
+				}}
+			})
+
+			DescribeTable("reading directory entries",
+				func(failOn string, expectedErr error, expectedNames []string) {
+					fsys.failOn = failOn
+					fsys.err = expectedErr
+					dir, _ := fsys.Open("root")
+					entries := fullReadDir(ctx, dir.(fs.ReadDirFile))
+					Expect(entries).To(HaveLen(len(expectedNames)))
+					for i, name := range expectedNames {
+						Expect(entries[i].Name()).To(Equal(name))
+					}
+				},
+				Entry("reads all entries", "", nil, []string{"a", "b", "c"}),
+				Entry("skips entries with permission error", "b", nil, []string{"a", "c"}),
+				Entry("aborts on fs.ErrNotExist", "", fs.ErrNotExist, []string{}),
+			)
 		})
 	})
 })
