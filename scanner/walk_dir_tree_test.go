@@ -35,10 +35,7 @@ var _ = Describe("walk_dir_tree", func() {
 					"root/d/f2.mp3":          {},
 					"root/d/f3.mp3":          {},
 					"root/e/original/f1.mp3": {},
-					"root/e/symlink":         {Mode: fs.ModeSymlink},
-				},
-				symlinks: map[string]string{
-					"root/e/symlink": "root/e/original",
+					"root/e/symlink":         {Mode: fs.ModeSymlink, Data: []byte("root/e/original")},
 				},
 			}
 		})
@@ -293,29 +290,38 @@ func getDirEntry(baseDir, name string) os.DirEntry {
 	panic(fmt.Sprintf("Could not find %s in %s", name, baseDir))
 }
 
+// mockMusicFS is a mock implementation of the MusicFS interface that supports symlinks
 type mockMusicFS struct {
 	storage.MusicFS
 	fs.FS
-	symlinks map[string]string
 }
 
+// Open resolves symlinks
 func (m *mockMusicFS) Open(name string) (fs.File, error) {
-	if target, ok := m.symlinks[name]; ok && conf.Server.Scanner.FollowSymlinks {
+	f, err := m.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	if info.Mode()&fs.ModeSymlink != 0 {
+		// For symlinks, read the target path from the Data field
+		target := string(m.FS.(fstest.MapFS)[name].Data)
+		f.Close()
 		return m.FS.Open(target)
 	}
-	return m.FS.Open(name)
+
+	return f, nil
 }
 
+// Stat uses Open to resolve symlinks
 func (m *mockMusicFS) Stat(name string) (fs.FileInfo, error) {
-	if target, ok := m.symlinks[name]; ok && conf.Server.Scanner.FollowSymlinks {
-		f, err := m.FS.Open(target)
-		if err != nil {
-			return nil, err
-		}
-		defer f.Close()
-		return f.Stat()
-	}
-	f, err := m.FS.Open(name)
+	f, err := m.Open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -323,19 +329,9 @@ func (m *mockMusicFS) Stat(name string) (fs.FileInfo, error) {
 	return f.Stat()
 }
 
+// ReadDir uses Open to resolve symlinks
 func (m *mockMusicFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	if target, ok := m.symlinks[name]; ok && conf.Server.Scanner.FollowSymlinks {
-		f, err := m.FS.Open(target)
-		if err != nil {
-			return nil, err
-		}
-		defer f.Close()
-		if dirFile, ok := f.(fs.ReadDirFile); ok {
-			return dirFile.ReadDir(-1)
-		}
-		return nil, fmt.Errorf("not a directory")
-	}
-	f, err := m.FS.Open(name)
+	f, err := m.Open(name)
 	if err != nil {
 		return nil, err
 	}
