@@ -108,18 +108,18 @@
         "role": "Rola"
       },
       "roles": {
-        "albumartist": "Albumeko artista |||| Albumeko artistak",
+        "albumartist": "Albumeko egilea |||| Albumeko artistak",
         "artist": "Artista |||| Artistak",
         "composer": "Konpositorea |||| Konpositoreak",
         "conductor": "Orkestra zuzendaria |||| Orkestra zuzendariak",
-        "lyricist": "Letren egilea |||| Letren egileak",
+        "lyricist": "Hitzen egilea |||| Hitzen egileak",
         "arranger": "Moldatzailea |||| Moldatzaileak",
         "producer": "Produktorea |||| Produktoreak",
         "director": "Zuzendaria |||| Zuzendaria",
         "engineer": "Teknikaria |||| Teknikariak",
-        "mixer": "Mixerra |||| Mixerrak",
+        "mixer": "Nahaslea |||| Nahasleak",
         "remixer": "Remixerra |||| Remixerrak",
-        "djmixer": "DJ mixerra |||| DJ mixerrak",
+        "djmixer": "DJ nahaslea |||| DJ nahasleak",
         "performer": "Interpretatzailea |||| Interpretatzaileak"
       }
     },
