@@ -36,8 +36,9 @@ watch: ##@Development Start Go tests in watch mode (re-run when code changes)
 	go tool ginkgo watch -tags=netgo -notify ./...
 .PHONY: watch
 
+PKG ?= ./...
 test: ##@Development Run Go tests
-	go test -tags netgo ./...
+	go test -tags netgo $(PKG)
 .PHONY: test
 
 testrace: ##@Development Run Go tests with race detector
