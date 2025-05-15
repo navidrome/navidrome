@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -14,73 +13,37 @@ const (
 	defaultCacheTTL = 24 * time.Hour
 )
 
-// cacheService is a singleton that manages caches for all plugins
-type cacheService struct {
-	caches     map[string]*ttlcache.Cache[string, interface{}]
-	manager    *Manager
-	mu         sync.RWMutex
-	defaultTTL time.Duration
-}
-
 // cacheServiceImpl implements the cache.CacheService interface
 type cacheServiceImpl struct {
 	pluginName string
-	manager    *Manager
+	cache      *ttlcache.Cache[string, any]
+	defaultTTL time.Duration
 }
 
-// newCacheService creates a new cacheService instance
-func newCacheService(manager *Manager) *cacheService {
-	return &cacheService{
-		caches:     make(map[string]*ttlcache.Cache[string, interface{}]),
-		manager:    manager,
-		defaultTTL: defaultCacheTTL,
+// newCacheService creates a new cacheServiceImpl instance
+func newCacheService(pluginName string) *cacheServiceImpl {
+	opts := []ttlcache.Option[string, any]{
+		ttlcache.WithTTL[string, any](defaultCacheTTL),
 	}
-}
-
-// HostFunctions returns the host functions for a specific plugin
-func (s *cacheService) HostFunctions(pluginName string) *cacheServiceImpl {
-	return &cacheServiceImpl{
-		pluginName: pluginName,
-		manager:    s.manager,
-	}
-}
-
-// getCache gets or creates a cache for a plugin
-func (s *cacheService) getCache(ctx context.Context, pluginName string) *ttlcache.Cache[string, interface{}] {
-	s.mu.RLock()
-	cache, ok := s.caches[pluginName]
-	s.mu.RUnlock()
-
-	if ok {
-		return cache
-	}
-
-	// Need to create a new cache
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Double-check, another goroutine might have created it
-	if cache, ok = s.caches[pluginName]; ok {
-		return cache
-	}
-
-	// Create a new cache
-	opts := []ttlcache.Option[string, interface{}]{
-		ttlcache.WithTTL[string, interface{}](s.defaultTTL),
-		ttlcache.WithDisableTouchOnHit[string, interface{}](),
-	}
-	cache = ttlcache.New[string, interface{}](opts...)
+	cache := ttlcache.New[string, any](opts...)
 
 	// Start the janitor goroutine to clean up expired entries
 	go cache.Start()
 
-	s.caches[pluginName] = cache
-	log.Debug(ctx, "Created new plugin cache", "plugin", pluginName)
-	return cache
+	return &cacheServiceImpl{
+		cache:      cache,
+		pluginName: pluginName,
+		defaultTTL: defaultCacheTTL,
+	}
+}
+
+// mapKey combines the plugin name and a provided key to create a unique cache key.
+func (s *cacheServiceImpl) mapKey(key string) string {
+	return s.pluginName + ":" + key
 }
 
 // getTTL converts seconds to a duration, using default if 0
-func (s *cacheService) getTTL(seconds int64) time.Duration {
+func (s *cacheServiceImpl) getTTL(seconds int64) time.Duration {
 	if seconds <= 0 {
 		return s.defaultTTL
 	}
@@ -89,17 +52,17 @@ func (s *cacheService) getTTL(seconds int64) time.Duration {
 
 // setCacheValue is a generic function to set a value in the cache
 func setCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string, value T, ttlSeconds int64) (*cacheproto.SetResponse, error) {
-	c := cs.manager.cacheService.getCache(ctx, cs.pluginName)
-	ttl := cs.manager.cacheService.getTTL(ttlSeconds)
-	c.Set(key, value, ttl)
+	ttl := cs.getTTL(ttlSeconds)
+	key = cs.mapKey(key)
+	cs.cache.Set(key, value, ttl)
 	return &cacheproto.SetResponse{Success: true}, nil
 }
 
 // getCacheValue is a generic function to get a value from the cache
 func getCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string, typeName string) (T, bool, error) {
+	key = cs.mapKey(key)
 	var zero T
-	c := cs.manager.cacheService.getCache(ctx, cs.pluginName)
-	item := c.Get(key)
+	item := cs.cache.Get(key)
 	if item == nil {
 		return zero, false, nil
 	}
@@ -170,25 +133,20 @@ func (s *cacheServiceImpl) GetBytes(ctx context.Context, req *cacheproto.GetRequ
 
 // Remove removes a value from the cache
 func (s *cacheServiceImpl) Remove(ctx context.Context, req *cacheproto.RemoveRequest) (*cacheproto.RemoveResponse, error) {
-	c := s.manager.cacheService.getCache(ctx, s.pluginName)
-	c.Delete(req.Key)
+	key := s.mapKey(req.Key)
+	s.cache.Delete(key)
 	return &cacheproto.RemoveResponse{Success: true}, nil
 }
 
 // Has checks if a key exists in the cache
 func (s *cacheServiceImpl) Has(ctx context.Context, req *cacheproto.HasRequest) (*cacheproto.HasResponse, error) {
-	c := s.manager.cacheService.getCache(ctx, s.pluginName)
-	item := c.Get(req.Key)
+	key := s.mapKey(req.Key)
+	item := s.cache.Get(key)
 	return &cacheproto.HasResponse{Exists: item != nil}, nil
 }
 
-// stopAllCaches stops all cache janitor routines
-func (s *cacheService) stopAllCaches() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for plugin, c := range s.caches {
-		c.Stop()
-		log.Debug("Stopped cache janitor", "plugin", plugin)
-	}
+// stopCache stops all cache janitor routines
+func (s *cacheServiceImpl) stopCache() {
+	s.cache.Stop()
+	log.Debug("Stopped cache janitor", "plugin", s.pluginName)
 }

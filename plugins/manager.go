@@ -105,7 +105,6 @@ type Manager struct {
 	mu               sync.RWMutex           // Protects plugins map
 	schedulerService *schedulerService      // Service for handling scheduled tasks
 	websocketService *websocketService      // Service for handling WebSocket connections
-	cacheService     *cacheService          // Service for handling in-memory cache operations
 	initialized      *initializedPlugins    // Tracks which plugins have been initialized
 	adapters         map[string]WasmPlugin  // Map of plugin name + capability to adapter
 }
@@ -127,7 +126,6 @@ func createManager() *Manager {
 	// Create the host services
 	m.schedulerService = newSchedulerService(m)
 	m.websocketService = newWebsocketService(m)
-	m.cacheService = newCacheService(m)
 
 	return m
 }
@@ -251,7 +249,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 		if err != nil {
 			return nil, err
 		}
-		cacheLib, err := loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, m.cacheService.HostFunctions(pluginName))
+		cacheLib, err := loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginName))
 		if err != nil {
 			return nil, err
 		}
