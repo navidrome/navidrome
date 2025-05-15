@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/db"
+	"github.com/navidrome/navidrome/dlna"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
@@ -27,6 +28,7 @@ var allProviders = wire.NewSet(
 	core.Set,
 	artwork.Set,
 	server.New,
+	dlna.New,
 	subsonic.New,
 	nativeapi.New,
 	public.New,
@@ -47,6 +49,12 @@ func CreateDataStore() model.DataStore {
 }
 
 func CreateServer() *server.Server {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateDLNAServer() *dlna.DLNAServer {
 	panic(wire.Build(
 		allProviders,
 	))
