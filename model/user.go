@@ -35,4 +35,6 @@ type UserRepository interface {
 	FindByUsername(username string) (*User, error)
 	// FindByUsernameWithPassword is the same as above, but also returns the decrypted password
 	FindByUsernameWithPassword(username string) (*User, error)
+	// FindByAPIKey finds a user by the provided API key
+	FindByAPIKey(key string) (*User, error)
 }
