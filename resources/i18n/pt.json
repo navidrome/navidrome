@@ -18,7 +18,6 @@
         "size": "Tamanho",
         "updatedAt": "Últ. Atualização",
         "bitRate": "Bitrate",
-        "bitDepth": "Profundidade de bits",
         "discSubtitle": "Sub-título do disco",
         "starred": "Favorita",
         "comment": "Comentário",
@@ -33,7 +32,9 @@
         "participants": "Outros Participantes",
         "tags": "Outras Tags",
         "mappedTags": "Tags mapeadas",
-        "rawTags": "Tags originais"
+        "rawTags": "Tags originais",
+        "bitDepth": "Profundidade de bits",
+        "sampleRate": "Sample rate"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -57,7 +58,6 @@
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
-        "date": "Data de Lançamento",
         "updatedAt": "Últ. Atualização",
         "comment": "Comentário",
         "rating": "Classificação",
@@ -72,7 +72,8 @@
         "releaseType": "Tipo",
         "grouping": "Agrupamento",
         "media": "Mídia",
-        "mood": "Mood"
+        "mood": "Mood",
+        "date": "Data de Lançamento"
       },
       "actions": {
         "playAll": "Tocar",
@@ -231,7 +232,6 @@
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
-      "empty": "Nenhum arquivo ausente",
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",
@@ -242,7 +242,8 @@
       },
       "notifications": {
         "removed": "Arquivo(s) ausente(s) removido(s)"
-      }
+      },
+      "empty": "Nenhum arquivo ausente"
     }
   },
   "ra": {
