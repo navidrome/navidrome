@@ -74,6 +74,7 @@ func createMPVCommand(deviceName string, filename string, socketName string) []s
 	split := strings.Split(fixCmd(conf.Server.MPVCmdTemplate), " ")
 	for i, s := range split {
 		s = strings.ReplaceAll(s, "%d", deviceName)
+		s = strings.ReplaceAll(s, "%p", conf.Server.MusicFolder)
 		s = strings.ReplaceAll(s, "%f", filename)
 		s = strings.ReplaceAll(s, "%s", socketName)
 		split[i] = s
