@@ -15,12 +15,12 @@ import (
 )
 
 type DiscordRPPlugin struct {
-	*discordRPC
+	rpc   *discordRPC
 	cfg   config.ConfigService
 	sched scheduler.SchedulerService
 }
 
-func (d DiscordRPPlugin) IsAuthorized(ctx context.Context, req *api.ScrobblerIsAuthorizedRequest) (*api.ScrobblerIsAuthorizedResponse, error) {
+func (d *DiscordRPPlugin) IsAuthorized(ctx context.Context, req *api.ScrobblerIsAuthorizedRequest) (*api.ScrobblerIsAuthorizedResponse, error) {
 	// Get plugin configuration
 	_, users, err := d.getConfig(ctx)
 	if err != nil {
@@ -35,9 +35,10 @@ func (d DiscordRPPlugin) IsAuthorized(ctx context.Context, req *api.ScrobblerIsA
 	}, nil
 }
 
-func (d DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.ScrobblerNowPlayingRequest) (*api.ScrobblerNowPlayingResponse, error) {
+func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.ScrobblerNowPlayingRequest) (*api.ScrobblerNowPlayingResponse, error) {
 	log.Printf("Setting presence for user %s, track: %s", request.Username, request.Track.Name)
 
+	// The plugin is stateless, we need to load the configuration every time
 	clientID, users, err := d.getConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config: %w", err)
@@ -49,23 +50,26 @@ func (d DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.ScrobblerN
 		return nil, fmt.Errorf("user '%s' not authorized", request.Username)
 	}
 
-	if err := d.connect(ctx, request.Username, userToken); err != nil {
+	// Make sure we have a connection
+	if err := d.rpc.connect(ctx, request.Username, userToken); err != nil {
 		return nil, fmt.Errorf("failed to connect to Discord: %w", err)
 	}
 
-	if _, err := d.sched.CancelSchedule(ctx, &scheduler.CancelRequest{ScheduleId: request.Username}); err != nil {
-		return nil, fmt.Errorf("failed to cancel schedule: %w", err)
+	// Cancel any existing completion schedule
+	if resp, _ := d.sched.CancelSchedule(ctx, &scheduler.CancelRequest{ScheduleId: request.Username}); resp.Error != "" {
+		return nil, fmt.Errorf("failed to cancel schedule: %s", resp.Error)
 	}
 
-	if err := d.sendActivity(ctx, request.Username, activity{
+	// Send activity update
+	if err := d.rpc.sendActivity(ctx, request.Username, activity{
 		Application: clientID,
 		Name:        "Navidrome",
 		Type:        2,
 		Details:     request.Track.Name,
 		State:       fmt.Sprintf("by %s", request.Track.GetArtists()[0].Name),
 		Timestamps: activityTimestamps{
-			Start: request.Timestamp,
-			End:   request.Timestamp + int64(request.Track.Length),
+			Start: request.Timestamp * 1000,
+			End:   (request.Timestamp + int64(request.Track.Length)) * 1000,
 		},
 		Assets: activityAssets{
 			LargeImage: "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/resources/album-placeholder.webp",
@@ -74,6 +78,7 @@ func (d DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.ScrobblerN
 		return nil, fmt.Errorf("failed to send activity: %w", err)
 	}
 
+	// Schedule a timer to clear the activity after the track completes
 	_, err = d.sched.ScheduleOneTime(ctx, &scheduler.ScheduleOneTimeRequest{
 		ScheduleId:   request.Username,
 		DelaySeconds: request.Track.Length + 5,
@@ -85,11 +90,11 @@ func (d DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.ScrobblerN
 	return nil, nil
 }
 
-func (d DiscordRPPlugin) Scrobble(context.Context, *api.ScrobblerScrobbleRequest) (*api.ScrobblerScrobbleResponse, error) {
+func (d *DiscordRPPlugin) Scrobble(context.Context, *api.ScrobblerScrobbleRequest) (*api.ScrobblerScrobbleResponse, error) {
 	return nil, nil
 }
 
-func (d DiscordRPPlugin) getConfig(ctx context.Context) (string, map[string]string, error) {
+func (d *DiscordRPPlugin) getConfig(ctx context.Context) (string, map[string]string, error) {
 	const (
 		clientIDKey = "clientid"
 		usersKey    = "users"
@@ -124,18 +129,22 @@ func (d DiscordRPPlugin) getConfig(ctx context.Context) (string, map[string]stri
 	return clientID, users, nil
 }
 
-func (d DiscordRPPlugin) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
+func (d *DiscordRPPlugin) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
 	log.Printf("Removing presence for user %s", req.ScheduleId)
-	if err := d.clearActivity(ctx, req.ScheduleId); err != nil {
+	if err := d.rpc.clearActivity(ctx, req.ScheduleId); err != nil {
 		return nil, fmt.Errorf("failed to clear activity: %w", err)
+	}
+	log.Printf("Disconnecting user %s", req.ScheduleId)
+	if err := d.rpc.disconnect(ctx, req.ScheduleId); err != nil {
+		return nil, fmt.Errorf("failed to disconnect from Discord: %w", err)
 	}
 	return nil, nil
 }
 
-var plugin = DiscordRPPlugin{
-	cfg:   config.NewConfigService(),
-	sched: scheduler.NewSchedulerService(),
-	discordRPC: &discordRPC{
+// Creates a new instance of the DiscordRPPlugin, with all host services as dependencies
+var plugin = &DiscordRPPlugin{
+	cfg: config.NewConfigService(),
+	rpc: &discordRPC{
 		ws:  websocket.NewWebSocketService(),
 		web: http.NewHttpService(),
 		mem: cache.NewCacheService(),
@@ -143,12 +152,17 @@ var plugin = DiscordRPPlugin{
 }
 
 func init() {
+	// Configure logging: No timestamps, no source file/line, prepend [Discord]
 	log.SetFlags(0)
 	log.SetPrefix("[Discord] ")
 
+	// Register plugin capabilities
 	api.RegisterScrobbler(plugin)
-	api.RegisterSchedulerCallback(plugin)
-	api.RegisterWebSocketCallback(plugin)
+	api.RegisterWebSocketCallback(plugin.rpc)
+
+	// Register named scheduler callbacks, and get the scheduler service for each
+	plugin.sched = api.RegisterNamedSchedulerCallback("close-activity", plugin)
+	plugin.rpc.sched = api.RegisterNamedSchedulerCallback("heartbeat", plugin.rpc)
 }
 
 func main() {}

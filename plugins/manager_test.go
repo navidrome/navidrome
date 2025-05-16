@@ -26,7 +26,7 @@ var _ = Describe("Plugin Manager", func() {
 			conf.Server.Plugins.Folder = originalPluginsFolder
 		})
 		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = "./plugins/testdata"
+		conf.Server.Plugins.Folder = testDataDir
 
 		ctx = GinkgoT().Context()
 		mgr = createManager()

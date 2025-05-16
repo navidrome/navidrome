@@ -10,9 +10,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const testDataDir = "plugins/testdata"
+
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
-	buildTestPlugins(t, "plugins/testdata")
+	buildTestPlugins(t, testDataDir)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")

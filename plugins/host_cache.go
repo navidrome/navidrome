@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -16,22 +17,27 @@ const (
 // cacheServiceImpl implements the cache.CacheService interface
 type cacheServiceImpl struct {
 	pluginName string
-	cache      *ttlcache.Cache[string, any]
 	defaultTTL time.Duration
 }
 
+var (
+	_cache        *ttlcache.Cache[string, any]
+	initCacheOnce sync.Once
+)
+
 // newCacheService creates a new cacheServiceImpl instance
 func newCacheService(pluginName string) *cacheServiceImpl {
-	opts := []ttlcache.Option[string, any]{
-		ttlcache.WithTTL[string, any](defaultCacheTTL),
-	}
-	cache := ttlcache.New[string, any](opts...)
+	initCacheOnce.Do(func() {
+		opts := []ttlcache.Option[string, any]{
+			ttlcache.WithTTL[string, any](defaultCacheTTL),
+		}
+		_cache = ttlcache.New[string, any](opts...)
 
-	// Start the janitor goroutine to clean up expired entries
-	go cache.Start()
+		// Start the janitor goroutine to clean up expired entries
+		go _cache.Start()
+	})
 
 	return &cacheServiceImpl{
-		cache:      cache,
 		pluginName: pluginName,
 		defaultTTL: defaultCacheTTL,
 	}
@@ -54,7 +60,7 @@ func (s *cacheServiceImpl) getTTL(seconds int64) time.Duration {
 func setCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string, value T, ttlSeconds int64) (*cacheproto.SetResponse, error) {
 	ttl := cs.getTTL(ttlSeconds)
 	key = cs.mapKey(key)
-	cs.cache.Set(key, value, ttl)
+	_cache.Set(key, value, ttl)
 	return &cacheproto.SetResponse{Success: true}, nil
 }
 
@@ -62,7 +68,7 @@ func setCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string,
 func getCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string, typeName string) (T, bool, error) {
 	key = cs.mapKey(key)
 	var zero T
-	item := cs.cache.Get(key)
+	item := _cache.Get(key)
 	if item == nil {
 		return zero, false, nil
 	}
@@ -134,19 +140,19 @@ func (s *cacheServiceImpl) GetBytes(ctx context.Context, req *cacheproto.GetRequ
 // Remove removes a value from the cache
 func (s *cacheServiceImpl) Remove(ctx context.Context, req *cacheproto.RemoveRequest) (*cacheproto.RemoveResponse, error) {
 	key := s.mapKey(req.Key)
-	s.cache.Delete(key)
+	_cache.Delete(key)
 	return &cacheproto.RemoveResponse{Success: true}, nil
 }
 
 // Has checks if a key exists in the cache
 func (s *cacheServiceImpl) Has(ctx context.Context, req *cacheproto.HasRequest) (*cacheproto.HasResponse, error) {
 	key := s.mapKey(req.Key)
-	item := s.cache.Get(key)
+	item := _cache.Get(key)
 	return &cacheproto.HasResponse{Exists: item != nil}, nil
 }
 
 // stopCache stops all cache janitor routines
 func (s *cacheServiceImpl) stopCache() {
-	s.cache.Stop()
+	_cache.Stop()
 	log.Debug("Stopped cache janitor", "plugin", s.pluginName)
 }

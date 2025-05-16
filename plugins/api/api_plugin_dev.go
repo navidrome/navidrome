@@ -2,6 +2,8 @@
 
 package api
 
+import "github.com/navidrome/navidrome/plugins/host/scheduler"
+
 // This file exists to provide stubs for the plugin registration functions when building for non-WASM targets.
 // This is useful for testing and development purposes, as it allows you to build and run your plugin code
 // without having to compile it to WASM.
@@ -24,5 +26,9 @@ func RegisterLifecycleManagement(LifecycleManagement) {
 }
 
 func RegisterWebSocketCallback(WebSocketCallback) {
+	panic("not implemented")
+}
+
+func RegisterNamedSchedulerCallback(name string, cb SchedulerCallback) scheduler.SchedulerService {
 	panic("not implemented")
 }

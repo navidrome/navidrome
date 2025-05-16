@@ -9,13 +9,15 @@ import (
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/cache"
 	"github.com/navidrome/navidrome/plugins/host/http"
+	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
 )
 
 type discordRPC struct {
-	ws  websocket.WebSocketService
-	web http.HttpService
-	mem cache.CacheService
+	ws    websocket.WebSocketService
+	web   http.HttpService
+	mem   cache.CacheService
+	sched scheduler.SchedulerService
 }
 
 // Discord WebSocket Gateway constants
@@ -23,6 +25,10 @@ const (
 	heartbeatOpCode = 1 // Heartbeat operation code
 	gateOpCode      = 2 // Identify operation code
 	presenceOpCode  = 3 // Presence update operation code
+)
+
+const (
+	heartbeatInterval = 41 // Heartbeat interval in seconds
 )
 
 type activity struct {
@@ -164,7 +170,29 @@ func (r *discordRPC) connect(ctx context.Context, username string, token string)
 		return fmt.Errorf("failed to send identify payload: %w", err)
 	}
 
+	// Schedule heartbeats for this user/connection
+	cronResp, _ := r.sched.ScheduleRecurring(ctx, &scheduler.ScheduleRecurringRequest{
+		CronExpression: fmt.Sprintf("@every %ds", heartbeatInterval),
+		ScheduleId:     username,
+	})
+	log.Printf("Scheduled heartbeat for user %s with ID %s", username, cronResp.ScheduleId)
+
 	log.Printf("Successfully authenticated user %s", username)
+	return nil
+}
+
+func (r *discordRPC) disconnect(ctx context.Context, username string) error {
+	if resp, _ := r.sched.CancelSchedule(ctx, &scheduler.CancelRequest{ScheduleId: username}); resp.Error != "" {
+		return fmt.Errorf("failed to cancel schedule: %s", resp.Error)
+	}
+	resp, _ := r.ws.Close(ctx, &websocket.CloseRequest{
+		ConnectionId: username,
+		Code:         1000,
+		Reason:       "Navidrome disconnect",
+	})
+	if resp.Error != "" {
+		return fmt.Errorf("failed to close WebSocket connection: %s", resp.Error)
+	}
 	return nil
 }
 
@@ -174,17 +202,20 @@ func (r *discordRPC) OnTextMessage(ctx context.Context, req *api.OnTextMessageRe
 	} else {
 		log.Printf("Received WebSocket message for connection '%s' (truncated): %s...", req.ConnectionId, req.Message[:1021])
 	}
+
+	// Parse the message. If it's a heartbeat_ack, store the sequence number.
 	message := map[string]any{}
 	err := json.Unmarshal([]byte(req.Message), &message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse WebSocket message: %w", err)
 	}
-	if seq := message["s"]; seq != nil {
-		log.Printf("Received heartbeat_ack for connection '%s': %f", req.ConnectionId, seq)
+	if v := message["s"]; v != nil {
+		seq := int64(v.(float64))
+		log.Printf("Received heartbeat_ack for connection '%s': %d", req.ConnectionId, seq)
 		resp, _ := r.mem.SetInt(ctx, &cache.SetIntRequest{
 			Key:        fmt.Sprintf("discord.seq.%s", req.ConnectionId),
-			Value:      int64(seq.(float64)),
-			TtlSeconds: 300,
+			Value:      seq,
+			TtlSeconds: heartbeatInterval * 2,
 		})
 		if !resp.Success {
 			return nil, fmt.Errorf("failed to store sequence number for user %s", req.ConnectionId)
@@ -193,17 +224,21 @@ func (r *discordRPC) OnTextMessage(ctx context.Context, req *api.OnTextMessageRe
 	return nil, nil
 }
 
-func (r *discordRPC) OnBinaryMessage(ctx context.Context, req *api.OnBinaryMessageRequest) (*api.OnBinaryMessageResponse, error) {
+func (r *discordRPC) OnBinaryMessage(_ context.Context, req *api.OnBinaryMessageRequest) (*api.OnBinaryMessageResponse, error) {
 	log.Printf("Received unexpected binary message for connection '%s'", req.ConnectionId)
 	return nil, nil
 }
 
-func (r *discordRPC) OnError(ctx context.Context, req *api.OnErrorRequest) (*api.OnErrorResponse, error) {
+func (r *discordRPC) OnError(_ context.Context, req *api.OnErrorRequest) (*api.OnErrorResponse, error) {
 	log.Printf("WebSocket error for connection '%s': %s", req.ConnectionId, req.Error)
 	return nil, nil
 }
 
-func (r *discordRPC) OnClose(ctx context.Context, req *api.OnCloseRequest) (*api.OnCloseResponse, error) {
+func (r *discordRPC) OnClose(_ context.Context, req *api.OnCloseRequest) (*api.OnCloseResponse, error) {
 	log.Printf("WebSocket connection '%s' closed with code %d: %s", req.ConnectionId, req.Code, req.Reason)
 	return nil, nil
+}
+
+func (r *discordRPC) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
+	return nil, r.sendHeartbeat(ctx, req.ScheduleId)
 }
