@@ -71,7 +71,7 @@ jobs:
           version: ${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v8
         with:
           version: latest
           problem-matchers: true
