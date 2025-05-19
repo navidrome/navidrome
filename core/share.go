@@ -5,11 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/utils/gg"
