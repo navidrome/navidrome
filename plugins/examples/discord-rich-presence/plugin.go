@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type DiscordRPPlugin struct {
@@ -66,14 +67,15 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 		Name:        "Navidrome",
 		Type:        2,
 		Details:     request.Track.Name,
-		State:       fmt.Sprintf("by %s", request.Track.GetArtists()[0].Name),
+		State:       d.getArtistList(request.Track),
 		Timestamps: activityTimestamps{
 			Start: request.Timestamp * 1000,
 			End:   (request.Timestamp + int64(request.Track.Length)) * 1000,
 		},
-		//Assets: activityAssets{
-		//	LargeImage: // TODO: Get album art
-		//},
+		Assets: activityAssets{
+			//	LargeImage: // TODO: Get album art
+			LargeText: request.Track.Album,
+		},
 	}); err != nil {
 		return nil, fmt.Errorf("failed to send activity: %w", err)
 	}
@@ -88,6 +90,10 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 	}
 
 	return nil, nil
+}
+
+func (d *DiscordRPPlugin) getArtistList(track *api.TrackInfo) string {
+	return strings.Join(slice.Map(track.Artists, func(a *api.Artist) string { return a.Name }), " • ")
 }
 
 func (d *DiscordRPPlugin) Scrobble(context.Context, *api.ScrobblerScrobbleRequest) (*api.ScrobblerScrobbleResponse, error) {

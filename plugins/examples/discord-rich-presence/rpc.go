@@ -51,6 +51,7 @@ type activityTimestamps struct {
 
 type activityAssets struct {
 	LargeImage string `json:"large_image"`
+	LargeText  string `json:"large_text"`
 }
 
 // PresencePayload is a struct that represents a presence update in Discord.
@@ -89,7 +90,7 @@ func (r *discordRPC) processImage(ctx context.Context, imageURL string, clientID
 			"Authorization": token,
 			"Content-Type":  "application/json",
 		},
-		Body: []byte(fmt.Sprintf(`{"urls":[%q]}`, imageURL)),
+		Body: fmt.Appendf(nil, `{"urls":[%q]}`, imageURL),
 	})
 	if err != nil || resp.Error != "" {
 		return r.processImage(ctx, defaultImage, clientID, token)
