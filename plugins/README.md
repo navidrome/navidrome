@@ -47,6 +47,164 @@ These services are defined in `plugins/host/` and implemented in corresponding h
 - Config service (in `plugins/host_config.go`) for accessing plugin-specific configuration
 - WebSocket service (in `plugins/host_websocket.go`) for WebSocket communication
 
+### Available Host Services
+
+The following host services are available to plugins:
+
+#### HttpService
+
+```protobuf
+// HTTP methods available to plugins
+service HttpService {
+  rpc Get(HttpRequest) returns (HttpResponse);
+  rpc Post(HttpRequest) returns (HttpResponse);
+  rpc Put(HttpRequest) returns (HttpResponse);
+  rpc Delete(HttpRequest) returns (HttpResponse);
+}
+```
+
+#### ConfigService
+
+```protobuf
+service ConfigService {
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+}
+```
+
+The ConfigService allows plugins to access Navidrome's configuration. See the [config.proto](host/config/config.proto) file for the full API.
+
+#### ArtworkService
+
+```protobuf
+service ArtworkService {
+    rpc GetArtistUrl(GetArtworkUrlRequest) returns (GetArtworkUrlResponse);
+    rpc GetAlbumUrl(GetArtworkUrlRequest) returns (GetArtworkUrlResponse);
+    rpc GetTrackUrl(GetArtworkUrlRequest) returns (GetArtworkUrlResponse);
+}
+```
+
+Provides methods to get public URLs for artwork images:
+
+- `GetArtistUrl(id string, size int) string`: Returns a public URL for an artist's artwork
+- `GetAlbumUrl(id string, size int) string`: Returns a public URL for an album's artwork
+- `GetTrackUrl(id string, size int) string`: Returns a public URL for a track's artwork
+
+The `size` parameter is optional (use 0 for original size). The URLs returned are based on the server's ShareURL configuration.
+
+Example:
+
+```go
+url := artwork.GetArtistUrl("123", 300) // Get artist artwork URL with size 300px
+url := artwork.GetAlbumUrl("456", 0)    // Get album artwork URL in original size
+```
+
+#### CacheService
+
+```protobuf
+service CacheService {
+    // Set a string value in the cache
+    rpc SetString(SetStringRequest) returns (SetResponse);
+
+    // Get a string value from the cache
+    rpc GetString(GetRequest) returns (GetStringResponse);
+
+    // Set an integer value in the cache
+    rpc SetInt(SetIntRequest) returns (SetResponse);
+
+    // Get an integer value from the cache
+    rpc GetInt(GetRequest) returns (GetIntResponse);
+
+    // Set a float value in the cache
+    rpc SetFloat(SetFloatRequest) returns (SetResponse);
+
+    // Get a float value from the cache
+    rpc GetFloat(GetRequest) returns (GetFloatResponse);
+
+    // Set a byte slice value in the cache
+    rpc SetBytes(SetBytesRequest) returns (SetResponse);
+
+    // Get a byte slice value from the cache
+    rpc GetBytes(GetRequest) returns (GetBytesResponse);
+
+    // Remove a value from the cache
+    rpc Remove(RemoveRequest) returns (RemoveResponse);
+
+    // Check if a key exists in the cache
+    rpc Has(HasRequest) returns (HasResponse);
+}
+```
+
+The CacheService provides a TTL-based cache for plugins. Each plugin gets its own isolated cache instance. By default, cached items expire after 24 hours unless a custom TTL is specified.
+
+Key features:
+
+- **Isolated Caches**: Each plugin has its own cache namespace, so different plugins can use the same key names without conflicts
+- **Typed Values**: Store and retrieve values with their proper types (string, int64, float64, or byte slice)
+- **Configurable TTL**: Set custom expiration times per item, or use the default 24-hour TTL
+- **Type Safety**: The system handles type checking, returning "not exists" if there's a type mismatch
+
+Example usage:
+
+```go
+// Store a string value with default TTL (24 hours)
+cacheService.SetString(ctx, &cache.SetStringRequest{
+    Key:   "user_preference",
+    Value: "dark_mode",
+})
+
+// Store an integer with custom TTL (5 minutes)
+cacheService.SetInt(ctx, &cache.SetIntRequest{
+    Key:        "api_call_count",
+    Value:      42,
+    TtlSeconds: 300, // 5 minutes
+})
+
+// Retrieve a value
+resp, err := cacheService.GetString(ctx, &cache.GetRequest{
+    Key: "user_preference",
+})
+if err != nil {
+    // Handle error
+}
+if resp.Exists {
+    // Use resp.Value
+} else {
+    // Key doesn't exist or has expired
+}
+
+// Check if a key exists
+hasResp, err := cacheService.Has(ctx, &cache.HasRequest{
+    Key: "api_call_count",
+})
+if hasResp.Exists {
+    // Key exists and hasn't expired
+}
+
+// Remove a value
+cacheService.Remove(ctx, &cache.RemoveRequest{
+    Key: "user_preference",
+})
+```
+
+See the [cache.proto](host/cache/cache.proto) file for the full API definition.
+
+#### SchedulerService
+
+The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
+
+- **One-time scheduling**: Schedule a callback to be executed once after a specified delay.
+- **Recurring scheduling**: Schedule a callback to be executed repeatedly according to a cron expression.
+
+Plugins using this service must implement the `SchedulerCallback` interface:
+
+```protobuf
+service SchedulerCallback {
+    rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
+}
+```
+
+The `IsRecurring` field in the request allows plugins to differentiate between one-time and recurring callbacks.
+
 ## Plugin System Implementation
 
 Navidrome's plugin system is built using the following key libraries:

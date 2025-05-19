@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/navidrome/navidrome/plugins/host/artwork"
 	"github.com/navidrome/navidrome/plugins/host/cache"
 	"github.com/navidrome/navidrome/plugins/host/config"
 	"github.com/navidrome/navidrome/plugins/host/http"
@@ -16,9 +17,10 @@ import (
 )
 
 type DiscordRPPlugin struct {
-	rpc   *discordRPC
-	cfg   config.ConfigService
-	sched scheduler.SchedulerService
+	rpc     *discordRPC
+	cfg     config.ConfigService
+	artwork artwork.ArtworkService
+	sched   scheduler.SchedulerService
 }
 
 func (d *DiscordRPPlugin) IsAuthorized(ctx context.Context, req *api.ScrobblerIsAuthorizedRequest) (*api.ScrobblerIsAuthorizedResponse, error) {
@@ -73,8 +75,8 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 			End:   (request.Timestamp + int64(request.Track.Length)) * 1000,
 		},
 		Assets: activityAssets{
-			//	LargeImage: // TODO: Get album art
-			LargeText: request.Track.Album,
+			LargeImage: d.imageURL(ctx, request),
+			LargeText:  request.Track.Album,
 		},
 	}); err != nil {
 		return nil, fmt.Errorf("failed to send activity: %w", err)
@@ -90,6 +92,15 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 	}
 
 	return nil, nil
+}
+
+func (d *DiscordRPPlugin) imageURL(ctx context.Context, request *api.ScrobblerNowPlayingRequest) string {
+	imageResp, _ := d.artwork.GetTrackUrl(ctx, &artwork.GetArtworkUrlRequest{Id: request.Track.Id, Size: 300})
+	imageURL := imageResp.Url
+	if strings.HasPrefix(imageURL, "http://localhost") {
+		return ""
+	}
+	return imageURL
 }
 
 func (d *DiscordRPPlugin) getArtistList(track *api.TrackInfo) string {
@@ -149,7 +160,8 @@ func (d *DiscordRPPlugin) OnSchedulerCallback(ctx context.Context, req *api.Sche
 
 // Creates a new instance of the DiscordRPPlugin, with all host services as dependencies
 var plugin = &DiscordRPPlugin{
-	cfg: config.NewConfigService(),
+	cfg:     config.NewConfigService(),
+	artwork: artwork.NewArtworkService(),
 	rpc: &discordRPC{
 		ws:  websocket.NewWebSocketService(),
 		web: http.NewHttpService(),

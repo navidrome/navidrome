@@ -3,9 +3,10 @@ package plugins
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative api/api.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/http/http.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/config/config.proto
-//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/websocket/websocket.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/scheduler/scheduler.proto
 //go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/cache/cache.proto
+//go:generate protoc --go-plugin_out=. --go-plugin_opt=paths=source_relative host/artwork/artwork.proto
 
 import (
 	"context"
@@ -21,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/api"
+	"github.com/navidrome/navidrome/plugins/host/artwork"
 	"github.com/navidrome/navidrome/plugins/host/cache"
 	"github.com/navidrome/navidrome/plugins/host/config"
 	"github.com/navidrome/navidrome/plugins/host/http"
@@ -235,27 +237,31 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 		// Load each host library
 		configLib, err := loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading config lib: %w", err)
 		}
 		httpLib, err := loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading http lib: %w", err)
 		}
 		schedulerLib, err := loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading scheduler lib: %w", err)
 		}
 		websocketLib, err := loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading websocket lib: %w", err)
 		}
 		cacheLib, err := loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginName))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error loading cache lib: %w", err)
+		}
+		artworkLib, err := loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
+		if err != nil {
+			return nil, fmt.Errorf("error loading artwork lib: %w", err)
 		}
 
 		// Combine the libraries
-		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib, websocketLib, cacheLib)
+		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib, websocketLib, cacheLib, artworkLib)
 		if err != nil {
 			return nil, err
 		}
