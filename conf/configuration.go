@@ -72,6 +72,7 @@ type configOptions struct {
 	EnableUserEditing               bool
 	EnableSharing                   bool
 	ShareURL                        string
+	DefaultShareExpiration          time.Duration
 	DefaultDownloadableShare        bool
 	DefaultTheme                    string
 	DefaultLanguage                 string
@@ -472,6 +473,7 @@ func init() {
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
+	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enableinsightscollector", true)
