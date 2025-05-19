@@ -57,11 +57,11 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 
 	// Cancel any existing completion schedule
 	if resp, _ := d.sched.CancelSchedule(ctx, &scheduler.CancelRequest{ScheduleId: request.Username}); resp.Error != "" {
-		return nil, fmt.Errorf("failed to cancel schedule: %s", resp.Error)
+		log.Printf("Ignoring failure to cancel schedule: %s", resp.Error)
 	}
 
 	// Send activity update
-	if err := d.rpc.sendActivity(ctx, request.Username, activity{
+	if err := d.rpc.sendActivity(ctx, clientID, request.Username, userToken, activity{
 		Application: clientID,
 		Name:        "Navidrome",
 		Type:        2,
@@ -71,9 +71,9 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 			Start: request.Timestamp * 1000,
 			End:   (request.Timestamp + int64(request.Track.Length)) * 1000,
 		},
-		Assets: activityAssets{
-			LargeImage: "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/resources/album-placeholder.webp",
-		},
+		//Assets: activityAssets{
+		//	LargeImage: // TODO: Get album art
+		//},
 	}); err != nil {
 		return nil, fmt.Errorf("failed to send activity: %w", err)
 	}

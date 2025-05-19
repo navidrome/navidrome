@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/cache"
@@ -29,8 +30,10 @@ const (
 
 const (
 	heartbeatInterval = 41 // Heartbeat interval in seconds
+	defaultImage      = "https://i.imgur.com/hb3XPzA.png"
 )
 
+// Activity is a struct that represents an activity in Discord.
 type activity struct {
 	Name        string             `json:"name"`
 	Type        int                `json:"type"`
@@ -50,6 +53,15 @@ type activityAssets struct {
 	LargeImage string `json:"large_image"`
 }
 
+// PresencePayload is a struct that represents a presence update in Discord.
+type presencePayload struct {
+	Activities []activity `json:"activities"`
+	Since      int64      `json:"since"`
+	Status     string     `json:"status"`
+	Afk        bool       `json:"afk"`
+}
+
+// IdentifyPayload is a struct that represents an identify payload in Discord.
 type identifyPayload struct {
 	Token      string             `json:"token"`
 	Intents    int                `json:"intents"`
@@ -62,15 +74,51 @@ type identifyProperties struct {
 	Device  string `json:"device"`
 }
 
-type presencePayload struct {
-	Activities []activity `json:"activities"`
-	Since      int64      `json:"since"`
-	Status     string     `json:"status"`
-	Afk        bool       `json:"afk"`
+func (r *discordRPC) processImage(ctx context.Context, imageURL string, clientID string, token string) (string, error) {
+	if imageURL == "" {
+		return r.processImage(ctx, defaultImage, clientID, token)
+	}
+
+	if strings.HasPrefix(imageURL, "mp:") {
+		return imageURL, nil
+	}
+
+	resp, err := r.web.Post(ctx, &http.HttpRequest{
+		Url: fmt.Sprintf("https://discord.com/api/v9/applications/%s/external-assets", clientID),
+		Headers: map[string]string{
+			"Authorization": token,
+			"Content-Type":  "application/json",
+		},
+		Body: []byte(fmt.Sprintf(`{"urls":[%q]}`, imageURL)),
+	})
+	if err != nil || resp.Error != "" {
+		return r.processImage(ctx, defaultImage, clientID, token)
+	}
+
+	var data []map[string]string
+	if err := json.Unmarshal(resp.Body, &data); err != nil {
+		return r.processImage(ctx, defaultImage, clientID, token)
+	}
+
+	if len(data) == 0 {
+		return r.processImage(ctx, defaultImage, clientID, token)
+	}
+
+	image := data[0]["external_asset_path"]
+	return fmt.Sprintf("mp:%s", image), nil
 }
 
-func (r *discordRPC) sendActivity(ctx context.Context, username string, data activity) error {
+func (r *discordRPC) sendActivity(ctx context.Context, clientID, username, token string, data activity) error {
 	log.Printf("Sending activity to for user %s: %#v", username, data)
+
+	processedImage, err := r.processImage(ctx, data.Assets.LargeImage, clientID, token)
+	if err != nil {
+		log.Printf("Failed to process image: %v", err)
+		// Continue without the image if processing fails
+	} else {
+		data.Assets.LargeImage = processedImage
+	}
+
 	presence := presencePayload{
 		Activities: []activity{data},
 		Status:     "dnd",
@@ -105,14 +153,14 @@ func (r *discordRPC) sendMessage(ctx context.Context, username string, opCode in
 }
 
 func (r *discordRPC) getDiscordGateway(ctx context.Context) (string, error) {
-	resp, err := r.web.Get(ctx, &http.HttpRequest{
+	resp, _ := r.web.Get(ctx, &http.HttpRequest{
 		Url: "https://discord.com/api/gateway",
 	})
-	if err != nil {
-		return "", fmt.Errorf("failed to get Discord gateway: %w", err)
+	if resp.Error != "" {
+		return "", fmt.Errorf("failed to get Discord gateway: %s", resp.Error)
 	}
 	var result map[string]string
-	err = json.Unmarshal(resp.Body, &result)
+	err := json.Unmarshal(resp.Body, &result)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse Discord gateway response: %w", err)
 	}
