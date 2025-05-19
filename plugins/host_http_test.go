@@ -98,8 +98,9 @@ var _ = Describe("httpServiceImpl", func() {
 			Url:       ts.URL,
 			TimeoutMs: 1,
 		})
-		Expect(resp).To(BeNil())
-		Expect(err).To(HaveOccurred())
+		Expect(err).To(BeNil())
+		Expect(resp).NotTo(BeNil())
+		Expect(resp.Error).To(ContainSubstring("deadline exceeded"))
 	})
 
 	It("should return error on context timeout", func() {
@@ -112,9 +113,9 @@ var _ = Describe("httpServiceImpl", func() {
 			Url:       ts.URL,
 			TimeoutMs: 1000,
 		})
-		Expect(resp).To(BeNil())
-		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError(context.DeadlineExceeded))
+		Expect(err).To(BeNil())
+		Expect(resp).NotTo(BeNil())
+		Expect(resp.Error).To(ContainSubstring("context deadline exceeded"))
 	})
 
 	It("should return error on context cancellation", func() {
@@ -130,8 +131,8 @@ var _ = Describe("httpServiceImpl", func() {
 			Url:       ts.URL,
 			TimeoutMs: 1000,
 		})
-		Expect(resp).To(BeNil())
-		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError(context.Canceled))
+		Expect(err).To(BeNil())
+		Expect(resp).NotTo(BeNil())
+		Expect(resp.Error).To(ContainSubstring("context canceled"))
 	})
 })

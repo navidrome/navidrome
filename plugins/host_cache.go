@@ -150,9 +150,3 @@ func (s *cacheServiceImpl) Has(ctx context.Context, req *cacheproto.HasRequest) 
 	item := _cache.Get(key)
 	return &cacheproto.HasResponse{Exists: item != nil}, nil
 }
-
-// stopCache stops all cache janitor routines
-func (s *cacheServiceImpl) stopCache() {
-	_cache.Stop()
-	log.Debug("Stopped cache janitor", "plugin", s.pluginName)
-}

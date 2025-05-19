@@ -18,10 +18,6 @@ var _ = Describe("CacheService", func() {
 		service = newCacheService("test_plugin")
 	})
 
-	AfterEach(func() {
-		service.stopCache()
-	})
-
 	Describe("getTTL", func() {
 		It("returns default TTL when seconds is 0", func() {
 			ttl := service.getTTL(0)
