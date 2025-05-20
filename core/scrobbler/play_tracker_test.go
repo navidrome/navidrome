@@ -86,7 +86,7 @@ var _ = Describe("PlayTracker", func() {
 
 	Describe("NowPlaying", func() {
 		It("sends track to agent", func() {
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeTrue())
 			Expect(fake.UserID).To(Equal("u-1"))
@@ -96,7 +96,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent if user has not authorized", func() {
 			fake.Authorized = false
 
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeFalse())
@@ -104,7 +104,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent if player is not enabled to send scrobbles", func() {
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeFalse())
@@ -112,7 +112,7 @@ var _ = Describe("PlayTracker", func() {
 		It("does not send track to agent if artist is unknown", func() {
 			track.Artist = consts.UnknownArtist
 
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeFalse())
@@ -125,9 +125,9 @@ var _ = Describe("PlayTracker", func() {
 			track2.ID = "456"
 			_ = ds.MediaFile(ctx).Put(&track2)
 			ctx = request.WithUser(context.Background(), model.User{UserName: "user-1"})
-			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			ctx = request.WithUser(context.Background(), model.User{UserName: "user-2"})
-			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456")
+			_ = tracker.NowPlaying(ctx, "player-2", "player-two", "456", 0)
 
 			playing, err := tracker.GetNowPlaying(ctx)
 
@@ -238,26 +238,26 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("registers and uses plugin scrobbler for NowPlaying", func() {
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pluginFake.NowPlayingCalled).To(BeTrue())
 		})
 
 		It("removes plugin scrobbler if not present anymore", func() {
 			// First call: plugin present
-			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			Expect(pluginFake.NowPlayingCalled).To(BeTrue())
 			pluginFake.NowPlayingCalled = false
 			// Remove plugin
 			pluginLoader.names = []string{}
-			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			_ = tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			Expect(pluginFake.NowPlayingCalled).To(BeFalse())
 		})
 
 		It("calls both builtin and plugin scrobblers for NowPlaying", func() {
 			fake.NowPlayingCalled = false
 			pluginFake.NowPlayingCalled = false
-			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123", 0)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.NowPlayingCalled).To(BeTrue())
 			Expect(pluginFake.NowPlayingCalled).To(BeTrue())
@@ -331,7 +331,7 @@ func (f *fakeScrobbler) IsAuthorized(ctx context.Context, userId string) bool {
 	return f.Error == nil && f.Authorized
 }
 
-func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	f.NowPlayingCalled = true
 	if f.Error != nil {
 		return f.Error
@@ -373,8 +373,8 @@ func (m *mockBufferedScrobbler) IsAuthorized(ctx context.Context, userId string)
 	return m.wrapped.IsAuthorized(ctx, userId)
 }
 
-func (m *mockBufferedScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
-	return m.wrapped.NowPlaying(ctx, userId, track)
+func (m *mockBufferedScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
+	return m.wrapped.NowPlaying(ctx, userId, track, position)
 }
 
 func (m *mockBufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {

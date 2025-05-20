@@ -71,8 +71,8 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 		Details:     request.Track.Name,
 		State:       d.getArtistList(request.Track),
 		Timestamps: activityTimestamps{
-			Start: request.Timestamp * 1000,
-			End:   (request.Timestamp + int64(request.Track.Length)) * 1000,
+			Start: (request.Timestamp - int64(request.Track.Position)) * 1000,
+			End:   (request.Timestamp - int64(request.Track.Position) + int64(request.Track.Length)) * 1000,
 		},
 		Assets: activityAssets{
 			LargeImage: d.imageURL(ctx, request),

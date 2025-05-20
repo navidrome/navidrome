@@ -8,6 +8,7 @@ package api
 
 import (
 	context "context"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
@@ -650,6 +651,7 @@ type TrackInfo struct {
 	Artists      []*Artist `protobuf:"bytes,6,rep,name=artists,proto3" json:"artists,omitempty"`
 	AlbumArtists []*Artist `protobuf:"bytes,7,rep,name=album_artists,json=albumArtists,proto3" json:"album_artists,omitempty"`
 	Length       int32     `protobuf:"varint,8,opt,name=length,proto3" json:"length,omitempty"` // seconds
+	Position     int32     `protobuf:"varint,9,opt,name=position,proto3" json:"position,omitempty"`
 }
 
 func (x *TrackInfo) ProtoReflect() protoreflect.Message {
@@ -708,6 +710,13 @@ func (x *TrackInfo) GetAlbumArtists() []*Artist {
 func (x *TrackInfo) GetLength() int32 {
 	if x != nil {
 		return x.Length
+	}
+	return 0
+}
+
+func (x *TrackInfo) GetPosition() int32 {
+	if x != nil {
+		return x.Position
 	}
 	return 0
 }
