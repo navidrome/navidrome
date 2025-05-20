@@ -116,6 +116,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":    fullTextFilter(r.tableName),
 		"starred": booleanFilter,
 		"role":    roleFilter,
+		"missing": missingArtistFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -129,6 +130,15 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 
 func roleFilter(_ string, role any) Sqlizer {
 	return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
+}
+
+func missingArtistFilter(_ string, value any) Sqlizer {
+	missing := strings.ToLower(value.(string)) == "true"
+	cond := ConcatExpr("album.album_artist_id = artist.id and album.missing = false")
+	if missing {
+		return NotExists("album", cond)
+	}
+	return Exists("album", cond)
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
@@ -209,6 +219,12 @@ func (r *artistRepository) GetIndex(roles ...model.Role) (model.ArtistIndexes, e
 			return roleFilter("role", r)
 		})
 		options.Filters = And(roleFilters)
+	}
+	// Filter out artists that only have missing albums
+	if options.Filters == nil {
+		options.Filters = missingArtistFilter("missing", "false")
+	} else {
+		options.Filters = And{missingArtistFilter("missing", "false"), options.Filters}
 	}
 	artists, err := r.GetAll(options)
 	if err != nil {
@@ -380,7 +396,14 @@ func (r *artistRepository) RefreshStats() (int64, error) {
 
 func (r *artistRepository) Search(q string, offset int, size int, includeMissing bool) (model.Artists, error) {
 	var dba dbArtists
-	err := r.doSearch(r.selectArtist(), q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
+	sqb := r.selectArtist()
+	if !includeMissing {
+		// Add filter to exclude artists with only missing albums
+		sqb = sqb.Where(missingArtistFilter("missing", "false"))
+		// Avoid generic missing filtering which does not apply to artists
+		includeMissing = true
+	}
+	err := r.doSearch(sqb, q, offset, size, includeMissing, &dba, "json_extract(stats, '$.total.m') desc", "name")
 	if err != nil {
 		return nil, err
 	}

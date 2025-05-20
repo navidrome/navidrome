@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -87,6 +88,83 @@ var _ = Describe("ArtistRepository", func() {
 		When("PreferSortTags is true", func() {
 			BeforeEach(func() {
 				conf.Server.PreferSortTags = true
+			})
+
+			Describe("missing albums", func() {
+				var albumRepo *albumRepository
+
+				BeforeEach(func() {
+					ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+					albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+					_, err := albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", true).Where(sq.Eq{"id": albumSgtPeppers.ID}))
+					Expect(err).ToNot(HaveOccurred())
+					_, err = albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", true).Where(sq.Eq{"id": albumAbbeyRoad.ID}))
+					Expect(err).ToNot(HaveOccurred())
+					DeferCleanup(func() {
+						_, _ = albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", false).Where(sq.Eq{"id": albumSgtPeppers.ID}))
+						_, _ = albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", false).Where(sq.Eq{"id": albumAbbeyRoad.ID}))
+					})
+				})
+
+				Describe("Search", func() {
+
+					It("filters artists with only missing albums", func() {
+						artists, err := repo.Search("beatles", 0, 10, false)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(artists).To(BeEmpty())
+
+						artists, err = repo.Search("kraftwerk", 0, 10, false)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(artists).To(HaveLen(1))
+						Expect(artists[0].ID).To(Equal(artistKraftwerk.ID))
+					})
+
+					It("returns missing artists when includeMissing is true", func() {
+						artists, err := repo.Search("beatles", 0, 10, true)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(artists).To(HaveLen(1))
+						Expect(artists[0].ID).To(Equal(artistBeatles.ID))
+					})
+				})
+
+				It("excludes artists with only missing albums", func() {
+					idx, err := repo.GetIndex()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(idx).To(HaveLen(1))
+					Expect(idx[0].Artists).To(HaveLen(1))
+					Expect(idx[0].Artists[0].ID).To(Equal(artistKraftwerk.ID))
+				})
+			})
+
+			Describe("missing filter", func() {
+				var albumRepo *albumRepository
+
+				BeforeEach(func() {
+					ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+					albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+					_, err := albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", true).Where(sq.Eq{"id": albumSgtPeppers.ID}))
+					Expect(err).ToNot(HaveOccurred())
+					_, err = albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", true).Where(sq.Eq{"id": albumAbbeyRoad.ID}))
+					Expect(err).ToNot(HaveOccurred())
+					DeferCleanup(func() {
+						_, _ = albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", false).Where(sq.Eq{"id": albumSgtPeppers.ID}))
+						_, _ = albumRepo.executeSQL(sq.Update(albumRepo.tableName).Set("missing", false).Where(sq.Eq{"id": albumAbbeyRoad.ID}))
+					})
+				})
+
+				It("filters out artists without non-missing albums", func() {
+					artists, err := repo.GetAll(model.QueryOptions{Filters: missingArtistFilter("missing", "false")})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(artists).To(HaveLen(1))
+					Expect(artists[0].ID).To(Equal(artistKraftwerk.ID))
+				})
+
+				It("returns artists with only missing albums when true", func() {
+					artists, err := repo.GetAll(model.QueryOptions{Filters: missingArtistFilter("missing", "true")})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(artists).To(HaveLen(1))
+					Expect(artists[0].ID).To(Equal(artistBeatles.ID))
+				})
 			})
 			It("returns the index when PreferSortTags is true and SortArtistName is not empty", func() {
 				// Set SortArtistName to "Foo" for Beatles
