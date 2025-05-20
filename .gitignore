@@ -25,3 +25,4 @@ docker-compose.yml
 binaries
 navidrome-master
 *.exe
+bin/
