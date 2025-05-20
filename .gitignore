@@ -24,4 +24,5 @@ docker-compose.yml
 !contrib/docker-compose.yml
 binaries
 navidrome-master
-/bin/golangci-lint
+*.exe
+bin/
