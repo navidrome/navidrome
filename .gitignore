@@ -5,6 +5,7 @@
 /navidrome
 /iTunes*.xml
 /tmp
+/bin
 data/*
 vendor/*/
 wiki

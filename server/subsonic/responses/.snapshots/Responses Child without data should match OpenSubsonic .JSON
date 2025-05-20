@@ -15,6 +15,7 @@
         "sortName": "",
         "mediaType": "",
         "musicBrainzId": "",
+        "isrc": [],
         "genres": [],
         "replayGain": {},
         "channelCount": 0,
