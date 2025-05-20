@@ -176,6 +176,7 @@ type OpenSubsonicChild struct {
 	SortName           string              `xml:"sortName,attr,omitempty"           json:"sortName"`
 	MediaType          MediaType           `xml:"mediaType,attr,omitempty"          json:"mediaType"`
 	MusicBrainzId      string              `xml:"musicBrainzId,attr,omitempty"      json:"musicBrainzId"`
+	Isrc               Array[string]       `xml:"isrc,omitempty"                  json:"isrc"`
 	Genres             Array[ItemGenre]    `xml:"genres,omitempty"                  json:"genres"`
 	ReplayGain         ReplayGain          `xml:"replayGain,omitempty"              json:"replayGain"`
 	ChannelCount       int32               `xml:"channelCount,attr,omitempty"       json:"channelCount"`
