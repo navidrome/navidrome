@@ -116,6 +116,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":    fullTextFilter(r.tableName),
 		"starred": booleanFilter,
 		"role":    roleFilter,
+		"missing": missingArtistFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -129,6 +130,15 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 
 func roleFilter(_ string, role any) Sqlizer {
 	return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
+}
+
+func missingArtistFilter(_ string, value any) Sqlizer {
+	missing := strings.ToLower(value.(string)) == "true"
+	cond := ConcatExpr("album.album_artist_id = artist.id and album.missing = false")
+	if missing {
+		return NotExists("album", cond)
+	}
+	return Exists("album", cond)
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
