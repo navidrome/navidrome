@@ -60,7 +60,7 @@ func (w *wasmScrobblerPlugin) IsAuthorized(ctx context.Context, userId string) b
 	return err == nil && result
 }
 
-func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	username, _ := request.UsernameFrom(ctx)
 	if username == "" {
 		u, ok := request.UserFrom(ctx)
@@ -86,6 +86,7 @@ func (w *wasmScrobblerPlugin) NowPlaying(ctx context.Context, userId string, tra
 		Artists:      artists,
 		AlbumArtists: albumArtists,
 		Length:       int32(track.Duration),
+		Position:     int32(position),
 	}
 	_, err := callMethod(ctx, w, "NowPlaying", func(inst api.Scrobbler) (struct{}, error) {
 		resp, err := inst.NowPlaying(ctx, &api.ScrobblerNowPlayingRequest{
