@@ -42,8 +42,8 @@ func (b *bufferedScrobbler) IsAuthorized(ctx context.Context, userId string) boo
 	return b.wrapped.IsAuthorized(ctx, userId)
 }
 
-func (b *bufferedScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
-	return b.wrapped.NowPlaying(ctx, userId, track)
+func (b *bufferedScrobbler) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
+	return b.wrapped.NowPlaying(ctx, userId, track, position)
 }
 
 func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {

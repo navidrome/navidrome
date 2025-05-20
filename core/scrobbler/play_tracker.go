@@ -19,6 +19,7 @@ import (
 type NowPlayingInfo struct {
 	MediaFile  model.MediaFile
 	Start      time.Time
+	Position   int
 	Username   string
 	PlayerId   string
 	PlayerName string
@@ -30,7 +31,7 @@ type Submission struct {
 }
 
 type PlayTracker interface {
-	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
+	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
 }
@@ -164,7 +165,7 @@ func (p *playTracker) getActiveScrobblers() map[string]Scrobbler {
 	return combined
 }
 
-func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
+func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
 	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(trackId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
@@ -175,21 +176,26 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	info := NowPlayingInfo{
 		MediaFile:  *mf,
 		Start:      time.Now(),
+		Position:   position,
 		Username:   user.UserName,
 		PlayerId:   playerId,
 		PlayerName: playerName,
 	}
 
-	ttl := time.Duration(int(mf.Duration)+5) * time.Second
+	remaining := int(mf.Duration) - position
+	if remaining < 0 {
+		remaining = 0
+	}
+	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, mf)
+		p.dispatchNowPlaying(ctx, user.ID, mf, position)
 	}
 	return nil
 }
 
-func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile) {
+func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
@@ -199,8 +205,8 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 		if !s.IsAuthorized(ctx, userId) {
 			continue
 		}
-		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-		err := s.NowPlaying(ctx, userId, t)
+		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist, "position", position)
+		err := s.NowPlaying(ctx, userId, t, position)
 		if err != nil {
 			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			continue

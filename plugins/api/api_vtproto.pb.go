@@ -8,9 +8,10 @@ package api
 
 import (
 	fmt "fmt"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	bits "math/bits"
+
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -1129,6 +1130,11 @@ func (m *TrackInfo) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = encodeVarint(dAtA, i, uint64(m.Length))
 		i--
 		dAtA[i] = 0x40
+	}
+	if m.Position != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Position))
+		i--
+		dAtA[i] = 0x48
 	}
 	if len(m.AlbumArtists) > 0 {
 		for iNdEx := len(m.AlbumArtists) - 1; iNdEx >= 0; iNdEx-- {
@@ -2373,6 +2379,9 @@ func (m *TrackInfo) SizeVT() (n int) {
 	}
 	if m.Length != 0 {
 		n += 1 + sov(uint64(m.Length))
+	}
+	if m.Position != 0 {
+		n += 1 + sov(uint64(m.Position))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5503,6 +5512,25 @@ func (m *TrackInfo) UnmarshalVT(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Length |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Position", wireType)
+			}
+			m.Position = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Position |= int32(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

@@ -148,6 +148,7 @@ message TrackInfo {
   repeated Artist artists = 6;
   repeated Artist album_artists = 7;
   int32 length = 8; // seconds
+  int32 position = 9; // seconds
 }
 
 message ScrobblerNowPlayingRequest {

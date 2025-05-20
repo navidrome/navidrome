@@ -203,7 +203,7 @@ var _ = Describe("lastfmAgent", func() {
 			It("calls Last.fm with correct params", func() {
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
-				err := agent.NowPlaying(ctx, "user-1", track)
+				err := agent.NowPlaying(ctx, "user-1", track, 0)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
@@ -220,7 +220,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
-				err := agent.NowPlaying(ctx, "user-2", track)
+				err := agent.NowPlaying(ctx, "user-2", track, 0)
 				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 			})
 		})

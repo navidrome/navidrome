@@ -37,7 +37,7 @@ var _ = Describe("BufferedScrobbler", func() {
 
 	It("forwards NowPlaying calls", func() {
 		track := &model.MediaFile{ID: "123", Title: "Test Track"}
-		Expect(bs.NowPlaying(ctx, "user1", track)).To(Succeed())
+		Expect(bs.NowPlaying(ctx, "user1", track, 0)).To(Succeed())
 		Expect(scr.NowPlayingCalled).To(BeTrue())
 		Expect(scr.UserID).To(Equal("user1"))
 		Expect(scr.Track).To(Equal(track))
