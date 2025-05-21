@@ -482,6 +482,8 @@ type ScanStatus struct {
 	FolderCount int64      `xml:"folderCount,attr"         json:"folderCount"`
 	LastScan    *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
 	Error       string     `xml:"error,attr"               json:"error"`
+	ScanType    string     `xml:"scanType,attr"            json:"scanType"`
+	ElapsedTime int64      `xml:"elapsedTime,attr"         json:"elapsedTime"`
 }
 
 type Lyrics struct {

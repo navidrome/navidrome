@@ -15,6 +15,8 @@ const (
 	InitialSetupFlagKey           = "InitialSetup"
 	FullScanAfterMigrationFlagKey = "FullScanAfterMigration"
 	LastScanErrorKey              = "LastScanError"
+	LastScanTypeKey               = "LastScanType"
+	LastScanStartTimeKey          = "LastScanStartTime"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"

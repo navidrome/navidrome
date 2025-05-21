@@ -12,6 +12,7 @@ import {
   CardActions,
   Divider,
   Box,
+  Typography,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
 import { BiError, BiCheckCircle } from 'react-icons/bi'
@@ -20,7 +21,7 @@ import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
 import { scanStatusUpdate } from '../actions'
 import { useInterval } from '../common'
-import { formatDuration } from '../utils'
+import { formatDuration, formatShortDuration } from '../utils'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -40,7 +41,16 @@ const useStyles = makeStyles((theme) => ({
     zIndex: 2,
   },
   counterStatus: {
-    minWidth: '15em',
+    minWidth: '20em',
+  },
+  error: {
+    color: theme.palette.error.main,
+  },
+  card: {
+    maxWidth: 'none',
+  },
+  cardContent: {
+    padding: theme.spacing(2, 3),
   },
 }))
 
@@ -90,8 +100,19 @@ const ActivityPanel = () => {
   }, [serverStart, notify])
 
   const tooltipTitle = scanStatus.error
-    ? `${translate('activity.lastScan')}: ${scanStatus.error}`
+    ? `${translate('activity.status')}: ${scanStatus.error}`
     : translate('activity.title')
+
+  const lastScanType = (() => {
+    switch (scanStatus.scanType) {
+      case 'full':
+        return translate('activity.fullScan')
+      case 'quick':
+        return translate('activity.quickScan')
+      default:
+        return ''
+    }
+  })()
 
   return (
     <div className={classes.wrapper}>
@@ -121,8 +142,8 @@ const ActivityPanel = () => {
         open={open}
         onClose={handleMenuClose}
       >
-        <Card>
-          <CardContent>
+        <Card className={classes.card}>
+          <CardContent className={classes.cardContent}>
             <Box display="flex" className={classes.counterStatus}>
               <Box component="span" flex={2}>
                 {translate('activity.serverUptime')}:
@@ -133,7 +154,7 @@ const ActivityPanel = () => {
             </Box>
           </CardContent>
           <Divider />
-          <CardContent>
+          <CardContent className={classes.cardContent}>
             <Box display="flex" className={classes.counterStatus}>
               <Box component="span" flex={2}>
                 {translate('activity.totalScanned')}:
@@ -142,22 +163,36 @@ const ActivityPanel = () => {
                 {scanStatus.folderCount || '-'}
               </Box>
             </Box>
+
+            <Box display="flex" className={classes.counterStatus} mt={2}>
+              <Box component="span" flex={2}>
+                {translate('activity.scanType')}:
+              </Box>
+              <Box component="span" flex={1}>
+                {lastScanType}
+              </Box>
+            </Box>
+
+            <Box display="flex" className={classes.counterStatus} mt={2}>
+              <Box component="span" flex={2}>
+                {translate('activity.elapsedTime')}:
+              </Box>
+              <Box component="span" flex={1}>
+                {formatShortDuration(scanStatus.elapsedTime)}
+              </Box>
+            </Box>
+
+            {scanStatus.error && (
+              <Box display="flex" flexDirection="column" mt={2} className={classes.error}>
+                <Typography variant="subtitle2">
+                  {translate('activity.status')}:
+                </Typography>
+                <Typography variant="body2">
+                  {scanStatus.error}
+                </Typography>
+              </Box>
+            )}
           </CardContent>
-          {scanStatus.error && (
-            <>
-              <Divider />
-              <CardContent>
-                <Box display="flex" className={classes.counterStatus}>
-                  <Box component="span" flex={1}>
-                    {translate('activity.lastScan')}:
-                  </Box>
-                  <Box component="span" flex={2}>
-                    {scanStatus.error}
-                  </Box>
-                </Box>
-              </CardContent>
-            </>
-          )}
           <Divider />
           <CardActions>
             <Tooltip title={translate('activity.quickScan')}>

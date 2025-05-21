@@ -500,7 +500,9 @@
     "fullScan": "Full Scan",
     "serverUptime": "Server Uptime",
     "serverDown": "OFFLINE",
-    "lastScan": "Last Scan"
+    "scanType": "Type",
+    "status": "Scan Error",
+    "elapsedTime": "Elapsed Time"
   },
   "help": {
     "title": "Navidrome Hotkeys",
