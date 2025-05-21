@@ -117,7 +117,7 @@ type controller struct {
 	changesDetected bool
 }
 
-// getScanInfo retrieves last error, scan type and elapsed time from properties
+// getScanInfo retrieves scan status from the database
 func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
 	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
 	scanType, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
