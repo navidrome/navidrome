@@ -116,6 +116,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":    fullTextFilter(r.tableName),
 		"starred": booleanFilter,
 		"role":    roleFilter,
+		"missing": booleanFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"name":        "order_artist_name",
@@ -202,13 +203,20 @@ func (r *artistRepository) getIndexKey(a model.Artist) string {
 }
 
 // TODO Cache the index (recalculate when there are changes to the DB)
-func (r *artistRepository) GetIndex(roles ...model.Role) (model.ArtistIndexes, error) {
+func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (model.ArtistIndexes, error) {
 	options := model.QueryOptions{Sort: "name"}
 	if len(roles) > 0 {
 		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
 			return roleFilter("role", r)
 		})
 		options.Filters = And(roleFilters)
+	}
+	if !includeMissing {
+		if options.Filters == nil {
+			options.Filters = Eq{"artist.missing": false}
+		} else {
+			options.Filters = And{options.Filters, Eq{"artist.missing": false}}
+		}
 	}
 	artists, err := r.GetAll(options)
 	if err != nil {
@@ -234,6 +242,26 @@ func (r *artistRepository) purgeEmpty() error {
 		log.Debug(r.ctx, "Purged empty artists", "totalDeleted", c)
 	}
 	return nil
+}
+
+// markMissing sets the Missing flag based on album data.
+func (r *artistRepository) markMissing() (int64, error) {
+	q := Expr(`
+                update artist
+                set missing = not exists (
+                        select 1 from album_artists aa
+                        join album a on aa.album_id = a.id
+                        where aa.artist_id = artist.id and a.missing = false
+                )
+        `)
+	c, err := r.executeSQL(q)
+	if err != nil {
+		return 0, fmt.Errorf("marking missing artists: %w", err)
+	}
+	if c > 0 {
+		log.Debug(r.ctx, "Marked missing artists", "totalUpdated", c)
+	}
+	return c, nil
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all artists, based

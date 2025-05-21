@@ -157,10 +157,10 @@ package: docker-build ##@Cross_Compilation Create binaries and packages for ALL 
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music
 	( cd music; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=ec2093ec4801402f1e17cc462195cdbb" > brock.zip; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=b376eeb4652d2498aa2b25ba0696725e" > back_on_earth.zip; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=e49c609b542fc51899ee8b53aa858cb4" > ugress.zip; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=350bcab3a4c1d93869e39ce496464f03" > voodoocuts.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=2Y3qQA6zJC3ObbBrF9ZBoV" > brock.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=04HrSORpypcLGNUdQp37gn" > back_on_earth.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=5xcMPJdeEgNrGtnzYbzAqb" > ugress.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=1jjQMAZrG3lUsJ0YH6ZRS0" > voodoocuts.zip; \
 	for file in *.zip; do unzip -n $${file}; done )
 	@echo "Done. Remember to set your MusicFolder to ./music"
 .PHONY: get-music
