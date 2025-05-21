@@ -13,6 +13,8 @@ func CreateMockUserRepo(apiKeyRepo ...*MockedAPIKeyRepo) *MockedUserRepo {
 	var repo *MockedAPIKeyRepo
 	if len(apiKeyRepo) > 0 {
 		repo = apiKeyRepo[0]
+	} else {
+		repo = CreateMockApiKeyRepo()
 	}
 	return &MockedUserRepo{
 		Data:       map[string]*model.User{},
