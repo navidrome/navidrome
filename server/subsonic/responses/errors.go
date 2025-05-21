@@ -19,7 +19,7 @@ var errors = map[int32]string{
 	ErrorMissingParameter:               "Required parameter is missing",
 	ErrorClientTooOld:                   "Incompatible Subsonic REST protocol version. Client must upgrade",
 	ErrorServerTooOld:                   "Incompatible Subsonic REST protocol version. Server must upgrade",
-	ErrorAuthenticationFail:             "Wrong username or password or api key",
+	ErrorAuthenticationFail:             "Invalid username, password, or API key",
 	ErrorTokenAuthNotSupported:          "Token authentication not supported",
 	ErrorAuthMechanismNotSupported:      "Provided authentication mechanism not supported",
 	ErrorMultipleAuthMechanismsProvided: "Multiple conflicting authentication mechanisms provided",
