@@ -113,10 +113,14 @@ func SongWithArtistTitle(artist, title string) Options {
 		Sort:  "updated_at",
 		Order: "desc",
 		Max:   1,
-		Filters: And{Eq{"title": title}, Or{
-			persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
-			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
-		}},
+		Filters: And{
+			Eq{"title": title},
+			NotEq{"lyrics": "[]"},
+			Or{
+				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
+				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
+			},
+		},
 	})
 }
 
