@@ -6,7 +6,7 @@ import {
 import config from '../config'
 
 const initialState = {
-  scanStatus: { scanning: false, folderCount: 0, count: 0 },
+  scanStatus: { scanning: false, folderCount: 0, count: 0, error: '' },
   serverStart: { version: config.version },
 }
 

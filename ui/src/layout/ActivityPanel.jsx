@@ -14,7 +14,7 @@ import {
   Box,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
-import { BiError } from 'react-icons/bi'
+import { BiError, BiCheckCircle } from 'react-icons/bi'
 import { VscSync } from 'react-icons/vsc'
 import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
@@ -59,13 +59,13 @@ const Uptime = () => {
 const ActivityPanel = () => {
   const serverStart = useSelector((state) => state.activity.serverStart)
   const up = serverStart.startTime
-  const classes = useStyles({ up })
+  const scanStatus = useSelector((state) => state.activity.scanStatus)
+  const classes = useStyles({ up: up && !scanStatus.error })
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
   const dispatch = useDispatch()
-  const scanStatus = useSelector((state) => state.activity.scanStatus)
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
   const handleMenuClose = () => setAnchorEl(null)
@@ -89,11 +89,19 @@ const ActivityPanel = () => {
     }
   }, [serverStart, notify])
 
+  const tooltipTitle = scanStatus.error
+    ? `${translate('activity.lastScan')}: ${scanStatus.error}`
+    : translate('activity.title')
+
   return (
     <div className={classes.wrapper}>
-      <Tooltip title={translate('activity.title')}>
+      <Tooltip title={tooltipTitle}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
-          {up ? <FiActivity size={'20'} /> : <BiError size={'20'} />}
+          {!up || scanStatus.error ? (
+            <BiError size={'20'} />
+          ) : (
+            <FiActivity size={'20'} />
+          )}
         </IconButton>
       </Tooltip>
       {scanStatus.scanning && (
@@ -135,6 +143,21 @@ const ActivityPanel = () => {
               </Box>
             </Box>
           </CardContent>
+          {scanStatus.error && (
+            <>
+              <Divider />
+              <CardContent>
+                <Box display="flex" className={classes.counterStatus}>
+                  <Box component="span" flex={1}>
+                    {translate('activity.lastScan')}:
+                  </Box>
+                  <Box component="span" flex={2}>
+                    {scanStatus.error}
+                  </Box>
+                </Box>
+              </CardContent>
+            </>
+          )}
           <Divider />
           <CardActions>
             <Tooltip title={translate('activity.quickScan')}>

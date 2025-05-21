@@ -37,9 +37,10 @@ func (e *baseEvent) Data(evt Event) string {
 
 type ScanStatus struct {
 	baseEvent
-	Scanning    bool  `json:"scanning"`
-	Count       int64 `json:"count"`
-	FolderCount int64 `json:"folderCount"`
+	Scanning    bool   `json:"scanning"`
+	Count       int64  `json:"count"`
+	FolderCount int64  `json:"folderCount"`
+	Error       string `json:"error"`
 }
 
 type KeepAlive struct {

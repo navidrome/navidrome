@@ -100,10 +100,13 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
+		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, err.Error())
 		state.sendError(err)
 		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return
 	}
+
+	_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, "")
 
 	if state.changesDetected.Load() {
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})

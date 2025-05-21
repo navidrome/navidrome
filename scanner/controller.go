@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
@@ -37,6 +38,7 @@ type StatusInfo struct {
 	LastScan    time.Time
 	Count       uint32
 	FolderCount uint32
+	LastError   string
 }
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
@@ -118,12 +120,17 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("getting library: %w", err)
 	}
+	lastErr, err := s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
+	if err != nil {
+		return nil, fmt.Errorf("getting last scan error: %w", err)
+	}
 	if running.Load() {
 		status := &StatusInfo{
 			Scanning:    true,
 			LastScan:    lib.LastScanAt,
 			Count:       s.count.Load(),
 			FolderCount: s.folderCount.Load(),
+			LastError:   lastErr,
 		}
 		return status, nil
 	}
@@ -136,6 +143,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 		LastScan:    lib.LastScanAt,
 		Count:       uint32(count),
 		FolderCount: uint32(folderCount),
+		LastError:   lastErr,
 	}, nil
 }
 
@@ -193,10 +201,12 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
 		return scanWarnings, err
 	} else {
+		lastErr, _ := s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
 		s.sendMessage(ctx, &events.ScanStatus{
 			Scanning:    false,
 			Count:       count,
 			FolderCount: folderCount,
+			Error:       lastErr,
 		})
 	}
 	return scanWarnings, scanError
