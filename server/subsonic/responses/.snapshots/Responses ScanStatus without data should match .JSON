@@ -7,7 +7,6 @@
   "scanStatus": {
     "scanning": false,
     "count": 0,
-    "folderCount": 0,
-    "error": ""
+    "folderCount": 0
   }
 }

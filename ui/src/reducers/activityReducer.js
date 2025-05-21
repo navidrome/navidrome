@@ -12,10 +12,12 @@ const initialState = {
 
 export const activityReducer = (previousState = initialState, payload) => {
   const { type, data } = payload
+  
   switch (type) {
-    case EVENT_SCAN_STATUS:
+    case EVENT_SCAN_STATUS: {
       const elapsedTime = Number(data.elapsedTime) || 0
       return { ...previousState, scanStatus: { ...data, elapsedTime } }
+    }
     case EVENT_SERVER_START:
       return {
         ...previousState,
