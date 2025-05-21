@@ -183,13 +183,16 @@ const ActivityPanel = () => {
             </Box>
 
             {scanStatus.error && (
-              <Box display="flex" flexDirection="column" mt={2} className={classes.error}>
+              <Box
+                display="flex"
+                flexDirection="column"
+                mt={2}
+                className={classes.error}
+              >
                 <Typography variant="subtitle2">
                   {translate('activity.status')}:
                 </Typography>
-                <Typography variant="body2">
-                  {scanStatus.error}
-                </Typography>
+                <Typography variant="body2">{scanStatus.error}</Typography>
               </Box>
             )}
           </CardContent>

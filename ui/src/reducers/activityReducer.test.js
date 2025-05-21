@@ -4,7 +4,13 @@ import config from '../config'
 
 describe('activityReducer', () => {
   const initialState = {
-    scanStatus: { scanning: false, folderCount: 0, count: 0, error: '', elapsedTime: 0 },
+    scanStatus: {
+      scanning: false,
+      folderCount: 0,
+      count: 0,
+      error: '',
+      elapsedTime: 0,
+    },
     serverStart: { version: config.version },
   }
 
@@ -110,4 +116,4 @@ describe('activityReducer', () => {
       startTime: Date.parse('2023-01-01T00:00:00Z'),
     })
   })
-}) 
+})

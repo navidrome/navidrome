@@ -1,4 +1,9 @@
-import { formatBytes, formatDuration, formatFullDate, formatShortDuration } from './formatters'
+import {
+  formatBytes,
+  formatDuration,
+  formatFullDate,
+  formatShortDuration,
+} from './formatters'
 
 describe('formatBytes', () => {
   it('format bytes', () => {

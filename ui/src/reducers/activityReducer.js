@@ -6,13 +6,19 @@ import {
 import config from '../config'
 
 const initialState = {
-  scanStatus: { scanning: false, folderCount: 0, count: 0, error: '', elapsedTime: 0 },
+  scanStatus: {
+    scanning: false,
+    folderCount: 0,
+    count: 0,
+    error: '',
+    elapsedTime: 0,
+  },
   serverStart: { version: config.version },
 }
 
 export const activityReducer = (previousState = initialState, payload) => {
   const { type, data } = payload
-  
+
   switch (type) {
     case EVENT_SCAN_STATUS: {
       const elapsedTime = Number(data.elapsedTime) || 0
