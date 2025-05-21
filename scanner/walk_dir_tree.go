@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
@@ -264,6 +265,10 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return true, nil
 	}
 	if dirEnt.Type()&fs.ModeSymlink == 0 {
+		return false, nil
+	}
+	// If symlinks are disabled, return false for symlinks
+	if !conf.Server.Scanner.FollowSymlinks {
 		return false, nil
 	}
 	// Does this symlink point to a directory?

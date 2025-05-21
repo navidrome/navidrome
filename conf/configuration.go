@@ -72,6 +72,7 @@ type configOptions struct {
 	EnableUserEditing               bool
 	EnableSharing                   bool
 	ShareURL                        string
+	DefaultShareExpiration          time.Duration
 	DefaultDownloadableShare        bool
 	DefaultTheme                    string
 	DefaultLanguage                 string
@@ -133,6 +134,7 @@ type scannerOptions struct {
 	ArtistJoiner       string
 	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
+	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
 }
 
 type subsonicOptions struct {
@@ -476,6 +478,7 @@ func init() {
 	viper.SetDefault("enablecoveranimation", true)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
+	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enableinsightscollector", true)
@@ -504,6 +507,7 @@ func init() {
 	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
+	viper.SetDefault("scanner.followsymlinks", true)
 
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)

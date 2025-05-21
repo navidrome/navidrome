@@ -176,6 +176,7 @@ type OpenSubsonicChild struct {
 	SortName           string              `xml:"sortName,attr,omitempty"           json:"sortName"`
 	MediaType          MediaType           `xml:"mediaType,attr,omitempty"          json:"mediaType"`
 	MusicBrainzId      string              `xml:"musicBrainzId,attr,omitempty"      json:"musicBrainzId"`
+	Isrc               Array[string]       `xml:"isrc,omitempty"                  json:"isrc"`
 	Genres             Array[ItemGenre]    `xml:"genres,omitempty"                  json:"genres"`
 	ReplayGain         ReplayGain          `xml:"replayGain,omitempty"              json:"replayGain"`
 	ChannelCount       int32               `xml:"channelCount,attr,omitempty"       json:"channelCount"`
@@ -476,10 +477,13 @@ type Shares struct {
 }
 
 type ScanStatus struct {
-	Scanning    bool       `xml:"scanning,attr"            json:"scanning"`
-	Count       int64      `xml:"count,attr"               json:"count"`
-	FolderCount int64      `xml:"folderCount,attr"         json:"folderCount"`
-	LastScan    *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
+	Scanning    bool       `xml:"scanning,attr"              json:"scanning"`
+	Count       int64      `xml:"count,attr"                 json:"count"`
+	FolderCount int64      `xml:"folderCount,attr"           json:"folderCount"`
+	LastScan    *time.Time `xml:"lastScan,attr,omitempty"    json:"lastScan,omitempty"`
+	Error       string     `xml:"error,attr,omitempty"       json:"error,omitempty"`
+	ScanType    string     `xml:"scanType,attr,omitempty"    json:"scanType,omitempty"`
+	ElapsedTime int64      `xml:"elapsedTime,attr,omitempty" json:"elapsedTime,omitempty"`
 }
 
 type Lyrics struct {

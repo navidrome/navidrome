@@ -499,7 +499,10 @@
     "quickScan": "Quick Scan",
     "fullScan": "Full Scan",
     "serverUptime": "Server Uptime",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Type",
+    "status": "Scan Error",
+    "elapsedTime": "Elapsed Time"
   },
   "help": {
     "title": "Navidrome Hotkeys",

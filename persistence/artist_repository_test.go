@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
@@ -94,7 +95,7 @@ var _ = Describe("ArtistRepository", func() {
 				er := repo.Put(&artistBeatles)
 				Expect(er).To(BeNil())
 
-				idx, err := repo.GetIndex()
+				idx, err := repo.GetIndex(false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("F"))
@@ -112,7 +113,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			// BFR Empty SortArtistName is not saved in the DB anymore
 			XIt("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
-				idx, err := repo.GetIndex()
+				idx, err := repo.GetIndex(false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -134,7 +135,7 @@ var _ = Describe("ArtistRepository", func() {
 				er := repo.Put(&artistBeatles)
 				Expect(er).To(BeNil())
 
-				idx, err := repo.GetIndex()
+				idx, err := repo.GetIndex(false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -151,7 +152,7 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("returns the index when SortArtistName is empty", func() {
-				idx, err := repo.GetIndex()
+				idx, err := repo.GetIndex(false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(2))
 				Expect(idx[0].ID).To(Equal("B"))
@@ -231,6 +232,92 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(m).ToNot(HaveKey("sort_artist_name"))
 				Expect(m).ToNot(HaveKey("mbz_artist_id"))
+			})
+		})
+
+		Describe("Missing artist visibility", func() {
+			var raw *artistRepository
+			var missing model.Artist
+
+			insertMissing := func() {
+				missing = model.Artist{ID: "m1", Name: "Missing", OrderArtistName: "missing"}
+				Expect(repo.Put(&missing)).To(Succeed())
+				raw = repo.(*artistRepository)
+				_, err := raw.executeSQL(squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missing.ID}))
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			removeMissing := func() {
+				if raw != nil {
+					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missing.ID}))
+				}
+			}
+
+			Context("regular user", func() {
+				BeforeEach(func() {
+					ctx := log.NewContext(context.TODO())
+					ctx = request.WithUser(ctx, model.User{ID: "u1"})
+					repo = NewArtistRepository(ctx, GetDBXBuilder())
+					insertMissing()
+				})
+
+				AfterEach(func() { removeMissing() })
+
+				It("does not return missing artist in GetAll", func() {
+					artists, err := repo.GetAll(model.QueryOptions{Filters: squirrel.Eq{"artist.missing": false}})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(artists).To(HaveLen(2))
+				})
+
+				It("does not return missing artist in Search", func() {
+					res, err := repo.Search("missing", 0, 10, false)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res).To(BeEmpty())
+				})
+
+				It("does not return missing artist in GetIndex", func() {
+					idx, err := repo.GetIndex(false)
+					Expect(err).ToNot(HaveOccurred())
+					// Only 2 artists should be present
+					total := 0
+					for _, ix := range idx {
+						total += len(ix.Artists)
+					}
+					Expect(total).To(Equal(2))
+				})
+			})
+
+			Context("admin user", func() {
+				BeforeEach(func() {
+					ctx := log.NewContext(context.TODO())
+					ctx = request.WithUser(ctx, model.User{ID: "admin", IsAdmin: true})
+					repo = NewArtistRepository(ctx, GetDBXBuilder())
+					insertMissing()
+				})
+
+				AfterEach(func() { removeMissing() })
+
+				It("returns missing artist in GetAll", func() {
+					artists, err := repo.GetAll()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(artists).To(HaveLen(3))
+				})
+
+				It("returns missing artist in Search", func() {
+					res, err := repo.Search("missing", 0, 10, true)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(res).To(HaveLen(1))
+				})
+
+				It("returns missing artist in GetIndex when included", func() {
+					idx, err := repo.GetIndex(true)
+					Expect(err).ToNot(HaveOccurred())
+					total := 0
+					for _, ix := range idx {
+						total += len(ix.Artists)
+					}
+					Expect(total).To(Equal(3))
+				})
 			})
 		})
 	})

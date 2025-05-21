@@ -23,6 +23,9 @@ func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
 		Count:       int64(status.Count),
 		FolderCount: int64(status.FolderCount),
 		LastScan:    &status.LastScan,
+		Error:       status.LastError,
+		ScanType:    status.ScanType,
+		ElapsedTime: int64(status.ElapsedTime),
 	}
 	return response, nil
 }

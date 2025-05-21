@@ -32,6 +32,8 @@ type Artist struct {
 	SimilarArtists        Artists    `structs:"similar_artists"  json:"-"`
 	ExternalInfoUpdatedAt *time.Time `structs:"external_info_updated_at" json:"externalInfoUpdatedAt,omitempty"`
 
+	Missing bool `structs:"missing" json:"missing"`
+
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`
 	UpdatedAt *time.Time `structs:"updated_at" json:"updatedAt,omitempty"`
 }
@@ -76,7 +78,7 @@ type ArtistRepository interface {
 	UpdateExternalInfo(a *Artist) error
 	Get(id string) (*Artist, error)
 	GetAll(options ...QueryOptions) (Artists, error)
-	GetIndex(roles ...Role) (ArtistIndexes, error)
+	GetIndex(includeMissing bool, roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:
 	RefreshPlayCounts() (int64, error)

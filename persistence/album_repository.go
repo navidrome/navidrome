@@ -315,7 +315,7 @@ func (r *albumRepository) GetTouchedAlbums(libID int) (model.AlbumCursor, error)
 // RefreshPlayCounts updates the play count and last play date annotations for all albums, based
 // on the media files associated with them.
 func (r *albumRepository) RefreshPlayCounts() (int64, error) {
-	query := rawSQL(`
+	query := Expr(`
 with play_counts as (
     select user_id, album_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file

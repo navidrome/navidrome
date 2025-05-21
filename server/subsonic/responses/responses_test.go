@@ -224,7 +224,8 @@ var _ = Describe("Responses", func() {
 				child[0].OpenSubsonicChild = &OpenSubsonicChild{
 					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted title",
-					BPM: 127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
+					Isrc: []string{"ISRC-1", "ISRC-2"},
+					BPM:  127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,
 					Moods:         []string{"happy", "sad"},
 					ReplayGain:    ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
 					DisplayArtist: "artist 1 & artist 2",
@@ -312,6 +313,7 @@ var _ = Describe("Responses", func() {
 				songs[0].OpenSubsonicChild = &OpenSubsonicChild{
 					Genres:  []ItemGenre{{Name: "rock"}, {Name: "progressive"}},
 					Comment: "a comment", MediaType: MediaTypeSong, MusicBrainzId: "4321", SortName: "sorted song",
+					Isrc:       []string{"ISRC-1"},
 					Moods:      []string{"happy", "sad"},
 					ReplayGain: ReplayGain{TrackGain: 1, AlbumGain: 2, TrackPeak: 3, AlbumPeak: 4, BaseGain: 5, FallbackGain: 6},
 					BPM:        127, ChannelCount: 2, SamplingRate: 44100, BitDepth: 16,

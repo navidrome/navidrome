@@ -60,7 +60,7 @@ where tag.id = updated_values.id;
 `
 	for _, table := range []string{"album", "media_file"} {
 		start := time.Now()
-		query := rawSQL(fmt.Sprintf(template, table))
+		query := Expr(fmt.Sprintf(template, table))
 		c, err := r.executeSQL(query)
 		log.Debug(r.ctx, "Updated tag counts", "table", table, "elapsed", time.Since(start), "updated", c)
 		if err != nil {

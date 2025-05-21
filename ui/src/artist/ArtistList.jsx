@@ -17,6 +17,7 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
+import clsx from 'clsx'
 import {
   ArtistContextMenu,
   List,
@@ -48,6 +49,9 @@ const useStyles = makeStyles({
         visibility: 'visible',
       },
     },
+  },
+  missingRow: {
+    opacity: 0.3,
   },
   contextMenu: {
     visibility: 'hidden',
@@ -95,7 +99,15 @@ const ArtistDatagridRow = (props) => {
     }),
     [record],
   )
-  return <DatagridRow ref={dragArtistRef} {...props} />
+  const classes = useStyles()
+  const computedClasses = clsx(
+    props.className,
+    classes.row,
+    record?.missing && classes.missingRow,
+  )
+  return (
+    <DatagridRow ref={dragArtistRef} {...props} className={computedClasses} />
+  )
 }
 
 const ArtistDatagridBody = (props) => (

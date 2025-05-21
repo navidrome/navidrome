@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
@@ -37,6 +38,9 @@ type StatusInfo struct {
 	LastScan    time.Time
 	Count       uint32
 	FolderCount uint32
+	LastError   string
+	ScanType    string
+	ElapsedTime time.Duration
 }
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
@@ -113,20 +117,51 @@ type controller struct {
 	changesDetected bool
 }
 
+// getScanInfo retrieves scan status from the database
+func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
+	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
+	scanType, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
+	startTimeStr, _ := s.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+
+	if startTimeStr != "" {
+		startTime, err := time.Parse(time.RFC3339, startTimeStr)
+		if err == nil {
+			if running.Load() {
+				elapsed = time.Since(startTime)
+			} else {
+				// If scan is not running, try to get the last scan time for the library
+				lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
+				if err == nil {
+					elapsed = lib.LastScanAt.Sub(startTime)
+				}
+			}
+		}
+	}
+
+	return scanType, elapsed, lastErr
+}
+
 func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
 	if err != nil {
 		return nil, fmt.Errorf("getting library: %w", err)
 	}
+
+	scanType, elapsed, lastErr := s.getScanInfo(ctx)
+
 	if running.Load() {
 		status := &StatusInfo{
 			Scanning:    true,
 			LastScan:    lib.LastScanAt,
 			Count:       s.count.Load(),
 			FolderCount: s.folderCount.Load(),
+			LastError:   lastErr,
+			ScanType:    scanType,
+			ElapsedTime: elapsed,
 		}
 		return status, nil
 	}
+
 	count, folderCount, err := s.getCounters(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("getting library stats: %w", err)
@@ -136,6 +171,9 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 		LastScan:    lib.LastScanAt,
 		Count:       uint32(count),
 		FolderCount: uint32(folderCount),
+		LastError:   lastErr,
+		ScanType:    scanType,
+		ElapsedTime: elapsed,
 	}, nil
 }
 
@@ -193,10 +231,14 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
 		return scanWarnings, err
 	} else {
+		scanType, elapsed, lastErr := s.getScanInfo(ctx)
 		s.sendMessage(ctx, &events.ScanStatus{
 			Scanning:    false,
 			Count:       count,
 			FolderCount: folderCount,
+			Error:       lastErr,
+			ScanType:    scanType,
+			ElapsedTime: elapsed,
 		})
 	}
 	return scanWarnings, scanError
@@ -240,10 +282,15 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 		if p.FileCount > 0 {
 			s.folderCount.Add(1)
 		}
+
+		scanType, elapsed, lastErr := s.getScanInfo(ctx)
 		status := &events.ScanStatus{
 			Scanning:    true,
 			Count:       int64(s.count.Load()),
 			FolderCount: int64(s.folderCount.Load()),
+			Error:       lastErr,
+			ScanType:    scanType,
+			ElapsedTime: elapsed,
 		}
 		if s.limiter != nil {
 			s.limiter.Do(func() { s.sendMessage(ctx, status) })

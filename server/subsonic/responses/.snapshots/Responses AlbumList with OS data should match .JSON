@@ -15,6 +15,7 @@
         "sortName": "sort name",
         "mediaType": "album",
         "musicBrainzId": "00000000-0000-0000-0000-000000000000",
+        "isrc": [],
         "genres": [
           {
             "name": "Genre 1"

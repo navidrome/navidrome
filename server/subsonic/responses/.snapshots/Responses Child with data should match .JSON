@@ -30,6 +30,10 @@
         "sortName": "sorted title",
         "mediaType": "song",
         "musicBrainzId": "4321",
+        "isrc": [
+          "ISRC-1",
+          "ISRC-2"
+        ],
         "genres": [
           {
             "name": "rock"

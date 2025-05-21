@@ -57,12 +57,21 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	startTime := time.Now()
 	log.Info(ctx, "Scanner: Starting scan", "fullScan", state.fullScan, "numLibraries", len(libs))
 
+	// Store scan type and start time
+	scanType := "quick"
+	if state.fullScan {
+		scanType = "full"
+	}
+	_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, scanType)
+	_ = s.ds.Property(ctx).Put(consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
+
 	// if there was a full scan in progress, force a full scan
 	if !state.fullScan {
 		for _, lib := range libs {
 			if lib.FullScanInProgress {
 				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
 				state.fullScan = true
+				_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full")
 				break
 			}
 		}
@@ -100,10 +109,13 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
+		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, err.Error())
 		state.sendError(err)
 		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return
 	}
+
+	_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, "")
 
 	if state.changesDetected.Load() {
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
