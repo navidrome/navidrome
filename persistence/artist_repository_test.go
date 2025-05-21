@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	squirrel "github.com/Masterminds/squirrel"
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
