@@ -115,7 +115,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.CreatedAt = time.Now()
-	
+
 	// If this is an existing record, just ensure no duplicates exist
 	if m.ID != "" {
 		// Delete any duplicates before putting the new one
@@ -146,7 +146,7 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 			}
 		}
 	}
-	
+
 	// Continue with the normal put operation
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
