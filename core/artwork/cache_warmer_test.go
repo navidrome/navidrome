@@ -10,23 +10,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type disabledCache struct{}
-
-func (disabledCache) Get(ctx context.Context, item cache.Item) (*cache.CachedStream, error) {
-	return nil, nil
-}
-func (disabledCache) Available(ctx context.Context) bool { return false }
-func (disabledCache) Disabled(ctx context.Context) bool  { return true }
-
 var _ = Describe("CacheWarmer", func() {
 	It("returns noop when cache is disabled", func() {
-		cw := NewCacheWarmer(nil, disabledCache{})
+		fc := &mockFileCache{}
+		fc.SetDisabled(true)
+		cw := NewCacheWarmer(nil, fc)
 		_, ok := cw.(*noopCacheWarmer)
 		Expect(ok).To(BeTrue())
 	})
 
 	It("drops buffered items when cache becomes disabled", func() {
-		fc := &fakeFileCache{}
+		fc := &mockFileCache{}
 		cw := NewCacheWarmer(nil, fc).(*cacheWarmer)
 		cw.PreCache(model.MustParseArtworkID("al-test"))
 		fc.SetDisabled(true)
@@ -38,16 +32,24 @@ var _ = Describe("CacheWarmer", func() {
 	})
 })
 
-type fakeFileCache struct {
+type mockFileCache struct {
 	disabled atomic.Bool
 	ready    atomic.Bool
 }
 
-func (f *fakeFileCache) Get(ctx context.Context, item cache.Item) (*cache.CachedStream, error) {
+func (f *mockFileCache) Get(ctx context.Context, item cache.Item) (*cache.CachedStream, error) {
 	return nil, nil
 }
-func (f *fakeFileCache) Available(ctx context.Context) bool {
+
+func (f *mockFileCache) Available(ctx context.Context) bool {
 	return f.ready.Load() && !f.disabled.Load()
 }
-func (f *fakeFileCache) Disabled(ctx context.Context) bool { return f.disabled.Load() }
-func (f *fakeFileCache) SetDisabled(v bool)                { f.disabled.Store(v); f.ready.Store(true) }
+
+func (f *mockFileCache) Disabled(ctx context.Context) bool {
+	return f.disabled.Load()
+}
+
+func (f *mockFileCache) SetDisabled(v bool) {
+	f.disabled.Store(v)
+	f.ready.Store(true)
+}
