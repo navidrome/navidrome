@@ -145,7 +145,7 @@ type tagCond struct {
 
 func (e tagCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
-	
+
 	// Check if tag has a special type (float/int) that needs casting for proper comparison
 	valueExpr := "value"
 	tagType := getTagTypeFromRegistry(e.tag)
@@ -155,10 +155,10 @@ func (e tagCond) ToSql() (string, []any, error) {
 	case "int":
 		valueExpr = "CAST(value AS INTEGER)"
 	}
-	
+
 	// Replace 'value' with the appropriate expression in the condition
 	condWithCast := strings.Replace(cond, "value", valueExpr, 1)
-	
+
 	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
 		e.tag, condWithCast)
 	if e.not {

@@ -237,7 +237,7 @@ func init() {
 		// used in smart playlists
 		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
 		criteria.AddTagNames(tagNames())
-		
+
 		// Register tag types with criteria package
 		registerTagTypesWithCriteria()
 	})
