@@ -25,6 +25,10 @@ import (
 )
 
 func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
+	if len(extractFuncs) == 0 {
+		return nil, "", fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
+	}
+
 	for _, f := range extractFuncs {
 		if ctx.Err() != nil {
 			return nil, "", ctx.Err()

@@ -77,17 +77,28 @@ func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string,
 
 func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
 	var ff []sourceFunc
+	hasSourceFuncs := false
 	for _, pattern := range strings.Split(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
-		case pattern == "embedded":
+		case pattern == "embedded" && a.album.EmbedArtPath != "":
 			embedArtPath := filepath.Join(a.rootFolder, a.album.EmbedArtPath)
 			ff = append(ff, fromTag(ctx, embedArtPath), fromFFmpegTag(ctx, ffmpeg, embedArtPath))
+			hasSourceFuncs = true
 		case pattern == "external":
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.provider))
+			hasSourceFuncs = true
 		case len(a.imgFiles) > 0:
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, pattern))
+			hasSourceFuncs = true
 		}
+	}
+
+	// If no sources were added, ensure we return ErrUnavailable
+	if !hasSourceFuncs {
+		ff = append(ff, func() (io.ReadCloser, string, error) {
+			return nil, "", ErrUnavailable
+		})
 	}
 	return ff
 }
