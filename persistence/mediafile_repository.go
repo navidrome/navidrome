@@ -115,6 +115,39 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 	m.CreatedAt = time.Now()
+	
+	// If this is an existing record, just ensure no duplicates exist
+	if m.ID != "" {
+		// Delete any duplicates before putting the new one
+		delQuery := Delete(r.tableName).Where(And{
+			Eq{"path": m.Path, "library_id": m.LibraryID},
+			NotEq{"id": m.ID},
+		})
+		c, err := r.executeSQL(delQuery)
+		if err != nil {
+			log.Error(r.ctx, "Error deleting duplicate tracks", "path", m.Path, err)
+		} else if c > 0 {
+			log.Debug(r.ctx, "Deleted duplicate tracks", "path", m.Path, "count", c)
+		}
+	} else {
+		// This is a new record, check if there are any existing ones to reuse
+		sel := r.newSelect().Columns("id").Where(Eq{"path": m.Path, "library_id": m.LibraryID})
+		var ids []string
+		err := r.queryAllSlice(sel, &ids)
+		if err == nil && len(ids) > 0 {
+			// Use the first record found and delete the rest
+			m.ID = ids[0]
+			for i := 1; i < len(ids); i++ {
+				if err := r.delete(Eq{"id": ids[i]}); err != nil {
+					log.Error(r.ctx, "Error deleting duplicate track", "id", ids[i], "path", m.Path, err)
+				} else {
+					log.Debug(r.ctx, "Deleted duplicate track", "id", ids[i], "path", m.Path)
+				}
+			}
+		}
+	}
+	
+	// Continue with the normal put operation
 	id, err := r.putByMatch(Eq{"path": m.Path, "library_id": m.LibraryID}, m.ID, &dbMediaFile{MediaFile: m})
 	if err != nil {
 		return err

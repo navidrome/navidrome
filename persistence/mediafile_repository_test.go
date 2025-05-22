@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -50,6 +51,33 @@ var _ = Describe("MediaRepository", func() {
 
 		_, err := mr.Get(newID)
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("prevents duplicate tracks with the same path", func() {
+		path := "/test/duplicate/path.mp3"
+		
+		// First insert
+		mf1 := model.MediaFile{LibraryID: 1, Path: path, Title: "Track 1"}
+		Expect(mr.Put(&mf1)).To(BeNil())
+		
+		// Second insert with same path
+		mf2 := model.MediaFile{LibraryID: 1, Path: path, Title: "Track 2"}
+		Expect(mr.Put(&mf2)).To(BeNil())
+		
+		// Count tracks with this path
+		count, err := mr.CountAll(model.QueryOptions{
+			Filters: sq.Eq{"media_file.path": path},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(count).To(Equal(int64(1)))
+		
+		// Get the track and verify it's the second one (most recent)
+		track, err := mr.GetAll(model.QueryOptions{
+			Filters: sq.Eq{"media_file.path": path},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(track).To(HaveLen(1))
+		Expect(track[0].Title).To(Equal("Track 2"))
 	})
 
 	Context("Annotations", func() {
