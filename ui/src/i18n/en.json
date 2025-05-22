@@ -434,6 +434,8 @@
     "theme": "Theme",
     "personal": {
       "name": "Personal",
+      "admin": "Admin Tools",
+      "logs": "System Logs",
       "options": {
         "theme": "Theme",
         "language": "Language",
@@ -517,5 +519,12 @@
       "vol_down": "Volume Down",
       "toggle_love": "Add this track to favourites"
     }
+  },
+  "logViewer": {
+    "follow": "Follow logs",
+    "goTop": "Go to top",
+    "goBottom": "Go to bottom",
+    "filter": "Filter logs...",
+    "noLogs": "No logs to display"
   }
 }
