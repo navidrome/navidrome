@@ -564,6 +564,38 @@ var _ = Describe("Participants", func() {
 				))
 			})
 		})
+
+		When("MUSICBRAINZ_PERFORMERID tag is set", func() {
+			matchPerformer := func(name, orderName, subRole, mbid string) types.GomegaMatcher {
+				return MatchFields(IgnoreExtras, Fields{
+					"Artist": MatchFields(IgnoreExtras, Fields{
+						"Name":            Equal(name),
+						"OrderArtistName": Equal(orderName),
+						"MbzArtistID":     Equal(mbid),
+					}),
+					"SubRole": Equal(subRole),
+				})
+			}
+
+			It("should map MBIDs to the correct performer", func() {
+				mf = toMediaFile(model.RawTags{
+					"PERFORMER:GUITAR":               {"Eric Clapton", "B.B. King"},
+					"PERFORMER:BASS":                 {"Nathan East"},
+					"MUSICBRAINZ_PERFORMERID:GUITAR": {"mbid1", "mbid2"},
+					"MUSICBRAINZ_PERFORMERID:BASS":   {"mbid3"},
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RolePerformer, HaveLen(3)))
+
+				p := participants[model.RolePerformer]
+				Expect(p).To(ContainElements(
+					matchPerformer("Eric Clapton", "eric clapton", "Guitar", "mbid1"),
+					matchPerformer("B.B. King", "b.b. king", "Guitar", "mbid2"),
+					matchPerformer("Nathan East", "nathan east", "Bass", "mbid3"),
+				))
+			})
+		})
 	})
 
 	Describe("Other tags", func() {
@@ -592,7 +624,6 @@ var _ = Describe("Participants", func() {
 			Entry("REMIXER", model.RoleRemixer, "REMIXER"),
 			Entry("DJMIXER", model.RoleDJMixer, "DJMIXER"),
 			Entry("DIRECTOR", model.RoleDirector, "DIRECTOR"),
-			// TODO PERFORMER
 		)
 	})
 
