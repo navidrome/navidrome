@@ -25,6 +25,7 @@ docker-compose.yml
 !contrib/docker-compose.yml
 binaries
 navidrome-master
+AGENTS.md
 *.exe
 *.test
 *.wasm

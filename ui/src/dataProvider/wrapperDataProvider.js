@@ -23,7 +23,8 @@ const mapResource = (resource, params) => {
       return [`playlist/${plsId}/tracks`, params]
     }
     case 'album':
-    case 'song': {
+    case 'song':
+    case 'artist': {
       if (params.filter && !isAdmin()) {
         params.filter.missing = false
       }

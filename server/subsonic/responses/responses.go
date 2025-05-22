@@ -477,10 +477,13 @@ type Shares struct {
 }
 
 type ScanStatus struct {
-	Scanning    bool       `xml:"scanning,attr"            json:"scanning"`
-	Count       int64      `xml:"count,attr"               json:"count"`
-	FolderCount int64      `xml:"folderCount,attr"         json:"folderCount"`
-	LastScan    *time.Time `xml:"lastScan,attr,omitempty"  json:"lastScan,omitempty"`
+	Scanning    bool       `xml:"scanning,attr"              json:"scanning"`
+	Count       int64      `xml:"count,attr"                 json:"count"`
+	FolderCount int64      `xml:"folderCount,attr"           json:"folderCount"`
+	LastScan    *time.Time `xml:"lastScan,attr,omitempty"    json:"lastScan,omitempty"`
+	Error       string     `xml:"error,attr,omitempty"       json:"error,omitempty"`
+	ScanType    string     `xml:"scanType,attr,omitempty"    json:"scanType,omitempty"`
+	ElapsedTime int64      `xml:"elapsedTime,attr,omitempty" json:"elapsedTime,omitempty"`
 }
 
 type Lyrics struct {

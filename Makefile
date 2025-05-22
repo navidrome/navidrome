@@ -49,8 +49,12 @@ testall: testrace ##@Development Run Go and JS tests
 	@(cd ./ui && npm run test:ci)
 .PHONY: testall
 
-lint: ##@Development Lint Go code
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run -v --timeout 5m
+install-golangci-lint: ##@Development Install golangci-lint if not present
+	@which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+.PHONY: install-golangci-lint
+
+lint: install-golangci-lint ##@Development Lint Go code
+	PATH=$$PATH:./bin golangci-lint run -v --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
