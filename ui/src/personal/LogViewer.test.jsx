@@ -30,13 +30,13 @@ describe('LogViewer', () => {
     render(<LogViewer />)
     expect(screen.getByText('logViewer.noLogs')).toBeInTheDocument()
   })
-  
+
   it('has control buttons', () => {
     render(<LogViewer />)
-    
+
     // Verify filter input exists
     expect(screen.getByPlaceholderText('logViewer.filter')).toBeInTheDocument()
-    
+
     // Verify buttons exist
     expect(screen.getByTitle('logViewer.follow')).toBeInTheDocument()
     expect(screen.getByTitle('logViewer.goTop')).toBeInTheDocument()

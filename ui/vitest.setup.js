@@ -38,7 +38,9 @@ global.EventSource = class EventSource {
 }
 
 // Suppress React 18 warnings about act()
+// eslint-disable-next-line no-console
 const originalError = console.error
+// eslint-disable-next-line no-console
 console.error = (...args) => {
   if (/Warning.*not wrapped in act/.test(args[0])) {
     return

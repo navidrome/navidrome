@@ -21,11 +21,11 @@ vi.mock('@material-ui/core/styles', () => ({
 
 vi.mock('@material-ui/core', () => ({
   Chip: ({ label, onClick, className }) => (
-    <span className={className} onClick={onClick}>{label}</span>
+    <span className={className} onClick={onClick}>
+      {label}
+    </span>
   ),
-  Tooltip: ({ children, title }) => (
-    <div title={title}>{children}</div>
-  ),
+  Tooltip: ({ children, title }) => <div title={title}>{children}</div>,
 }))
 
 vi.mock('clsx', () => ({
@@ -44,7 +44,7 @@ describe('LogViewerLine', () => {
   }
 
   const mockOnQuickFilter = vi.fn()
-  
+
   const defaultProps = {
     index: 0,
     style: {},
@@ -53,27 +53,27 @@ describe('LogViewerLine', () => {
       onQuickFilter: mockOnQuickFilter,
     },
   }
-  
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
-  
+
   it('renders log entry correctly', () => {
     render(<LogViewerLine {...defaultProps} />)
-    
+
     // Check that level is displayed correctly
     expect(screen.getByText('INFO')).toBeInTheDocument()
-    
+
     // Check that message is displayed
     expect(screen.getByText('Server started')).toBeInTheDocument()
   })
-  
+
   it('calls onQuickFilter when message is clicked', () => {
     render(<LogViewerLine {...defaultProps} />)
-    
+
     const message = screen.getByText('Server started')
     fireEvent.click(message)
-    
+
     expect(mockOnQuickFilter).toHaveBeenCalledWith('Server started')
   })
 })
