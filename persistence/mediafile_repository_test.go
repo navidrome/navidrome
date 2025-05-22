@@ -53,31 +53,62 @@ var _ = Describe("MediaRepository", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
-	It("prevents duplicate tracks with the same path", func() {
+	It("prevents duplicate tracks with the same path and handles multiple existing duplicates", func() {
 		path := "/test/duplicate/path.mp3"
 
-		// First insert
+		// First insert - normal way
 		mf1 := model.MediaFile{LibraryID: 1, Path: path, Title: "Track 1"}
 		Expect(mr.Put(&mf1)).To(BeNil())
-
-		// Second insert with same path
+		
+		// Insert duplicates directly to bypass any deduplication in Put
+		// This simulates the scenario where duplicates already exist in the database
 		mf2 := model.MediaFile{LibraryID: 1, Path: path, Title: "Track 2"}
-		Expect(mr.Put(&mf2)).To(BeNil())
-
-		// Count tracks with this path
+		mf2.ID = id.NewRandom() // Force a new random ID
+		mf3 := model.MediaFile{LibraryID: 1, Path: path, Title: "Track 3"}
+		mf3.ID = id.NewRandom() // Force a new random ID
+		
+		// Insert directly into the database, bypassing the Put method's duplicate handling
+		_, err := GetDBXBuilder().Insert("media_file", map[string]interface{}{
+			"id": mf2.ID, "path": mf2.Path, "title": mf2.Title, 
+			"library_id": mf2.LibraryID, "created_at": time.Now(),
+		}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		
+		_, err = GetDBXBuilder().Insert("media_file", map[string]interface{}{
+			"id": mf3.ID, "path": mf3.Path, "title": mf3.Title,
+			"library_id": mf3.LibraryID, "created_at": time.Now(),
+		}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		
+		// Count - should have 3 tracks with the same path now
 		count, err := mr.CountAll(model.QueryOptions{
 			Filters: sq.Eq{"media_file.path": path},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(count).To(Equal(int64(1)))
-
-		// Get the track and verify it's the second one (most recent)
-		track, err := mr.GetAll(model.QueryOptions{
+		Expect(count).To(Equal(int64(3)))
+		
+		// Now insert another one with Put
+		mf4 := model.MediaFile{LibraryID: 1, Path: path, Title: "Track 4"}
+		Expect(mr.Put(&mf4)).To(BeNil())
+		
+		// Check if duplicates were removed
+		count, err = mr.CountAll(model.QueryOptions{
 			Filters: sq.Eq{"media_file.path": path},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(track).To(HaveLen(1))
-		Expect(track[0].Title).To(Equal("Track 2"))
+		
+		log.Info(log.NewContext(context.TODO()), "TEST RESULT", "duplicates_count", count)
+		
+		// With our code active, all duplicates should be removed
+		Expect(count).To(Equal(int64(1)), "Should only have one record after deduplication")
+		
+		// Get the track and verify it has the most recent data
+		tracks, err := mr.GetAll(model.QueryOptions{
+			Filters: sq.Eq{"media_file.path": path},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(tracks).To(HaveLen(1))
+		Expect(tracks[0].Title).To(Equal("Track 4"))
 	})
 
 	Context("Annotations", func() {
