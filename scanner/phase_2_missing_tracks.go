@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/Masterminds/squirrel"
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -182,6 +184,61 @@ func (p *phaseMissingTracks) finalize(err error) error {
 	if matched > 0 {
 		log.Info(p.ctx, "Scanner: Found moved files", "total", matched, err)
 	}
+
+	// Check if we should purge missing items
+	if conf.Server.Scanner.PurgeMissing == "always" || (conf.Server.Scanner.PurgeMissing == "full" && p.state.fullScan) {
+		err = p.purgeMissing(err)
+		if err != nil {
+			log.Error(p.ctx, "Scanner: Error purging missing items", err)
+		}
+	}
+
+	return err
+}
+
+func (p *phaseMissingTracks) purgeMissing(err error) error {
+	count, err := p.ds.MediaFile(p.ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})
+	if err != nil {
+		return fmt.Errorf("error counting missing files: %w", err)
+	}
+	
+	if count > 0 {
+		log.Info(p.ctx, "Scanner: Purging missing items from the database", "mediaFiles", count)
+		
+		// Get all missing files IDs
+		var missingIDs []string
+		cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})
+		if err != nil {
+			return fmt.Errorf("error getting missing files: %w", err)
+		}
+		
+		for mf, err := range cursor {
+			if err != nil {
+				return fmt.Errorf("error reading missing files: %w", err)
+			}
+			missingIDs = append(missingIDs, mf.ID)
+		}
+		
+		// Delete missing files individually (avoid nested transactions)
+		for _, id := range missingIDs {
+			err := p.ds.MediaFile(p.ctx).Delete(id)
+			if err != nil {
+				log.Error(p.ctx, "Error deleting missing file", "id", id, err)
+				return fmt.Errorf("error deleting missing file: %w", err)
+			}
+		}
+		
+		p.state.changesDetected.Store(true)
+		
+		// Run garbage collection to clean up orphaned albums and artists
+		err = p.ds.GC(p.ctx)
+		if err != nil {
+			return fmt.Errorf("error running GC after purging missing items: %w", err)
+		}
+	} else {
+		log.Debug(p.ctx, "Scanner: No missing items to purge")
+	}
+	
 	return err
 }
 

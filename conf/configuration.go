@@ -134,6 +134,7 @@ type scannerOptions struct {
 	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
+	PurgeMissing       string // Values: "never", "always", "full"
 }
 
 type subsonicOptions struct {
@@ -503,6 +504,7 @@ func init() {
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
+	viper.SetDefault("scanner.purgemissing", "never")
 
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
