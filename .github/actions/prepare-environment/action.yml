@@ -1,0 +1,24 @@
+name: 'Prepare Environment'
+description: 'Installs TagLib and sets up the build environment'
+inputs:
+  taglib_version:
+    description: 'Version of TagLib to download'
+    required: true
+    default: '2.0.2-1'
+  platform:
+    description: 'Platform to download TagLib for'
+    default: 'linux-amd64'
+runs:
+  using: 'composite'
+  steps:
+    - name: Download TagLib
+      shell: bash
+      run: |
+        mkdir -p /tmp/taglib
+        cd /tmp
+        FILE=taglib-${{ inputs.platform }}.tar.gz
+        wget https://github.com/navidrome/cross-taglib/releases/download/v${{ inputs.taglib_version }}/${FILE}
+        tar -xzf ${FILE} -C taglib
+        PKG_CONFIG_PREFIX=/tmp/taglib
+        echo "PKG_CONFIG_PREFIX=${PKG_CONFIG_PREFIX}" >> $GITHUB_ENV
+        echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:${PKG_CONFIG_PREFIX}/lib/pkgconfig" >> $GITHUB_ENV
