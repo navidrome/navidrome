@@ -214,12 +214,17 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/test.ogg"))
 			})
 			It("returns album cover if cannot read embed artwork", func() {
+				// Force fromTag to fail
+				mfCorruptedCover.Path = "tests/fixtures/DOES_NOT_EXIST.ogg"
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfCorruptedCover)).To(Succeed())
+				// Simulate ffmpeg error
 				ffmpeg.Error = errors.New("not available")
+
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(path).To(Equal("tests/fixtures/test.ogg"))
+				Expect(path).To(Equal("al-444_0"))
 			})
 			It("returns album cover if media file has no cover art", func() {
 				aw, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-"+mfWithoutEmbed.ID))
