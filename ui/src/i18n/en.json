@@ -1,6 +1,22 @@
 {
   "languageName": "English",
   "resources": {
+    "apikey": {
+      "name": "API Key |||| API Keys",
+      "fields": {
+        "name": "Name",
+        "key": "Key",
+        "createdAt": "Created At",
+        "key_help_text": "This key will be used for API authentication"
+      },
+      "actions": {
+        "add": "Add API Key"
+      },
+      "notifications": {
+        "created": "API Key created",
+        "updated": "API Key updated"
+      }
+    },
     "song": {
       "name": "Song |||| Songs",
       "fields": {

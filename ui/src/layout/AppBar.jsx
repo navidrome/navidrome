@@ -62,6 +62,7 @@ AboutMenuItem.displayName = 'AboutMenuItem'
 
 const settingsResources = (resource) =>
   resource.name !== 'user' &&
+  resource.name !== 'apikey' &&
   resource.hasList &&
   resource.options &&
   resource.options.subMenu === 'settings'
@@ -94,6 +95,14 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
     )
   }
 
+  const renderApiKeyMenuItemLink = () => {
+    const apiKeyResource = resourceDefinition('apikey')
+    if (!apiKeyResource) {
+      return null
+    }
+    return renderSettingsMenuItemLink(apiKeyResource)
+  }
+
   const renderSettingsMenuItemLink = (resource, id) => {
     const label = translate(`resources.${resource.name}.name`, {
       smart_count: id ? 1 : 2,
@@ -124,6 +133,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         <Divider />
         {renderUserMenuItemLink()}
+        {renderApiKeyMenuItemLink()}
         {resources
           .filter(settingsResources)
           .map((r) => renderSettingsMenuItemLink(r))}
