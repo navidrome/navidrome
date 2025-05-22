@@ -42,7 +42,7 @@ func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
 		if db.RealDS != nil {
 			db.MockedFolder = db.RealDS.Folder(ctx)
 		} else {
-			db.MockedFolder = struct{ model.FolderRepository }{}
+			db.MockedFolder = CreateMockFolderRepo()
 		}
 	}
 	return db.MockedFolder

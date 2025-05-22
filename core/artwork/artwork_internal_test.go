@@ -9,10 +9,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -35,19 +35,36 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3"}
-		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3"}
-		alOnlyExternal = model.Album{ID: "444", Name: "Only external", ImageFiles: "tests/fixtures/artist/an-album/front.png"}
-		alExternalNotFound = model.Album{ID: "555", Name: "External not found", ImageFiles: "tests/fixtures/NON_EXISTENT.png"}
+		
+		// Set up folders for testing
+		folder1 := model.Folder{
+			ID: "folder-1",
+			LibraryID: 1,
+			Name: "an-album",
+			Path: "tests/fixtures/artist",
+			ImageFiles: []string{"cover.jpg", "front.png", "artist.png"},
+			ImagesUpdatedAt: time.Now(),
+		}
+		folder2 := model.Folder{
+			ID: "folder-2",
+			LibraryID: 1,
+			Name: "artist",
+			Path: "tests/fixtures",
+			ImageFiles: []string{"artist.jpg"},
+			ImagesUpdatedAt: time.Now(),
+		}
+		ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{folder1, folder2})
+		
+		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{}}
+		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{}}
+		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"folder-1"}}
+		alExternalNotFound = model.Album{ID: "555", Name: "External not found", FolderIDs: []string{"non-existent-folder"}}
 		arMultipleCovers = model.Artist{ID: "777", Name: "All options"}
 		alMultipleCovers = model.Album{
 			ID:           "666",
 			Name:         "All options",
 			EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3",
-			Paths:        []string{"tests/fixtures/artist/an-album"},
-			ImageFiles: "tests/fixtures/artist/an-album/cover.jpg" + consts.Zwsp +
-				"tests/fixtures/artist/an-album/front.png" + consts.Zwsp +
-				"tests/fixtures/artist/an-album/artist.png",
+			FolderIDs:    []string{"folder-1"},
 			AlbumArtistID: "777",
 		}
 		mfWithEmbed = model.MediaFile{ID: "22", Path: "tests/fixtures/test.mp3", HasCoverArt: true, AlbumID: "222"}
@@ -246,10 +263,26 @@ var _ = Describe("Artwork", func() {
 				func(format string, landscape bool, size int) {
 					coverFileName := "cover." + format
 					dirName := createImage(format, landscape, size)
+					
+					// Create a folder and add it to the mock
+					folderID := "folder-test-" + format
+					folder := model.Folder{
+						ID:              folderID,
+						LibraryID:       1,
+						Name:            filepath.Base(dirName),
+						Path:            filepath.Dir(dirName),
+						ImageFiles:      []string{coverFileName},
+						ImagesUpdatedAt: time.Now(),
+					}
+					ds.Folder(ctx).(*tests.MockFolderRepo).SetData(append(
+						ds.Folder(ctx).(*tests.MockFolderRepo).All,
+						folder,
+					))
+					
 					alCover = model.Album{
-						ID:   "444",
-						Name: "Only external",
-						ImageFiles: filepath.Join(dirName, coverFileName),
+						ID:        "444",
+						Name:      "Only external",
+						FolderIDs: []string{folderID},
 					}
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
