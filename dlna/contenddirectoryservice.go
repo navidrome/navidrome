@@ -143,7 +143,7 @@ func handleArtist(matchResults map[string]string, ret []interface{}, cds *conten
 		allAlbumsForThisArtist, _ := cds.ds.Album(cds.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_artist_id": matchResults["Artist"]}})
 		return cds.doAlbums(allAlbumsForThisArtist, o.Path, ret, host)
 	}
-	indexes, err := cds.ds.Artist(cds.ctx).GetIndex()
+	indexes, err := cds.ds.Artist(cds.ctx).GetIndex(false)
 	if err != nil {
 		fmt.Printf("Error retrieving Indexes: %+v", err)
 		return nil, err
