@@ -228,13 +228,8 @@ func (p *phaseMissingTracks) purgeMissing(err error) error {
 			}
 		}
 		
+		// Set changesDetected to true so that garbage collection will run at the end of the scan process
 		p.state.changesDetected.Store(true)
-		
-		// Run garbage collection to clean up orphaned albums and artists
-		err = p.ds.GC(p.ctx)
-		if err != nil {
-			return fmt.Errorf("error running GC after purging missing items: %w", err)
-		}
 	} else {
 		log.Debug(p.ctx, "Scanner: No missing items to purge")
 	}
