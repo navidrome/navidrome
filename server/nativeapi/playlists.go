@@ -51,8 +51,7 @@ func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 		pls, err := playlists.ImportM3U(ctx, r.Body)
 		if err != nil {
 			log.Error(r.Context(), "Error parsing playlist", err)
-			// TODO: consider returning StatusBadRequest for playlists that are malformed
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
