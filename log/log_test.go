@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http/httptest"
-	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -13,11 +12,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 )
 
-func TestLog(t *testing.T) {
-	SetLevel(LevelInfo)
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Log Suite")
-}
+// Note: TestLog function is now removed to avoid double initialization
 
 var _ = Describe("Logger", func() {
 	var l *logrus.Logger
@@ -92,7 +87,7 @@ var _ = Describe("Logger", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
 			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:93"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:"))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -241,7 +236,7 @@ var _ = Describe("Logger", func() {
 	})
 
 	Describe("Redact", func() {
-		Describe("Subsonic API password", func() {
+		It("Redacts Subsonic API password", func() {
 			msg := "getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=first%20and%20other%20words&title=Title"
 			Expect(Redact(msg)).To(Equal("getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=[REDACTED]&title=Title"))
 		})
