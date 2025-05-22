@@ -39,15 +39,16 @@ This is a music streaming server written in Go with a React frontend. The applic
 8. Ensure compatibility with external services (LastFM, Spotify)
 
 ## Development Workflow
+- Always run formatting and linting before committing changes
+- When adding new Go dependencies, always run `go mod tidy` to keep the module file clean
 - Test changes thoroughly, especially around concurrent operations
 - Validate both backend and frontend interactions
 - Consider how changes will affect user experience and performance
 - Test with different music library sizes and configurations
-- Always run formatting and linting before committing changes
 
 ## Important commands
 - `make build`: Build the application
 - `make test`: Run Go tests
 - To run tests for a specific package, use `make test PKG=./pkgname/...`
 - `make lintall`: Run linters
-- `make format`: Format code
+- `make format`: Format the code
