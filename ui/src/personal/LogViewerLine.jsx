@@ -127,4 +127,6 @@ const LogViewerLine = React.memo(({ index, style, data }) => {
   )
 })
 
+LogViewerLine.displayName = 'LogViewerLine'
+
 export default LogViewerLine

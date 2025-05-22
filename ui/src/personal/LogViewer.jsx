@@ -117,6 +117,7 @@ const LogViewer = () => {
 
       // Handle errors
       es.onerror = (err) => {
+        // eslint-disable-next-line no-console
         console.error('Log stream error:', err)
         es.close()
         // Try to reconnect after a delay
@@ -132,7 +133,7 @@ const LogViewer = () => {
         eventSource.close()
       }
     }
-  }, [dataProvider])
+  }, [dataProvider, eventSource])
 
   // Scroll to top
   const handleScrollTop = () => {
