@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -186,7 +187,7 @@ func (p *phaseMissingTracks) finalize(err error) error {
 	}
 
 	// Check if we should purge missing items
-	if conf.Server.Scanner.PurgeMissing == "always" || (conf.Server.Scanner.PurgeMissing == "full" && p.state.fullScan) {
+	if conf.Server.Scanner.PurgeMissing == consts.PurgeMissingAlways || (conf.Server.Scanner.PurgeMissing == consts.PurgeMissingFull && p.state.fullScan) {
 		err = p.purgeMissing(err)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error purging missing items", err)
@@ -205,31 +206,17 @@ func (p *phaseMissingTracks) purgeMissing(err error) error {
 	if count > 0 {
 		log.Info(p.ctx, "Scanner: Purging missing items from the database", "mediaFiles", count)
 
-		// Get all missing files IDs
-		var missingIDs []string
-		cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})
+		deletedCount, err := p.ds.MediaFile(p.ctx).DeleteAllMissing()
 		if err != nil {
-			return fmt.Errorf("error getting missing files: %w", err)
+			return fmt.Errorf("error deleting missing files: %w", err)
 		}
 
-		for mf, err := range cursor {
-			if err != nil {
-				return fmt.Errorf("error reading missing files: %w", err)
-			}
-			missingIDs = append(missingIDs, mf.ID)
+		if deletedCount > 0 {
+			// Set changesDetected to true so that garbage collection will run at the end of the scan process
+			p.state.changesDetected.Store(true)
 		}
 
-		// Delete missing files individually (to avoid permission issues in tests)
-		for _, id := range missingIDs {
-			err := p.ds.MediaFile(p.ctx).Delete(id)
-			if err != nil {
-				log.Error(p.ctx, "Error deleting missing file", "id", id, err)
-				return fmt.Errorf("error deleting missing file: %w", err)
-			}
-		}
-
-		// Set changesDetected to true so that garbage collection will run at the end of the scan process
-		p.state.changesDetected.Store(true)
+		log.Debug(p.ctx, "Scanner: Purged missing items", "count", deletedCount)
 	} else {
 		log.Debug(p.ctx, "Scanner: No missing items to purge")
 	}

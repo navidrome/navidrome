@@ -530,12 +530,12 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(mf.Missing).To(BeTrue())
 				})
 			})
-			
+
 			When("PurgeMissing is set to 'always'", func() {
 				BeforeEach(func() {
 					conf.Server.Scanner.PurgeMissing = "always"
 				})
-				
+
 				AfterEach(func() {
 					conf.Server.Scanner.PurgeMissing = "never"
 				})
@@ -561,12 +561,12 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(err).To(MatchError(model.ErrNotFound))
 				})
 			})
-			
+
 			When("PurgeMissing is set to 'full'", func() {
 				BeforeEach(func() {
 					conf.Server.Scanner.PurgeMissing = "full"
 				})
-				
+
 				AfterEach(func() {
 					conf.Server.Scanner.PurgeMissing = "never"
 				})

@@ -385,7 +385,7 @@ func validatePlaylistsPath() error {
 }
 
 func validatePurgeMissingOption() error {
-	allowedValues := []string{"never", "always", "full"}
+	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
 	valid := false
 	for _, v := range allowedValues {
 		if v == Server.Scanner.PurgeMissing {
@@ -394,8 +394,10 @@ func validatePurgeMissingOption() error {
 		}
 	}
 	if !valid {
-		log.Error(fmt.Sprintf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues))
-		Server.Scanner.PurgeMissing = "never"
+		err := fmt.Errorf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
+		log.Error(err.Error())
+		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+		return err
 	}
 	return nil
 }
