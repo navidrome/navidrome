@@ -211,10 +211,6 @@ func getTagTypeFromRegistry(tagName string) string {
 	return tagTypeRegistry[strings.ToLower(tagName)]
 }
 
-func getTagType(tagName string) string {
-	return getTagTypeFromRegistry(tagName)
-}
-
 // AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`
 // file to the field map, so they can be used in smart playlists.
 // If a tag name already exists in the field map, it is ignored, so calls to this function are idempotent.
