@@ -145,8 +145,22 @@ type tagCond struct {
 
 func (e tagCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
+	
+	// Check if tag has a special type (float/int) that needs casting for proper comparison
+	valueExpr := "value"
+	tagType := getTagTypeFromRegistry(e.tag)
+	switch tagType {
+	case "float":
+		valueExpr = "CAST(value AS REAL)"
+	case "int":
+		valueExpr = "CAST(value AS INTEGER)"
+	}
+	
+	// Replace 'value' with the appropriate expression in the condition
+	condWithCast := strings.Replace(cond, "value", valueExpr, 1)
+	
 	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
-		e.tag, cond)
+		e.tag, condWithCast)
 	if e.not {
 		cond = "not " + cond
 	}
@@ -183,6 +197,22 @@ func AddRoles(roles []string) {
 		}
 		fieldMap[name] = &mappedField{field: name, isRole: true}
 	}
+}
+
+// Map to track tag types - populated by RegisterTagType
+var tagTypeRegistry = make(map[string]string)
+
+// RegisterTagType registers a tag's type in the registry to avoid import cycles with model package
+func RegisterTagType(tagName string, tagType string) {
+	tagTypeRegistry[strings.ToLower(tagName)] = tagType
+}
+
+func getTagTypeFromRegistry(tagName string) string {
+	return tagTypeRegistry[strings.ToLower(tagName)]
+}
+
+func getTagType(tagName string) string {
+	return getTagTypeFromRegistry(tagName)
 }
 
 // AddTagNames adds tag names to the field map. This is used to add all tags mapped in the `mappings.yml`

@@ -12,7 +12,8 @@ import (
 
 var _ = BeforeSuite(func() {
 	AddRoles([]string{"artist", "composer"})
-	AddTagNames([]string{"genre"})
+	AddTagNames([]string{"genre", "numericField"})
+	RegisterTagType("numericField", "float")
 })
 
 var _ = Describe("Operators", func() {
@@ -53,7 +54,9 @@ var _ = Describe("Operators", func() {
 		Entry("tag is [string]", Is{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag isNot [string]", IsNot{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value = ?)", "Rock"),
 		Entry("tag gt", Gt{"genre": "A"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value > ?)", "A"),
+		Entry("numeric tag gt", Gt{"numericField": 5}, "exists (select 1 from json_tree(tags, '$.numericField') where key='value' and CAST(value AS REAL) > ?)", 5),
 		Entry("tag lt", Lt{"genre": "Z"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value < ?)", "Z"),
+		Entry("numeric tag lt", Lt{"numericField": 10}, "exists (select 1 from json_tree(tags, '$.numericField') where key='value' and CAST(value AS REAL) < ?)", 10),
 		Entry("tag contains", Contains{"genre": "Rock"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
 		Entry("tag not contains", NotContains{"genre": "Rock"}, "not exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "%Rock%"),
 		Entry("tag startsWith", StartsWith{"genre": "Soft"}, "exists (select 1 from json_tree(tags, '$.genre') where key='value' and value LIKE ?)", "Soft%"),

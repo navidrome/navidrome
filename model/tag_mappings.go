@@ -153,6 +153,15 @@ func compileSplitRegex(tagName TagName, split []string) *regexp.Regexp {
 	return re
 }
 
+func registerTagTypesWithCriteria() {
+	mappings := TagMappings()
+	for name, conf := range mappings {
+		if conf.Type != "" {
+			criteria.RegisterTagType(string(name), string(conf.Type))
+		}
+	}
+}
+
 func tagNames() []string {
 	mappings := TagMappings()
 	names := make([]string, 0, len(mappings))
@@ -228,5 +237,8 @@ func init() {
 		// used in smart playlists
 		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
 		criteria.AddTagNames(tagNames())
+		
+		// Register tag types with criteria package
+		registerTagTypesWithCriteria()
 	})
 }
