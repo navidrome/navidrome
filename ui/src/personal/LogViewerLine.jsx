@@ -107,7 +107,10 @@ const LogViewerLine = React.memo(({ index, style, data }) => {
         {log.level.toUpperCase()}
       </div>
       <Tooltip title={log.message}>
-        <div className={classes.message} onClick={() => onQuickFilter(log.message)}>
+        <div
+          className={classes.message}
+          onClick={() => onQuickFilter(log.message)}
+        >
           {log.message}
         </div>
       </Tooltip>

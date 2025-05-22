@@ -5,7 +5,12 @@ import LogViewer from './personal/LogViewer'
 
 const routes = [
   <Route exact path="/personal" render={() => <Personal />} key={'personal'} />,
-  <Route exact path="/personal/logs" render={() => <LogViewer />} key={'logs'} />,
+  <Route
+    exact
+    path="/personal/logs"
+    render={() => <LogViewer />}
+    key={'logs'}
+  />,
 ]
 
 export default routes

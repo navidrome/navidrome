@@ -58,14 +58,14 @@ const LogViewer = () => {
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const isSmall = useMediaQuery((theme) => theme.breakpoints.down('sm'))
-  
+
   // Local state
   const [logs, setLogs] = useState([])
   const [filter, setFilter] = useState('')
   const [follow, setFollow] = useState(true)
   const [eventSource, setEventSource] = useState(null)
   const listRef = useRef(null)
-  
+
   // Filter logs
   const filteredLogs = filter
     ? logs.filter((log) => {
@@ -76,7 +76,7 @@ const LogViewer = () => {
           Object.entries(log.data).some(
             ([key, value]) =>
               key.toLowerCase().includes(searchText) ||
-              String(value).toLowerCase().includes(searchText)
+              String(value).toLowerCase().includes(searchText),
           )
         )
       })

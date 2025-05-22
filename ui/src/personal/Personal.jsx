@@ -34,7 +34,7 @@ const Personal = () => {
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
         {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}
       </SimpleForm>
-      
+
       {isAdmin && (
         <Box p={2} className={classes.adminLinks}>
           <Typography variant="h6" gutterBottom>
