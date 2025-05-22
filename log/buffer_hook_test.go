@@ -78,7 +78,7 @@ var _ = Describe("bufferHook", func() {
 
 		It("should successfully unregister listeners", func() {
 			UnregisterLogListener(ch)
-			
+
 			entry := &logrus.Entry{
 				Message: "after unregister",
 				Level:   logrus.InfoLevel,

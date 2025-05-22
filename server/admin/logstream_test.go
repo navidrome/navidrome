@@ -34,36 +34,36 @@ var _ = Describe("Admin Router", func() {
 				user := model.User{ID: "2", UserName: "user", IsAdmin: false}
 				ctx := request.WithUser(r.Context(), user)
 				r = r.WithContext(ctx)
-				
+
 				// Check admin status
 				user, _ = request.UserFrom(r.Context())
 				if !user.IsAdmin {
 					w.WriteHeader(http.StatusForbidden)
 					return
 				}
-				
+
 				next.ServeHTTP(w, r)
 			})
 		}
-		
+
 		// Mock middlewares
 		mockAuthenticator := func(model.DataStore) func(http.Handler) http.Handler {
 			return func(next http.Handler) http.Handler {
 				return next
 			}
 		}
-		
+
 		mockJWTRefresher := func(next http.Handler) http.Handler {
 			return next
 		}
-		
+
 		restrictiveRouter := admin.NewRouter(ds, mockAuthenticator, mockJWTRefresher, restrictiveAdmin)
-		
+
 		// Make request
 		req := httptest.NewRequest("GET", "/logs/stream", nil)
 		rec := httptest.NewRecorder()
 		restrictiveRouter.ServeHTTP(rec, req)
-		
+
 		// Should get Forbidden status
 		Expect(rec.Code).To(Equal(http.StatusForbidden))
 	})
