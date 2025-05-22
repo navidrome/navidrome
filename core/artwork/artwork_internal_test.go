@@ -163,7 +163,7 @@ var _ = Describe("Artwork", func() {
 			DescribeTable("ArtistArtPriority",
 				func(priority string, expected string) {
 					conf.Server.ArtistArtPriority = priority
-					aw, err := newArtistReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
+					aw, err := newArtistArtworkReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
