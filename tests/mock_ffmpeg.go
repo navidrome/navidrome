@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"strings"
@@ -63,6 +64,12 @@ func (ff *MockFFmpeg) Read(p []byte) (n int, err error) {
 func (ff *MockFFmpeg) Close() error {
 	ff.closed.Store(true)
 	return nil
+}
+
+func (ff *MockFFmpeg) SetReturnBuffer(data []byte) {
+	ff.lock.Lock()
+	defer ff.lock.Unlock()
+	ff.Reader = bytes.NewReader(data)
 }
 
 func (ff *MockFFmpeg) IsClosed() bool {
