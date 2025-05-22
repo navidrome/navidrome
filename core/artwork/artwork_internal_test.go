@@ -35,50 +35,50 @@ var _ = Describe("Artwork", func() {
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		
+
 		// Set up folders for testing
 		folder1 := model.Folder{
-			ID: "folder-1",
+			ID:        "folder-1",
 			LibraryID: 1,
-			Name: "an-album",
-			Path: "tests/fixtures/artist",
+			Name:      "an-album",
+			Path:      "tests/fixtures/artist",
 			// Note: The order of files matters here - it determines which one is selected first
-			ImageFiles: []string{"front.png", "cover.jpg", "artist.png"},
+			ImageFiles:      []string{"front.png", "cover.jpg", "artist.png"},
 			ImagesUpdatedAt: time.Now(),
-			LibraryPath: "", // Use empty since the code will join this path with Path/Name
+			LibraryPath:     "", // Use empty since the code will join this path with Path/Name
 		}
 		folder2 := model.Folder{
-			ID: "folder-2",
-			LibraryID: 1,
-			Name: "artist",
-			Path: "tests/fixtures",
-			ImageFiles: []string{"artist.jpg"},
+			ID:              "folder-2",
+			LibraryID:       1,
+			Name:            "artist",
+			Path:            "tests/fixtures",
+			ImageFiles:      []string{"artist.jpg"},
 			ImagesUpdatedAt: time.Now(),
-			LibraryPath: "",
+			LibraryPath:     "",
 		}
 		// Simulate non-existent folder for testing error case
 		folder3 := model.Folder{
-			ID: "non-existent-folder",
-			LibraryID: 1,
-			Name: "missing",
-			Path: "tests/fixtures/NON_EXISTENT",
-			ImageFiles: []string{},
+			ID:              "non-existent-folder",
+			LibraryID:       1,
+			Name:            "missing",
+			Path:            "tests/fixtures/NON_EXISTENT",
+			ImageFiles:      []string{},
 			ImagesUpdatedAt: time.Now(),
-			Missing: true,
-			LibraryPath: "",
+			Missing:         true,
+			LibraryPath:     "",
 		}
 		ds.Folder(ctx).(*tests.MockFolderRepo).SetData([]model.Folder{folder1, folder2, folder3})
-		
+
 		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{}}
 		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{}}
 		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"folder-1"}}
 		alExternalNotFound = model.Album{ID: "555", Name: "External not found", FolderIDs: []string{"non-existent-folder"}}
 		arMultipleCovers = model.Artist{ID: "777", Name: "All options"}
 		alMultipleCovers = model.Album{
-			ID:           "666",
-			Name:         "All options",
-			EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3",
-			FolderIDs:    []string{"folder-1"},
+			ID:            "666",
+			Name:          "All options",
+			EmbedArtPath:  "tests/fixtures/artist/an-album/test.mp3",
+			FolderIDs:     []string{"folder-1"},
 			AlbumArtistID: "777",
 		}
 		mfWithEmbed = model.MediaFile{ID: "22", Path: "tests/fixtures/test.mp3", HasCoverArt: true, AlbumID: "222"}
@@ -119,7 +119,7 @@ var _ = Describe("Artwork", func() {
 				// Create an album with no embed path and no folders
 				noArtAlbum := model.Album{ID: "no-art", Name: "No Art", EmbedArtPath: "", FolderIDs: []string{}}
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{noArtAlbum})
-				
+
 				// Now we expect ErrUnavailable since there are no valid paths
 				aw, err := newAlbumArtworkReader(ctx, aw, noArtAlbum.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
@@ -233,7 +233,7 @@ var _ = Describe("Artwork", func() {
 				// Set new return buffer
 				ffmpeg = tests.NewMockFFmpeg("content from ffmpeg")
 				aw = NewArtwork(ds, GetImageCache(), ffmpeg, nil).(*artwork)
-				
+
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				r, path, err := aw.Reader(ctx)
@@ -246,7 +246,7 @@ var _ = Describe("Artwork", func() {
 			It("returns album cover if cannot read embed artwork", func() {
 				// Set ffmpeg to return an error
 				ffmpeg.Error = errors.New("not available")
-				
+
 				// Update the album repo to include the album with front.png
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alOnlyEmbed,
@@ -255,7 +255,7 @@ var _ = Describe("Artwork", func() {
 					alExternalNotFound,
 					alMultipleCovers,
 				})
-				
+
 				// Make sure mfCorruptedCover points to alOnlyExternal
 				mfCorruptedCover = model.MediaFile{ID: "45", Path: "tests/fixtures/test.ogg", HasCoverArt: true, AlbumID: alOnlyExternal.ID}
 				ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -263,10 +263,10 @@ var _ = Describe("Artwork", func() {
 					mfWithoutEmbed,
 					mfCorruptedCover,
 				})
-				
+
 				// Configure the test to use front.png
 				conf.Server.CoverArtPriority = "front.*"
-				
+
 				// Now check that we fall back to album art
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
@@ -320,7 +320,7 @@ var _ = Describe("Artwork", func() {
 				func(format string, landscape bool, size int) {
 					coverFileName := "cover." + format
 					dirName := createImage(format, landscape, size)
-					
+
 					// Create a folder and add it to the mock
 					folderID := "folder-test-" + format
 					folder := model.Folder{
@@ -335,7 +335,7 @@ var _ = Describe("Artwork", func() {
 						ds.Folder(ctx).(*tests.MockFolderRepo).All,
 						folder,
 					))
-					
+
 					alCover = model.Album{
 						ID:        "444",
 						Name:      "Only external",
