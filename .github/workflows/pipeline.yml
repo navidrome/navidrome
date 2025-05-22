@@ -65,10 +65,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare Environment
-        uses: ./.github/actions/prepare-environment
+      - name: Download TagLib
+        uses: ./.github/actions/download-taglib
         with:
-          taglib_version: ${{ env.CROSS_TAGLIB_VERSION }}
+          version: ${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v7
@@ -95,10 +95,10 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
 
-      - name: Prepare Environment
-        uses: ./.github/actions/prepare-environment
+      - name: Download TagLib
+        uses: ./.github/actions/download-taglib
         with:
-          taglib_version: ${{ env.CROSS_TAGLIB_VERSION }}
+          version: ${{ env.CROSS_TAGLIB_VERSION }}
 
       - name: Download dependencies
         run: go mod download
