@@ -30,13 +30,13 @@ func (rb *RingBuffer) Add(entry *logrus.Entry) {
 
 	// Create a copy of the entry to ensure it's not modified by callers
 	entryCopy := *entry
-	
+
 	// Calculate position for the new entry
 	position := (rb.start + rb.count) % rb.size
-	
+
 	// Store the entry
 	rb.buffer[position] = &entryCopy
-	
+
 	// Increment count if we haven't filled the buffer yet
 	if rb.count < rb.size {
 		rb.count++
@@ -50,13 +50,13 @@ func (rb *RingBuffer) Add(entry *logrus.Entry) {
 func (rb *RingBuffer) GetAll() []*logrus.Entry {
 	rb.mutex.RLock()
 	defer rb.mutex.RUnlock()
-	
+
 	result := make([]*logrus.Entry, rb.count)
-	
+
 	for i := 0; i < rb.count; i++ {
 		result[i] = rb.buffer[(rb.start+i)%rb.size]
 	}
-	
+
 	return result
 }
 

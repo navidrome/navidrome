@@ -38,7 +38,7 @@ func (h *bufferHook) Fire(entry *logrus.Entry) error {
 	// Broadcast to listeners
 	listenerMutex.RLock()
 	defer listenerMutex.RUnlock()
-	
+
 	if len(logListeners) > 0 {
 		for ch := range logListeners {
 			select {
@@ -49,7 +49,7 @@ func (h *bufferHook) Fire(entry *logrus.Entry) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -80,7 +80,7 @@ func EnableLogBuffer() {
 	logBufferOnce.Do(func() {
 		logBuffer = NewRingBuffer(defaultLogBufferCapacity)
 	})
-	
+
 	// Add the hook to the default logger
 	defaultLogger.AddHook(&bufferHook{})
 }

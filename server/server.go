@@ -216,7 +216,7 @@ func (s *Server) mountAuthenticationRoutes() chi.Router {
 
 func (s *Server) mountAdminRoutes() chi.Router {
 	r := s.router
-	adminRouter := admin.NewRouter(s.ds)
+	adminRouter := admin.NewRouter(s.ds, Authenticator, JWTRefresher, RequireAdmin)
 	return r.Route(path.Join(conf.Server.BasePath, "/api/admin"), func(r chi.Router) {
 		r.Mount("/", adminRouter)
 	})

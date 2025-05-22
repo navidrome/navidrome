@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,11 +22,20 @@ type LogEntry struct {
 
 type Router struct {
 	http.Handler
-	ds model.DataStore
+	ds            model.DataStore
+	authenticator func(ds model.DataStore) func(http.Handler) http.Handler
+	jwtRefresher  func(http.Handler) http.Handler
+	requireAdmin  func(http.Handler) http.Handler
 }
 
-func NewRouter(ds model.DataStore) *Router {
-	r := &Router{ds: ds}
+func NewRouter(ds model.DataStore, authenticator func(ds model.DataStore) func(http.Handler) http.Handler,
+	jwtRefresher func(http.Handler) http.Handler, requireAdmin func(http.Handler) http.Handler) *Router {
+	r := &Router{
+		ds:            ds,
+		authenticator: authenticator,
+		jwtRefresher:  jwtRefresher,
+		requireAdmin:  requireAdmin,
+	}
 	r.Handler = r.routes()
 	return r
 }
@@ -37,9 +45,9 @@ func (s *Router) routes() http.Handler {
 
 	// Admin-only routes
 	r.Group(func(r chi.Router) {
-		r.Use(server.Authenticator(s.ds))
-		r.Use(server.JWTRefresher)
-		r.Use(server.RequireAdmin)
+		r.Use(s.authenticator(s.ds))
+		r.Use(s.jwtRefresher)
+		r.Use(s.requireAdmin)
 
 		r.Get("/logs/stream", s.streamLogs)
 	})
@@ -74,7 +82,7 @@ func (s *Router) streamLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	
+
 	// Flush the response writer
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
