@@ -50,6 +50,13 @@ var _ = Describe("File Caches", func() {
 			Expect(fc.cache).To(BeNil())
 			Expect(fc.disabled).To(BeTrue())
 		})
+
+		It("reports when cache is disabled", func() {
+			fc := callNewFileCache("test", "0", "test", 0, nil)
+			Expect(fc.Disabled(context.Background())).To(BeTrue())
+			fc = callNewFileCache("test", "1KB", "test", 0, nil)
+			Expect(fc.Disabled(context.Background())).To(BeFalse())
+		})
 	})
 
 	Describe("FileCache", func() {
