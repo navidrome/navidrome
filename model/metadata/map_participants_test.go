@@ -595,6 +595,26 @@ var _ = Describe("Participants", func() {
 					matchPerformer("Nathan East", "nathan east", "Bass", "mbid3"),
 				))
 			})
+
+			It("should handle mismatched performer names and MBIDs for sub-roles", func() {
+				mf = toMediaFile(model.RawTags{
+					"PERFORMER:VOCALS":               {"Singer A", "Singer B", "Singer C"},
+					"MUSICBRAINZ_PERFORMERID:VOCALS": {"mbid_vocals_a", "mbid_vocals_b"}, // Fewer MBIDs
+					"PERFORMER:DRUMS":                {"Drummer X"},
+					"MUSICBRAINZ_PERFORMERID:DRUMS":  {"mbid_drums_x", "mbid_drums_y"}, // More MBIDs
+				})
+
+				participants := mf.Participants
+				Expect(participants).To(HaveKeyWithValue(model.RolePerformer, HaveLen(4))) // 3 vocalists + 1 drummer
+
+				p := participants[model.RolePerformer]
+				Expect(p).To(ContainElements(
+					matchPerformer("Singer A", "singer a", "Vocals", "mbid_vocals_a"),
+					matchPerformer("Singer B", "singer b", "Vocals", "mbid_vocals_b"),
+					matchPerformer("Singer C", "singer c", "Vocals", ""),
+					matchPerformer("Drummer X", "drummer x", "Drums", "mbid_drums_x"),
+				))
+			})
 		})
 	})
 
