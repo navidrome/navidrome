@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("artistReader", func() {
+var _ = Describe("artistArtworkReader", func() {
 	var _ = Describe("loadArtistFolder", func() {
 		var (
 			ctx             context.Context
