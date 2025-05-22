@@ -1,7 +1,5 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
-
 CREATE TABLE share_tmp
 (
     id              varchar(255) not null
@@ -36,6 +34,3 @@ ALTER TABLE share_tmp RENAME To share;
 -- +goose StatementEnd
 
 -- +goose Down
--- +goose StatementBegin
-SELECT 'down SQL query';
--- +goose StatementEnd
