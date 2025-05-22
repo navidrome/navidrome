@@ -134,6 +134,9 @@ func SetOutput(w io.Writer) {
 		w = CRLFWriter(w)
 	}
 	defaultLogger.SetOutput(w)
+	
+	// Enable log buffer for UI log viewer
+	EnableLogBuffer()
 }
 
 // Redact applies redaction to a single string

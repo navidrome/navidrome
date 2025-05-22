@@ -23,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/admin"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/ui"
 )
@@ -41,6 +42,7 @@ func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *S
 	auth.Init(s.ds)
 	s.initRoutes()
 	s.mountAuthenticationRoutes()
+	s.mountAdminRoutes()
 	s.mountRootRedirector()
 	checkFFmpegInstallation()
 	checkExternalCredentials()
@@ -209,6 +211,14 @@ func (s *Server) mountAuthenticationRoutes() chi.Router {
 			r.Post("/login", login(s.ds))
 		}
 		r.Post("/createAdmin", createAdmin(s.ds))
+	})
+}
+
+func (s *Server) mountAdminRoutes() chi.Router {
+	r := s.router
+	adminRouter := admin.NewRouter(s.ds)
+	return r.Route(path.Join(conf.Server.BasePath, "/api/admin"), func(r chi.Router) {
+		r.Mount("/", adminRouter)
 	})
 }
 

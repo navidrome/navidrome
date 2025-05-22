@@ -196,6 +196,19 @@ func reqToCtx(key any, fn func(req *http.Request) any) func(http.Handler) http.H
 	}
 }
 
+// RequireAdmin is a middleware that checks if the current user is an admin
+// and returns 403 Forbidden if not.
+func RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, ok := request.UserFrom(r.Context())
+		if !ok || !user.IsAdmin {
+			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // serverAddressMiddleware is a middleware function that modifies the request object
 // to reflect the address of the server handling the request, as determined by the
 // presence of X-Forwarded-* headers or the scheme and host of the request URL.
