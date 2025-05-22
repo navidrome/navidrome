@@ -201,25 +201,25 @@ func (p *phaseMissingTracks) purgeMissing(err error) error {
 	if err != nil {
 		return fmt.Errorf("error counting missing files: %w", err)
 	}
-	
+
 	if count > 0 {
 		log.Info(p.ctx, "Scanner: Purging missing items from the database", "mediaFiles", count)
-		
+
 		// Get all missing files IDs
 		var missingIDs []string
 		cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})
 		if err != nil {
 			return fmt.Errorf("error getting missing files: %w", err)
 		}
-		
+
 		for mf, err := range cursor {
 			if err != nil {
 				return fmt.Errorf("error reading missing files: %w", err)
 			}
 			missingIDs = append(missingIDs, mf.ID)
 		}
-		
-		// Delete missing files individually (avoid nested transactions)
+
+		// Delete missing files individually (to avoid permission issues in tests)
 		for _, id := range missingIDs {
 			err := p.ds.MediaFile(p.ctx).Delete(id)
 			if err != nil {
@@ -227,13 +227,13 @@ func (p *phaseMissingTracks) purgeMissing(err error) error {
 				return fmt.Errorf("error deleting missing file: %w", err)
 			}
 		}
-		
+
 		// Set changesDetected to true so that garbage collection will run at the end of the scan process
 		p.state.changesDetected.Store(true)
 	} else {
 		log.Debug(p.ctx, "Scanner: No missing items to purge")
 	}
-	
+
 	return err
 }
 

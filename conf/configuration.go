@@ -278,6 +278,7 @@ func Load(noConfigDump bool) {
 		validateScanSchedule,
 		validateBackupSchedule,
 		validatePlaylistsPath,
+		validatePurgeMissingOption,
 	)
 	if err != nil {
 		os.Exit(1)
@@ -379,6 +380,22 @@ func validatePlaylistsPath() error {
 			log.Error("Invalid PlaylistsPath", "path", path, err)
 			return err
 		}
+	}
+	return nil
+}
+
+func validatePurgeMissingOption() error {
+	allowedValues := []string{"never", "always", "full"}
+	valid := false
+	for _, v := range allowedValues {
+		if v == Server.Scanner.PurgeMissing {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		log.Error(fmt.Sprintf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues))
+		Server.Scanner.PurgeMissing = "never"
 	}
 	return nil
 }
