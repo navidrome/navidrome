@@ -63,11 +63,14 @@ func (r *missingRepository) EntityName() string {
 }
 
 func deleteMissingFiles(ds model.DataStore, w http.ResponseWriter, r *http.Request) {
-	repo := ds.MediaFile(r.Context())
 	p := req.Params(r)
 	ids, _ := p.Strings("id")
 	err := ds.WithTx(func(tx model.DataStore) error {
-		return repo.DeleteMissing(ids)
+		if len(ids) == 0 {
+			_, err := tx.MediaFile(r.Context()).DeleteAllMissing()
+			return err
+		}
+		return tx.MediaFile(r.Context()).DeleteMissing(ids)
 	})
 	if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
 		log.Warn(r.Context(), "Missing file not found", "id", ids[0])

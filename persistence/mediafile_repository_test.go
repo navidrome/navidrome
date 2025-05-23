@@ -52,6 +52,26 @@ var _ = Describe("MediaRepository", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
+	It("deletes all missing files", func() {
+		new1 := model.MediaFile{ID: id.NewRandom(), LibraryID: 1}
+		new2 := model.MediaFile{ID: id.NewRandom(), LibraryID: 1}
+		Expect(mr.Put(&new1)).To(BeNil())
+		Expect(mr.Put(&new2)).To(BeNil())
+		Expect(mr.MarkMissing(true, &new1, &new2)).To(BeNil())
+
+		adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", IsAdmin: true})
+		adminRepo := NewMediaFileRepository(adminCtx, GetDBXBuilder())
+
+		count, err := adminRepo.DeleteAllMissing()
+		Expect(err).To(BeNil())
+		Expect(count).To(BeNumerically(">=", 2))
+
+		_, err = mr.Get(new1.ID)
+		Expect(err).To(MatchError(model.ErrNotFound))
+		_, err = mr.Get(new2.ID)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
 	Context("Annotations", func() {
 		It("increments play count when the tracks does not have annotations", func() {
 			id := "incplay.firsttime"

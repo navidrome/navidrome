@@ -29,13 +29,14 @@ const useStyles = makeStyles(
 )
 
 const DeleteMissingFilesButton = (props) => {
-  const { selectedIds, className } = props
+  const { selectedIds, className, deleteAll = false } = props
   const [open, setOpen] = useState(false)
   const unselectAll = useUnselectAll()
   const refresh = useRefresh()
   const notify = useNotify()
 
-  const [deleteMany, { loading }] = useDeleteMany('missing', selectedIds, {
+  const ids = deleteAll ? [] : selectedIds
+  const [deleteMany, { loading }] = useDeleteMany('missing', ids, {
     onSuccess: () => {
       notify('resources.missing.notifications.removed')
       refresh()
@@ -57,7 +58,11 @@ const DeleteMissingFilesButton = (props) => {
     <>
       <Button
         onClick={handleClick}
-        label="ra.action.remove"
+        label={
+          deleteAll
+            ? 'resources.missing.actions.remove_all'
+            : 'ra.action.remove'
+        }
         key="button"
         className={clsx('ra-delete-button', classes.deleteButton, className)}
       >
@@ -66,8 +71,16 @@ const DeleteMissingFilesButton = (props) => {
       <Confirm
         isOpen={open}
         loading={loading}
-        title="message.remove_missing_title"
-        content="message.remove_missing_content"
+        title={
+          deleteAll
+            ? 'message.remove_all_missing_title'
+            : 'message.remove_missing_title'
+        }
+        content={
+          deleteAll
+            ? 'message.remove_all_missing_content'
+            : 'message.remove_missing_content'
+        }
         onConfirm={handleConfirm}
         onClose={handleDialogClose}
       />
