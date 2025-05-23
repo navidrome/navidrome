@@ -8,6 +8,7 @@ import {
 } from 'react-admin'
 import jsonExport from 'jsonexport/dist'
 import DeleteMissingFilesButton from './DeleteMissingFilesButton.jsx'
+import MissingListActions from './MissingListActions.jsx'
 
 const exporter = (files) => {
   const filesToExport = files.map((file) => {
@@ -35,6 +36,7 @@ const MissingFilesList = (props) => {
       {...props}
       sort={{ field: 'updated_at', order: 'DESC' }}
       exporter={exporter}
+      actions={<MissingListActions />}
       bulkActionButtons={<BulkActionButtons />}
       perPage={50}
       pagination={<MissingPagination />}
