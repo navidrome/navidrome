@@ -1,4 +1,4 @@
-import { List, SizeField } from '../common/index'
+import { List, SizeField, useResourceRefresh } from '../common/index'
 import {
   Datagrid,
   DateField,
@@ -31,6 +31,7 @@ const MissingPagination = (props) => (
 )
 
 const MissingFilesList = (props) => {
+  useResourceRefresh('song')
   return (
     <List
       {...props}
