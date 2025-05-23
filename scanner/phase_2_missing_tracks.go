@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/Masterminds/squirrel"
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -185,11 +184,13 @@ func (p *phaseMissingTracks) finalize(err error) error {
 	if matched > 0 {
 		log.Info(p.ctx, "Scanner: Found moved files", "total", matched, err)
 	}
+	if err != nil {
+		return err
+	}
 
 	// Check if we should purge missing items
 	if conf.Server.Scanner.PurgeMissing == consts.PurgeMissingAlways || (conf.Server.Scanner.PurgeMissing == consts.PurgeMissingFull && p.state.fullScan) {
-		err = p.purgeMissing(err)
-		if err != nil {
+		if err = p.purgeMissing(); err != nil {
 			log.Error(p.ctx, "Scanner: Error purging missing items", err)
 		}
 	}
@@ -197,31 +198,21 @@ func (p *phaseMissingTracks) finalize(err error) error {
 	return err
 }
 
-func (p *phaseMissingTracks) purgeMissing(err error) error {
-	count, err := p.ds.MediaFile(p.ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})
+func (p *phaseMissingTracks) purgeMissing() error {
+	deletedCount, err := p.ds.MediaFile(p.ctx).DeleteAllMissing()
 	if err != nil {
-		return fmt.Errorf("error counting missing files: %w", err)
+		return fmt.Errorf("error deleting missing files: %w", err)
 	}
 
-	if count > 0 {
-		log.Info(p.ctx, "Scanner: Purging missing items from the database", "mediaFiles", count)
-
-		deletedCount, err := p.ds.MediaFile(p.ctx).DeleteAllMissing()
-		if err != nil {
-			return fmt.Errorf("error deleting missing files: %w", err)
-		}
-
-		if deletedCount > 0 {
-			// Set changesDetected to true so that garbage collection will run at the end of the scan process
-			p.state.changesDetected.Store(true)
-		}
-
-		log.Debug(p.ctx, "Scanner: Purged missing items", "count", deletedCount)
+	if deletedCount > 0 {
+		log.Info(p.ctx, "Scanner: Purged missing items from the database", "mediaFiles", deletedCount)
+		// Set changesDetected to true so that garbage collection will run at the end of the scan process
+		p.state.changesDetected.Store(true)
 	} else {
 		log.Debug(p.ctx, "Scanner: No missing items to purge")
 	}
 
-	return err
+	return nil
 }
 
 var _ phase[*missingTracks] = (*phaseMissingTracks)(nil)

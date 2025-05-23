@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
@@ -47,6 +49,7 @@ var _ = Describe("Scanner", Ordered, func() {
 	}
 
 	BeforeAll(func() {
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
@@ -54,7 +57,6 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 
 	BeforeEach(func() {
-		ctx = context.Background()
 		db.Init(ctx)
 		DeferCleanup(func() {
 			Expect(tests.ClearDB()).To(Succeed())
@@ -505,7 +507,8 @@ var _ = Describe("Scanner", Ordered, func() {
 		Context("When PurgeMissing is configured", func() {
 			When("PurgeMissing is set to 'never'", func() {
 				BeforeEach(func() {
-					conf.Server.Scanner.PurgeMissing = "never"
+					DeferCleanup(configtest.SetupConfig())
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
 				})
 
 				It("should mark files as missing but not delete them", func() {
@@ -533,11 +536,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			When("PurgeMissing is set to 'always'", func() {
 				BeforeEach(func() {
-					conf.Server.Scanner.PurgeMissing = "always"
-				})
-
-				AfterEach(func() {
-					conf.Server.Scanner.PurgeMissing = "never"
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
 				})
 
 				It("should purge missing files on any scan", func() {
@@ -564,11 +563,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			When("PurgeMissing is set to 'full'", func() {
 				BeforeEach(func() {
-					conf.Server.Scanner.PurgeMissing = "full"
-				})
-
-				AfterEach(func() {
-					conf.Server.Scanner.PurgeMissing = "never"
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
 				})
 
 				It("should not purge missing files on incremental scans", func() {
