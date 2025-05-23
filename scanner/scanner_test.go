@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -17,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
@@ -47,6 +49,7 @@ var _ = Describe("Scanner", Ordered, func() {
 	}
 
 	BeforeAll(func() {
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
@@ -54,7 +57,6 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 
 	BeforeEach(func() {
-		ctx = context.Background()
 		db.Init(ctx)
 		DeferCleanup(func() {
 			Expect(tests.ClearDB()).To(Succeed())
@@ -500,6 +502,113 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(aa[0].Name).To(Equal("The Beatles"))
 			Expect(aa[0].MbzArtistID).To(Equal(beatlesMBID))
 			Expect(aa[0].SortArtistName).To(Equal("Beatles, The"))
+		})
+
+		Context("When PurgeMissing is configured", func() {
+			When("PurgeMissing is set to 'never'", func() {
+				BeforeEach(func() {
+					DeferCleanup(configtest.SetupConfig())
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+				})
+
+				It("should mark files as missing but not delete them", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running another scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Checking files are marked as missing but not deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(Equal(int64(1)))
+
+					mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf.Missing).To(BeTrue())
+				})
+			})
+
+			When("PurgeMissing is set to 'always'", func() {
+				BeforeEach(func() {
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+				})
+
+				It("should purge missing files on any scan", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, false)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running an incremental scan")
+					Expect(runScanner(ctx, false)).To(Succeed())
+
+					By("Checking missing files are deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(BeZero())
+
+					_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).To(MatchError(model.ErrNotFound))
+				})
+			})
+
+			When("PurgeMissing is set to 'full'", func() {
+				BeforeEach(func() {
+					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
+				})
+
+				It("should not purge missing files on incremental scans", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running an incremental scan")
+					Expect(runScanner(ctx, false)).To(Succeed())
+
+					By("Checking files are marked as missing but not deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(Equal(int64(1)))
+
+					mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(mf.Missing).To(BeTrue())
+				})
+
+				It("should purge missing files only on full scans", func() {
+					By("Running initial scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Removing a file")
+					fsys.Remove("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+
+					By("Running a full scan")
+					Expect(runScanner(ctx, true)).To(Succeed())
+
+					By("Checking missing files are deleted")
+					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+						Filters: squirrel.Eq{"missing": true},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(count).To(BeZero())
+
+					_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
+					Expect(err).To(MatchError(model.ErrNotFound))
+				})
+			})
 		})
 	})
 })

@@ -115,6 +115,12 @@ const (
 	InsightsInitialDelay   = 30 * time.Minute
 )
 
+const (
+	PurgeMissingNever  = "never"
+	PurgeMissingAlways = "always"
+	PurgeMissingFull   = "full"
+)
+
 var (
 	DefaultDownsamplingFormat = "opus"
 	DefaultTranscodings       = []struct {
