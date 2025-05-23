@@ -137,6 +137,7 @@ type scannerOptions struct {
 	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
 	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
 	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
+	PurgeMissing       string // Values: "never", "always", "full"
 }
 
 type subsonicOptions struct {
@@ -299,6 +300,7 @@ func Load(noConfigDump bool) {
 		validateScanSchedule,
 		validateBackupSchedule,
 		validatePlaylistsPath,
+		validatePurgeMissingOption,
 	)
 	if err != nil {
 		os.Exit(1)
@@ -404,6 +406,24 @@ func validatePlaylistsPath() error {
 	return nil
 }
 
+func validatePurgeMissingOption() error {
+	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
+	valid := false
+	for _, v := range allowedValues {
+		if v == Server.Scanner.PurgeMissing {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		err := fmt.Errorf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
+		log.Error(err.Error())
+		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+		return err
+	}
+	return nil
+}
+
 func validateScanSchedule() error {
 	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
 		Server.Scanner.Schedule = ""
@@ -443,7 +463,7 @@ func AddHook(hook func()) {
 	hooks = append(hooks, hook)
 }
 
-func init() {
+func setViperDefaults() {
 	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
 	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
@@ -579,6 +599,10 @@ func init() {
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
 	viper.SetDefault("devplugincompilationtimeout", time.Minute)
+}
+
+func init() {
+	setViperDefaults()
 }
 
 func InitConfig(cfgFile string) {
