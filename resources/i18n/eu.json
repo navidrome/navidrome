@@ -241,7 +241,8 @@
         "updatedAt": "Desagertze-data:"
       },
       "actions": {
-        "remove": "Kendu"
+        "remove": "Kendu",
+        "remove_all": "Kendu guztia"
       },
       "notifications": {
         "removed": "Faltan zeuden fitxategiak kendu dira"
@@ -402,7 +403,9 @@
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
     "delete_user_content": "Ziur zaide erabiltzaile hau eta bere datu guztiak (zerrendak eta hobespenak barne) ezabatu nahi dituzula?",
     "remove_missing_title": "Kendu faltan dauden fitxategiak",
-    "remove_missing_content": "Ziur hautatutako fitxategiak datu-basetik ezabatu nahi dituzula? Betiko ezabatuko dira haiei buruzko erreferentziak, haien erreprodukzio-zenbaketak eta sailkapenak barne.",
+    "remove_missing_content": "Ziur hautatutako fitxategiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
+    "remove_all_missing_title": "Kendu faltan dauden fitxategi guztiak",
+    "remove_all_missing_content": "Ziur aurkitu ez diren fitxategi guztiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
     "notifications_blocked": "Nabigatzaileak jakinarazpenak blokeatzen ditu",
     "notifications_not_available": "Nabigatzaile hau ez da jakinarazpenekin bateragarria edo Navidrome ez da HTTPS erabiltzen ari",
     "lastfmLinkSuccess": "Last.fm konektatuta dago eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea gaituta dago",
@@ -499,7 +502,10 @@
     "quickScan": "Arakatze azkarra",
     "fullScan": "Arakatze sakona",
     "serverUptime": "Zerbitzariak piztuta daraman denbora",
-    "serverDown": "LINEAZ KANPO"
+    "serverDown": "LINEAZ KANPO",
+    "scanType": "Mota",
+    "status": "Errorea arakatzean",
+    "elapsedTime": "Igarotako denbora"
   },
   "help": {
     "title": "Navidromeren laster-teklak",
