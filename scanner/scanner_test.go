@@ -54,6 +54,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
 		//conf.Server.DbPath = ":memory:"
+		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
