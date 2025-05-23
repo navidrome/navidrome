@@ -12,9 +12,6 @@ import (
 )
 
 func Map[T any, R any](t []T, mapFunc func(T) R) []R {
-	if len(t) == 0 {
-		return nil
-	}
 	r := make([]R, len(t))
 	for i, e := range t {
 		r[i] = mapFunc(e)
