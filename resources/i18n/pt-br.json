@@ -1,5 +1,5 @@
 {
-  "languageName": "Português",
+  "languageName": "Português (Brasil)",
   "resources": {
     "song": {
       "name": "Música |||| Músicas",
@@ -238,7 +238,8 @@
         "updatedAt": "Desaparecido em"
       },
       "actions": {
-        "remove": "Remover"
+        "remove": "Remover",
+        "remove_all": "Remover todos"
       },
       "notifications": {
         "removed": "Arquivo(s) ausente(s) removido(s)"
@@ -422,7 +423,9 @@
     "downloadDialogTitle": "Baixar %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Copie para o clipboard: Ctrl+C, Enter",
     "remove_missing_title": "Remover arquivos ausentes",
-    "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações."
+    "remove_missing_content": "Você tem certeza que deseja remover os arquivos selecionados do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações.",
+    "remove_all_missing_title": "Remover todos os arquivos ausentes",
+    "remove_all_missing_content": "Você tem certeza que deseja remover todos os arquivos ausentes do banco de dados? Isso removerá permanentemente qualquer referência a eles, incluindo suas contagens de reprodução e classificações."
   },
   "menu": {
     "library": "Biblioteca",
@@ -496,7 +499,10 @@
     "quickScan": "Scan rápido",
     "fullScan": "Scan completo",
     "serverUptime": "Uptime do servidor",
-    "serverDown": "DESCONECTADO"
+    "serverDown": "DESCONECTADO",
+    "scanType": "Tipo",
+    "status": "Erro",
+    "elapsedTime": "Duração"
   },
   "help": {
     "title": "Teclas de atalho",
