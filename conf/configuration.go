@@ -546,6 +546,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
+	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
