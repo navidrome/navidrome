@@ -192,6 +192,15 @@ func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }
 
+func (r *mediaFileRepository) DeleteAllMissing() (int64, error) {
+	user := loggedUser(r.ctx)
+	if !user.IsAdmin {
+		return 0, rest.ErrPermissionDenied
+	}
+	del := Delete(r.tableName).Where(Eq{"missing": true})
+	return r.executeSQL(del)
+}
+
 func (r *mediaFileRepository) DeleteMissing(ids []string) error {
 	user := loggedUser(r.ctx)
 	if !user.IsAdmin {
