@@ -36,9 +36,9 @@ const mapResource = (resource, params) => {
 }
 
 const callDeleteMany = (resource, params) => {
-  const ids = params.ids.map((id) => `id=${id}`)
-  const idsParam = ids.join('&')
-  return httpClient(`${REST_URL}/${resource}?${idsParam}`, {
+  const ids = (params.ids || []).map((id) => `id=${id}`)
+  const query = ids.length > 0 ? `?${ids.join('&')}` : ''
+  return httpClient(`${REST_URL}/${resource}${query}`, {
     method: 'DELETE',
   }).then((response) => ({ data: response.json.ids || [] }))
 }

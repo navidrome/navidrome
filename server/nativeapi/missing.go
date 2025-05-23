@@ -63,25 +63,29 @@ func (r *missingRepository) EntityName() string {
 }
 
 func deleteMissingFiles(ds model.DataStore, w http.ResponseWriter, r *http.Request) {
-	repo := ds.MediaFile(r.Context())
+	ctx := r.Context()
 	p := req.Params(r)
 	ids, _ := p.Strings("id")
 	err := ds.WithTx(func(tx model.DataStore) error {
-		return repo.DeleteMissing(ids)
+		if len(ids) == 0 {
+			_, err := tx.MediaFile(ctx).DeleteAllMissing()
+			return err
+		}
+		return tx.MediaFile(ctx).DeleteMissing(ids)
 	})
 	if len(ids) == 1 && errors.Is(err, model.ErrNotFound) {
-		log.Warn(r.Context(), "Missing file not found", "id", ids[0])
+		log.Warn(ctx, "Missing file not found", "id", ids[0])
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 	if err != nil {
-		log.Error(r.Context(), "Error deleting missing tracks from DB", "ids", ids, err)
+		log.Error(ctx, "Error deleting missing tracks from DB", "ids", ids, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	err = ds.GC(r.Context())
+	err = ds.GC(ctx)
 	if err != nil {
-		log.Error(r.Context(), "Error running GC after deleting missing tracks", err)
+		log.Error(ctx, "Error running GC after deleting missing tracks", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
