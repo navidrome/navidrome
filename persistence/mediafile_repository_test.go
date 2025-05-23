@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -44,9 +45,9 @@ var _ = Describe("MediaRepository", func() {
 
 	It("delete tracks by id", func() {
 		newID := id.NewRandom()
-		Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID})).To(BeNil())
+		Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID})).To(Succeed())
 
-		Expect(mr.Delete(newID)).To(BeNil())
+		Expect(mr.Delete(newID)).To(Succeed())
 
 		_, err := mr.Get(newID)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -55,16 +56,21 @@ var _ = Describe("MediaRepository", func() {
 	It("deletes all missing files", func() {
 		new1 := model.MediaFile{ID: id.NewRandom(), LibraryID: 1}
 		new2 := model.MediaFile{ID: id.NewRandom(), LibraryID: 1}
-		Expect(mr.Put(&new1)).To(BeNil())
-		Expect(mr.Put(&new2)).To(BeNil())
-		Expect(mr.MarkMissing(true, &new1, &new2)).To(BeNil())
+		Expect(mr.Put(&new1)).To(Succeed())
+		Expect(mr.Put(&new2)).To(Succeed())
+		Expect(mr.MarkMissing(true, &new1, &new2)).To(Succeed())
 
 		adminCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", IsAdmin: true})
 		adminRepo := NewMediaFileRepository(adminCtx, GetDBXBuilder())
 
-		count, err := adminRepo.DeleteAllMissing()
-		Expect(err).To(BeNil())
-		Expect(count).To(BeNumerically(">=", 2))
+		// Ensure the files are marked as missing and we have 2 of them
+		count, err := adminRepo.CountAll(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})
+		Expect(count).To(BeNumerically("==", 2))
+		Expect(err).ToNot(HaveOccurred())
+
+		count, err = adminRepo.DeleteAllMissing()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(count).To(BeNumerically("==", 2))
 
 		_, err = mr.Get(new1.ID)
 		Expect(err).To(MatchError(model.ErrNotFound))
