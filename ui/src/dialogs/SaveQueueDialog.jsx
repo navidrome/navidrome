@@ -1,6 +1,11 @@
 import React, { useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import {
+  useDataProvider,
+  useNotify,
+  useTranslate,
+  useRefresh,
+} from 'react-admin'
 import {
   Button,
   Dialog,
@@ -23,6 +28,7 @@ export const SaveQueueDialog = () => {
   const translate = useTranslate()
   const history = useHistory()
   const [isSaving, setIsSaving] = useState(false)
+  const refresh = useRefresh()
 
   const handleClose = useCallback(
     (e) => {
@@ -53,11 +59,12 @@ export const SaveQueueDialog = () => {
       .then((res) => {
         notify('ra.notification.created', 'info', { smart_count: 1 })
         dispatch(closeSaveQueueDialog())
+        refresh()
         history.push(`/playlist/${res.data.id}/show`)
       })
       .catch(() => notify('ra.page.error', { type: 'warning' }))
       .finally(() => setIsSaving(false))
-  }, [dataProvider, dispatch, notify, queue, name, history])
+  }, [dataProvider, dispatch, notify, queue, name, history, refresh])
 
   const handleKeyPress = useCallback(
     (e) => {
