@@ -18,7 +18,6 @@
         "size": "Taille",
         "updatedAt": "Mise à jour",
         "bitRate": "Bitrate",
-        "sampleRate": "Fréquence d'échantillonnage",
         "discSubtitle": "Sous-titre du disque",
         "starred": "Favoris",
         "comment": "Commentaire",
@@ -34,7 +33,8 @@
         "tags": "Étiquettes supplémentaires",
         "mappedTags": "Étiquettes correspondantes",
         "rawTags": "Étiquettes brutes",
-        "bitDepth": "Profondeur de bit"
+        "bitDepth": "Profondeur de bits",
+        "sampleRate": "Fréquence d'échantillonnage"
       },
       "actions": {
         "addToQueue": "Ajouter à la file",
@@ -58,7 +58,6 @@
         "genre": "Genre",
         "compilation": "Compilation",
         "year": "Année",
-        "date": "Date d'enregistrement",
         "updatedAt": "Mis à jour le",
         "comment": "Commentaire",
         "rating": "Classement",
@@ -73,7 +72,8 @@
         "releaseType": "Type",
         "grouping": "Regroupement",
         "media": "Média",
-        "mood": "Humeur"
+        "mood": "Humeur",
+        "date": "Date d'enregistrement"
       },
       "actions": {
         "playAll": "Lire",
@@ -193,7 +193,8 @@
         "addNewPlaylist": "Créer \"%{name}\"",
         "export": "Exporter",
         "makePublic": "Rendre publique",
-        "makePrivate": "Rendre privée"
+        "makePrivate": "Rendre privée",
+        "saveQueue": ""
       },
       "message": {
         "duplicate_song": "Pistes déjà présentes dans la playlist",
@@ -238,7 +239,8 @@
         "updatedAt": "A disparu le"
       },
       "actions": {
-        "remove": "Supprimer"
+        "remove": "Supprimer",
+        "remove_all": "Tout supprimer"
       },
       "notifications": {
         "removed": "Fichier(s) manquant(s) supprimé(s)"
@@ -423,7 +425,9 @@
     "downloadDialogTitle": "Télécharger %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Copier vers le presse-papier : Ctrl+C, Enter",
     "remove_missing_title": "Supprimer les fichiers manquants",
-    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations"
+    "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations",
+    "remove_all_missing_title": "Supprimer tous les fichiers manquants",
+    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence."
   },
   "menu": {
     "library": "Bibliothèque",
@@ -497,7 +501,10 @@
     "quickScan": "Scan rapide",
     "fullScan": "Scan complet",
     "serverUptime": "Disponibilité du serveur",
-    "serverDown": "HORS LIGNE"
+    "serverDown": "HORS LIGNE",
+    "scanType": "Type",
+    "status": "Erreur de scan",
+    "elapsedTime": "Temps écoulé"
   },
   "help": {
     "title": "Raccourcis Navidrome",
