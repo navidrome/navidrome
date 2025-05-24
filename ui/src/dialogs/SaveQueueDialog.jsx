@@ -10,6 +10,7 @@ import {
   TextField,
 } from '@material-ui/core'
 import { closeSaveQueueDialog } from '../actions'
+import { useHistory } from 'react-router-dom'
 
 export const SaveQueueDialog = () => {
   const dispatch = useDispatch()
@@ -19,6 +20,7 @@ export const SaveQueueDialog = () => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const translate = useTranslate()
+  const history = useHistory()
 
   const handleClose = useCallback(
     (e) => {
@@ -48,7 +50,7 @@ export const SaveQueueDialog = () => {
       .then((res) => {
         notify('ra.notification.created', 'info', { smart_count: 1 })
         dispatch(closeSaveQueueDialog())
-        window.location.href = `#/playlist/${res.data.id}/show`
+        history.push(`/playlist/${res.data.id}/show`)
       })
       .catch(() => notify('ra.page.error', { type: 'warning' }))
   }, [dataProvider, dispatch, notify, queue, name])
