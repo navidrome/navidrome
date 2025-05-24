@@ -8,6 +8,8 @@ import {
   SearchInput,
   TextField,
   useTranslate,
+  NullableBooleanInput,
+  usePermissions,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -67,6 +69,8 @@ const useStyles = makeStyles({
 const SongFilter = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
@@ -121,6 +125,7 @@ const SongFilter = (props) => {
           defaultValue={true}
         />
       )}
+      {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )
 }
