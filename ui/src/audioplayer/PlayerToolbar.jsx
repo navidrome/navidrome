@@ -74,54 +74,45 @@ const PlayerToolbar = ({ id, isRadio }) => {
     [dispatch],
   )
 
-  if (isDesktop) {
-    return (
-      <>
-        <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
-        <li className={`${classes.toolbar} item`}>
-          <IconButton
-            size="small"
-            onClick={handleSaveQueue}
-            disabled={isRadio}
-            data-testid="save-queue-button"
-            className={classes.button}
-          >
-            <RiSaveLine />
-          </IconButton>
-          <LoveButton
-            record={data}
-            resource={'song'}
-            disabled={loading || toggling || !id || isRadio}
-            className={classes.button}
-          />
-        </li>
-      </>
-    )
-  }
+  const buttonClass = isDesktop ? classes.button : classes.mobileButton
+  const listItemClass = isDesktop ? classes.toolbar : classes.mobileListItem
 
-  // Mobile layout
+  const saveQueueButton = (
+    <IconButton
+      size={isDesktop ? 'small' : undefined}
+      onClick={handleSaveQueue}
+      disabled={isRadio}
+      data-testid="save-queue-button"
+      className={buttonClass}
+    >
+      <RiSaveLine className={!isDesktop ? classes.mobileIcon : undefined} />
+    </IconButton>
+  )
+
+  const loveButton = (
+    <LoveButton
+      record={data}
+      resource={'song'}
+      size={isDesktop ? undefined : 'inherit'}
+      disabled={loading || toggling || !id || isRadio}
+      className={buttonClass}
+    />
+  )
+
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
-      <li className={`${classes.mobileListItem} item`}>
-        <IconButton
-          onClick={handleSaveQueue}
-          disabled={isRadio}
-          data-testid="save-queue-button"
-          className={classes.mobileButton}
-        >
-          <RiSaveLine className={classes.mobileIcon} />
-        </IconButton>
-      </li>
-      <li className={`${classes.mobileListItem} item`}>
-        <LoveButton
-          record={data}
-          resource={'song'}
-          size="inherit"
-          disabled={loading || toggling || !id || isRadio}
-          className={classes.mobileButton}
-        />
-      </li>
+      {isDesktop ? (
+        <li className={`${listItemClass} item`}>
+          {saveQueueButton}
+          {loveButton}
+        </li>
+      ) : (
+        <>
+          <li className={`${listItemClass} item`}>{saveQueueButton}</li>
+          <li className={`${listItemClass} item`}>{loveButton}</li>
+        </>
+      )}
     </>
   )
 }
