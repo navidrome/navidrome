@@ -9,7 +9,7 @@ import {
   screen,
 } from '@testing-library/react'
 import { SaveQueueDialog } from './SaveQueueDialog'
-import { describe, afterEach, it, expect, vi } from 'vitest'
+import { describe, afterEach, it, expect, vi, beforeAll } from 'vitest'
 
 const queue = [{ trackId: 'song-1' }, { trackId: 'song-2' }]
 
@@ -27,6 +27,23 @@ const createTestUtils = (mockDataProvider) =>
       </TestContext>
     </DataProviderContext.Provider>,
   )
+
+// Mock useHistory to update window.location.hash on push
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    useHistory: () => ({
+      push: (url) => {
+        window.location.hash = `#${url}`
+      },
+    }),
+  }
+})
+
+beforeAll(() => {
+  // No need to patch pushState anymore
+})
 
 describe('SaveQueueDialog', () => {
   afterEach(cleanup)

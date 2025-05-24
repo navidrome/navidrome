@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
+  CircularProgress,
 } from '@material-ui/core'
 import { closeSaveQueueDialog } from '../actions'
 import { useHistory } from 'react-router-dom'
@@ -21,6 +22,7 @@ export const SaveQueueDialog = () => {
   const notify = useNotify()
   const translate = useTranslate()
   const history = useHistory()
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleClose = useCallback(
     (e) => {
@@ -32,6 +34,7 @@ export const SaveQueueDialog = () => {
   )
 
   const handleSave = useCallback(() => {
+    setIsSaving(true)
     const ids = queue.map((item) => item.trackId)
     dataProvider
       .create('playlist', { data: { name } })
@@ -53,7 +56,8 @@ export const SaveQueueDialog = () => {
         history.push(`/playlist/${res.data.id}/show`)
       })
       .catch(() => notify('ra.page.error', { type: 'warning' }))
-  }, [dataProvider, dispatch, notify, queue, name])
+      .finally(() => setIsSaving(false))
+  }, [dataProvider, dispatch, notify, queue, name, history])
 
   const handleKeyPress = useCallback(
     (e) => {
@@ -67,7 +71,7 @@ export const SaveQueueDialog = () => {
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
+      onClose={isSaving ? undefined : handleClose}
       aria-labelledby="save-queue-dialog"
       fullWidth={true}
       maxWidth={'sm'}
@@ -84,17 +88,19 @@ export const SaveQueueDialog = () => {
           fullWidth
           variant={'outlined'}
           label={translate('resources.playlist.fields.name')}
+          disabled={isSaving}
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} color="primary">
+        <Button onClick={handleClose} color="primary" disabled={isSaving}>
           {translate('ra.action.cancel')}
         </Button>
         <Button
           onClick={handleSave}
           color="primary"
-          disabled={name.trim() === ''}
+          disabled={name.trim() === '' || isSaving}
           data-testid="save-queue-save"
+          startIcon={isSaving ? <CircularProgress size={20} /> : null}
         >
           {translate('ra.action.save')}
         </Button>
