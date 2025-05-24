@@ -21,6 +21,7 @@ import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
 import { scanStatusUpdate } from '../actions'
 import { useInterval } from '../common'
+import { useScanElapsedTime } from './useScanElapsedTime'
 import { formatDuration, formatShortDuration } from '../utils'
 import config from '../config'
 
@@ -70,6 +71,10 @@ const ActivityPanel = () => {
   const serverStart = useSelector((state) => state.activity.serverStart)
   const up = serverStart.startTime
   const scanStatus = useSelector((state) => state.activity.scanStatus)
+  const elapsed = useScanElapsedTime(
+    scanStatus.scanning,
+    scanStatus.elapsedTime,
+  )
   const classes = useStyles({ up: up && !scanStatus.error })
   const translate = useTranslate()
   const notify = useNotify()
@@ -178,7 +183,7 @@ const ActivityPanel = () => {
                 {translate('activity.elapsedTime')}:
               </Box>
               <Box component="span" flex={1}>
-                {formatShortDuration(scanStatus.elapsedTime)}
+                {formatShortDuration(elapsed)}
               </Box>
             </Box>
 
