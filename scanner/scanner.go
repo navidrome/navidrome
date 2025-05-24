@@ -127,6 +127,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 
 func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error {
 	return func() error {
+		state.sendProgress(&ProgressInfo{ForceUpdate: true})
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			if state.changesDetected.Load() {
 				start := time.Now()

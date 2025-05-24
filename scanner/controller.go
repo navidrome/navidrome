@@ -98,6 +98,7 @@ type ProgressInfo struct {
 	ChangesDetected bool
 	Warning         string
 	Error           string
+	ForceUpdate     bool
 }
 
 type scanner interface {
@@ -292,7 +293,7 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 			ScanType:    scanType,
 			ElapsedTime: elapsed,
 		}
-		if s.limiter != nil {
+		if s.limiter != nil && !p.ForceUpdate {
 			s.limiter.Do(func() { s.sendMessage(ctx, status) })
 		} else {
 			s.sendMessage(ctx, status)
