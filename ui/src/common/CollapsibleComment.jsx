@@ -25,7 +25,10 @@ export const CollapsibleComment = ({ record }) => {
   const classes = useStyles()
   const [expanded, setExpanded] = useState(false)
 
-  const lines = record.comment.split('\n')
+  const lines = useMemo(
+    () => record.comment?.split('\n') || [],
+    [record.comment],
+  )
   const formatted = useMemo(() => {
     return lines.map((line, idx) => (
       <span key={record.id + '-comment-' + idx}>
