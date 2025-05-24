@@ -88,7 +88,7 @@ main:
     split: [ ";", "/", "," ]
     album: true
   mood:
-    aliases: [ tmoo, mood, ----:com.apple.itunes:mood, wm/mood ]
+    aliases: [ tmoo, mood, ----:com.apple.itunes:mood, ab:mood, wm/mood ]
     split: [ ";", "/", "," ]
     album: true
   compilation:
