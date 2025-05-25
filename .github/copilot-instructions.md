@@ -43,7 +43,7 @@ This is a music streaming server written in Go with a React frontend. The applic
 - Validate both backend and frontend interactions
 - Consider how changes will affect user experience and performance
 - Test with different music library sizes and configurations
-- Always run formatting and linting before committing changes
+- Before committing, ALWAYS run `make format lint test`, and make sure there are no issues
 
 ## Important commands
 - `make build`: Build the application
