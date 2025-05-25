@@ -70,6 +70,20 @@ describe('useScanElapsedTime', () => {
     expect(result.current).toBe(12e9)
   })
 
+  it('updates elapsed time when not scanning and server value changes', () => {
+    const { result, rerender } = renderHook(
+      ({ scanning, elapsed }) => useScanElapsedTime(scanning, elapsed),
+      {
+        initialProps: { scanning: false, elapsed: 0 },
+      },
+    )
+
+    // Server reports new elapsed time without changing scanning state
+    rerender({ scanning: false, elapsed: 8e9 })
+
+    expect(result.current).toBe(8e9)
+  })
+
   it('ignores server updates during scanning', () => {
     const { result, rerender } = renderHook(
       ({ scanning, elapsed }) => useScanElapsedTime(scanning, elapsed),

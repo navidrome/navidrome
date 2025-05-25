@@ -6,16 +6,17 @@ export const useScanElapsedTime = (scanning, elapsedTime) => {
   const prevScanningRef = useRef(scanning)
 
   useEffect(() => {
-    // Only update from server when scan starts or stops
     const prevScanning = prevScanningRef.current
-    if (!prevScanning && scanning) {
-      // Scan just started - initialize with server value
-      setElapsed(Number(elapsedTime) || 0)
-    } else if (prevScanning && !scanning) {
-      // Scan just finished - use final server value
-      setElapsed(Number(elapsedTime) || 0)
+    const serverElapsed = Number(elapsedTime) || 0
+
+    if (scanning !== prevScanning) {
+      // Scan has just started or stopped - sync with server value
+      setElapsed(serverElapsed)
+    } else if (!scanning) {
+      // Not scanning -> always reflect server value (initial load or after finish)
+      setElapsed(serverElapsed)
     }
-    // Update ref for next comparison
+
     prevScanningRef.current = scanning
   }, [scanning, elapsedTime])
 
