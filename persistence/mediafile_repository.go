@@ -81,6 +81,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"random":       "random",
 		"created_at":   "media_file.created_at",
 		"starred_at":   "starred, starred_at",
+		"recently_added": recentlyAddedSort(),
 	})
 	return r
 }

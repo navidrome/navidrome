@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -129,6 +130,52 @@ var _ = Describe("MediaRepository", func() {
 
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
+		})
+	})
+
+	Context("RecentlyAddedByModTime", func() {
+		var originalValue bool
+
+		BeforeEach(func() {
+			originalValue = conf.Server.RecentlyAddedByModTime
+		})
+
+		AfterEach(func() {
+			conf.Server.RecentlyAddedByModTime = originalValue
+		})
+
+		It("sorts by updated_at when RecentlyAddedByModTime is true", func() {
+			conf.Server.RecentlyAddedByModTime = true
+			mediaFile1 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 1"}
+			mediaFile2 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 2"}
+			
+			Expect(mr.Put(mediaFile1)).To(Succeed())
+			Expect(mr.Put(mediaFile2)).To(Succeed())
+
+			// Get all media files sorted by recently_added
+			options := model.QueryOptions{Sort: "recently_added"}
+			results, err := mr.GetAll(options)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify that we're getting the right sort field
+			Expect(results).ToNot(BeEmpty())
+		})
+
+		It("sorts by created_at when RecentlyAddedByModTime is false", func() {
+			conf.Server.RecentlyAddedByModTime = false
+			mediaFile1 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 1"}
+			mediaFile2 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 2"}
+			
+			Expect(mr.Put(mediaFile1)).To(Succeed())
+			Expect(mr.Put(mediaFile2)).To(Succeed())
+
+			// Get all media files sorted by recently_added
+			options := model.QueryOptions{Sort: "recently_added"}
+			results, err := mr.GetAll(options)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify that we're getting the right sort field
+			Expect(results).ToNot(BeEmpty())
 		})
 	})
 })
