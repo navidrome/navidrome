@@ -46,11 +46,11 @@ testrace: ##@Development Run Go tests with race detector
 .PHONY: test
 
 testall: testrace ##@Development Run Go and JS tests
-	@(cd ./ui && npm run test:ci)
+	@(cd ./ui && npm run test)
 .PHONY: testall
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
-	@which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
 .PHONY: install-golangci-lint
 
 lint: install-golangci-lint ##@Development Lint Go code
