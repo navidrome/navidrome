@@ -115,7 +115,7 @@ func (a *artwork) getArtworkReader(ctx context.Context, artID model.ArtworkID, s
 	} else {
 		switch artID.Kind {
 		case model.KindArtistArtwork:
-			artReader, err = newArtistReader(ctx, a, artID, a.provider)
+			artReader, err = newArtistArtworkReader(ctx, a, artID, a.provider)
 		case model.KindAlbumArtwork:
 			artReader, err = newAlbumArtworkReader(ctx, a, artID, a.provider)
 		case model.KindMediaFileArtwork:

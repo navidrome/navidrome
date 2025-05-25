@@ -12,7 +12,7 @@ import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
-import { useAlbumsPerPage } from '../common/index.js'
+import { useAlbumsPerPage, useResourceRefresh } from '../common/index.js'
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
@@ -55,6 +55,7 @@ const ArtistShowLayout = (props) => {
   const record = useRecordContext()
   const { width } = props
   const [, perPageOptions] = useAlbumsPerPage(width)
+  useResourceRefresh('artist', 'album')
 
   const maxPerPage = 90
   let perPage = 0

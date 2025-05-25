@@ -224,6 +224,7 @@ func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.Op
 	child.BPM = int32(mf.BPM)
 	child.MediaType = responses.MediaTypeSong
 	child.MusicBrainzId = mf.MbzRecordingID
+	child.Isrc = mf.Tags.Values(model.TagISRC)
 	child.ReplayGain = responses.ReplayGain{
 		TrackGain: mf.RGTrackGain,
 		AlbumGain: mf.RGAlbumGain,

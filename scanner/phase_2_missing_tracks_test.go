@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -220,6 +222,68 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).To(HaveOccurred())
 			Expect(state.changesDetected.Load()).To(BeFalse())
+		})
+	})
+
+	Describe("finalize", func() {
+		It("should return nil if no error", func() {
+			err := phase.finalize(nil)
+			Expect(err).To(BeNil())
+			Expect(state.changesDetected.Load()).To(BeFalse())
+		})
+
+		It("should return the error if provided", func() {
+			err := phase.finalize(context.DeadlineExceeded)
+			Expect(err).To(Equal(context.DeadlineExceeded))
+			Expect(state.changesDetected.Load()).To(BeFalse())
+		})
+
+		When("PurgeMissing is 'always'", func() {
+			BeforeEach(func() {
+				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+				mr.CountAllValue = 3
+				mr.DeleteAllMissingValue = 3
+			})
+			It("should purge missing files", func() {
+				Expect(state.changesDetected.Load()).To(BeFalse())
+				err := phase.finalize(nil)
+				Expect(err).To(BeNil())
+				Expect(state.changesDetected.Load()).To(BeTrue())
+			})
+		})
+
+		When("PurgeMissing is 'full'", func() {
+			BeforeEach(func() {
+				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
+				mr.CountAllValue = 2
+				mr.DeleteAllMissingValue = 2
+			})
+			It("should not purge missing files if not a full scan", func() {
+				state.fullScan = false
+				err := phase.finalize(nil)
+				Expect(err).To(BeNil())
+				Expect(state.changesDetected.Load()).To(BeFalse())
+			})
+			It("should purge missing files if full scan", func() {
+				Expect(state.changesDetected.Load()).To(BeFalse())
+				state.fullScan = true
+				err := phase.finalize(nil)
+				Expect(err).To(BeNil())
+				Expect(state.changesDetected.Load()).To(BeTrue())
+			})
+		})
+
+		When("PurgeMissing is 'never'", func() {
+			BeforeEach(func() {
+				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+				mr.CountAllValue = 1
+				mr.DeleteAllMissingValue = 1
+			})
+			It("should not purge missing files", func() {
+				err := phase.finalize(nil)
+				Expect(err).To(BeNil())
+				Expect(state.changesDetected.Load()).To(BeFalse())
+			})
 		})
 	})
 })

@@ -162,6 +162,17 @@ func tagNames() []string {
 	return names
 }
 
+func numericTagNames() []string {
+	mappings := TagMappings()
+	names := make([]string, 0)
+	for k, cfg := range mappings {
+		if cfg.Type == TagTypeInteger || cfg.Type == TagTypeFloat {
+			names = append(names, string(k))
+		}
+	}
+	return names
+}
+
 func loadTagMappings() {
 	mappingsFile, err := resources.FS().Open("mappings.yaml")
 	if err != nil {
@@ -228,5 +239,6 @@ func init() {
 		// used in smart playlists
 		criteria.AddRoles(slices.Collect(maps.Keys(AllRoles)))
 		criteria.AddTagNames(tagNames())
+		criteria.AddNumericTags(numericTagNames())
 	})
 }
