@@ -145,12 +145,25 @@ type tagCond struct {
 
 func (e tagCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
+	if len(args) > 0 && isNumber(args[0]) {
+		cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
+	}
 	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
 		e.tag, cond)
 	if e.not {
 		cond = "not " + cond
 	}
 	return cond, args, err
+}
+
+func isNumber(v any) bool {
+	switch v.(type) {
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return true
+	}
+	return false
 }
 
 func roleExpr(role string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {

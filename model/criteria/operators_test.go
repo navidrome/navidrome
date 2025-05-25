@@ -77,6 +77,14 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.mood') where key='value' and value LIKE ?)"))
 			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
 		})
+		It("casts numeric comparisons", func() {
+			AddTagNames([]string{"rate"})
+			op := Lt{"rate": 6}
+			sql, args, err := op.ToSql()
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+			gomega.Expect(sql).To(gomega.Equal("exists (select 1 from json_tree(tags, '$.rate') where key='value' and CAST(value AS REAL) < ?)"))
+			gomega.Expect(args).To(gomega.HaveExactElements(6))
+		})
 		It("skips unknown tag names", func() {
 			op := EndsWith{"unknown": "value"}
 			sql, args, _ := op.ToSql()
