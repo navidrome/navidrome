@@ -99,6 +99,9 @@
         "sortName": "sorted song",
         "mediaType": "song",
         "musicBrainzId": "4321",
+        "isrc": [
+          "ISRC-1"
+        ],
         "genres": [
           {
             "name": "rock"

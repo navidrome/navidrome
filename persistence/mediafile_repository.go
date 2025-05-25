@@ -87,11 +87,12 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 
 var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	filters := map[string]filterFunc{
-		"id":       idFilter("media_file"),
-		"title":    fullTextFilter("media_file"),
-		"starred":  booleanFilter,
-		"genre_id": tagIDFilter,
-		"missing":  booleanFilter,
+		"id":         idFilter("media_file"),
+		"title":      fullTextFilter("media_file"),
+		"starred":    booleanFilter,
+		"genre_id":   tagIDFilter,
+		"missing":    booleanFilter,
+		"artists_id": artistFilter,
 	}
 	// Add all album tags as filters
 	for tag := range model.TagMappings() {
@@ -189,6 +190,15 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
+}
+
+func (r *mediaFileRepository) DeleteAllMissing() (int64, error) {
+	user := loggedUser(r.ctx)
+	if !user.IsAdmin {
+		return 0, rest.ErrPermissionDenied
+	}
+	del := Delete(r.tableName).Where(Eq{"missing": true})
+	return r.executeSQL(del)
 }
 
 func (r *mediaFileRepository) DeleteMissing(ids []string) error {

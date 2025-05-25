@@ -10,7 +10,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import PlaylistDetails from './PlaylistDetails'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
-import { Title, canChangeTracks } from '../common'
+import { Title, canChangeTracks, useResourceRefresh } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -27,6 +27,7 @@ const PlaylistShowLayout = (props) => {
   const { loading, ...context } = useShowContext(props)
   const { record } = context
   const classes = useStyles()
+  useResourceRefresh('song')
 
   return (
     <>

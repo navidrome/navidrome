@@ -344,10 +344,22 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 func init() {
 	conf.AddHook(func() {
 		agents.Register(lastFMAgentName, func(ds model.DataStore) agents.Interface {
-			return lastFMConstructor(ds)
+			// This is a workaround for the fact that a (Interface)(nil) is not the same as a (*lastfmAgent)(nil)
+			// See https://go.dev/doc/faq#nil_error
+			a := lastFMConstructor(ds)
+			if a != nil {
+				return a
+			}
+			return nil
 		})
 		scrobbler.Register(lastFMAgentName, func(ds model.DataStore) scrobbler.Scrobbler {
-			return lastFMConstructor(ds)
+			// Same as above - this is a workaround for the fact that a (Scrobbler)(nil) is not the same as a (*lastfmAgent)(nil)
+			// See https://go.dev/doc/faq#nil_error
+			a := lastFMConstructor(ds)
+			if a != nil {
+				return a
+			}
+			return nil
 		})
 	})
 }
