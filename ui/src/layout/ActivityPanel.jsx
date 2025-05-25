@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useSelector } from 'react-redux'
 import { useNotify, useTranslate } from 'react-admin'
 import {
   Popover,
@@ -15,11 +15,11 @@ import {
   Typography,
 } from '@material-ui/core'
 import { FiActivity } from 'react-icons/fi'
-import { BiError, BiCheckCircle } from 'react-icons/bi'
+import { BiError } from 'react-icons/bi'
 import { VscSync } from 'react-icons/vsc'
 import { GiMagnifyingGlass } from 'react-icons/gi'
 import subsonic from '../subsonic'
-import { scanStatusUpdate } from '../actions'
+import { useInitialScanStatus } from './useInitialScanStatus'
 import { useInterval } from '../common'
 import { useScanElapsedTime } from './useScanElapsedTime'
 import { formatDuration, formatShortDuration } from '../utils'
@@ -80,23 +80,11 @@ const ActivityPanel = () => {
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
   const open = Boolean(anchorEl)
-  const dispatch = useDispatch()
+  useInitialScanStatus()
 
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
   const handleMenuClose = () => setAnchorEl(null)
   const triggerScan = (full) => () => subsonic.startScan({ fullScan: full })
-
-  // Get updated status on component mount
-  useEffect(() => {
-    subsonic
-      .getScanStatus()
-      .then((resp) => resp.json['subsonic-response'])
-      .then((data) => {
-        if (data.status === 'ok') {
-          dispatch(scanStatusUpdate(data.scanStatus))
-        }
-      })
-  }, [dispatch])
 
   useEffect(() => {
     if (serverStart.version && serverStart.version !== config.version) {
