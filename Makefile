@@ -46,7 +46,7 @@ testrace: ##@Development Run Go tests with race detector
 .PHONY: test
 
 testall: testrace ##@Development Run Go and JS tests
-	@(cd ./ui && npm run test:ci)
+	@(cd ./ui && npm run test)
 .PHONY: testall
 
 install-golangci-lint: ##@Development Install golangci-lint if not present
