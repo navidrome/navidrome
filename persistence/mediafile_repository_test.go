@@ -148,7 +148,7 @@ var _ = Describe("MediaRepository", func() {
 			conf.Server.RecentlyAddedByModTime = true
 			mediaFile1 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 1"}
 			mediaFile2 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 2"}
-			
+
 			Expect(mr.Put(mediaFile1)).To(Succeed())
 			Expect(mr.Put(mediaFile2)).To(Succeed())
 
@@ -165,7 +165,7 @@ var _ = Describe("MediaRepository", func() {
 			conf.Server.RecentlyAddedByModTime = false
 			mediaFile1 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 1"}
 			mediaFile2 := &model.MediaFile{ID: id.NewRandom(), LibraryID: 1, Title: "Track 2"}
-			
+
 			Expect(mr.Put(mediaFile1)).To(Succeed())
 			Expect(mr.Put(mediaFile2)).To(Succeed())
 
