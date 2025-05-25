@@ -29,7 +29,7 @@ type artistReader struct {
 	imgFiles     []string
 }
 
-func newArtistReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
+func newArtistArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*artistReader, error) {
 	ar, err := artwork.ds.Artist(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err

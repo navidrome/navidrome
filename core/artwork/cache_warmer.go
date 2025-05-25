@@ -31,6 +31,12 @@ func NewCacheWarmer(artwork Artwork, cache cache.FileCache) CacheWarmer {
 		return &noopCacheWarmer{}
 	}
 
+	// If the file cache is disabled, return a NOOP implementation
+	if cache.Disabled(context.Background()) {
+		log.Debug("Image cache disabled. Cache warmer will not run")
+		return &noopCacheWarmer{}
+	}
+
 	a := &cacheWarmer{
 		artwork:    artwork,
 		cache:      cache,
@@ -53,6 +59,9 @@ type cacheWarmer struct {
 }
 
 func (a *cacheWarmer) PreCache(artID model.ArtworkID) {
+	if a.cache.Disabled(context.Background()) {
+		return
+	}
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	a.buffer[artID] = struct{}{}
@@ -72,6 +81,17 @@ func (a *cacheWarmer) run(ctx context.Context) {
 		a.waitSignal(ctx, 10*time.Second)
 		if ctx.Err() != nil {
 			break
+		}
+
+		if a.cache.Disabled(ctx) {
+			a.mutex.Lock()
+			pending := len(a.buffer)
+			a.buffer = make(map[model.ArtworkID]struct{})
+			a.mutex.Unlock()
+			if pending > 0 {
+				log.Trace(ctx, "Cache disabled, discarding precache buffer", "bufferLen", pending)
+			}
+			return
 		}
 
 		// If cache not available, keep waiting

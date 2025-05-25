@@ -65,6 +65,11 @@ func loggedUser(ctx context.Context) *model.User {
 	}
 }
 
+func isAdmin(ctx context.Context) bool {
+	user := loggedUser(ctx)
+	return user.IsAdmin
+}
+
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
 	if r.tableName == "" {
 		r.tableName = strings.TrimPrefix(reflect.TypeOf(instance).String(), "*model.")

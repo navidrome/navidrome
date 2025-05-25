@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -182,7 +184,35 @@ func (p *phaseMissingTracks) finalize(err error) error {
 	if matched > 0 {
 		log.Info(p.ctx, "Scanner: Found moved files", "total", matched, err)
 	}
+	if err != nil {
+		return err
+	}
+
+	// Check if we should purge missing items
+	if conf.Server.Scanner.PurgeMissing == consts.PurgeMissingAlways || (conf.Server.Scanner.PurgeMissing == consts.PurgeMissingFull && p.state.fullScan) {
+		if err = p.purgeMissing(); err != nil {
+			log.Error(p.ctx, "Scanner: Error purging missing items", err)
+		}
+	}
+
 	return err
+}
+
+func (p *phaseMissingTracks) purgeMissing() error {
+	deletedCount, err := p.ds.MediaFile(p.ctx).DeleteAllMissing()
+	if err != nil {
+		return fmt.Errorf("error deleting missing files: %w", err)
+	}
+
+	if deletedCount > 0 {
+		log.Info(p.ctx, "Scanner: Purged missing items from the database", "mediaFiles", deletedCount)
+		// Set changesDetected to true so that garbage collection will run at the end of the scan process
+		p.state.changesDetected.Store(true)
+	} else {
+		log.Debug(p.ctx, "Scanner: No missing items to purge")
+	}
+
+	return nil
 }
 
 var _ phase[*missingTracks] = (*phaseMissingTracks)(nil)

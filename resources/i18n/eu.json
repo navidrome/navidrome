@@ -17,7 +17,10 @@
         "year": "Urtea",
         "size": "Fitxategiaren tamaina",
         "updatedAt": "Eguneratze-data:",
-        "bitRate": "Bit tasa",
+        "bitRate": "Bit-tasa",
+        "bitDepth": "Bit-sakonera",
+        "sampleRate": "Lagin-tasa",
+        "channels": "Kanalak",
         "discSubtitle": "Diskoaren azpititulua",
         "starred": "Gogokoa",
         "comment": "Iruzkina",
@@ -25,14 +28,13 @@
         "quality": "Kalitatea",
         "bpm": "BPM",
         "playDate": "Azkenekoz erreproduzitua:",
-        "channels": "Kanalak",
         "createdAt": "Gehitu zen data:",
-        "grouping": "",
-        "mood": "",
-        "participants": "",
-        "tags": "",
-        "mappedTags": "",
-        "rawTags": ""
+        "grouping": "Multzokatzea",
+        "mood": "Aldartea",
+        "participants": "Partaide gehiago",
+        "tags": "Traola gehiago",
+        "mappedTags": "Esleitutako traolak",
+        "rawTags": "Traola gordinak"
       },
       "actions": {
         "addToQueue": "Erreproduzitu ondoren",
@@ -52,25 +54,26 @@
         "duration": "Iraupena",
         "songCount": "abesti",
         "playCount": "Erreprodukzioak",
+        "size": "Fitxategiaren tamaina",
         "name": "Izena",
         "genre": "Generoa",
         "compilation": "Konpilazioa",
         "year": "Urtea",
-        "updatedAt": "Aktualizatze-data:",
-        "comment": "Iruzkina",
-        "rating": "Balorazioa",
-        "createdAt": "Gehitu zen data:",
-        "size": "Fitxategiaren tamaina",
+        "date": "Recording Date",
         "originalDate": "Jatorrizkoa",
         "releaseDate": "Argitaratze-data:",
         "releases": "Argitaratzea |||| Argitaratzeak",
         "released": "Argitaratua",
-        "recordLabel": "",
-        "catalogNum": "",
-        "releaseType": "",
-        "grouping": "",
-        "media": "",
-        "mood": ""
+        "updatedAt": "Aktualizatze-data:",
+        "comment": "Iruzkina",
+        "rating": "Balorazioa",
+        "createdAt": "Gehitu zen data:",
+        "recordLabel": "Disketxea",
+        "catalogNum": "Katalogo-zenbakia",
+        "releaseType": "Mota",
+        "grouping": "Multzokatzea",
+        "media": "Multimedia",
+        "mood": "Aldartea"
       },
       "actions": {
         "playAll": "Erreproduzitu",
@@ -84,7 +87,7 @@
       },
       "lists": {
         "all": "Guztiak",
-        "random": "Aleatorioa",
+        "random": "Aleatorioki",
         "recentlyAdded": "Berriki gehitutakoak",
         "recentlyPlayed": "Berriki entzundakoak",
         "mostPlayed": "Gehien entzundakoak",
@@ -98,26 +101,26 @@
         "name": "Izena",
         "albumCount": "Album kopurua",
         "songCount": "Abesti kopurua",
+        "size": "Tamaina",
         "playCount": "Erreprodukzio kopurua",
         "rating": "Balorazioa",
         "genre": "Generoa",
-        "size": "Tamaina",
-        "role": ""
+        "role": "Rola"
       },
       "roles": {
-        "albumartist": "",
-        "artist": "",
-        "composer": "",
-        "conductor": "",
-        "lyricist": "",
-        "arranger": "",
-        "producer": "",
-        "director": "",
-        "engineer": "",
-        "mixer": "",
-        "remixer": "",
-        "djmixer": "",
-        "performer": ""
+        "albumartist": "Albumeko egilea |||| Albumeko artistak",
+        "artist": "Artista |||| Artistak",
+        "composer": "Konpositorea |||| Konpositoreak",
+        "conductor": "Orkestra zuzendaria |||| Orkestra zuzendariak",
+        "lyricist": "Hitzen egilea |||| Hitzen egileak",
+        "arranger": "Moldatzailea |||| Moldatzaileak",
+        "producer": "Produktorea |||| Produktoreak",
+        "director": "Zuzendaria |||| Zuzendaria",
+        "engineer": "Teknikaria |||| Teknikariak",
+        "mixer": "Nahaslea |||| Nahasleak",
+        "remixer": "Remixerra |||| Remixerrak",
+        "djmixer": "DJ nahaslea |||| DJ nahasleak",
+        "performer": "Interpretatzailea |||| Interpretatzaileak"
       }
     },
     "user": {
@@ -238,7 +241,8 @@
         "updatedAt": "Desagertze-data:"
       },
       "actions": {
-        "remove": "Kendu"
+        "remove": "Kendu",
+        "remove_all": "Kendu guztia"
       },
       "notifications": {
         "removed": "Faltan zeuden fitxategiak kendu dira"
@@ -258,7 +262,7 @@
       "sign_in": "Sartu",
       "sign_in_error": "Autentifikazioak huts egin du, saiatu berriro",
       "logout": "Amaitu saioa",
-      "insightsCollectionNote": ""
+      "insightsCollectionNote": "Navidromek erabilera-datu anonimoak biltzen ditu\nproiektua hobetzen laguntzeko. Egin klik [hemen]\ngehiago ikasteko, eta datuak ez biltzeko eskatzeko,\nhala nahi izanez gero."
     },
     "validation": {
       "invalidChars": "Erabili hizkiak eta zenbakiak bakarrik",
@@ -398,31 +402,33 @@
     "noPlaylistsAvailable": "Ez dago zerrendarik erabilgarri",
     "delete_user_title": "Ezabatu '%{name}' erabiltzailea",
     "delete_user_content": "Ziur zaide erabiltzaile hau eta bere datu guztiak (zerrendak eta hobespenak barne) ezabatu nahi dituzula?",
+    "remove_missing_title": "Kendu faltan dauden fitxategiak",
+    "remove_missing_content": "Ziur hautatutako fitxategiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
+    "remove_all_missing_title": "Kendu faltan dauden fitxategi guztiak",
+    "remove_all_missing_content": "Ziur aurkitu ez diren fitxategi guztiak datu-basetik kendu nahi dituzula? Betiko kenduko dira haiei buruzko erreferentziak, erreprodukzio-zenbaketak eta sailkapenak barne.",
     "notifications_blocked": "Nabigatzaileak jakinarazpenak blokeatzen ditu",
     "notifications_not_available": "Nabigatzaile hau ez da jakinarazpenekin bateragarria edo Navidrome ez da HTTPS erabiltzen ari",
     "lastfmLinkSuccess": "Last.fm konektatuta dago eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea gaituta dago",
     "lastfmLinkFailure": "Ezin izan da Last.fm-rekin konektatu",
     "lastfmUnlinkSuccess": "Last.fm deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea ezgaitu da",
     "lastfmUnlinkFailure": "Ezin izan da Last.fm deskonektatu",
+    "listenBrainzLinkSuccess": "Ondo konektatu da ListenBrainz-ekin eta %{user} erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea aktibatu da",
+    "listenBrainzLinkFailure": "Ezin izan da ListenBrainz-ekin konektatu: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
+    "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
     "openIn": {
       "lastfm": "Ikusi Last.fm-n",
       "musicbrainz": "Ikusi MusicBrainz-en"
     },
     "lastfmLink": "Irakurri gehiago…",
-    "listenBrainzLinkSuccess": "Ondo konektatu da ListenBrainz-ekin eta %{user} erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea aktibatu da",
-    "listenBrainzLinkFailure": "Ezin izan da ListenBrainz-ekin konektatu: %{error}",
-    "listenBrainzUnlinkSuccess": "ListenBrainz deskonektatu da eta erabiltzailearen ohiturak hirugarrenen zerbitzuekin partekatzea desaktibatu da",
-    "listenBrainzUnlinkFailure": "Ezin izan da ListenBrainz deskonektatu",
-    "downloadOriginalFormat": "Deskargatu jatorrizko formatua",
     "shareOriginalFormat": "Partekatu jatorrizko formatua",
     "shareDialogTitle": "Partekatu '%{name}' %{resource}",
     "shareBatchDialogTitle": "Partekatu %{resource} bat |||| Partekatu %{smart_count} %{resource}",
+    "shareCopyToClipboard": "Kopiatu arbelera: Ktrl + C, Sartu tekla",
     "shareSuccess": "URLa arbelera kopiatu da: %{url}",
     "shareFailure": "Errorea %{url} URLa arbelera kopiatzean",
     "downloadDialogTitle": "Deskargatu '%{name}' %{resource}, (%{size})",
-    "shareCopyToClipboard": "Kopiatu arbelera: Ktrl + C, Sartu tekla",
-    "remove_missing_title": "",
-    "remove_missing_content": ""
+    "downloadOriginalFormat": "Deskargatu jatorrizko formatua"    
   },
   "menu": {
     "library": "Liburutegia",
@@ -436,6 +442,7 @@
         "language": "Hizkuntza",
         "defaultView": "Bista, defektuz",
         "desktop_notifications": "Mahaigaineko jakinarazpenak",
+        "lastfmNotConfigured": "Last.fm-ren API-gakoa ez dago konfiguratuta",
         "lastfmScrobbling": "Bidali Last.fm-ra erabiltzailearen ohiturak",
         "listenBrainzScrobbling": "Bidali ListenBrainz-era erabiltzailearen ohiturak",
         "replaygain": "ReplayGain modua",
@@ -444,14 +451,13 @@
           "none": "Bat ere ez",
           "album": "Albuma",
           "track": "Pista"
-        },
-        "lastfmNotConfigured": ""
+        }
       }
     },
     "albumList": "Albumak",
-    "about": "Honi buruz",
     "playlists": "Zerrendak",
-    "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak"
+    "sharedPlaylists": "Partekatutako erreprodukzio-zerrendak",
+    "about": "Honi buruz"
   },
   "player": {
     "playListsText": "Erreprodukzio-zerrenda",
@@ -483,10 +489,10 @@
       "homepage": "Hasierako orria",
       "source": "Iturburu kodea",
       "featureRequests": "Eskatu ezaugarria",
-      "lastInsightsCollection": "",
+      "lastInsightsCollection": "Bildutako azken datuak",
       "insights": {
-        "disabled": "",
-        "waiting": ""
+        "disabled": "Ezgaituta",
+        "waiting": "Zain"
       }
     }
   },
@@ -496,7 +502,10 @@
     "quickScan": "Arakatze azkarra",
     "fullScan": "Arakatze sakona",
     "serverUptime": "Zerbitzariak piztuta daraman denbora",
-    "serverDown": "LINEAZ KANPO"
+    "serverDown": "LINEAZ KANPO",
+    "scanType": "Mota",
+    "status": "Errorea arakatzean",
+    "elapsedTime": "Igarotako denbora"
   },
   "help": {
     "title": "Navidromeren laster-teklak",
