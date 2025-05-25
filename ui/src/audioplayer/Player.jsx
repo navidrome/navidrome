@@ -214,7 +214,8 @@ const Player = () => {
         const song = info.song
         document.title = `${song.title} - ${song.artist} - Navidrome`
         if (!info.isRadio) {
-          subsonic.nowPlaying(info.trackId)
+          const pos = startTime === null ? null : Math.floor(info.currentTime)
+          subsonic.nowPlaying(info.trackId, pos)
         }
         setPreload(false)
         if (config.gaTrackingId) {

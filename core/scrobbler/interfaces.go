@@ -21,7 +21,7 @@ var (
 
 type Scrobbler interface {
 	IsAuthorized(ctx context.Context, userId string) bool
-	NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error
+	NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error
 	Scrobble(ctx context.Context, userId string, s Scrobble) error
 }
 

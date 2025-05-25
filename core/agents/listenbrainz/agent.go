@@ -73,7 +73,7 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 	return li
 }
 
-func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return errors.Join(err, scrobbler.ErrNotAuthorized)

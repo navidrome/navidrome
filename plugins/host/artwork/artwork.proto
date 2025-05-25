@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package artwork;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/artwork;artwork";
+
+// go:plugin type=host version=1
+service ArtworkService {
+    rpc GetArtistUrl(GetArtworkUrlRequest) returns (GetArtworkUrlResponse);
+    rpc GetAlbumUrl(GetArtworkUrlRequest) returns (GetArtworkUrlResponse);
+    rpc GetTrackUrl(GetArtworkUrlRequest) returns (GetArtworkUrlResponse);
+}
+
+message GetArtworkUrlRequest {
+    string id = 1;
+    int32 size = 2;  // Optional, 0 means original size
+}
+
+message GetArtworkUrlResponse {
+    string url = 1;
+} 
