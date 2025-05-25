@@ -109,6 +109,15 @@ var _ = Describe("Criteria", func() {
 				)
 			})
 
+			It("casts numeric tags when sorting", func() {
+				AddTagNames([]string{"rate"})
+				AddNumericTags([]string{"rate"})
+				goObj.Sort = "rate"
+				gomega.Expect(goObj.OrderBy()).To(
+					gomega.Equal("CAST(COALESCE(json_extract(media_file.tags, '$.rate[0].value'), '') AS REAL) asc"),
+				)
+			})
+
 			It("sorts by random", func() {
 				newObj := goObj
 				newObj.Sort = "random"

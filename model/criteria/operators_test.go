@@ -13,6 +13,7 @@ import (
 var _ = BeforeSuite(func() {
 	AddRoles([]string{"artist", "composer"})
 	AddTagNames([]string{"genre"})
+	AddNumericTags([]string{"rate"})
 })
 
 var _ = Describe("Operators", func() {
@@ -68,6 +69,15 @@ var _ = Describe("Operators", func() {
 		Entry("role endsWith [string]", EndsWith{"composer": "Lennon"}, "exists (select 1 from json_tree(participants, '$.composer') where key='name' and value LIKE ?)", "%Lennon"),
 	)
 
+	// TODO Validate operators that are not valid for each field type.
+	XDescribeTable("ToSQL - Invalid Operators",
+		func(op Expression, expectedError string) {
+			_, _, err := op.ToSql()
+			gomega.Expect(err).To(gomega.MatchError(expectedError))
+		},
+		Entry("numeric tag contains", Contains{"rate": 5}, "numeric tag 'rate' cannot be used with Contains operator"),
+	)
+
 	Describe("Custom Tags", func() {
 		It("generates valid SQL", func() {
 			AddTagNames([]string{"mood"})
@@ -78,7 +88,7 @@ var _ = Describe("Operators", func() {
 			gomega.Expect(args).To(gomega.HaveExactElements("%Soft"))
 		})
 		It("casts numeric comparisons", func() {
-			AddTagNames([]string{"rate"})
+			AddNumericTags([]string{"rate"})
 			op := Lt{"rate": 6}
 			sql, args, err := op.ToSql()
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())

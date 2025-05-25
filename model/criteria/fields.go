@@ -54,11 +54,12 @@ var fieldMap = map[string]*mappedField{
 }
 
 type mappedField struct {
-	field  string
-	order  string
-	isRole bool   // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
-	isTag  bool   // true if the field is a tag imported from the file metadata
-	alias  string // name from `mappings.yml` that may differ from the name used in the smart playlist
+	field   string
+	order   string
+	isRole  bool   // true if the field is a role (e.g. "artist", "composer", "conductor", etc.)
+	isTag   bool   // true if the field is a tag imported from the file metadata
+	alias   string // name from `mappings.yml` that may differ from the name used in the smart playlist
+	numeric bool   // true if the field/tag should be treated as numeric
 }
 
 func mapFields(expr map[string]any) map[string]any {
@@ -145,25 +146,18 @@ type tagCond struct {
 
 func (e tagCond) ToSql() (string, []any, error) {
 	cond, args, err := e.cond.ToSql()
-	if len(args) > 0 && isNumber(args[0]) {
+
+	// Check if this tag is marked as numeric in the fieldMap
+	if fm, ok := fieldMap[e.tag]; ok && fm.numeric {
 		cond = strings.ReplaceAll(cond, "value", "CAST(value AS REAL)")
 	}
+
 	cond = fmt.Sprintf("exists (select 1 from json_tree(tags, '$.%s') where key='value' and %s)",
 		e.tag, cond)
 	if e.not {
 		cond = "not " + cond
 	}
 	return cond, args, err
-}
-
-func isNumber(v any) bool {
-	switch v.(type) {
-	case int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64,
-		float32, float64:
-		return true
-	}
-	return false
 }
 
 func roleExpr(role string, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
@@ -215,6 +209,19 @@ func AddTagNames(tagNames []string) {
 		}
 		if _, ok := fieldMap[name]; !ok {
 			fieldMap[name] = &mappedField{field: name, isTag: true}
+		}
+	}
+}
+
+// AddNumericTags marks the given tag names as numeric so they can be cast
+// when used in comparisons or sorting.
+func AddNumericTags(tagNames []string) {
+	for _, name := range tagNames {
+		name := strings.ToLower(name)
+		if fm, ok := fieldMap[name]; ok {
+			fm.numeric = true
+		} else {
+			fieldMap[name] = &mappedField{field: name, isTag: true, numeric: true}
 		}
 	}
 }
