@@ -6,8 +6,16 @@ import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
 import { intersperse } from '../utils'
 import config from '../config'
+import { makeStyles } from '@material-ui/core/styles'
+
+const useStyles = makeStyles({
+  linkBar: {
+    minHeight: '1.875em',
+  },
+})
 
 const ArtistExternalLinks = ({ artistInfo, record }) => {
+  const classes = useStyles()
   const translate = useTranslate()
   let linkButtons = []
   const lastFMlink = artistInfo?.biography?.match(
@@ -52,7 +60,7 @@ const ArtistExternalLinks = ({ artistInfo, record }) => {
       <MusicBrainz className="musicbrainz-icon" />,
     )
 
-  return <div>{intersperse(linkButtons, ' ')}</div>
+  return <div className={classes.linkBar}>{intersperse(linkButtons, ' ')}</div>
 }
 
 export default ArtistExternalLinks
