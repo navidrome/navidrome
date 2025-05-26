@@ -248,7 +248,7 @@ func Load(noConfigDump bool) {
 	}
 
 	if Server.ArtworkFolder == "" {
-		Server.ArtworkFolder = filepath.Join(Server.DataFolder, "artwork")
+		Server.ArtworkFolder = filepath.Join(Server.MusicFolder, "artwork")
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
