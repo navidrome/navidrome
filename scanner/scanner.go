@@ -93,6 +93,9 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 			runPhase[*model.Folder](ctx, 4, createPhasePlaylists(ctx, &state, s.ds, s.pls, s.cw)),
 		),
 
+		// Phase 5: Scan custom artwork
+		runPhase[string](ctx, 5, createPhaseArtwork(ctx, &state, s.ds)),
+
 		// Final Steps (cannot be parallelized):
 
 		// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)

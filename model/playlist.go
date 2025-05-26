@@ -11,20 +11,21 @@ import (
 )
 
 type Playlist struct {
-	ID        string         `structs:"id" json:"id"`
-	Name      string         `structs:"name" json:"name"`
-	Comment   string         `structs:"comment" json:"comment"`
-	Duration  float32        `structs:"duration" json:"duration"`
-	Size      int64          `structs:"size" json:"size"`
-	SongCount int            `structs:"song_count" json:"songCount"`
-	OwnerName string         `structs:"-" json:"ownerName"`
-	OwnerID   string         `structs:"owner_id" json:"ownerId"`
-	Public    bool           `structs:"public" json:"public"`
-	Tracks    PlaylistTracks `structs:"-" json:"tracks,omitempty"`
-	Path      string         `structs:"path" json:"path"`
-	Sync      bool           `structs:"sync" json:"sync"`
-	CreatedAt time.Time      `structs:"created_at" json:"createdAt"`
-	UpdatedAt time.Time      `structs:"updated_at" json:"updatedAt"`
+	ID                string         `structs:"id" json:"id"`
+	Name              string         `structs:"name" json:"name"`
+	Comment           string         `structs:"comment" json:"comment"`
+	Duration          float32        `structs:"duration" json:"duration"`
+	Size              int64          `structs:"size" json:"size"`
+	SongCount         int            `structs:"song_count" json:"songCount"`
+	OwnerName         string         `structs:"-" json:"ownerName"`
+	OwnerID           string         `structs:"owner_id" json:"ownerId"`
+	Public            bool           `structs:"public" json:"public"`
+	Tracks            PlaylistTracks `structs:"-" json:"tracks,omitempty"`
+	Path              string         `structs:"path" json:"path"`
+	Sync              bool           `structs:"sync" json:"sync"`
+	CustomArtworkHash string         `structs:"custom_artwork_hash" json:"customArtworkHash,omitempty"`
+	CreatedAt         time.Time      `structs:"created_at" json:"createdAt"`
+	UpdatedAt         time.Time      `structs:"updated_at" json:"updatedAt"`
 
 	// SmartPlaylist attributes
 	Rules       *criteria.Criteria `structs:"rules" json:"rules"`
