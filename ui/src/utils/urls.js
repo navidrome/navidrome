@@ -33,8 +33,14 @@ export const shareDownloadUrl = (id) => {
   return shareUrl(config.publicBaseUrl + '/d/' + id)
 }
 
-export const shareCoverUrl = (id) => {
-  return shareUrl(config.publicBaseUrl + '/img/' + id + '?size=300')
+export const shareCoverUrl = (id, square) => {
+  return shareUrl(
+    config.publicBaseUrl +
+      '/img/' +
+      id +
+      '?size=300' +
+      (square ? '&square=true' : ''),
+  )
 }
 
 export const docsUrl = (path) => `https://www.navidrome.org${path}`
