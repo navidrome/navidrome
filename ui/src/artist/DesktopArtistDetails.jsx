@@ -29,6 +29,7 @@ const useStyles = makeStyles(
       float: 'left',
       wordBreak: 'break-word',
       cursor: 'pointer',
+      minHeight: '4.5em',
     },
     content: {
       flex: '1 0 auto',
