@@ -19,7 +19,7 @@ CROSS_TAGLIB_VERSION ?= 2.0.2-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
-setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
+setup: check_env download-deps install-golangci-lint setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
 .PHONY: setup
