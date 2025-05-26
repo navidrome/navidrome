@@ -4,6 +4,7 @@ package criteria
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -39,6 +40,9 @@ func (c Criteria) OrderBy() string {
 			mapped = "COALESCE(json_extract(media_file.participants, '$." + sortField + "[0].name'), '')"
 		} else {
 			mapped = f.field
+		}
+		if f.numeric {
+			mapped = fmt.Sprintf("CAST(%s AS REAL)", mapped)
 		}
 	}
 	if c.Order != "" {

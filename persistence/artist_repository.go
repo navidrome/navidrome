@@ -244,24 +244,23 @@ func (r *artistRepository) purgeEmpty() error {
 	return nil
 }
 
-// markMissing sets the Missing flag based on album data.
-func (r *artistRepository) markMissing() (int64, error) {
+// markMissing marks artists as missing if all their albums are missing.
+func (r *artistRepository) markMissing() error {
 	q := Expr(`
-                update artist
-                set missing = not exists (
-                        select 1 from album_artists aa
-                        join album a on aa.album_id = a.id
-                        where aa.artist_id = artist.id and a.missing = false
-                )
+with artists_with_non_missing_albums as (
+    select distinct aa.artist_id
+    from album_artists aa
+    join album a on aa.album_id = a.id
+    where a.missing = false
+)
+update artist
+set missing = (artist.id not in (select artist_id from artists_with_non_missing_albums));
         `)
-	c, err := r.executeSQL(q)
+	_, err := r.executeSQL(q)
 	if err != nil {
-		return 0, fmt.Errorf("marking missing artists: %w", err)
+		return fmt.Errorf("marking missing artists: %w", err)
 	}
-	if c > 0 {
-		log.Debug(r.ctx, "Marked missing artists", "totalUpdated", c)
-	}
-	return c, nil
+	return nil
 }
 
 // RefreshPlayCounts updates the play count and last play date annotations for all artists, based

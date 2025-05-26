@@ -34,7 +34,8 @@
         "participants": "Additional participants",
         "tags": "Additional Tags",
         "mappedTags": "Mapped tags",
-        "rawTags": "Raw tags"
+        "rawTags": "Raw tags",
+        "missing": "Missing"
       },
       "actions": {
         "addToQueue": "Play Later",
@@ -73,7 +74,8 @@
         "releaseType": "Type",
         "grouping": "Grouping",
         "media": "Media",
-        "mood": "Mood"
+        "mood": "Mood",
+        "missing": "Missing"
       },
       "actions": {
         "playAll": "Play",
@@ -105,7 +107,8 @@
         "playCount": "Plays",
         "rating": "Rating",
         "genre": "Genre",
-        "role": "Role"
+        "role": "Role",
+        "missing": "Missing"
       },
       "roles": {
         "albumartist": "Album Artist |||| Album Artists",
@@ -192,6 +195,7 @@
         "selectPlaylist": "Select a playlist:",
         "addNewPlaylist": "Create \"%{name}\"",
         "export": "Export",
+        "saveQueue": "Save Queue to Playlist",
         "makePublic": "Make Public",
         "makePrivate": "Make Private"
       },

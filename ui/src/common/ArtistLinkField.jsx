@@ -36,24 +36,16 @@ const parseAndReplaceArtists = (
   let result = []
   let lastIndex = 0
 
-  albumArtists?.forEach((artist, artistIndex) => {
+  albumArtists?.forEach((artist) => {
     const index = displayAlbumArtist.indexOf(artist.name, lastIndex)
     if (index !== -1) {
       // Add text before the artist name
       if (index > lastIndex) {
-        result.push(
-          <span key={`text-${artistIndex}-${index}`}>
-            {displayAlbumArtist.slice(lastIndex, index)}
-          </span>,
-        )
+        result.push(displayAlbumArtist.slice(lastIndex, index))
       }
       // Add the artist link
       result.push(
-        <ALink
-          key={`artist-${artist.id || artistIndex}`}
-          artist={artist}
-          className={className}
-        />,
+        <ALink artist={artist} className={className} key={artist.id} />,
       )
       lastIndex = index + artist.name.length
     }
@@ -65,11 +57,7 @@ const parseAndReplaceArtists = (
 
   // Add any remaining text after the last artist name
   if (lastIndex < displayAlbumArtist.length) {
-    result.push(
-      <span key={`text-end-${lastIndex}`}>
-        {displayAlbumArtist.slice(lastIndex)}
-      </span>,
-    )
+    result.push(displayAlbumArtist.slice(lastIndex))
   }
 
   return result
@@ -107,12 +95,9 @@ export const ArtistLinkField = ({ record, className, limit, source }) => {
         )
 
         if (uniqueRemixers.length > 0) {
-          artistsLinks.push(<span key="separator-remixer"> • </span>)
+          artistsLinks.push(' • ')
           uniqueRemixers.forEach((remixer, index) => {
-            if (index > 0)
-              artistsLinks.push(
-                <span key={`separator-${remixer.id}`}> • </span>,
-              )
+            if (index > 0) artistsLinks.push(' • ')
             artistsLinks.push(
               <ALink
                 artist={remixer}

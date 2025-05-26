@@ -33,7 +33,8 @@
         "participants": "Outros Participantes",
         "tags": "Outras Tags",
         "mappedTags": "Tags mapeadas",
-        "rawTags": "Tags originais"
+        "rawTags": "Tags originais",
+        "missing": "Ausente"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -72,7 +73,8 @@
         "releaseType": "Tipo",
         "grouping": "Agrupamento",
         "media": "Mídia",
-        "mood": "Mood"
+        "mood": "Mood",
+        "missing": "Ausente"
       },
       "actions": {
         "playAll": "Tocar",
@@ -104,7 +106,8 @@
         "rating": "Classificação",
         "genre": "Gênero",
         "size": "Tamanho",
-        "role": "Role"
+        "role": "Role",
+        "missing": "Ausente"
       },
       "roles": {
         "albumartist": "Artista do Álbum |||| Artistas do Álbum",
@@ -191,6 +194,7 @@
         "selectPlaylist": "Selecione a playlist:",
         "addNewPlaylist": "Criar \"%{name}\"",
         "export": "Exportar",
+        "saveQueue": "Salvar fila em nova Playlist",
         "makePublic": "Pública",
         "makePrivate": "Pessoal"
       },
