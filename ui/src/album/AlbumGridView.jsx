@@ -94,6 +94,10 @@ const useCoverStyles = makeStyles({
     width: '100%',
     objectFit: 'contain',
     height: (props) => props.height,
+    transition: 'opacity 0.3s ease-in-out',
+  },
+  coverLoading: {
+    opacity: 0.5,
   },
 })
 
@@ -113,6 +117,8 @@ const Cover = withContentRect('bounds')(({
   // Force height to be the same as the width determined by the GridList
   // noinspection JSSuspiciousNameCombination
   const classes = useCoverStyles({ height: contentRect.bounds.width })
+  const [imageLoading, setImageLoading] = React.useState(true)
+  const [imageError, setImageError] = React.useState(false)
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
@@ -121,13 +127,33 @@ const Cover = withContentRect('bounds')(({
     }),
     [record],
   )
+
+  // Reset image state when record changes
+  React.useEffect(() => {
+    setImageLoading(true)
+    setImageError(false)
+  }, [record.id])
+
+  const handleImageLoad = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(false)
+  }, [])
+
+  const handleImageError = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(true)
+  }, [])
+
   return (
     <div ref={measureRef}>
       <div ref={dragAlbumRef}>
         <img
+          key={record.id} // Force re-render when record changes
           src={subsonic.getCoverArtUrl(record, 300, true)}
           alt={record.name}
-          className={classes.cover}
+          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
         />
       </div>
     </div>
