@@ -23,10 +23,10 @@ describe('getCoverArtUrl', () => {
     Object.defineProperty(window, 'localStorage', { value: localStorageMock })
   })
 
-  it('should return playlist cover art URL for records with songCount', () => {
+  it('should return playlist cover art URL for records with sync property', () => {
     const playlistRecord = {
       id: 'playlist-123',
-      songCount: 10,
+      sync: true,
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
@@ -41,13 +41,15 @@ describe('getCoverArtUrl', () => {
   it('should add timestamp for playlists without updatedAt', () => {
     const playlistRecord = {
       id: 'playlist-123',
-      songCount: 5,
+      sync: true,
     }
 
-    const url = subsonic.getCoverArtUrl(playlistRecord)
+    const url = subsonic.getCoverArtUrl(playlistRecord, 300, true)
 
     expect(url).toContain('pl-playlist-123')
-    expect(url).toMatch(/_=\d+/)
+    expect(url).toContain('size=300')
+    expect(url).toContain('square=true')
+    expect(url).not.toContain('_=')
   })
 
   it('should return album cover art URL for records with albumArtist', () => {
@@ -57,23 +59,25 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(albumRecord, 300)
+    const url = subsonic.getCoverArtUrl(albumRecord, 300, true)
 
     expect(url).toContain('al-album-123')
     expect(url).toContain('size=300')
+    expect(url).toContain('square=true')
   })
 
   it('should return media file cover art URL for records with album', () => {
-    const mediaFileRecord = {
-      id: 'mf-123',
+    const songRecord = {
+      id: 'song-123',
       album: 'Test Album',
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(mediaFileRecord, 200)
+    const url = subsonic.getCoverArtUrl(songRecord, 300, true)
 
-    expect(url).toContain('mf-mf-123')
-    expect(url).toContain('size=200')
+    expect(url).toContain('mf-song-123')
+    expect(url).toContain('size=300')
+    expect(url).toContain('square=true')
   })
 
   it('should return artist cover art URL for other records', () => {
@@ -82,10 +86,11 @@ describe('getCoverArtUrl', () => {
       updatedAt: '2023-01-01T00:00:00Z',
     }
 
-    const url = subsonic.getCoverArtUrl(artistRecord, 150)
+    const url = subsonic.getCoverArtUrl(artistRecord, 300, true)
 
     expect(url).toContain('ar-artist-123')
-    expect(url).toContain('size=150')
+    expect(url).toContain('size=300')
+    expect(url).toContain('square=true')
   })
 
   it('should handle records without updatedAt', () => {

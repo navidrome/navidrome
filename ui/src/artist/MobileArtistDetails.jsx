@@ -50,6 +50,12 @@ const useStyles = makeStyles(
       width: 151,
       boxShadow: '0px 0px 6px 0px #565656',
       borderRadius: '5px',
+      backgroundColor: 'transparent',
+      transition: 'opacity 0.3s ease-in-out',
+      objectFit: 'cover',
+    },
+    coverLoading: {
+      opacity: 0.5,
     },
     artistImage: {
       marginLeft: '1em',
@@ -81,8 +87,31 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
   const classes = useStyles({ img, expanded })
   const title = record.name
   const [isLightboxOpen, setLightboxOpen] = React.useState(false)
+  const [imageLoading, setImageLoading] = React.useState(false)
+  const [imageError, setImageError] = React.useState(false)
 
-  const handleOpenLightbox = React.useCallback(() => setLightboxOpen(true), [])
+  // Reset image state when artist changes
+  React.useEffect(() => {
+    setImageLoading(true)
+    setImageError(false)
+  }, [record.id])
+
+  const handleImageLoad = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(false)
+  }, [])
+
+  const handleImageError = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(true)
+  }, [])
+
+  const handleOpenLightbox = React.useCallback(() => {
+    if (!imageError) {
+      setLightboxOpen(true)
+    }
+  }, [imageError])
+
   const handleCloseLightbox = React.useCallback(
     () => setLightboxOpen(false),
     [],
@@ -95,10 +124,17 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
           <Card className={classes.artistImage}>
             {artistInfo && (
               <CardMedia
-                className={classes.cover}
-                image={subsonic.getCoverArtUrl(record, 300)}
+                key={record.id}
+                component="img"
+                src={subsonic.getCoverArtUrl(record, 300)}
+                className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
                 onClick={handleOpenLightbox}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
                 title={title}
+                style={{
+                  cursor: imageError ? 'default' : 'pointer',
+                }}
               />
             )}
           </Card>
@@ -136,7 +172,7 @@ const MobileArtistDetails = ({ artistInfo, biography, record }) => {
           </Typography>
         </Collapse>
       </div>
-      {isLightboxOpen && (
+      {isLightboxOpen && !imageError && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}
