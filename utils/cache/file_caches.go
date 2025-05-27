@@ -54,6 +54,9 @@ type FileCache interface {
 
 	// Available checks if the cache is available
 	Available(ctx context.Context) bool
+
+	// Disabled reports if the cache has been permanently disabled
+	Disabled(ctx context.Context) bool
 }
 
 // NewFileCache creates a new FileCache. This function initializes the cache and starts it in the background.
@@ -119,6 +122,13 @@ func (fc *fileCache) Available(_ context.Context) bool {
 	return fc.ready.Load() && !fc.disabled
 }
 
+func (fc *fileCache) Disabled(_ context.Context) bool {
+	fc.mutex.RLock()
+	defer fc.mutex.RUnlock()
+
+	return fc.disabled
+}
+
 func (fc *fileCache) invalidate(ctx context.Context, key string) error {
 	if !fc.Available(ctx) {
 		log.Debug(ctx, "Cache not initialized yet. Cannot invalidate key", "cache", fc.name, "key", key)
@@ -164,6 +174,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		go func() {
 			if err := copyAndClose(w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
+				_ = r.Close()
 				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)

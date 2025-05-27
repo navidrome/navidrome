@@ -1,4 +1,4 @@
-import { List, SizeField } from '../common/index'
+import { List, SizeField, useResourceRefresh } from '../common/index'
 import {
   Datagrid,
   DateField,
@@ -8,6 +8,7 @@ import {
 } from 'react-admin'
 import jsonExport from 'jsonexport/dist'
 import DeleteMissingFilesButton from './DeleteMissingFilesButton.jsx'
+import MissingListActions from './MissingListActions.jsx'
 
 const exporter = (files) => {
   const filesToExport = files.map((file) => {
@@ -30,11 +31,13 @@ const MissingPagination = (props) => (
 )
 
 const MissingFilesList = (props) => {
+  useResourceRefresh('song')
   return (
     <List
       {...props}
       sort={{ field: 'updated_at', order: 'DESC' }}
       exporter={exporter}
+      actions={<MissingListActions />}
       bulkActionButtons={<BulkActionButtons />}
       perPage={50}
       pagination={<MissingPagination />}

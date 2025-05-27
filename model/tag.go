@@ -191,6 +191,7 @@ const (
 	TagReleaseCountry TagName = "releasecountry"
 	TagMedia          TagName = "media"
 	TagCatalogNumber  TagName = "catalognumber"
+	TagISRC           TagName = "isrc"
 	TagBPM            TagName = "bpm"
 	TagExplicitStatus TagName = "explicitstatus"
 

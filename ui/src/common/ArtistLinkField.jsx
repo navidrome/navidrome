@@ -44,7 +44,9 @@ const parseAndReplaceArtists = (
         result.push(displayAlbumArtist.slice(lastIndex, index))
       }
       // Add the artist link
-      result.push(<ALink artist={artist} className={className} />)
+      result.push(
+        <ALink artist={artist} className={className} key={artist.id} />,
+      )
       lastIndex = index + artist.name.length
     }
   })

@@ -29,7 +29,7 @@ const SharePlayer = () => {
     return {
       name: s.title,
       musicSrc: shareStreamUrl(s.id),
-      cover: shareCoverUrl(s.id),
+      cover: shareCoverUrl(s.id, true),
       singer: s.artist,
       duration: s.duration,
     }

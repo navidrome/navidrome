@@ -9,6 +9,7 @@ import (
 	"mime"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/gohugoio/hashstructure"
@@ -330,6 +331,23 @@ func firstArtPath(currentPath string, currentDisc int, m MediaFile) (string, int
 	return currentPath, currentDisc
 }
 
+// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
+// https://docs.fileformat.com/audio/m3u/#extended-m3u
+func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
+	buf := strings.Builder{}
+	buf.WriteString("#EXTM3U\n")
+	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
+	for _, t := range mfs {
+		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
+		if absolutePaths {
+			buf.WriteString(t.AbsolutePath() + "\n")
+		} else {
+			buf.WriteString(t.Path + "\n")
+		}
+	}
+	return buf.String()
+}
+
 type MediaFileCursor iter.Seq2[MediaFile, error]
 
 type MediaFileRepository interface {
@@ -342,6 +360,7 @@ type MediaFileRepository interface {
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
 	DeleteMissing(ids []string) error
+	DeleteAllMissing() (int64, error)
 	FindByPaths(paths []string) (MediaFiles, error)
 
 	// The following methods are used exclusively by the scanner:

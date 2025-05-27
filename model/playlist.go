@@ -1,10 +1,8 @@
 package model
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/model/criteria"
@@ -53,17 +51,9 @@ func (pls *Playlist) RemoveTracks(idxToRemove []int) {
 	pls.Tracks = newTracks
 }
 
-// ToM3U8 exports the playlist to the Extended M3U8 format, as specified in
-// https://docs.fileformat.com/audio/m3u/#extended-m3u
+// ToM3U8 exports the playlist to the Extended M3U8 format
 func (pls *Playlist) ToM3U8() string {
-	buf := strings.Builder{}
-	buf.WriteString("#EXTM3U\n")
-	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", pls.Name))
-	for _, t := range pls.Tracks {
-		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
-		buf.WriteString(t.AbsolutePath() + "\n")
-	}
-	return buf.String()
+	return pls.MediaFiles().ToM3U8(pls.Name, true)
 }
 
 func (pls *Playlist) AddTracks(mediaFileIds []string) {

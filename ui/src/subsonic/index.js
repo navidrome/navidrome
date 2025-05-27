@@ -61,11 +61,14 @@ const getCoverArtUrl = (record, size, square) => {
     ...(square && { square }),
   }
 
-  // TODO Move this logic to server. `song` and `album` should have a CoverArtID
+  // TODO Move this logic to server
   if (record.album) {
     return baseUrl(url('getCoverArt', 'mf-' + record.id, options))
   } else if (record.albumArtist) {
     return baseUrl(url('getCoverArt', 'al-' + record.id, options))
+  } else if (record.sync !== undefined) {
+    // This is a playlist
+    return baseUrl(url('getCoverArt', 'pl-' + record.id, options))
   } else {
     return baseUrl(url('getCoverArt', 'ar-' + record.id, options))
   }

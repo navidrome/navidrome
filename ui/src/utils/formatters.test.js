@@ -1,4 +1,9 @@
-import { formatBytes, formatDuration, formatFullDate } from './formatters'
+import {
+  formatBytes,
+  formatDuration,
+  formatFullDate,
+  formatShortDuration,
+} from './formatters'
 
 describe('formatBytes', () => {
   it('format bytes', () => {
@@ -29,6 +34,33 @@ describe('formatDuration', () => {
     )
     expect(formatDuration(day)).toEqual('1:00:00:00')
     expect(formatDuration(day + minute + 0.6)).toEqual('1:00:01:01')
+  })
+})
+
+describe('formatShortDuration', () => {
+  // Convert seconds to nanoseconds for the tests
+  const toNs = (seconds) => seconds * 1e9
+
+  it('formats less than a second', () => {
+    expect(formatShortDuration(toNs(0.5))).toEqual('<1s')
+    expect(formatShortDuration(toNs(0))).toEqual('<1s')
+  })
+
+  it('formats seconds', () => {
+    expect(formatShortDuration(toNs(1))).toEqual('1s')
+    expect(formatShortDuration(toNs(59))).toEqual('59s')
+  })
+
+  it('formats minutes and seconds', () => {
+    expect(formatShortDuration(toNs(60))).toEqual('1m0s')
+    expect(formatShortDuration(toNs(90))).toEqual('1m30s')
+    expect(formatShortDuration(toNs(59 * 60 + 59))).toEqual('59m59s')
+  })
+
+  it('formats hours and minutes', () => {
+    expect(formatShortDuration(toNs(3600))).toEqual('1h0m')
+    expect(formatShortDuration(toNs(3600 + 30 * 60))).toEqual('1h30m')
+    expect(formatShortDuration(toNs(24 * 3600 - 1))).toEqual('23h59m')
   })
 })
 
