@@ -171,15 +171,15 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			_ = fc.invalidate(ctx, key)
 			return nil, err
 		}
-		go func(rCloser fscache.ReadAtCloser) {
+		go func() {
 			if err := copyAndClose(w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
-				_ = rCloser.Close()
+				_ = r.Close()
 				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
 			}
-		}(r)
+		}()
 	}
 
 	// If it is in the cache, check if the stream is done being written. If so, return a ReadSeeker

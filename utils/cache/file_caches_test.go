@@ -124,7 +124,7 @@ var _ = Describe("File Caches", func() {
 					s, err := fc.Get(context.Background(), &testArg{"test"})
 					Expect(err).ToNot(HaveOccurred())
 					_, err = io.ReadAll(s)
-					Expect(err).To(MatchError("file already closed"))
+					Expect(err.Error()).To(ContainSubstring("file already closed"))
 
 					Eventually(func() bool {
 						s, _ = fc.Get(context.Background(), &testArg{"test"})
