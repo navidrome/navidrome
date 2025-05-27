@@ -6,7 +6,6 @@ import {
   DateField,
   EditButton,
   Filter,
-  List,
   sanitizeListRestProps,
   SearchInput,
   SimpleList,
@@ -15,6 +14,7 @@ import {
   UrlField,
   useTranslate,
 } from 'react-admin'
+import { List } from '../common'
 import { ToggleFieldsMenu, useSelectedFields } from '../common'
 import { StreamField } from './StreamField'
 import { setTrack } from '../actions'
