@@ -1,0 +1,7 @@
+{
+  "name": "discord-rich-presence",
+  "author": "Navidrome",
+  "version": "0.1.0",
+  "description": "Discord Rich Presence integration for Navidrome",
+  "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"]
+}
