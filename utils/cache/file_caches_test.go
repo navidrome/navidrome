@@ -118,7 +118,7 @@ var _ = Describe("File Caches", func() {
 			When("reader returns error", func() {
 				It("does not cache and closes the stream", func() {
 					fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
-						return &errPartialReader{data: []byte("data"), err: errors.New("read failure")}, nil
+						return &errFakeReader{data: []byte("data"), err: errors.New("read failure")}, nil
 					})
 
 					s, err := fc.Get(context.Background(), &testArg{"test"})
@@ -143,17 +143,13 @@ type testArg struct{ s string }
 
 func (t *testArg) Key() string { return t.s }
 
-type errFakeReader struct{ err error }
-
-func (e errFakeReader) Read([]byte) (int, error) { return 0, e.err }
-
-type errPartialReader struct {
+type errFakeReader struct {
 	data []byte
 	err  error
 	off  int
 }
 
-func (e *errPartialReader) Read(b []byte) (int, error) {
+func (e *errFakeReader) Read(b []byte) (int, error) {
 	if e.off < len(e.data) {
 		n := copy(b, e.data[e.off:])
 		e.off += n
