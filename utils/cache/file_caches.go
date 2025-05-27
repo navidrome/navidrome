@@ -174,6 +174,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		go func() {
 			if err := copyAndClose(w, reader); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
+				_ = r.Close()
 				_ = fc.invalidate(ctx, key)
 			} else {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
