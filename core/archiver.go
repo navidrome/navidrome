@@ -98,7 +98,7 @@ func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error
 		return model.ErrNotAuthorized
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
-	return a.zipMediaFiles(ctx, id, s.Format, s.MaxBitRate, out, s.Tracks)
+	return a.zipMediaFiles(ctx, id, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, false)
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
@@ -109,15 +109,40 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 	}
 	mfs := pls.MediaFiles()
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
-	return a.zipMediaFiles(ctx, id, format, bitrate, out, mfs)
+	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, true)
 }
 
-func (a *archiver) zipMediaFiles(ctx context.Context, id string, format string, bitrate int, out io.Writer, mfs model.MediaFiles) error {
+func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, addM3U bool) error {
 	z := createZipWriter(out, format, bitrate)
+
+	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
 		_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+		mf.Path = file
+		zippedMfs[idx] = mf
 	}
+
+	// Add M3U file if requested
+	if addM3U && len(zippedMfs) > 0 {
+		plsName := sanitizeName(name)
+		w, err := z.CreateHeader(&zip.FileHeader{
+			Name:     plsName + ".m3u",
+			Modified: mfs[0].UpdatedAt,
+			Method:   zip.Store,
+		})
+		if err != nil {
+			log.Error(ctx, "Error creating playlist zip entry", err)
+			return err
+		}
+
+		_, err = w.Write([]byte(zippedMfs.ToM3U8(plsName, false)))
+		if err != nil {
+			log.Error(ctx, "Error writing m3u in zip", err)
+			return err
+		}
+	}
+
 	err := z.Close()
 	if err != nil {
 		log.Error(ctx, "Error closing zip file", "id", id, err)
