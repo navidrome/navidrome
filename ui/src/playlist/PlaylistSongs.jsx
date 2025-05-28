@@ -213,7 +213,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               {columns}
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
-                showLove={false}
+                showLove={true}
                 className={classes.contextMenu}
               />
             </SongDatagrid>
