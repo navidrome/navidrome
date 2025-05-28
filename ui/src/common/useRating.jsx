@@ -17,17 +17,41 @@ export const useRating = (resource, record) => {
   }, [])
 
   const refreshRating = useCallback(() => {
-    dataProvider
-      .getOne(resource, { id: record.id })
-      .then(() => {
-        if (mountedRef.current) {
-          setLoading(false)
-        }
-      })
-      .catch((e) => {
-        // eslint-disable-next-line no-console
-        console.log('Error encountered: ' + e)
-      })
+    // For playlist tracks, refresh both resources to keep data in sync
+    if (record.mediaFileId) {
+      // This is a playlist track - refresh both the playlist track and the song
+      const promises = [
+        dataProvider.getOne('song', { id: record.mediaFileId }),
+        dataProvider.getOne('playlistTrack', {
+          id: record.id,
+          filter: { playlist_id: record.playlistId },
+        }),
+      ]
+
+      Promise.all(promises)
+        .then(() => {
+          if (mountedRef.current) {
+            setLoading(false)
+          }
+        })
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.log('Error encountered: ' + e)
+        })
+    } else {
+      // Regular song or other resource
+      dataProvider
+        .getOne(resource, { id: record.id })
+        .then(() => {
+          if (mountedRef.current) {
+            setLoading(false)
+          }
+        })
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.log('Error encountered: ' + e)
+        })
+    }
   }, [dataProvider, record, resource])
 
   const rate = (val, id) => {

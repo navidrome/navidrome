@@ -59,48 +59,52 @@ describe('useToggleLove', () => {
 
   describe('playlist track scenarios', () => {
     it('refreshes both playlist track and song for playlist tracks', async () => {
-      const record = { 
-        id: 'pt-1', 
-        mediaFileId: 'sg-1', 
-        playlistId: 'pl-1', 
-        starred: false 
+      const record = {
+        id: 'pt-1',
+        mediaFileId: 'sg-1',
+        playlistId: 'pl-1',
+        starred: false,
       }
-      const { result } = renderHook(() => useToggleLove('playlistTrack', record))
+      const { result } = renderHook(() =>
+        useToggleLove('playlistTrack', record),
+      )
       await act(async () => {
         await result.current[0]()
       })
 
       // Should star using the media file ID
       expect(subsonic.star).toHaveBeenCalledWith('sg-1')
-      
+
       // Should refresh both the playlist track and the song
       expect(getOne).toHaveBeenCalledTimes(2)
-      expect(getOne).toHaveBeenCalledWith('playlistTrack', { 
-        id: 'pt-1', 
-        filter: { playlist_id: 'pl-1' } 
+      expect(getOne).toHaveBeenCalledWith('playlistTrack', {
+        id: 'pt-1',
+        filter: { playlist_id: 'pl-1' },
       })
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
     })
 
     it('includes playlist_id filter when refreshing playlist tracks', async () => {
-      const record = { 
-        id: 'pt-5', 
-        mediaFileId: 'sg-10', 
-        playlistId: 'pl-123', 
-        starred: true 
+      const record = {
+        id: 'pt-5',
+        mediaFileId: 'sg-10',
+        playlistId: 'pl-123',
+        starred: true,
       }
-      const { result } = renderHook(() => useToggleLove('playlistTrack', record))
+      const { result } = renderHook(() =>
+        useToggleLove('playlistTrack', record),
+      )
       await act(async () => {
         await result.current[0]()
       })
 
       // Should unstar using the media file ID
       expect(subsonic.unstar).toHaveBeenCalledWith('sg-10')
-      
+
       // Should refresh playlist track with correct playlist_id filter
-      expect(getOne).toHaveBeenCalledWith('playlistTrack', { 
-        id: 'pt-5', 
-        filter: { playlist_id: 'pl-123' } 
+      expect(getOne).toHaveBeenCalledWith('playlistTrack', {
+        id: 'pt-5',
+        filter: { playlist_id: 'pl-123' },
       })
       // Should also refresh the underlying song
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-10' })

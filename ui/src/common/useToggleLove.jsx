@@ -18,19 +18,19 @@ export const useToggleLove = (resource, record = {}) => {
 
   const refreshRecord = useCallback(() => {
     const promises = []
-    
+
     // Always refresh the original resource
     const params = { id: record.id }
     if (record.playlistId) {
       params.filter = { playlist_id: record.playlistId }
     }
     promises.push(dataProvider.getOne(resource, params))
-    
+
     // If we have a mediaFileId, also refresh the song
     if (record.mediaFileId) {
       promises.push(dataProvider.getOne('song', { id: record.mediaFileId }))
     }
-    
+
     Promise.all(promises).then(() => {
       if (mountedRef.current) {
         setLoading(false)
