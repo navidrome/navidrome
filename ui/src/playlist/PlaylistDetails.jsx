@@ -76,7 +76,6 @@ const useStyles = makeStyles(
     stats: {
       marginTop: '1em',
       marginBottom: '0.5em',
-      display: 'inline-block',
     },
   }),
   {
