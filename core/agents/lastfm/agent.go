@@ -279,6 +279,13 @@ func (l *lastfmAgent) callArtistGetTopTracks(ctx context.Context, artistName str
 	return t.Track, nil
 }
 
+func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile) string {
+	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[model.RoleArtist]) > 0 {
+		return track.Participants[model.RoleArtist][0].Name
+	}
+	return track.Artist
+}
+
 func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
@@ -286,7 +293,7 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 	}
 
 	err = l.client.updateNowPlaying(ctx, sk, ScrobbleInfo{
-		artist:      track.Artist,
+		artist:      l.getArtistForScrobble(track),
 		track:       track.Title,
 		album:       track.Album,
 		trackNumber: track.TrackNumber,
@@ -312,7 +319,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		return nil
 	}
 	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
-		artist:      s.Artist,
+		artist:      l.getArtistForScrobble(&s.MediaFile),
 		track:       s.Title,
 		album:       s.Album,
 		trackNumber: s.TrackNumber,
