@@ -129,7 +129,12 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 }
 
 func roleFilter(_ string, role any) Sqlizer {
-	return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
+	if role, ok := role.(string); ok {
+		if _, ok := model.AllRoles[role]; ok {
+			return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
+		}
+	}
+	return Eq{"1": 2}
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
