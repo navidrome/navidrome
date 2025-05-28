@@ -154,10 +154,11 @@ type TagConf struct {
 }
 
 type lastfmOptions struct {
-	Enabled  bool
-	ApiKey   string
-	Secret   string
-	Language string
+	Enabled                 bool
+	ApiKey                  string
+	Secret                  string
+	Language                string
+	ScrobbleFirstArtistOnly bool
 }
 
 type spotifyOptions struct {
@@ -528,6 +529,7 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
