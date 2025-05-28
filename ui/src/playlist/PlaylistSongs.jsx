@@ -149,7 +149,9 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       playCount: isDesktop && (
         <NumberField source="playCount" sortByOrder={'DESC'} />
       ),
-      playDate: <DateField source="playDate" sortByOrder={'DESC'} showTime />,
+      playDate: isDesktop && (
+        <DateField source="playDate" sortByOrder={'DESC'} showTime />
+      ),
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" />,
       bpm: isDesktop && <NumberField source="bpm" />,
