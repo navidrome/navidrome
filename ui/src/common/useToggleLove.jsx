@@ -31,11 +31,16 @@ export const useToggleLove = (resource, record = {}) => {
       promises.push(dataProvider.getOne('song', { id: record.mediaFileId }))
     }
 
-    Promise.all(promises).then(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    })
+    Promise.all(promises)
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.log('Error encountered: ' + e)
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          setLoading(false)
+        }
+      })
   }, [dataProvider, record.mediaFileId, record.id, record.playlistId, resource])
 
   const toggleLove = () => {

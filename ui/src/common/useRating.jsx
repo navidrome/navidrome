@@ -29,30 +29,30 @@ export const useRating = (resource, record) => {
       ]
 
       Promise.all(promises)
-        .then(() => {
-          if (mountedRef.current) {
-            setLoading(false)
-          }
-        })
         .catch((e) => {
           // eslint-disable-next-line no-console
           console.log('Error encountered: ' + e)
+        })
+        .finally(() => {
+          if (mountedRef.current) {
+            setLoading(false)
+          }
         })
     } else {
       // Regular song or other resource
       dataProvider
         .getOne(resource, { id: record.id })
-        .then(() => {
-          if (mountedRef.current) {
-            setLoading(false)
-          }
-        })
         .catch((e) => {
           // eslint-disable-next-line no-console
           console.log('Error encountered: ' + e)
         })
+        .finally(() => {
+          if (mountedRef.current) {
+            setLoading(false)
+          }
+        })
     }
-  }, [dataProvider, record, resource])
+  }, [dataProvider, record.id, record.mediaFileId, record.playlistId, resource])
 
   const rate = (val, id) => {
     setLoading(true)
