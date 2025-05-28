@@ -34,7 +34,8 @@
         "participants": "További résztvevők",
         "tags": "További címkék",
         "mappedTags": "Feldolgozott címkék",
-        "rawTags": "Nyers címkék"
+        "rawTags": "Nyers címkék",
+        "missing": "Hiányzó"
       },
       "actions": {
         "addToQueue": "Lejátszás útolsóként",
@@ -73,7 +74,8 @@
         "releaseType": "Típus",
         "grouping": "Csoportosítás",
         "media": "Média",
-        "mood": "Hangulat"
+        "mood": "Hangulat",
+        "missing": "Hiányzó"
       },
       "actions": {
         "playAll": "Lejátszás",
@@ -105,7 +107,8 @@
         "rating": "Értékelés",
         "genre": "Stílus",
         "size": "Méret",
-        "role": "Szerep"
+        "role": "Szerep",
+        "missing": "Hiányzó"
       },
       "roles": {
         "albumartist": "Album előadó |||| Album előadók",
