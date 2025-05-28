@@ -34,7 +34,8 @@
         "mappedTags": "Eşlenen etiketler",
         "rawTags": "Ham etiketler",
         "bitDepth": "Bit derinliği",
-        "sampleRate": "Örnekleme Oranı"
+        "sampleRate": "Örnekleme Oranı",
+        "missing": ""
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -73,7 +74,8 @@
         "grouping": "Gruplama",
         "media": "Medya",
         "mood": "Mod",
-        "date": "Kayıt Tarihi"
+        "date": "Kayıt Tarihi",
+        "missing": ""
       },
       "actions": {
         "playAll": "Oynat",
@@ -105,7 +107,8 @@
         "rating": "Derecelendirme",
         "genre": "Tür",
         "size": "Boyut",
-        "role": "Rol"
+        "role": "Rol",
+        "missing": ""
       },
       "roles": {
         "albumartist": "Albüm Sanatçısı |||| Albüm Sanatçısı",
@@ -193,7 +196,8 @@
         "addNewPlaylist": "Oluştur  \"%{name}\"",
         "export": "Aktar",
         "makePublic": "Herkese Açık Yap",
-        "makePrivate": "Özel Yap"
+        "makePrivate": "Özel Yap",
+        "saveQueue": ""
       },
       "message": {
         "duplicate_song": "Yinelenen şarkıları ekle",
@@ -238,7 +242,8 @@
         "updatedAt": "Kaybolma"
       },
       "actions": {
-        "remove": "Kaldır"
+        "remove": "Kaldır",
+        "remove_all": "Tümünü Kaldır"
       },
       "notifications": {
         "removed": "Eksik dosya(lar) kaldırıldı"
@@ -423,7 +428,9 @@
     "downloadDialogTitle": "%{resource}: '%{name}' (%{size}) dosyasını indirin",
     "shareCopyToClipboard": "Panoya kopyala: Ctrl+C, Enter",
     "remove_missing_title": "Eksik dosyaları kaldır",
-    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır."
+    "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
+    "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
+    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır."
   },
   "menu": {
     "library": "Kütüphane",
@@ -497,7 +504,10 @@
     "quickScan": "Hızlı Tarama",
     "fullScan": "Tam Tarama",
     "serverUptime": "Sunucu Çalışma Süresi",
-    "serverDown": "ÇEVRİMDIŞI"
+    "serverDown": "ÇEVRİMDIŞI",
+    "scanType": "Tür",
+    "status": "Tarama Hatası",
+    "elapsedTime": "Geçen Süre"
   },
   "help": {
     "title": "Navidrome Kısayolları",

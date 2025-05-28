@@ -26,7 +26,16 @@
         "bpm": "BPM",
         "playDate": "Senast spelad",
         "channels": "Channels",
-        "createdAt": "Skapad"
+        "createdAt": "Skapad",
+        "grouping": "Gruppering",
+        "mood": "Stämning",
+        "participants": "Ytterligare medverkande",
+        "tags": "Ytterligare taggar",
+        "mappedTags": "Mappade taggar",
+        "rawTags": "Omodifierade taggar",
+        "bitDepth": "Bitdjup",
+        "sampleRate": "Samplingsfrekvens",
+        "missing": "Saknade"
       },
       "actions": {
         "addToQueue": "Lägg till i kön",
@@ -58,7 +67,15 @@
         "originalDate": "Originaldatum",
         "releaseDate": "Utgivningsdatum",
         "releases": "Utgåva |||| Utgåvor",
-        "released": "Utgiven"
+        "released": "Utgiven",
+        "recordLabel": "Skivbolag",
+        "catalogNum": "Katalognummer",
+        "releaseType": "Typ",
+        "grouping": "Gruppering",
+        "media": "Media",
+        "mood": "Stämning",
+        "date": "Inspelningsdatum",
+        "missing": "Saknade"
       },
       "actions": {
         "playAll": "Spela",
@@ -89,7 +106,24 @@
         "playCount": "Spelningar",
         "rating": "Betyg",
         "genre": "Genre",
-        "size": "Storlek"
+        "size": "Storlek",
+        "role": "Roll",
+        "missing": "Saknade"
+      },
+      "roles": {
+        "albumartist": "Albumartist |||| Albumartister",
+        "artist": "Artist |||| Artister",
+        "composer": "Kompositör |||| Kompositörer",
+        "conductor": "Dirigent |||| Dirigenter",
+        "lyricist": "Textförfattare |||| Textförfattare",
+        "arranger": "Arrangör |||| Arrangörer",
+        "producer": "Producent |||| Producenter",
+        "director": "Inspelningsledare |||| Inspelningsledare",
+        "engineer": "Ljudtekniker |||| Ljudtekniker",
+        "mixer": "Mixare |||| Mixare",
+        "remixer": "Remixare |||| Remixare",
+        "djmixer": "DJ-mixare |||| DJ-mixare",
+        "performer": "Utövande artist |||| Utövande artister"
       }
     },
     "user": {
@@ -162,7 +196,8 @@
         "addNewPlaylist": "Skapa \"%{name}\"",
         "export": "Exportera",
         "makePublic": "Gör offentlig",
-        "makePrivate": "Gör privat"
+        "makePrivate": "Gör privat",
+        "saveQueue": "Spara kö till spellista"
       },
       "message": {
         "duplicate_song": "Lägg till dubletter",
@@ -198,6 +233,22 @@
         "createdAt": "Skapad",
         "downloadable": "Tillåt nedladdning?"
       }
+    },
+    "missing": {
+      "name": "Saknad fil |||| Saknade filer",
+      "fields": {
+        "path": "Sökväg",
+        "size": "Storlek",
+        "updatedAt": "Försvann"
+      },
+      "actions": {
+        "remove": "Radera",
+        "remove_all": "Radera alla"
+      },
+      "notifications": {
+        "removed": "Saknade fil(er) borttagna"
+      },
+      "empty": "Inga saknade filer"
     }
   },
   "ra": {
@@ -375,7 +426,11 @@
     "shareSuccess": "URL kopierades till urklipp: %{url}",
     "shareFailure": "Fel vid kopiering av URL %{url} till urklipp",
     "downloadDialogTitle": "Ladda ner %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Kopiera till urklipp: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Kopiera till urklipp: Ctrl+C, Enter",
+    "remove_missing_title": "Ta bort saknade filer",
+    "remove_missing_content": "Är du säker på att du vill ta bort de valda saknade filerna från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg.",
+    "remove_all_missing_title": "Ta bort alla saknade filer",
+    "remove_all_missing_content": "Är du säker på att du vill ta bort alla saknade filer från databasen? Detta kommer permanent radera alla referenser till dem, inklusive antal spelningar och betyg."
   },
   "menu": {
     "library": "Bibliotek",
@@ -449,7 +504,10 @@
     "quickScan": "Snabbscan",
     "fullScan": "Komplett scan",
     "serverUptime": "Serverdrifttid",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Typ",
+    "status": "Fel vid scanning",
+    "elapsedTime": "Spelad tid"
   },
   "help": {
     "title": "Navidrome kortkommandon",

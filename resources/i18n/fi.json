@@ -32,7 +32,10 @@
         "participants": "Lisäosallistujat",
         "tags": "Lisätunnisteet",
         "mappedTags": "Mäpättyt tunnisteet",
-        "rawTags": "Raakatunnisteet"
+        "rawTags": "Raakatunnisteet",
+        "bitDepth": "Bittisyvyys",
+        "sampleRate": "Näytteenottotaajuus",
+        "missing": ""
       },
       "actions": {
         "addToQueue": "Lisää jonoon",
@@ -70,7 +73,9 @@
         "releaseType": "Tyyppi",
         "grouping": "Ryhmittely",
         "media": "Media",
-        "mood": "Tunnelma"
+        "mood": "Tunnelma",
+        "date": "Tallennuspäivä",
+        "missing": ""
       },
       "actions": {
         "playAll": "Soita",
@@ -102,7 +107,8 @@
         "rating": "Arvostelu",
         "genre": "Tyylilaji",
         "size": "Koko",
-        "role": "Rooli"
+        "role": "Rooli",
+        "missing": ""
       },
       "roles": {
         "albumartist": "Albumitaiteilija |||| Albumitaiteilijat",
@@ -190,7 +196,8 @@
         "addNewPlaylist": "Luo \"%{name}\"",
         "export": "Vie",
         "makePublic": "Tee julkinen",
-        "makePrivate": "Tee yksityinen"
+        "makePrivate": "Tee yksityinen",
+        "saveQueue": ""
       },
       "message": {
         "duplicate_song": "Lisää olemassa oleva kappale",
@@ -235,11 +242,13 @@
         "updatedAt": "Katosi"
       },
       "actions": {
-        "remove": "Poista"
+        "remove": "Poista",
+        "remove_all": ""
       },
       "notifications": {
         "removed": "Puuttuvat tiedostot poistettu"
-      }
+      },
+      "empty": "Ei puuttuvia tiedostoja"
     }
   },
   "ra": {
@@ -419,7 +428,9 @@
     "downloadDialogTitle": "Lataa %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Kopio leikepöydälle: Ctrl+C, Enter",
     "remove_missing_title": "Poista puuttuvat tiedostot",
-    "remove_missing_content": "Oletko varma, että haluat poistaa valitut puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien niiden soittojen määrät ja arvostelut."
+    "remove_missing_content": "Oletko varma, että haluat poistaa valitut puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien niiden soittojen määrät ja arvostelut.",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": ""
   },
   "menu": {
     "library": "Kirjasto",
@@ -493,7 +504,10 @@
     "quickScan": "Nopea tarkistus",
     "fullScan": "Täysi tarkistus",
     "serverUptime": "Palvelun käyttöaika",
-    "serverDown": "SAMMUTETTU"
+    "serverDown": "SAMMUTETTU",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": ""
   },
   "help": {
     "title": "Navidrome pikapainikkeet",
