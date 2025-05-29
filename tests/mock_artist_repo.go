@@ -16,8 +16,9 @@ func CreateMockArtistRepo() *MockArtistRepo {
 
 type MockArtistRepo struct {
 	model.ArtistRepository
-	Data map[string]*model.Artist
-	Err  bool
+	Data    map[string]*model.Artist
+	Indexes model.ArtistIndexes
+	Err     bool
 }
 
 func (m *MockArtistRepo) SetError(err bool) {
@@ -92,6 +93,13 @@ func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
 		return errors.New("mock repo error")
 	}
 	return nil
+}
+
+func (m *MockArtistRepo) GetIndex(includeMissing bool, roles ...model.Role) (model.ArtistIndexes, error) {
+	if m.Err {
+		return nil, errors.New("mock repo error")
+	}
+	return m.Indexes, nil
 }
 
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)
