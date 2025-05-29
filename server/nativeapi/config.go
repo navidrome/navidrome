@@ -13,13 +13,15 @@ import (
 )
 
 type configEntry struct {
-	Key   string      `json:"key"`
-	Value interface{} `json:"value"`
+	Key    string      `json:"key"`
+	EnvVar string      `json:"envVar"`
+	Value  interface{} `json:"value"`
 }
 
 type configResponse struct {
-	ID     string        `json:"id"`
-	Config []configEntry `json:"config"`
+	ID         string        `json:"id"`
+	ConfigFile string        `json:"configFile"`
+	Config     []configEntry `json:"config"`
 }
 
 func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
@@ -35,6 +37,7 @@ func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
 	}
 
 	key := strings.TrimPrefix(prefix, ".")
+	envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
 	var val interface{}
 	switch v.Kind() {
 	case reflect.Map, reflect.Slice, reflect.Array:
@@ -44,7 +47,7 @@ func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
 		val = fmt.Sprint(v.Interface())
 	}
 
-	*entries = append(*entries, configEntry{Key: key, Value: val})
+	*entries = append(*entries, configEntry{Key: key, EnvVar: envVar, Value: val})
 }
 
 func getConfig(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +68,7 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Key < entries[j].Key })
 
-	resp := configResponse{ID: "config", Config: entries}
+	resp := configResponse{ID: "config", ConfigFile: conf.Server.ConfigFile, Config: entries}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(resp)
 }

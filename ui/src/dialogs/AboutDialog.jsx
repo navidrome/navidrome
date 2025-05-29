@@ -13,12 +13,32 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { humanize, underscore } from 'inflection'
 import { useGetOne, usePermissions, useTranslate } from 'react-admin'
 import { Tabs, Tab } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
 import { INSIGHTS_DOC_URL } from '../consts.js'
 import subsonic from '../subsonic/index.js'
 import { Typography } from '@material-ui/core'
+import TableHead from '@material-ui/core/TableHead'
+
+const useStyles = makeStyles({
+  configNameColumn: {
+    maxWidth: '200px',
+    width: '200px',
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+  },
+  envVarColumn: {
+    fontFamily: 'monospace',
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+  },
+  configFileValue: {
+    fontFamily: 'monospace',
+    wordBreak: 'break-all',
+  },
+})
 
 const links = {
   homepage: 'navidrome.org',
@@ -55,7 +75,6 @@ const LinkToVersion = ({ version }) => {
 
 const ShowVersion = ({ uiVersion, serverVersion }) => {
   const translate = useTranslate()
-
   const showRefresh = uiVersion !== serverVersion
 
   return (
@@ -87,10 +106,177 @@ const ShowVersion = ({ uiVersion, serverVersion }) => {
   )
 }
 
+const AboutTabContent = ({ uiVersion, serverVersion, insightsData, loading, permissions }) => {
+  const translate = useTranslate()
+  
+  const lastRun = !loading && insightsData?.lastRun
+  let insightsStatus = 'N/A'
+  if (lastRun === 'disabled') {
+    insightsStatus = translate('about.links.insights.disabled')
+  } else if (lastRun && lastRun?.startsWith('1969-12-31')) {
+    insightsStatus = translate('about.links.insights.waiting')
+  } else if (lastRun) {
+    insightsStatus = lastRun
+  }
+
+  return (
+    <Table aria-label={translate('menu.about')} size="small">
+      <TableBody>
+        <ShowVersion uiVersion={uiVersion} serverVersion={serverVersion} />
+        {Object.keys(links).map((key) => {
+          return (
+            <TableRow key={key}>
+              <TableCell align="right" component="th" scope="row">
+                {translate(`about.links.${key}`, {
+                  _: humanize(underscore(key)),
+                })}
+                :
+              </TableCell>
+              <TableCell align="left">
+                <Link
+                  href={`https://${links[key]}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {links[key]}
+                </Link>
+              </TableCell>
+            </TableRow>
+          )
+        })}
+        {permissions === 'admin' ? (
+          <TableRow>
+            <TableCell align="right" component="th" scope="row">
+              {translate(`about.links.lastInsightsCollection`)}:
+            </TableCell>
+            <TableCell align="left">
+              <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
+            </TableCell>
+          </TableRow>
+        ) : null}
+        <TableRow>
+          <TableCell align="right" component="th" scope="row">
+            <Link
+              href={'https://github.com/sponsors/deluan'}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <IconButton size={'small'}>
+                <FavoriteBorderIcon fontSize={'small'} />
+              </IconButton>
+            </Link>
+          </TableCell>
+          <TableCell align="left">
+            <Link
+              href={'https://ko-fi.com/deluan'}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ko-fi.com/deluan
+            </Link>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  )
+}
+
+const ConfigTabContent = ({ configData }) => {
+  const classes = useStyles()
+
+  return (
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell
+            align="left"
+            component="th"
+            scope="col"
+            className={classes.configNameColumn}
+          >
+            Config Name
+          </TableCell>
+          <TableCell align="left" component="th" scope="col">
+            Environment Variable
+          </TableCell>
+          <TableCell align="left" component="th" scope="col">
+            Current Value
+          </TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {configData?.configFile && (
+          <TableRow>
+            <TableCell
+              align="left"
+              component="th"
+              scope="row"
+              className={classes.configNameColumn}
+            >
+              Configuration File
+            </TableCell>
+            <TableCell align="left" className={classes.envVarColumn}>
+              ND_CONFIGFILE
+            </TableCell>
+            <TableCell align="left" className={classes.configFileValue}>
+              {configData.configFile}
+            </TableCell>
+          </TableRow>
+        )}
+        {(configData?.config || []).map(({ key, envVar, value }) => (
+          <TableRow key={key}>
+            <TableCell
+              align="left"
+              component="th"
+              scope="row"
+              className={classes.configNameColumn}
+            >
+              {key}
+            </TableCell>
+            <TableCell align="left" className={classes.envVarColumn}>
+              {envVar}
+            </TableCell>
+            <TableCell align="left">{String(value)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+const TabContent = ({ tab, setTab, showConfigTab, uiVersion, serverVersion, insightsData, loading, permissions, configData }) => {
+  const translate = useTranslate()
+
+  return (
+    <TableContainer component={Paper}>
+      {showConfigTab && (
+        <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+          <Tab label={translate('about.tabs.about')} id="about-tab" />
+          <Tab label={translate('about.tabs.config')} id="config-tab" />
+        </Tabs>
+      )}
+      <div hidden={showConfigTab && tab === 1}>
+        <AboutTabContent
+          uiVersion={uiVersion}
+          serverVersion={serverVersion}
+          insightsData={insightsData}
+          loading={loading}
+          permissions={permissions}
+        />
+      </div>
+      {showConfigTab && (
+        <div hidden={tab === 0}>
+          <ConfigTabContent configData={configData} />
+        </div>
+      )}
+    </TableContainer>
+  )
+}
+
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
   const { permissions } = usePermissions()
-  const { data, loading } = useGetOne('insights', 'insights_status')
+  const { data: insightsData, loading } = useGetOne('insights', 'insights_status')
   const [serverVersion, setServerVersion] = useState('')
   const showConfigTab = permissions === 'admin' && config.devUIShowConfig
   const [tab, setTab] = useState(0)
@@ -115,16 +301,6 @@ const AboutDialog = ({ open, onClose }) => {
       })
   }, [setServerVersion])
 
-  const lastRun = !loading && data?.lastRun
-  let insightsStatus = 'N/A'
-  if (lastRun === 'disabled') {
-    insightsStatus = translate('about.links.insights.disabled')
-  } else if (lastRun && lastRun?.startsWith('1969-12-31')) {
-    insightsStatus = translate('about.links.insights.waiting')
-  } else if (lastRun) {
-    insightsStatus = lastRun
-  }
-
   return (
     <Dialog
       onClose={onClose}
@@ -138,93 +314,17 @@ const AboutDialog = ({ open, onClose }) => {
         Navidrome Music Server
       </DialogTitle>
       <DialogContent dividers>
-        <TableContainer component={Paper}>
-          {showConfigTab && (
-            <Tabs value={tab} onChange={(_, value) => setTab(value)}>
-              <Tab label={translate('about.tabs.about')} id="about-tab" />
-              <Tab label={translate('about.tabs.config')} id="config-tab" />
-            </Tabs>
-          )}
-          <div hidden={showConfigTab && tab === 1}>
-            <Table aria-label={translate('menu.about')} size="small">
-              <TableBody>
-                <ShowVersion
-                  uiVersion={uiVersion}
-                  serverVersion={serverVersion}
-                />
-                {Object.keys(links).map((key) => {
-                  return (
-                    <TableRow key={key}>
-                      <TableCell align="right" component="th" scope="row">
-                        {translate(`about.links.${key}`, {
-                          _: humanize(underscore(key)),
-                        })}
-                        :
-                      </TableCell>
-                      <TableCell align="left">
-                        <Link
-                          href={`https://${links[key]}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {links[key]}
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {permissions === 'admin' ? (
-                  <TableRow>
-                    <TableCell align="right" component="th" scope="row">
-                      {translate(`about.links.lastInsightsCollection`)}:
-                    </TableCell>
-                    <TableCell align="left">
-                      <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-                <TableRow>
-                  <TableCell align="right" component="th" scope="row">
-                    <Link
-                      href={'https://github.com/sponsors/deluan'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <IconButton size={'small'}>
-                        <FavoriteBorderIcon fontSize={'small'} />
-                      </IconButton>
-                    </Link>
-                  </TableCell>
-                  <TableCell align="left">
-                    <Link
-                      href={'https://ko-fi.com/deluan'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      ko-fi.com/deluan
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          {showConfigTab && (
-            <div hidden={tab === 0}>
-              <Table size="small">
-                <TableBody>
-                  {(configData?.config || []).map(({ key, value }) => (
-                    <TableRow key={key}>
-                      <TableCell align="right" component="th" scope="row">
-                        {key}:
-                      </TableCell>
-                      <TableCell align="left">{String(value)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TableContainer>
+        <TabContent
+          tab={tab}
+          setTab={setTab}
+          showConfigTab={showConfigTab}
+          uiVersion={uiVersion}
+          serverVersion={serverVersion}
+          insightsData={insightsData}
+          loading={loading}
+          permissions={permissions}
+          configData={configData}
+        />
       </DialogContent>
     </Dialog>
   )
