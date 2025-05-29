@@ -12,6 +12,29 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
+// sensitiveFieldsPartialMask contains configuration field names that should be redacted
+// using partial masking (first and last character visible, middle replaced with *).
+// For values with 7+ characters: "secretvalue123" becomes "s***********3"
+// For values with <7 characters: "short" becomes "****"
+// Add field paths using dot notation (e.g., "LastFM.ApiKey", "Spotify.Secret")
+var sensitiveFieldsPartialMask = []string{
+	"LastFM.ApiKey",
+	"LastFM.Secret",
+	"Spotify.ID",
+	"Spotify.Secret",
+	"Prometheus.MetricsPath",
+	"Prometheus.Password",
+	"DevAutoLoginUsername",
+	"DevAutoCreateAdminPassword",
+}
+
+// sensitiveFieldsFullMask contains configuration field names that should always be
+// completely masked with "****" regardless of their length.
+// Add field paths using dot notation for any fields that should never show any content.
+var sensitiveFieldsFullMask = []string{
+	"PasswordEncryptionKey",
+}
+
 type configEntry struct {
 	Key    string      `json:"key"`
 	EnvVar string      `json:"envVar"`
@@ -22,6 +45,34 @@ type configResponse struct {
 	ID         string        `json:"id"`
 	ConfigFile string        `json:"configFile"`
 	Config     []configEntry `json:"config"`
+}
+
+func redactValue(key string, value string) string {
+	// Return empty values as-is
+	if len(value) == 0 {
+		return value
+	}
+
+	// Check if this field should be fully masked
+	for _, field := range sensitiveFieldsFullMask {
+		if field == key {
+			return "****"
+		}
+	}
+
+	// Check if this field should be partially masked
+	for _, field := range sensitiveFieldsPartialMask {
+		if field == key {
+			if len(value) < 7 {
+				return "****"
+			}
+			// Show first and last character with * in between
+			return string(value[0]) + strings.Repeat("*", len(value)-2) + string(value[len(value)-1])
+		}
+	}
+
+	// Return original value if not sensitive
+	return value
 }
 
 func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
@@ -44,7 +95,8 @@ func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
 		b, _ := json.Marshal(v.Interface())
 		val = string(b)
 	default:
-		val = fmt.Sprint(v.Interface())
+		originalValue := fmt.Sprint(v.Interface())
+		val = redactValue(key, originalValue)
 	}
 
 	*entries = append(*entries, configEntry{Key: key, EnvVar: envVar, Value: val})

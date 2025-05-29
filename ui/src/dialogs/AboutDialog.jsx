@@ -30,11 +30,15 @@ const useStyles = makeStyles({
     overflowWrap: 'break-word',
   },
   envVarColumn: {
+    maxWidth: '200px',
+    width: '200px',
     fontFamily: 'monospace',
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
   },
   configFileValue: {
+    maxWidth: '300px',
+    width: '300px',
     fontFamily: 'monospace',
     wordBreak: 'break-all',
   },
@@ -106,9 +110,15 @@ const ShowVersion = ({ uiVersion, serverVersion }) => {
   )
 }
 
-const AboutTabContent = ({ uiVersion, serverVersion, insightsData, loading, permissions }) => {
+const AboutTabContent = ({
+  uiVersion,
+  serverVersion,
+  insightsData,
+  loading,
+  permissions,
+}) => {
   const translate = useTranslate()
-  
+
   const lastRun = !loading && insightsData?.lastRun
   let insightsStatus = 'N/A'
   if (lastRun === 'disabled') {
@@ -244,7 +254,17 @@ const ConfigTabContent = ({ configData }) => {
   )
 }
 
-const TabContent = ({ tab, setTab, showConfigTab, uiVersion, serverVersion, insightsData, loading, permissions, configData }) => {
+const TabContent = ({
+  tab,
+  setTab,
+  showConfigTab,
+  uiVersion,
+  serverVersion,
+  insightsData,
+  loading,
+  permissions,
+  configData,
+}) => {
   const translate = useTranslate()
 
   return (
@@ -276,7 +296,10 @@ const TabContent = ({ tab, setTab, showConfigTab, uiVersion, serverVersion, insi
 const AboutDialog = ({ open, onClose }) => {
   const translate = useTranslate()
   const { permissions } = usePermissions()
-  const { data: insightsData, loading } = useGetOne('insights', 'insights_status')
+  const { data: insightsData, loading } = useGetOne(
+    'insights',
+    'insights_status',
+  )
   const [serverVersion, setServerVersion] = useState('')
   const showConfigTab = permissions === 'admin' && config.devUIShowConfig
   const [tab, setTab] = useState(0)
