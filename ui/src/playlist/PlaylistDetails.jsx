@@ -69,9 +69,13 @@ const useStyles = makeStyles(
       opacity: 0.5,
     },
     title: {
-      whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
+      wordBreak: 'break-word',
+    },
+    stats: {
+      marginTop: '1em',
+      marginBottom: '0.5em',
     },
   }),
   {
@@ -143,7 +147,7 @@ const PlaylistDetails = (props) => {
             >
               {record.name || translate('ra.page.loading')}
             </Typography>
-            <Typography component="p">
+            <Typography component="p" className={classes.stats}>
               {record.songCount ? (
                 <span>
                   {record.songCount}{' '}

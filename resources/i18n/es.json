@@ -28,16 +28,19 @@
         "channels": "Canales",
         "createdAt": "Creado el",
         "grouping": "Agrupación",
-        "mood": "",
+        "mood": "Estado de ánimo",
         "participants": "Participantes",
         "tags": "Etiquetas",
         "mappedTags": "Etiquetas asignadas",
-        "rawTags": "Etiquetas sin procesar"
+        "rawTags": "Etiquetas sin procesar",
+        "bitDepth": "Profundidad de bits",
+        "sampleRate": "Frecuencia de muestreo",
+        "missing": "Faltante"
       },
       "actions": {
         "addToQueue": "Reproducir después",
         "playNow": "Reproducir ahora",
-        "addToPlaylist": "Agregar a la lista de reproducción",
+        "addToPlaylist": "Agregar a la playlist",
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
@@ -69,8 +72,10 @@
         "catalogNum": "Número de catálogo",
         "releaseType": "Tipo de lanzamiento",
         "grouping": "Agrupación",
-        "media": "",
-        "mood": ""
+        "media": "Medios",
+        "mood": "Estado de ánimo",
+        "date": "Fecha de grabación",
+        "missing": "Faltante"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -102,7 +107,8 @@
         "rating": "Calificación",
         "genre": "Género",
         "size": "Tamaño",
-        "role": "Rol"
+        "role": "Rol",
+        "missing": "Faltante"
       },
       "roles": {
         "albumartist": "Artista del álbum",
@@ -190,11 +196,12 @@
         "addNewPlaylist": "Creada \"%{name}\"",
         "export": "Exportar",
         "makePublic": "Hazla pública",
-        "makePrivate": "Hazla privada"
+        "makePrivate": "Hazla privada",
+        "saveQueue": "Guardar la fila de reproducción en una playlist"
       },
       "message": {
-        "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
-        "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
+        "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
+        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?"
       }
     },
     "radio": {
@@ -235,11 +242,13 @@
         "updatedAt": "Actualizado el"
       },
       "actions": {
-        "remove": "Eliminar"
+        "remove": "Eliminar",
+        "remove_all": "Eliminar todo"
       },
       "notifications": {
         "removed": "Eliminado"
-      }
+      },
+      "empty": "No hay archivos perdidos"
     }
   },
   "ra": {
@@ -419,7 +428,9 @@
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro",
     "remove_missing_title": "Eliminar elemento faltante",
-    "remove_missing_content": ""
+    "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
+    "remove_all_missing_title": "Eliminar todos los archivos perdidos",
+    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones."
   },
   "menu": {
     "library": "Biblioteca",
@@ -451,7 +462,7 @@
     "sharedPlaylists": "Playlists Compartidas"
   },
   "player": {
-    "playListsText": "Lista de reproducción",
+    "playListsText": "Fila de reproducción",
     "openText": "Abrir",
     "closeText": "Cerrar",
     "notContentText": "Sin música",
@@ -493,7 +504,10 @@
     "quickScan": "Escaneo rápido",
     "fullScan": "Escaneo completo",
     "serverUptime": "Uptime del servidor",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Tipo",
+    "status": "Error de escaneo",
+    "elapsedTime": "Tiempo transcurrido"
   },
   "help": {
     "title": "Atajos de teclado de Navidrome",
