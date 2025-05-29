@@ -59,6 +59,7 @@ func (n *Router) routes() http.Handler {
 
 		n.addPlaylistRoute(r)
 		n.addPlaylistTrackRoute(r)
+		n.addSongPlaylistsRoute(r)
 		n.addMissingFilesRoute(r)
 		n.addInspectRoute(r)
 		n.addConfigRoute(r)
@@ -138,6 +139,15 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				deleteFromPlaylist(n.ds)(w, r)
 			})
+		})
+	})
+}
+
+func (n *Router) addSongPlaylistsRoute(r chi.Router) {
+	r.Route("/song/{id}", func(r chi.Router) {
+		r.Use(server.URLParamsMiddleware)
+		r.Get("/playlists", func(w http.ResponseWriter, r *http.Request) {
+			getSongPlaylists(n.ds)(w, r)
 		})
 	})
 }

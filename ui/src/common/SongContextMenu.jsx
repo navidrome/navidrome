@@ -21,6 +21,8 @@ import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 import { httpClient } from '../dataProvider'
+import { useRedirect } from 'react-admin'
+import { REST_URL } from '../consts'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -58,7 +60,10 @@ export const SongContextMenu = ({
   const translate = useTranslate()
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
+  const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
+  const [playlists, setPlaylists] = useState([])
   const { permissions } = usePermissions()
+  const redirect = useRedirect()
 
   const options = {
     playNow: {
@@ -134,6 +139,10 @@ export const SongContextMenu = ({
 
   const handleClick = (e) => {
     setAnchorEl(e.currentTarget)
+    const id = record.mediaFileId || record.id
+    httpClient(`${REST_URL}/song/${id}/playlists`).then((res) => {
+      setPlaylists(res.json)
+    })
     e.stopPropagation()
   }
 
@@ -148,6 +157,21 @@ export const SongContextMenu = ({
     const key = e.target.getAttribute('value')
     options[key].action(record)
     e.stopPropagation()
+  }
+
+  const handleShowInPlaylist = (e) => {
+    setPlaylistAnchorEl(e.currentTarget)
+  }
+
+  const handlePlaylistClose = () => {
+    setPlaylistAnchorEl(null)
+    setAnchorEl(null)
+  }
+
+  const handlePlaylistClick = (id, e) => {
+    e.stopPropagation()
+    redirect(`/playlist/${id}/show`)
+    handlePlaylistClose()
   }
 
   const open = Boolean(anchorEl)
@@ -180,6 +204,23 @@ export const SongContextMenu = ({
               </MenuItem>
             ),
         )}
+        <MenuItem
+          onMouseEnter={handleShowInPlaylist}
+          disabled={!playlists.length}
+        >
+          {translate('resources.song.actions.showInPlaylist')}
+        </MenuItem>
+      </Menu>
+      <Menu
+        anchorEl={playlistAnchorEl}
+        open={Boolean(playlistAnchorEl)}
+        onClose={handlePlaylistClose}
+      >
+        {playlists.map((p) => (
+          <MenuItem key={p.id} onClick={(e) => handlePlaylistClick(p.id, e)}>
+            {p.name}
+          </MenuItem>
+        ))}
       </Menu>
     </span>
   )
