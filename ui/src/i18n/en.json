@@ -502,6 +502,12 @@
     "tabs": {
       "about": "About",
       "config": "Configuration"
+    },
+    "config": {
+      "configName": "Config Name",
+      "environmentVariable": "Environment Variable",
+      "currentValue": "Current Value",
+      "configurationFile": "Configuration File"
     }
   },
   "activity": {

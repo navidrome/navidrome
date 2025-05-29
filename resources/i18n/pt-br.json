@@ -496,6 +496,16 @@
         "disabled": "Desligado",
         "waiting": "Aguardando"
       }
+    },
+    "tabs": {
+      "about": "Sobre",
+      "config": "Configuração"
+    },
+    "config": {
+      "configName": "Nome da Configuração",
+      "environmentVariable": "Variável de Ambiente",
+      "currentValue": "Valor Atual",
+      "configurationFile": "Arquivo de Configuração"
     }
   },
   "activity": {

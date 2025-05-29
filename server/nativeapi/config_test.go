@@ -198,7 +198,10 @@ var _ = Describe("redactValue function", func() {
 	It("partially masks long sensitive values", func() {
 		Expect(redactValue("LastFM.ApiKey", "ba46f0e84a")).To(Equal("b********a"))
 		Expect(redactValue("Spotify.Secret", "verylongsecret123")).To(Equal("v***************3"))
-		Expect(redactValue("PasswordEncryptionKey", "1234567890")).To(Equal("1********0"))
+	})
+
+	It("fully masks long sensitive values that should be completely hidden", func() {
+		Expect(redactValue("PasswordEncryptionKey", "1234567890")).To(Equal("****"))
 	})
 
 	It("fully masks short sensitive values", func() {

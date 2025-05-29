@@ -193,6 +193,7 @@ const AboutTabContent = ({
 
 const ConfigTabContent = ({ configData }) => {
   const classes = useStyles()
+  const translate = useTranslate()
 
   return (
     <Table size="small">
@@ -204,13 +205,13 @@ const ConfigTabContent = ({ configData }) => {
             scope="col"
             className={classes.configNameColumn}
           >
-            Config Name
+            {translate('about.config.configName')}
           </TableCell>
           <TableCell align="left" component="th" scope="col">
-            Environment Variable
+            {translate('about.config.environmentVariable')}
           </TableCell>
           <TableCell align="left" component="th" scope="col">
-            Current Value
+            {translate('about.config.currentValue')}
           </TableCell>
         </TableRow>
       </TableHead>
@@ -223,7 +224,7 @@ const ConfigTabContent = ({ configData }) => {
               scope="row"
               className={classes.configNameColumn}
             >
-              Configuration File
+              {translate('about.config.configurationFile')}
             </TableCell>
             <TableCell align="left" className={classes.envVarColumn}>
               ND_CONFIGFILE
