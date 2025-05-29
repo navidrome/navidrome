@@ -163,6 +163,67 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(idx[1].Artists[0].Name).To(Equal(artistKraftwerk.Name))
 			})
 		})
+
+		When("filtering by role", func() {
+			var raw *artistRepository
+
+			BeforeEach(func() {
+				raw = repo.(*artistRepository)
+				// Add stats to artists using direct SQL since Put doesn't populate stats
+				composerStats := `{"composer": {"s": 1000, "m": 5, "a": 2}}`
+				producerStats := `{"producer": {"s": 500, "m": 3, "a": 1}}`
+
+				// Set Beatles as composer
+				_, err := raw.executeSQL(squirrel.Update(raw.tableName).Set("stats", composerStats).Where(squirrel.Eq{"id": artistBeatles.ID}))
+				Expect(err).ToNot(HaveOccurred())
+
+				// Set Kraftwerk as producer
+				_, err = raw.executeSQL(squirrel.Update(raw.tableName).Set("stats", producerStats).Where(squirrel.Eq{"id": artistKraftwerk.ID}))
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			AfterEach(func() {
+				// Clean up stats
+				_, _ = raw.executeSQL(squirrel.Update(raw.tableName).Set("stats", "{}").Where(squirrel.Eq{"id": artistBeatles.ID}))
+				_, _ = raw.executeSQL(squirrel.Update(raw.tableName).Set("stats", "{}").Where(squirrel.Eq{"id": artistKraftwerk.ID}))
+			})
+
+			It("returns only artists with the specified role", func() {
+				idx, err := repo.GetIndex(false, model.RoleComposer)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(idx).To(HaveLen(1))
+				Expect(idx[0].ID).To(Equal("B"))
+				Expect(idx[0].Artists).To(HaveLen(1))
+				Expect(idx[0].Artists[0].Name).To(Equal(artistBeatles.Name))
+			})
+
+			It("returns artists with any of the specified roles", func() {
+				idx, err := repo.GetIndex(false, model.RoleComposer, model.RoleProducer)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(idx).To(HaveLen(2))
+
+				// Find Beatles and Kraftwerk in the results
+				var beatlesFound, kraftwerkFound bool
+				for _, index := range idx {
+					for _, artist := range index.Artists {
+						if artist.Name == artistBeatles.Name {
+							beatlesFound = true
+						}
+						if artist.Name == artistKraftwerk.Name {
+							kraftwerkFound = true
+						}
+					}
+				}
+				Expect(beatlesFound).To(BeTrue())
+				Expect(kraftwerkFound).To(BeTrue())
+			})
+
+			It("returns empty index when no artists have the specified role", func() {
+				idx, err := repo.GetIndex(false, model.RoleDirector)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(idx).To(HaveLen(0))
+			})
+		})
 	})
 
 	Describe("dbArtist mapping", func() {
