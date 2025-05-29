@@ -7,12 +7,13 @@ import {
   useShowContext,
   ReferenceManyField,
   Pagination,
+  Title as RaTitle,
 } from 'react-admin'
 import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
-import { useAlbumsPerPage, useResourceRefresh } from '../common/index.js'
+import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
@@ -76,6 +77,7 @@ const ArtistShowLayout = (props) => {
 
   return (
     <>
+      {record && <RaTitle title={<Title subTitle={record.name} />} />}
       {record && <ArtistDetails />}
       {record && (
         <ReferenceManyField

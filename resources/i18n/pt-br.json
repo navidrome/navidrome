@@ -18,7 +18,6 @@
         "size": "Tamanho",
         "updatedAt": "Últ. Atualização",
         "bitRate": "Bitrate",
-        "bitDepth": "Profundidade de bits",
         "discSubtitle": "Sub-título do disco",
         "starred": "Favorita",
         "comment": "Comentário",
@@ -34,6 +33,8 @@
         "tags": "Outras Tags",
         "mappedTags": "Tags mapeadas",
         "rawTags": "Tags originais",
+        "bitDepth": "Profundidade de bits",
+        "sampleRate": "Taxa de amostragem",
         "missing": "Ausente"
       },
       "actions": {
@@ -58,7 +59,6 @@
         "genre": "Gênero",
         "compilation": "Coletânea",
         "year": "Ano",
-        "date": "Data de Lançamento",
         "updatedAt": "Últ. Atualização",
         "comment": "Comentário",
         "rating": "Classificação",
@@ -74,6 +74,7 @@
         "grouping": "Agrupamento",
         "media": "Mídia",
         "mood": "Mood",
+        "date": "Data de Lançamento",
         "missing": "Ausente"
       },
       "actions": {
@@ -194,9 +195,9 @@
         "selectPlaylist": "Selecione a playlist:",
         "addNewPlaylist": "Criar \"%{name}\"",
         "export": "Exportar",
-        "saveQueue": "Salvar fila em nova Playlist",
         "makePublic": "Pública",
-        "makePrivate": "Pessoal"
+        "makePrivate": "Pessoal",
+        "saveQueue": "Salvar fila em nova Playlist"
       },
       "message": {
         "duplicate_song": "Adicionar músicas duplicadas",
@@ -235,7 +236,6 @@
     },
     "missing": {
       "name": "Arquivo ausente |||| Arquivos ausentes",
-      "empty": "Nenhum arquivo ausente",
       "fields": {
         "path": "Caminho",
         "size": "Tamanho",
@@ -247,7 +247,8 @@
       },
       "notifications": {
         "removed": "Arquivo(s) ausente(s) removido(s)"
-      }
+      },
+      "empty": "Nenhum arquivo ausente"
     }
   },
   "ra": {
