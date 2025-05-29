@@ -212,9 +212,9 @@ func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (m
 	options := model.QueryOptions{Sort: "name"}
 	if len(roles) > 0 {
 		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
-			return roleFilter("role", r)
+			return roleFilter("role", r.String())
 		})
-		options.Filters = And(roleFilters)
+		options.Filters = Or(roleFilters)
 	}
 	if !includeMissing {
 		if options.Filters == nil {
