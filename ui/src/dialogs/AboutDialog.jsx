@@ -12,6 +12,7 @@ import Paper from '@material-ui/core/Paper'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { humanize, underscore } from 'inflection'
 import { useGetOne, usePermissions, useTranslate } from 'react-admin'
+import { Tabs, Tab } from '@material-ui/core'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
@@ -91,6 +92,12 @@ const AboutDialog = ({ open, onClose }) => {
   const { permissions } = usePermissions()
   const { data, loading } = useGetOne('insights', 'insights_status')
   const [serverVersion, setServerVersion] = useState('')
+  const showConfigTab = permissions === 'admin' && config.devUIShowConfig
+  const [tab, setTab] = useState(0)
+  const { data: configData } = useGetOne('config', 'config', {
+    enabled: showConfigTab,
+  })
+  const expanded = showConfigTab && tab === 1
   const uiVersion = config.version
 
   useEffect(() => {
@@ -119,73 +126,104 @@ const AboutDialog = ({ open, onClose }) => {
   }
 
   return (
-    <Dialog onClose={onClose} aria-labelledby="about-dialog-title" open={open}>
+    <Dialog
+      onClose={onClose}
+      aria-labelledby="about-dialog-title"
+      open={open}
+      fullWidth={true}
+      maxWidth={expanded ? 'md' : 'sm'}
+      style={{ transition: 'max-width 300ms ease' }}
+    >
       <DialogTitle id="about-dialog-title" onClose={onClose}>
         Navidrome Music Server
       </DialogTitle>
       <DialogContent dividers>
         <TableContainer component={Paper}>
-          <Table aria-label={translate('menu.about')} size="small">
-            <TableBody>
-              <ShowVersion
-                uiVersion={uiVersion}
-                serverVersion={serverVersion}
-              />
-              {Object.keys(links).map((key) => {
-                return (
-                  <TableRow key={key}>
+          {showConfigTab && (
+            <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+              <Tab label={translate('about.tabs.about')} id="about-tab" />
+              <Tab label={translate('about.tabs.config')} id="config-tab" />
+            </Tabs>
+          )}
+          <div hidden={showConfigTab && tab === 1}>
+            <Table aria-label={translate('menu.about')} size="small">
+              <TableBody>
+                <ShowVersion
+                  uiVersion={uiVersion}
+                  serverVersion={serverVersion}
+                />
+                {Object.keys(links).map((key) => {
+                  return (
+                    <TableRow key={key}>
+                      <TableCell align="right" component="th" scope="row">
+                        {translate(`about.links.${key}`, {
+                          _: humanize(underscore(key)),
+                        })}
+                        :
+                      </TableCell>
+                      <TableCell align="left">
+                        <Link
+                          href={`https://${links[key]}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {links[key]}
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+                {permissions === 'admin' ? (
+                  <TableRow>
                     <TableCell align="right" component="th" scope="row">
-                      {translate(`about.links.${key}`, {
-                        _: humanize(underscore(key)),
-                      })}
-                      :
+                      {translate(`about.links.lastInsightsCollection`)}:
                     </TableCell>
                     <TableCell align="left">
-                      <Link
-                        href={`https://${links[key]}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {links[key]}
-                      </Link>
+                      <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
                     </TableCell>
                   </TableRow>
-                )
-              })}
-              {permissions === 'admin' ? (
+                ) : null}
                 <TableRow>
                   <TableCell align="right" component="th" scope="row">
-                    {translate(`about.links.lastInsightsCollection`)}:
+                    <Link
+                      href={'https://github.com/sponsors/deluan'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <IconButton size={'small'}>
+                        <FavoriteBorderIcon fontSize={'small'} />
+                      </IconButton>
+                    </Link>
                   </TableCell>
                   <TableCell align="left">
-                    <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
+                    <Link
+                      href={'https://ko-fi.com/deluan'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ko-fi.com/deluan
+                    </Link>
                   </TableCell>
                 </TableRow>
-              ) : null}
-              <TableRow>
-                <TableCell align="right" component="th" scope="row">
-                  <Link
-                    href={'https://github.com/sponsors/deluan'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <IconButton size={'small'}>
-                      <FavoriteBorderIcon fontSize={'small'} />
-                    </IconButton>
-                  </Link>
-                </TableCell>
-                <TableCell align="left">
-                  <Link
-                    href={'https://ko-fi.com/deluan'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    ko-fi.com/deluan
-                  </Link>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
+          {showConfigTab && (
+            <div hidden={tab === 0}>
+              <Table size="small">
+                <TableBody>
+                  {(configData?.config || []).map(({ key, value }) => (
+                    <TableRow key={key}>
+                      <TableCell align="right" component="th" scope="row">
+                        {key}:
+                      </TableCell>
+                      <TableCell align="left">{String(value)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </TableContainer>
       </DialogContent>
     </Dialog>

@@ -61,6 +61,7 @@ func (n *Router) routes() http.Handler {
 		n.addPlaylistTrackRoute(r)
 		n.addMissingFilesRoute(r)
 		n.addInspectRoute(r)
+		n.addConfigRoute(r)
 
 		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
 		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
@@ -194,5 +195,11 @@ func (n *Router) addInspectRoute(r chi.Router) {
 			}
 			r.Get("/inspect", inspect(n.ds))
 		})
+	}
+}
+
+func (n *Router) addConfigRoute(r chi.Router) {
+	if conf.Server.DevUIShowConfig {
+		r.Get("/config/*", getConfig)
 	}
 }

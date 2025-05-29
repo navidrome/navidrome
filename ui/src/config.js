@@ -30,6 +30,7 @@ const defaultConfig = {
   enableExternalServices: true,
   enableCoverAnimation: true,
   devShowArtistPage: true,
+  devUIShowConfig: true,
   enableReplayGain: true,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',

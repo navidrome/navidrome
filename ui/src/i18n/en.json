@@ -498,6 +498,10 @@
         "disabled": "Disabled",
         "waiting": "Waiting"
       }
+    },
+    "tabs": {
+      "about": "About",
+      "config": "Configuration"
     }
   },
   "activity": {
