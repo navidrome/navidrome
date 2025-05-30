@@ -62,21 +62,8 @@ func (n *Router) routes() http.Handler {
 		n.addMissingFilesRoute(r)
 		n.addInspectRoute(r)
 		n.addConfigRoute(r)
-
-		// Keepalive endpoint to be used to keep the session valid (ex: while playing songs)
-		r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
-		})
-
-		// Insights status endpoint
-		r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
-			last, success := n.insights.LastRun(r.Context())
-			if conf.Server.EnableInsightsCollector {
-				_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
-			} else {
-				_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
-			}
-		})
+		n.addKeepAliveRoute(r)
+		n.addInsightsRoute(r)
 	})
 
 	return r
@@ -202,4 +189,21 @@ func (n *Router) addConfigRoute(r chi.Router) {
 	if conf.Server.DevUIShowConfig {
 		r.Get("/config/*", getConfig)
 	}
+}
+
+func (n *Router) addKeepAliveRoute(r chi.Router) {
+	r.Get("/keepalive/*", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"response":"ok", "id":"keepalive"}`))
+	})
+}
+
+func (n *Router) addInsightsRoute(r chi.Router) {
+	r.Get("/insights/*", func(w http.ResponseWriter, r *http.Request) {
+		last, success := n.insights.LastRun(r.Context())
+		if conf.Server.EnableInsightsCollector {
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"` + last.Format("2006-01-02 15:04:05") + `", "success":` + strconv.FormatBool(success) + `}`))
+		} else {
+			_, _ = w.Write([]byte(`{"id":"insights_status", "lastRun":"disabled", "success":false}`))
+		}
+	})
 }
