@@ -179,8 +179,11 @@ export const SongContextMenu = ({
     setPlaylistAnchorEl(e.currentTarget)
   }
 
-  const handlePlaylistClose = () => {
+  const handlePlaylistClose = (e) => {
     setPlaylistAnchorEl(null)
+    if (e) {
+      e.stopPropagation()
+    }
   }
 
   const handleMainMenuClose = (e) => {

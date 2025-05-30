@@ -51,4 +51,32 @@ describe('SongContextMenu', () => {
     fireEvent.click(screen.getByText('Pl 1'))
     expect(window.location.hash).toBe('#/playlist/pl1/show')
   })
+
+  it('stops event propagation when playlist submenu is closed', async () => {
+    const mockOnClick = vi.fn()
+    render(
+      <TestContext>
+        <div onClick={mockOnClick}>
+          <SongContextMenu record={{ id: 'song1', size: 1 }} resource="song" />
+        </div>
+      </TestContext>,
+    )
+    
+    // Open main menu
+    fireEvent.click(screen.getAllByRole('button')[1])
+    await waitFor(() =>
+      screen.getByText(/resources\.song\.actions\.showInPlaylist/),
+    )
+    
+    // Open playlist submenu
+    fireEvent.click(
+      screen.getByText(/resources\.song\.actions\.showInPlaylist/),
+    )
+    await waitFor(() => screen.getByText('Pl 1'))
+    
+    // Click outside the playlist submenu (should close it without triggering parent click)
+    fireEvent.click(document.body)
+    
+    expect(mockOnClick).not.toHaveBeenCalled()
+  })
 })
