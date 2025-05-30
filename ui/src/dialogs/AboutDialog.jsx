@@ -10,8 +10,10 @@ import TableRow from '@material-ui/core/TableRow'
 import TableCell from '@material-ui/core/TableCell'
 import Paper from '@material-ui/core/Paper'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import FileCopyIcon from '@material-ui/icons/FileCopy'
+import Button from '@material-ui/core/Button'
 import { humanize, underscore } from 'inflection'
-import { useGetOne, usePermissions, useTranslate } from 'react-admin'
+import { useGetOne, usePermissions, useTranslate, useNotify } from 'react-admin'
 import { Tabs, Tab } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
@@ -21,8 +23,9 @@ import { INSIGHTS_DOC_URL } from '../consts.js'
 import subsonic from '../subsonic/index.js'
 import { Typography } from '@material-ui/core'
 import TableHead from '@material-ui/core/TableHead'
+import { configToToml } from '../utils/toml'
 
-const useStyles = makeStyles({
+const useStyles = makeStyles((theme) => ({
   configNameColumn: {
     maxWidth: '200px',
     width: '200px',
@@ -42,7 +45,28 @@ const useStyles = makeStyles({
     fontFamily: 'monospace',
     wordBreak: 'break-all',
   },
-})
+  copyButton: {
+    marginBottom: theme.spacing(2),
+    marginTop: theme.spacing(1),
+  },
+  devSectionHeader: {
+    '& td': {
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(2),
+      borderTop: `2px solid ${theme.palette.divider}`,
+      borderBottom: `1px solid ${theme.palette.divider}`,
+      textAlign: 'left',
+      fontWeight: 600,
+    },
+  },
+  configContainer: {
+    paddingTop: theme.spacing(1),
+  },
+  tableContainer: {
+    maxHeight: '60vh',
+    overflow: 'auto',
+  },
+}))
 
 const links = {
   homepage: 'navidrome.org',
@@ -194,64 +218,140 @@ const AboutTabContent = ({
 const ConfigTabContent = ({ configData }) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const notify = useNotify()
+
+  const copyAllConfig = () => {
+    if (!configData) return
+
+    const tomlContent = configToToml(configData)
+
+    navigator.clipboard
+      .writeText(tomlContent)
+      .then(() => {
+        notify(translate('about.config.exportSuccess'), 'info')
+      })
+      .catch(() => {
+        notify(translate('about.config.exportFailed'), 'error')
+      })
+  }
+
+  // Separate regular and dev configs for display
+  const regularConfigs = []
+  const devConfigs = []
+
+  configData?.config?.forEach((config) => {
+    // Skip configFile as it's displayed separately at the top
+    if (config.key === 'ConfigFile') {
+      return
+    }
+
+    if (config.key.startsWith('Dev')) {
+      devConfigs.push(config)
+    } else {
+      regularConfigs.push(config)
+    }
+  })
 
   return (
-    <Table size="small">
-      <TableHead>
-        <TableRow>
-          <TableCell
-            align="left"
-            component="th"
-            scope="col"
-            className={classes.configNameColumn}
-          >
-            {translate('about.config.configName')}
-          </TableCell>
-          <TableCell align="left" component="th" scope="col">
-            {translate('about.config.environmentVariable')}
-          </TableCell>
-          <TableCell align="left" component="th" scope="col">
-            {translate('about.config.currentValue')}
-          </TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {configData?.configFile && (
-          <TableRow>
-            <TableCell
-              align="left"
-              component="th"
-              scope="row"
-              className={classes.configNameColumn}
-            >
-              {translate('about.config.configurationFile')}
-            </TableCell>
-            <TableCell align="left" className={classes.envVarColumn}>
-              ND_CONFIGFILE
-            </TableCell>
-            <TableCell align="left" className={classes.configFileValue}>
-              {configData.configFile}
-            </TableCell>
-          </TableRow>
-        )}
-        {(configData?.config || []).map(({ key, envVar, value }) => (
-          <TableRow key={key}>
-            <TableCell
-              align="left"
-              component="th"
-              scope="row"
-              className={classes.configNameColumn}
-            >
-              {key}
-            </TableCell>
-            <TableCell align="left" className={classes.envVarColumn}>
-              {envVar}
-            </TableCell>
-            <TableCell align="left">{String(value)}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className={classes.configContainer}>
+      <Button
+        variant="outlined"
+        startIcon={<FileCopyIcon />}
+        onClick={copyAllConfig}
+        className={classes.copyButton}
+        disabled={!configData}
+        size="small"
+      >
+        {translate('about.config.exportToml')}
+      </Button>
+      <TableContainer className={classes.tableContainer}>
+        <Table size="small" stickyHeader>
+          <TableHead>
+            <TableRow>
+              <TableCell
+                align="left"
+                component="th"
+                scope="col"
+                className={classes.configNameColumn}
+              >
+                {translate('about.config.configName')}
+              </TableCell>
+              <TableCell align="left" component="th" scope="col">
+                {translate('about.config.environmentVariable')}
+              </TableCell>
+              <TableCell align="left" component="th" scope="col">
+                {translate('about.config.currentValue')}
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {configData?.configFile && (
+              <TableRow>
+                <TableCell
+                  align="left"
+                  component="th"
+                  scope="row"
+                  className={classes.configNameColumn}
+                >
+                  {translate('about.config.configurationFile')}
+                </TableCell>
+                <TableCell align="left" className={classes.envVarColumn}>
+                  ND_CONFIGFILE
+                </TableCell>
+                <TableCell align="left" className={classes.configFileValue}>
+                  {configData.configFile}
+                </TableCell>
+              </TableRow>
+            )}
+            {regularConfigs.map(({ key, envVar, value }) => (
+              <TableRow key={key}>
+                <TableCell
+                  align="left"
+                  component="th"
+                  scope="row"
+                  className={classes.configNameColumn}
+                >
+                  {key}
+                </TableCell>
+                <TableCell align="left" className={classes.envVarColumn}>
+                  {envVar}
+                </TableCell>
+                <TableCell align="left">{String(value)}</TableCell>
+              </TableRow>
+            ))}
+            {devConfigs.length > 0 && (
+              <TableRow className={classes.devSectionHeader}>
+                <TableCell colSpan={3}>
+                  <Typography
+                    variant="subtitle1"
+                    component="div"
+                    style={{ fontWeight: 600 }}
+                  >
+                    🚧 Development Flags (subject to change/removal)
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {devConfigs.map(({ key, envVar, value }) => (
+              <TableRow key={key}>
+                <TableCell
+                  align="left"
+                  component="th"
+                  scope="row"
+                  className={classes.configNameColumn}
+                >
+                  {key}
+                </TableCell>
+                <TableCell align="left" className={classes.envVarColumn}>
+                  {envVar}
+                </TableCell>
+                <TableCell align="left">{String(value)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
   )
 }
 

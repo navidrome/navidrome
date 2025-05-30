@@ -507,7 +507,10 @@
       "configName": "Config Name",
       "environmentVariable": "Environment Variable",
       "currentValue": "Current Value",
-      "configurationFile": "Configuration File"
+      "configurationFile": "Configuration File",
+      "exportToml": "Export Configuration (TOML)",
+      "exportSuccess": "Configuration exported to clipboard in TOML format",
+      "exportFailed": "Failed to copy configuration"
     }
   },
   "activity": {

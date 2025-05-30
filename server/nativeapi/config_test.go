@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -27,7 +28,7 @@ var _ = Describe("config endpoint", func() {
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 
-	It("returns sorted configuration entries for admins", func() {
+	It("returns configuration entries with Dev* fields sorted after main fields", func() {
 		req := httptest.NewRequest("GET", "/config", nil)
 		w := httptest.NewRecorder()
 		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
@@ -36,11 +37,36 @@ var _ = Describe("config endpoint", func() {
 		var resp configResponse
 		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 		Expect(resp.ID).To(Equal("config"))
-		keys := make([]string, len(resp.Config))
+
+		// Check that Dev* fields come after non-Dev fields
+		var devFieldIndex = -1
+		var lastNonDevIndex = -1
 		for i, e := range resp.Config {
-			keys[i] = e.Key
+			if strings.HasPrefix(e.Key, "Dev") {
+				if devFieldIndex == -1 {
+					devFieldIndex = i
+				}
+			} else {
+				lastNonDevIndex = i
+			}
 		}
-		Expect(sort.StringsAreSorted(keys)).To(BeTrue())
+
+		if devFieldIndex != -1 && lastNonDevIndex != -1 {
+			Expect(devFieldIndex).To(BeNumerically(">", lastNonDevIndex))
+		}
+
+		// Check that within each group (Dev and non-Dev), entries are sorted alphabetically
+		var nonDevKeys []string
+		var devKeys []string
+		for _, e := range resp.Config {
+			if strings.HasPrefix(e.Key, "Dev") {
+				devKeys = append(devKeys, e.Key)
+			} else {
+				nonDevKeys = append(nonDevKeys, e.Key)
+			}
+		}
+		Expect(sort.StringsAreSorted(nonDevKeys)).To(BeTrue())
+		Expect(sort.StringsAreSorted(devKeys)).To(BeTrue())
 	})
 
 	It("includes flattened struct fields", func() {
@@ -143,6 +169,31 @@ var _ = Describe("config endpoint", func() {
 			Expect(values).To(HaveKeyWithValue("Spotify.ID", "****"))
 		})
 
+		It("fully masks password fields", func() {
+			// Set up test values for password fields
+			conf.Server.DevAutoCreateAdminPassword = "adminpass123"
+			conf.Server.Prometheus.Password = "prometheuspass"
+
+			req := httptest.NewRequest("GET", "/config", nil)
+			w := httptest.NewRecorder()
+			ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
+			getConfig(w, req.WithContext(ctx))
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var resp configResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
+
+			values := map[string]string{}
+			for _, e := range resp.Config {
+				if s, ok := e.Value.(string); ok {
+					values[e.Key] = s
+				}
+			}
+
+			Expect(values).To(HaveKeyWithValue("DevAutoCreateAdminPassword", "****"))
+			Expect(values).To(HaveKeyWithValue("Prometheus.Password", "****"))
+		})
+
 		It("does not redact non-sensitive values", func() {
 			conf.Server.MusicFolder = "/path/to/music"
 			conf.Server.Port = 4533
@@ -202,12 +253,16 @@ var _ = Describe("redactValue function", func() {
 
 	It("fully masks long sensitive values that should be completely hidden", func() {
 		Expect(redactValue("PasswordEncryptionKey", "1234567890")).To(Equal("****"))
+		Expect(redactValue("DevAutoCreateAdminPassword", "1234567890")).To(Equal("****"))
+		Expect(redactValue("Prometheus.Password", "1234567890")).To(Equal("****"))
 	})
 
 	It("fully masks short sensitive values", func() {
 		Expect(redactValue("LastFM.Secret", "short")).To(Equal("****"))
 		Expect(redactValue("Spotify.ID", "abc")).To(Equal("****"))
 		Expect(redactValue("PasswordEncryptionKey", "12345")).To(Equal("****"))
+		Expect(redactValue("DevAutoCreateAdminPassword", "short")).To(Equal("****"))
+		Expect(redactValue("Prometheus.Password", "short")).To(Equal("****"))
 	})
 
 	It("does not mask non-sensitive values", func() {
