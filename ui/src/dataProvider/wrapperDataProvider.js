@@ -90,6 +90,11 @@ const wrapperDataProvider = {
       body: JSON.stringify(data),
     }).then(({ json }) => ({ data: json }))
   },
+  getPlaylists: (resource, params) => {
+    return httpClient(`${REST_URL}/song/${params.id}/playlists`).then(
+      ({ json }) => ({ data: json }),
+    )
+  },
 }
 
 export default wrapperDataProvider

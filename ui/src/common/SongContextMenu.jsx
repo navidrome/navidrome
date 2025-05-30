@@ -1,7 +1,12 @@
 import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useNotify, usePermissions, useTranslate } from 'react-admin'
+import {
+  useNotify,
+  usePermissions,
+  useTranslate,
+  useDataProvider,
+} from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
@@ -59,6 +64,7 @@ export const SongContextMenu = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
+  const dataProvider = useDataProvider()
   const [anchorEl, setAnchorEl] = useState(null)
   const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
   const [playlists, setPlaylists] = useState([])
@@ -142,10 +148,17 @@ export const SongContextMenu = ({
     setAnchorEl(e.currentTarget)
     if (!playlistsLoaded) {
       const id = record.mediaFileId || record.id
-      httpClient(`${REST_URL}/song/${id}/playlists`).then((res) => {
-        setPlaylists(res.json)
-        setPlaylistsLoaded(true)
-      })
+      dataProvider
+        .getPlaylists('song', { id })
+        .then((res) => {
+          setPlaylists(res.data)
+          setPlaylistsLoaded(true)
+        })
+        .catch((error) => {
+          console.error('Failed to fetch playlists:', error)
+          setPlaylists([])
+          setPlaylistsLoaded(true)
+        })
     }
     e.stopPropagation()
   }
@@ -214,10 +227,7 @@ export const SongContextMenu = ({
               </MenuItem>
             ),
         )}
-        <MenuItem
-          onClick={handleShowInPlaylist}
-          disabled={!playlists.length}
-        >
+        <MenuItem onClick={handleShowInPlaylist} disabled={!playlists.length}>
           {translate('resources.song.actions.showInPlaylist')}
           {playlists.length > 0 && ' ►'}
         </MenuItem>

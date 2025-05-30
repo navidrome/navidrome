@@ -17,6 +17,11 @@ vi.mock('react-admin', async (importOriginal) => {
     useRedirect: () => (url) => {
       window.location.hash = `#${url}`
     },
+    useDataProvider: () => ({
+      getPlaylists: vi.fn().mockResolvedValue({
+        data: [{ id: 'pl1', name: 'Pl 1' }],
+      }),
+    }),
   }
 })
 
@@ -27,10 +32,6 @@ describe('SongContextMenu', () => {
   })
 
   it('navigates to playlist when selected', async () => {
-    const dataProvider = await import('../dataProvider')
-    dataProvider.httpClient.mockResolvedValue({
-      json: [{ id: 'pl1', name: 'Pl 1' }],
-    })
     render(
       <TestContext>
         <SongContextMenu record={{ id: 'song1', size: 1 }} resource="song" />
