@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { formatTomlValue, buildTomlSections, configToToml, separateAndSortConfigs } from './toml'
+import {
+  formatTomlValue,
+  buildTomlSections,
+  configToToml,
+  separateAndSortConfigs,
+} from './toml'
 
 describe('formatTomlValue', () => {
   it('handles null and undefined values', () => {
@@ -37,7 +42,9 @@ describe('formatTomlValue', () => {
   })
 
   it('handles JSON arrays and objects', () => {
-    expect(formatTomlValue('["item1", "item2"]')).toBe('"""["item1", "item2"]"""')
+    expect(formatTomlValue('["item1", "item2"]')).toBe(
+      '"""["item1", "item2"]"""',
+    )
     expect(formatTomlValue('{"key": "value"}')).toBe('"""{"key": "value"}"""')
   })
 
@@ -48,7 +55,9 @@ describe('formatTomlValue', () => {
 
   it('handles regular strings with quote escaping', () => {
     expect(formatTomlValue('simple string')).toBe('"simple string"')
-    expect(formatTomlValue('string with "quotes"')).toBe('"string with \\"quotes\\""')
+    expect(formatTomlValue('string with "quotes"')).toBe(
+      '"string with \\"quotes\\""',
+    )
     expect(formatTomlValue('/path/to/file')).toBe('"/path/to/file"')
   })
 
@@ -64,39 +73,33 @@ describe('buildTomlSections', () => {
       { key: 'Section.NestedKey', value: 'value2' },
       { key: 'RootKey2', value: 'value3' },
       { key: 'Section.AnotherKey', value: 'value4' },
-      { key: 'AnotherSection.Key', value: 'value5' }
+      { key: 'AnotherSection.Key', value: 'value5' },
     ]
 
     const result = buildTomlSections(configs)
 
     expect(result.rootKeys).toEqual([
       { key: 'RootKey1', value: 'value1' },
-      { key: 'RootKey2', value: 'value3' }
+      { key: 'RootKey2', value: 'value3' },
     ])
 
     expect(result.sections).toEqual({
       Section: [
         { key: 'NestedKey', value: 'value2' },
-        { key: 'AnotherKey', value: 'value4' }
+        { key: 'AnotherKey', value: 'value4' },
       ],
-      AnotherSection: [
-        { key: 'Key', value: 'value5' }
-      ]
+      AnotherSection: [{ key: 'Key', value: 'value5' }],
     })
   })
 
   it('handles deeply nested keys', () => {
-    const configs = [
-      { key: 'Section.SubSection.DeepKey', value: 'deepValue' }
-    ]
+    const configs = [{ key: 'Section.SubSection.DeepKey', value: 'deepValue' }]
 
     const result = buildTomlSections(configs)
 
     expect(result.rootKeys).toEqual([])
     expect(result.sections).toEqual({
-      Section: [
-        { key: 'SubSection.DeepKey', value: 'deepValue' }
-      ]
+      Section: [{ key: 'SubSection.DeepKey', value: 'deepValue' }],
     })
   })
 
@@ -111,17 +114,17 @@ describe('buildTomlSections', () => {
 describe('configToToml', () => {
   const mockTranslate = (key) => {
     const translations = {
-      'about.config.devFlagsHeader': 'Development Flags (subject to change/removal)',
-      'about.config.devFlagsComment': 'These are experimental settings and may be removed in future versions'
+      'about.config.devFlagsHeader':
+        'Development Flags (subject to change/removal)',
+      'about.config.devFlagsComment':
+        'These are experimental settings and may be removed in future versions',
     }
     return translations[key] || key
   }
 
   it('generates TOML with header and timestamp', () => {
     const configData = {
-      config: [
-        { key: 'TestKey', value: 'testValue' }
-      ]
+      config: [{ key: 'TestKey', value: 'testValue' }],
     }
 
     const result = configToToml(configData, mockTranslate)
@@ -137,19 +140,27 @@ describe('configToToml', () => {
         { key: 'ZRegularKey', value: 'regularValue' },
         { key: 'DevTestFlag', value: 'true' },
         { key: 'ARegularKey', value: 'anotherValue' },
-        { key: 'DevAnotherFlag', value: 'false' }
-      ]
+        { key: 'DevAnotherFlag', value: 'false' },
+      ],
     }
 
     const result = configToToml(configData, mockTranslate)
 
     // Check that regular configs come first and are sorted
     const lines = result.split('\n')
-    const aRegularIndex = lines.findIndex(line => line.includes('ARegularKey'))
-    const zRegularIndex = lines.findIndex(line => line.includes('ZRegularKey'))
-    const devHeaderIndex = lines.findIndex(line => line.includes('Development Flags'))
-    const devAnotherIndex = lines.findIndex(line => line.includes('DevAnotherFlag'))
-    const devTestIndex = lines.findIndex(line => line.includes('DevTestFlag'))
+    const aRegularIndex = lines.findIndex((line) =>
+      line.includes('ARegularKey'),
+    )
+    const zRegularIndex = lines.findIndex((line) =>
+      line.includes('ZRegularKey'),
+    )
+    const devHeaderIndex = lines.findIndex((line) =>
+      line.includes('Development Flags'),
+    )
+    const devAnotherIndex = lines.findIndex((line) =>
+      line.includes('DevAnotherFlag'),
+    )
+    const devTestIndex = lines.findIndex((line) => line.includes('DevTestFlag'))
 
     expect(aRegularIndex).toBeLessThan(zRegularIndex)
     expect(zRegularIndex).toBeLessThan(devHeaderIndex)
@@ -161,8 +172,8 @@ describe('configToToml', () => {
     const configData = {
       config: [
         { key: 'ConfigFile', value: '/path/to/config.toml' },
-        { key: 'TestKey', value: 'testValue' }
-      ]
+        { key: 'TestKey', value: 'testValue' },
+      ],
     }
 
     const result = configToToml(configData, mockTranslate)
@@ -176,8 +187,8 @@ describe('configToToml', () => {
       config: [
         { key: 'RootKey', value: 'rootValue' },
         { key: 'Section.NestedKey', value: 'nestedValue' },
-        { key: 'Section.AnotherKey', value: 'anotherValue' }
-      ]
+        { key: 'Section.AnotherKey', value: 'anotherValue' },
+      ],
     }
 
     const result = configToToml(configData, mockTranslate)
@@ -192,22 +203,22 @@ describe('configToToml', () => {
     const configData = {
       config: [
         { key: 'RegularKey', value: 'regularValue' },
-        { key: 'DevTestFlag', value: 'true' }
-      ]
+        { key: 'DevTestFlag', value: 'true' },
+      ],
     }
 
     const result = configToToml(configData, mockTranslate)
 
     expect(result).toContain('# Development Flags (subject to change/removal)')
-    expect(result).toContain('# These are experimental settings and may be removed in future versions')
+    expect(result).toContain(
+      '# These are experimental settings and may be removed in future versions',
+    )
     expect(result).toContain('DevTestFlag = true')
   })
 
   it('does not include dev flags header when no dev configs exist', () => {
     const configData = {
-      config: [
-        { key: 'RegularKey', value: 'regularValue' }
-      ]
+      config: [{ key: 'RegularKey', value: 'regularValue' }],
     }
 
     const result = configToToml(configData, mockTranslate)
@@ -236,9 +247,7 @@ describe('configToToml', () => {
 
   it('works without translate function', () => {
     const configData = {
-      config: [
-        { key: 'DevTestFlag', value: 'true' }
-      ]
+      config: [{ key: 'DevTestFlag', value: 'true' }],
     }
 
     const result = configToToml(configData)
@@ -256,8 +265,8 @@ describe('configToToml', () => {
         { key: 'IntegerValue', value: '42' },
         { key: 'FloatValue', value: '3.14' },
         { key: 'DurationValue', value: '5s' },
-        { key: 'ArrayValue', value: '["item1", "item2"]' }
-      ]
+        { key: 'ArrayValue', value: '["item1", "item2"]' },
+      ],
     }
 
     const result = configToToml(configData, mockTranslate)
@@ -277,19 +286,19 @@ describe('separateAndSortConfigs', () => {
       { key: 'RegularKey1', value: 'value1' },
       { key: 'DevTestFlag', value: 'true' },
       { key: 'AnotherRegular', value: 'value2' },
-      { key: 'DevAnotherFlag', value: 'false' }
+      { key: 'DevAnotherFlag', value: 'false' },
     ]
 
     const result = separateAndSortConfigs(configs)
 
     expect(result.regularConfigs).toEqual([
       { key: 'AnotherRegular', value: 'value2' },
-      { key: 'RegularKey1', value: 'value1' }
+      { key: 'RegularKey1', value: 'value1' },
     ])
 
     expect(result.devConfigs).toEqual([
       { key: 'DevAnotherFlag', value: 'false' },
-      { key: 'DevTestFlag', value: 'true' }
+      { key: 'DevTestFlag', value: 'true' },
     ])
   })
 
@@ -297,17 +306,15 @@ describe('separateAndSortConfigs', () => {
     const configs = [
       { key: 'ConfigFile', value: '/path/to/config.toml' },
       { key: 'RegularKey', value: 'value' },
-      { key: 'DevFlag', value: 'true' }
+      { key: 'DevFlag', value: 'true' },
     ]
 
     const result = separateAndSortConfigs(configs)
 
     expect(result.regularConfigs).toEqual([
-      { key: 'RegularKey', value: 'value' }
+      { key: 'RegularKey', value: 'value' },
     ])
-    expect(result.devConfigs).toEqual([
-      { key: 'DevFlag', value: 'true' }
-    ])
+    expect(result.devConfigs).toEqual([{ key: 'DevFlag', value: 'true' }])
   })
 
   it('handles empty input', () => {
@@ -332,7 +339,7 @@ describe('separateAndSortConfigs', () => {
       { key: 'ZRegular', value: 'z' },
       { key: 'ARegular', value: 'a' },
       { key: 'DevZ', value: 'z' },
-      { key: 'DevA', value: 'a' }
+      { key: 'DevA', value: 'a' },
     ]
 
     const result = separateAndSortConfigs(configs)
@@ -342,4 +349,4 @@ describe('separateAndSortConfigs', () => {
     expect(result.devConfigs[0].key).toBe('DevA')
     expect(result.devConfigs[1].key).toBe('DevZ')
   })
-}) 
+})

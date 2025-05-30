@@ -226,7 +226,9 @@ const ConfigTabContent = ({ configData }) => {
   }
 
   // Use the shared separation and sorting logic
-  const { regularConfigs, devConfigs } = separateAndSortConfigs(configData.config)
+  const { regularConfigs, devConfigs } = separateAndSortConfigs(
+    configData.config,
+  )
 
   const handleCopyToml = async () => {
     try {
@@ -236,6 +238,7 @@ const ConfigTabContent = ({ configData }) => {
       setTimeout(() => setCopySuccess(''), 3000)
       notify(translate('about.config.exportSuccess'), 'info')
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('Failed to copy TOML:', err)
       setCopySuccess(translate('about.config.exportFailed'))
       setTimeout(() => setCopySuccess(''), 3000)
