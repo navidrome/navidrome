@@ -62,6 +62,7 @@ export const SongContextMenu = ({
   const [anchorEl, setAnchorEl] = useState(null)
   const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
   const [playlists, setPlaylists] = useState([])
+  const [playlistsLoaded, setPlaylistsLoaded] = useState(false)
   const { permissions } = usePermissions()
   const redirect = useRedirect()
 
@@ -139,10 +140,13 @@ export const SongContextMenu = ({
 
   const handleClick = (e) => {
     setAnchorEl(e.currentTarget)
-    const id = record.mediaFileId || record.id
-    httpClient(`${REST_URL}/song/${id}/playlists`).then((res) => {
-      setPlaylists(res.json)
-    })
+    if (!playlistsLoaded) {
+      const id = record.mediaFileId || record.id
+      httpClient(`${REST_URL}/song/${id}/playlists`).then((res) => {
+        setPlaylists(res.json)
+        setPlaylistsLoaded(true)
+      })
+    }
     e.stopPropagation()
   }
 
@@ -160,12 +164,18 @@ export const SongContextMenu = ({
   }
 
   const handleShowInPlaylist = (e) => {
+    e.stopPropagation()
     setPlaylistAnchorEl(e.currentTarget)
   }
 
   const handlePlaylistClose = () => {
     setPlaylistAnchorEl(null)
+  }
+
+  const handleMainMenuClose = (e) => {
     setAnchorEl(null)
+    setPlaylistAnchorEl(null) // Close both menus
+    e.stopPropagation()
   }
 
   const handlePlaylistClick = (id, e) => {
@@ -194,7 +204,7 @@ export const SongContextMenu = ({
         id={'menu' + record.id}
         anchorEl={anchorEl}
         open={open}
-        onClose={handleClose}
+        onClose={handleMainMenuClose}
       >
         {Object.keys(options).map(
           (key) =>
@@ -205,16 +215,25 @@ export const SongContextMenu = ({
             ),
         )}
         <MenuItem
-          onMouseEnter={handleShowInPlaylist}
+          onClick={handleShowInPlaylist}
           disabled={!playlists.length}
         >
           {translate('resources.song.actions.showInPlaylist')}
+          {playlists.length > 0 && ' ►'}
         </MenuItem>
       </Menu>
       <Menu
         anchorEl={playlistAnchorEl}
         open={Boolean(playlistAnchorEl)}
         onClose={handlePlaylistClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
       >
         {playlists.map((p) => (
           <MenuItem key={p.id} onClick={(e) => handlePlaylistClick(p.id, e)}>

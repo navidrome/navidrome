@@ -38,10 +38,10 @@ describe('SongContextMenu', () => {
     )
     fireEvent.click(screen.getAllByRole('button')[1])
     await waitFor(() =>
-      screen.getByText('resources.song.actions.showInPlaylist'),
+      screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
-    fireEvent.mouseEnter(
-      screen.getByText('resources.song.actions.showInPlaylist'),
+    fireEvent.click(
+      screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
     await waitFor(() => screen.getByText('Pl 1'))
     fireEvent.click(screen.getByText('Pl 1'))
