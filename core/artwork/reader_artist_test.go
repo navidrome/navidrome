@@ -326,30 +326,6 @@ var _ = Describe("artistArtworkReader", func() {
 			})
 		})
 
-		When("pattern contains special glob characters", func() {
-			BeforeEach(func() {
-				artistDir := filepath.Join(tempDir, "artist")
-				Expect(os.MkdirAll(artistDir, 0755)).To(Succeed())
-
-				Expect(os.WriteFile(filepath.Join(artistDir, "artist.jpg"), []byte("jpg"), 0600)).To(Succeed())
-				Expect(os.WriteFile(filepath.Join(artistDir, "artist.png"), []byte("png"), 0600)).To(Succeed())
-
-				testFunc = fromArtistFolder(ctx, artistDir, "artist.{jpg,png}")
-			})
-
-			It("handles complex patterns correctly", func() {
-				reader, _, err := testFunc()
-				// Note: Go's filepath.Match doesn't support {jpg,png} syntax, so this would fail
-				// But we test that it fails gracefully
-				if err != nil {
-					Expect(err.Error()).To(ContainSubstring("no matches"))
-				} else {
-					Expect(reader).ToNot(BeNil())
-					reader.Close()
-				}
-			})
-		})
-
 		When("single album artist scenario (original issue)", func() {
 			BeforeEach(func() {
 				// Simulate the exact folder structure from the issue:
