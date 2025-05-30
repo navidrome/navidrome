@@ -60,6 +60,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         perPage: config.maxSidebarPlaylists,
       },
       sort: { field: 'name' },
+      filter: config.enableFavourites ? { starred: true } : {},
     },
   })
 
