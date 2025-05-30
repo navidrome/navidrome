@@ -51,7 +51,7 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
 
 const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
   const history = useHistory()
-  useResourceRefresh('playlist')
+  useResourceRefresh()
   const { data, loaded } = useQueryWithStore({
     type: 'getList',
     resource: 'playlist',

@@ -147,7 +147,9 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 				if err != nil {
 					return err
 				}
-				event = event.With("playlist", id)
+				event = event.With("playlist", "*")
+				// Ensure the refresh event is sent to all clients, including the originator
+				ctx = events.BroadcastToAll(ctx)
 				continue
 			}
 			err = tx.MediaFile(ctx).SetStar(star, id)

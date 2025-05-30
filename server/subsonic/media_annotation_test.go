@@ -45,8 +45,7 @@ var _ = Describe("MediaAnnotationController", func() {
 
 			event := eventBroker.Events[0].(*events.RefreshResource)
 			data := event.Data(event)
-			Expect(data).To(ContainSubstring("playlist"))
-			Expect(data).To(ContainSubstring("pls-1"))
+			Expect(data).To(ContainSubstring(`"playlist":["*"]`))
 		})
 
 		It("should send refresh resource event when unstarring a playlist", func() {
@@ -63,8 +62,7 @@ var _ = Describe("MediaAnnotationController", func() {
 
 			event := eventBroker.Events[0].(*events.RefreshResource)
 			data := event.Data(event)
-			Expect(data).To(ContainSubstring("playlist"))
-			Expect(data).To(ContainSubstring("pls-1"))
+			Expect(data).To(ContainSubstring(`"playlist":["*"]`))
 		})
 	})
 

@@ -53,6 +53,7 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r.db = db
 	r.tableName = "playlist"
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
+		"id":      idFilter(r.tableName),
 		"q":       playlistFilter,
 		"smart":   smartPlaylistFilter,
 		"starred": booleanFilter,
@@ -97,7 +98,7 @@ func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, err
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(And{Eq{"id": id}, r.userFilter()})
+	return r.exists(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Delete(id string) error {
@@ -111,7 +112,7 @@ func (r *playlistRepository) Delete(id string) error {
 			return rest.ErrPermissionDenied
 		}
 	}
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+	return r.delete(And{Eq{"playlist.id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist) error {
