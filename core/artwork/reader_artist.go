@@ -115,7 +115,7 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		current := artistFolder
-		for i := 0; i < maxArtistFolderTraversalDepth && current != string(filepath.Separator); i++ {
+		for i := 0; i < maxArtistFolderTraversalDepth; i++ {
 			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
 				return reader, path, nil
 			}
@@ -134,7 +134,7 @@ func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadClos
 	fsys := os.DirFS(folder)
 	matches, err := fs.Glob(fsys, pattern)
 	if err != nil {
-		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", folder)
+		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", folder, err)
 		return nil, "", err
 	}
 
