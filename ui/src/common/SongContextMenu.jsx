@@ -25,9 +25,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
-import { httpClient } from '../dataProvider'
 import { useRedirect } from 'react-admin'
-import { REST_URL } from '../consts'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -125,8 +123,8 @@ export const SongContextMenu = ({
         if (permissions === 'admin' && !record.missing) {
           try {
             let id = record.mediaFileId ?? record.id
-            const data = await httpClient(`/api/inspect?id=${id}`)
-            fullRecord = { ...record, rawTags: data.json.rawTags }
+            const data = await dataProvider.inspect(id)
+            fullRecord = { ...record, rawTags: data.data.rawTags }
           } catch (error) {
             notify(
               translate('ra.notification.http_error') + ': ' + error.message,
@@ -149,7 +147,7 @@ export const SongContextMenu = ({
     if (!playlistsLoaded) {
       const id = record.mediaFileId || record.id
       dataProvider
-        .getPlaylists('song', { id })
+        .getPlaylists(id)
         .then((res) => {
           setPlaylists(res.data)
           setPlaylistsLoaded(true)

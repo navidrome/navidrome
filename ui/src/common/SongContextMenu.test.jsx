@@ -21,6 +21,9 @@ vi.mock('react-admin', async (importOriginal) => {
       getPlaylists: vi.fn().mockResolvedValue({
         data: [{ id: 'pl1', name: 'Pl 1' }],
       }),
+      inspect: vi.fn().mockResolvedValue({
+        data: { rawTags: {} },
+      }),
     }),
   }
 })
