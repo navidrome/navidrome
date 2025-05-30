@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import {
   BulkActionsToolbar,
   ListToolbar,
@@ -84,7 +84,8 @@ const ReorderableList = ({ readOnly, children, ...rest }) => {
 
 const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const listContext = useListContext()
-  const { data, ids, selectedIds, onUnselectItems, refetch } = listContext
+  const { data, ids, selectedIds, onUnselectItems, refetch, setPage } =
+    listContext
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const classes = useStyles({ isDesktop })
   const dispatch = useDispatch()
@@ -92,6 +93,11 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const notify = useNotify()
   const version = useVersion()
   useResourceRefresh('song', 'playlist')
+
+  useEffect(() => {
+    setPage(1)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [playlistId, setPage])
 
   const onAddToPlaylist = useCallback(
     (pls) => {
