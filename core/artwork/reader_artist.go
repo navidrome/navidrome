@@ -131,6 +131,7 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 }
 
 func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadCloser, string, error) {
+	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", folder)
 	fsys := os.DirFS(folder)
 	matches, err := fs.Glob(fsys, pattern)
 	if err != nil {
@@ -158,7 +159,7 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	if len(albums) == 0 {
 		return "", time.Time{}, nil
 	}
-	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library
+	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library - for now! TODO: Support multiple libraries
 
 	folderPath := str.LongestCommonPrefix(paths)
 	if !strings.HasSuffix(folderPath, string(filepath.Separator)) {
