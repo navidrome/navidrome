@@ -279,6 +279,7 @@ var _ = Describe("artistArtworkReader", func() {
 				Expect(reader).To(BeNil())
 				Expect(path).To(BeEmpty())
 				Expect(err.Error()).To(ContainSubstring("no matches for 'artist.*'"))
+				Expect(err.Error()).To(ContainSubstring("parent directories"))
 			})
 		})
 

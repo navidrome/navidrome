@@ -20,6 +20,12 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
+const (
+	// maxArtistFolderTraversalDepth defines how many directory levels to search
+	// when looking for artist images (artist folder + parent directories)
+	maxArtistFolderTraversalDepth = 3
+)
+
 type artistReader struct {
 	cacheKey
 	a            *artwork
@@ -109,7 +115,7 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		current := artistFolder
-		for i := 0; i < 3 && current != string(filepath.Separator); i++ {
+		for i := 0; i < maxArtistFolderTraversalDepth && current != string(filepath.Separator); i++ {
 			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
 				return reader, path, nil
 			}
@@ -120,7 +126,7 @@ func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) 
 			}
 			current = parent
 		}
-		return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
+		return nil, "", fmt.Errorf(`no matches for '%s' in '%s' or its parent directories`, pattern, artistFolder)
 	}
 }
 
