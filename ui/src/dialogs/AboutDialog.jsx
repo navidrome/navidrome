@@ -223,7 +223,7 @@ const ConfigTabContent = ({ configData }) => {
   const copyAllConfig = () => {
     if (!configData) return
 
-    const tomlContent = configToToml(configData)
+    const tomlContent = configToToml(configData, translate)
 
     navigator.clipboard
       .writeText(tomlContent)
@@ -327,7 +327,7 @@ const ConfigTabContent = ({ configData }) => {
                     component="div"
                     style={{ fontWeight: 600 }}
                   >
-                    🚧 Development Flags (subject to change/removal)
+                    🚧 {translate('about.config.devFlagsHeader')}
                   </Typography>
                 </TableCell>
               </TableRow>

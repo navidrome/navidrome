@@ -76,9 +76,10 @@ export const buildTomlSections = (configs) => {
 /**
  * Converts configuration data to TOML format
  * @param {Object} configData - The configuration data object
+ * @param {Function} translate - Translation function for internationalization
  * @returns {string} - The TOML-formatted configuration
  */
-export const configToToml = (configData) => {
+export const configToToml = (configData, translate = (key) => key) => {
   let tomlContent = `# Navidrome Configuration\n# Generated on ${new Date().toISOString()}\n\n`
   
   // Separate regular and dev configs
@@ -123,8 +124,8 @@ export const configToToml = (configData) => {
 
   // Add dev configs if any
   if (devConfigs.length > 0) {
-    tomlContent += `# Development Flags (subject to change/removal)\n`
-    tomlContent += `# These are experimental settings and may be removed in future versions\n\n`
+    tomlContent += `# ${translate('about.config.devFlagsHeader')}\n`
+    tomlContent += `# ${translate('about.config.devFlagsComment')}\n\n`
     
     const { sections: devSections, rootKeys: devRootKeys } =
       buildTomlSections(devConfigs)

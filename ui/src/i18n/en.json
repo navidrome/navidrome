@@ -510,7 +510,9 @@
       "configurationFile": "Configuration File",
       "exportToml": "Export Configuration (TOML)",
       "exportSuccess": "Configuration exported to clipboard in TOML format",
-      "exportFailed": "Failed to copy configuration"
+      "exportFailed": "Failed to copy configuration",
+      "devFlagsHeader": "Development Flags (subject to change/removal)",
+      "devFlagsComment": "These are experimental settings and may be removed in future versions"
     }
   },
   "activity": {
