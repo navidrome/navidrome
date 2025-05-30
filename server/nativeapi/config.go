@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"sort"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -109,22 +108,6 @@ func flatten(ctx context.Context, entries *[]configEntry, prefix string, v refle
 	*entries = append(*entries, configEntry{Key: key, EnvVar: envVar, Value: val})
 }
 
-func sortConfigEntries(entries []configEntry) {
-	sort.Slice(entries, func(i, j int) bool {
-		keyI, keyJ := entries[i].Key, entries[j].Key
-		isDevI := strings.HasPrefix(keyI, "Dev")
-		isDevJ := strings.HasPrefix(keyJ, "Dev")
-
-		// If one is Dev and the other isn't, non-Dev comes first
-		if isDevI != isDevJ {
-			return !isDevI
-		}
-
-		// Both are Dev or both are non-Dev, sort alphabetically
-		return keyI < keyJ
-	})
-}
-
 func getConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := request.UserFrom(ctx)
@@ -141,7 +124,6 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 		fieldType := t.Field(i)
 		flatten(ctx, &entries, fieldType.Name, fieldVal)
 	}
-	sortConfigEntries(entries)
 
 	resp := configResponse{ID: "config", ConfigFile: conf.Server.ConfigFile, Config: entries}
 	w.Header().Set("Content-Type", "application/json")

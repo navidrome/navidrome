@@ -3,6 +3,35 @@
  */
 
 /**
+ * Separates and sorts configuration entries into regular and dev configs
+ * @param {Array} configEntries - Array of config objects with key and value
+ * @returns {Object} - Object with regularConfigs and devConfigs arrays, both sorted
+ */
+export const separateAndSortConfigs = (configEntries) => {
+  const regularConfigs = []
+  const devConfigs = []
+
+  configEntries?.forEach((config) => {
+    // Skip configFile as it's displayed separately
+    if (config.key === 'ConfigFile') {
+      return
+    }
+
+    if (config.key.startsWith('Dev')) {
+      devConfigs.push(config)
+    } else {
+      regularConfigs.push(config)
+    }
+  })
+
+  // Sort configurations alphabetically
+  regularConfigs.sort((a, b) => a.key.localeCompare(b.key))
+  devConfigs.sort((a, b) => a.key.localeCompare(b.key))
+
+  return { regularConfigs, devConfigs }
+}
+
+/**
  * Converts a value to proper TOML format
  * @param {*} value - The value to format
  * @returns {string} - The TOML-formatted value
@@ -11,14 +40,14 @@ export const formatTomlValue = (value) => {
   if (value === null || value === undefined) {
     return '""'
   }
-  
+
   const str = String(value)
-  
+
   // Boolean values
   if (str === 'true' || str === 'false') {
     return str
   }
-  
+
   // Numbers (integers and floats)
   if (/^-?\d+$/.test(str)) {
     return str // Integer
@@ -26,12 +55,12 @@ export const formatTomlValue = (value) => {
   if (/^-?\d*\.\d+$/.test(str)) {
     return str // Float
   }
-  
+
   // Duration values (like "300ms", "1s", "5m")
   if (/^\d+(\.\d+)?(ns|us|µs|ms|s|m|h)$/.test(str)) {
     return `"${str}"`
   }
-  
+
   // Arrays/JSON objects
   if (str.startsWith('[') || str.startsWith('{')) {
     try {
@@ -41,7 +70,7 @@ export const formatTomlValue = (value) => {
       return `"${str.replace(/"/g, '\\"')}"`
     }
   }
-  
+
   // String values (escape quotes)
   return `"${str.replace(/"/g, '\\"')}"`
 }
@@ -54,13 +83,13 @@ export const formatTomlValue = (value) => {
 export const buildTomlSections = (configs) => {
   const sections = {}
   const rootKeys = []
-  
+
   configs.forEach(({ key, value }) => {
     if (key.includes('.')) {
       const parts = key.split('.')
       const sectionName = parts[0]
       const keyName = parts.slice(1).join('.')
-      
+
       if (!sections[sectionName]) {
         sections[sectionName] = []
       }
@@ -69,7 +98,7 @@ export const buildTomlSections = (configs) => {
       rootKeys.push({ key, value })
     }
   })
-  
+
   return { sections, rootKeys }
 }
 
@@ -81,28 +110,15 @@ export const buildTomlSections = (configs) => {
  */
 export const configToToml = (configData, translate = (key) => key) => {
   let tomlContent = `# Navidrome Configuration\n# Generated on ${new Date().toISOString()}\n\n`
-  
-  // Separate regular and dev configs
-  const regularConfigs = []
-  const devConfigs = []
-  
-  configData.config?.forEach(({ key, value }) => {
-    // Skip configFile as it's displayed separately
-    if (key === 'ConfigFile') {
-      return
-    }
-    
-    if (key.startsWith('Dev')) {
-      devConfigs.push({ key, value })
-    } else {
-      regularConfigs.push({ key, value })
-    }
-  })
+
+  const { regularConfigs, devConfigs } = separateAndSortConfigs(
+    configData.config,
+  )
 
   // Process regular configs
   const { sections: regularSections, rootKeys: regularRootKeys } =
     buildTomlSections(regularConfigs)
-  
+
   // Add root-level keys first
   if (regularRootKeys.length > 0) {
     regularRootKeys.forEach(({ key, value }) => {
@@ -110,7 +126,7 @@ export const configToToml = (configData, translate = (key) => key) => {
     })
     tomlContent += '\n'
   }
-  
+
   // Add sections
   Object.keys(regularSections)
     .sort()
@@ -126,10 +142,10 @@ export const configToToml = (configData, translate = (key) => key) => {
   if (devConfigs.length > 0) {
     tomlContent += `# ${translate('about.config.devFlagsHeader')}\n`
     tomlContent += `# ${translate('about.config.devFlagsComment')}\n\n`
-    
+
     const { sections: devSections, rootKeys: devRootKeys } =
       buildTomlSections(devConfigs)
-    
+
     // Add dev root-level keys
     devRootKeys.forEach(({ key, value }) => {
       tomlContent += `${key} = ${formatTomlValue(value)}\n`
@@ -137,7 +153,7 @@ export const configToToml = (configData, translate = (key) => key) => {
     if (devRootKeys.length > 0) {
       tomlContent += '\n'
     }
-    
+
     // Add dev sections
     Object.keys(devSections)
       .sort()
@@ -151,4 +167,4 @@ export const configToToml = (configData, translate = (key) => key) => {
   }
 
   return tomlContent
-} 
+}

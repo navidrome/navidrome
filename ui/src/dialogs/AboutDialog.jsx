@@ -23,7 +23,7 @@ import { INSIGHTS_DOC_URL } from '../consts.js'
 import subsonic from '../subsonic/index.js'
 import { Typography } from '@material-ui/core'
 import TableHead from '@material-ui/core/TableHead'
-import { configToToml } from '../utils/toml'
+import { configToToml, separateAndSortConfigs } from '../utils/toml'
 
 const useStyles = makeStyles((theme) => ({
   configNameColumn: {
@@ -219,45 +219,36 @@ const ConfigTabContent = ({ configData }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const notify = useNotify()
+  const [copySuccess, setCopySuccess] = useState('')
 
-  const copyAllConfig = () => {
-    if (!configData) return
-
-    const tomlContent = configToToml(configData, translate)
-
-    navigator.clipboard
-      .writeText(tomlContent)
-      .then(() => {
-        notify(translate('about.config.exportSuccess'), 'info')
-      })
-      .catch(() => {
-        notify(translate('about.config.exportFailed'), 'error')
-      })
+  if (!configData || !configData.config) {
+    return null
   }
 
-  // Separate regular and dev configs for display
-  const regularConfigs = []
-  const devConfigs = []
+  // Use the shared separation and sorting logic
+  const { regularConfigs, devConfigs } = separateAndSortConfigs(configData.config)
 
-  configData?.config?.forEach((config) => {
-    // Skip configFile as it's displayed separately at the top
-    if (config.key === 'ConfigFile') {
-      return
+  const handleCopyToml = async () => {
+    try {
+      const tomlContent = configToToml(configData, translate)
+      await navigator.clipboard.writeText(tomlContent)
+      setCopySuccess(translate('about.config.exportSuccess'))
+      setTimeout(() => setCopySuccess(''), 3000)
+      notify(translate('about.config.exportSuccess'), 'info')
+    } catch (err) {
+      console.error('Failed to copy TOML:', err)
+      setCopySuccess(translate('about.config.exportFailed'))
+      setTimeout(() => setCopySuccess(''), 3000)
+      notify(translate('about.config.exportFailed'), 'error')
     }
-
-    if (config.key.startsWith('Dev')) {
-      devConfigs.push(config)
-    } else {
-      regularConfigs.push(config)
-    }
-  })
+  }
 
   return (
     <div className={classes.configContainer}>
       <Button
         variant="outlined"
         startIcon={<FileCopyIcon />}
-        onClick={copyAllConfig}
+        onClick={handleCopyToml}
         className={classes.copyButton}
         disabled={!configData}
         size="small"

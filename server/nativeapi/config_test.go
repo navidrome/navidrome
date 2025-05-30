@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -28,7 +27,7 @@ var _ = Describe("config endpoint", func() {
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 
-	It("returns configuration entries with Dev* fields sorted after main fields", func() {
+	It("returns configuration entries)", func() {
 		req := httptest.NewRequest("GET", "/config", nil)
 		w := httptest.NewRecorder()
 		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
@@ -38,35 +37,20 @@ var _ = Describe("config endpoint", func() {
 		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 		Expect(resp.ID).To(Equal("config"))
 
-		// Check that Dev* fields come after non-Dev fields
-		var devFieldIndex = -1
-		var lastNonDevIndex = -1
-		for i, e := range resp.Config {
-			if strings.HasPrefix(e.Key, "Dev") {
-				if devFieldIndex == -1 {
-					devFieldIndex = i
-				}
-			} else {
-				lastNonDevIndex = i
-			}
-		}
-
-		if devFieldIndex != -1 && lastNonDevIndex != -1 {
-			Expect(devFieldIndex).To(BeNumerically(">", lastNonDevIndex))
-		}
-
-		// Check that within each group (Dev and non-Dev), entries are sorted alphabetically
-		var nonDevKeys []string
-		var devKeys []string
+		// Verify that we have both Dev and non-Dev fields
+		var hasDevFields = false
+		var hasNonDevFields = false
 		for _, e := range resp.Config {
 			if strings.HasPrefix(e.Key, "Dev") {
-				devKeys = append(devKeys, e.Key)
+				hasDevFields = true
 			} else {
-				nonDevKeys = append(nonDevKeys, e.Key)
+				hasNonDevFields = true
 			}
 		}
-		Expect(sort.StringsAreSorted(nonDevKeys)).To(BeTrue())
-		Expect(sort.StringsAreSorted(devKeys)).To(BeTrue())
+
+		Expect(hasDevFields).To(BeTrue(), "Should have Dev* configuration fields")
+		Expect(hasNonDevFields).To(BeTrue(), "Should have non-Dev configuration fields")
+		Expect(len(resp.Config)).To(BeNumerically(">", 0), "Should return configuration entries")
 	})
 
 	It("includes flattened struct fields", func() {
