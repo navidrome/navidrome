@@ -97,6 +97,15 @@ export const SongContextMenu = ({
           }),
         ),
     },
+    showInPlaylist: {
+      enabled: true,
+      label:
+        translate('resources.song.actions.showInPlaylist') +
+        (playlists.length > 0 ? ' ►' : ''),
+      action: (record, e) => {
+        setPlaylistAnchorEl(e.currentTarget)
+      },
+    },
     share: {
       enabled: config.enableSharing,
       label: translate('ra.action.share'),
@@ -153,6 +162,7 @@ export const SongContextMenu = ({
           setPlaylistsLoaded(true)
         })
         .catch((error) => {
+          // eslint-disable-next-line no-console
           console.error('Failed to fetch playlists:', error)
           setPlaylists([])
           setPlaylistsLoaded(true)
@@ -168,15 +178,18 @@ export const SongContextMenu = ({
 
   const handleItemClick = (e) => {
     e.preventDefault()
-    setAnchorEl(null)
     const key = e.target.getAttribute('value')
-    options[key].action(record)
-    e.stopPropagation()
-  }
+    const action = options[key].action
 
-  const handleShowInPlaylist = (e) => {
+    if (key === 'showInPlaylist') {
+      // For showInPlaylist, we keep the main menu open and show submenu
+      action(record, e)
+    } else {
+      // For other actions, close the main menu
+      setAnchorEl(null)
+      action(record)
+    }
     e.stopPropagation()
-    setPlaylistAnchorEl(e.currentTarget)
   }
 
   const handlePlaylistClose = (e) => {
@@ -223,15 +236,16 @@ export const SongContextMenu = ({
         {Object.keys(options).map(
           (key) =>
             options[key].enabled && (
-              <MenuItem value={key} key={key} onClick={handleItemClick}>
+              <MenuItem
+                value={key}
+                key={key}
+                onClick={handleItemClick}
+                disabled={key === 'showInPlaylist' && !playlists.length}
+              >
                 {options[key].label}
               </MenuItem>
             ),
         )}
-        <MenuItem onClick={handleShowInPlaylist} disabled={!playlists.length}>
-          {translate('resources.song.actions.showInPlaylist')}
-          {playlists.length > 0 && ' ►'}
-        </MenuItem>
       </Menu>
       <Menu
         anchorEl={playlistAnchorEl}

@@ -61,22 +61,22 @@ describe('SongContextMenu', () => {
         </div>
       </TestContext>,
     )
-    
+
     // Open main menu
     fireEvent.click(screen.getAllByRole('button')[1])
     await waitFor(() =>
       screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
-    
+
     // Open playlist submenu
     fireEvent.click(
       screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
     await waitFor(() => screen.getByText('Pl 1'))
-    
+
     // Click outside the playlist submenu (should close it without triggering parent click)
     fireEvent.click(document.body)
-    
+
     expect(mockOnClick).not.toHaveBeenCalled()
   })
 })
