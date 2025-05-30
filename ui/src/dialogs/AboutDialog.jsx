@@ -272,11 +272,24 @@ const TabContent = ({
     <TableContainer component={Paper}>
       {showConfigTab && (
         <Tabs value={tab} onChange={(_, value) => setTab(value)}>
-          <Tab label={translate('about.tabs.about')} id="about-tab" />
-          <Tab label={translate('about.tabs.config')} id="config-tab" />
+          <Tab
+            label={translate('about.tabs.about')}
+            id="about-tab"
+            aria-controls="about-panel"
+          />
+          <Tab
+            label={translate('about.tabs.config')}
+            id="config-tab"
+            aria-controls="config-panel"
+          />
         </Tabs>
       )}
-      <div hidden={showConfigTab && tab === 1}>
+      <div
+        id="about-panel"
+        role="tabpanel"
+        aria-labelledby="about-tab"
+        hidden={showConfigTab && tab === 1}
+      >
         <AboutTabContent
           uiVersion={uiVersion}
           serverVersion={serverVersion}
@@ -286,7 +299,12 @@ const TabContent = ({
         />
       </div>
       {showConfigTab && (
-        <div hidden={tab === 0}>
+        <div
+          id="config-panel"
+          role="tabpanel"
+          aria-labelledby="config-tab"
+          hidden={tab === 0}
+        >
           <ConfigTabContent configData={configData} />
         </div>
       )}

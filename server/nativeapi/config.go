@@ -1,6 +1,7 @@
 package nativeapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 )
 
@@ -75,14 +77,14 @@ func redactValue(key string, value string) string {
 	return value
 }
 
-func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
+func flatten(ctx context.Context, entries *[]configEntry, prefix string, v reflect.Value) {
 	if v.Kind() == reflect.Struct && v.Type().PkgPath() != "time" {
 		t := v.Type()
 		for i := 0; i < v.NumField(); i++ {
 			if !t.Field(i).IsExported() {
 				continue
 			}
-			flatten(entries, prefix+"."+t.Field(i).Name, v.Field(i))
+			flatten(ctx, entries, prefix+"."+t.Field(i).Name, v.Field(i))
 		}
 		return
 	}
@@ -92,8 +94,13 @@ func flatten(entries *[]configEntry, prefix string, v reflect.Value) {
 	var val interface{}
 	switch v.Kind() {
 	case reflect.Map, reflect.Slice, reflect.Array:
-		b, _ := json.Marshal(v.Interface())
-		val = string(b)
+		b, err := json.Marshal(v.Interface())
+		if err != nil {
+			log.Error(ctx, "Error marshalling config value", "key", key, err)
+			val = "error marshalling value"
+		} else {
+			val = string(b)
+		}
 	default:
 		originalValue := fmt.Sprint(v.Interface())
 		val = redactValue(key, originalValue)
@@ -116,11 +123,13 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < v.NumField(); i++ {
 		fieldVal := v.Field(i)
 		fieldType := t.Field(i)
-		flatten(&entries, fieldType.Name, fieldVal)
+		flatten(ctx, &entries, fieldType.Name, fieldVal)
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Key < entries[j].Key })
 
 	resp := configResponse{ID: "config", ConfigFile: conf.Server.ConfigFile, Config: entries}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Error(ctx, "Error encoding config response", err)
+	}
 }
