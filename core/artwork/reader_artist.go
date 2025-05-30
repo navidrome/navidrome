@@ -108,29 +108,44 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		fsys := os.DirFS(artistFolder)
-		matches, err := fs.Glob(fsys, pattern)
-		if err != nil {
-			log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", artistFolder)
-			return nil, "", err
-		}
-		if len(matches) == 0 {
-			return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
-		}
-		for _, m := range matches {
-			filePath := filepath.Join(artistFolder, m)
-			if !model.IsImageFile(m) {
-				continue
+		current := artistFolder
+		for i := 0; i < 3 && current != string(filepath.Separator); i++ {
+			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
+				return reader, path, nil
 			}
-			f, err := os.Open(filePath)
-			if err != nil {
-				log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
-				return nil, "", err
+
+			parent := filepath.Dir(current)
+			if parent == current {
+				break
 			}
-			return f, filePath, nil
+			current = parent
 		}
-		return nil, "", nil
+		return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
 	}
+}
+
+func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadCloser, string, error) {
+	fsys := os.DirFS(folder)
+	matches, err := fs.Glob(fsys, pattern)
+	if err != nil {
+		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", folder)
+		return nil, "", err
+	}
+
+	for _, m := range matches {
+		if !model.IsImageFile(m) {
+			continue
+		}
+		filePath := filepath.Join(folder, m)
+		f, err := os.Open(filePath)
+		if err != nil {
+			log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
+			continue
+		}
+		return f, filePath, nil
+	}
+
+	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, folder)
 }
 
 func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
