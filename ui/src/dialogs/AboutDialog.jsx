@@ -73,12 +73,16 @@ const ShowVersion = ({ uiVersion, serverVersion }) => {
             UI {translate('menu.version')}:
           </TableCell>
           <TableCell align="left">
-            <LinkToVersion version={uiVersion} />
-            <Link onClick={() => window.location.reload()}>
-              <Typography variant={'caption'}>
-                {' ' + translate('ra.notification.new_version')}
-              </Typography>
-            </Link>
+            <div>
+              <LinkToVersion version={uiVersion} />
+            </div>
+            <div>
+              <Link onClick={() => window.location.reload()}>
+                <Typography variant={'caption'}>
+                  {translate('ra.notification.new_version')}
+                </Typography>
+              </Link>
+            </div>
           </TableCell>
         </TableRow>
       )}
