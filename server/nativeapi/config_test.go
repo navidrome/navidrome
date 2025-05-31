@@ -27,7 +27,7 @@ var _ = Describe("config endpoint", func() {
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 
-	It("returns configuration entries)", func() {
+	It("returns configuration entries", func() {
 		req := httptest.NewRequest("GET", "/config", nil)
 		w := httptest.NewRecorder()
 		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})

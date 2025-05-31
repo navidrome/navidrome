@@ -219,7 +219,6 @@ const ConfigTabContent = ({ configData }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const notify = useNotify()
-  const [copySuccess, setCopySuccess] = useState('')
 
   if (!configData || !configData.config) {
     return null
@@ -234,14 +233,10 @@ const ConfigTabContent = ({ configData }) => {
     try {
       const tomlContent = configToToml(configData, translate)
       await navigator.clipboard.writeText(tomlContent)
-      setCopySuccess(translate('about.config.exportSuccess'))
-      setTimeout(() => setCopySuccess(''), 3000)
       notify(translate('about.config.exportSuccess'), 'info')
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Failed to copy TOML:', err)
-      setCopySuccess(translate('about.config.exportFailed'))
-      setTimeout(() => setCopySuccess(''), 3000)
       notify(translate('about.config.exportFailed'), 'error')
     }
   }
@@ -407,7 +402,6 @@ const TabContent = ({
 }
 
 const AboutDialog = ({ open, onClose }) => {
-  const translate = useTranslate()
   const { permissions } = usePermissions()
   const { data: insightsData, loading } = useGetOne(
     'insights',
@@ -443,7 +437,7 @@ const AboutDialog = ({ open, onClose }) => {
       aria-labelledby="about-dialog-title"
       open={open}
       fullWidth={true}
-      maxWidth={expanded ? 'md' : 'sm'}
+      maxWidth={expanded ? 'lg' : 'sm'}
       style={{ transition: 'max-width 300ms ease' }}
     >
       <DialogTitle id="about-dialog-title" onClose={onClose}>
