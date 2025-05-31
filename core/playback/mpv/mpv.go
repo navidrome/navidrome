@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -69,9 +70,16 @@ func (j *Executor) wait() {
 	_ = j.out.Close()
 }
 
+// Splits a command into an array of arguments
+// Handles double-quoted arguments
+func splitCommand(cmd string) []string {
+	re := regexp.MustCompile("(\"[^\"]+\"|[^\\s\"]+)")
+	return re.Split(cmd, -1)
+}
+
 // Path will always be an absolute path
 func createMPVCommand(deviceName string, filename string, socketName string) []string {
-	split := strings.Split(fixCmd(conf.Server.MPVCmdTemplate), " ")
+	split := splitCommand(conf.Server.MPVCmdTemplate)
 	for i, s := range split {
 		s = strings.ReplaceAll(s, "%d", deviceName)
 		s = strings.ReplaceAll(s, "%f", filename)
@@ -82,7 +90,7 @@ func createMPVCommand(deviceName string, filename string, socketName string) []s
 }
 
 func fixCmd(cmd string) string {
-	split := strings.Split(cmd, " ")
+	split := splitCommand(cmd)
 	var result []string
 	cmdPath, _ := mpvCommand()
 	for _, s := range split {
