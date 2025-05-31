@@ -199,15 +199,30 @@ describe('configToToml', () => {
         { key: 'RootKey', value: 'rootValue' },
         { key: 'Section.NestedKey', value: 'nestedValue' },
         { key: 'Section.AnotherKey', value: 'anotherValue' },
+        { key: 'DevA', value: 'DevValue' },
       ],
     }
 
     const result = configToToml(configData, mockTranslate)
+    // Fields in a section are sorted alphabetically
+    const fields = [
+      'RootKey = "rootValue"',
+      'DevA = "DevValue"',
+      '[Section]',
+      'AnotherKey = "anotherValue"',
+      'NestedKey = "nestedValue"',
+    ]
 
-    expect(result).toContain('RootKey = "rootValue"')
-    expect(result).toContain('[Section]')
-    expect(result).toContain('NestedKey = "nestedValue"')
-    expect(result).toContain('AnotherKey = "anotherValue"')
+    for (let idx = 0; idx < fields.length - 1; idx++) {
+      expect(result).toContain(fields[idx])
+
+      const idxA = result.indexOf(fields[idx])
+      const idxB = result.indexOf(fields[idx + 1])
+
+      expect(idxA).toBeLessThan(idxB)
+    }
+
+    expect(result).toContain(fields[fields.length - 1])
   })
 
   it('includes dev flags header when dev configs exist', () => {
