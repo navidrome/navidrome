@@ -138,7 +138,7 @@ export const SongInfo = (props) => {
         </Tabs>
       )}
       <div
-        hidden={tab == 1}
+        hidden={tab === 1}
         id="mapped-tags-body"
         aria-labelledby={record.rawTags ? 'mapped-tags-tab' : undefined}
       >

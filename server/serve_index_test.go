@@ -304,6 +304,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("devShowArtistPage", true))
 	})
 
+	It("sets the devUIShowConfig", func() {
+		conf.Server.DevUIShowConfig = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("devUIShowConfig", true))
+	})
+
 	It("sets the listenBrainzEnabled", func() {
 		conf.Server.ListenBrainz.Enabled = true
 		r := httptest.NewRequest("GET", "/index.html", nil)
