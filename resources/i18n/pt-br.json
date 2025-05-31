@@ -197,11 +197,17 @@
         "export": "Exportar",
         "makePublic": "Pública",
         "makePrivate": "Pessoal",
-        "saveQueue": "Salvar fila em nova Playlist"
+        "saveQueue": "Salvar fila em nova Playlist",
+        "searchOrCreate": "Buscar playlists ou criar nova...",
+        "pressEnterToCreate": "Pressione Enter para criar nova playlist",
+        "removeFromSelection": "Remover da seleção",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Adicionar músicas duplicadas",
-        "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?"
+        "song_exist": "Algumas destas músicas já existem na playlist. Você quer adicionar as duplicadas ou ignorá-las?",
+        "noPlaylistsFound": "Nenhuma playlist encontrada",
+        "noPlaylists": "Nenhuma playlist disponível"
       }
     },
     "radio": {
