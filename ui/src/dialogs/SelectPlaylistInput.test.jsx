@@ -21,7 +21,11 @@ const mockPlaylists = [
 const mockIndexedData = {
   'playlist-1': { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' },
   'playlist-2': { id: 'playlist-2', name: 'Jazz Collection', ownerId: 'admin' },
-  'playlist-3': { id: 'playlist-3', name: 'Electronic Beats', ownerId: 'admin' },
+  'playlist-3': {
+    id: 'playlist-3',
+    name: 'Electronic Beats',
+    ownerId: 'admin',
+  },
   'playlist-4': { id: 'playlist-4', name: 'Chill Vibes', ownerId: 'user2' },
 }
 
@@ -29,12 +33,12 @@ const createTestComponent = (
   mockDataProvider = null,
   onChangeMock = vi.fn(),
   playlists = mockPlaylists,
-  indexedData = mockIndexedData
+  indexedData = mockIndexedData,
 ) => {
   const dataProvider = mockDataProvider || {
-    getList: vi.fn().mockResolvedValue({ 
-      data: playlists, 
-      total: playlists.length 
+    getList: vi.fn().mockResolvedValue({
+      data: playlists,
+      total: playlists.length,
     }),
   }
 
@@ -138,7 +142,7 @@ describe('SelectPlaylistInput', () => {
 
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
-          { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' }
+          { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' },
         ])
       })
 
@@ -149,7 +153,7 @@ describe('SelectPlaylistInput', () => {
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
           { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' },
-          { id: 'playlist-2', name: 'Jazz Collection', ownerId: 'admin' }
+          { id: 'playlist-2', name: 'Jazz Collection', ownerId: 'admin' },
         ])
       })
 
@@ -158,7 +162,7 @@ describe('SelectPlaylistInput', () => {
 
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
-          { id: 'playlist-2', name:'Jazz Collection', ownerId: 'admin' }
+          { id: 'playlist-2', name: 'Jazz Collection', ownerId: 'admin' },
         ])
       })
     })
@@ -176,8 +180,6 @@ describe('SelectPlaylistInput', () => {
       fireEvent.click(rockPlaylist)
 
       await waitFor(() => {
-        // Look for the translation key instead of translated text
-        expect(screen.getByText('resources.playlist.fields.selectedPlaylists')).toBeInTheDocument()
         // Should show the selected playlist as a chip
         const chips = screen.getAllByText('Rock Classics')
         expect(chips.length).toBeGreaterThan(1) // One in list, one in chip
@@ -197,16 +199,22 @@ describe('SelectPlaylistInput', () => {
       fireEvent.click(rockPlaylist)
 
       await waitFor(() => {
-        expect(screen.getByText('resources.playlist.fields.selectedPlaylists')).toBeInTheDocument()
+        // Should show selected playlist as chip
+        const chips = screen.getAllByText('Rock Classics')
+        expect(chips.length).toBeGreaterThan(1)
       })
 
-      // Find and click the remove button (×)
-      const removeButton = screen.getByText('×')
+      // Find and click the remove button (translation key)
+      const removeButton = screen.getByText(
+        'resources.playlist.actions.removeSymbol',
+      )
       fireEvent.click(removeButton)
 
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([])
-        expect(screen.queryByText('resources.playlist.fields.selectedPlaylists')).not.toBeInTheDocument()
+        // Should only have one instance (in the list) after removal
+        const remainingChips = screen.getAllByText('Rock Classics')
+        expect(remainingChips.length).toBe(1)
       })
     })
   })
@@ -225,9 +233,7 @@ describe('SelectPlaylistInput', () => {
       fireEvent.keyDown(searchInput, { key: 'Enter' })
 
       await waitFor(() => {
-        expect(onChangeMock).toHaveBeenCalledWith([
-          { name: 'My New Playlist' }
-        ])
+        expect(onChangeMock).toHaveBeenCalledWith([{ name: 'My New Playlist' }])
       })
 
       // Input should be cleared after creating
@@ -246,12 +252,14 @@ describe('SelectPlaylistInput', () => {
       fireEvent.change(searchInput, { target: { value: 'Another Playlist' } })
 
       // Find the add button by the translation key title
-      const addButton = screen.getByTitle('resources.playlist.actions.addNewPlaylist')
+      const addButton = screen.getByTitle(
+        'resources.playlist.actions.addNewPlaylist',
+      )
       fireEvent.click(addButton)
 
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
-          { name: 'Another Playlist' }
+          { name: 'Another Playlist' },
         ])
       })
     })
@@ -268,7 +276,9 @@ describe('SelectPlaylistInput', () => {
       fireEvent.change(searchInput, { target: { value: 'Rock Classics' } })
 
       await waitFor(() => {
-        expect(screen.queryByText('resources.playlist.actions.addNewPlaylist')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('resources.playlist.actions.addNewPlaylist'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -297,15 +307,19 @@ describe('SelectPlaylistInput', () => {
       })
 
       const searchInput = screen.getByRole('textbox')
-      
+
       // When typing a new name, should show create options
       fireEvent.change(searchInput, { target: { value: 'My New Playlist' } })
 
       await waitFor(() => {
         // Should show the add button in the search field
-        expect(screen.getByTitle('resources.playlist.actions.addNewPlaylist')).toBeInTheDocument()
+        expect(
+          screen.getByTitle('resources.playlist.actions.addNewPlaylist'),
+        ).toBeInTheDocument()
         // Should also show hint in empty message when no matches
-        expect(screen.getByText('resources.playlist.actions.pressEnterToCreate')).toBeInTheDocument()
+        expect(
+          screen.getByText('resources.playlist.actions.pressEnterToCreate'),
+        ).toBeInTheDocument()
       })
     })
   })
@@ -325,7 +339,7 @@ describe('SelectPlaylistInput', () => {
 
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
-          { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' }
+          { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' },
         ])
       })
 
@@ -337,7 +351,7 @@ describe('SelectPlaylistInput', () => {
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
           { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' },
-          { name: 'New Mix' }
+          { name: 'New Mix' },
         ])
       })
     })
@@ -360,9 +374,9 @@ describe('SelectPlaylistInput', () => {
 
       await waitFor(() => {
         // Should still show selected playlists section
-        expect(screen.getByText('resources.playlist.fields.selectedPlaylists')).toBeInTheDocument()
+        // Rock Classics should still be visible as a selected chip even though filtered out
+        expect(screen.getByText('Rock Classics')).toBeInTheDocument() // In selected chips
         expect(screen.getByText('Jazz Collection')).toBeInTheDocument()
-        expect(screen.queryByText('Rock Classics')).toBeInTheDocument() // In selected chips
       })
     })
   })
@@ -373,7 +387,9 @@ describe('SelectPlaylistInput', () => {
       createTestComponent(null, onChangeMock, [], {})
 
       await waitFor(() => {
-        expect(screen.getByText('resources.playlist.messages.noPlaylists')).toBeInTheDocument()
+        expect(
+          screen.getByText('resources.playlist.message.noPlaylists'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -386,11 +402,17 @@ describe('SelectPlaylistInput', () => {
       })
 
       const searchInput = screen.getByRole('textbox')
-      fireEvent.change(searchInput, { target: { value: 'NonExistentPlaylist' } })
+      fireEvent.change(searchInput, {
+        target: { value: 'NonExistentPlaylist' },
+      })
 
       await waitFor(() => {
-        expect(screen.getByText('resources.playlist.messages.noPlaylistsFound')).toBeInTheDocument()
-        expect(screen.getByText('resources.playlist.actions.pressEnterToCreate')).toBeInTheDocument()
+        expect(
+          screen.getByText('resources.playlist.message.noPlaylistsFound'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText('resources.playlist.actions.pressEnterToCreate'),
+        ).toBeInTheDocument()
       })
     })
   })
@@ -442,7 +464,7 @@ describe('SelectPlaylistInput', () => {
       // Search and select existing playlist
       const searchInput = screen.getByRole('textbox')
       fireEvent.change(searchInput, { target: { value: 'rock' } })
-      
+
       const rockPlaylist = screen.getByText('Rock Classics')
       fireEvent.click(rockPlaylist)
 
@@ -453,18 +475,18 @@ describe('SelectPlaylistInput', () => {
       await waitFor(() => {
         expect(onChangeMock).toHaveBeenCalledWith([
           { id: 'playlist-1', name: 'Rock Classics', ownerId: 'admin' },
-          { name: 'My Custom Mix' }
+          { name: 'My Custom Mix' },
         ])
       })
 
       // Remove the first selected playlist via chip
-      const removeButtons = screen.getAllByText('×')
+      const removeButtons = screen.getAllByText(
+        'resources.playlist.actions.removeSymbol',
+      )
       fireEvent.click(removeButtons[0])
 
       await waitFor(() => {
-        expect(onChangeMock).toHaveBeenCalledWith([
-          { name: 'My Custom Mix' }
-        ])
+        expect(onChangeMock).toHaveBeenCalledWith([{ name: 'My Custom Mix' }])
       })
     })
   })

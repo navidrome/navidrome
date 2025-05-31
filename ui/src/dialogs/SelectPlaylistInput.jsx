@@ -80,9 +80,7 @@ const PlaylistSearchField = ({
       value={searchText}
       onChange={(e) => onSearchChange(e.target.value)}
       onKeyDown={onKeyDown}
-      placeholder={translate('resources.playlist.actions.searchOrCreate', {
-        _: 'Search playlists or type to create new...',
-      })}
+      placeholder={translate('resources.playlist.actions.searchOrCreate')}
       InputProps={{
         endAdornment: canCreateNew && (
           <InputAdornment position="end">
@@ -91,7 +89,6 @@ const PlaylistSearchField = ({
               size="small"
               title={translate('resources.playlist.actions.addNewPlaylist', {
                 name: searchText,
-                _: `Create "${searchText}"`,
               })}
             >
               <AddIcon />
@@ -111,18 +108,12 @@ const EmptyPlaylistMessage = ({ searchText, canCreateNew }) => {
     <div className={classes.emptyMessage}>
       <Typography variant="body2">
         {searchText
-          ? translate('resources.playlist.messages.noPlaylistsFound', {
-              _: 'No playlists found',
-            })
-          : translate('resources.playlist.messages.noPlaylists', {
-              _: 'No playlists available',
-            })}
+          ? translate('resources.playlist.message.noPlaylistsFound')
+          : translate('resources.playlist.message.noPlaylists')}
       </Typography>
       {canCreateNew && (
         <Typography variant="body2" color="primary">
-          {translate('resources.playlist.actions.pressEnterToCreate', {
-            _: 'Press Enter to create new playlist',
-          })}
+          {translate('resources.playlist.actions.pressEnterToCreate')}
         </Typography>
       )}
     </div>
@@ -165,7 +156,6 @@ const CreatePlaylistItem = ({ searchText, onCreateNew }) => {
       <ListItemText
         primary={translate('resources.playlist.actions.addNewPlaylist', {
           name: searchText,
-          _: `Create "${searchText}"`,
         })}
       />
     </ListItem>
@@ -220,13 +210,9 @@ const SelectedPlaylistChip = ({ playlist, onRemove }) => {
         className={classes.removeButton}
         size="small"
         onClick={() => onRemove(playlist)}
-        title={translate('resources.playlist.actions.removeFromSelection', {
-          _: 'Remove from selection',
-        })}
+        title={translate('resources.playlist.actions.removeFromSelection')}
       >
-        {translate('resources.playlist.actions.removeSymbol', {
-          _: '×',
-        })}
+        {translate('resources.playlist.actions.removeSymbol')}
       </IconButton>
     </span>
   )
@@ -242,11 +228,6 @@ const SelectedPlaylistsDisplay = ({ selectedPlaylists, onRemoveSelected }) => {
 
   return (
     <Box className={classes.selectedPlaylistsContainer}>
-      <Typography variant="body2" gutterBottom>
-        {translate('resources.playlist.fields.selectedPlaylists', {
-          _: 'Selected playlists:',
-        })}
-      </Typography>
       <Box>
         {selectedPlaylists.map((playlist, index) => (
           <SelectedPlaylistChip
