@@ -3,15 +3,68 @@
  */
 
 /**
+ * Flattens nested configuration object and generates environment variable names
+ * @param {Object} config - The nested configuration object from the backend
+ * @param {string} prefix - The current prefix for nested keys
+ * @returns {Array} - Array of config objects with key, envVar, and value properties
+ */
+export const flattenConfig = (config, prefix = '') => {
+  const result = []
+  
+  if (!config || typeof config !== 'object') {
+    return result
+  }
+  
+  Object.keys(config).forEach(key => {
+    const value = config[key]
+    const currentKey = prefix ? `${prefix}.${key}` : key
+    
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      // Recursively flatten nested objects
+      result.push(...flattenConfig(value, currentKey))
+    } else {
+      // Generate environment variable name: ND_ + uppercase with dots replaced by underscores
+      const envVar = 'ND_' + currentKey.toUpperCase().replace(/\./g, '_')
+      
+      // Convert value to string for display
+      let displayValue = value
+      if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+        displayValue = JSON.stringify(value)
+      } else {
+        displayValue = String(value)
+      }
+      
+      result.push({
+        key: currentKey,
+        envVar: envVar,
+        value: displayValue
+      })
+    }
+  })
+  
+  return result
+}
+
+/**
  * Separates and sorts configuration entries into regular and dev configs
- * @param {Array} configEntries - Array of config objects with key and value
+ * @param {Array|Object} configEntries - Array of config objects with key and value, or nested config object
  * @returns {Object} - Object with regularConfigs and devConfigs arrays, both sorted
  */
 export const separateAndSortConfigs = (configEntries) => {
   const regularConfigs = []
   const devConfigs = []
 
-  configEntries?.forEach((config) => {
+  // Handle both the old array format and new nested object format
+  let flattenedConfigs
+  if (Array.isArray(configEntries)) {
+    // Old format - already flattened
+    flattenedConfigs = configEntries
+  } else {
+    // New format - need to flatten
+    flattenedConfigs = flattenConfig(configEntries)
+  }
+
+  flattenedConfigs?.forEach((config) => {
     // Skip configFile as it's displayed separately
     if (config.key === 'ConfigFile') {
       return
@@ -111,9 +164,17 @@ export const buildTomlSections = (configs) => {
 export const configToToml = (configData, translate = (key) => key) => {
   let tomlContent = `# Navidrome Configuration\n# Generated on ${new Date().toISOString()}\n\n`
 
-  const { regularConfigs, devConfigs } = separateAndSortConfigs(
-    configData.config,
-  )
+  // Handle both old array format (configData.config is array) and new nested format (configData.config is object)
+  let configs
+  if (Array.isArray(configData.config)) {
+    // Old format - already flattened
+    configs = configData.config
+  } else {
+    // New format - need to flatten
+    configs = flattenConfig(configData.config)
+  }
+
+  const { regularConfigs, devConfigs } = separateAndSortConfigs(configs)
 
   // Process regular configs
   const { sections: regularSections, rootKeys: regularRootKeys } =
@@ -167,4 +228,4 @@ export const configToToml = (configData, translate = (key) => key) => {
     })
 
   return tomlContent
-}
+} 

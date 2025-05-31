@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -36,16 +35,10 @@ var sensitiveFieldsFullMask = []string{
 	"Prometheus.Password",
 }
 
-type configEntry struct {
-	Key    string      `json:"key"`
-	EnvVar string      `json:"envVar"`
-	Value  interface{} `json:"value"`
-}
-
 type configResponse struct {
-	ID         string        `json:"id"`
-	ConfigFile string        `json:"configFile"`
-	Config     []configEntry `json:"config"`
+	ID         string                 `json:"id"`
+	ConfigFile string                 `json:"configFile"`
+	Config     map[string]interface{} `json:"config"`
 }
 
 func redactValue(key string, value string) string {
@@ -76,36 +69,32 @@ func redactValue(key string, value string) string {
 	return value
 }
 
-func flatten(ctx context.Context, entries *[]configEntry, prefix string, v reflect.Value) {
-	if v.Kind() == reflect.Struct && v.Type().PkgPath() != "time" {
-		t := v.Type()
-		for i := 0; i < v.NumField(); i++ {
-			if !t.Field(i).IsExported() {
-				continue
+// applySensitiveFieldMasking recursively applies masking to sensitive fields in the configuration map
+func applySensitiveFieldMasking(ctx context.Context, config map[string]interface{}, prefix string) {
+	for key, value := range config {
+		fullKey := key
+		if prefix != "" {
+			fullKey = prefix + "." + key
+		}
+
+		switch v := value.(type) {
+		case map[string]interface{}:
+			// Recursively process nested maps
+			applySensitiveFieldMasking(ctx, v, fullKey)
+		case string:
+			// Apply masking to string values
+			config[key] = redactValue(fullKey, v)
+		default:
+			// For other types (numbers, booleans, etc.), convert to string and check for masking
+			if str := fmt.Sprint(v); str != "" {
+				masked := redactValue(fullKey, str)
+				if masked != str {
+					// Only replace if masking was applied
+					config[key] = masked
+				}
 			}
-			flatten(ctx, entries, prefix+"."+t.Field(i).Name, v.Field(i))
 		}
-		return
 	}
-
-	key := strings.TrimPrefix(prefix, ".")
-	envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
-	var val interface{}
-	switch v.Kind() {
-	case reflect.Map, reflect.Slice, reflect.Array:
-		b, err := json.Marshal(v.Interface())
-		if err != nil {
-			log.Error(ctx, "Error marshalling config value", "key", key, err)
-			val = "error marshalling value"
-		} else {
-			val = string(b)
-		}
-	default:
-		originalValue := fmt.Sprint(v.Interface())
-		val = redactValue(key, originalValue)
-	}
-
-	*entries = append(*entries, configEntry{Key: key, EnvVar: envVar, Value: val})
 }
 
 func getConfig(w http.ResponseWriter, r *http.Request) {
@@ -116,16 +105,32 @@ func getConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entries := make([]configEntry, 0)
-	v := reflect.ValueOf(*conf.Server)
-	t := reflect.TypeOf(*conf.Server)
-	for i := 0; i < v.NumField(); i++ {
-		fieldVal := v.Field(i)
-		fieldType := t.Field(i)
-		flatten(ctx, &entries, fieldType.Name, fieldVal)
+	// Marshal the actual configuration struct to preserve original field names
+	configBytes, err := json.Marshal(*conf.Server)
+	if err != nil {
+		log.Error(ctx, "Error marshaling config", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 
-	resp := configResponse{ID: "config", ConfigFile: conf.Server.ConfigFile, Config: entries}
+	// Unmarshal back to map to get the structure with proper field names
+	var configMap map[string]interface{}
+	err = json.Unmarshal(configBytes, &configMap)
+	if err != nil {
+		log.Error(ctx, "Error unmarshaling config to map", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Apply sensitive field masking
+	applySensitiveFieldMasking(ctx, configMap, "")
+
+	resp := configResponse{
+		ID:         "config",
+		ConfigFile: conf.Server.ConfigFile,
+		Config:     configMap,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Error(ctx, "Error encoding config response", err)
