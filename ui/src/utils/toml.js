@@ -127,17 +127,6 @@ export const configToToml = (configData, translate = (key) => key) => {
     tomlContent += '\n'
   }
 
-  // Add sections
-  Object.keys(regularSections)
-    .sort()
-    .forEach((sectionName) => {
-      tomlContent += `[${sectionName}]\n`
-      regularSections[sectionName].forEach(({ key, value }) => {
-        tomlContent += `${key} = ${formatTomlValue(value)}\n`
-      })
-      tomlContent += '\n'
-    })
-
   // Add dev configs if any
   if (devConfigs.length > 0) {
     tomlContent += `# ${translate('about.config.devFlagsHeader')}\n`
@@ -165,6 +154,17 @@ export const configToToml = (configData, translate = (key) => key) => {
         tomlContent += '\n'
       })
   }
+
+  // Add sections
+  Object.keys(regularSections)
+    .sort()
+    .forEach((sectionName) => {
+      tomlContent += `[${sectionName}]\n`
+      regularSections[sectionName].forEach(({ key, value }) => {
+        tomlContent += `${key} = ${formatTomlValue(value)}\n`
+      })
+      tomlContent += '\n'
+    })
 
   return tomlContent
 }
