@@ -1,0 +1,253 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Details component > Desktop view > renders correctly with all date fields 1`] = `
+<div>
+  <span>
+    resources.album.fields.originalDate  Mar 15, 2018
+  </span>
+   · 
+  <span>
+    resources.album.fields.releaseDate  Jun 15, 2020
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+   · 
+  <span>
+    <span>
+      01:00:00
+    </span>
+  </span>
+   · 
+  <span>
+    <span
+      class="makeStyles-root-6"
+    >
+      100 KB
+    </span>
+  </span>
+</div>
+`;
+
+exports[`Details component > Desktop view > renders correctly with date 1`] = `
+<div>
+  <span>
+    May 1, 2020
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+   · 
+  <span>
+    <span>
+      01:00:00
+    </span>
+  </span>
+   · 
+  <span>
+    <span
+      class="makeStyles-root-2"
+    >
+      100 KB
+    </span>
+  </span>
+</div>
+`;
+
+exports[`Details component > Desktop view > renders correctly with date and originalDate 1`] = `
+<div>
+  <span>
+    resources.album.fields.originalDate  Mar 15, 2018
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+   · 
+  <span>
+    <span>
+      01:00:00
+    </span>
+  </span>
+   · 
+  <span>
+    <span
+      class="makeStyles-root-4"
+    >
+      100 KB
+    </span>
+  </span>
+</div>
+`;
+
+exports[`Details component > Desktop view > renders correctly with just year range 1`] = `
+<div>
+  <span>
+    12 resources.song.name
+  </span>
+   · 
+  <span>
+    <span>
+      01:00:00
+    </span>
+  </span>
+   · 
+  <span>
+    <span
+      class="makeStyles-root-1"
+    >
+      100 KB
+    </span>
+  </span>
+</div>
+`;
+
+exports[`Details component > Desktop view > renders correctly with originalDate 1`] = `
+<div>
+  <span>
+    resources.album.fields.originalDate  Mar 15, 2018
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+   · 
+  <span>
+    <span>
+      01:00:00
+    </span>
+  </span>
+   · 
+  <span>
+    <span
+      class="makeStyles-root-3"
+    >
+      100 KB
+    </span>
+  </span>
+</div>
+`;
+
+exports[`Details component > Desktop view > renders correctly with releaseDate 1`] = `
+<div>
+  <span>
+    resources.album.fields.releaseDate  Jun 15, 2020
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+   · 
+  <span>
+    <span>
+      01:00:00
+    </span>
+  </span>
+   · 
+  <span>
+    <span
+      class="makeStyles-root-5"
+    >
+      100 KB
+    </span>
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with all date fields 1`] = `
+<div>
+  <span>
+    ♫  Mar 15, 2018
+  </span>
+   · 
+  <span>
+    ○  Jun 15, 2020
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with date 1`] = `
+<div>
+  <span>
+    ♫  May 1, 2020
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with date and originalDate 1`] = `
+<div>
+  <span>
+    ♫  Mar 15, 2018
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with just year range 1`] = `
+<div>
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with no date fields 1`] = `
+<div>
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with originalDate 1`] = `
+<div>
+  <span>
+    ♫  Mar 15, 2018
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with originalYear range 1`] = `
+<div>
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with releaseDate 1`] = `
+<div>
+  <span>
+    Jun 15, 2020
+  </span>
+   · 
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;
+
+exports[`Details component > Mobile view > renders correctly with year range (start and end years) 1`] = `
+<div>
+  <span>
+    12 resources.song.name
+  </span>
+</div>
+`;

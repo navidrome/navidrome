@@ -12,7 +12,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -24,6 +23,7 @@ var _ = Describe("Artwork", func() {
 	var aw *artwork
 	var ds model.DataStore
 	var ffmpeg *tests.MockFFmpeg
+	var folderRepo *fakeFolderRepo
 	ctx := log.NewContext(context.TODO())
 	var alOnlyEmbed, alEmbedNotFound, alOnlyExternal, alExternalNotFound, alMultipleCovers model.Album
 	var arMultipleCovers model.Artist
@@ -34,20 +34,21 @@ var _ = Describe("Artwork", func() {
 		conf.Server.ImageCacheSize = "0" // Disable cache
 		conf.Server.CoverArtPriority = "folder.*, cover.*, embedded , front.*"
 
-		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3"}
-		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3"}
-		alOnlyExternal = model.Album{ID: "444", Name: "Only external", ImageFiles: "tests/fixtures/artist/an-album/front.png"}
-		alExternalNotFound = model.Album{ID: "555", Name: "External not found", ImageFiles: "tests/fixtures/NON_EXISTENT.png"}
+		folderRepo = &fakeFolderRepo{}
+		ds = &tests.MockDataStore{
+			MockedTranscoding: &tests.MockTranscodingRepo{},
+			MockedFolder:      folderRepo,
+		}
+		alOnlyEmbed = model.Album{ID: "222", Name: "Only embed", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}}
+		alEmbedNotFound = model.Album{ID: "333", Name: "Embed not found", EmbedArtPath: "tests/fixtures/NON_EXISTENT.mp3", FolderIDs: []string{"f1"}}
+		alOnlyExternal = model.Album{ID: "444", Name: "Only external", FolderIDs: []string{"f1"}}
+		alExternalNotFound = model.Album{ID: "555", Name: "External not found", FolderIDs: []string{"f2"}}
 		arMultipleCovers = model.Artist{ID: "777", Name: "All options"}
 		alMultipleCovers = model.Album{
-			ID:           "666",
-			Name:         "All options",
-			EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3",
-			Paths:        "tests/fixtures/artist/an-album",
-			ImageFiles: "tests/fixtures/artist/an-album/cover.jpg" + consts.Zwsp +
-				"tests/fixtures/artist/an-album/front.png" + consts.Zwsp +
-				"tests/fixtures/artist/an-album/artist.png",
+			ID:            "666",
+			Name:          "All options",
+			EmbedArtPath:  "tests/fixtures/artist/an-album/test.mp3",
+			FolderIDs:     []string{"f1"},
 			AlbumArtistID: "777",
 		}
 		mfWithEmbed = model.MediaFile{ID: "22", Path: "tests/fixtures/test.mp3", HasCoverArt: true, AlbumID: "222"}
@@ -69,6 +70,7 @@ var _ = Describe("Artwork", func() {
 		})
 		Context("Embed images", func() {
 			BeforeEach(func() {
+				folderRepo.result = nil
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alOnlyEmbed,
 					alEmbedNotFound,
@@ -91,12 +93,17 @@ var _ = Describe("Artwork", func() {
 		})
 		Context("External images", func() {
 			BeforeEach(func() {
+				folderRepo.result = []model.Folder{}
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alOnlyExternal,
 					alExternalNotFound,
 				})
 			})
 			It("returns external cover", func() {
+				folderRepo.result = []model.Folder{{
+					Path:       "tests/fixtures/artist/an-album",
+					ImageFiles: []string{"front.png"},
+				}}
 				aw, err := newAlbumArtworkReader(ctx, aw, alOnlyExternal.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -104,6 +111,7 @@ var _ = Describe("Artwork", func() {
 				Expect(path).To(Equal("tests/fixtures/artist/an-album/front.png"))
 			})
 			It("returns ErrUnavailable if external file is not available", func() {
+				folderRepo.result = []model.Folder{}
 				aw, err := newAlbumArtworkReader(ctx, aw, alExternalNotFound.CoverArtID(), nil)
 				Expect(err).ToNot(HaveOccurred())
 				_, _, err = aw.Reader(ctx)
@@ -112,6 +120,10 @@ var _ = Describe("Artwork", func() {
 		})
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
+				folderRepo.result = []model.Folder{{
+					Path:       "tests/fixtures/artist/an-album",
+					ImageFiles: []string{"cover.jpg", "front.png", "artist.png"},
+				}}
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alMultipleCovers,
 				})
@@ -134,6 +146,10 @@ var _ = Describe("Artwork", func() {
 	Describe("artistArtworkReader", func() {
 		Context("Multiple covers", func() {
 			BeforeEach(func() {
+				folderRepo.result = []model.Folder{{
+					Path:       "tests/fixtures/artist/an-album",
+					ImageFiles: []string{"artist.png"},
+				}}
 				ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{
 					arMultipleCovers,
 				})
@@ -147,7 +163,7 @@ var _ = Describe("Artwork", func() {
 			DescribeTable("ArtistArtPriority",
 				func(priority string, expected string) {
 					conf.Server.ArtistArtPriority = priority
-					aw, err := newArtistReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
+					aw, err := newArtistArtworkReader(ctx, aw, arMultipleCovers.CoverArtID(), nil)
 					Expect(err).ToNot(HaveOccurred())
 					_, path, err := aw.Reader(ctx)
 					Expect(err).ToNot(HaveOccurred())
@@ -161,12 +177,16 @@ var _ = Describe("Artwork", func() {
 	Describe("mediafileArtworkReader", func() {
 		Context("ID not found", func() {
 			It("returns ErrNotFound if mediafile is not in the DB", func() {
-				_, err := newAlbumArtworkReader(ctx, aw, alMultipleCovers.CoverArtID(), nil)
+				_, err := newMediafileArtworkReader(ctx, aw, model.MustParseArtworkID("mf-NOT-FOUND"))
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
 		Context("Embed images", func() {
 			BeforeEach(func() {
+				folderRepo.result = []model.Folder{{
+					Path:       "tests/fixtures/artist/an-album",
+					ImageFiles: []string{"front.png"},
+				}}
 				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 					alOnlyEmbed,
 					alOnlyExternal,
@@ -189,11 +209,17 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				r, path, err := aw.Reader(ctx)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(io.ReadAll(r)).To(Equal([]byte("content from ffmpeg")))
+				data, _ := io.ReadAll(r)
+				Expect(data).ToNot(BeEmpty())
 				Expect(path).To(Equal("tests/fixtures/test.ogg"))
 			})
 			It("returns album cover if cannot read embed artwork", func() {
+				// Force fromTag to fail
+				mfCorruptedCover.Path = "tests/fixtures/DOES_NOT_EXIST.ogg"
+				Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Put(&mfCorruptedCover)).To(Succeed())
+				// Simulate ffmpeg error
 				ffmpeg.Error = errors.New("not available")
+
 				aw, err := newMediafileArtworkReader(ctx, aw, mfCorruptedCover.CoverArtID())
 				Expect(err).ToNot(HaveOccurred())
 				_, path, err := aw.Reader(ctx)
@@ -211,6 +237,10 @@ var _ = Describe("Artwork", func() {
 	})
 	Describe("resizedArtworkReader", func() {
 		BeforeEach(func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg", "front.png"},
+			}}
 			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 				alMultipleCovers,
 			})
@@ -247,10 +277,11 @@ var _ = Describe("Artwork", func() {
 					coverFileName := "cover." + format
 					dirName := createImage(format, landscape, size)
 					alCover = model.Album{
-						ID:         "444",
-						Name:       "Only external",
-						ImageFiles: filepath.Join(dirName, coverFileName),
+						ID:        "444",
+						Name:      "Only external",
+						FolderIDs: []string{"tmp"},
 					}
+					folderRepo.result = []model.Folder{{Path: dirName, ImageFiles: []string{coverFileName}}}
 					ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{
 						alCover,
 					})

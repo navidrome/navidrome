@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -10,25 +10,25 @@ import {
   withWidth,
 } from '@material-ui/core'
 import {
-  useRecordContext,
-  useTranslate,
   ArrayField,
-  SingleFieldList,
   ChipField,
   Link,
+  SingleFieldList,
+  useRecordContext,
+  useTranslate,
 } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
 import subsonic from '../subsonic'
 import {
   ArtistLinkField,
+  CollapsibleComment,
   DurationField,
   formatRange,
-  SizeField,
   LoveButton,
   RatingField,
+  SizeField,
   useAlbumsPerPage,
-  CollapsibleComment,
 } from '../common'
 import config from '../config'
 import { formatFullDate, intersperse } from '../utils'
@@ -72,6 +72,10 @@ const useStyles = makeStyles(
         width: '15em',
         minWidth: '15em',
       },
+      backgroundColor: 'transparent',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     cover: {
       objectFit: 'contain',
@@ -79,6 +83,11 @@ const useStyles = makeStyles(
       display: 'block',
       width: '100%',
       height: '100%',
+      backgroundColor: 'transparent',
+      transition: 'opacity 0.3s ease-in-out',
+    },
+    coverLoading: {
+      opacity: 0.5,
     },
     loveButton: {
       top: theme.spacing(-0.2),
@@ -110,7 +119,7 @@ const useGetHandleGenreClick = (width) => {
   const [perPage] = useAlbumsPerPage(width)
 
   return (id) => {
-    return `/album?filter={"genre_id":"${id}"}&order=ASC&sort=name&perPage=${perPage}`
+    return `/album?filter={"genre_id":["${id}"]}&order=ASC&sort=name&perPage=${perPage}`
   }
 }
 
@@ -140,69 +149,55 @@ const GenreList = () => {
   )
 }
 
-const Details = (props) => {
+export const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
   const record = useRecordContext(props)
+
+  // Create an array of detail elements
   let details = []
   const addDetail = (obj) => {
     const id = details.length
     details.push(<span key={`detail-${record.id}-${id}`}>{obj}</span>)
   }
 
-  const originalYearRange = formatRange(record, 'originalYear')
-  const originalDate = record.originalDate
-    ? formatFullDate(record.originalDate)
-    : originalYearRange
+  // Calculate date related fields
   const yearRange = formatRange(record, 'year')
   const date = record.date ? formatFullDate(record.date) : yearRange
-  const releaseDate = record.releaseDate
-    ? formatFullDate(record.releaseDate)
-    : date
 
-  const showReleaseDate = date !== releaseDate && releaseDate.length > 3
-  const showOriginalDate =
-    date !== originalDate &&
-    originalDate !== releaseDate &&
-    originalDate.length > 3
+  const originalDate = record.originalDate
+    ? formatFullDate(record.originalDate)
+    : formatRange(record, 'originalYear')
+  const releaseDate = record?.releaseDate && formatFullDate(record.releaseDate)
 
-  showOriginalDate &&
-    !isXsmall &&
+  const dateToUse = originalDate || date
+  const isOriginalDate = originalDate && dateToUse !== date
+  const showDate = dateToUse && dateToUse !== releaseDate
+
+  // Get label for the main date display
+  const getDateLabel = () => {
+    if (isXsmall) return '♫'
+    if (isOriginalDate) return translate('resources.album.fields.originalDate')
+    return null
+  }
+
+  // Get label for release date display
+  const getReleaseDateLabel = () => {
+    if (!isXsmall) return translate('resources.album.fields.releaseDate')
+    if (showDate) return '○'
+    return null
+  }
+
+  // Display dates with appropriate labels
+  if (showDate) {
+    addDetail(<>{[getDateLabel(), dateToUse].filter(Boolean).join('  ')}</>)
+  }
+
+  if (releaseDate) {
     addDetail(
-      <>
-        {[translate('resources.album.fields.originalDate'), originalDate].join(
-          '  ',
-        )}
-      </>,
+      <>{[getReleaseDateLabel(), releaseDate].filter(Boolean).join('  ')}</>,
     )
-
-  yearRange && addDetail(<>{['♫', !isXsmall ? date : yearRange].join('  ')}</>)
-
-  showReleaseDate &&
-    addDetail(
-      <>
-        {(!isXsmall
-          ? [translate('resources.album.fields.releaseDate'), releaseDate]
-          : ['○', record.releaseDate.substring(0, 4)]
-        ).join('  ')}
-      </>,
-    )
-
-  const showReleases = record.releases > 1
-  showReleases &&
-    addDetail(
-      <>
-        {!isXsmall
-          ? [
-              record.releases,
-              translate('resources.album.fields.releases', {
-                smart_count: record.releases,
-              }),
-            ].join(' ')
-          : ['(', record.releases, ')))'].join(' ')}
-      </>,
-    )
-
+  }
   addDetail(
     <>
       {record.songCount +
@@ -215,6 +210,7 @@ const Details = (props) => {
   !isXsmall && addDetail(<DurationField source={'duration'} />)
   !isXsmall && addDetail(<SizeField source="size" />)
 
+  // Return the details rendered with separators
   return <>{intersperse(details, ' · ')}</>
 }
 
@@ -226,6 +222,8 @@ const AlbumDetails = (props) => {
   const [isLightboxOpen, setLightboxOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [albumInfo, setAlbumInfo] = useState()
+  const [imageLoading, setImageLoading] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   let notes =
     albumInfo?.notes?.replace(new RegExp('<.*>', 'g'), '') || record.notes
@@ -249,23 +247,51 @@ const AlbumDetails = (props) => {
       })
   }, [record])
 
+  // Reset image state when album changes
+  useEffect(() => {
+    setImageLoading(true)
+    setImageError(false)
+  }, [record.id])
+
   const imageUrl = subsonic.getCoverArtUrl(record, 300)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
-  const handleOpenLightbox = useCallback(() => setLightboxOpen(true), [])
+  const handleImageLoad = useCallback(() => {
+    setImageLoading(false)
+    setImageError(false)
+  }, [])
+
+  const handleImageError = useCallback(() => {
+    setImageLoading(false)
+    setImageError(true)
+  }, [])
+
+  const handleOpenLightbox = useCallback(() => {
+    if (!imageError) {
+      setLightboxOpen(true)
+    }
+  }, [imageError])
+
   const handleCloseLightbox = useCallback(() => setLightboxOpen(false), [])
+
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
           <CardMedia
+            key={record.id}
             component={'img'}
             src={imageUrl}
             width="400"
             height="400"
-            className={classes.cover}
+            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
             onClick={handleOpenLightbox}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
             title={record.name}
+            style={{
+              cursor: imageError ? 'default' : 'pointer',
+            }}
           />
         </div>
         <div className={classes.details}>
@@ -283,6 +309,9 @@ const AlbumDetails = (props) => {
                 aria-label="love"
                 color="primary"
               />
+            </Typography>
+            <Typography component={'h6'} className={classes.recordArtist}>
+              {record?.tags?.['albumversion']}
             </Typography>
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
@@ -347,7 +376,7 @@ const AlbumDetails = (props) => {
           </Collapse>
         </div>
       )}
-      {isLightboxOpen && (
+      {isLightboxOpen && !imageError && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}

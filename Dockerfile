@@ -61,7 +61,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary
-FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.23-bookworm AS base
+FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/golang:1.24-bookworm AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
@@ -70,8 +70,6 @@ FROM --platform=$BUILDPLATFORM base AS build
 
 # Install build dependencies for the target platform
 ARG TARGETPLATFORM
-ARG GIT_SHA
-ARG GIT_TAG
 
 RUN xx-apt install -y binutils gcc g++ libc6-dev zlib1g-dev
 RUN xx-verify --setup
@@ -80,6 +78,9 @@ RUN --mount=type=bind,source=. \
     --mount=type=cache,target=/root/.cache \
     --mount=type=cache,target=/go/pkg/mod \
     go mod download
+
+ARG GIT_SHA
+ARG GIT_TAG
 
 RUN --mount=type=bind,source=. \
     --mount=from=ui,source=/build,target=./ui/build,ro \
@@ -124,7 +125,7 @@ LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
 # Install ffmpeg and mpv
-RUN apk add -U --no-cache ffmpeg mpv
+RUN apk add -U --no-cache ffmpeg mpv sqlite
 
 # Copy navidrome binary
 COPY --from=build /out/navidrome /app/
@@ -132,12 +133,12 @@ COPY --from=build /out/navidrome /app/
 VOLUME ["/data", "/music"]
 ENV ND_MUSICFOLDER=/music
 ENV ND_DATAFOLDER=/data
+ENV ND_CONFIGFILE=/data/navidrome.toml
 ENV ND_PORT=4533
 ENV GODEBUG="asyncpreemptoff=1"
 RUN touch /.nddockerenv
 
 EXPOSE ${ND_PORT}
-HEALTHCHECK CMD wget -O- http://localhost:${ND_PORT}/ping || exit 1
 WORKDIR /app
 
 ENTRYPOINT ["/app/navidrome"]

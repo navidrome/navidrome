@@ -3,7 +3,6 @@ package gravatar_test
 import (
 	"testing"
 
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	. "github.com/onsi/ginkgo/v2"
@@ -12,7 +11,6 @@ import (
 
 func TestGravatar(t *testing.T) {
 	tests.Init(t, false)
-	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Gravatar Test Suite")
 }

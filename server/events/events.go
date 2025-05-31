@@ -1,12 +1,22 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
 	"time"
 	"unicode"
 )
+
+type eventCtxKey string
+
+const broadcastToAllKey eventCtxKey = "broadcastToAll"
+
+// BroadcastToAll is a context key that can be used to broadcast an event to all clients
+func BroadcastToAll(ctx context.Context) context.Context {
+	return context.WithValue(ctx, broadcastToAllKey, true)
+}
 
 type Event interface {
 	Name(Event) string
@@ -27,9 +37,12 @@ func (e *baseEvent) Data(evt Event) string {
 
 type ScanStatus struct {
 	baseEvent
-	Scanning    bool  `json:"scanning"`
-	Count       int64 `json:"count"`
-	FolderCount int64 `json:"folderCount"`
+	Scanning    bool          `json:"scanning"`
+	Count       int64         `json:"count"`
+	FolderCount int64         `json:"folderCount"`
+	Error       string        `json:"error"`
+	ScanType    string        `json:"scanType"`
+	ElapsedTime time.Duration `json:"elapsedTime"`
 }
 
 type KeepAlive struct {

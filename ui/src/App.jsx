@@ -22,6 +22,7 @@ import {
   addToPlaylistDialogReducer,
   expandInfoDialogReducer,
   listenBrainzTokenDialogReducer,
+  saveQueueDialogReducer,
   playerReducer,
   albumViewReducer,
   activityReducer,
@@ -38,6 +39,7 @@ import useChangeThemeColor from './useChangeThemeColor'
 import SharePlayer from './share/SharePlayer'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { DndProvider } from 'react-dnd'
+import missing from './missing/index.js'
 
 const history = createHashHistory()
 
@@ -61,6 +63,7 @@ const adminStore = createAdminStore({
     downloadMenuDialog: downloadMenuDialogReducer,
     expandInfoDialog: expandInfoDialogReducer,
     listenBrainzTokenDialog: listenBrainzTokenDialogReducer,
+    saveQueueDialog: saveQueueDialogReducer,
     shareDialog: shareDialogReducer,
     activity: activityReducer,
     settings: settingsReducer,
@@ -119,11 +122,24 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
+
+        permissions === 'admin' ? (
+          <Resource
+            name="missing"
+            {...missing}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
+
         <Resource name="translation" />,
         <Resource name="genre" />,
+        <Resource name="tag" />,
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Resource name="insights" />,
+        permissions === 'admin' && config.devUIShowConfig ? (
+          <Resource name="config" />
+        ) : null,
         <Player />,
       ]}
     </RAAdmin>

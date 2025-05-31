@@ -1,0 +1,32 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "artists": {
+    "index": [
+      {
+        "name": "A",
+        "artist": [
+          {
+            "id": "111",
+            "name": "aaa",
+            "albumCount": 2,
+            "starred": "2016-03-02T20:30:00Z",
+            "userRating": 3,
+            "artistImageUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+            "musicBrainzId": "1234",
+            "sortName": "sort name",
+            "roles": [
+              "role1",
+              "role2"
+            ]
+          }
+        ]
+      }
+    ],
+    "lastModified": 1,
+    "ignoredArticles": "A"
+  }
+}

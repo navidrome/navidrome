@@ -5,25 +5,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/scanner/metadata"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
 var (
-	extractor string
-	format    string
+	format string
 )
 
 func init() {
-	inspectCmd.Flags().StringVarP(&extractor, "extractor", "x", "", "extractor to use (ffmpeg or taglib, default: auto)")
-	inspectCmd.Flags().StringVarP(&format, "format", "f", "pretty", "output format (pretty, toml, yaml, json, jsonindent)")
+	inspectCmd.Flags().StringVarP(&format, "format", "f", "jsonindent", "output format (pretty, toml, yaml, json, jsonindent)")
 	rootCmd.AddCommand(inspectCmd)
 }
 
@@ -48,7 +43,7 @@ var marshalers = map[string]func(interface{}) ([]byte, error){
 }
 
 func prettyMarshal(v interface{}) ([]byte, error) {
-	out := v.([]inspectorOutput)
+	out := v.([]core.InspectOutput)
 	var res strings.Builder
 	for i := range out {
 		res.WriteString(fmt.Sprintf("====================\nFile: %s\n\n", out[i].File))
@@ -60,39 +55,24 @@ func prettyMarshal(v interface{}) ([]byte, error) {
 	return []byte(res.String()), nil
 }
 
-type inspectorOutput struct {
-	File       string
-	RawTags    metadata.ParsedTags
-	MappedTags model.MediaFile
-}
-
 func runInspector(args []string) {
-	if extractor != "" {
-		conf.Server.Scanner.Extractor = extractor
-	}
-	log.Info("Using extractor", "extractor", conf.Server.Scanner.Extractor)
-	md, err := metadata.Extract(args...)
-	if err != nil {
-		log.Fatal("Error extracting tags", err)
-	}
-	mapper := scanner.NewMediaFileMapper(conf.Server.MusicFolder, &tests.MockedGenreRepo{})
 	marshal := marshalers[format]
 	if marshal == nil {
 		log.Fatal("Invalid format", "format", format)
 	}
-	var out []inspectorOutput
-	for k, v := range md {
-		if !model.IsAudioFile(k) {
+	var out []core.InspectOutput
+	for _, filePath := range args {
+		if !model.IsAudioFile(filePath) {
+			log.Warn("Not an audio file", "file", filePath)
 			continue
 		}
-		if len(v.Tags) == 0 {
+		output, err := core.Inspect(filePath, 1, "")
+		if err != nil {
+			log.Warn("Unable to process file", "file", filePath, "error", err)
 			continue
 		}
-		out = append(out, inspectorOutput{
-			File:       k,
-			RawTags:    v.Tags,
-			MappedTags: mapper.ToMediaFile(v),
-		})
+
+		out = append(out, *output)
 	}
 	data, _ := marshal(out)
 	fmt.Println(string(data))

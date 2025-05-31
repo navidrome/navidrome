@@ -5,6 +5,7 @@ import {
   Button,
   sanitizeListRestProps,
   TopToolbar,
+  useRecordContext,
   useTranslate,
 } from 'react-admin'
 import { useMediaQuery, makeStyles } from '@material-ui/core'
@@ -31,6 +32,15 @@ import { ToggleFieldsMenu } from '../common'
 const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
 })
+
+const AlbumButton = ({ children, ...rest }) => {
+  const record = useRecordContext(rest) || {}
+  return (
+    <Button {...rest} disabled={record.missing}>
+      {children}
+    </Button>
+  )
+}
 
 const AlbumActions = ({
   className,
@@ -63,8 +73,9 @@ const AlbumActions = ({
   }, [dispatch, data, ids])
 
   const handleAddToPlaylist = React.useCallback(() => {
-    dispatch(openAddToPlaylist({ selectedIds: ids }))
-  }, [dispatch, ids])
+    const selectedIds = ids.filter((id) => !data[id].missing)
+    dispatch(openAddToPlaylist({ selectedIds }))
+  }, [dispatch, data, ids])
 
   const handleShare = React.useCallback(() => {
     dispatch(openShareMenu([record.id], 'album', record.name))
@@ -78,43 +89,46 @@ const AlbumActions = ({
     <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <div className={classes.toolbar}>
         <div>
-          <Button
+          <AlbumButton
             onClick={handlePlay}
             label={translate('resources.album.actions.playAll')}
           >
             <PlayArrowIcon />
-          </Button>
-          <Button
+          </AlbumButton>
+          <AlbumButton
             onClick={handleShuffle}
             label={translate('resources.album.actions.shuffle')}
           >
             <ShuffleIcon />
-          </Button>
-          <Button
+          </AlbumButton>
+          <AlbumButton
             onClick={handlePlayNext}
             label={translate('resources.album.actions.playNext')}
           >
             <RiPlayList2Fill />
-          </Button>
-          <Button
+          </AlbumButton>
+          <AlbumButton
             onClick={handlePlayLater}
             label={translate('resources.album.actions.addToQueue')}
           >
             <RiPlayListAddFill />
-          </Button>
-          <Button
+          </AlbumButton>
+          <AlbumButton
             onClick={handleAddToPlaylist}
             label={translate('resources.album.actions.addToPlaylist')}
           >
             <PlaylistAddIcon />
-          </Button>
+          </AlbumButton>
           {config.enableSharing && (
-            <Button onClick={handleShare} label={translate('ra.action.share')}>
+            <AlbumButton
+              onClick={handleShare}
+              label={translate('ra.action.share')}
+            >
               <ShareIcon />
-            </Button>
+            </AlbumButton>
           )}
           {config.enableDownloads && (
-            <Button
+            <AlbumButton
               onClick={handleDownload}
               label={
                 translate('ra.action.download') +
@@ -122,7 +136,7 @@ const AlbumActions = ({
               }
             >
               <CloudDownloadOutlinedIcon />
-            </Button>
+            </AlbumButton>
           )}
         </div>
         <div>{isNotSmall && <ToggleFieldsMenu resource="albumSong" />}</div>

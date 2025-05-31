@@ -4,3 +4,4 @@ prettier.config.js
 .eslintrc
 vite.config.js
 public/3rdparty/workbox
+coverage/

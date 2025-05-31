@@ -1,460 +1,526 @@
 {
-    "languageName": "Esperanto",
-    "resources": {
-        "song": {
-            "name": "kanto |||| kantoj",
-            "fields": {
-                "albumArtist": "Albumo artista",
-                "duration": "Tempo",
-                "trackNumber": "#",
-                "playCount": "Nombro de ŝkotoj",
-                "title": "Titolo",
-                "artist": "Artisto",
-                "album": "Albumo",
-                "path": "Dosiera vojo",
-                "genre": "Ĝenro",
-                "compilation": "Kompilaĵo",
-                "year": "Jaro",
-                "size": "Dosiera grandeco",
-                "updatedAt": "Ĝisdatigita je",
-                "bitRate": "Bitrapido",
-                "discSubtitle": "Diska Subteksto",
-                "starred": "Stela",
-                "comment": "Komento",
-                "rating": "",
-                "quality": "",
-                "bpm": "",
-                "playDate": "",
-                "channels": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "addToQueue": "Ludi Poste",
-                "playNow": "Ludi nun",
-                "addToPlaylist": "Aldoni al Ludlisto",
-                "shuffleAll": "Miksu Ĉiujn",
-                "download": "Elŝuti",
-                "playNext": "Ludu Poste",
-                "info": ""
-            }
-        },
-        "album": {
-            "name": "Albumo |||| Albumoj",
-            "fields": {
-                "albumArtist": "Albumo artista",
-                "artist": "Artisto",
-                "duration": "Tempo",
-                "songCount": "Kantoj",
-                "playCount": "Nombro de ŝkotoj",
-                "name": "Nomo",
-                "genre": "Genro",
-                "compilation": "Kompilaĵo",
-                "year": "Jaro",
-                "updatedAt": "Ĝisdatigita je :",
-                "comment": "Komento",
-                "rating": "",
-                "createdAt": "",
-                "size": "",
-                "originalDate": "",
-                "releaseDate": "",
-                "releases": "",
-                "released": ""
-            },
-            "actions": {
-                "playAll": "Ludi",
-                "playNext": "Ludi poste",
-                "addToQueue": "Aldoni la dosieron de atento",
-                "shuffle": "Miksi",
-                "addToPlaylist": "Aldoni al la Ludlisto",
-                "download": "Elŝuti",
-                "info": "",
-                "share": ""
-            },
-            "lists": {
-                "all": "Ĉiuj",
-                "random": "Hazarda",
-                "recentlyAdded": "Lastatempe Aldonita",
-                "recentlyPlayed": "Lastatempe Ludita",
-                "mostPlayed": "Plej Luditaj",
-                "starred": "Stelplena",
-                "topRated": ""
-            }
-        },
-        "artist": {
-            "name": "Artisto |||| Artistoj",
-            "fields": {
-                "name": "Nomo",
-                "albumCount": "Nombro da albumoj",
-                "songCount": "Kanto kalkula",
-                "playCount": "Teatraĵoj",
-                "rating": "",
-                "genre": "",
-                "size": ""
-            }
-        },
-        "user": {
-            "name": "Uzanto |||| Uzantoj",
-            "fields": {
-                "userName": "Uzantonomo",
-                "isAdmin": "Estas Administranto",
-                "lastLoginAt": "Lasta Ensaluto Je",
-                "updatedAt": "Ĝisdatigita je",
-                "name": "Nomo",
-                "password": "Pasvorto",
-                "createdAt": "Kreita je :",
-                "changePassword": "",
-                "currentPassword": "",
-                "newPassword": "",
-                "token": ""
-            },
-            "helperTexts": {
-                "name": ""
-            },
-            "notifications": {
-                "created": "",
-                "updated": "",
-                "deleted": ""
-            },
-            "message": {
-                "listenBrainzToken": "",
-                "clickHereForToken": ""
-            }
-        },
-        "player": {
-            "name": "Legilo |||| Legilj",
-            "fields": {
-                "name": "Nomo",
-                "transcodingId": "Transkodigo",
-                "maxBitRate": "Maksimuma Bitrapido",
-                "client": "Kliento",
-                "userName": "Uzantonomo",
-                "lastSeen": "Laste Vidita Je",
-                "reportRealPath": "Raporti vera pado",
-                "scrobbleEnabled": ""
-            }
-        },
-        "transcoding": {
-            "name": "Transkodigo |||| Transkodigoj",
-            "fields": {
-                "name": "Nomo",
-                "targetFormat": "Celformato",
-                "defaultBitRate": "Defaŭlta Bitrapido",
-                "command": "Komando"
-            }
-        },
-        "playlist": {
-            "name": "Ludlisto |||| Ludlistoj",
-            "fields": {
-                "name": "Nomo",
-                "duration": "Daŭro",
-                "ownerName": "Posedanto",
-                "public": "Publika",
-                "updatedAt": "Ĝisdatigita je",
-                "createdAt": "Kreita je",
-                "songCount": "Kantoj",
-                "comment": "Komento",
-                "sync": "Aŭtomata importado",
-                "path": "Importi de"
-            },
-            "actions": {
-                "selectPlaylist": "Elektu ludliston :",
-                "addNewPlaylist": "Krei \"%{name}\"",
-                "export": "Eksporti",
-                "makePublic": "",
-                "makePrivate": ""
-            },
-            "message": {
-                "duplicate_song": "",
-                "song_exist": ""
-            }
-        },
-        "radio": {
-            "name": "",
-            "fields": {
-                "name": "",
-                "streamUrl": "",
-                "homePageUrl": "",
-                "updatedAt": "",
-                "createdAt": ""
-            },
-            "actions": {
-                "playNow": ""
-            }
-        },
-        "share": {
-            "name": "",
-            "fields": {
-                "username": "",
-                "url": "",
-                "description": "",
-                "contents": "",
-                "expiresAt": "",
-                "lastVisitedAt": "",
-                "visitCount": "",
-                "format": "",
-                "maxBitRate": "",
-                "updatedAt": "",
-                "createdAt": "",
-                "downloadable": ""
-            }
-        }
+  "languageName": "Esperanto",
+  "resources": {
+    "song": {
+      "name": "Kanto |||| Kantoj",
+      "fields": {
+        "albumArtist": "Artisto de Albumo",
+        "duration": "Daŭro",
+        "trackNumber": "#",
+        "playCount": "Ludoj",
+        "title": "Titolo",
+        "artist": "Artisto",
+        "album": "Albumo",
+        "path": "Dosiera vojo",
+        "genre": "Ĝenro",
+        "compilation": "Kompilaĵo",
+        "year": "Jaro",
+        "size": "Dosiera grandeco",
+        "updatedAt": "Ĝisdatigita je",
+        "bitRate": "Bitrapido",
+        "discSubtitle": "Diska Subteksto",
+        "starred": "Stela",
+        "comment": "Komento",
+        "rating": "Takso",
+        "quality": "Kvalito",
+        "bpm": "Pulsrapideco",
+        "playDate": "Laste Ludita",
+        "channels": "Kanaloj",
+        "createdAt": "Dato de aligo",
+        "grouping": "",
+        "mood": "Humoro",
+        "participants": "",
+        "tags": "Aldonaj Etikedoj",
+        "mappedTags": "Mapigitaj etikedoj",
+        "rawTags": "Krudaj etikedoj",
+        "bitDepth": "",
+        "sampleRate": "",
+        "missing": ""
+      },
+      "actions": {
+        "addToQueue": "Ludi Poste",
+        "playNow": "Ludi nun",
+        "addToPlaylist": "Aldoni al Ludlisto",
+        "shuffleAll": "Miksu Ĉiujn",
+        "download": "Elŝuti",
+        "playNext": "Ludu Poste",
+        "info": "Akiri Informon"
+      }
     },
-    "ra": {
-        "auth": {
-            "welcome1": "Dankon pro instalado de Navidrome !",
-            "welcome2": "Por komenci, kreu administrantan uzanton",
-            "confirmPassword": "Konfirmu pasvorton",
-            "buttonCreateAdmin": "Krei administranto",
-            "auth_check_error": "Bonvolu ensaluti por daŭrigi",
-            "user_menu": "Profilo",
-            "username": "Uzantnomo",
-            "password": "Pasvorto",
-            "sign_in": "Ensaluti",
-            "sign_in_error": "Aŭtentikigo malsukcesis, bonvolu reprovi",
-            "logout": "Elsaluti"
-        },
-        "validation": {
-            "invalidChars": "Bonvolu uzi nur literon kaj ciferojn",
-            "passwordDoesNotMatch": "Pasvorto ne kongruas",
-            "required": "Necesa",
-            "minLength": "Devas esti almenaŭ %{min} signoj",
-            "maxLength": "Devas esti %{max} signoj aŭ malpli",
-            "minValue": "Devas esti almenaŭ %{min}",
-            "maxValue": "Devas esti %{max} aŭ malpli",
-            "number": "Devas esti nombro",
-            "email": "Devas esti valida retpoŝto",
-            "oneOf": "Devas esti unu el: %{options}",
-            "regex": "Devas kongrui kun specifa formato (regexp): %{pattern}",
-            "unique": "",
-            "url": ""
-        },
-        "action": {
-            "add_filter": "Aldoni filtrilon",
-            "add": "Aldoni",
-            "back": "Reiri",
-            "bulk_actions": "1 ero elektita |||| ${smart_count} eroj elektitaj",
-            "cancel": "Nuligi",
-            "clear_input_value": "Viŝi valoro",
-            "clone": "Kloni",
-            "confirm": "Konfirmi",
-            "create": "Krei",
-            "delete": "Forstrekis",
-            "edit": "Modifi",
-            "export": "Eksporti",
-            "list": "Listigi",
-            "refresh": "Aktualigi",
-            "remove_filter": "Forigu ĉi tiun filtrilon",
-            "remove": "Forigi",
-            "save": "Konservi",
-            "search": "Serĉi",
-            "show": "Montri",
-            "sort": "Ordigi",
-            "undo": "Malfari",
-            "expand": "Etendi",
-            "close": "Fermi",
-            "open_menu": "Malfermu menuon",
-            "close_menu": "Fermu menuon",
-            "unselect": "Malelekti",
-            "skip": "",
-            "bulk_actions_mobile": "",
-            "share": "",
-            "download": ""
-        },
-        "boolean": {
-            "true": "Jes",
-            "false": "Ne"
-        },
-        "page": {
-            "create": "Krei %{name}",
-            "dashboard": "Panelo",
-            "edit": "%{name} #%{id}",
-            "error": "Io fuŝiĝis",
-            "list": "${name}",
-            "loading": "Ŝarĝante",
-            "not_found": "Ne trovita",
-            "show": "%{name} #%{id}",
-            "empty": "Ankoraŭ ne %{name}",
-            "invite": "Ĉu vi volas aldoni unu?"
-        },
-        "input": {
-            "file": {
-                "upload_several": "Forĵetu iujn dosierojn por alŝuti, aŭ alklaku por elekti unu.",
-                "upload_single": "Forĵetu iujn dosierojn por alŝuti, aŭ alklaku por elekti ĝin."
-            },
-            "image": {
-                "upload_several": "Faligu iujn bildojn por alŝuti, aŭ alklaku por elekti unu.",
-                "upload_single": "Faligu bildon por alŝuti, aŭ alklaku por elekti ĝin."
-            },
-            "references": {
-                "all_missing": "Ne eblas trovi referencajn datumojn.",
-                "many_missing": "Almenaŭ unu el la rilataj referencoj ne plu ŝajnas esti disponebla.",
-                "single_missing": "Rilata referenco ne plu ŝajnas esti disponebla."
-            },
-            "password": {
-                "toggle_visible": "kaŝi pasvorto",
-                "toggle_hidden": "montri pasvorto"
-            }
-        },
-        "message": {
-            "about": "Pri",
-            "are_you_sure": "Ĉu vi certas ?",
-            "bulk_delete_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun %{name} ? |||| Ĉu vi certas, ke vi volas forigi ĉi tiujn %{smart_count} erojn ?",
-            "bulk_delete_title": "Forigi %{name} |||| Forigi %{smart_count} %{name}",
-            "delete_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun %{smart_count} eron ?",
-            "delete_title": "Forigi %{name} #%{id}",
-            "details": "Detaleto",
-            "error": "Klienta eraro okazis kaj via peto ne povis esti plenumita.",
-            "invalid_form": "La formo ne estas valida. Bonvolu kontroli pri eraroj.",
-            "loading": "La paĝo ŝarĝas, nur momenton bonvolu.",
-            "no": "Ne",
-            "not_found": "Aŭ vi tajpis malbonan URL, aŭ vi sekvis malbonan ligon.",
-            "yes": "Jes",
-            "unsaved_changes": "Luj el viaj ŝanĝoj ne estis konservitaj. Ĉu vi estas certa, ke vi volas ignori ilin?"
-        },
-        "navigation": {
-            "no_results": "Neniu rezulto troviĝis",
-            "no_more_results": "La paĝa numero %{page} estas ekster limoj. Provu la antaŭan paĝon.",
-            "page_out_of_boundaries": "Paĝa numero %{page} ekster limoj",
-            "page_out_from_end": "Ne povas iri post la lasta paĝo",
-            "page_out_from_begin": "Ne povas iri antaŭ paĝo 1",
-            "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
-            "page_rows_per_page": "Eroj por paĝo:",
-            "next": "Poste",
-            "prev": "Antaŭ",
-            "skip_nav": "Preterlasu al enhavo"
-        },
-        "notification": {
-            "updated": "Elemento ĝisdatigita |||| %{smart_count} elementoj ĝisdatigitaj",
-            "created": "\nElemento kretia",
-            "deleted": "Elemento foriga |||| %{smart_count} elementoj forigaj",
-            "bad_item": "Elemento malkorekta",
-            "item_doesnt_exist": "Elemento ne ekzistas",
-            "http_error": "Servila komunikada eraro",
-            "data_provider_error": "datumaProvizora eraro. Kontrolu la konzolon por detaloj.",
-            "i18n_error": "Ne eblas ŝargi la tradukojn por la specifa lingvo",
-            "canceled": "Ago nuligita",
-            "logged_out": "Via seanco finiĝis, bonvolu rekonekti.",
-            "new_version": ""
-        },
-        "toggleFieldsMenu": {
-            "columnsToDisplay": "",
-            "layout": "",
-            "grid": "",
-            "table": ""
-        }
+    "album": {
+      "name": "Albumo |||| Albumoj",
+      "fields": {
+        "albumArtist": "Artisto de Albumo",
+        "artist": "Artisto",
+        "duration": "Tempo",
+        "songCount": "Kantoj",
+        "playCount": "Ludoj",
+        "name": "Nomo",
+        "genre": "Ĝenro",
+        "compilation": "Kompilaĵo",
+        "year": "Jaro",
+        "updatedAt": "Ĝisdatigita je :",
+        "comment": "Komento",
+        "rating": "Takso",
+        "createdAt": "Dato aldonita",
+        "size": "Grando",
+        "originalDate": "Originala",
+        "releaseDate": "Publikiĝis",
+        "releases": "Publikiĝo |||| Publikiĝoj",
+        "released": "Publikiĝis",
+        "recordLabel": "",
+        "catalogNum": "",
+        "releaseType": "Tipo",
+        "grouping": "",
+        "media": "",
+        "mood": "Humoro",
+        "date": "",
+        "missing": ""
+      },
+      "actions": {
+        "playAll": "Ludi",
+        "playNext": "Ludi Sekvante",
+        "addToQueue": "Aldoni la dosieron de atento",
+        "shuffle": "Miksi",
+        "addToPlaylist": "Aldoni al la Ludlisto",
+        "download": "Elŝuti",
+        "info": "Akiri Informon",
+        "share": "Diskonigi"
+      },
+      "lists": {
+        "all": "Ĉiuj",
+        "random": "Hazardaj",
+        "recentlyAdded": "Lastatempe Aldonitaj",
+        "recentlyPlayed": "Lastatempe Luditaj",
+        "mostPlayed": "Plej Luditaj",
+        "starred": "Stelplenaj",
+        "topRated": "Plej Alte Taksitaj"
+      }
     },
-    "message": {
-        "note": "Noto",
-        "transcodingDisabled": "Ŝanĝi la transkodigan agordon per la interreta interfaco estas malebligita pro sekurecaj kialoj. Se vi ŝatus ŝanĝi (redakti aŭ aldoni) transkodigajn opciojn, relanĉu la servilon per la agordo %{config}.",
-        "transcodingEnabled": "Navidrome nuntempe funkcias kun %{config}, ebligante lanĉi sistemajn komandojn de la transkodigaj agordoj per la interreta interfaco. Ni rekomendas malŝalti ĝin pro sekurecaj kialoj kaj ebligi ĝin nur dum agordo de Transkodigaj opcioj.",
-        "songsAddedToPlaylist": "Aldonis 1 kanton al ludlisto |||| Aldonis %{smart_count} kantojn al ludlisto",
-        "noPlaylistsAvailable": "Neniu disponebla",
-        "delete_user_title": "Forigi uzanto '%{name}'",
-        "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?",
-        "notifications_blocked": "Vi blokis sciigojn por ĉi tiu retejo en la agordoj de via retumilo",
-        "notifications_not_available": "Ĉi tiu retumilo ne subtenas labortablajn sciigojn aŭ vi ne aliras Navidrome per https",
-        "lastfmLinkSuccess": "",
-        "lastfmLinkFailure": "",
-        "lastfmUnlinkSuccess": "",
-        "lastfmUnlinkFailure": "",
-        "openIn": {
-            "lastfm": "",
-            "musicbrainz": ""
-        },
-        "lastfmLink": "",
-        "listenBrainzLinkSuccess": "",
-        "listenBrainzLinkFailure": "",
-        "listenBrainzUnlinkSuccess": "",
-        "listenBrainzUnlinkFailure": "",
-        "downloadOriginalFormat": "",
-        "shareOriginalFormat": "",
-        "shareDialogTitle": "",
-        "shareBatchDialogTitle": "",
-        "shareSuccess": "",
-        "shareFailure": "",
-        "downloadDialogTitle": "",
-        "shareCopyToClipboard": ""
+    "artist": {
+      "name": "Artisto |||| Artistoj",
+      "fields": {
+        "name": "Nomo",
+        "albumCount": "Kvanto da Albumoj",
+        "songCount": "Kanta Kalkulo",
+        "playCount": "Ludoj",
+        "rating": "Takso",
+        "genre": "Ĝenro",
+        "size": "Grando",
+        "role": "",
+        "missing": ""
+      },
+      "roles": {
+        "albumartist": "Albuma Artisto |||| Albumaj Artistoj",
+        "artist": "Artisto |||| Artistoj",
+        "composer": "Komponisto |||| Komponistoj",
+        "conductor": "Dirigento |||| Dirigentoj",
+        "lyricist": "Kantoteksisto |||| Kantotekstistoj",
+        "arranger": "Aranĝisto |||| Aranĝistoj",
+        "producer": "",
+        "director": "",
+        "engineer": "",
+        "mixer": "Miksisto |||| Miksistoj",
+        "remixer": "Remiksisto |||| Remiksistoj",
+        "djmixer": "",
+        "performer": ""
+      }
     },
-    "menu": {
-        "library": "Biblioteko",
-        "settings": "Agordoj",
-        "version": "Versio",
-        "theme": "Temo",
-        "personal": {
-            "name": "Persona",
-            "options": {
-                "theme": "Temo",
-                "language": "Lingvo",
-                "defaultView": "Defaŭlta Vido",
-                "desktop_notifications": "Labortablaj sciigoj",
-                "lastfmScrobbling": "",
-                "listenBrainzScrobbling": "",
-                "replaygain": "",
-                "preAmp": "",
-                "gain": {
-                    "none": "",
-                    "album": "",
-                    "track": ""
-                }
-            }
-        },
-        "albumList": "Albumoj",
-        "about": "Pri",
-        "playlists": "",
-        "sharedPlaylists": ""
+    "user": {
+      "name": "Uzanto |||| Uzantoj",
+      "fields": {
+        "userName": "Uzantnomo",
+        "isAdmin": "Estas Administranto",
+        "lastLoginAt": "Antaŭa Ensaluto Je",
+        "updatedAt": "Ĝisdatigita je",
+        "name": "Nomo",
+        "password": "Pasvorto",
+        "createdAt": "Kreita je :",
+        "changePassword": "Ĉu Ŝanĝi Pasvorton?",
+        "currentPassword": "Nuna Pasvorto",
+        "newPassword": "Nova Pasvorto",
+        "token": "Ĵetono",
+        "lastAccessAt": "Lasta Atingo"
+      },
+      "helperTexts": {
+        "name": "Ŝanĝoj de via nomo nur ĝisdatiĝs je via sekvanta ensaluto"
+      },
+      "notifications": {
+        "created": "Uzanto farita",
+        "updated": "Uzanto ĝistadigita",
+        "deleted": "Uzanto forigita"
+      },
+      "message": {
+        "listenBrainzToken": "Enigi vian uzantan ĵetonon de ListenBrainz.",
+        "clickHereForToken": "Alkakli ĉi tie por akiri vian ĵetonon"
+      }
     },
     "player": {
-        "playListsText": "Ludu Atendon",
-        "openText": "Malfermi",
-        "closeText": "Fermi",
-        "notContentText": "Neniu Muziko",
-        "clickToPlayText": "Alklaku por ludi",
-        "clickToPauseText": "Alklaku por paŭzi",
-        "nextTrackText": "Sekva muziko",
-        "previousTrackText": "Antaŭa muziko",
-        "reloadText": "Reŝargi",
-        "volumeText": "Laŭteco",
-        "toggleLyricText": "Baskuligi paroloj",
-        "toggleMiniModeText": "Minimumigi",
-        "destroyText": "Detrui",
-        "downloadText": "Elŝuti",
-        "removeAudioListsText": "Forigi sonlistojn",
-        "clickToDeleteText": "Alklaku por forigi %{name}",
-        "emptyLyricText": "Neniaj paroloj",
-        "playModeText": {
-            "order": "En ordo",
-            "orderLoop": "Ripeti",
-            "singleLoop": "Ripeti Unu",
-            "shufflePlay": "Miksi"
-        }
+      "name": "Ludanto |||| Ludantoj",
+      "fields": {
+        "name": "Nomo",
+        "transcodingId": "Transkodigo",
+        "maxBitRate": "Maksimuma Bitrapido",
+        "client": "Kliento",
+        "userName": "Uzantnomo",
+        "lastSeen": "Laste Vidita Je",
+        "reportRealPath": "Raporti vera pado",
+        "scrobbleEnabled": "Sendi Scrobbles al eksteraj servoj"
+      }
     },
-    "about": {
-        "links": {
-            "homepage": "Hejmpaĝo",
-            "source": "Fontkodo",
-            "featureRequests": "Trajta peto"
-        }
+    "transcoding": {
+      "name": "Transkodigo |||| Transkodigoj",
+      "fields": {
+        "name": "Nomo",
+        "targetFormat": "Cela Formato",
+        "defaultBitRate": "Defaŭlta Bitrapido",
+        "command": "Komando"
+      }
     },
-    "activity": {
-        "title": "Aktiveco",
-        "totalScanned": "Entute dosierujoj skanitaj",
-        "quickScan": "Rapida Skanado",
-        "fullScan": "Plena Skanado",
-        "serverUptime": "Servila daŭro de funkciado",
-        "serverDown": "SENKONEKTA"
+    "playlist": {
+      "name": "Ludlisto |||| Ludlistoj",
+      "fields": {
+        "name": "Nomo",
+        "duration": "Daŭro",
+        "ownerName": "Posedanto",
+        "public": "Publika",
+        "updatedAt": "Ĝisdatigita je",
+        "createdAt": "Kreita je",
+        "songCount": "Kantoj",
+        "comment": "Komento",
+        "sync": "Aŭtomata importado",
+        "path": "Importi de"
+      },
+      "actions": {
+        "selectPlaylist": "Elektu ludliston :",
+        "addNewPlaylist": "Krei \"%{name}\"",
+        "export": "Eksporti",
+        "makePublic": "Publikigi",
+        "makePrivate": "Malpublikigi",
+        "saveQueue": ""
+      },
+      "message": {
+        "duplicate_song": "Aldoni duobligitajn kantojn",
+        "song_exist": "Estas duoblaĵoj kiuj aldoniĝas al la kantolisto. Ĉu vi ŝatus aldoni la duoblaĵojn aŭ pasigi ilin?"
+      }
     },
-    "help": {
-        "title": "Navidrome klavkomando",
-        "hotkeys": {
-            "show_help": "Montru ĉi tiun helpon",
-            "toggle_menu": "Baskuli menuan flankobreton",
-            "toggle_play": "Ludi / Paŭzi",
-            "prev_song": "Antaŭa kanto",
-            "next_song": "Sekva kanto",
-            "vol_up": "Pli volumo",
-            "vol_down": "Malpli volumo",
-            "toggle_love": "Baskuli la stelon de nuna kanto",
-            "current_song": ""
-        }
+    "radio": {
+      "name": "Radio |||| Radioj",
+      "fields": {
+        "name": "Nomo",
+        "streamUrl": "Flua Ligilo",
+        "homePageUrl": "Hejmpaĝa Ligilo",
+        "updatedAt": "Ĝisdatiĝis je",
+        "createdAt": "Kreiĝis je"
+      },
+      "actions": {
+        "playNow": "Ludi Nun"
+      }
+    },
+    "share": {
+      "name": "Diskonigo |||| Diskonigoj",
+      "fields": {
+        "username": "Diskonigite De",
+        "url": "Ligilo",
+        "description": "Priskribo",
+        "contents": "Enhavo",
+        "expiresAt": "Senvalidiĝas",
+        "lastVisitedAt": "Laste Vizitita",
+        "visitCount": "Vizitoj",
+        "format": "Formato",
+        "maxBitRate": "Maks. Bitrapido",
+        "updatedAt": "Ĝisdatiĝis je",
+        "createdAt": "Fariĝis je",
+        "downloadable": "Ĉu Ebligi Elŝutojn?"
+      }
+    },
+    "missing": {
+      "name": "",
+      "fields": {
+        "path": "",
+        "size": "",
+        "updatedAt": ""
+      },
+      "actions": {
+        "remove": "",
+        "remove_all": ""
+      },
+      "notifications": {
+        "removed": ""
+      },
+      "empty": ""
     }
+  },
+  "ra": {
+    "auth": {
+      "welcome1": "Dankon pro instalado de Navidrome !",
+      "welcome2": "Por komenci, kreu administrantan uzanton",
+      "confirmPassword": "Konfirmu Pasvorton",
+      "buttonCreateAdmin": "Krei Administranto",
+      "auth_check_error": "Bonvolu ensaluti por daŭrigi",
+      "user_menu": "Profilo",
+      "username": "Uzantnomo",
+      "password": "Pasvorto",
+      "sign_in": "Ensaluti",
+      "sign_in_error": "Aŭtentikigo malsukcesis, bonvolu reprovi",
+      "logout": "Elsaluti",
+      "insightsCollectionNote": "Navidrome kolektas anoniman uzdatumon por helpi\nplibonigi la projekton. Alklaku [ĉi tie] por lerni pli kaj\nsupozi permeson se vi volas"
+    },
+    "validation": {
+      "invalidChars": "Bonvolu uzi nur literojn kaj ciferojn",
+      "passwordDoesNotMatch": "Pasvorto ne kongruas",
+      "required": "Necesa",
+      "minLength": "Devas esti almenaŭ %{min} signoj",
+      "maxLength": "Devas esti %{max} signoj aŭ malpli",
+      "minValue": "Devas esti almenaŭ %{min}",
+      "maxValue": "Devas esti %{max} aŭ malpli",
+      "number": "Devas esti nombro",
+      "email": "Devas esti valida retpoŝto",
+      "oneOf": "Devas esti unu el: %{options}",
+      "regex": "Devas kongrui kun specifa formato (regexp): %{pattern}",
+      "unique": "Devas esti unika",
+      "url": "Devas esti valida ligilo"
+    },
+    "action": {
+      "add_filter": "Aldoni filtrilon",
+      "add": "Aldoni",
+      "back": "Reiri",
+      "bulk_actions": "1 ero elektita |||| ${smart_count} eroj elektitaj",
+      "cancel": "Nuligi",
+      "clear_input_value": "Viŝi valoron",
+      "clone": "Kloni",
+      "confirm": "Konfirmi",
+      "create": "Krei",
+      "delete": "Forigi",
+      "edit": "Redakti",
+      "export": "Eksporti",
+      "list": "Listigi",
+      "refresh": "Aktualigi",
+      "remove_filter": "Forigu ĉi tiun filtrilon",
+      "remove": "Forigi",
+      "save": "Konservi",
+      "search": "Serĉi",
+      "show": "Montri",
+      "sort": "Ordigi",
+      "undo": "Malfari",
+      "expand": "Etendi",
+      "close": "Fermi",
+      "open_menu": "Malfermi menuon",
+      "close_menu": "Fermu menuon",
+      "unselect": "Malelekti",
+      "skip": "Pasigi",
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Diskonigi",
+      "download": "Elŝuti"
+    },
+    "boolean": {
+      "true": "Jes",
+      "false": "Ne"
+    },
+    "page": {
+      "create": "Krei %{name}",
+      "dashboard": "Panelo",
+      "edit": "%{name} #%{id}",
+      "error": "Io fuŝiĝis",
+      "list": "${name}",
+      "loading": "Ŝarĝante",
+      "not_found": "Ne Trovita",
+      "show": "%{name} #%{id}",
+      "empty": "Ankoraŭ ne %{name}",
+      "invite": "Ĉu vi volas aldoni unu?"
+    },
+    "input": {
+      "file": {
+        "upload_several": "Demetu iom da dosieroj por alŝuti, aŭ alklaku por elekti unu.",
+        "upload_single": "Demetu iom da dosieroj por alŝuti, aŭ alklaku por elekti ĝin."
+      },
+      "image": {
+        "upload_several": "Demetu iom da bildoj por alŝuti, aŭ alklaku por elekti unu.",
+        "upload_single": "Demetu bildon por alŝuti, aŭ alklaku por elekti ĝin."
+      },
+      "references": {
+        "all_missing": "Ne eblas trovi referencajn datumojn.",
+        "many_missing": "Almenaŭ unu el la rilataj referencoj ne plu ŝajnas esti disponebla.",
+        "single_missing": "Rilata referenco ne plu ŝajnas esti disponebla."
+      },
+      "password": {
+        "toggle_visible": "Kaŝi pasvorton",
+        "toggle_hidden": "Montri pasvorton"
+      }
+    },
+    "message": {
+      "about": "Pri",
+      "are_you_sure": "Ĉu vi certas?",
+      "bulk_delete_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun %{name}? |||| Ĉu vi certas, ke vi volas forigi ĉi tiujn %{smart_count} erojn?",
+      "bulk_delete_title": "Forigi %{name} |||| Forigi %{smart_count} %{name}",
+      "delete_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun eron?",
+      "delete_title": "Forigi %{name} #%{id}",
+      "details": "Detaloj",
+      "error": "Klienta eraro okazis kaj via peto ne povis esti plenumita.",
+      "invalid_form": "La formo ne estas valida. Bonvolu kontroli pri eraroj.",
+      "loading": "La paĝo ŝargiĝas, atendu nur momenton bonvole",
+      "no": "Ne",
+      "not_found": "Aŭ vi tajpis malĝustan ligilon, aŭ vi sekvis malbonan ligilon.",
+      "yes": "Jes",
+      "unsaved_changes": "Iuj el viaj ŝanĝoj ne estis konservitaj. Ĉu vi certas, ke vi volas ignori ilin?"
+    },
+    "navigation": {
+      "no_results": "Neniu rezulto troviĝis",
+      "no_more_results": "La paĝa numero %{page} estas ekster limoj. Provu la antaŭan paĝon.",
+      "page_out_of_boundaries": "Paĝa numero %{page} estas ekster limoj",
+      "page_out_from_end": "Ne povas iri post la lasta paĝo",
+      "page_out_from_begin": "Ne povas iri antaŭ paĝo 1",
+      "page_range_info": "%{offsetBegin}-%{offsetEnd} de %{total}",
+      "page_rows_per_page": "Eroj en paĝo:",
+      "next": "Sekvanta",
+      "prev": "Antaŭa",
+      "skip_nav": "Preterlasu al enhavo"
+    },
+    "notification": {
+      "updated": "Elemento ĝisdatigita |||| %{smart_count} elementoj ĝisdatigitaj",
+      "created": "\nElemento kretia",
+      "deleted": "Elemento foriga |||| %{smart_count} elementoj forigaj",
+      "bad_item": "Malĝusta elemento",
+      "item_doesnt_exist": "Elemento ne ekzistas",
+      "http_error": "Servila komunikada eraro",
+      "data_provider_error": "datumaProvizora eraro. Kontrolu la konzolon por detaloj.",
+      "i18n_error": "Ne eblas ŝargi la tradukojn por la specifa lingvo",
+      "canceled": "Ago nuligita",
+      "logged_out": "Via seanco finiĝis, bonvolu rekonekti.",
+      "new_version": "Nova versio haveblas! Bonvolu reŝargi la fenestron."
+    },
+    "toggleFieldsMenu": {
+      "columnsToDisplay": "Kolumnoj Por Montri",
+      "layout": "Aranĝo",
+      "grid": "Krado",
+      "table": "Tabelo"
+    }
+  },
+  "message": {
+    "note": "Noto",
+    "transcodingDisabled": "Ŝanĝi la transkodigan agordon per la interreta interfaco estas malebligita pro sekurecaj kialoj. Se vi ŝatus ŝanĝi (redakti aŭ aldoni) transkodigajn opciojn, relanĉu la servilon per la agordo %{config}.",
+    "transcodingEnabled": "Navidrome nuntempe funkcias kun %{config}, ebligante lanĉi sistemajn komandojn de la transkodigaj agordoj per la interreta interfaco. Ni rekomendas malŝalti ĝin pro sekurecaj kialoj kaj ebligi ĝin nur dum agordo de Transkodigaj opcioj.",
+    "songsAddedToPlaylist": "Aldonis 1 kanton al ludlisto |||| Aldonis %{smart_count} kantojn al ludlisto",
+    "noPlaylistsAvailable": "Neniu disponebla",
+    "delete_user_title": "Forigi uzanto '%{name}'",
+    "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?",
+    "notifications_blocked": "Vi blokis sciigojn por ĉi tiu retejo en la agordoj de via retumilo",
+    "notifications_not_available": "Ĉi tiu retumilo ne subtenas labortablajn sciigojn aŭ vi ne aliras Navidrome per https",
+    "lastfmLinkSuccess": "Last.fm sukcese ligiĝis kaj scrobbling ebliĝis",
+    "lastfmLinkFailure": "Last.fm ne povis ligiĝi",
+    "lastfmUnlinkSuccess": "Last.fm malligiĝis kaj scrobbling malebliĝis",
+    "lastfmUnlinkFailure": "Last.fm ne povis malligiĝi",
+    "openIn": {
+      "lastfm": "Malfermi en Last.fm",
+      "musicbrainz": "Malfermi en MusicBrainz"
+    },
+    "lastfmLink": "Legi Pli...",
+    "listenBrainzLinkSuccess": "ListenBrainz sukcese ligiĝis kaj scrobbling ebliĝis kiel uzanto: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz ne povis ligiĝi: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz malligiĝis kaj scrobbling malebliĝis",
+    "listenBrainzUnlinkFailure": "ListenBrainz ne povis malligiĝi",
+    "downloadOriginalFormat": "Elŝuti en originala formato",
+    "shareOriginalFormat": "Diskonigi en originala formato",
+    "shareDialogTitle": "Diskonigi %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Diskonigi 1 %{resource} |||| Diskonigi %{smart_count} %{resource}",
+    "shareSuccess": "Ligilo kopiiĝis al la tondujo: %{url}",
+    "shareFailure": "Eraro de kopio de ligilo %{url} al la tondujo",
+    "downloadDialogTitle": "Elŝuti %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Kopii al la tondujo: Ctrl+C, Enter",
+    "remove_missing_title": "",
+    "remove_missing_content": "Ĉu vi certas, ke vi volas forigi la elektitajn mankajn dosierojn de la datumbazo? Ĉi tio forigos eterne ĉiujn referencojn de ili, inkluzive iliajn ludkvantojn kaj taksojn.",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": ""
+  },
+  "menu": {
+    "library": "Biblioteko",
+    "settings": "Agordoj",
+    "version": "Versio",
+    "theme": "Etoso",
+    "personal": {
+      "name": "Persona",
+      "options": {
+        "theme": "Etoso",
+        "language": "Lingvo",
+        "defaultView": "Defaŭlta Vido",
+        "desktop_notifications": "Labortablaj sciigoj",
+        "lastfmScrobbling": "Scrobble al Last.fm",
+        "listenBrainzScrobbling": "Scrobble al ListenBrainz",
+        "replaygain": "ReplayGain-Reĝimo",
+        "preAmp": "ReplayGain PreAmp (dB)",
+        "gain": {
+          "none": "Malebligita",
+          "album": "Uzi Albuman Songajnon",
+          "track": "Uzi Kantan Songajnon"
+        },
+        "lastfmNotConfigured": ""
+      }
+    },
+    "albumList": "Albumoj",
+    "about": "Pri",
+    "playlists": "Ludlistoj",
+    "sharedPlaylists": "Diskonigitaj Ludistoj"
+  },
+  "player": {
+    "playListsText": "Atendovico",
+    "openText": "Malfermi",
+    "closeText": "Fermi",
+    "notContentText": "Neniu muziko",
+    "clickToPlayText": "Alklaku por ludi",
+    "clickToPauseText": "Alklaku por paŭzi",
+    "nextTrackText": "Sekvanta kanto",
+    "previousTrackText": "Antaŭa kanto",
+    "reloadText": "Reŝargi",
+    "volumeText": "Laŭteco",
+    "toggleLyricText": "Baskuligi kantotekston",
+    "toggleMiniModeText": "Minimumigi",
+    "destroyText": "Detrui",
+    "downloadText": "Elŝuti",
+    "removeAudioListsText": "Forigi sonlistojn",
+    "clickToDeleteText": "Alklaku por forigi %{name}",
+    "emptyLyricText": "Neniu kantoteksto",
+    "playModeText": {
+      "order": "Laŭorde",
+      "orderLoop": "Ripeti",
+      "singleLoop": "Ripeti Unufoje",
+      "shufflePlay": "Miksi"
+    }
+  },
+  "about": {
+    "links": {
+      "homepage": "Hejmpaĝo",
+      "source": "Fontkodo",
+      "featureRequests": "Trajta peto",
+      "lastInsightsCollection": "",
+      "insights": {
+        "disabled": "Malebligita",
+        "waiting": ""
+      }
+    }
+  },
+  "activity": {
+    "title": "Aktiveco",
+    "totalScanned": "Entute dosierujoj skanitaj",
+    "quickScan": "Rapida Skanado",
+    "fullScan": "Plena Skanado",
+    "serverUptime": "Servila daŭro de funkciado",
+    "serverDown": "SENKONEKTA",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": ""
+  },
+  "help": {
+    "title": "Navidrome klavkomando",
+    "hotkeys": {
+      "show_help": "Montru ĉi tiun helpon",
+      "toggle_menu": "Baskuli menuan flankobreton",
+      "toggle_play": "Ludi / Paŭzi",
+      "prev_song": "Antaŭa kanto",
+      "next_song": "Sekva kanto",
+      "vol_up": "Pli volumo",
+      "vol_down": "Malpli volumo",
+      "toggle_love": "Baskuli la stelon de nuna kanto",
+      "current_song": "Iri al Nuna Kanto"
+    }
+  }
 }

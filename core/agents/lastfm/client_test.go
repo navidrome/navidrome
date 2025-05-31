@@ -42,10 +42,10 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			artist, err := client.artistGetInfo(context.Background(), "U2", "123")
+			artist, err := client.artistGetInfo(context.Background(), "U2")
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=123&method=artist.getInfo"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
 		})
 
 		It("fails if Last.fm returns an http status != 200", func() {
@@ -54,7 +54,7 @@ var _ = Describe("client", func() {
 				StatusCode: 500,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "123")
+			_, err := client.artistGetInfo(context.Background(), "U2")
 			Expect(err).To(MatchError("last.fm http status: (500)"))
 		})
 
@@ -64,7 +64,7 @@ var _ = Describe("client", func() {
 				StatusCode: 400,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "123")
+			_, err := client.artistGetInfo(context.Background(), "U2")
 			Expect(err).To(MatchError(&lastFMError{Code: 3, Message: "Invalid Method - No method with that name in this package"}))
 		})
 
@@ -74,14 +74,14 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "123")
+			_, err := client.artistGetInfo(context.Background(), "U2")
 			Expect(err).To(MatchError(&lastFMError{Code: 6, Message: "The artist you supplied could not be found"}))
 		})
 
 		It("fails if HttpClient.Do() returns error", func() {
 			httpClient.Err = errors.New("generic error")
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "123")
+			_, err := client.artistGetInfo(context.Background(), "U2")
 			Expect(err).To(MatchError("generic error"))
 		})
 
@@ -91,7 +91,7 @@ var _ = Describe("client", func() {
 				StatusCode: 200,
 			}
 
-			_, err := client.artistGetInfo(context.Background(), "U2", "123")
+			_, err := client.artistGetInfo(context.Background(), "U2")
 			Expect(err).To(MatchError("invalid character '<' looking for beginning of value"))
 		})
 
@@ -102,10 +102,10 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			similar, err := client.artistGetSimilar(context.Background(), "U2", "123", 2)
+			similar, err := client.artistGetSimilar(context.Background(), "U2", 2)
 			Expect(err).To(BeNil())
 			Expect(len(similar.Artists)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&mbid=123&method=artist.getSimilar"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
 		})
 	})
 
@@ -114,10 +114,10 @@ var _ = Describe("client", func() {
 			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
 
-			top, err := client.artistGetTopTracks(context.Background(), "U2", "123", 2)
+			top, err := client.artistGetTopTracks(context.Background(), "U2", 2)
 			Expect(err).To(BeNil())
 			Expect(len(top.Track)).To(Equal(2))
-			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&mbid=123&method=artist.getTopTracks"))
+			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
 		})
 	})
 

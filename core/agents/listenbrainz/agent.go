@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const (
@@ -45,6 +46,12 @@ func (l *listenBrainzAgent) AgentName() string {
 }
 
 func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
+	artistMBIDs := slice.Map(track.Participants[model.RoleArtist], func(p model.Participant) string {
+		return p.MbzArtistID
+	})
+	artistNames := slice.Map(track.Participants[model.RoleArtist], func(p model.Participant) string {
+		return p.Name
+	})
 	li := listenInfo{
 		TrackMetadata: trackMetadata{
 			ArtistName:  track.Artist,
@@ -54,9 +61,11 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 				SubmissionClient:        consts.AppName,
 				SubmissionClientVersion: consts.Version,
 				TrackNumber:             track.TrackNumber,
-				ArtistMbzIDs:            []string{track.MbzArtistID},
-				RecordingMbzID:          track.MbzRecordingID,
-				ReleaseMbID:             track.MbzAlbumID,
+				ArtistNames:             artistNames,
+				ArtistMBIDs:             artistMBIDs,
+				RecordingMBID:           track.MbzRecordingID,
+				ReleaseMBID:             track.MbzAlbumID,
+				ReleaseGroupMBID:        track.MbzReleaseGroupID,
 				DurationMs:              int(track.Duration * 1000),
 			},
 		},
@@ -67,14 +76,14 @@ func (l *listenBrainzAgent) formatListen(track *model.MediaFile) listenInfo {
 func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
-		return scrobbler.ErrNotAuthorized
+		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
 	li := l.formatListen(track)
 	err = l.client.updateNowPlaying(ctx, sk, li)
 	if err != nil {
 		log.Warn(ctx, "ListenBrainz updateNowPlaying returned error", "track", track.Title, err)
-		return scrobbler.ErrUnrecoverable
+		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
 }
@@ -82,7 +91,7 @@ func (l *listenBrainzAgent) NowPlaying(ctx context.Context, userId string, track
 func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
-		return scrobbler.ErrNotAuthorized
+		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
 	li := l.formatListen(&s.MediaFile)
@@ -96,12 +105,12 @@ func (l *listenBrainzAgent) Scrobble(ctx context.Context, userId string, s scrob
 	isListenBrainzError := errors.As(err, &lbErr)
 	if !isListenBrainzError {
 		log.Warn(ctx, "ListenBrainz Scrobble returned HTTP error", "track", s.Title, err)
-		return scrobbler.ErrRetryLater
+		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
 	if lbErr.Code == 500 || lbErr.Code == 503 {
-		return scrobbler.ErrRetryLater
+		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
-	return scrobbler.ErrUnrecoverable
+	return errors.Join(err, scrobbler.ErrUnrecoverable)
 }
 
 func (l *listenBrainzAgent) IsAuthorized(ctx context.Context, userId string) bool {

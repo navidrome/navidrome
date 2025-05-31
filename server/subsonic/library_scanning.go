@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -12,10 +11,8 @@ import (
 )
 
 func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
-	// TODO handle multiple libraries
 	ctx := r.Context()
-	mediaFolder := conf.Server.MusicFolder
-	status, err := api.scanner.Status(mediaFolder)
+	status, err := api.scanner.Status(ctx)
 	if err != nil {
 		log.Error(ctx, "Error retrieving Scanner status", err)
 		return nil, newError(responses.ErrorGeneric, "Internal Error")
@@ -26,6 +23,9 @@ func (api *Router) GetScanStatus(r *http.Request) (*responses.Subsonic, error) {
 		Count:       int64(status.Count),
 		FolderCount: int64(status.FolderCount),
 		LastScan:    &status.LastScan,
+		Error:       status.LastError,
+		ScanType:    status.ScanType,
+		ElapsedTime: int64(status.ElapsedTime),
 	}
 	return response, nil
 }
@@ -47,12 +47,12 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 	go func() {
 		start := time.Now()
 		log.Info(ctx, "Triggering manual scan", "fullScan", fullScan, "user", loggedUser.UserName)
-		err := api.scanner.RescanAll(ctx, fullScan)
+		_, err := api.scanner.ScanAll(ctx, fullScan)
 		if err != nil {
 			log.Error(ctx, "Error scanning", err)
 			return
 		}
-		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start).Round(100*time.Millisecond))
+		log.Info(ctx, "Manual scan complete", "user", loggedUser.UserName, "elapsed", time.Since(start))
 	}()
 
 	return api.GetScanStatus(r)

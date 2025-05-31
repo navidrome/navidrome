@@ -13,6 +13,8 @@ import {
   EXTENDED_INFO_CLOSE,
   LISTENBRAINZ_TOKEN_OPEN,
   LISTENBRAINZ_TOKEN_CLOSE,
+  SAVE_QUEUE_OPEN,
+  SAVE_QUEUE_CLOSE,
   SHARE_MENU_OPEN,
   SHARE_MENU_CLOSE,
 } from '../actions'
@@ -124,6 +126,7 @@ export const downloadMenuDialogReducer = (
 export const expandInfoDialogReducer = (
   previousState = {
     open: false,
+    record: undefined,
   },
   payload,
 ) => {
@@ -139,6 +142,7 @@ export const expandInfoDialogReducer = (
       return {
         ...previousState,
         open: false,
+        record: undefined,
       }
     default:
       return previousState
@@ -163,6 +167,21 @@ export const listenBrainzTokenDialogReducer = (
         ...previousState,
         open: false,
       }
+    default:
+      return previousState
+  }
+}
+
+export const saveQueueDialogReducer = (
+  previousState = { open: false },
+  payload,
+) => {
+  const { type } = payload
+  switch (type) {
+    case SAVE_QUEUE_OPEN:
+      return { ...previousState, open: true }
+    case SAVE_QUEUE_CLOSE:
+      return { ...previousState, open: false }
     default:
       return previousState
   }

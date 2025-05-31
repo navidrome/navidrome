@@ -53,11 +53,11 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 	})
 	for _, album := range albums {
 		discs := slice.Group(album, func(mf model.MediaFile) int { return mf.DiscNumber })
-		isMultDisc := len(discs) > 1
+		isMultiDisc := len(discs) > 1
 		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist,
-			"format", format, "bitrate", bitrate, "isMultDisc", isMultDisc, "numTracks", len(album))
+			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
-			file := a.albumFilename(mf, format, isMultDisc)
+			file := a.albumFilename(mf, format, isMultiDisc)
 			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
 		}
 	}
@@ -78,12 +78,12 @@ func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	return z
 }
 
-func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc bool) string {
+func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc bool) string {
 	_, file := filepath.Split(mf.Path)
 	if format != "raw" {
 		file = strings.TrimSuffix(file, mf.Suffix) + format
 	}
-	if isMultDisc {
+	if isMultiDisc {
 		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
 	}
 	return fmt.Sprintf("%s/%s", sanitizeName(mf.Album), file)
@@ -91,33 +91,58 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultDisc b
 
 func (a *archiver) ZipShare(ctx context.Context, id string, out io.Writer) error {
 	s, err := a.shares.Load(ctx, id)
-	if !s.Downloadable {
-		return model.ErrNotAuthorized
-	}
 	if err != nil {
 		return err
 	}
+	if !s.Downloadable {
+		return model.ErrNotAuthorized
+	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
-	return a.zipMediaFiles(ctx, id, s.Format, s.MaxBitRate, out, s.Tracks)
+	return a.zipMediaFiles(ctx, id, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, false)
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	pls, err := a.ds.Playlist(ctx).GetWithTracks(id, true)
+	pls, err := a.ds.Playlist(ctx).GetWithTracks(id, true, false)
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from playlist", "id", id, err)
 		return err
 	}
 	mfs := pls.MediaFiles()
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
-	return a.zipMediaFiles(ctx, id, format, bitrate, out, mfs)
+	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, true)
 }
 
-func (a *archiver) zipMediaFiles(ctx context.Context, id string, format string, bitrate int, out io.Writer, mfs model.MediaFiles) error {
+func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, addM3U bool) error {
 	z := createZipWriter(out, format, bitrate)
+
+	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
 		file := a.playlistFilename(mf, format, idx)
 		_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
+		mf.Path = file
+		zippedMfs[idx] = mf
 	}
+
+	// Add M3U file if requested
+	if addM3U && len(zippedMfs) > 0 {
+		plsName := sanitizeName(name)
+		w, err := z.CreateHeader(&zip.FileHeader{
+			Name:     plsName + ".m3u",
+			Modified: mfs[0].UpdatedAt,
+			Method:   zip.Store,
+		})
+		if err != nil {
+			log.Error(ctx, "Error creating playlist zip entry", err)
+			return err
+		}
+
+		_, err = w.Write([]byte(zippedMfs.ToM3U8(plsName, false)))
+		if err != nil {
+			log.Error(ctx, "Error writing m3u in zip", err)
+			return err
+		}
+	}
+
 	err := z.Close()
 	if err != nil {
 		log.Error(ctx, "Error closing zip file", "id", id, err)
@@ -138,13 +163,14 @@ func sanitizeName(target string) string {
 }
 
 func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {
+	path := mf.AbsolutePath()
 	w, err := z.CreateHeader(&zip.FileHeader{
 		Name:     filename,
 		Modified: mf.UpdatedAt,
 		Method:   zip.Store,
 	})
 	if err != nil {
-		log.Error(ctx, "Error creating zip entry", "file", mf.Path, err)
+		log.Error(ctx, "Error creating zip entry", "file", path, err)
 		return err
 	}
 
@@ -152,22 +178,22 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	if format != "raw" && format != "" {
 		r, err = a.ms.DoStream(ctx, &mf, format, bitrate, 0)
 	} else {
-		r, err = os.Open(mf.Path)
+		r, err = os.Open(path)
 	}
 	if err != nil {
-		log.Error(ctx, "Error opening file for zipping", "file", mf.Path, "format", format, err)
+		log.Error(ctx, "Error opening file for zipping", "file", path, "format", format, err)
 		return err
 	}
 
 	defer func() {
 		if err := r.Close(); err != nil && log.IsGreaterOrEqualTo(log.LevelDebug) {
-			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", mf.Path, err)
+			log.Error(ctx, "Error closing stream", "id", mf.ID, "file", path, err)
 		}
 	}()
 
 	_, err = io.Copy(w, r)
 	if err != nil {
-		log.Error(ctx, "Error zipping file", "file", mf.Path, err)
+		log.Error(ctx, "Error zipping file", "file", path, err)
 		return err
 	}
 

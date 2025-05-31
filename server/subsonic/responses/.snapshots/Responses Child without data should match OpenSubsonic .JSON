@@ -1,0 +1,37 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "directory": {
+    "child": [
+      {
+        "id": "1",
+        "isDir": false,
+        "isVideo": false,
+        "bpm": 0,
+        "comment": "",
+        "sortName": "",
+        "mediaType": "",
+        "musicBrainzId": "",
+        "isrc": [],
+        "genres": [],
+        "replayGain": {},
+        "channelCount": 0,
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [],
+        "artists": [],
+        "displayArtist": "",
+        "albumArtists": [],
+        "displayAlbumArtist": "",
+        "contributors": [],
+        "displayComposer": "",
+        "explicitStatus": ""
+      }
+    ],
+    "id": "",
+    "name": ""
+  }
+}

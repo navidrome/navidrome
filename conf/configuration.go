@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bmatcuk/doublestar/v4"
+	"github.com/go-viper/encoding/ini"
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils/chain"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -27,8 +30,6 @@ type configOptions struct {
 	DbPath                          string
 	LogLevel                        string
 	LogFile                         string
-	ScanInterval                    time.Duration
-	ScanSchedule                    string
 	SessionTimeout                  time.Duration
 	BaseURL                         string
 	BasePath                        string
@@ -59,7 +60,6 @@ type configOptions struct {
 	PreferSortTags                  bool
 	IgnoredArticles                 string
 	IndexGroups                     string
-	SubsonicArtistParticipations    bool
 	FFmpegPath                      string
 	MPVPath                         string
 	MPVCmdTemplate                  string
@@ -72,6 +72,7 @@ type configOptions struct {
 	EnableUserEditing               bool
 	EnableSharing                   bool
 	ShareURL                        string
+	DefaultShareExpiration          time.Duration
 	DefaultDownloadableShare        bool
 	DefaultTheme                    string
 	DefaultLanguage                 string
@@ -90,11 +91,16 @@ type configOptions struct {
 	Scanner                         scannerOptions
 	Jukebox                         jukeboxOptions
 	Backup                          backupOptions
+	PID                             pidOptions
+	Inspect                         inspectOptions
+	Subsonic                        subsonicOptions
+	LyricsPriority                  string
 
 	Agents       string
 	LastFM       lastfmOptions
 	Spotify      spotifyOptions
 	ListenBrainz listenBrainzOptions
+	Tags         map[string]TagConf
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	DevLogSourceLine                 bool
@@ -105,29 +111,55 @@ type configOptions struct {
 	DevActivityPanel                 bool
 	DevActivityPanelUpdateRate       time.Duration
 	DevSidebarPlaylists              bool
-	DevEnableBufferedScrobble        bool
 	DevShowArtistPage                bool
+	DevUIShowConfig                  bool
 	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
 	DevArtworkThrottleBacklogTimeout time.Duration
 	DevArtistInfoTimeToLive          time.Duration
 	DevAlbumInfoTimeToLive           time.Duration
+	DevExternalScanner               bool
+	DevScannerThreads                uint
 	DevInsightsInitialDelay          time.Duration
 	DevEnablePlayerInsights          bool
 }
 
 type scannerOptions struct {
+	Enabled            bool
+	Schedule           string
+	WatcherWait        time.Duration
+	ScanOnStartup      bool
 	Extractor          string
-	GenreSeparators    string
-	GroupAlbumReleases bool
+	ArtistJoiner       string
+	GenreSeparators    string // Deprecated: Use Tags.genre.Split instead
+	GroupAlbumReleases bool   // Deprecated: Use PID.Album instead
+	FollowSymlinks     bool   // Whether to follow symlinks when scanning directories
+	PurgeMissing       string // Values: "never", "always", "full"
+}
+
+type subsonicOptions struct {
+	AppendSubtitle        bool
+	ArtistParticipations  bool
+	DefaultReportRealPath bool
+	LegacyClients         string
+}
+
+type TagConf struct {
+	Ignore    bool     `yaml:"ignore"`
+	Aliases   []string `yaml:"aliases"`
+	Type      string   `yaml:"type"`
+	MaxLength int      `yaml:"maxLength"`
+	Split     []string `yaml:"split"`
+	Album     bool     `yaml:"album"`
 }
 
 type lastfmOptions struct {
-	Enabled  bool
-	ApiKey   string
-	Secret   string
-	Language string
+	Enabled                 bool
+	ApiKey                  string
+	Secret                  string
+	Language                string
+	ScrobbleFirstArtistOnly bool
 }
 
 type spotifyOptions struct {
@@ -165,6 +197,18 @@ type backupOptions struct {
 	Schedule string
 }
 
+type pidOptions struct {
+	Track string
+	Album string
+}
+
+type inspectOptions struct {
+	Enabled        bool
+	MaxRequests    int
+	BacklogLimit   int
+	BacklogTimeout int
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -177,10 +221,10 @@ func LoadFromFile(confFile string) {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error reading config file:", err)
 		os.Exit(1)
 	}
-	Load()
+	Load(true)
 }
 
-func Load() {
+func Load(noConfigDump bool) {
 	parseIniFileConfiguration()
 
 	err := viper.Unmarshal(&Server)
@@ -232,11 +276,13 @@ func Load() {
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
-	if err := validateScanSchedule(); err != nil {
-		os.Exit(1)
-	}
-
-	if err := validateBackupSchedule(); err != nil {
+	err = chain.RunSequentially(
+		validateScanSchedule,
+		validateBackupSchedule,
+		validatePlaylistsPath,
+		validatePurgeMissingOption,
+	)
+	if err != nil {
 		os.Exit(1)
 	}
 
@@ -254,7 +300,7 @@ func Load() {
 	}
 
 	// Print current configuration if log level is Debug
-	if log.IsGreaterOrEqualTo(log.LevelDebug) {
+	if log.IsGreaterOrEqualTo(log.LevelDebug) && !noConfigDump {
 		prettyConf := pretty.Sprintf("Loaded configuration from '%s': %# v", Server.ConfigFile, Server)
 		if Server.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
@@ -266,9 +312,29 @@ func Load() {
 		disableExternalServices()
 	}
 
+	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+		log.Warn(fmt.Sprintf("Extractor '%s' is not implemented, using 'taglib'", Server.Scanner.Extractor))
+		Server.Scanner.Extractor = consts.DefaultScannerExtractor
+	}
+	logDeprecatedOptions("Scanner.GenreSeparators")
+	logDeprecatedOptions("Scanner.GroupAlbumReleases")
+	logDeprecatedOptions("DevEnableBufferedScrobble") // Deprecated: Buffered scrobbling is now always enabled and this option is ignored
+
 	// Call init hooks
 	for _, hook := range hooks {
 		hook()
+	}
+}
+
+func logDeprecatedOptions(options ...string) {
+	for _, option := range options {
+		envVar := "ND_" + strings.ToUpper(strings.ReplaceAll(option, ".", "_"))
+		if os.Getenv(envVar) != "" {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", envVar))
+		}
+		if viper.InConfig(option) {
+			log.Warn(fmt.Sprintf("Option '%s' is deprecated and will be ignored in a future release", option))
+		}
 	}
 }
 
@@ -309,26 +375,42 @@ func disableExternalServices() {
 	}
 }
 
-func validateScanSchedule() error {
-	if Server.ScanInterval != -1 {
-		log.Warn("ScanInterval is DEPRECATED. Please use ScanSchedule. See docs at https://navidrome.org/docs/usage/configuration-options/")
-		if Server.ScanSchedule != "@every 1m" {
-			log.Error("You cannot specify both ScanInterval and ScanSchedule, ignoring ScanInterval")
-		} else {
-			if Server.ScanInterval == 0 {
-				Server.ScanSchedule = ""
-			} else {
-				Server.ScanSchedule = fmt.Sprintf("@every %s", Server.ScanInterval)
-			}
-			log.Warn("Setting ScanSchedule", "schedule", Server.ScanSchedule)
+func validatePlaylistsPath() error {
+	for _, path := range strings.Split(Server.PlaylistsPath, string(filepath.ListSeparator)) {
+		_, err := doublestar.Match(path, "")
+		if err != nil {
+			log.Error("Invalid PlaylistsPath", "path", path, err)
+			return err
 		}
 	}
-	if Server.ScanSchedule == "0" || Server.ScanSchedule == "" {
-		Server.ScanSchedule = ""
+	return nil
+}
+
+func validatePurgeMissingOption() error {
+	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
+	valid := false
+	for _, v := range allowedValues {
+		if v == Server.Scanner.PurgeMissing {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		err := fmt.Errorf("Invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
+		log.Error(err.Error())
+		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+		return err
+	}
+	return nil
+}
+
+func validateScanSchedule() error {
+	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
+		Server.Scanner.Schedule = ""
 		return nil
 	}
 	var err error
-	Server.ScanSchedule, err = validateSchedule(Server.ScanSchedule, "ScanSchedule")
+	Server.Scanner.Schedule, err = validateSchedule(Server.Scanner.Schedule, "Scanner.Schedule")
 	return err
 }
 
@@ -337,10 +419,8 @@ func validateBackupSchedule() error {
 		Server.Backup.Schedule = ""
 		return nil
 	}
-
 	var err error
-	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "BackupSchedule")
-
+	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "Backup.Schedule")
 	return err
 }
 
@@ -351,7 +431,7 @@ func validateSchedule(schedule, field string) (string, error) {
 	c := cron.New()
 	id, err := c.AddFunc(schedule, func() {})
 	if err != nil {
-		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", field, err)
+		log.Error(fmt.Sprintf("Invalid %s. Please read format spec at https://pkg.go.dev/github.com/robfig/cron#hdr-CRON_Expression_Format", field), "schedule", schedule, err)
 	} else {
 		c.Remove(id)
 	}
@@ -363,7 +443,7 @@ func AddHook(hook func()) {
 	hooks = append(hooks, hook)
 }
 
-func init() {
+func setViperDefaults() {
 	viper.SetDefault("musicfolder", filepath.Join(".", "music"))
 	viper.SetDefault("cachefolder", "")
 	viper.SetDefault("datafolder", ".")
@@ -373,8 +453,6 @@ func init() {
 	viper.SetDefault("port", 4533)
 	viper.SetDefault("unixsocketperm", "0660")
 	viper.SetDefault("sessiontimeout", consts.DefaultSessionTimeout)
-	viper.SetDefault("scaninterval", -1)
-	viper.SetDefault("scanschedule", "@every 1m")
 	viper.SetDefault("baseurl", "")
 	viper.SetDefault("tlscert", "")
 	viper.SetDefault("tlskey", "")
@@ -388,7 +466,7 @@ func init() {
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("defaultplaylistpublicvisibility", false)
-	viper.SetDefault("playlistspath", consts.DefaultPlaylistsPath)
+	viper.SetDefault("playlistspath", "")
 	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
@@ -400,10 +478,8 @@ func init() {
 	viper.SetDefault("prefersorttags", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
-	viper.SetDefault("subsonicartistparticipations", false)
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
-
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
@@ -416,69 +492,90 @@ func init() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
+	viper.SetDefault("enablesharing", false)
+	viper.SetDefault("shareurl", "")
+	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
+	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enableinsightscollector", true)
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 	viper.SetDefault("passwordencryptionkey", "")
-
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
-
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
 	viper.SetDefault("prometheus.password", "")
-
 	viper.SetDefault("jukebox.enabled", false)
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
 	viper.SetDefault("jukebox.adminonly", true)
-
+	viper.SetDefault("scanner.enabled", true)
+	viper.SetDefault("scanner.schedule", "0")
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
-	viper.SetDefault("scanner.genreseparators", ";/,")
+	viper.SetDefault("scanner.watcherwait", consts.DefaultWatcherWait)
+	viper.SetDefault("scanner.scanonstartup", true)
+	viper.SetDefault("scanner.artistjoiner", consts.ArtistJoiner)
+	viper.SetDefault("scanner.genreseparators", "")
 	viper.SetDefault("scanner.groupalbumreleases", false)
-
+	viper.SetDefault("scanner.followsymlinks", true)
+	viper.SetDefault("scanner.purgemissing", "never")
+	viper.SetDefault("subsonic.appendsubtitle", true)
+	viper.SetDefault("subsonic.artistparticipations", false)
+	viper.SetDefault("subsonic.defaultreportrealpath", false)
+	viper.SetDefault("subsonic.legacyclients", "DSub")
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
-
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
-
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")
 	viper.SetDefault("backup.count", 0)
-
-	// DevFlags. These are used to enable/disable debugging and incomplete features
+	viper.SetDefault("pid.track", consts.DefaultTrackPID)
+	viper.SetDefault("pid.album", consts.DefaultAlbumPID)
+	viper.SetDefault("inspect.enabled", true)
+	viper.SetDefault("inspect.maxrequests", 1)
+	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
+	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
+	viper.SetDefault("lyricspriority", ".lrc,.txt,embedded")
 	viper.SetDefault("devlogsourceline", false)
 	viper.SetDefault("devenableprofiler", false)
 	viper.SetDefault("devautocreateadminpassword", "")
 	viper.SetDefault("devautologinusername", "")
 	viper.SetDefault("devactivitypanel", true)
 	viper.SetDefault("devactivitypanelupdaterate", 300*time.Millisecond)
-	viper.SetDefault("enablesharing", false)
-	viper.SetDefault("shareurl", "")
-	viper.SetDefault("defaultdownloadableshare", false)
-	viper.SetDefault("devenablebufferedscrobble", true)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
+	viper.SetDefault("devexternalscanner", true)
+	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)
 	viper.SetDefault("devenableplayerinsights", true)
 }
 
+func init() {
+	setViperDefaults()
+}
+
 func InitConfig(cfgFile string) {
+	codecRegistry := viper.NewCodecRegistry()
+	_ = codecRegistry.RegisterCodec("ini", ini.Codec{})
+	viper.SetOptions(viper.WithCodecRegistry(codecRegistry))
+
 	cfgFile = getConfigFile(cfgFile)
 	if cfgFile != "" {
 		// Use config file from the flag.
@@ -502,9 +599,17 @@ func InitConfig(cfgFile string) {
 	}
 }
 
+// getConfigFile returns the path to the config file, either from the flag or from the environment variable.
+// If it is defined in the environment variable, it will check if the file exists.
 func getConfigFile(cfgFile string) string {
 	if cfgFile != "" {
 		return cfgFile
 	}
-	return os.Getenv("ND_CONFIGFILE")
+	cfgFile = os.Getenv("ND_CONFIGFILE")
+	if cfgFile != "" {
+		if _, err := os.Stat(cfgFile); err == nil {
+			return cfgFile
+		}
+	}
+	return ""
 }

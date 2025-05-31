@@ -1,0 +1,14 @@
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
+  <albumList>
+    <album id="1" isDir="false" isVideo="false" sortName="sort name" mediaType="album" musicBrainzId="00000000-0000-0000-0000-000000000000" displayArtist="Display artist" displayAlbumArtist="Display album artist" explicitStatus="explicit">
+      <genres name="Genre 1"></genres>
+      <genres name="Genre 2"></genres>
+      <moods>mood1</moods>
+      <moods>mood2</moods>
+      <artists id="artist-1" name="Artist 1"></artists>
+      <artists id="artist-2" name="Artist 2"></artists>
+      <albumArtists id="album-artist-1" name="Artist 1"></albumArtists>
+      <albumArtists id="album-artist-2" name="Artist 2"></albumArtists>
+    </album>
+  </albumList>
+</subsonic-response>

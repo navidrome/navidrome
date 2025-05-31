@@ -23,5 +23,7 @@ music
 docker-compose.yml
 !contrib/docker-compose.yml
 binaries
-taglib
 navidrome-master
+AGENTS.md
+*.exe
+bin/

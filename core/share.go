@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/navidrome/navidrome/utils/gg"
@@ -93,7 +94,7 @@ func (r *shareRepositoryWrapper) Save(entity interface{}) (string, error) {
 	}
 	s.ID = id
 	if V(s.ExpiresAt).IsZero() {
-		s.ExpiresAt = P(time.Now().Add(365 * 24 * time.Hour))
+		s.ExpiresAt = P(time.Now().Add(conf.Server.DefaultShareExpiration))
 	}
 
 	firstId := strings.SplitN(s.ResourceIDs, ",", 2)[0]
@@ -167,7 +168,10 @@ func (r *shareRepositoryWrapper) contentsLabelFromPlaylist(shareID string, id st
 
 func (r *shareRepositoryWrapper) contentsLabelFromMediaFiles(shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
-	mfs, err := r.ds.MediaFile(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": idList}})
+	mfs, err := r.ds.MediaFile(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
+		squirrel.Eq{"media_file.id": idList},
+		squirrel.Eq{"missing": false},
+	}})
 	if err != nil {
 		log.Error(r.ctx, "Error retrieving media files for share", "share", shareID, err)
 		return ""

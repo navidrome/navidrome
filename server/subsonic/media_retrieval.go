@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -67,9 +68,6 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	square := p.BoolOr("square", false)
 
 	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
-	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
-
 	switch {
 	case errors.Is(err, context.Canceled):
 		return nil, nil
@@ -82,6 +80,9 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	}
 
 	defer imgReader.Close()
+	w.Header().Set("cache-control", "public, max-age=315360000")
+	w.Header().Set("last-modified", lastUpdate.Format(time.RFC1123))
+
 	cnt, err := io.Copy(w, imgReader)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
@@ -95,9 +96,9 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	artist, _ := p.String("artist")
 	title, _ := p.String("title")
 	response := newResponse()
-	lyrics := responses.Lyrics{}
-	response.Lyrics = &lyrics
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsWithLyrics(artist, title))
+	lyricsResponse := responses.Lyrics{}
+	response.Lyrics = &lyricsResponse
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongWithLyrics(artist, title))
 
 	if err != nil {
 		return nil, err
@@ -107,7 +108,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	structuredLyrics, err := mediaFiles[0].StructuredLyrics()
+	structuredLyrics, err := lyrics.GetLyrics(r.Context(), &mediaFiles[0])
 	if err != nil {
 		return nil, err
 	}
@@ -116,15 +117,15 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 		return response, nil
 	}
 
-	lyrics.Artist = artist
-	lyrics.Title = title
+	lyricsResponse.Artist = artist
+	lyricsResponse.Title = title
 
 	lyricsText := ""
 	for _, line := range structuredLyrics[0].Line {
 		lyricsText += line.Value + "\n"
 	}
 
-	lyrics.Value = lyricsText
+	lyricsResponse.Value = lyricsText
 
 	return response, nil
 }
@@ -140,13 +141,13 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	lyrics, err := mediaFile.StructuredLyrics()
+	structuredLyrics, err := lyrics.GetLyrics(r.Context(), mediaFile)
 	if err != nil {
 		return nil, err
 	}
 
 	response := newResponse()
-	response.LyricsList = buildLyricsList(mediaFile, lyrics)
+	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics)
 
 	return response, nil
 }

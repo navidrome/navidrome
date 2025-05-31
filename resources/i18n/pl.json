@@ -26,7 +26,14 @@
         "bpm": "BPM",
         "playDate": "Ostatnio Odtwarzane",
         "channels": "Kanały",
-        "createdAt": "Data dodania"
+        "createdAt": "Data dodania",
+        "grouping": "Grupowanie",
+        "mood": "Nastrój",
+        "participants": "Dodatkowi uczestnicy",
+        "tags": "Dodatkowe Tagi",
+        "mappedTags": "Zmapowane tagi",
+        "rawTags": "Surowe tagi",
+        "bitDepth": "Głębokość próbkowania"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -58,7 +65,14 @@
         "originalDate": "Pierwotna Data",
         "releaseDate": "Data Wydania",
         "releases": "Wydanie |||| Wydania",
-        "released": "Wydany"
+        "released": "Wydany",
+        "recordLabel": "Wytwórnia",
+        "catalogNum": "Numer Katalogowy",
+        "releaseType": "Typ",
+        "grouping": "Grupowanie",
+        "media": "Media",
+        "mood": "Nastrój",
+        "date": ""
       },
       "actions": {
         "playAll": "Odtwarzaj",
@@ -89,7 +103,23 @@
         "playCount": "Liczba Odtworzeń",
         "rating": "Ocena",
         "genre": "Gatunek",
-        "size": "Rozmiar"
+        "size": "Rozmiar",
+        "role": "Rola"
+      },
+      "roles": {
+        "albumartist": "Wykonawca Albumu |||| Wykonawcy Albumu",
+        "artist": "Wykonawca |||| Wykonawcy",
+        "composer": "Kompozytor |||| Kompozytorzy",
+        "conductor": "Dyrygent |||| Dyrygenci",
+        "lyricist": "Autor tekstów |||| Autorzy tekstów",
+        "arranger": "Aranżer |||| Aranżerzy",
+        "producer": "Producent |||| Producenci",
+        "director": "Reżyser |||| Reżyserzy",
+        "engineer": "Inżynier |||| Inżynierowie",
+        "mixer": "Mikser |||| Mikserzy",
+        "remixer": "Remixer |||| Remixerzy",
+        "djmixer": "Didżej |||| Didżerzy",
+        "performer": "Wykonawca |||| Wykonawcy"
       }
     },
     "user": {
@@ -198,6 +228,21 @@
         "createdAt": "Stworzono",
         "downloadable": "Zezwolić Na Pobieranie?"
       }
+    },
+    "missing": {
+      "name": "Brakujący Plik|||| Brakujące Pliki",
+      "fields": {
+        "path": "Ścieżka",
+        "size": "Rozmiar",
+        "updatedAt": "Zniknął na"
+      },
+      "actions": {
+        "remove": "Usuń"
+      },
+      "notifications": {
+        "removed": "Usunięto brakujące pliki"
+      },
+      "empty": "Bez Brakujących Plików"
     }
   },
   "ra": {
@@ -375,7 +420,9 @@
     "shareSuccess": "Adres URL skopiowany do schowka: %{url}",
     "shareFailure": "Błąd podczas kopiowania URL %{url} do schowka",
     "downloadDialogTitle": "Pobierz %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Skopiuj do schowka: Ctrl+C, Enter",
+    "remove_missing_title": "Usuń brakujące dane",
+    "remove_missing_content": "Czy na pewno chcesz usunąć wybrane brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszystkich powiązań, takich jak liczba odtworzeń i oceny."
   },
   "menu": {
     "library": "Biblioteka",

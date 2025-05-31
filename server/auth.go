@@ -16,12 +16,12 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"golang.org/x/text/cases"
@@ -138,7 +138,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	now := time.Now()
 	caser := cases.Title(language.Und)
 	initialUser := model.User{
-		ID:          uuid.NewString(),
+		ID:          id.NewRandom(),
 		UserName:    username,
 		Name:        caser.String(username),
 		Email:       "",
@@ -214,7 +214,7 @@ func UsernameFromReverseProxyHeader(r *http.Request) string {
 	return username
 }
 
-func UsernameFromConfig(r *http.Request) string {
+func UsernameFromConfig(*http.Request) string {
 	return conf.Server.DevAutoLoginUsername
 }
 
@@ -292,13 +292,17 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]inte
 	user, err := userRepo.FindByUsernameWithPassword(username)
 	if user == nil || err != nil {
 		log.Info(r, "User passed in header not found", "user", username)
+		// Check if this is the first user being created
+		count, _ := userRepo.CountAll()
+		isFirstUser := count == 0
+
 		newUser := model.User{
-			ID:          uuid.NewString(),
+			ID:          id.NewRandom(),
 			UserName:    username,
 			Name:        username,
 			Email:       "",
-			NewPassword: consts.PasswordAutogenPrefix + uuid.NewString(),
-			IsAdmin:     false,
+			NewPassword: consts.PasswordAutogenPrefix + id.NewRandom(),
+			IsAdmin:     isFirstUser, // Make the first user an admin
 		}
 		err := userRepo.Put(&newUser)
 		if err != nil {
@@ -343,7 +347,6 @@ func validateIPAgainstList(ip string, comaSeparatedList string) bool {
 	}
 
 	testedIP, _, err := net.ParseCIDR(fmt.Sprintf("%s/32", ip))
-
 	if err != nil {
 		return false
 	}

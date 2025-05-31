@@ -26,12 +26,21 @@
         "bpm": "BPM",
         "playDate": "Últimas reproducciones",
         "channels": "Canales",
-        "createdAt": "Creado el"
+        "createdAt": "Creado el",
+        "grouping": "Agrupación",
+        "mood": "Estado de ánimo",
+        "participants": "Participantes",
+        "tags": "Etiquetas",
+        "mappedTags": "Etiquetas asignadas",
+        "rawTags": "Etiquetas sin procesar",
+        "bitDepth": "Profundidad de bits",
+        "sampleRate": "Frecuencia de muestreo",
+        "missing": "Faltante"
       },
       "actions": {
         "addToQueue": "Reproducir después",
         "playNow": "Reproducir ahora",
-        "addToPlaylist": "Agregar a la lista de reproducción",
+        "addToPlaylist": "Agregar a la playlist",
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
@@ -58,13 +67,21 @@
         "originalDate": "Original",
         "releaseDate": "Publicado",
         "releases": "Lanzamiento |||| Lanzamientos",
-        "released": "Publicado"
+        "released": "Publicado",
+        "recordLabel": "Discográfica",
+        "catalogNum": "Número de catálogo",
+        "releaseType": "Tipo de lanzamiento",
+        "grouping": "Agrupación",
+        "media": "Medios",
+        "mood": "Estado de ánimo",
+        "date": "Fecha de grabación",
+        "missing": "Faltante"
       },
       "actions": {
         "playAll": "Reproducir",
         "playNext": "Reproducir siguiente",
         "addToQueue": "Reproducir después",
-        "shuffle": "Aletorio",
+        "shuffle": "Aleatorio",
         "addToPlaylist": "Agregar a la lista",
         "download": "Descargar",
         "info": "Obtener información",
@@ -73,11 +90,11 @@
       "lists": {
         "all": "Todos",
         "random": "Aleatorio",
-        "recentlyAdded": "Añadidos recientemente",
-        "recentlyPlayed": "Reproducidos recientemente",
+        "recentlyAdded": "Recientes",
+        "recentlyPlayed": "Recientes",
         "mostPlayed": "Más reproducidos",
         "starred": "Favoritos",
-        "topRated": "Los mejores calificados"
+        "topRated": "Mejor calificados"
       }
     },
     "artist": {
@@ -89,7 +106,24 @@
         "playCount": "Reproducciones",
         "rating": "Calificación",
         "genre": "Género",
-        "size": "Tamaño"
+        "size": "Tamaño",
+        "role": "Rol",
+        "missing": "Faltante"
+      },
+      "roles": {
+        "albumartist": "Artista del álbum",
+        "artist": "Artista",
+        "composer": "Compositor",
+        "conductor": "Director de orquesta",
+        "lyricist": "Letrista",
+        "arranger": "Arreglista",
+        "producer": "Productor",
+        "director": "Director",
+        "engineer": "Ingeniero de sonido",
+        "mixer": "Mezclador",
+        "remixer": "Remixer",
+        "djmixer": "DJ Mixer",
+        "performer": "Intérprete"
       }
     },
     "user": {
@@ -113,7 +147,7 @@
       },
       "notifications": {
         "created": "Usuario creado",
-        "updated": "Usuario actulalizado",
+        "updated": "Usuario actualizado",
         "deleted": "Usuario eliminado"
       },
       "message": {
@@ -162,11 +196,12 @@
         "addNewPlaylist": "Creada \"%{name}\"",
         "export": "Exportar",
         "makePublic": "Hazla pública",
-        "makePrivate": "Hazla privada"
+        "makePrivate": "Hazla privada",
+        "saveQueue": "Guardar la fila de reproducción en una playlist"
       },
       "message": {
-        "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la lista de reproducción",
-        "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregar los duplicados o omitirlos?"
+        "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
+        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?"
       }
     },
     "radio": {
@@ -198,6 +233,22 @@
         "createdAt": "Creado el",
         "downloadable": "¿Permitir descargas?"
       }
+    },
+    "missing": {
+      "name": "Faltante",
+      "fields": {
+        "path": "Ruta",
+        "size": "Tamaño",
+        "updatedAt": "Actualizado el"
+      },
+      "actions": {
+        "remove": "Eliminar",
+        "remove_all": "Eliminar todo"
+      },
+      "notifications": {
+        "removed": "Eliminado"
+      },
+      "empty": "No hay archivos perdidos"
     }
   },
   "ra": {
@@ -371,11 +422,15 @@
     "downloadOriginalFormat": "Descargar formato original",
     "shareOriginalFormat": "Compartir formato original",
     "shareDialogTitle": "Compartir %{resource} '%{name}'",
-    "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Share %{smart_count} %{resource}",
+    "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Compartir %{smart_count} %{resource}",
     "shareSuccess": "URL copiada al portapapeles: %{url}",
     "shareFailure": "Error al copiar la URL %{url} al portapapeles",
     "downloadDialogTitle": "Descargar %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro"
+    "shareCopyToClipboard": "Copiar al portapapeles: Ctrl+C, Intro",
+    "remove_missing_title": "Eliminar elemento faltante",
+    "remove_missing_content": "¿Realmente desea eliminar los archivos faltantes seleccionados de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones.",
+    "remove_all_missing_title": "Eliminar todos los archivos perdidos",
+    "remove_all_missing_content": "¿Realmente desea eliminar todos los archivos faltantes de la base de datos? Esto eliminará permanentemente cualquier referencia a ellos, incluidas sus reproducciones y valoraciones."
   },
   "menu": {
     "library": "Biblioteca",
@@ -407,7 +462,7 @@
     "sharedPlaylists": "Playlists Compartidas"
   },
   "player": {
-    "playListsText": "Lista de reproducción",
+    "playListsText": "Fila de reproducción",
     "openText": "Abrir",
     "closeText": "Cerrar",
     "notContentText": "Sin música",
@@ -449,7 +504,10 @@
     "quickScan": "Escaneo rápido",
     "fullScan": "Escaneo completo",
     "serverUptime": "Uptime del servidor",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Tipo",
+    "status": "Error de escaneo",
+    "elapsedTime": "Tiempo transcurrido"
   },
   "help": {
     "title": "Atajos de teclado de Navidrome",

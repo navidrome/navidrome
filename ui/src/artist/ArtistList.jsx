@@ -1,36 +1,40 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { useHistory } from 'react-router-dom'
 import {
-  AutocompleteInput,
   Datagrid,
   DatagridBody,
   DatagridRow,
   Filter,
+  FunctionField,
   NumberField,
-  ReferenceInput,
   SearchInput,
+  SelectInput,
   TextField,
   useTranslate,
+  NullableBooleanInput,
+  usePermissions,
 } from 'react-admin'
 import { useMediaQuery, withWidth } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
+import clsx from 'clsx'
 import {
   ArtistContextMenu,
   List,
   QuickFilter,
   useGetHandleArtistClick,
-  ArtistSimpleList,
   RatingField,
   useSelectedFields,
   useResourceRefresh,
-  SizeField,
 } from '../common'
 import config from '../config'
 import ArtistListActions from './ArtistListActions'
+import ArtistSimpleList from './ArtistSimpleList'
 import { DraggableTypes } from '../consts'
+import en from '../i18n/en.json'
+import { formatBytes } from '../utils/index.js'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -48,6 +52,9 @@ const useStyles = makeStyles({
       },
     },
   },
+  missingRow: {
+    opacity: 0.3,
+  },
   contextMenu: {
     visibility: 'hidden',
   },
@@ -58,19 +65,23 @@ const useStyles = makeStyles({
 
 const ArtistFilter = (props) => {
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
+  const rolesObj = en?.resources?.artist?.roles
+  const roles = Object.keys(rolesObj).reduce((acc, role) => {
+    acc.push({
+      id: role,
+      name: translate(`resources.artist.roles.${role}`, {
+        smart_count: 2,
+      }),
+    })
+    return acc
+  }, [])
+  roles?.sort((a, b) => a.name.localeCompare(b.name))
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput id="search" source="name" alwaysOn />
-      <ReferenceInput
-        label={translate('resources.artist.fields.genre')}
-        source="genre_id"
-        reference="genre"
-        perPage={0}
-        sort={{ field: 'name', order: 'ASC' }}
-        filterToQuery={(searchText) => ({ name: [searchText] })}
-      >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+      <SelectInput source="role" choices={roles} alwaysOn />
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
@@ -78,6 +89,7 @@ const ArtistFilter = (props) => {
           defaultValue={true}
         />
       )}
+      {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )
 }
@@ -92,7 +104,15 @@ const ArtistDatagridRow = (props) => {
     }),
     [record],
   )
-  return <DatagridRow ref={dragArtistRef} {...props} />
+  const classes = useStyles()
+  const computedClasses = clsx(
+    props.className,
+    classes.row,
+    record?.missing && classes.missingRow,
+  )
+  return (
+    <DatagridRow ref={dragArtistRef} {...props} className={computedClasses} />
+  )
 }
 
 const ArtistDatagridBody = (props) => (
@@ -104,17 +124,25 @@ const ArtistDatagrid = (props) => (
 )
 
 const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
+  const { filterValues } = rest
   const classes = useStyles()
   const handleArtistLink = useGetHandleArtistClick(width)
   const history = useHistory()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   useResourceRefresh('artist')
 
-  const toggleableFields = useMemo(() => {
-    return {
-      albumCount: <NumberField source="albumCount" sortByOrder={'DESC'} />,
-      songCount: <NumberField source="songCount" sortByOrder={'DESC'} />,
-      size: !isXsmall && <SizeField source="size" />,
+  const role = filterValues?.role
+  const getCounter = (record, counter) =>
+    role ? record?.stats[role]?.[counter] : record?.[counter]
+  const getAlbumCount = (record) => getCounter(record, 'albumCount')
+  const getSongCount = (record) => getCounter(record, 'songCount')
+  const getSize = (record) => {
+    const size = getCounter(record, 'size')
+    return size ? formatBytes(size) : '0 MB'
+  }
+
+  const toggleableFields = useMemo(
+    () => ({
       playCount: <NumberField source="playCount" sortByOrder={'DESC'} />,
       rating: config.enableStarRating && (
         <RatingField
@@ -124,16 +152,14 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
           className={classes.ratingField}
         />
       ),
-    }
-  }, [classes.ratingField, isXsmall])
-
-  const columns = useSelectedFields(
-    {
-      resource: 'artist',
-      columns: toggleableFields,
-    },
-    ['size'],
+    }),
+    [classes.ratingField],
   )
+
+  const columns = useSelectedFields({
+    resource: 'artist',
+    columns: toggleableFields,
+  })
 
   return isXsmall ? (
     <ArtistSimpleList
@@ -143,6 +169,17 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
   ) : (
     <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
       <TextField source="name" />
+      <FunctionField
+        source="albumCount"
+        sortByOrder={'DESC'}
+        render={getAlbumCount}
+      />
+      <FunctionField
+        source="songCount"
+        sortByOrder={'DESC'}
+        render={getSongCount}
+      />
+      <FunctionField source="size" sortByOrder={'DESC'} render={getSize} />
       {columns}
       <ArtistContextMenu
         source={'starred_at'}
@@ -171,6 +208,7 @@ const ArtistList = (props) => {
         exporter={false}
         bulkActionButtons={false}
         filters={<ArtistFilter />}
+        filterDefaultValues={{ role: 'albumartist' }}
         actions={<ArtistListActions />}
       >
         <ArtistListView {...props} />

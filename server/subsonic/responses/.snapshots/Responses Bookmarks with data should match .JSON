@@ -1,8 +1,8 @@
 {
   "status": "ok",
-  "version": "1.8.0",
+  "version": "1.16.1",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "v0.55.0",
   "openSubsonic": true,
   "bookmarks": {
     "bookmark": [
@@ -11,16 +11,7 @@
           "id": "1",
           "isDir": false,
           "title": "title",
-          "isVideo": false,
-          "bpm": 0,
-          "comment": "",
-          "sortName": "",
-          "mediaType": "",
-          "musicBrainzId": "",
-          "genres": [],
-          "replayGain": {},
-          "channelCount": 0,
-          "samplingRate": 0
+          "isVideo": false
         },
         "position": 123,
         "username": "user2",

@@ -9,7 +9,7 @@
         "trackNumber": "Titel #",
         "playCount": "Wiedergaben",
         "title": "Titel",
-        "artist": "Künstler",
+        "artist": "Interpret",
         "album": "Album",
         "path": "Dateipfad",
         "genre": "Genre",
@@ -26,12 +26,21 @@
         "bpm": "BPM",
         "playDate": "Letzte Wiedergabe",
         "channels": "Spuren",
-        "createdAt": "Hinzugefügt"
+        "createdAt": "Hinzugefügt",
+        "grouping": "Gruppierung",
+        "mood": "Stimmung",
+        "participants": "Weitere Beteiligte",
+        "tags": "Weitere Tags",
+        "mappedTags": "Gemappte Tags",
+        "rawTags": "Tag Rohdaten",
+        "bitDepth": "Bittiefe",
+        "sampleRate": "Samplerate",
+        "missing": "Fehlend"
       },
       "actions": {
         "addToQueue": "Später abspielen",
         "playNow": "Jetzt abspielen",
-        "addToPlaylist": "Zur Playlist hinzufügen",
+        "addToPlaylist": "Zu einer Wiedergabeliste hinzufügen",
         "shuffleAll": "Zufallswiedergabe",
         "download": "Herunterladen",
         "playNext": "Als nächstes abspielen",
@@ -58,14 +67,22 @@
         "originalDate": "Ursprünglich",
         "releaseDate": "Erschienen",
         "releases": "Veröffentlichung |||| Veröffentlichungen",
-        "released": "Erschienen"
+        "released": "Erschienen",
+        "recordLabel": "Label",
+        "catalogNum": "Katalognummer",
+        "releaseType": "Typ",
+        "grouping": "Gruppierung",
+        "media": "Medium",
+        "mood": "Stimmung",
+        "date": "Aufnahmedatum",
+        "missing": "Fehlend"
       },
       "actions": {
         "playAll": "Abspielen",
         "playNext": "Als nächstes abspielen",
         "addToQueue": "Später abspielen",
         "shuffle": "Zufallswiedergabe",
-        "addToPlaylist": "Zur Playlist hinzufügen",
+        "addToPlaylist": "Zu einer Wiedergabeliste hinzufügen",
         "download": "Herunterladen",
         "info": "Mehr Informationen",
         "share": "Freigabe erstellen"
@@ -89,7 +106,24 @@
         "playCount": "Wiedergaben",
         "rating": "Bewertung",
         "genre": "Genre",
-        "size": "Größe"
+        "size": "Größe",
+        "role": "Rolle",
+        "missing": "Fehlend"
+      },
+      "roles": {
+        "albumartist": "Albuminterpret |||| Albuminterpreten",
+        "artist": "Interpret |||| Interpreten",
+        "composer": "Komponist |||| Komponisten",
+        "conductor": "Dirigent |||| Dirigenten",
+        "lyricist": "Texter |||| Texter",
+        "arranger": "Arrangeur |||| Arrangeure",
+        "producer": "Produzent |||| Produzenten",
+        "director": "Direktor |||| Direktoren",
+        "engineer": "Ingenieur |||| Ingenieure",
+        "mixer": "Mixer |||| Mixer",
+        "remixer": "Remixer |||| Remixer",
+        "djmixer": "DJ Mixer |||| DJ Mixer",
+        "performer": "ausübender Künstler |||| ausübende Künstler"
       }
     },
     "user": {
@@ -144,7 +178,7 @@
       }
     },
     "playlist": {
-      "name": "Playlist |||| Playlists",
+      "name": "Wiedergabeliste |||| Wiedergabelisten",
       "fields": {
         "name": "Name",
         "duration": "Dauer",
@@ -158,11 +192,12 @@
         "path": "Importieren aus"
       },
       "actions": {
-        "selectPlaylist": "Titel zur Playlist hinzufügen",
+        "selectPlaylist": "Wiedergabeliste auswählen:",
         "addNewPlaylist": "\"%{name}\" erstellen",
         "export": "Exportieren",
         "makePublic": "Öffentlich machen",
-        "makePrivate": "Privat stellen"
+        "makePrivate": "Privat stellen",
+        "saveQueue": "Warteschlange in Wiedergabeliste speichern"
       },
       "message": {
         "duplicate_song": "Duplikate hinzufügen",
@@ -198,6 +233,22 @@
         "createdAt": "Erstellt am",
         "downloadable": "Downloads erlauben?"
       }
+    },
+    "missing": {
+      "name": "Fehlende Datei |||| Fehlende Dateien",
+      "fields": {
+        "path": "Pfad",
+        "size": "Größe",
+        "updatedAt": "Fehlt seit"
+      },
+      "actions": {
+        "remove": "Entfernen",
+        "remove_all": "alle entfernen"
+      },
+      "notifications": {
+        "removed": "Fehlende Datei(en) entfernt"
+      },
+      "empty": "keine fehlenden Dateien"
     }
   },
   "ra": {
@@ -349,10 +400,10 @@
     "note": "HINWEIS",
     "transcodingDisabled": "Die Änderung der Transcodierungskonfiguration über die Web-UI ist aus Sicherheitsgründen deaktiviert. Wenn du die Transcodierungsoptionen ändern (bearbeiten oder hinzufügen) möchtest, starte den Server mit der Konfigurationsoption %{config} neu.",
     "transcodingEnabled": "Navidrome läuft derzeit mit %{config}, wodurch es möglich ist, Systembefehle aus den Transkodierungseinstellungen über die Webschnittstelle auszuführen. Wir empfehlen, es aus Sicherheitsgründen zu deaktivieren und nur bei der Konfiguration von Transkodierungsoptionen zu aktivieren.",
-    "songsAddedToPlaylist": "Einen Titel zur Playlist hinzugefügt |||| %{smart_count} Titel zur Playlist hinzugefügt",
-    "noPlaylistsAvailable": "Keine Playlist verfügbar",
+    "songsAddedToPlaylist": "Einen Titel zur Wiedergabeliste hinzugefügt |||| %{smart_count} Titel zur Wiedergabeliste hinzugefügt",
+    "noPlaylistsAvailable": "Keine Wiedergabeliste verfügbar",
     "delete_user_title": "Benutzer '%{name}' löschen",
-    "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Playlisten und Einstellungen) wirklich löschen?",
+    "delete_user_content": "Möchtest du diesen Benutzer und alle seine Daten (einschließlich Wiedergabelisten und Einstellungen) wirklich löschen?",
     "notifications_blocked": "Sie haben Benachrichtigungen für diese Seite in den Einstellungen Ihres Browsers blockiert",
     "notifications_not_available": "Dieser Browser unterstützt keine Desktop-Benachrichtigungen",
     "lastfmLinkSuccess": "Last.fm Verbindung hergestellt und scrobbling aktiviert",
@@ -375,7 +426,11 @@
     "shareSuccess": "URL in Zwischenablage kopiert: %{url}",
     "shareFailure": "Fehler URL %{url} konnte nicht in Zwischenablage kopiert werden",
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter"
+    "shareCopyToClipboard": "In Zwischenablage kopieren: Ctrl+C, Enter",
+    "remove_missing_title": "Fehlende Dateien entfernen",
+    "remove_missing_content": "Möchtest du die ausgewählten Fehlenden Dateien wirklich aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
+    "remove_all_missing_title": "Alle fehlenden Dateien entfernen",
+    "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht."
   },
   "menu": {
     "library": "Bibliothek",
@@ -403,8 +458,8 @@
     },
     "albumList": "Alben",
     "about": "Über",
-    "playlists": "Playlisten",
-    "sharedPlaylists": "Geteilte Playlisten"
+    "playlists": "Wiedergabelisten",
+    "sharedPlaylists": "Geteilte Wiedergabelisten"
   },
   "player": {
     "playListsText": "Wiedergabeliste abspielen",
@@ -421,7 +476,7 @@
     "toggleMiniModeText": "Minimieren",
     "destroyText": "Zerstören",
     "downloadText": "Herunterladen",
-    "removeAudioListsText": "Audiolisten löschen",
+    "removeAudioListsText": "Audiolisten entfernen",
     "clickToDeleteText": "Klicken um %{name} zu Löschen",
     "emptyLyricText": "Kein Liedtext",
     "playModeText": {
@@ -449,7 +504,10 @@
     "quickScan": "Schneller Scan",
     "fullScan": "Kompletter Scan",
     "serverUptime": "Server-Betriebszeit",
-    "serverDown": "OFFLINE"
+    "serverDown": "OFFLINE",
+    "scanType": "Typ",
+    "status": "Scan Fehler",
+    "elapsedTime": "Laufzeit"
   },
   "help": {
     "title": "Navidrome Hotkeys",

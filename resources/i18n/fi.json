@@ -26,7 +26,16 @@
         "bpm": "BPM",
         "playDate": "Viimeksi kuunneltu",
         "channels": "Kanavat",
-        "createdAt": "Lisätty"
+        "createdAt": "Lisätty",
+        "grouping": "Ryhmittely",
+        "mood": "Tunnelma",
+        "participants": "Lisäosallistujat",
+        "tags": "Lisätunnisteet",
+        "mappedTags": "Mäpättyt tunnisteet",
+        "rawTags": "Raakatunnisteet",
+        "bitDepth": "Bittisyvyys",
+        "sampleRate": "Näytteenottotaajuus",
+        "missing": ""
       },
       "actions": {
         "addToQueue": "Lisää jonoon",
@@ -58,7 +67,15 @@
         "originalDate": "Alkuperäinen",
         "releaseDate": "Julkaistu",
         "releases": "Julkaisu |||| Julkaisut",
-        "released": "Julkaistu"
+        "released": "Julkaistu",
+        "recordLabel": "Levy-yhtiö",
+        "catalogNum": "Luettelonumero",
+        "releaseType": "Tyyppi",
+        "grouping": "Ryhmittely",
+        "media": "Media",
+        "mood": "Tunnelma",
+        "date": "Tallennuspäivä",
+        "missing": ""
       },
       "actions": {
         "playAll": "Soita",
@@ -89,7 +106,24 @@
         "playCount": "Kuuntelukertoja",
         "rating": "Arvostelu",
         "genre": "Tyylilaji",
-        "size": "Koko"
+        "size": "Koko",
+        "role": "Rooli",
+        "missing": ""
+      },
+      "roles": {
+        "albumartist": "Albumitaiteilija |||| Albumitaiteilijat",
+        "artist": "Artisti |||| Artistit",
+        "composer": "Säveltäjä |||| Säveltäjät",
+        "conductor": "Kapellimestari |||| Kapellimestarit",
+        "lyricist": "Sanoittaja |||| Sanoittajat",
+        "arranger": "Musiikkisovittaja |||| Musiikkisovittajat",
+        "producer": "Musiikkituottaja |||| Musiikkituottajat",
+        "director": "Musiikkiohjaaja |||| Musiikkiohjaajat",
+        "engineer": "Ääniteknikko |||| Ääniteknikot",
+        "mixer": "Miksaaja |||| Miksaajat",
+        "remixer": "Remiksaaja |||| Remiksaajat",
+        "djmixer": "DJ-miksaaja |||| DJ-miksaajat",
+        "performer": "Esiintyjä |||| Esiintyjät"
       }
     },
     "user": {
@@ -162,7 +196,8 @@
         "addNewPlaylist": "Luo \"%{name}\"",
         "export": "Vie",
         "makePublic": "Tee julkinen",
-        "makePrivate": "Tee yksityinen"
+        "makePrivate": "Tee yksityinen",
+        "saveQueue": ""
       },
       "message": {
         "duplicate_song": "Lisää olemassa oleva kappale",
@@ -198,6 +233,22 @@
         "createdAt": "Luotu",
         "downloadable": "Salli lataus?"
       }
+    },
+    "missing": {
+      "name": "Puuttuva tiedosto|||| Puuttuvat tiedostot",
+      "fields": {
+        "path": "Polku",
+        "size": "Koko",
+        "updatedAt": "Katosi"
+      },
+      "actions": {
+        "remove": "Poista",
+        "remove_all": ""
+      },
+      "notifications": {
+        "removed": "Puuttuvat tiedostot poistettu"
+      },
+      "empty": "Ei puuttuvia tiedostoja"
     }
   },
   "ra": {
@@ -375,7 +426,11 @@
     "shareSuccess": "Osoite kopioitu leikepöydälle: %{url}",
     "shareFailure": "Virhe kopioitaessa %{url} leikepöydälle",
     "downloadDialogTitle": "Lataa %{resource} '%{name}' (%{size})",
-    "shareCopyToClipboard": "Kopio leikepöydälle: Ctrl+C, Enter"
+    "shareCopyToClipboard": "Kopio leikepöydälle: Ctrl+C, Enter",
+    "remove_missing_title": "Poista puuttuvat tiedostot",
+    "remove_missing_content": "Oletko varma, että haluat poistaa valitut puuttuvat tiedostot tietokannasta? Tämä poistaa pysyvästi kaikki viittaukset niihin, mukaan lukien niiden soittojen määrät ja arvostelut.",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": ""
   },
   "menu": {
     "library": "Kirjasto",
@@ -449,7 +504,10 @@
     "quickScan": "Nopea tarkistus",
     "fullScan": "Täysi tarkistus",
     "serverUptime": "Palvelun käyttöaika",
-    "serverDown": "SAMMUTETTU"
+    "serverDown": "SAMMUTETTU",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": ""
   },
   "help": {
     "title": "Navidrome pikapainikkeet",

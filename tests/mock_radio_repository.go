@@ -3,15 +3,15 @@ package tests
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 )
 
 type MockedRadioRepo struct {
 	model.RadioRepository
-	data    map[string]*model.Radio
-	all     model.Radios
-	err     bool
+	Data    map[string]*model.Radio
+	All     model.Radios
+	Err     bool
 	Options model.QueryOptions
 }
 
@@ -20,44 +20,44 @@ func CreateMockedRadioRepo() *MockedRadioRepo {
 }
 
 func (m *MockedRadioRepo) SetError(err bool) {
-	m.err = err
+	m.Err = err
 }
 
 func (m *MockedRadioRepo) CountAll(options ...model.QueryOptions) (int64, error) {
-	if m.err {
+	if m.Err {
 		return 0, errors.New("error")
 	}
-	return int64(len(m.data)), nil
+	return int64(len(m.Data)), nil
 }
 
 func (m *MockedRadioRepo) Delete(id string) error {
-	if m.err {
+	if m.Err {
 		return errors.New("Error!")
 	}
 
-	_, found := m.data[id]
+	_, found := m.Data[id]
 
 	if !found {
 		return errors.New("not found")
 	}
 
-	delete(m.data, id)
+	delete(m.Data, id)
 	return nil
 }
 
 func (m *MockedRadioRepo) Exists(id string) (bool, error) {
-	if m.err {
+	if m.Err {
 		return false, errors.New("Error!")
 	}
-	_, found := m.data[id]
+	_, found := m.Data[id]
 	return found, nil
 }
 
 func (m *MockedRadioRepo) Get(id string) (*model.Radio, error) {
-	if m.err {
+	if m.Err {
 		return nil, errors.New("Error!")
 	}
-	if d, ok := m.data[id]; ok {
+	if d, ok := m.Data[id]; ok {
 		return d, nil
 	}
 	return nil, model.ErrNotFound
@@ -67,19 +67,19 @@ func (m *MockedRadioRepo) GetAll(qo ...model.QueryOptions) (model.Radios, error)
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
-	if m.err {
+	if m.Err {
 		return nil, errors.New("Error!")
 	}
-	return m.all, nil
+	return m.All, nil
 }
 
 func (m *MockedRadioRepo) Put(radio *model.Radio) error {
-	if m.err {
+	if m.Err {
 		return errors.New("error")
 	}
 	if radio.ID == "" {
-		radio.ID = uuid.NewString()
+		radio.ID = id.NewRandom()
 	}
-	m.data[radio.ID] = radio
+	m.Data[radio.ID] = radio
 	return nil
 }

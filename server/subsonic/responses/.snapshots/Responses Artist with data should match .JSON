@@ -1,8 +1,8 @@
 {
   "status": "ok",
-  "version": "1.8.0",
+  "version": "1.16.1",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "v0.55.0",
   "openSubsonic": true,
   "artists": {
     "index": [
@@ -15,9 +15,7 @@
             "albumCount": 2,
             "starred": "2016-03-02T20:30:00Z",
             "userRating": 3,
-            "artistImageUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
-            "musicBrainzId": "",
-            "sortName": ""
+            "artistImageUrl": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png"
           }
         ]
       }

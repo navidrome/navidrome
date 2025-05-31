@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/log"
 )
 
 const cacheSizeLimit = 100
@@ -41,18 +43,24 @@ func NewHTTPClient(wrapped httpDoer, ttl time.Duration) *HTTPClient {
 
 func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 	key := c.serializeReq(req)
+	cached := true
+	start := time.Now()
 	respStr, err := c.cache.GetWithLoader(key, func(key string) (string, time.Duration, error) {
+		cached = false
 		req, err := c.deserializeReq(key)
 		if err != nil {
+			log.Trace(req.Context(), "CachedHTTPClient.Do", "key", key, err)
 			return "", 0, err
 		}
 		resp, err := c.hc.Do(req)
 		if err != nil {
+			log.Trace(req.Context(), "CachedHTTPClient.Do", "req", req, err)
 			return "", 0, err
 		}
 		defer resp.Body.Close()
 		return c.serializeResponse(resp), c.ttl, nil
 	})
+	log.Trace(req.Context(), "CachedHTTPClient.Do", "key", key, "cached", cached, "elapsed", time.Since(start), err)
 	if err != nil {
 		return nil, err
 	}

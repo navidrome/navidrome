@@ -11,5 +11,4 @@ type Genres []Genre
 
 type GenreRepository interface {
 	GetAll(...QueryOptions) (Genres, error)
-	Put(*Genre) error
 }

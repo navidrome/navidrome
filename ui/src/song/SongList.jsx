@@ -1,13 +1,15 @@
-import React from 'react'
+import { useMemo } from 'react'
 import {
-  AutocompleteInput,
+  AutocompleteArrayInput,
   Filter,
   FunctionField,
   NumberField,
-  ReferenceInput,
+  ReferenceArrayInput,
   SearchInput,
   TextField,
   useTranslate,
+  NullableBooleanInput,
+  usePermissions,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteIcon from '@material-ui/icons/Favorite'
@@ -24,6 +26,7 @@ import {
   RatingField,
   useResourceRefresh,
   ArtistLinkField,
+  PathField,
 } from '../common'
 import { useDispatch } from 'react-redux'
 import { makeStyles } from '@material-ui/core/styles'
@@ -57,14 +60,21 @@ const useStyles = makeStyles({
   ratingField: {
     visibility: 'hidden',
   },
+  chip: {
+    margin: 0,
+    height: '24px',
+  },
 })
 
 const SongFilter = (props) => {
+  const classes = useStyles()
   const translate = useTranslate()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
   return (
     <Filter {...props} variant={'outlined'}>
       <SearchInput source="title" alwaysOn />
-      <ReferenceInput
+      <ReferenceArrayInput
         label={translate('resources.song.fields.genre')}
         source="genre_id"
         reference="genre"
@@ -72,8 +82,42 @@ const SongFilter = (props) => {
         sort={{ field: 'name', order: 'ASC' }}
         filterToQuery={(searchText) => ({ name: [searchText] })}
       >
-        <AutocompleteInput emptyText="-- None --" />
-      </ReferenceInput>
+        <AutocompleteArrayInput emptyText="-- None --" classes={classes} />
+      </ReferenceArrayInput>
+      <ReferenceArrayInput
+        label={translate('resources.song.fields.grouping')}
+        source="grouping"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'grouping' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteArrayInput
+          emptyText="-- None --"
+          classes={classes}
+          optionText="tagValue"
+        />
+      </ReferenceArrayInput>
+      <ReferenceArrayInput
+        label={translate('resources.song.fields.mood')}
+        source="mood"
+        reference="tag"
+        perPage={0}
+        sort={{ field: 'tagValue', order: 'ASC' }}
+        filter={{ tag_name: 'mood' }}
+        filterToQuery={(searchText) => ({
+          tag_value: [searchText],
+        })}
+      >
+        <AutocompleteArrayInput
+          emptyText="-- None --"
+          classes={classes}
+          optionText="tagValue"
+        />
+      </ReferenceArrayInput>
       {config.enableFavourites && (
         <QuickFilter
           source="starred"
@@ -81,6 +125,7 @@ const SongFilter = (props) => {
           defaultValue={true}
         />
       )}
+      {isAdmin && <NullableBooleanInput source="missing" />}
     </Filter>
   )
 }
@@ -96,7 +141,7 @@ const SongList = (props) => {
     dispatch(setTrack(record))
   }
 
-  const toggleableFields = React.useMemo(() => {
+  const toggleableFields = useMemo(() => {
     return {
       album: isDesktop && <AlbumLinkField source="album" sortByOrder={'ASC'} />,
       artist: <ArtistLinkField source="artist" />,
@@ -128,8 +173,15 @@ const SongList = (props) => {
       ),
       bpm: isDesktop && <NumberField source="bpm" />,
       genre: <TextField source="genre" />,
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] || ''}
+          sortable={false}
+        />
+      ),
       comment: <TextField source="comment" />,
-      path: <TextField source="path" />,
+      path: <PathField source="path" />,
       createdAt: <DateField source="createdAt" showTime />,
     }
   }, [isDesktop, classes.ratingField])
@@ -143,6 +195,7 @@ const SongList = (props) => {
       'playDate',
       'albumArtist',
       'genre',
+      'mood',
       'comment',
       'path',
       'createdAt',

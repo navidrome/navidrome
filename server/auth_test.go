@@ -11,14 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/model/request"
-
-	"github.com/google/uuid"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -122,7 +120,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("creates user and sets auth data if user does not exist", func() {
-				newUser := "NEW_USER_" + uuid.NewString()
+				newUser := "NEW_USER_" + id.NewRandom()
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIpv4))
 				req.Header.Set("Remote-User", newUser)
@@ -292,6 +290,56 @@ var _ = Describe("Auth", func() {
 				Expect(validateIPAgainstList("10.0.0.1:1234", "192.168.0.0/16,10.0.0.0/8")).To(BeTrue())
 				Expect(validateIPAgainstList("172.16.0.1:9999", "192.168.0.0/16,10.0.0.0/8")).To(BeFalse())
 			})
+		})
+	})
+
+	Describe("handleLoginFromHeaders", func() {
+		var ds model.DataStore
+		var req *http.Request
+		const trustedIP = "192.168.0.42"
+
+		BeforeEach(func() {
+			ds = &tests.MockDataStore{}
+			req = httptest.NewRequest("GET", "/", nil)
+			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
+			conf.Server.ReverseProxyWhitelist = "192.168.0.0/16"
+			conf.Server.ReverseProxyUserHeader = "Remote-User"
+		})
+
+		It("makes the first user an admin", func() {
+			// No existing users
+			req.Header.Set("Remote-User", "firstuser")
+			result := handleLoginFromHeaders(ds, req)
+
+			Expect(result).ToNot(BeNil())
+			Expect(result["isAdmin"]).To(BeTrue())
+
+			// Verify user was created as admin
+			u, err := ds.User(context.Background()).FindByUsername("firstuser")
+			Expect(err).To(BeNil())
+			Expect(u.IsAdmin).To(BeTrue())
+		})
+
+		It("does not make subsequent users admins", func() {
+			// Create the first user
+			_ = ds.User(context.Background()).Put(&model.User{
+				ID:       "existing-user-id",
+				UserName: "existinguser",
+				Name:     "Existing User",
+				IsAdmin:  true,
+			})
+
+			// Try to create a second user via proxy header
+			req.Header.Set("Remote-User", "seconduser")
+			result := handleLoginFromHeaders(ds, req)
+
+			Expect(result).ToNot(BeNil())
+			Expect(result["isAdmin"]).To(BeFalse())
+
+			// Verify user was created as non-admin
+			u, err := ds.User(context.Background()).FindByUsername("seconduser")
+			Expect(err).To(BeNil())
+			Expect(u.IsAdmin).To(BeFalse())
 		})
 	})
 })

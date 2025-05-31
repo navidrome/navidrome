@@ -41,6 +41,10 @@ const useStyles = makeStyles({
       },
     },
   },
+  missingRow: {
+    cursor: 'inherit',
+    opacity: 0.3,
+  },
   headerStyle: {
     '& thead': {
       boxShadow: '0px 3px 3px rgba(0, 0, 0, 0.15)',
@@ -55,59 +59,12 @@ const useStyles = makeStyles({
   },
 })
 
-const ReleaseRow = forwardRef(
-  ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
-    const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
-    const classes = useStyles({ isDesktop })
-    const translate = useTranslate()
-    const handlePlaySubset = (releaseDate) => () => {
-      onClick(releaseDate)
-    }
-
-    let releaseTitle = []
-    if (record.releaseDate) {
-      releaseTitle.push(translate('resources.album.fields.released'))
-      releaseTitle.push(formatFullDate(record.releaseDate))
-      if (record.catalogNum && isDesktop) {
-        releaseTitle.push('· Cat #')
-        releaseTitle.push(record.catalogNum)
-      }
-    }
-
-    return (
-      <TableRow
-        hover
-        ref={ref}
-        onClick={handlePlaySubset(record.releaseDate)}
-        className={classes.row}
-      >
-        <TableCell colSpan={colSpan}>
-          <Typography variant="h6" className={classes.subtitle}>
-            {releaseTitle.join(' ')}
-          </Typography>
-        </TableCell>
-        <TableCell>
-          <AlbumContextMenu
-            record={{ id: record.albumId }}
-            releaseDate={record.releaseDate}
-            showLove={false}
-            className={classes.contextMenu}
-            visible={contextAlwaysVisible}
-          />
-        </TableCell>
-      </TableRow>
-    )
-  },
-)
-
-ReleaseRow.displayName = 'ReleaseRow'
-
 const DiscSubtitleRow = forwardRef(
   ({ record, onClick, colSpan, contextAlwaysVisible }, ref) => {
     const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
     const classes = useStyles({ isDesktop })
-    const handlePlaySubset = (releaseDate, discNumber) => () => {
-      onClick(releaseDate, discNumber)
+    const handlePlaySubset = (discNumber) => () => {
+      onClick(discNumber)
     }
 
     let subtitle = []
@@ -122,7 +79,7 @@ const DiscSubtitleRow = forwardRef(
       <TableRow
         hover
         ref={ref}
-        onClick={handlePlaySubset(record.releaseDate, record.discNumber)}
+        onClick={handlePlaySubset(record.discNumber)}
         className={classes.row}
       >
         <TableCell colSpan={colSpan}>
@@ -135,7 +92,6 @@ const DiscSubtitleRow = forwardRef(
           <AlbumContextMenu
             record={{ id: record.albumId }}
             discNumber={record.discNumber}
-            releaseDate={record.releaseDate}
             showLove={false}
             className={classes.contextMenu}
             hideShare={true}
@@ -154,7 +110,6 @@ export const SongDatagridRow = ({
   record,
   children,
   firstTracksOfDiscs,
-  firstTracksOfReleases,
   contextAlwaysVisible,
   onClickSubset,
   className,
@@ -172,7 +127,6 @@ export const SongDatagridRow = ({
         discs: [
           {
             albumId: record?.albumId,
-            releaseDate: record?.releaseDate,
             discNumber: record?.discNumber,
           },
         ],
@@ -195,18 +149,16 @@ export const SongDatagridRow = ({
     return null
   }
 
+  const rowClick = record.missing ? undefined : rest.rowClick
+
+  const computedClasses = clsx(
+    className,
+    classes.row,
+    record.missing && classes.missingRow,
+  )
   const childCount = fields.length
   return (
     <>
-      {firstTracksOfReleases.has(record.id) && (
-        <ReleaseRow
-          ref={dragDiscRef}
-          record={record}
-          onClick={onClickSubset}
-          contextAlwaysVisible={contextAlwaysVisible}
-          colSpan={childCount + (rest.expand ? 1 : 0)}
-        />
-      )}
       {firstTracksOfDiscs.has(record.id) && (
         <DiscSubtitleRow
           ref={dragDiscRef}
@@ -220,7 +172,8 @@ export const SongDatagridRow = ({
         ref={dragSongRef}
         record={record}
         {...rest}
-        className={clsx(className, classes.row)}
+        rowClick={rowClick}
+        className={computedClasses}
       >
         {fields}
       </PureDatagridRow>
@@ -232,7 +185,6 @@ SongDatagridRow.propTypes = {
   record: PropTypes.object,
   children: PropTypes.node,
   firstTracksOfDiscs: PropTypes.instanceOf(Set),
-  firstTracksOfReleases: PropTypes.instanceOf(Set),
   contextAlwaysVisible: PropTypes.bool,
   onClickSubset: PropTypes.func,
 }
@@ -244,25 +196,23 @@ SongDatagridRow.defaultProps = {
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  showReleaseDivider,
   ...rest
 }) => {
   const dispatch = useDispatch()
   const { ids, data } = rest
 
   const playSubset = useCallback(
-    (releaseDate, discNumber) => {
+    (discNumber) => {
       let idsToPlay = []
       if (discNumber !== undefined) {
-        idsToPlay = ids.filter(
-          (id) =>
-            data[id].releaseDate === releaseDate &&
-            data[id].discNumber === discNumber,
-        )
-      } else {
-        idsToPlay = ids.filter((id) => data[id].releaseDate === releaseDate)
+        idsToPlay = ids.filter((id) => data[id].discNumber === discNumber)
       }
-      dispatch(playTracks(data, idsToPlay))
+      dispatch(
+        playTracks(
+          data,
+          idsToPlay?.filter((id) => !data[id].missing),
+        ),
+      )
     },
     [dispatch, data, ids],
   )
@@ -280,8 +230,7 @@ const SongDatagridBody = ({
           foundSubtitle = foundSubtitle || data[id].discSubtitle
           if (
             acc.length === 0 ||
-            (last && data[id].discNumber !== data[last].discNumber) ||
-            (last && data[id].releaseDate !== data[last].releaseDate)
+            (last && data[id].discNumber !== data[last].discNumber)
           ) {
             acc.push(id)
           }
@@ -294,37 +243,12 @@ const SongDatagridBody = ({
     return set
   }, [ids, data, showDiscSubtitles])
 
-  const firstTracksOfReleases = useMemo(() => {
-    if (!ids) {
-      return new Set()
-    }
-    const set = new Set(
-      ids
-        .filter((i) => data[i])
-        .reduce((acc, id) => {
-          const last = acc && acc[acc.length - 1]
-          if (
-            acc.length === 0 ||
-            (last && data[id].releaseDate !== data[last].releaseDate)
-          ) {
-            acc.push(id)
-          }
-          return acc
-        }, []),
-    )
-    if (!showReleaseDivider || set.size < 2) {
-      set.clear()
-    }
-    return set
-  }, [ids, data, showReleaseDivider])
-
   return (
     <PureDatagridBody
       {...rest}
       row={
         <SongDatagridRow
           firstTracksOfDiscs={firstTracksOfDiscs}
-          firstTracksOfReleases={firstTracksOfReleases}
           contextAlwaysVisible={contextAlwaysVisible}
           onClickSubset={playSubset}
         />
@@ -336,19 +260,18 @@ const SongDatagridBody = ({
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
-  showReleaseDivider,
   ...rest
 }) => {
   const classes = useStyles()
   return (
     <Datagrid
       className={classes.headerStyle}
+      isRowSelectable={(r) => !r?.missing}
       {...rest}
       body={
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
-          showReleaseDivider={showReleaseDivider}
         />
       }
     />
@@ -358,6 +281,5 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
-  showReleaseDivider: PropTypes.bool,
   classes: PropTypes.object,
 }

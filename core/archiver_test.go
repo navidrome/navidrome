@@ -25,8 +25,8 @@ var _ = Describe("Archiver", func() {
 
 	BeforeEach(func() {
 		ms = &mockMediaStreamer{}
-		ds = &mockDataStore{}
 		sh = &mockShare{}
+		ds = &mockDataStore{}
 		arch = core.NewArchiver(ms, ds, sh)
 	})
 
@@ -134,7 +134,7 @@ var _ = Describe("Archiver", func() {
 			}
 
 			plRepo := &mockPlaylistRepository{}
-			plRepo.On("GetWithTracks", "1", true).Return(pls, nil)
+			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
 			ds.On("Playlist", mock.Anything).Return(plRepo)
 			ms.On("DoStream", mock.Anything, mock.Anything, "mp3", 128, 0).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
@@ -145,9 +145,21 @@ var _ = Describe("Archiver", func() {
 			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
 			Expect(err).To(BeNil())
 
-			Expect(len(zr.File)).To(Equal(2))
+			Expect(len(zr.File)).To(Equal(3))
 			Expect(zr.File[0].Name).To(Equal("01 - AC_DC - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("02 - Artist 2 - track2.mp3"))
+			Expect(zr.File[2].Name).To(Equal("Test Playlist.m3u"))
+
+			// Verify M3U content
+			m3uFile, err := zr.File[2].Open()
+			Expect(err).To(BeNil())
+			defer m3uFile.Close()
+
+			m3uContent, err := io.ReadAll(m3uFile)
+			Expect(err).To(BeNil())
+
+			expectedM3U := "#EXTM3U\n#PLAYLIST:Test Playlist\n#EXTINF:0,AC/DC - track1\n01 - AC_DC - track1.mp3\n#EXTINF:0,Artist 2 - track2\n02 - Artist 2 - track2.mp3\n"
+			Expect(string(m3uContent)).To(Equal(expectedM3U))
 		})
 	})
 })
@@ -167,6 +179,19 @@ func (m *mockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
 	return args.Get(0).(model.PlaylistRepository)
 }
 
+func (m *mockDataStore) Library(context.Context) model.LibraryRepository {
+	return &mockLibraryRepository{}
+}
+
+type mockLibraryRepository struct {
+	mock.Mock
+	model.LibraryRepository
+}
+
+func (m *mockLibraryRepository) GetPath(id int) (string, error) {
+	return "/music", nil
+}
+
 type mockMediaFileRepository struct {
 	mock.Mock
 	model.MediaFileRepository
@@ -182,8 +207,8 @@ type mockPlaylistRepository struct {
 	model.PlaylistRepository
 }
 
-func (m *mockPlaylistRepository) GetWithTracks(id string, includeTracks bool) (*model.Playlist, error) {
-	args := m.Called(id, includeTracks)
+func (m *mockPlaylistRepository) GetWithTracks(id string, refreshSmartPlaylists, includeMissing bool) (*model.Playlist, error) {
+	args := m.Called(id, refreshSmartPlaylists, includeMissing)
 	return args.Get(0).(*model.Playlist), args.Error(1)
 }
 

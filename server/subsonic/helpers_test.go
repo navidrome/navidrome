@@ -1,6 +1,8 @@
 package subsonic
 
 import (
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -8,6 +10,10 @@ import (
 )
 
 var _ = Describe("helpers", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
 	Describe("fakePath", func() {
 		var mf model.MediaFile
 		BeforeEach(func() {
@@ -42,10 +48,60 @@ var _ = Describe("helpers", func() {
 		})
 	})
 
+	Describe("sortName", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+		When("PreferSortTags is false", func() {
+			BeforeEach(func() {
+				conf.Server.PreferSortTags = false
+			})
+			It("returns the order name even if sort name is provided", func() {
+				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Order Album Name"))
+			})
+			It("returns the order name if sort name is empty", func() {
+				Expect(sortName("", "Order Album Name")).To(Equal("Order Album Name"))
+			})
+		})
+		When("PreferSortTags is true", func() {
+			BeforeEach(func() {
+				conf.Server.PreferSortTags = true
+			})
+			It("returns the sort name if provided", func() {
+				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Sort Album Name"))
+			})
+
+			It("returns the order name if sort name is empty", func() {
+				Expect(sortName("", "Order Album Name")).To(Equal("Order Album Name"))
+			})
+		})
+		It("returns an empty string if both sort name and order name are empty", func() {
+			Expect(sortName("", "")).To(Equal(""))
+		})
+	})
+
 	Describe("buildDiscTitles", func() {
 		It("should return nil when album has no discs", func() {
 			album := model.Album{}
 			Expect(buildDiscSubtitles(album)).To(BeNil())
+		})
+
+		It("should return nil when album has only one disc without title", func() {
+			album := model.Album{
+				Discs: map[int]string{
+					1: "",
+				},
+			}
+			Expect(buildDiscSubtitles(album)).To(BeNil())
+		})
+
+		It("should return the disc title for a single disc", func() {
+			album := model.Album{
+				Discs: map[int]string{
+					1: "Special Edition",
+				},
+			}
+			Expect(buildDiscSubtitles(album)).To(Equal([]responses.DiscTitle{{Disc: 1, Title: "Special Edition"}}))
 		})
 
 		It("should return correct disc titles when album has discs with valid disc numbers", func() {
@@ -55,7 +111,7 @@ var _ = Describe("helpers", func() {
 					2: "Disc 2",
 				},
 			}
-			expected := responses.DiscTitles{
+			expected := []responses.DiscTitle{
 				{Disc: 1, Title: "Disc 1"},
 				{Disc: 2, Title: "Disc 2"},
 			}
@@ -73,4 +129,38 @@ var _ = Describe("helpers", func() {
 		Entry("19940201", "", responses.ItemDate{}),
 		Entry("", "", responses.ItemDate{}),
 	)
+
+	DescribeTable("mapExplicitStatus",
+		func(explicitStatus string, expected string) {
+			Expect(mapExplicitStatus(explicitStatus)).To(Equal(expected))
+		},
+		Entry("returns \"clean\" when the db value is \"c\"", "c", "clean"),
+		Entry("returns \"explicit\" when the db value is \"e\"", "e", "explicit"),
+		Entry("returns an empty string when the db value is \"\"", "", ""),
+		Entry("returns an empty string when there are unexpected values on the db", "abc", ""))
+
+	Describe("getArtistAlbumCount", func() {
+		artist := model.Artist{
+			Stats: map[model.Role]model.ArtistStats{
+				model.RoleAlbumArtist: {
+					AlbumCount: 3,
+				},
+				model.RoleArtist: {
+					AlbumCount: 4,
+				},
+			},
+		}
+
+		It("Handles album count without artist participations", func() {
+			conf.Server.Subsonic.ArtistParticipations = false
+			result := getArtistAlbumCount(artist)
+			Expect(result).To(Equal(int32(3)))
+		})
+
+		It("Handles album count without with participations", func() {
+			conf.Server.Subsonic.ArtistParticipations = true
+			result := getArtistAlbumCount(artist)
+			Expect(result).To(Equal(int32(4)))
+		})
+	})
 })

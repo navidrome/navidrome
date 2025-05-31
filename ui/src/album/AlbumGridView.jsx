@@ -13,13 +13,10 @@ import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
 import { useDrag } from 'react-dnd'
 import subsonic from '../subsonic'
-import {
-  AlbumContextMenu,
-  PlayButton,
-  ArtistLinkField,
-  RangeDoubleField,
-} from '../common'
+import { AlbumContextMenu, PlayButton, ArtistLinkField } from '../common'
 import { DraggableTypes } from '../consts'
+import clsx from 'clsx'
+import { AlbumDatesField } from './AlbumDatesField.jsx'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -51,6 +48,16 @@ const useStyles = makeStyles(
     albumName: {
       fontSize: '14px',
       color: theme.palette.type === 'dark' ? '#eee' : 'black',
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
+    missingAlbum: {
+      opacity: 0.3,
+    },
+    albumVersion: {
+      fontSize: '12px',
+      color: theme.palette.type === 'dark' ? '#c5c5c5' : '#696969',
       overflow: 'hidden',
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
@@ -87,6 +94,10 @@ const useCoverStyles = makeStyles({
     width: '100%',
     objectFit: 'contain',
     height: (props) => props.height,
+    transition: 'opacity 0.3s ease-in-out',
+  },
+  coverLoading: {
+    opacity: 0.5,
   },
 })
 
@@ -106,6 +117,8 @@ const Cover = withContentRect('bounds')(({
   // Force height to be the same as the width determined by the GridList
   // noinspection JSSuspiciousNameCombination
   const classes = useCoverStyles({ height: contentRect.bounds.width })
+  const [imageLoading, setImageLoading] = React.useState(true)
+  const [imageError, setImageError] = React.useState(false)
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
@@ -114,13 +127,33 @@ const Cover = withContentRect('bounds')(({
     }),
     [record],
   )
+
+  // Reset image state when record changes
+  React.useEffect(() => {
+    setImageLoading(true)
+    setImageError(false)
+  }, [record.id])
+
+  const handleImageLoad = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(false)
+  }, [])
+
+  const handleImageError = React.useCallback(() => {
+    setImageLoading(false)
+    setImageError(true)
+  }, [])
+
   return (
     <div ref={measureRef}>
       <div ref={dragAlbumRef}>
         <img
+          key={record.id} // Force re-render when record changes
           src={subsonic.getCoverArtUrl(record, 300, true)}
           alt={record.name}
-          className={classes.cover}
+          className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
         />
       </div>
     </div>
@@ -135,8 +168,12 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   if (!record) {
     return null
   }
+  const computedClasses = clsx(
+    classes.albumContainer,
+    record.missing && classes.missingAlbum,
+  )
   return (
-    <div className={classes.albumContainer}>
+    <div className={computedClasses}>
       <Link
         className={classes.link}
         to={linkToRecord(basePath, record.id, 'show')}
@@ -145,11 +182,13 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         <GridListTileBar
           className={isDesktop ? classes.tileBar : classes.tileBarMobile}
           subtitle={
-            <PlayButton
-              className={classes.albumPlayButton}
-              record={record}
-              size="small"
-            />
+            !record.missing && (
+              <PlayButton
+                className={classes.albumPlayButton}
+                record={record}
+                size="small"
+              />
+            )
           }
           actionIcon={<AlbumContextMenu record={record} color={'white'} />}
         />
@@ -158,21 +197,19 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
         className={classes.albumLink}
         to={linkToRecord(basePath, record.id, 'show')}
       >
-        <Typography className={classes.albumName}>{record.name}</Typography>
+        <span>
+          <Typography className={classes.albumName}>{record.name}</Typography>
+          {record.tags && record.tags['albumversion'] && (
+            <Typography className={classes.albumVersion}>
+              {record.tags['albumversion']}
+            </Typography>
+          )}
+        </span>
       </Link>
       {showArtist ? (
         <ArtistLinkField record={record} className={classes.albumSubtitle} />
       ) : (
-        <RangeDoubleField
-          record={record}
-          source={'year'}
-          symbol1={'♫'}
-          symbol2={'○'}
-          separator={' · '}
-          sortBy={'max_year'}
-          sortByOrder={'DESC'}
-          className={classes.albumSubtitle}
-        />
+        <AlbumDatesField record={record} className={classes.albumSubtitle} />
       )}
     </div>
   )

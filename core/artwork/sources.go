@@ -17,7 +17,7 @@ import (
 
 	"github.com/dhowden/tag"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -53,13 +53,9 @@ func (f sourceFunc) String() string {
 	return name
 }
 
-func splitList(s string) []string {
-	return strings.Split(s, consts.Zwsp)
-}
-
-func fromExternalFile(ctx context.Context, files string, pattern string) sourceFunc {
+func fromExternalFile(ctx context.Context, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		for _, file := range splitList(files) {
+		for _, file := range files {
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
 			if err != nil {
@@ -161,9 +157,9 @@ func fromAlbumPlaceholder() sourceFunc {
 		return r, consts.PlaceholderAlbumArt, nil
 	}
 }
-func fromArtistExternalSource(ctx context.Context, ar model.Artist, em core.ExternalMetadata) sourceFunc {
+func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := em.ArtistImage(ctx, ar.ID)
+		imageUrl, err := provider.ArtistImage(ctx, ar.ID)
 		if err != nil {
 			return nil, "", err
 		}
@@ -172,9 +168,9 @@ func fromArtistExternalSource(ctx context.Context, ar model.Artist, em core.Exte
 	}
 }
 
-func fromAlbumExternalSource(ctx context.Context, al model.Album, em core.ExternalMetadata) sourceFunc {
+func fromAlbumExternalSource(ctx context.Context, al model.Album, provider external.Provider) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := em.AlbumImage(ctx, al.ID)
+		imageUrl, err := provider.AlbumImage(ctx, al.ID)
 		if err != nil {
 			return nil, "", err
 		}

@@ -19,7 +19,7 @@ CROSS_TAGLIB_VERSION ?= 2.0.2-1
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
-setup: check_env download-deps setup-git ##@1_Run_First Install dependencies and prepare development environment
+setup: check_env download-deps install-golangci-lint setup-git ##@1_Run_First Install dependencies and prepare development environment
 	@echo Downloading Node dependencies...
 	@(cd ./ui && npm ci)
 .PHONY: setup
@@ -29,23 +29,32 @@ dev: check_env   ##@Development Start Navidrome in development mode, with hot-re
 .PHONY: dev
 
 server: check_go_env buildjs ##@Development Start the backend in development mode
-	@ND_ENABLEINSIGHTSCOLLECTOR="false" go run github.com/cespare/reflex@latest -d none -c reflex.conf
+	@ND_ENABLEINSIGHTSCOLLECTOR="false" go tool reflex -d none -c reflex.conf
 .PHONY: server
 
 watch: ##@Development Start Go tests in watch mode (re-run when code changes)
-	go run github.com/onsi/ginkgo/v2/ginkgo@latest watch -tags netgo -notify ./...
+	go tool ginkgo watch -tags=netgo -notify ./...
 .PHONY: watch
 
+PKG ?= ./...
 test: ##@Development Run Go tests
+	go test -tags netgo $(PKG)
+.PHONY: test
+
+testrace: ##@Development Run Go tests with race detector
 	go test -tags netgo -race -shuffle=on ./...
 .PHONY: test
 
-testall: test ##@Development Run Go and JS tests
-	@(cd ./ui && npm run test:ci)
+testall: testrace ##@Development Run Go and JS tests
+	@(cd ./ui && npm run test)
 .PHONY: testall
 
-lint: ##@Development Lint Go code
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run -v --timeout 5m
+install-golangci-lint: ##@Development Install golangci-lint if not present
+	@PATH=$$PATH:./bin which golangci-lint > /dev/null || (echo "Installing golangci-lint..." && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s v2.1.6)
+.PHONY: install-golangci-lint
+
+lint: install-golangci-lint ##@Development Lint Go code
+	PATH=$$PATH:./bin golangci-lint run -v --timeout 5m
 .PHONY: lint
 
 lintall: lint ##@Development Lint Go and JS code
@@ -55,16 +64,16 @@ lintall: lint ##@Development Lint Go and JS code
 
 format: ##@Development Format code
 	@(cd ./ui && npm run prettier)
-	@go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v _gen.go$$`
+	@go tool goimports -w `find . -name '*.go' | grep -v _gen.go$$`
 	@go mod tidy
 .PHONY: format
 
 wire: check_go_env ##@Development Update Dependency Injection
-	go run github.com/google/wire/cmd/wire@latest gen -tags=netgo ./...
+	go tool wire gen -tags=netgo ./...
 .PHONY: wire
 
 snapshots: ##@Development Update (GoLang) Snapshot tests
-	UPDATE_SNAPSHOTS=true go run github.com/onsi/ginkgo/v2/ginkgo@latest ./server/subsonic/...
+	UPDATE_SNAPSHOTS=true go tool ginkgo ./server/subsonic/responses/...
 .PHONY: snapshots
 
 migration-sql: ##@Development Create an empty SQL migration file
@@ -152,10 +161,10 @@ package: docker-build ##@Cross_Compilation Create binaries and packages for ALL 
 get-music: ##@Development Download some free music from Navidrome's demo instance
 	mkdir -p music
 	( cd music; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=ec2093ec4801402f1e17cc462195cdbb" > brock.zip; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=b376eeb4652d2498aa2b25ba0696725e" > back_on_earth.zip; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=e49c609b542fc51899ee8b53aa858cb4" > ugress.zip; \
-	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=350bcab3a4c1d93869e39ce496464f03" > voodoocuts.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=2Y3qQA6zJC3ObbBrF9ZBoV" > brock.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=04HrSORpypcLGNUdQp37gn" > back_on_earth.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=5xcMPJdeEgNrGtnzYbzAqb" > ugress.zip; \
+	curl "https://demo.navidrome.org/rest/download?u=demo&p=demo&f=json&v=1.8.0&c=dev_download&id=1jjQMAZrG3lUsJ0YH6ZRS0" > voodoocuts.zip; \
 	for file in *.zip; do unzip -n $${file}; done )
 	@echo "Done. Remember to set your MusicFolder to ./music"
 .PHONY: get-music

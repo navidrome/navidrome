@@ -107,13 +107,13 @@ const AlbumSongs = (props) => {
           showTrackNumbers={!isDesktop}
         />
       ),
-      artist: isDesktop && <ArtistLinkField source="artist" />,
+      artist: isDesktop && <ArtistLinkField source="artist" sortable={false} />,
       duration: <DurationField source="duration" sortable={false} />,
       year: isDesktop && (
         <FunctionField
           source="year"
           render={(r) => r.year || ''}
-          sortByOrder={'DESC'}
+          sortable={false}
         />
       ),
       playCount: isDesktop && (
@@ -124,6 +124,14 @@ const AlbumSongs = (props) => {
       size: isDesktop && <SizeField source="size" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" sortable={false} />,
       bpm: isDesktop && <NumberField source="bpm" sortable={false} />,
+      genre: <TextField source="genre" sortable={false} />,
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] ?? ''}
+          sortable={false}
+        />
+      ),
       rating: isDesktop && config.enableStarRating && (
         <RatingField
           resource={'song'}
@@ -139,7 +147,16 @@ const AlbumSongs = (props) => {
     resource: 'albumSong',
     columns: toggleableFields,
     omittedColumns: ['title'],
-    defaultOff: ['channels', 'bpm', 'year', 'playCount', 'playDate', 'size'],
+    defaultOff: [
+      'channels',
+      'bpm',
+      'year',
+      'playCount',
+      'playDate',
+      'size',
+      'mood',
+      'genre',
+    ],
   })
 
   const bulkActionsLabel = isDesktop
@@ -168,7 +185,6 @@ const AlbumSongs = (props) => {
             {...props}
             hasBulkActions={true}
             showDiscSubtitles={true}
-            showReleaseDivider={true}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
           >

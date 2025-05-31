@@ -4,11 +4,13 @@ import {
   ShowContextProvider,
   useShowContext,
   useShowController,
+  Title as RaTitle,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import AlbumSongs from './AlbumSongs'
 import AlbumDetails from './AlbumDetails'
 import AlbumActions from './AlbumActions'
+import { useResourceRefresh, Title } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -25,9 +27,11 @@ const AlbumShowLayout = (props) => {
   const { loading, ...context } = useShowContext(props)
   const { record } = context
   const classes = useStyles()
+  useResourceRefresh('album', 'song')
 
   return (
     <>
+      {record && <RaTitle title={<Title subTitle={record.name} />} />}
       {record && <AlbumDetails {...context} />}
       {record && (
         <ReferenceManyField

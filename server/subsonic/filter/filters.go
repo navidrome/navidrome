@@ -1,129 +1,151 @@
 package filter
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/Masterminds/squirrel"
+	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 )
 
 type Options = model.QueryOptions
 
+var defaultFilters = Eq{"missing": false}
+
+func addDefaultFilters(options Options) Options {
+	if options.Filters == nil {
+		options.Filters = defaultFilters
+	} else {
+		options.Filters = And{defaultFilters, options.Filters}
+	}
+	return options
+}
+
 func AlbumsByNewest() Options {
-	return Options{Sort: "recently_added", Order: "desc"}
+	return addDefaultFilters(addDefaultFilters(Options{Sort: "recently_added", Order: "desc"}))
 }
 
 func AlbumsByRecent() Options {
-	return Options{Sort: "playDate", Order: "desc", Filters: squirrel.Gt{"play_date": time.Time{}}}
+	return addDefaultFilters(Options{Sort: "playDate", Order: "desc", Filters: Gt{"play_date": time.Time{}}})
 }
 
 func AlbumsByFrequent() Options {
-	return Options{Sort: "playCount", Order: "desc", Filters: squirrel.Gt{"play_count": 0}}
+	return addDefaultFilters(Options{Sort: "playCount", Order: "desc", Filters: Gt{"play_count": 0}})
 }
 
 func AlbumsByRandom() Options {
-	return Options{Sort: "random"}
+	return addDefaultFilters(Options{Sort: "random"})
 }
 
 func AlbumsByName() Options {
-	return Options{Sort: "name"}
+	return addDefaultFilters(Options{Sort: "name"})
 }
 
 func AlbumsByArtist() Options {
-	return Options{Sort: "artist"}
-}
-
-func AlbumsByStarred() Options {
-	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
-}
-
-func AlbumsByRating() Options {
-	return Options{Sort: "Rating", Order: "desc", Filters: squirrel.Gt{"rating": 0}}
-}
-
-func AlbumsByGenre(genre string) Options {
-	return Options{
-		Sort:    "genre.name asc, name asc",
-		Filters: squirrel.Eq{"genre.name": genre},
-	}
+	return addDefaultFilters(Options{Sort: "artist"})
 }
 
 func AlbumsByArtistID(artistId string) Options {
-	var filters squirrel.Sqlizer
-	if conf.Server.SubsonicArtistParticipations {
-		filters = squirrel.Like{"all_artist_ids": fmt.Sprintf("%%%s%%", artistId)}
-	} else {
-		filters = squirrel.Eq{"album_artist_id": artistId}
+	filters := []Sqlizer{
+		persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artistId}),
 	}
-	return Options{
+	if conf.Server.Subsonic.ArtistParticipations {
+		filters = append(filters,
+			persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artistId}),
+		)
+	}
+	return addDefaultFilters(Options{
 		Sort:    "max_year",
-		Filters: filters,
-	}
+		Filters: Or(filters),
+	})
 }
 
 func AlbumsByYear(fromYear, toYear int) Options {
-	sortOption := "max_year, name"
+	orderOption := ""
 	if fromYear > toYear {
 		fromYear, toYear = toYear, fromYear
-		sortOption = "max_year desc, name"
+		orderOption = "desc"
 	}
-	return Options{
-		Sort: sortOption,
-		Filters: squirrel.Or{
-			squirrel.And{
-				squirrel.GtOrEq{"min_year": fromYear},
-				squirrel.LtOrEq{"min_year": toYear},
+	return addDefaultFilters(Options{
+		Sort:  "max_year",
+		Order: orderOption,
+		Filters: Or{
+			And{
+				GtOrEq{"min_year": fromYear},
+				LtOrEq{"min_year": toYear},
 			},
-			squirrel.And{
-				squirrel.GtOrEq{"max_year": fromYear},
-				squirrel.LtOrEq{"max_year": toYear},
+			And{
+				GtOrEq{"max_year": fromYear},
+				LtOrEq{"max_year": toYear},
 			},
 		},
-	}
-}
-
-func SongsByGenre(genre string) Options {
-	return Options{
-		Sort:    "genre.name asc, title asc",
-		Filters: squirrel.Eq{"genre.name": genre},
-	}
+	})
 }
 
 func SongsByAlbum(albumId string) Options {
-	return Options{
-		Filters: squirrel.Eq{"album_id": albumId},
+	return addDefaultFilters(Options{
+		Filters: Eq{"album_id": albumId},
 		Sort:    "album",
-	}
+	})
 }
 
 func SongsByRandom(genre string, fromYear, toYear int) Options {
 	options := Options{
 		Sort: "random",
 	}
-	ff := squirrel.And{}
+	ff := And{}
 	if genre != "" {
-		ff = append(ff, squirrel.Eq{"genre.name": genre})
+		ff = append(ff, filterByGenre(genre))
 	}
 	if fromYear != 0 {
-		ff = append(ff, squirrel.GtOrEq{"year": fromYear})
+		ff = append(ff, GtOrEq{"year": fromYear})
 	}
 	if toYear != 0 {
-		ff = append(ff, squirrel.LtOrEq{"year": toYear})
+		ff = append(ff, LtOrEq{"year": toYear})
 	}
 	options.Filters = ff
-	return options
+	return addDefaultFilters(options)
 }
 
-func Starred() Options {
-	return Options{Sort: "starred_at", Order: "desc", Filters: squirrel.Eq{"starred": true}}
+func SongWithLyrics(artist, title string) Options {
+	return addDefaultFilters(Options{
+		Sort:  "updated_at",
+		Order: "desc",
+		Max:   1,
+		Filters: And{
+			Eq{"title": title},
+			NotEq{"lyrics": "[]"},
+			Or{
+				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
+				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
+			},
+		},
+	})
 }
 
-func SongsWithLyrics(artist, title string) Options {
-	return Options{
-		Sort:    "updated_at",
-		Order:   "desc",
-		Filters: squirrel.And{squirrel.Eq{"artist": artist, "title": title}, squirrel.NotEq{"lyrics": ""}},
-	}
+func ByGenre(genre string) Options {
+	return addDefaultFilters(Options{
+		Sort:    "name",
+		Filters: filterByGenre(genre),
+	})
+}
+
+func filterByGenre(genre string) Sqlizer {
+	return persistence.Exists("json_tree(tags)", And{
+		Like{"value": genre},
+		NotEq{"atom": nil},
+	})
+}
+
+func ByRating() Options {
+	return addDefaultFilters(Options{Sort: "rating", Order: "desc", Filters: Gt{"rating": 0}})
+}
+
+func ByStarred() Options {
+	return addDefaultFilters(Options{Sort: "starred_at", Order: "desc", Filters: Eq{"starred": true}})
+}
+
+func ArtistsByStarred() Options {
+	return Options{Sort: "starred_at", Order: "desc", Filters: Eq{"starred": true}}
 }

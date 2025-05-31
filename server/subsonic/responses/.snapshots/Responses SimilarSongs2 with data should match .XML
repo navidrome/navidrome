@@ -1,7 +1,5 @@
-<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.8.0" type="navidrome" serverVersion="v0.0.0" openSubsonic="true">
+<subsonic-response xmlns="http://subsonic.org/restapi" status="ok" version="1.16.1" type="navidrome" serverVersion="v0.55.0" openSubsonic="true">
   <similarSongs2>
-    <song id="1" isDir="false" title="title" isVideo="false" bpm="0" comment="" sortName="" mediaType="" musicBrainzId="" channelCount="0" samplingRate="0">
-      <replayGain></replayGain>
-    </song>
+    <song id="1" isDir="false" title="title" isVideo="false"></song>
   </similarSongs2>
 </subsonic-response>

@@ -1,19 +1,11 @@
 {
   "status": "ok",
-  "version": "1.8.0",
+  "version": "1.16.1",
   "type": "navidrome",
-  "serverVersion": "v0.0.0",
+  "serverVersion": "v0.55.0",
   "openSubsonic": true,
   "album": {
     "id": "",
-    "name": "",
-    "userRating": 0,
-    "genres": [],
-    "musicBrainzId": "",
-    "isCompilation": false,
-    "sortName": "",
-    "discTitles": [],
-    "originalReleaseDate": {},
-    "releaseDate": {}
+    "name": ""
   }
 }

@@ -6,6 +6,7 @@ import {
   DateField,
   NumberField,
   TextField,
+  FunctionField,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
@@ -23,6 +24,7 @@ import {
 } from '../common'
 import config from '../config'
 import { DraggableTypes } from '../consts'
+import clsx from 'clsx'
 
 const useStyles = makeStyles({
   columnIcon: {
@@ -40,6 +42,9 @@ const useStyles = makeStyles({
       },
     },
   },
+  missingRow: {
+    opacity: 0.3,
+  },
   tableCell: {
     width: '17.5%',
   },
@@ -52,7 +57,8 @@ const useStyles = makeStyles({
 })
 
 const AlbumDatagridRow = (props) => {
-  const { record } = props
+  const { record, className } = props
+  const classes = useStyles()
   const [, dragAlbumRef] = useDrag(
     () => ({
       type: DraggableTypes.ALBUM,
@@ -61,7 +67,14 @@ const AlbumDatagridRow = (props) => {
     }),
     [record],
   )
-  return <DatagridRow ref={dragAlbumRef} {...props} />
+  const computedClasses = clsx(
+    className,
+    classes.row,
+    record.missing && classes.missingRow,
+  )
+  return (
+    <DatagridRow ref={dragAlbumRef} {...props} className={computedClasses} />
+  )
 }
 
 const AlbumDatagridBody = (props) => (
@@ -95,6 +108,13 @@ const AlbumTableView = ({
       year: (
         <RangeField source={'year'} sortBy={'max_year'} sortByOrder={'DESC'} />
       ),
+      mood: isDesktop && (
+        <FunctionField
+          source="mood"
+          render={(r) => r.tags?.mood?.[0] || ''}
+          sortable={false}
+        />
+      ),
       duration: isDesktop && <DurationField source="duration" />,
       size: isDesktop && <SizeField source="size" />,
       rating: config.enableStarRating && (
@@ -112,7 +132,7 @@ const AlbumTableView = ({
   const columns = useSelectedFields({
     resource: 'album',
     columns: toggleableFields,
-    defaultOff: ['createdAt'],
+    defaultOff: ['createdAt', 'size', 'mood'],
   })
 
   return isXsmall ? (

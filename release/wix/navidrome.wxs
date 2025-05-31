@@ -43,9 +43,9 @@
 
 					<Component Id="Configuration" Guid="9e17ed4b-ef13-44bf-a605-ed4132cff7f6" Win64="$(var.Win64)">
 						<IniFile Id="ConfigurationPort" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="Port" Section="default" Value="&apos;[ND_PORT]&apos;" />
-						<IniFile Id="ConfigurationMusicDir" Name="navidrome.ini" Action="addLine" Directory="INSTALLDIR" Key="MusicFolder" Section="default" Value="&apos;[ND_MUSICFOLDER]&apos;" />
-						<IniFile Id="ConfigurationDataDir" Name="navidrome.ini" Action="addLine" Directory="INSTALLDIR" Key="DataFolder" Section="default" Value="&apos;[ND_DATAFOLDER]&apos;" />
-						<IniFile Id="FFmpegPath" Name="navidrome.ini" Action="addLine" Directory="INSTALLDIR" Key="FFmpegPath" Section="default" Value="&apos;[INSTALLDIR]ffmpeg.exe&apos;" />
+						<IniFile Id="ConfigurationMusicDir" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="MusicFolder" Section="default" Value="&apos;[ND_MUSICFOLDER]&apos;" />
+						<IniFile Id="ConfigurationDataDir" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="DataFolder" Section="default" Value="&apos;[ND_DATAFOLDER]&apos;" />
+						<IniFile Id="FFmpegPath" Name="navidrome.ini" Action="createLine" Directory="INSTALLDIR" Key="FFmpegPath" Section="default" Value="&apos;[INSTALLDIR]ffmpeg.exe&apos;" />
 					</Component>
 
 					<Component Id='MainExecutable' Guid='e645aa06-8bbc-40d6-8d3c-73b4f5b76fd7' Win64="$(var.Win64)">

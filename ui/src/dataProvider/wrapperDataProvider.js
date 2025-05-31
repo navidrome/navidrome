@@ -4,6 +4,11 @@ import { REST_URL } from '../consts'
 
 const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
+const isAdmin = () => {
+  const role = localStorage.getItem('role')
+  return role === 'admin'
+}
+
 const mapResource = (resource, params) => {
   switch (resource) {
     case 'playlistTrack': {
@@ -11,8 +16,19 @@ const mapResource = (resource, params) => {
       let plsId = '0'
       if (params.filter) {
         plsId = params.filter.playlist_id
+        if (!isAdmin()) {
+          params.filter.missing = false
+        }
       }
       return [`playlist/${plsId}/tracks`, params]
+    }
+    case 'album':
+    case 'song':
+    case 'artist': {
+      if (params.filter && !isAdmin()) {
+        params.filter.missing = false
+      }
+      return [resource, params]
     }
     default:
       return [resource, params]
@@ -20,9 +36,9 @@ const mapResource = (resource, params) => {
 }
 
 const callDeleteMany = (resource, params) => {
-  const ids = params.ids.map((id) => `id=${id}`)
-  const idsParam = ids.join('&')
-  return httpClient(`${REST_URL}/${resource}?${idsParam}`, {
+  const ids = (params.ids || []).map((id) => `id=${id}`)
+  const query = ids.length > 0 ? `?${ids.join('&')}` : ''
+  return httpClient(`${REST_URL}/${resource}${query}`, {
     method: 'DELETE',
   }).then((response) => ({ data: response.json.ids || [] }))
 }
@@ -63,7 +79,7 @@ const wrapperDataProvider = {
   },
   deleteMany: (resource, params) => {
     const [r, p] = mapResource(resource, params)
-    if (r.endsWith('/tracks')) {
+    if (r.endsWith('/tracks') || resource === 'missing') {
       return callDeleteMany(r, p)
     }
     return dataProvider.deleteMany(r, p)
@@ -73,6 +89,16 @@ const wrapperDataProvider = {
       method: 'POST',
       body: JSON.stringify(data),
     }).then(({ json }) => ({ data: json }))
+  },
+  getPlaylists: (songId) => {
+    return httpClient(`${REST_URL}/song/${songId}/playlists`).then(
+      ({ json }) => ({ data: json }),
+    )
+  },
+  inspect: (songId) => {
+    return httpClient(`${REST_URL}/inspect?id=${songId}`).then(({ json }) => ({
+      data: json,
+    }))
   },
 }
 

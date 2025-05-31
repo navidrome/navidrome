@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -53,18 +52,23 @@ func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
 	m := cache.NewSimpleCache[string, NowPlayingInfo]()
 	p := &playTracker{ds: ds, playMap: m, broker: broker}
 	p.scrobblers = make(map[string]Scrobbler)
+	var enabled []string
 	for name, constructor := range constructors {
 		s := constructor(ds)
-		if conf.Server.DevEnableBufferedScrobble {
-			s = newBufferedScrobbler(ds, s, name)
+		if s == nil {
+			log.Debug("Scrobbler not available. Missing configuration?", "name", name)
+			continue
 		}
+		enabled = append(enabled, name)
+		s = newBufferedScrobbler(ds, s, name)
 		p.scrobblers[name] = s
 	}
+	log.Debug("List of scrobblers enabled", "names", enabled)
 	return p
 }
 
 func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
-	mf, err := p.ds.MediaFile(ctx).Get(trackId)
+	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(trackId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
 		return err
@@ -124,7 +128,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	success := 0
 
 	for _, s := range submissions {
-		mf, err := p.ds.MediaFile(ctx).Get(s.TrackID)
+		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(s.TrackID)
 		if err != nil {
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
@@ -158,7 +162,9 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 		if err != nil {
 			return err
 		}
-		err = tx.Artist(ctx).IncPlayCount(track.ArtistID, timestamp)
+		for _, artist := range track.Participants[model.RoleArtist] {
+			err = tx.Artist(ctx).IncPlayCount(artist.ID, timestamp)
+		}
 		return err
 	})
 }
@@ -174,11 +180,7 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 		if !s.IsAuthorized(ctx, u.ID) {
 			continue
 		}
-		if conf.Server.DevEnableBufferedScrobble {
-			log.Debug(ctx, "Buffering Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-		} else {
-			log.Debug(ctx, "Sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-		}
+		log.Debug(ctx, "Buffering Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist)
 		err := s.Scrobble(ctx, u.ID, scrobble)
 		if err != nil {
 			log.Error(ctx, "Error sending Scrobble", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)

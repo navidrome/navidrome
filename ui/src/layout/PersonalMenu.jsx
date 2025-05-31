@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react'
 import { MenuItemLink, useTranslate } from 'react-admin'
+import { MdTune } from 'react-icons/md'
 import { makeStyles } from '@material-ui/core'
-import TuneIcon from '@material-ui/icons/Tune'
 
 const useStyles = makeStyles((theme) => ({
   menuItem: {
@@ -17,7 +17,7 @@ const PersonalMenu = forwardRef(({ onClick, sidebarIsOpen, dense }, ref) => {
       ref={ref}
       to="/personal"
       primaryText={translate('menu.personal.name')}
-      leftIcon={<TuneIcon />}
+      leftIcon={<MdTune size={24} />}
       onClick={onClick}
       className={classes.menuItem}
       sidebarIsOpen={sidebarIsOpen}

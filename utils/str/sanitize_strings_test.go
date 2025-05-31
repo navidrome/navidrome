@@ -18,11 +18,11 @@ var _ = Describe("Sanitize Strings", func() {
 		})
 
 		It("remove extra spaces", func() {
-			Expect(str.SanitizeStrings(" some  text  ")).To(Equal("some text"))
+			Expect(str.SanitizeStrings(" some  text  ", "text some")).To(Equal("some text"))
 		})
 
 		It("remove duplicated words", func() {
-			Expect(str.SanitizeStrings("legião urbana urbana legiÃo")).To(Equal("legiao urbana"))
+			Expect(str.SanitizeStrings("legião urbana", "urbana legiÃo")).To(Equal("legiao urbana"))
 		})
 
 		It("remove symbols", func() {
@@ -32,8 +32,20 @@ var _ = Describe("Sanitize Strings", func() {
 		It("remove opening brackets", func() {
 			Expect(str.SanitizeStrings("[Five Years]")).To(Equal("five years"))
 		})
+
 		It("remove slashes", func() {
-			Expect(str.SanitizeStrings("folder/file\\yyyy")).To(Equal("folder file yyyy"))
+			Expect(str.SanitizeStrings("folder/file\\yyyy")).To(Equal("file folder yyyy"))
+		})
+
+		It("normalizes utf chars", func() {
+			// These uses different types of hyphens
+			Expect(str.SanitizeStrings("k—os", "k−os")).To(Equal("k-os"))
+		})
+
+		It("remove commas", func() {
+			// This is specially useful for handling cases where the Sort field uses comma.
+			// It reduces the size of the resulting string, thus reducing the size of the DB table and indexes.
+			Expect(str.SanitizeStrings("Bob Marley", "Marley, Bob")).To(Equal("bob marley"))
 		})
 	})
 

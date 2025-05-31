@@ -1,0 +1,63 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "albumList": {
+    "album": [
+      {
+        "id": "1",
+        "isDir": false,
+        "isVideo": false,
+        "bpm": 0,
+        "comment": "",
+        "sortName": "sort name",
+        "mediaType": "album",
+        "musicBrainzId": "00000000-0000-0000-0000-000000000000",
+        "isrc": [],
+        "genres": [
+          {
+            "name": "Genre 1"
+          },
+          {
+            "name": "Genre 2"
+          }
+        ],
+        "replayGain": {},
+        "channelCount": 0,
+        "samplingRate": 0,
+        "bitDepth": 0,
+        "moods": [
+          "mood1",
+          "mood2"
+        ],
+        "artists": [
+          {
+            "id": "artist-1",
+            "name": "Artist 1"
+          },
+          {
+            "id": "artist-2",
+            "name": "Artist 2"
+          }
+        ],
+        "displayArtist": "Display artist",
+        "albumArtists": [
+          {
+            "id": "album-artist-1",
+            "name": "Artist 1"
+          },
+          {
+            "id": "album-artist-2",
+            "name": "Artist 2"
+          }
+        ],
+        "displayAlbumArtist": "Display album artist",
+        "contributors": [],
+        "displayComposer": "",
+        "explicitStatus": "explicit"
+      }
+    ]
+  }
+}
