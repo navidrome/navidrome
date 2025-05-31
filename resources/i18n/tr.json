@@ -35,7 +35,7 @@
         "rawTags": "Ham etiketler",
         "bitDepth": "Bit derinliği",
         "sampleRate": "Örnekleme Oranı",
-        "missing": ""
+        "missing": "Eksik"
       },
       "actions": {
         "addToQueue": "Oynatma Sırasına Ekle",
@@ -44,7 +44,8 @@
         "shuffleAll": "Tümünü karıştır",
         "download": "İndir",
         "playNext": "Dinlenenden Sonra Oynat",
-        "info": "Bilgiler"
+        "info": "Bilgiler",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -75,7 +76,7 @@
         "media": "Medya",
         "mood": "Mod",
         "date": "Kayıt Tarihi",
-        "missing": ""
+        "missing": "Eksik"
       },
       "actions": {
         "playAll": "Oynat",
@@ -108,7 +109,7 @@
         "genre": "Tür",
         "size": "Boyut",
         "role": "Rol",
-        "missing": ""
+        "missing": "Eksik"
       },
       "roles": {
         "albumartist": "Albüm Sanatçısı |||| Albüm Sanatçısı",
@@ -197,11 +198,17 @@
         "export": "Aktar",
         "makePublic": "Herkese Açık Yap",
         "makePrivate": "Özel Yap",
-        "saveQueue": ""
+        "saveQueue": "Kuyruktakileri Çalma Listesine Kaydet",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": "",
+        "removeSymbol": ""
       },
       "message": {
         "duplicate_song": "Yinelenen şarkıları ekle",
-        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?"
+        "song_exist": "Seçili müziklerin bazıları eklemek istediğin çalma listesinde mevcut. Yine de eklemek ister misin ?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -496,6 +503,21 @@
         "disabled": "Pasif",
         "waiting": "Bekle"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {

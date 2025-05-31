@@ -44,7 +44,8 @@
         "shuffleAll": "Todas aleatorias",
         "download": "Descarga",
         "playNext": "Siguiente",
-        "info": "Obtener información"
+        "info": "Obtener información",
+        "showInPlaylist": ""
       }
     },
     "album": {
@@ -94,7 +95,7 @@
         "recentlyPlayed": "Recientes",
         "mostPlayed": "Más reproducidos",
         "starred": "Favoritos",
-        "topRated": "Mejor calificados"
+        "topRated": "Los mejores calificados"
       }
     },
     "artist": {
@@ -197,11 +198,17 @@
         "export": "Exportar",
         "makePublic": "Hazla pública",
         "makePrivate": "Hazla privada",
-        "saveQueue": "Guardar la fila de reproducción en una playlist"
+        "saveQueue": "Guardar la fila de reproducción en una playlist",
+        "searchOrCreate": "",
+        "pressEnterToCreate": "",
+        "removeFromSelection": "",
+        "removeSymbol": ""
       },
       "message": {
         "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
-        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?"
+        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?",
+        "noPlaylistsFound": "",
+        "noPlaylists": ""
       }
     },
     "radio": {
@@ -496,6 +503,21 @@
         "disabled": "Deshabilitado",
         "waiting": "Esperando"
       }
+    },
+    "tabs": {
+      "about": "",
+      "config": ""
+    },
+    "config": {
+      "configName": "",
+      "environmentVariable": "",
+      "currentValue": "",
+      "configurationFile": "",
+      "exportToml": "",
+      "exportSuccess": "",
+      "exportFailed": "",
+      "devFlagsHeader": "",
+      "devFlagsComment": ""
     }
   },
   "activity": {
