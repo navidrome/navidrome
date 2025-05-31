@@ -44,9 +44,26 @@ describe('formatTomlValue', () => {
 
   it('handles JSON arrays and objects', () => {
     expect(formatTomlValue('["item1", "item2"]')).toBe(
-      '"""["item1", "item2"]"""',
+      '[ "item1", "item2" ]',
     )
     expect(formatTomlValue('{"key": "value"}')).toBe('"""{"key": "value"}"""')
+  })
+
+  it('formats different types of arrays correctly', () => {
+    // String array
+    expect(formatTomlValue('["genre", "tcon", "©gen"]')).toBe(
+      '[ "genre", "tcon", "©gen" ]',
+    )
+    // Mixed array with numbers and strings
+    expect(formatTomlValue('[42, "test", true]')).toBe(
+      '[ 42, "test", true ]',
+    )
+    // Empty array
+    expect(formatTomlValue('[]')).toBe('[ ]')
+    // Array with special characters in strings
+    expect(formatTomlValue('["item with spaces", "item\\"with\\"quotes"]')).toBe(
+      '[ "item with spaces", "item\\"with\\"quotes" ]',
+    )
   })
 
   it('handles invalid JSON as regular strings', () => {
@@ -303,7 +320,7 @@ describe('configToToml', () => {
     expect(result).toContain('IntegerValue = 42')
     expect(result).toContain('FloatValue = 3.14')
     expect(result).toContain('DurationValue = "5s"')
-    expect(result).toContain('ArrayValue = """["item1", "item2"]"""')
+    expect(result).toContain('ArrayValue = [ "item1", "item2" ]')
   })
 
   it('handles nested config object format correctly', () => {

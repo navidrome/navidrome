@@ -114,10 +114,30 @@ export const formatTomlValue = (value) => {
     return `"${str}"`
   }
 
-  // Arrays/JSON objects
+  // Handle arrays and objects
   if (str.startsWith('[') || str.startsWith('{')) {
     try {
-      JSON.parse(str)
+      const parsed = JSON.parse(str)
+      
+      // If it's an array, format as TOML array
+      if (Array.isArray(parsed)) {
+        const formattedItems = parsed.map(item => {
+          if (typeof item === 'string') {
+            return `"${item.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+          } else if (typeof item === 'number' || typeof item === 'boolean') {
+            return String(item)
+          } else {
+            return `"${String(item).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+          }
+        })
+        
+        if (formattedItems.length === 0) {
+          return '[ ]'
+        }
+        return `[ ${formattedItems.join(', ')} ]`
+      }
+      
+      // For objects, keep the JSON string format with triple quotes
       return `"""${str}"""`
     } catch {
       return `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
