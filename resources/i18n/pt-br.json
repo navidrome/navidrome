@@ -496,6 +496,21 @@
         "disabled": "Desligado",
         "waiting": "Aguardando"
       }
+    },
+    "tabs": {
+      "about": "Sobre",
+      "config": "Configuração"
+    },
+    "config": {
+      "configName": "Nome da Configuração",
+      "environmentVariable": "Variável de Ambiente",
+      "currentValue": "Valor Atual",
+      "configurationFile": "Arquivo de Configuração",
+      "exportToml": "Exportar Configuração (TOML)",
+      "exportSuccess": "Configuração exportada para o clipboard em formato TOML",
+      "exportFailed": "Falha ao copiar configuração",
+      "devFlagsHeader": "Flags de Desenvolvimento (sujeitas a mudança/remoção)",
+      "devFlagsComment": "Estas são configurações experimentais e podem ser removidas em versões futuras"
     }
   },
   "activity": {

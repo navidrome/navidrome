@@ -498,6 +498,21 @@
         "disabled": "Disabled",
         "waiting": "Waiting"
       }
+    },
+    "tabs": {
+      "about": "About",
+      "config": "Configuration"
+    },
+    "config": {
+      "configName": "Config Name",
+      "environmentVariable": "Environment Variable",
+      "currentValue": "Current Value",
+      "configurationFile": "Configuration File",
+      "exportToml": "Export Configuration (TOML)",
+      "exportSuccess": "Configuration exported to clipboard in TOML format",
+      "exportFailed": "Failed to copy configuration",
+      "devFlagsHeader": "Development Flags (subject to change/removal)",
+      "devFlagsComment": "These are experimental settings and may be removed in future versions"
     }
   },
   "activity": {
