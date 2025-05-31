@@ -13,18 +13,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Helper function to get nested value from config map
-func getNestedValue(config map[string]interface{}, path string) interface{} {
-	// For simple keys without dots, return directly
-	if val, ok := config[path]; ok {
-		return val
-	}
-	// This is a simplified approach since our new structure uses the original nested structure
-	// For nested values like "LastFM.ApiKey", we need to traverse the map
-	// But since we're using viper.AllSettings(), the structure will be nested maps
-	return nil
-}
-
 var _ = Describe("getConfig", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
