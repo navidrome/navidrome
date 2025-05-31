@@ -85,6 +85,30 @@ export const separateAndSortConfigs = (configEntries) => {
 }
 
 /**
+ * Escapes TOML keys that contain special characters
+ * @param {string} key - The key to potentially escape
+ * @returns {string} - The escaped key if needed, or the original key
+ */
+export const escapeTomlKey = (key) => {
+  // Convert to string first to handle null/undefined
+  const keyStr = String(key)
+  
+  // Empty strings always need quotes
+  if (keyStr === '') {
+    return '""'
+  }
+  
+  // TOML bare keys can only contain letters, numbers, underscores, and hyphens
+  // If the key contains other characters, it needs to be quoted
+  if (/^[a-zA-Z0-9_-]+$/.test(keyStr)) {
+    return keyStr
+  }
+  
+  // Escape quotes in the key and wrap in quotes
+  return `"${keyStr.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+/**
  * Converts a value to proper TOML format
  * @param {*} value - The value to format
  * @returns {string} - The TOML-formatted value
@@ -230,7 +254,7 @@ export const configToToml = (configData, translate = (key) => key) => {
       .forEach((sectionName) => {
         tomlContent += `[${sectionName}]\n`
         devSections[sectionName].forEach(({ key, value }) => {
-          tomlContent += `${key} = ${formatTomlValue(value)}\n`
+          tomlContent += `${escapeTomlKey(key)} = ${formatTomlValue(value)}\n`
         })
         tomlContent += '\n'
       })
@@ -242,7 +266,7 @@ export const configToToml = (configData, translate = (key) => key) => {
     .forEach((sectionName) => {
       tomlContent += `[${sectionName}]\n`
       regularSections[sectionName].forEach(({ key, value }) => {
-        tomlContent += `${key} = ${formatTomlValue(value)}\n`
+        tomlContent += `${escapeTomlKey(key)} = ${formatTomlValue(value)}\n`
       })
       tomlContent += '\n'
     })

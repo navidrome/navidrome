@@ -5,6 +5,7 @@ import {
   configToToml,
   separateAndSortConfigs,
   flattenConfig,
+  escapeTomlKey,
 } from './aboutUtils'
 
 describe('formatTomlValue', () => {
@@ -383,6 +384,33 @@ describe('configToToml', () => {
     expect(result).toContain('Enabled = false')
     expect(result).toContain('AdminOnly = true')
   })
+
+  it('properly escapes keys with special characters in sections', () => {
+    const configData = {
+      config: [
+        { key: 'DevLogLevels.persistence/sql_base_repository', value: 'trace' },
+        { key: 'DevLogLevels.core/scanner', value: 'debug' },
+        { key: 'DevLogLevels.regular_key', value: 'info' },
+        { key: 'Tags.genre.Aliases', value: '["tcon","genre","©gen"]' }
+      ]
+    }
+
+    const result = configToToml(configData, mockTranslate)
+
+    // Keys with forward slashes should be quoted
+    expect(result).toContain('"persistence/sql_base_repository" = "trace"')
+    expect(result).toContain('"core/scanner" = "debug"')
+    
+    // Regular keys should not be quoted
+    expect(result).toContain('regular_key = "info"')
+    
+    // Arrays should be formatted correctly  
+    expect(result).toContain('"genre.Aliases" = [ "tcon", "genre", "©gen" ]')
+    
+    // Should contain proper sections
+    expect(result).toContain('[DevLogLevels]')
+    expect(result).toContain('[Tags]')
+  })
 })
 
 describe('flattenConfig', () => {
@@ -656,5 +684,48 @@ describe('separateAndSortConfigs', () => {
     expect(result.regularConfigs[1].key).toBe('ZRegular')
     expect(result.devConfigs[0].key).toBe('DevA')
     expect(result.devConfigs[1].key).toBe('DevZ')
+  })
+})
+
+describe('escapeTomlKey', () => {
+  it('does not escape valid bare keys', () => {
+    expect(escapeTomlKey('RegularKey')).toBe('RegularKey')
+    expect(escapeTomlKey('regular_key')).toBe('regular_key')
+    expect(escapeTomlKey('regular-key')).toBe('regular-key')
+    expect(escapeTomlKey('key123')).toBe('key123')
+    expect(escapeTomlKey('Key_with_underscores')).toBe('Key_with_underscores')
+    expect(escapeTomlKey('Key-with-hyphens')).toBe('Key-with-hyphens')
+  })
+
+  it('escapes keys with special characters', () => {
+    // Keys with forward slashes (like DevLogLevels keys)
+    expect(escapeTomlKey('persistence/sql_base_repository')).toBe('"persistence/sql_base_repository"')
+    expect(escapeTomlKey('core/scanner')).toBe('"core/scanner"')
+    
+    // Keys with dots
+    expect(escapeTomlKey('Section.NestedKey')).toBe('"Section.NestedKey"')
+    
+    // Keys with spaces
+    expect(escapeTomlKey('key with spaces')).toBe('"key with spaces"')
+    
+    // Keys with other special characters
+    expect(escapeTomlKey('key@with@symbols')).toBe('"key@with@symbols"')
+    expect(escapeTomlKey('key+with+plus')).toBe('"key+with+plus"')
+  })
+
+  it('escapes quotes in keys', () => {
+    expect(escapeTomlKey('key"with"quotes')).toBe('"key\\"with\\"quotes"')
+    expect(escapeTomlKey('key with "quotes" inside')).toBe('"key with \\"quotes\\" inside"')
+  })
+
+  it('escapes backslashes in keys', () => {
+    expect(escapeTomlKey('key\\with\\backslashes')).toBe('"key\\\\with\\\\backslashes"')
+    expect(escapeTomlKey('path\\to\\file')).toBe('"path\\\\to\\\\file"')
+  })
+
+  it('handles empty and null keys', () => {
+    expect(escapeTomlKey('')).toBe('""')
+    expect(escapeTomlKey(null)).toBe('null')
+    expect(escapeTomlKey(undefined)).toBe('undefined')
   })
 }) 
