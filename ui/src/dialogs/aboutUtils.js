@@ -10,38 +10,41 @@
  */
 export const flattenConfig = (config, prefix = '') => {
   const result = []
-  
+
   if (!config || typeof config !== 'object') {
     return result
   }
-  
-  Object.keys(config).forEach(key => {
+
+  Object.keys(config).forEach((key) => {
     const value = config[key]
     const currentKey = prefix ? `${prefix}.${key}` : key
-    
+
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       // Recursively flatten nested objects
       result.push(...flattenConfig(value, currentKey))
     } else {
       // Generate environment variable name: ND_ + uppercase with dots replaced by underscores
       const envVar = 'ND_' + currentKey.toUpperCase().replace(/\./g, '_')
-      
+
       // Convert value to string for display
       let displayValue = value
-      if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+      if (
+        Array.isArray(value) ||
+        (typeof value === 'object' && value !== null)
+      ) {
         displayValue = JSON.stringify(value)
       } else {
         displayValue = String(value)
       }
-      
+
       result.push({
         key: currentKey,
         envVar: envVar,
-        value: displayValue
+        value: displayValue,
       })
     }
   })
-  
+
   return result
 }
 
@@ -92,18 +95,18 @@ export const separateAndSortConfigs = (configEntries) => {
 export const escapeTomlKey = (key) => {
   // Convert to string first to handle null/undefined
   const keyStr = String(key)
-  
+
   // Empty strings always need quotes
   if (keyStr === '') {
     return '""'
   }
-  
+
   // TOML bare keys can only contain letters, numbers, underscores, and hyphens
   // If the key contains other characters, it needs to be quoted
   if (/^[a-zA-Z0-9_-]+$/.test(keyStr)) {
     return keyStr
   }
-  
+
   // Escape quotes in the key and wrap in quotes
   return `"${keyStr.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 }
@@ -142,10 +145,10 @@ export const formatTomlValue = (value) => {
   if (str.startsWith('[') || str.startsWith('{')) {
     try {
       const parsed = JSON.parse(str)
-      
+
       // If it's an array, format as TOML array
       if (Array.isArray(parsed)) {
-        const formattedItems = parsed.map(item => {
+        const formattedItems = parsed.map((item) => {
           if (typeof item === 'string') {
             return `"${item.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
           } else if (typeof item === 'number' || typeof item === 'boolean') {
@@ -154,13 +157,13 @@ export const formatTomlValue = (value) => {
             return `"${String(item).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
           }
         })
-        
+
         if (formattedItems.length === 0) {
           return '[ ]'
         }
         return `[ ${formattedItems.join(', ')} ]`
       }
-      
+
       // For objects, keep the JSON string format with triple quotes
       return `"""${str}"""`
     } catch {
@@ -272,4 +275,4 @@ export const configToToml = (configData, translate = (key) => key) => {
     })
 
   return tomlContent
-} 
+}
