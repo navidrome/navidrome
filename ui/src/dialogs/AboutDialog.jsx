@@ -23,7 +23,7 @@ import { INSIGHTS_DOC_URL } from '../consts.js'
 import subsonic from '../subsonic/index.js'
 import { Typography } from '@material-ui/core'
 import TableHead from '@material-ui/core/TableHead'
-import { configToToml, separateAndSortConfigs } from '../utils/toml'
+import { configToToml, separateAndSortConfigs } from './aboutUtils'
 
 const useStyles = makeStyles((theme) => ({
   configNameColumn: {

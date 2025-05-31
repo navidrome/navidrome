@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -14,148 +13,44 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("config endpoint", func() {
+var _ = Describe("getConfig", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 	})
 
-	It("rejects non admin users", func() {
-		req := httptest.NewRequest("GET", "/config", nil)
-		w := httptest.NewRecorder()
-		ctx := request.WithUser(req.Context(), model.User{IsAdmin: false})
-		getConfig(w, req.WithContext(ctx))
-		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+	Context("when user is not admin", func() {
+		It("returns unauthorized", func() {
+			req := httptest.NewRequest("GET", "/config", nil)
+			w := httptest.NewRecorder()
+			ctx := request.WithUser(req.Context(), model.User{IsAdmin: false})
+
+			getConfig(w, req.WithContext(ctx))
+
+			Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		})
 	})
 
-	It("returns configuration entries", func() {
-		req := httptest.NewRequest("GET", "/config", nil)
-		w := httptest.NewRecorder()
-		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
-		getConfig(w, req.WithContext(ctx))
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var resp configResponse
-		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-		Expect(resp.ID).To(Equal("config"))
-
-		// Verify that we have both Dev and non-Dev fields
-		var hasDevFields = false
-		var hasNonDevFields = false
-		for _, e := range resp.Config {
-			if strings.HasPrefix(e.Key, "Dev") {
-				hasDevFields = true
-			} else {
-				hasNonDevFields = true
-			}
-		}
-
-		Expect(hasDevFields).To(BeTrue(), "Should have Dev* configuration fields")
-		Expect(hasNonDevFields).To(BeTrue(), "Should have non-Dev configuration fields")
-		Expect(len(resp.Config)).To(BeNumerically(">", 0), "Should return configuration entries")
-	})
-
-	It("includes flattened struct fields", func() {
-		req := httptest.NewRequest("GET", "/config", nil)
-		w := httptest.NewRecorder()
-		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
-		getConfig(w, req.WithContext(ctx))
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var resp configResponse
-		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-		values := map[string]string{}
-		for _, e := range resp.Config {
-			if s, ok := e.Value.(string); ok {
-				values[e.Key] = s
-			}
-		}
-		Expect(values).To(HaveKeyWithValue("Inspect.MaxRequests", "1"))
-		Expect(values).To(HaveKeyWithValue("HTTPSecurityHeaders.CustomFrameOptionsValue", "DENY"))
-	})
-
-	It("includes the config file path", func() {
-		req := httptest.NewRequest("GET", "/config", nil)
-		w := httptest.NewRecorder()
-		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
-		getConfig(w, req.WithContext(ctx))
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var resp configResponse
-		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-		Expect(resp.ConfigFile).To(Not(BeEmpty()))
-	})
-
-	It("includes environment variable names", func() {
-		req := httptest.NewRequest("GET", "/config", nil)
-		w := httptest.NewRecorder()
-		ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
-		getConfig(w, req.WithContext(ctx))
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var resp configResponse
-		Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-
-		// Create a map to check specific env var mappings
-		envVars := map[string]string{}
-		for _, e := range resp.Config {
-			envVars[e.Key] = e.EnvVar
-		}
-
-		Expect(envVars).To(HaveKeyWithValue("MusicFolder", "ND_MUSICFOLDER"))
-		Expect(envVars).To(HaveKeyWithValue("Scanner.Enabled", "ND_SCANNER_ENABLED"))
-		Expect(envVars).To(HaveKeyWithValue("HTTPSecurityHeaders.CustomFrameOptionsValue", "ND_HTTPSECURITYHEADERS_CUSTOMFRAMEOPTIONSVALUE"))
-	})
-
-	Context("redaction functionality", func() {
-		It("redacts sensitive values with partial masking for long values", func() {
-			// Set up test values
-			conf.Server.LastFM.ApiKey = "ba46f0e84a123456"
-			conf.Server.Spotify.Secret = "verylongsecret123"
-
+	Context("when user is admin", func() {
+		It("returns config successfully", func() {
 			req := httptest.NewRequest("GET", "/config", nil)
 			w := httptest.NewRecorder()
 			ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
+
 			getConfig(w, req.WithContext(ctx))
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var resp configResponse
 			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-
-			values := map[string]string{}
-			for _, e := range resp.Config {
-				if s, ok := e.Value.(string); ok {
-					values[e.Key] = s
-				}
-			}
-
-			Expect(values).To(HaveKeyWithValue("LastFM.ApiKey", "b**************6"))
-			Expect(values).To(HaveKeyWithValue("Spotify.Secret", "v***************3"))
+			Expect(resp.ID).To(Equal("config"))
+			Expect(resp.ConfigFile).To(Equal(conf.Server.ConfigFile))
+			Expect(resp.Config).ToNot(BeEmpty())
 		})
 
-		It("redacts sensitive values with full masking for short values", func() {
-			// Set up test values with short secrets
-			conf.Server.LastFM.Secret = "short"
-			conf.Server.Spotify.ID = "abc123"
-
-			req := httptest.NewRequest("GET", "/config", nil)
-			w := httptest.NewRecorder()
-			ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
-			getConfig(w, req.WithContext(ctx))
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-			var resp configResponse
-			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-
-			values := map[string]string{}
-			for _, e := range resp.Config {
-				if s, ok := e.Value.(string); ok {
-					values[e.Key] = s
-				}
-			}
-
-			Expect(values).To(HaveKeyWithValue("LastFM.Secret", "****"))
-			Expect(values).To(HaveKeyWithValue("Spotify.ID", "****"))
-		})
-
-		It("fully masks password fields", func() {
-			// Set up test values for password fields
-			conf.Server.DevAutoCreateAdminPassword = "adminpass123"
+		It("redacts sensitive fields", func() {
+			conf.Server.LastFM.ApiKey = "secretapikey123"
+			conf.Server.Spotify.Secret = "spotifysecret456"
+			conf.Server.PasswordEncryptionKey = "encryptionkey789"
+			conf.Server.DevAutoCreateAdminPassword = "adminpassword123"
 			conf.Server.Prometheus.Password = "prometheuspass"
 
 			req := httptest.NewRequest("GET", "/config", nil)
@@ -167,39 +62,26 @@ var _ = Describe("config endpoint", func() {
 			var resp configResponse
 			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 
-			values := map[string]string{}
-			for _, e := range resp.Config {
-				if s, ok := e.Value.(string); ok {
-					values[e.Key] = s
-				}
-			}
+			// Check LastFM.ApiKey (partially masked)
+			lastfm, ok := resp.Config["LastFM"].(map[string]interface{})
+			Expect(ok).To(BeTrue())
+			Expect(lastfm["ApiKey"]).To(Equal("s*************3"))
 
-			Expect(values).To(HaveKeyWithValue("DevAutoCreateAdminPassword", "****"))
-			Expect(values).To(HaveKeyWithValue("Prometheus.Password", "****"))
-		})
+			// Check Spotify.Secret (partially masked)
+			spotify, ok := resp.Config["Spotify"].(map[string]interface{})
+			Expect(ok).To(BeTrue())
+			Expect(spotify["Secret"]).To(Equal("s**************6"))
 
-		It("does not redact non-sensitive values", func() {
-			conf.Server.MusicFolder = "/path/to/music"
-			conf.Server.Port = 4533
+			// Check PasswordEncryptionKey (fully masked)
+			Expect(resp.Config["PasswordEncryptionKey"]).To(Equal("****"))
 
-			req := httptest.NewRequest("GET", "/config", nil)
-			w := httptest.NewRecorder()
-			ctx := request.WithUser(req.Context(), model.User{IsAdmin: true})
-			getConfig(w, req.WithContext(ctx))
+			// Check DevAutoCreateAdminPassword (fully masked)
+			Expect(resp.Config["DevAutoCreateAdminPassword"]).To(Equal("****"))
 
-			Expect(w.Code).To(Equal(http.StatusOK))
-			var resp configResponse
-			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-
-			values := map[string]string{}
-			for _, e := range resp.Config {
-				if s, ok := e.Value.(string); ok {
-					values[e.Key] = s
-				}
-			}
-
-			Expect(values).To(HaveKeyWithValue("MusicFolder", "/path/to/music"))
-			Expect(values).To(HaveKeyWithValue("Port", "4533"))
+			// Check Prometheus.Password (fully masked)
+			prometheus, ok := resp.Config["Prometheus"].(map[string]interface{})
+			Expect(ok).To(BeTrue())
+			Expect(prometheus["Password"]).To(Equal("****"))
 		})
 
 		It("handles empty sensitive values", func() {
@@ -215,16 +97,13 @@ var _ = Describe("config endpoint", func() {
 			var resp configResponse
 			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
 
-			values := map[string]string{}
-			for _, e := range resp.Config {
-				if s, ok := e.Value.(string); ok {
-					values[e.Key] = s
-				}
-			}
+			// Check LastFM.ApiKey - should be preserved because it's sensitive
+			lastfm, ok := resp.Config["LastFM"].(map[string]interface{})
+			Expect(ok).To(BeTrue())
+			Expect(lastfm["ApiKey"]).To(Equal(""))
 
-			// Empty sensitive values should remain empty
-			Expect(values["LastFM.ApiKey"]).To(Equal(""))
-			Expect(values["PasswordEncryptionKey"]).To(Equal(""))
+			// Empty sensitive values should remain empty - should be preserved because it's sensitive
+			Expect(resp.Config["PasswordEncryptionKey"]).To(Equal(""))
 		})
 	})
 })

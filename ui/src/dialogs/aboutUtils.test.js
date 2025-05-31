@@ -4,7 +4,9 @@ import {
   buildTomlSections,
   configToToml,
   separateAndSortConfigs,
-} from './toml'
+  flattenConfig,
+  escapeTomlKey,
+} from './aboutUtils'
 
 describe('formatTomlValue', () => {
   it('handles null and undefined values', () => {
@@ -42,10 +44,23 @@ describe('formatTomlValue', () => {
   })
 
   it('handles JSON arrays and objects', () => {
-    expect(formatTomlValue('["item1", "item2"]')).toBe(
-      '"""["item1", "item2"]"""',
-    )
+    expect(formatTomlValue('["item1", "item2"]')).toBe('[ "item1", "item2" ]')
     expect(formatTomlValue('{"key": "value"}')).toBe('"""{"key": "value"}"""')
+  })
+
+  it('formats different types of arrays correctly', () => {
+    // String array
+    expect(formatTomlValue('["genre", "tcon", "©gen"]')).toBe(
+      '[ "genre", "tcon", "©gen" ]',
+    )
+    // Mixed array with numbers and strings
+    expect(formatTomlValue('[42, "test", true]')).toBe('[ 42, "test", true ]')
+    // Empty array
+    expect(formatTomlValue('[]')).toBe('[ ]')
+    // Array with special characters in strings
+    expect(
+      formatTomlValue('["item with spaces", "item\\"with\\"quotes"]'),
+    ).toBe('[ "item with spaces", "item\\"with\\"quotes" ]')
   })
 
   it('handles invalid JSON as regular strings', () => {
@@ -302,12 +317,259 @@ describe('configToToml', () => {
     expect(result).toContain('IntegerValue = 42')
     expect(result).toContain('FloatValue = 3.14')
     expect(result).toContain('DurationValue = "5s"')
-    expect(result).toContain('ArrayValue = """["item1", "item2"]"""')
+    expect(result).toContain('ArrayValue = [ "item1", "item2" ]')
+  })
+
+  it('handles nested config object format correctly', () => {
+    const configData = {
+      config: {
+        Address: '127.0.0.1',
+        Port: 4533,
+        EnableDownloads: true,
+        DevLogSourceLine: false,
+        LastFM: {
+          Enabled: true,
+          ApiKey: 'secret123',
+          Language: 'en',
+        },
+        Scanner: {
+          Schedule: 'daily',
+          Enabled: true,
+        },
+      },
+    }
+
+    const result = configToToml(configData, mockTranslate)
+
+    // Should contain regular configs
+    expect(result).toContain('Address = "127.0.0.1"')
+    expect(result).toContain('Port = 4533')
+    expect(result).toContain('EnableDownloads = true')
+
+    // Should contain dev configs with header
+    expect(result).toContain('# Development Flags (subject to change/removal)')
+    expect(result).toContain('DevLogSourceLine = false')
+
+    // Should contain sections
+    expect(result).toContain('[LastFM]')
+    expect(result).toContain('Enabled = true')
+    expect(result).toContain('ApiKey = "secret123"')
+    expect(result).toContain('Language = "en"')
+
+    expect(result).toContain('[Scanner]')
+    expect(result).toContain('Schedule = "daily"')
+  })
+
+  it('handles mixed nested and flat structure', () => {
+    const configData = {
+      config: {
+        MusicFolder: '/music',
+        DevAutoLoginUsername: 'testuser',
+        Jukebox: {
+          Enabled: false,
+          AdminOnly: true,
+        },
+      },
+    }
+
+    const result = configToToml(configData, mockTranslate)
+
+    expect(result).toContain('MusicFolder = "/music"')
+    expect(result).toContain('DevAutoLoginUsername = "testuser"')
+    expect(result).toContain('[Jukebox]')
+    expect(result).toContain('Enabled = false')
+    expect(result).toContain('AdminOnly = true')
+  })
+
+  it('properly escapes keys with special characters in sections', () => {
+    const configData = {
+      config: [
+        { key: 'DevLogLevels.persistence/sql_base_repository', value: 'trace' },
+        { key: 'DevLogLevels.core/scanner', value: 'debug' },
+        { key: 'DevLogLevels.regular_key', value: 'info' },
+        { key: 'Tags.genre.Aliases', value: '["tcon","genre","©gen"]' },
+      ],
+    }
+
+    const result = configToToml(configData, mockTranslate)
+
+    // Keys with forward slashes should be quoted
+    expect(result).toContain('"persistence/sql_base_repository" = "trace"')
+    expect(result).toContain('"core/scanner" = "debug"')
+
+    // Regular keys should not be quoted
+    expect(result).toContain('regular_key = "info"')
+
+    // Arrays should be formatted correctly
+    expect(result).toContain('"genre.Aliases" = [ "tcon", "genre", "©gen" ]')
+
+    // Should contain proper sections
+    expect(result).toContain('[DevLogLevels]')
+    expect(result).toContain('[Tags]')
+  })
+})
+
+describe('flattenConfig', () => {
+  it('flattens simple nested objects correctly', () => {
+    const config = {
+      Address: '0.0.0.0',
+      Port: 4533,
+      EnableDownloads: true,
+      LastFM: {
+        Enabled: true,
+        ApiKey: 'secret123',
+        Language: 'en',
+      },
+    }
+
+    const result = flattenConfig(config)
+
+    expect(result).toContainEqual({
+      key: 'Address',
+      envVar: 'ND_ADDRESS',
+      value: '0.0.0.0',
+    })
+
+    expect(result).toContainEqual({
+      key: 'Port',
+      envVar: 'ND_PORT',
+      value: '4533',
+    })
+
+    expect(result).toContainEqual({
+      key: 'EnableDownloads',
+      envVar: 'ND_ENABLEDOWNLOADS',
+      value: 'true',
+    })
+
+    expect(result).toContainEqual({
+      key: 'LastFM.Enabled',
+      envVar: 'ND_LASTFM_ENABLED',
+      value: 'true',
+    })
+
+    expect(result).toContainEqual({
+      key: 'LastFM.ApiKey',
+      envVar: 'ND_LASTFM_APIKEY',
+      value: 'secret123',
+    })
+
+    expect(result).toContainEqual({
+      key: 'LastFM.Language',
+      envVar: 'ND_LASTFM_LANGUAGE',
+      value: 'en',
+    })
+  })
+
+  it('handles deeply nested objects', () => {
+    const config = {
+      Scanner: {
+        Schedule: 'daily',
+        Options: {
+          ExtractorType: 'taglib',
+          ArtworkPriority: 'cover.jpg',
+        },
+      },
+    }
+
+    const result = flattenConfig(config)
+
+    expect(result).toContainEqual({
+      key: 'Scanner.Schedule',
+      envVar: 'ND_SCANNER_SCHEDULE',
+      value: 'daily',
+    })
+
+    expect(result).toContainEqual({
+      key: 'Scanner.Options.ExtractorType',
+      envVar: 'ND_SCANNER_OPTIONS_EXTRACTORTYPE',
+      value: 'taglib',
+    })
+
+    expect(result).toContainEqual({
+      key: 'Scanner.Options.ArtworkPriority',
+      envVar: 'ND_SCANNER_OPTIONS_ARTWORKPRIORITY',
+      value: 'cover.jpg',
+    })
+  })
+
+  it('handles arrays correctly', () => {
+    const config = {
+      DeviceList: ['device1', 'device2'],
+      Settings: {
+        EnabledFormats: ['mp3', 'flac', 'ogg'],
+      },
+    }
+
+    const result = flattenConfig(config)
+
+    expect(result).toContainEqual({
+      key: 'DeviceList',
+      envVar: 'ND_DEVICELIST',
+      value: '["device1","device2"]',
+    })
+
+    expect(result).toContainEqual({
+      key: 'Settings.EnabledFormats',
+      envVar: 'ND_SETTINGS_ENABLEDFORMATS',
+      value: '["mp3","flac","ogg"]',
+    })
+  })
+
+  it('handles null and undefined values', () => {
+    const config = {
+      NullValue: null,
+      UndefinedValue: undefined,
+      EmptyString: '',
+      ZeroValue: 0,
+    }
+
+    const result = flattenConfig(config)
+
+    expect(result).toContainEqual({
+      key: 'NullValue',
+      envVar: 'ND_NULLVALUE',
+      value: 'null',
+    })
+
+    expect(result).toContainEqual({
+      key: 'UndefinedValue',
+      envVar: 'ND_UNDEFINEDVALUE',
+      value: 'undefined',
+    })
+
+    expect(result).toContainEqual({
+      key: 'EmptyString',
+      envVar: 'ND_EMPTYSTRING',
+      value: '',
+    })
+
+    expect(result).toContainEqual({
+      key: 'ZeroValue',
+      envVar: 'ND_ZEROVALUE',
+      value: '0',
+    })
+  })
+
+  it('handles empty object', () => {
+    const result = flattenConfig({})
+    expect(result).toEqual([])
+  })
+
+  it('handles null/undefined input', () => {
+    expect(flattenConfig(null)).toEqual([])
+    expect(flattenConfig(undefined)).toEqual([])
+  })
+
+  it('handles non-object input', () => {
+    expect(flattenConfig('string')).toEqual([])
+    expect(flattenConfig(123)).toEqual([])
+    expect(flattenConfig(true)).toEqual([])
   })
 })
 
 describe('separateAndSortConfigs', () => {
-  it('separates regular and dev configs correctly', () => {
+  it('separates regular and dev configs correctly with array input', () => {
     const configs = [
       { key: 'RegularKey1', value: 'value1' },
       { key: 'DevTestFlag', value: 'true' },
@@ -328,6 +590,37 @@ describe('separateAndSortConfigs', () => {
     ])
   })
 
+  it('separates regular and dev configs correctly with nested object input', () => {
+    const config = {
+      Address: '127.0.0.1',
+      Port: 4533,
+      DevAutoLoginUsername: 'testuser',
+      DevLogSourceLine: true,
+      LastFM: {
+        Enabled: true,
+        ApiKey: 'secret123',
+      },
+    }
+
+    const result = separateAndSortConfigs(config)
+
+    expect(result.regularConfigs).toEqual([
+      { key: 'Address', envVar: 'ND_ADDRESS', value: '127.0.0.1' },
+      { key: 'LastFM.ApiKey', envVar: 'ND_LASTFM_APIKEY', value: 'secret123' },
+      { key: 'LastFM.Enabled', envVar: 'ND_LASTFM_ENABLED', value: 'true' },
+      { key: 'Port', envVar: 'ND_PORT', value: '4533' },
+    ])
+
+    expect(result.devConfigs).toEqual([
+      {
+        key: 'DevAutoLoginUsername',
+        envVar: 'ND_DEVAUTOLOGINUSERNAME',
+        value: 'testuser',
+      },
+      { key: 'DevLogSourceLine', envVar: 'ND_DEVLOGSOURCELINE', value: 'true' },
+    ])
+  })
+
   it('skips ConfigFile entries', () => {
     const configs = [
       { key: 'ConfigFile', value: '/path/to/config.toml' },
@@ -341,6 +634,23 @@ describe('separateAndSortConfigs', () => {
       { key: 'RegularKey', value: 'value' },
     ])
     expect(result.devConfigs).toEqual([{ key: 'DevFlag', value: 'true' }])
+  })
+
+  it('skips ConfigFile entries with nested object input', () => {
+    const config = {
+      ConfigFile: '/path/to/config.toml',
+      RegularKey: 'value',
+      DevFlag: true,
+    }
+
+    const result = separateAndSortConfigs(config)
+
+    expect(result.regularConfigs).toEqual([
+      { key: 'RegularKey', envVar: 'ND_REGULARKEY', value: 'value' },
+    ])
+    expect(result.devConfigs).toEqual([
+      { key: 'DevFlag', envVar: 'ND_DEVFLAG', value: 'true' },
+    ])
   })
 
   it('handles empty input', () => {
@@ -374,5 +684,54 @@ describe('separateAndSortConfigs', () => {
     expect(result.regularConfigs[1].key).toBe('ZRegular')
     expect(result.devConfigs[0].key).toBe('DevA')
     expect(result.devConfigs[1].key).toBe('DevZ')
+  })
+})
+
+describe('escapeTomlKey', () => {
+  it('does not escape valid bare keys', () => {
+    expect(escapeTomlKey('RegularKey')).toBe('RegularKey')
+    expect(escapeTomlKey('regular_key')).toBe('regular_key')
+    expect(escapeTomlKey('regular-key')).toBe('regular-key')
+    expect(escapeTomlKey('key123')).toBe('key123')
+    expect(escapeTomlKey('Key_with_underscores')).toBe('Key_with_underscores')
+    expect(escapeTomlKey('Key-with-hyphens')).toBe('Key-with-hyphens')
+  })
+
+  it('escapes keys with special characters', () => {
+    // Keys with forward slashes (like DevLogLevels keys)
+    expect(escapeTomlKey('persistence/sql_base_repository')).toBe(
+      '"persistence/sql_base_repository"',
+    )
+    expect(escapeTomlKey('core/scanner')).toBe('"core/scanner"')
+
+    // Keys with dots
+    expect(escapeTomlKey('Section.NestedKey')).toBe('"Section.NestedKey"')
+
+    // Keys with spaces
+    expect(escapeTomlKey('key with spaces')).toBe('"key with spaces"')
+
+    // Keys with other special characters
+    expect(escapeTomlKey('key@with@symbols')).toBe('"key@with@symbols"')
+    expect(escapeTomlKey('key+with+plus')).toBe('"key+with+plus"')
+  })
+
+  it('escapes quotes in keys', () => {
+    expect(escapeTomlKey('key"with"quotes')).toBe('"key\\"with\\"quotes"')
+    expect(escapeTomlKey('key with "quotes" inside')).toBe(
+      '"key with \\"quotes\\" inside"',
+    )
+  })
+
+  it('escapes backslashes in keys', () => {
+    expect(escapeTomlKey('key\\with\\backslashes')).toBe(
+      '"key\\\\with\\\\backslashes"',
+    )
+    expect(escapeTomlKey('path\\to\\file')).toBe('"path\\\\to\\\\file"')
+  })
+
+  it('handles empty and null keys', () => {
+    expect(escapeTomlKey('')).toBe('""')
+    expect(escapeTomlKey(null)).toBe('null')
+    expect(escapeTomlKey(undefined)).toBe('undefined')
   })
 })
