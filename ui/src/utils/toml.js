@@ -67,12 +67,12 @@ export const formatTomlValue = (value) => {
       JSON.parse(str)
       return `"""${str}"""`
     } catch {
-      return `"${str.replace(/"/g, '\\"')}"`
+      return `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
     }
   }
 
-  // String values (escape quotes)
-  return `"${str.replace(/"/g, '\\"')}"`
+  // String values (escape backslashes and quotes)
+  return `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 }
 
 /**

@@ -61,6 +61,17 @@ describe('formatTomlValue', () => {
     expect(formatTomlValue('/path/to/file')).toBe('"/path/to/file"')
   })
 
+  it('handles strings with backslashes and quotes', () => {
+    expect(formatTomlValue('C:\\Program Files\\app')).toBe(
+      '"C:\\\\Program Files\\\\app"',
+    )
+    expect(formatTomlValue('path\\to"file')).toBe('"path\\\\to\\"file"')
+    expect(formatTomlValue('backslash\\ and "quote"')).toBe(
+      '"backslash\\\\ and \\"quote\\""',
+    )
+    expect(formatTomlValue('single\\backslash')).toBe('"single\\\\backslash"')
+  })
+
   it('handles empty strings', () => {
     expect(formatTomlValue('')).toBe('""')
   })
