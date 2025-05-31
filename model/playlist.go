@@ -101,6 +101,7 @@ type PlaylistRepository interface {
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
+	GetPlaylists(mediaFileId string) (Playlists, error)
 }
 
 type PlaylistTrack struct {
