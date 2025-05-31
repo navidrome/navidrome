@@ -10,14 +10,63 @@ import TableRow from '@material-ui/core/TableRow'
 import TableCell from '@material-ui/core/TableCell'
 import Paper from '@material-ui/core/Paper'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import FileCopyIcon from '@material-ui/icons/FileCopy'
+import Button from '@material-ui/core/Button'
 import { humanize, underscore } from 'inflection'
-import { useGetOne, usePermissions, useTranslate } from 'react-admin'
+import { useGetOne, usePermissions, useTranslate, useNotify } from 'react-admin'
+import { Tabs, Tab } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
 import { INSIGHTS_DOC_URL } from '../consts.js'
 import subsonic from '../subsonic/index.js'
 import { Typography } from '@material-ui/core'
+import TableHead from '@material-ui/core/TableHead'
+import { configToToml, separateAndSortConfigs } from '../utils/toml'
+
+const useStyles = makeStyles((theme) => ({
+  configNameColumn: {
+    maxWidth: '200px',
+    width: '200px',
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+  },
+  envVarColumn: {
+    maxWidth: '200px',
+    width: '200px',
+    fontFamily: 'monospace',
+    wordWrap: 'break-word',
+    overflowWrap: 'break-word',
+  },
+  configFileValue: {
+    maxWidth: '300px',
+    width: '300px',
+    fontFamily: 'monospace',
+    wordBreak: 'break-all',
+  },
+  copyButton: {
+    marginBottom: theme.spacing(2),
+    marginTop: theme.spacing(1),
+  },
+  devSectionHeader: {
+    '& td': {
+      paddingTop: theme.spacing(2),
+      paddingBottom: theme.spacing(2),
+      borderTop: `2px solid ${theme.palette.divider}`,
+      borderBottom: `1px solid ${theme.palette.divider}`,
+      textAlign: 'left',
+      fontWeight: 600,
+    },
+  },
+  configContainer: {
+    paddingTop: theme.spacing(1),
+  },
+  tableContainer: {
+    maxHeight: '60vh',
+    overflow: 'auto',
+  },
+}))
 
 const links = {
   homepage: 'navidrome.org',
@@ -54,7 +103,6 @@ const LinkToVersion = ({ version }) => {
 
 const ShowVersion = ({ uiVersion, serverVersion }) => {
   const translate = useTranslate()
-
   const showRefresh = uiVersion !== serverVersion
 
   return (
@@ -73,12 +121,16 @@ const ShowVersion = ({ uiVersion, serverVersion }) => {
             UI {translate('menu.version')}:
           </TableCell>
           <TableCell align="left">
-            <LinkToVersion version={uiVersion} />
-            <Link onClick={() => window.location.reload()}>
-              <Typography variant={'caption'}>
-                {' ' + translate('ra.notification.new_version')}
-              </Typography>
-            </Link>
+            <div>
+              <LinkToVersion version={uiVersion} />
+            </div>
+            <div>
+              <Link onClick={() => window.location.reload()}>
+                <Typography variant={'caption'}>
+                  {translate('ra.notification.new_version')}
+                </Typography>
+              </Link>
+            </div>
           </TableCell>
         </TableRow>
       )}
@@ -86,11 +138,286 @@ const ShowVersion = ({ uiVersion, serverVersion }) => {
   )
 }
 
-const AboutDialog = ({ open, onClose }) => {
+const AboutTabContent = ({
+  uiVersion,
+  serverVersion,
+  insightsData,
+  loading,
+  permissions,
+}) => {
   const translate = useTranslate()
+
+  const lastRun = !loading && insightsData?.lastRun
+  let insightsStatus = 'N/A'
+  if (lastRun === 'disabled') {
+    insightsStatus = translate('about.links.insights.disabled')
+  } else if (lastRun && lastRun?.startsWith('1969-12-31')) {
+    insightsStatus = translate('about.links.insights.waiting')
+  } else if (lastRun) {
+    insightsStatus = lastRun
+  }
+
+  return (
+    <Table aria-label={translate('menu.about')} size="small">
+      <TableBody>
+        <ShowVersion uiVersion={uiVersion} serverVersion={serverVersion} />
+        {Object.keys(links).map((key) => {
+          return (
+            <TableRow key={key}>
+              <TableCell align="right" component="th" scope="row">
+                {translate(`about.links.${key}`, {
+                  _: humanize(underscore(key)),
+                })}
+                :
+              </TableCell>
+              <TableCell align="left">
+                <Link
+                  href={`https://${links[key]}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {links[key]}
+                </Link>
+              </TableCell>
+            </TableRow>
+          )
+        })}
+        {permissions === 'admin' ? (
+          <TableRow>
+            <TableCell align="right" component="th" scope="row">
+              {translate(`about.links.lastInsightsCollection`)}:
+            </TableCell>
+            <TableCell align="left">
+              <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
+            </TableCell>
+          </TableRow>
+        ) : null}
+        <TableRow>
+          <TableCell align="right" component="th" scope="row">
+            <Link
+              href={'https://github.com/sponsors/deluan'}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <IconButton size={'small'}>
+                <FavoriteBorderIcon fontSize={'small'} />
+              </IconButton>
+            </Link>
+          </TableCell>
+          <TableCell align="left">
+            <Link
+              href={'https://ko-fi.com/deluan'}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ko-fi.com/deluan
+            </Link>
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  )
+}
+
+const ConfigTabContent = ({ configData }) => {
+  const classes = useStyles()
+  const translate = useTranslate()
+  const notify = useNotify()
+
+  if (!configData || !configData.config) {
+    return null
+  }
+
+  // Use the shared separation and sorting logic
+  const { regularConfigs, devConfigs } = separateAndSortConfigs(
+    configData.config,
+  )
+
+  const handleCopyToml = async () => {
+    try {
+      const tomlContent = configToToml(configData, translate)
+      await navigator.clipboard.writeText(tomlContent)
+      notify(translate('about.config.exportSuccess'), 'info')
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to copy TOML:', err)
+      notify(translate('about.config.exportFailed'), 'error')
+    }
+  }
+
+  return (
+    <div className={classes.configContainer}>
+      <Button
+        variant="outlined"
+        startIcon={<FileCopyIcon />}
+        onClick={handleCopyToml}
+        className={classes.copyButton}
+        disabled={!configData}
+        size="small"
+      >
+        {translate('about.config.exportToml')}
+      </Button>
+      <TableContainer className={classes.tableContainer}>
+        <Table size="small" stickyHeader>
+          <TableHead>
+            <TableRow>
+              <TableCell
+                align="left"
+                component="th"
+                scope="col"
+                className={classes.configNameColumn}
+              >
+                {translate('about.config.configName')}
+              </TableCell>
+              <TableCell align="left" component="th" scope="col">
+                {translate('about.config.environmentVariable')}
+              </TableCell>
+              <TableCell align="left" component="th" scope="col">
+                {translate('about.config.currentValue')}
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {configData?.configFile && (
+              <TableRow>
+                <TableCell
+                  align="left"
+                  component="th"
+                  scope="row"
+                  className={classes.configNameColumn}
+                >
+                  {translate('about.config.configurationFile')}
+                </TableCell>
+                <TableCell align="left" className={classes.envVarColumn}>
+                  ND_CONFIGFILE
+                </TableCell>
+                <TableCell align="left" className={classes.configFileValue}>
+                  {configData.configFile}
+                </TableCell>
+              </TableRow>
+            )}
+            {regularConfigs.map(({ key, envVar, value }) => (
+              <TableRow key={key}>
+                <TableCell
+                  align="left"
+                  component="th"
+                  scope="row"
+                  className={classes.configNameColumn}
+                >
+                  {key}
+                </TableCell>
+                <TableCell align="left" className={classes.envVarColumn}>
+                  {envVar}
+                </TableCell>
+                <TableCell align="left">{String(value)}</TableCell>
+              </TableRow>
+            ))}
+            {devConfigs.length > 0 && (
+              <TableRow className={classes.devSectionHeader}>
+                <TableCell colSpan={3}>
+                  <Typography
+                    variant="subtitle1"
+                    component="div"
+                    style={{ fontWeight: 600 }}
+                  >
+                    🚧 {translate('about.config.devFlagsHeader')}
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {devConfigs.map(({ key, envVar, value }) => (
+              <TableRow key={key}>
+                <TableCell
+                  align="left"
+                  component="th"
+                  scope="row"
+                  className={classes.configNameColumn}
+                >
+                  {key}
+                </TableCell>
+                <TableCell align="left" className={classes.envVarColumn}>
+                  {envVar}
+                </TableCell>
+                <TableCell align="left">{String(value)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  )
+}
+
+const TabContent = ({
+  tab,
+  setTab,
+  showConfigTab,
+  uiVersion,
+  serverVersion,
+  insightsData,
+  loading,
+  permissions,
+  configData,
+}) => {
+  const translate = useTranslate()
+
+  return (
+    <TableContainer component={Paper}>
+      {showConfigTab && (
+        <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+          <Tab
+            label={translate('about.tabs.about')}
+            id="about-tab"
+            aria-controls="about-panel"
+          />
+          <Tab
+            label={translate('about.tabs.config')}
+            id="config-tab"
+            aria-controls="config-panel"
+          />
+        </Tabs>
+      )}
+      <div
+        id="about-panel"
+        role="tabpanel"
+        aria-labelledby="about-tab"
+        hidden={showConfigTab && tab === 1}
+      >
+        <AboutTabContent
+          uiVersion={uiVersion}
+          serverVersion={serverVersion}
+          insightsData={insightsData}
+          loading={loading}
+          permissions={permissions}
+        />
+      </div>
+      {showConfigTab && (
+        <div
+          id="config-panel"
+          role="tabpanel"
+          aria-labelledby="config-tab"
+          hidden={tab === 0}
+        >
+          <ConfigTabContent configData={configData} />
+        </div>
+      )}
+    </TableContainer>
+  )
+}
+
+const AboutDialog = ({ open, onClose }) => {
   const { permissions } = usePermissions()
-  const { data, loading } = useGetOne('insights', 'insights_status')
+  const { data: insightsData, loading } = useGetOne(
+    'insights',
+    'insights_status',
+  )
   const [serverVersion, setServerVersion] = useState('')
+  const showConfigTab = permissions === 'admin' && config.devUIShowConfig
+  const [tab, setTab] = useState(0)
+  const { data: configData } = useGetOne('config', 'config', {
+    enabled: showConfigTab,
+  })
+  const expanded = showConfigTab && tab === 1
   const uiVersion = config.version
 
   useEffect(() => {
@@ -108,85 +435,30 @@ const AboutDialog = ({ open, onClose }) => {
       })
   }, [setServerVersion])
 
-  const lastRun = !loading && data?.lastRun
-  let insightsStatus = 'N/A'
-  if (lastRun === 'disabled') {
-    insightsStatus = translate('about.links.insights.disabled')
-  } else if (lastRun && lastRun?.startsWith('1969-12-31')) {
-    insightsStatus = translate('about.links.insights.waiting')
-  } else if (lastRun) {
-    insightsStatus = lastRun
-  }
-
   return (
-    <Dialog onClose={onClose} aria-labelledby="about-dialog-title" open={open}>
+    <Dialog
+      onClose={onClose}
+      aria-labelledby="about-dialog-title"
+      open={open}
+      fullWidth={true}
+      maxWidth={expanded ? 'lg' : 'sm'}
+      style={{ transition: 'max-width 300ms ease' }}
+    >
       <DialogTitle id="about-dialog-title" onClose={onClose}>
         Navidrome Music Server
       </DialogTitle>
       <DialogContent dividers>
-        <TableContainer component={Paper}>
-          <Table aria-label={translate('menu.about')} size="small">
-            <TableBody>
-              <ShowVersion
-                uiVersion={uiVersion}
-                serverVersion={serverVersion}
-              />
-              {Object.keys(links).map((key) => {
-                return (
-                  <TableRow key={key}>
-                    <TableCell align="right" component="th" scope="row">
-                      {translate(`about.links.${key}`, {
-                        _: humanize(underscore(key)),
-                      })}
-                      :
-                    </TableCell>
-                    <TableCell align="left">
-                      <Link
-                        href={`https://${links[key]}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {links[key]}
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-              {permissions === 'admin' ? (
-                <TableRow>
-                  <TableCell align="right" component="th" scope="row">
-                    {translate(`about.links.lastInsightsCollection`)}:
-                  </TableCell>
-                  <TableCell align="left">
-                    <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              <TableRow>
-                <TableCell align="right" component="th" scope="row">
-                  <Link
-                    href={'https://github.com/sponsors/deluan'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <IconButton size={'small'}>
-                      <FavoriteBorderIcon fontSize={'small'} />
-                    </IconButton>
-                  </Link>
-                </TableCell>
-                <TableCell align="left">
-                  <Link
-                    href={'https://ko-fi.com/deluan'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    ko-fi.com/deluan
-                  </Link>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <TabContent
+          tab={tab}
+          setTab={setTab}
+          showConfigTab={showConfigTab}
+          uiVersion={uiVersion}
+          serverVersion={serverVersion}
+          insightsData={insightsData}
+          loading={loading}
+          permissions={permissions}
+          configData={configData}
+        />
       </DialogContent>
     </Dialog>
   )
