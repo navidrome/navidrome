@@ -26,11 +26,13 @@ import {
   useResourceRefresh,
   DateField,
   ArtistLinkField,
+  RatingField,
 } from '../common'
 import { AlbumLinkField } from '../song/AlbumLinkField'
 import { playTracks } from '../actions'
 import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import config from '../config'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -66,10 +68,16 @@ const useStyles = makeStyles(
         '& $contextMenu': {
           visibility: 'visible',
         },
+        '& $ratingField': {
+          visibility: 'visible',
+        },
       },
     },
     contextMenu: {
       visibility: (props) => (props.isDesktop ? 'hidden' : 'visible'),
+    },
+    ratingField: {
+      visibility: 'hidden',
     },
   }),
   { name: 'RaList' },
@@ -161,8 +169,16 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       quality: isDesktop && <QualityInfo source="quality" sortable={false} />,
       channels: isDesktop && <NumberField source="channels" />,
       bpm: isDesktop && <NumberField source="bpm" />,
+      rating: config.enableStarRating && (
+        <RatingField
+          source="rating"
+          sortByOrder={'DESC'}
+          resource={'song'}
+          className={classes.ratingField}
+        />
+      ),
     }
-  }, [isDesktop, classes.draggable])
+  }, [isDesktop, classes.draggable, classes.ratingField])
 
   const columns = useSelectedFields({
     resource: 'playlistTrack',
@@ -174,6 +190,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
       'playCount',
       'playDate',
       'albumArtist',
+      'rating',
     ],
   })
 
@@ -213,7 +230,7 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
               {columns}
               <SongContextMenu
                 onAddToPlaylist={onAddToPlaylist}
-                showLove={false}
+                showLove={true}
                 className={classes.contextMenu}
               />
             </SongDatagrid>

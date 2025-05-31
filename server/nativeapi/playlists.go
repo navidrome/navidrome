@@ -45,6 +45,23 @@ func getPlaylist(ds model.DataStore) http.HandlerFunc {
 	}
 }
 
+func getPlaylistTrack(ds model.DataStore) http.HandlerFunc {
+	// Add a middleware to capture the playlistId
+	wrapper := func(handler restHandler) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			constructor := func(ctx context.Context) rest.Repository {
+				plsRepo := ds.Playlist(ctx)
+				plsId := chi.URLParam(r, "playlistId")
+				return plsRepo.Tracks(plsId, true)
+			}
+
+			handler(constructor).ServeHTTP(w, r)
+		}
+	}
+
+	return wrapper(rest.Get)
+}
+
 func createPlaylistFromM3U(playlists core.Playlists) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -17,18 +17,38 @@ export const useToggleLove = (resource, record = {}) => {
   const dataProvider = useDataProvider()
 
   const refreshRecord = useCallback(() => {
-    dataProvider.getOne(resource, { id: record.id }).then(() => {
-      if (mountedRef.current) {
-        setLoading(false)
-      }
-    })
-  }, [dataProvider, record.id, resource])
+    const promises = []
+
+    // Always refresh the original resource
+    const params = { id: record.id }
+    if (record.playlistId) {
+      params.filter = { playlist_id: record.playlistId }
+    }
+    promises.push(dataProvider.getOne(resource, params))
+
+    // If we have a mediaFileId, also refresh the song
+    if (record.mediaFileId) {
+      promises.push(dataProvider.getOne('song', { id: record.mediaFileId }))
+    }
+
+    Promise.all(promises)
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.log('Error encountered: ' + e)
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          setLoading(false)
+        }
+      })
+  }, [dataProvider, record.mediaFileId, record.id, record.playlistId, resource])
 
   const toggleLove = () => {
     const toggle = record.starred ? subsonic.unstar : subsonic.star
+    const id = record.mediaFileId || record.id
 
     setLoading(true)
-    toggle(record.id)
+    toggle(id)
       .then(refreshRecord)
       .catch((e) => {
         // eslint-disable-next-line no-console

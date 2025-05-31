@@ -99,10 +99,10 @@ func (r *playlistTrackRepository) Read(id string) (interface{}, error) {
 			"playlist_tracks.*",
 		).
 		Join("media_file f on f.id = media_file_id").
-		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"id": id}})
+		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})
 	var trk dbPlaylistTrack
 	err := r.queryOne(sel, &trk)
-	return trk.PlaylistTrack.MediaFile, err
+	return trk.PlaylistTrack, err
 }
 
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
