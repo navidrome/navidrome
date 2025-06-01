@@ -3,6 +3,7 @@ package mpv
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,7 +30,6 @@ func TestMPV(t *testing.T) {
 var _ = Describe("MPV", func() {
 	var (
 		testScript string
-		outputFile string
 		tempDir    string
 	)
 
@@ -47,11 +47,8 @@ var _ = Describe("MPV", func() {
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { os.RemoveAll(tempDir) })
 
-		// Create output file to capture command arguments
-		outputFile = filepath.Join(tempDir, "mpv_args.txt")
-
-		// Create mock MPV script that captures arguments
-		testScript = createMockMPVScript(tempDir, outputFile)
+		// Create mock MPV script that outputs arguments to stdout
+		testScript = createMockMPVScript(tempDir)
 
 		// Configure test MPV path
 		conf.Server.MPVPath = testScript
@@ -179,23 +176,12 @@ var _ = Describe("MPV", func() {
 			executor, err := start(ctx, args)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Wait a bit for the mock script to write the output
-			time.Sleep(200 * time.Millisecond)
-
-			// Cancel the executor
-			err = executor.Cancel()
+			// Read all the output from stdout (this will block until the process finishes or is canceled)
+			output, err := io.ReadAll(executor)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Read and verify the captured arguments
-			Eventually(func() bool {
-				_, err := os.Stat(outputFile)
-				return err == nil
-			}, "2s", "100ms").Should(BeTrue(), "Mock script should have created output file")
-
-			content, err := os.ReadFile(outputFile)
-			Expect(err).ToNot(HaveOccurred())
-
-			lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+			// Parse the captured arguments
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 			Expect(lines).To(HaveLen(6))
 			Expect(lines[0]).To(Equal(testScript))
 			Expect(lines[1]).To(Equal("--audio-device=auto"))
@@ -217,23 +203,12 @@ var _ = Describe("MPV", func() {
 			executor, err := start(ctx, args)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Wait a bit for the mock script to write the output
-			time.Sleep(200 * time.Millisecond)
-
-			// Cancel the executor
-			err = executor.Cancel()
+			// Read all the output from stdout (this will block until the process finishes or is canceled)
+			output, err := io.ReadAll(executor)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Read and verify the captured arguments
-			Eventually(func() bool {
-				_, err := os.Stat(outputFile)
-				return err == nil
-			}, "2s", "100ms").Should(BeTrue())
-
-			content, err := os.ReadFile(outputFile)
-			Expect(err).ToNot(HaveOccurred())
-
-			lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+			// Parse the captured arguments
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 			Expect(lines).To(ContainElement("/music/My Album/01 - My Song.mp3"))
 			Expect(lines).To(ContainElement("--input-ipc-server=/tmp/test socket"))
 		})
@@ -255,23 +230,12 @@ var _ = Describe("MPV", func() {
 				executor, err := start(ctx, args)
 				Expect(err).ToNot(HaveOccurred())
 
-				// Wait a bit for the mock script to write the output
-				time.Sleep(200 * time.Millisecond)
-
-				// Cancel the executor
-				err = executor.Cancel()
+				// Read all the output from stdout (this will block until the process finishes or is canceled)
+				output, err := io.ReadAll(executor)
 				Expect(err).ToNot(HaveOccurred())
 
-				// Read and verify all arguments are passed correctly
-				Eventually(func() bool {
-					_, err := os.Stat(outputFile)
-					return err == nil
-				}, "2s", "100ms").Should(BeTrue())
-
-				content, err := os.ReadFile(outputFile)
-				Expect(err).ToNot(HaveOccurred())
-
-				lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+				// Parse the captured arguments
+				lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 
 				// Verify all expected arguments are present
 				Expect(lines).To(ContainElement("--no-audio-display"))
@@ -304,34 +268,30 @@ var _ = Describe("MPV", func() {
 	})
 })
 
-// createMockMPVScript creates a mock script that captures the arguments passed to it
-func createMockMPVScript(tempDir, outputFile string) string {
+// createMockMPVScript creates a mock script that outputs arguments to stdout
+func createMockMPVScript(tempDir string) string {
 	var scriptContent string
 	var scriptExt string
 
 	if runtime.GOOS == "windows" {
 		scriptExt = ".bat"
-		scriptContent = fmt.Sprintf(`@echo off
-echo %%0 > "%s"
+		scriptContent = `@echo off
+echo %0
 :loop
-if "%%~1"=="" goto end
-echo %%~1 >> "%s"
+if "%~1"=="" goto end
+echo %~1
 shift
 goto loop
 :end
-timeout /t 1 >nul
-`, outputFile, outputFile)
+`
 	} else {
 		scriptExt = ".sh"
-		scriptContent = fmt.Sprintf(`#!/bin/bash
-echo "$0" > "%s"
+		scriptContent = `#!/bin/bash
+echo "$0"
 for arg in "$@"; do
-    echo "$arg" >> "%s"
+    echo "$arg"
 done
-# Ensure file is flushed
-sync
-sleep 0.1
-`, outputFile, outputFile)
+`
 	}
 
 	scriptPath := filepath.Join(tempDir, "mock_mpv"+scriptExt)
