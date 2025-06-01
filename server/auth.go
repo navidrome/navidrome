@@ -265,7 +265,7 @@ func authHeaderMapper(next http.Handler) http.Handler {
 	})
 }
 
-func jwtVerifier(next http.Handler) http.Handler {
+func JWTVerifier(next http.Handler) http.Handler {
 	return jwtauth.Verify(auth.TokenAuth, tokenFromHeader, jwtauth.TokenFromCookie, jwtauth.TokenFromQuery)(next)
 }
 
