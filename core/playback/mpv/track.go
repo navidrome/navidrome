@@ -34,7 +34,7 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName str
 
 	tmpSocketName := socketName("mpv-ctrl-", ".socket")
 
-	args := createMPVCommand(deviceName, mf.Path, tmpSocketName)
+	args := createMPVCommand(deviceName, mf.AbsolutePath(), tmpSocketName)
 	exe, err := start(ctx, args)
 	if err != nil {
 		log.Error("Error starting mpv process", err)
