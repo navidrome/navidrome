@@ -36,6 +36,10 @@ const useStyles = makeStyles((theme) => ({
     paddingTop: 0,
     paddingBottom: 0,
   },
+  createIcon: {
+    fontSize: '1.25rem',
+    margin: '9px',
+  },
   selectedPlaylistsContainer: {
     marginTop: theme.spacing(2),
   },
@@ -151,7 +155,7 @@ const CreatePlaylistItem = ({ searchText, onCreateNew }) => {
   return (
     <ListItem className={classes.listItem} button onClick={onCreateNew} dense>
       <ListItemIcon>
-        <AddIcon fontSize="small" />
+        <AddIcon className={classes.createIcon} />
       </ListItemIcon>
       <ListItemText
         primary={translate('resources.playlist.actions.addNewPlaylist', {
