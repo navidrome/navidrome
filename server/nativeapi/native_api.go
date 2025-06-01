@@ -144,11 +144,8 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 }
 
 func (n *Router) addSongPlaylistsRoute(r chi.Router) {
-	r.Route("/song/{id}", func(r chi.Router) {
-		r.Use(server.URLParamsMiddleware)
-		r.Get("/playlists", func(w http.ResponseWriter, r *http.Request) {
-			getSongPlaylists(n.ds)(w, r)
-		})
+	r.With(server.URLParamsMiddleware).Get("/song/{id}/playlists", func(w http.ResponseWriter, r *http.Request) {
+		getSongPlaylists(n.ds)(w, r)
 	})
 }
 
