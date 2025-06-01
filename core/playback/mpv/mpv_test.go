@@ -147,6 +147,26 @@ var _ = Describe("MPV", func() {
 				}))
 			})
 		})
+		Context("with paths containing spaces in template arguments", func() {
+			BeforeEach(func() {
+				// Template with spaces in the path arguments themselves
+				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --ao-pcm-file="/audio/my folder/snapcast_fifo" --input-ipc-server=%s`
+			})
+
+			It("handles spaces in quoted template argument paths", func() {
+				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
+				// This test reveals the limitation of strings.Fields() - it will split on all spaces
+				// Expected behavior would be to keep the path as one argument
+				Expect(args).To(Equal([]string{
+					testScript,
+					"--no-audio-display",
+					"--pause",
+					"/music/test.mp3",
+					"--ao-pcm-file=/audio/my folder/snapcast_fifo", // This should be one argument
+					"--input-ipc-server=/tmp/socket",
+				}))
+			})
+		})
 	})
 
 	Describe("start", func() {

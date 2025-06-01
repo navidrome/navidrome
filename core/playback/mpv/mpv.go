@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 )
@@ -71,8 +72,13 @@ func (j *Executor) wait() {
 
 // Path will always be an absolute path
 func createMPVCommand(deviceName string, filename string, socketName string) []string {
-	// Parse the template structure using Fields() to handle extra spaces
-	templateArgs := strings.Fields(conf.Server.MPVCmdTemplate)
+	// Parse the template structure using shell parsing to handle quoted arguments
+	templateArgs, err := shellquote.Split(conf.Server.MPVCmdTemplate)
+	if err != nil {
+		// Fallback to Fields() if shell parsing fails
+		log.Warn("Failed to parse MPV command template with shell parsing, falling back to field splitting", "template", conf.Server.MPVCmdTemplate, "error", err)
+		templateArgs = strings.Fields(conf.Server.MPVCmdTemplate)
+	}
 
 	// Replace placeholders in each parsed argument to preserve spaces in substituted values
 	for i, arg := range templateArgs {
