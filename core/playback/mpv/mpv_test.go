@@ -180,7 +180,7 @@ var _ = Describe("MPV", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Wait a bit for the mock script to write the output
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 
 			// Cancel the executor
 			err = executor.Cancel()
@@ -218,7 +218,7 @@ var _ = Describe("MPV", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Wait a bit for the mock script to write the output
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 
 			// Cancel the executor
 			err = executor.Cancel()
@@ -256,7 +256,7 @@ var _ = Describe("MPV", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait a bit for the mock script to write the output
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(200 * time.Millisecond)
 
 				// Cancel the executor
 				err = executor.Cancel()
@@ -328,7 +328,9 @@ echo "$0" > "%s"
 for arg in "$@"; do
     echo "$arg" >> "%s"
 done
-sleep 1
+# Ensure file is flushed
+sync
+sleep 0.1
 `, outputFile, outputFile)
 	}
 
