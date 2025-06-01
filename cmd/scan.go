@@ -70,7 +70,7 @@ func runScanner(ctx context.Context) {
 	ds := persistence.New(sqlDB)
 	pls := core.NewPlaylists(ds)
 
-	progress, err := scanner.CallScan(ctx, ds, artwork.NoopCacheWarmer(), pls, metrics.NewNoopInstance(), fullScan)
+	progress, err := scanner.CallScan(ctx, ds, artwork.NoopCacheWarmer(), pls, metrics.NewPrometheusInstance(ds), fullScan)
 	if err != nil {
 		log.Fatal(ctx, "Failed to scan", err)
 	}
