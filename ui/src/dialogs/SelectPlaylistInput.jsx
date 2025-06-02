@@ -20,13 +20,20 @@ import { isWritable } from '../common'
 import { makeStyles } from '@material-ui/core'
 
 const useStyles = makeStyles((theme) => ({
-  root: { width: '100%' },
+  root: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   searchField: {
     marginBottom: theme.spacing(2),
     width: '100%',
+    flexShrink: 0,
   },
   playlistList: {
-    maxHeight: 200,
+    flex: 1,
+    minHeight: 0,
     overflow: 'auto',
     border: `1px solid ${theme.palette.divider}`,
     borderRadius: theme.shape.borderRadius,
@@ -42,6 +49,9 @@ const useStyles = makeStyles((theme) => ({
   },
   selectedPlaylistsContainer: {
     marginTop: theme.spacing(2),
+    flexShrink: 0,
+    maxHeight: '30%',
+    overflow: 'auto',
   },
   selectedPlaylist: {
     display: 'inline-flex',
