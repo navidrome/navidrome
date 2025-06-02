@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
@@ -38,12 +39,21 @@ func newPlaylistArtworkReader(ctx context.Context, artwork *artwork, artID model
 	return a, nil
 }
 
+func (a *playlistArtworkReader) Key() string {
+	baseKey := a.cacheKey.Key()
+	if a.pl.CustomArtworkHash != "" {
+		return fmt.Sprintf("%s.%s", baseKey, a.pl.CustomArtworkHash)
+	}
+	return baseKey
+}
+
 func (a *playlistArtworkReader) LastUpdated() time.Time {
 	return a.lastUpdate
 }
 
 func (a *playlistArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string, error) {
 	ff := []sourceFunc{
+		fromNamedArtwork(ctx, "playlist", a.pl.ID, a.pl.Name),
 		a.fromGeneratedTiledCover(ctx),
 		fromAlbumPlaceholder(),
 	}

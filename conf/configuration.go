@@ -63,6 +63,7 @@ type configOptions struct {
 	FFmpegPath                      string
 	MPVPath                         string
 	MPVCmdTemplate                  string
+	ArtworkFolder                   string
 	CoverArtPriority                string
 	CoverJpegQuality                int
 	ArtistArtPriority               string
@@ -245,6 +246,10 @@ func Load(noConfigDump bool) {
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating cache path:", err)
 		os.Exit(1)
+	}
+
+	if Server.ArtworkFolder == "" {
+		Server.ArtworkFolder = filepath.Join(Server.MusicFolder, "artwork")
 	}
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
@@ -479,6 +484,8 @@ func setViperDefaults() {
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")
 	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
+
+	viper.SetDefault("artworkFolder", "")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
