@@ -120,7 +120,7 @@ var _ = Describe("MPV", func() {
 			It("handles wrapper script paths", func() {
 				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
 				Expect(args).To(Equal([]string{
-					testScript, // This will be substituted by fixCmd
+					"/tmp/mpv.sh",
 					"--no-audio-display",
 					"--pause",
 					"/music/test.mp3",

@@ -92,7 +92,7 @@ func createMPVCommand(deviceName string, filename string, socketName string) []s
 	if len(templateArgs) > 0 {
 		cmdPath, err := mpvCommand()
 		if err == nil {
-			if templateArgs[0] == "mpv" || templateArgs[0] == "mpv.exe" || strings.Contains(templateArgs[0], "mpv") {
+			if templateArgs[0] == "mpv" || templateArgs[0] == "mpv.exe" {
 				templateArgs[0] = cmdPath
 			}
 		}
