@@ -16,6 +16,9 @@ import (
 )
 
 func start(ctx context.Context, args []string) (Executor, error) {
+	if len(args) == 0 {
+		return Executor{}, fmt.Errorf("no command arguments provided")
+	}
 	log.Debug("Executing mpv command", "cmd", args)
 	j := Executor{args: args}
 	j.PipeReader, j.out = io.Pipe()
@@ -75,9 +78,8 @@ func createMPVCommand(deviceName string, filename string, socketName string) []s
 	// Parse the template structure using shell parsing to handle quoted arguments
 	templateArgs, err := shellquote.Split(conf.Server.MPVCmdTemplate)
 	if err != nil {
-		// Fallback to Fields() if shell parsing fails
-		log.Warn("Failed to parse MPV command template with shell parsing, falling back to field splitting", "template", conf.Server.MPVCmdTemplate, "error", err)
-		templateArgs = strings.Fields(conf.Server.MPVCmdTemplate)
+		log.Error("Failed to parse MPV command template", "template", conf.Server.MPVCmdTemplate, err)
+		return nil
 	}
 
 	// Replace placeholders in each parsed argument to preserve spaces in substituted values

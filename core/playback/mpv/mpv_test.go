@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -167,6 +168,29 @@ var _ = Describe("MPV", func() {
 				}))
 			})
 		})
+
+		Context("with malformed template", func() {
+			BeforeEach(func() {
+				// Template with unmatched quotes that will cause shell parsing to fail
+				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
+			})
+
+			It("returns nil when shell parsing fails", func() {
+				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
+				Expect(args).To(BeNil())
+			})
+		})
+
+		Context("with empty template", func() {
+			BeforeEach(func() {
+				conf.Server.MPVCmdTemplate = ""
+			})
+
+			It("returns empty slice for empty template", func() {
+				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
+				Expect(args).To(Equal([]string{}))
+			})
+		})
 	})
 
 	Describe("start", func() {
@@ -259,6 +283,26 @@ var _ = Describe("MPV", func() {
 				Expect(lines).To(ContainElement("--ao-pcm-file=/audio/snapcast_fifo"))
 			})
 		})
+
+		Context("with nil args", func() {
+			It("returns error when args is nil", func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancel()
+
+				_, err := start(ctx, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("no command arguments provided"))
+			})
+
+			It("returns error when args is empty", func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancel()
+
+				_, err := start(ctx, []string{})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("no command arguments provided"))
+			})
+		})
 	})
 
 	Describe("mpvCommand", func() {
@@ -274,6 +318,38 @@ var _ = Describe("MPV", func() {
 			path, err := mpvCommand()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(path).To(Equal(testScript))
+		})
+	})
+
+	Describe("NewTrack integration", func() {
+		var testMediaFile model.MediaFile
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.MPVPath = testScript
+
+			// Create a test media file
+			testMediaFile = model.MediaFile{
+				ID:   "test-id",
+				Path: "/music/test.mp3",
+			}
+		})
+
+		Context("with malformed template", func() {
+			BeforeEach(func() {
+				// Template with unmatched quotes that will cause shell parsing to fail
+				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
+			})
+
+			It("returns error when createMPVCommand fails", func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+				defer cancel()
+
+				playbackDone := make(chan bool, 1)
+				_, err := NewTrack(ctx, playbackDone, "auto", testMediaFile)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(Equal("no mpv command arguments provided"))
+			})
 		})
 	})
 })
