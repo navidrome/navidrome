@@ -129,7 +129,12 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 }
 
 func roleFilter(_ string, role any) Sqlizer {
-	return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
+	if role, ok := role.(string); ok {
+		if _, ok := model.AllRoles[role]; ok {
+			return NotEq{fmt.Sprintf("stats ->> '$.%v'", role): nil}
+		}
+	}
+	return Eq{"1": 2}
 }
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
@@ -207,9 +212,9 @@ func (r *artistRepository) GetIndex(includeMissing bool, roles ...model.Role) (m
 	options := model.QueryOptions{Sort: "name"}
 	if len(roles) > 0 {
 		roleFilters := slice.Map(roles, func(r model.Role) Sqlizer {
-			return roleFilter("role", r)
+			return roleFilter("role", r.String())
 		})
-		options.Filters = And(roleFilters)
+		options.Filters = Or(roleFilters)
 	}
 	if !includeMissing {
 		if options.Filters == nil {

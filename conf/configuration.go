@@ -66,6 +66,7 @@ type configOptions struct {
 	CoverArtPriority                string
 	CoverJpegQuality                int
 	ArtistArtPriority               string
+	LyricsPriority                  string
 	EnableGravatar                  bool
 	EnableFavourites                bool
 	EnableStarRating                bool
@@ -86,25 +87,23 @@ type configOptions struct {
 	PasswordEncryptionKey           string
 	ReverseProxyUserHeader          string
 	ReverseProxyWhitelist           string
-	HTTPSecurityHeaders             secureOptions
-	Prometheus                      prometheusOptions
-	Scanner                         scannerOptions
-	Jukebox                         jukeboxOptions
-	Backup                          backupOptions
-	PID                             pidOptions
-	Inspect                         inspectOptions
-	Subsonic                        subsonicOptions
-	LyricsPriority                  string
-
-	Agents       string
-	LastFM       lastfmOptions
-	Spotify      spotifyOptions
-	ListenBrainz listenBrainzOptions
-	Tags         map[string]TagConf
+	HTTPSecurityHeaders             secureOptions       `json:",omitzero"`
+	Prometheus                      prometheusOptions   `json:",omitzero"`
+	Scanner                         scannerOptions      `json:",omitzero"`
+	Jukebox                         jukeboxOptions      `json:",omitzero"`
+	Backup                          backupOptions       `json:",omitzero"`
+	PID                             pidOptions          `json:",omitzero"`
+	Inspect                         inspectOptions      `json:",omitzero"`
+	Subsonic                        subsonicOptions     `json:",omitzero"`
+	LastFM                          lastfmOptions       `json:",omitzero"`
+	Spotify                         spotifyOptions      `json:",omitzero"`
+	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
+	Tags                            map[string]TagConf  `json:",omitempty"`
+	Agents                          string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
+	DevLogLevels                     map[string]string `json:",omitempty"`
 	DevLogSourceLine                 bool
-	DevLogLevels                     map[string]string
 	DevEnableProfiler                bool
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
@@ -112,6 +111,7 @@ type configOptions struct {
 	DevActivityPanelUpdateRate       time.Duration
 	DevSidebarPlaylists              bool
 	DevShowArtistPage                bool
+	DevUIShowConfig                  bool
 	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
@@ -145,12 +145,12 @@ type subsonicOptions struct {
 }
 
 type TagConf struct {
-	Ignore    bool     `yaml:"ignore"`
-	Aliases   []string `yaml:"aliases"`
-	Type      string   `yaml:"type"`
-	MaxLength int      `yaml:"maxLength"`
-	Split     []string `yaml:"split"`
-	Album     bool     `yaml:"album"`
+	Ignore    bool     `yaml:"ignore" json:",omitempty"`
+	Aliases   []string `yaml:"aliases" json:",omitempty"`
+	Type      string   `yaml:"type" json:",omitempty"`
+	MaxLength int      `yaml:"maxLength" json:",omitempty"`
+	Split     []string `yaml:"split" json:",omitempty"`
+	Album     bool     `yaml:"album" json:",omitempty"`
 }
 
 type lastfmOptions struct {
@@ -553,6 +553,7 @@ func setViperDefaults() {
 	viper.SetDefault("devactivitypanelupdaterate", 300*time.Millisecond)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)

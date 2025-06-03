@@ -173,7 +173,7 @@ func (s *Server) initRoutes() {
 		clientUniqueIDMiddleware,
 		compressMiddleware(),
 		loggerInjector,
-		jwtVerifier,
+		JWTVerifier,
 	}
 
 	// Mount the Native API /events endpoint with all default middlewares, adding the authentication middlewares

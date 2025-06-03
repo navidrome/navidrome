@@ -217,8 +217,33 @@ func (db *MockDataStore) WithTxImmediate(block func(tx model.DataStore) error, l
 	return block(db)
 }
 
-func (db *MockDataStore) Resource(context.Context, any) model.ResourceRepository {
-	return struct{ model.ResourceRepository }{}
+func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepository {
+	switch m.(type) {
+	case model.MediaFile, *model.MediaFile:
+		return db.MediaFile(ctx).(model.ResourceRepository)
+	case model.Album, *model.Album:
+		return db.Album(ctx).(model.ResourceRepository)
+	case model.Artist, *model.Artist:
+		return db.Artist(ctx).(model.ResourceRepository)
+	case model.User, *model.User:
+		return db.User(ctx).(model.ResourceRepository)
+	case model.Playlist, *model.Playlist:
+		return db.Playlist(ctx).(model.ResourceRepository)
+	case model.Radio, *model.Radio:
+		return db.Radio(ctx).(model.ResourceRepository)
+	case model.Share, *model.Share:
+		return db.Share(ctx).(model.ResourceRepository)
+	case model.Genre, *model.Genre:
+		return db.Genre(ctx).(model.ResourceRepository)
+	case model.Tag, *model.Tag:
+		return db.Tag(ctx).(model.ResourceRepository)
+	case model.Transcoding, *model.Transcoding:
+		return db.Transcoding(ctx).(model.ResourceRepository)
+	case model.Player, *model.Player:
+		return db.Player(ctx).(model.ResourceRepository)
+	default:
+		return struct{ model.ResourceRepository }{}
+	}
 }
 
 func (db *MockDataStore) GC(context.Context) error {

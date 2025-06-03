@@ -207,3 +207,21 @@ func reorderItem(ds model.DataStore) http.HandlerFunc {
 		}
 	}
 }
+
+func getSongPlaylists(ds model.DataStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p := req.Params(r)
+		trackId, _ := p.String(":id")
+		playlists, err := ds.Playlist(r.Context()).GetPlaylists(trackId)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data, err := json.Marshal(playlists)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write(data)
+	}
+}

@@ -137,6 +137,9 @@ const Admin = (props) => {
         <Resource name="playlistTrack" />,
         <Resource name="keepalive" />,
         <Resource name="insights" />,
+        permissions === 'admin' && config.devUIShowConfig ? (
+          <Resource name="config" />
+        ) : null,
         <Player />,
       ]}
     </RAAdmin>
