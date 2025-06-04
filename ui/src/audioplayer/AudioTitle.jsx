@@ -38,16 +38,14 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   const subtitle = song.tags?.['subtitle']
   const title = song.title + (subtitle ? ` (${subtitle})` : '')
 
+  const linkTo = audioInfo.isRadio
+    ? `/radio/${audioInfo.trackId}/show`
+    : song.playlistId
+      ? `/playlist/${song.playlistId}/show`
+      : `/album/${song.albumId}/show`
+
   return (
-    <Link
-      to={
-        audioInfo.isRadio
-          ? `/radio/${audioInfo.trackId}/show`
-          : `/album/${song.albumId}/show`
-      }
-      className={className}
-      ref={dragSongRef}
-    >
+    <Link to={linkTo} className={className} ref={dragSongRef}>
       <span>
         <span className={clsx(classes.songTitle, 'songTitle')}>{title}</span>
         {isDesktop && (
