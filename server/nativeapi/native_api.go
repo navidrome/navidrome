@@ -133,6 +133,9 @@ func (n *Router) addPlaylistTrackRoute(r chi.Router) {
 		})
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				getPlaylistTrack(n.ds)(w, r)
+			})
 			r.Put("/", func(w http.ResponseWriter, r *http.Request) {
 				reorderItem(n.ds)(w, r)
 			})
