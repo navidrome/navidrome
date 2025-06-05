@@ -20,6 +20,12 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
+const (
+	// maxArtistFolderTraversalDepth defines how many directory levels to search
+	// when looking for artist images (artist folder + parent directories)
+	maxArtistFolderTraversalDepth = 3
+)
+
 type artistReader struct {
 	cacheKey
 	a            *artwork
@@ -108,36 +114,52 @@ func (a *artistReader) fromArtistArtPriority(ctx context.Context, priority strin
 
 func fromArtistFolder(ctx context.Context, artistFolder string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
-		fsys := os.DirFS(artistFolder)
-		matches, err := fs.Glob(fsys, pattern)
-		if err != nil {
-			log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", artistFolder)
-			return nil, "", err
-		}
-		if len(matches) == 0 {
-			return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, artistFolder)
-		}
-		for _, m := range matches {
-			filePath := filepath.Join(artistFolder, m)
-			if !model.IsImageFile(m) {
-				continue
+		current := artistFolder
+		for i := 0; i < maxArtistFolderTraversalDepth; i++ {
+			if reader, path, err := findImageInFolder(ctx, current, pattern); err == nil {
+				return reader, path, nil
 			}
-			f, err := os.Open(filePath)
-			if err != nil {
-				log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
-				return nil, "", err
+
+			parent := filepath.Dir(current)
+			if parent == current {
+				break
 			}
-			return f, filePath, nil
+			current = parent
 		}
-		return nil, "", nil
+		return nil, "", fmt.Errorf(`no matches for '%s' in '%s' or its parent directories`, pattern, artistFolder)
 	}
+}
+
+func findImageInFolder(ctx context.Context, folder, pattern string) (io.ReadCloser, string, error) {
+	log.Trace(ctx, "looking for artist image", "pattern", pattern, "folder", folder)
+	fsys := os.DirFS(folder)
+	matches, err := fs.Glob(fsys, pattern)
+	if err != nil {
+		log.Warn(ctx, "Error matching artist image pattern", "pattern", pattern, "folder", folder, err)
+		return nil, "", err
+	}
+
+	for _, m := range matches {
+		if !model.IsImageFile(m) {
+			continue
+		}
+		filePath := filepath.Join(folder, m)
+		f, err := os.Open(filePath)
+		if err != nil {
+			log.Warn(ctx, "Could not open cover art file", "file", filePath, err)
+			continue
+		}
+		return f, filePath, nil
+	}
+
+	return nil, "", fmt.Errorf(`no matches for '%s' in '%s'`, pattern, folder)
 }
 
 func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albums, paths []string) (string, time.Time, error) {
 	if len(albums) == 0 {
 		return "", time.Time{}, nil
 	}
-	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library
+	libID := albums[0].LibraryID // Just need one of the albums, as they should all be in the same Library - for now! TODO: Support multiple libraries
 
 	folderPath := str.LongestCommonPrefix(paths)
 	if !strings.HasSuffix(folderPath, string(filepath.Separator)) {
