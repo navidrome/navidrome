@@ -127,7 +127,8 @@ func (r *mediaFileRepository) selectMediaFile(options ...model.QueryOptions) Sel
 	sql := r.newSelect(options...).Columns("media_file.*", "library.path as library_path").
 		LeftJoin("library on media_file.library_id = library.id")
 	sql = r.withAnnotation(sql, "media_file.id")
-	return r.withBookmark(sql, "media_file.id")
+	sql = r.withBookmark(sql, "media_file.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *mediaFileRepository) Get(id string) (*model.MediaFile, error) {

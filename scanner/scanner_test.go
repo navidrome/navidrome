@@ -71,6 +71,16 @@ var _ = Describe("Scanner", Ordered, func() {
 		}
 		ds.MockedMediaFile = mfRepo
 
+		// Create the admin user in the database to match the context
+		adminUser := model.User{
+			ID:          "123",
+			UserName:    "admin",
+			Name:        "Admin User",
+			IsAdmin:     true,
+			NewPassword: "password",
+		}
+		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
+
 		s = scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
 			core.NewPlaylists(ds), metrics.NewNoopInstance())
 
