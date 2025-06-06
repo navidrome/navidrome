@@ -11,13 +11,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 )
 
 // Library management endpoints (admin only)
 func (n *Router) addLibraryRoute(r chi.Router) {
 	r.Route("/library", func(r chi.Router) {
-		r.Use(adminOnlyMiddleware)
 		r.Get("/", getLibraries(n.ds))
 		r.Post("/", createLibrary(n.ds))
 		r.Route("/{id}", func(r chi.Router) {
@@ -32,22 +30,9 @@ func (n *Router) addLibraryRoute(r chi.Router) {
 // User-library association endpoints (admin only)
 func (n *Router) addUserLibraryRoute(r chi.Router) {
 	r.Route("/user/{id}/library", func(r chi.Router) {
-		r.Use(adminOnlyMiddleware)
 		r.Use(parseUserIDMiddleware)
 		r.Get("/", getUserLibraries(n.ds))
 		r.Put("/", setUserLibraries(n.ds))
-	})
-}
-
-// Middleware to ensure only admin users can access endpoints
-func adminOnlyMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, ok := request.UserFrom(r.Context())
-		if !ok || !user.IsAdmin {
-			http.Error(w, "Access denied: admin privileges required", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
 	})
 }
 
