@@ -41,6 +41,7 @@
         "addToQueue": "Play Later",
         "playNow": "Play Now",
         "addToPlaylist": "Add to Playlist",
+        "showInPlaylist": "Show in Playlist",
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
@@ -197,11 +198,17 @@
         "export": "Export",
         "saveQueue": "Save Queue to Playlist",
         "makePublic": "Make Public",
-        "makePrivate": "Make Private"
+        "makePrivate": "Make Private",
+        "searchOrCreate": "Search playlists or type to create new...",
+        "pressEnterToCreate": "Press Enter to create new playlist",
+        "removeFromSelection": "Remove from selection",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Add duplicated songs",
-        "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?"
+        "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?",
+        "noPlaylistsFound": "No playlists found",
+        "noPlaylists": "No playlists available"
       }
     },
     "radio": {
@@ -498,6 +505,21 @@
         "disabled": "Disabled",
         "waiting": "Waiting"
       }
+    },
+    "tabs": {
+      "about": "About",
+      "config": "Configuration"
+    },
+    "config": {
+      "configName": "Config Name",
+      "environmentVariable": "Environment Variable",
+      "currentValue": "Current Value",
+      "configurationFile": "Configuration File",
+      "exportToml": "Export Configuration (TOML)",
+      "exportSuccess": "Configuration exported to clipboard in TOML format",
+      "exportFailed": "Failed to copy configuration",
+      "devFlagsHeader": "Development Flags (subject to change/removal)",
+      "devFlagsComment": "These are experimental settings and may be removed in future versions"
     }
   },
   "activity": {

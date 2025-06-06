@@ -32,7 +32,10 @@
         "participants": "Partisipan tambahan",
         "tags": "Tag tambahan",
         "mappedTags": "Tag yang dipetakan",
-        "rawTags": "Tag raw"
+        "rawTags": "Tag raw",
+        "bitDepth": "Bit depth",
+        "sampleRate": "Sample rate",
+        "missing": "Hilang"
       },
       "actions": {
         "addToQueue": "Tambah ke antrean",
@@ -70,7 +73,9 @@
         "releaseType": "Tipe",
         "grouping": "Pengelompokkan",
         "media": "Media",
-        "mood": "Mood"
+        "mood": "Mood",
+        "date": "Tanggal Perekaman",
+        "missing": "Hilang"
       },
       "actions": {
         "playAll": "Putar",
@@ -102,7 +107,8 @@
         "rating": "Peringkat",
         "genre": "Genre",
         "size": "Ukuran",
-        "role": "Peran"
+        "role": "Peran",
+        "missing": "Hilang"
       },
       "roles": {
         "albumartist": "Artis Album |||| Artis Album",
@@ -163,7 +169,7 @@
       }
     },
     "transcoding": {
-      "name": "Transkode |||| Transkode",
+      "name": "Transkoding |||| Transkoding",
       "fields": {
         "name": "Nama",
         "targetFormat": "Target Format",
@@ -190,7 +196,8 @@
         "addNewPlaylist": "Buat \"%{name}\"",
         "export": "Ekspor",
         "makePublic": "Jadikan Publik",
-        "makePrivate": "Jadikan Pribadi"
+        "makePrivate": "Jadikan Pribadi",
+        "saveQueue": "Simpan Antrean ke Playlist"
       },
       "message": {
         "duplicate_song": "Tambahkan lagu duplikat",
@@ -235,11 +242,13 @@
         "updatedAt": "Tidak muncul di"
       },
       "actions": {
-        "remove": "Hapus"
+        "remove": "Hapus",
+        "remove_all": "Hapus Semua"
       },
       "notifications": {
         "removed": "File yang hilang dihapus"
-      }
+      },
+      "empty": "Tidak ada File yang Hilang"
     }
   },
   "ra": {
@@ -277,7 +286,7 @@
       "add": "Tambah",
       "back": "Kembali",
       "bulk_actions": "1 item dipilih |||| %{smart_count} item dipilih",
-      "cancel": "Batalkan",
+      "cancel": "Batal",
       "clear_input_value": "Hapus",
       "clone": "Klon",
       "confirm": "Konfirmasi",
@@ -292,7 +301,7 @@
       "save": "Simpan",
       "search": "Cari",
       "show": "Tampilkan",
-      "sort": "Sortir",
+      "sort": "Urutkan",
       "undo": "Batalkan",
       "expand": "Luaskan",
       "close": "Tutup",
@@ -312,7 +321,7 @@
       "create": "Buat %{name}",
       "dashboard": "Dasbor",
       "edit": "%{name} #%{id}",
-      "error": "Ada yang tidak beres",
+      "error": "Terjadi kesalahan",
       "list": "%{name}",
       "loading": "Memuat",
       "not_found": "Tidak ditemukan",
@@ -356,7 +365,7 @@
       "unsaved_changes": "Beberapa perubahan tidak disimpan. Apakah Kamu yakin ingin mengabaikannya?"
     },
     "navigation": {
-      "no_results": "Tidak ada hasil yang ditemukan",
+      "no_results": "Hasil tidak ditemukan",
       "no_more_results": "Nomor halaman %{page} melampaui batas. Coba halaman sebelumnya.",
       "page_out_of_boundaries": "Nomor halaman %{page} melampaui batas",
       "page_out_from_end": "Tidak dapat menelusuri sebelum halaman terakhir",
@@ -371,8 +380,8 @@
       "updated": "Elemen diperbarui |||| %{smart_count} elemen diperbarui",
       "created": "Elemen dibuat",
       "deleted": "Elemen dihapus |||| %{smart_count} elemen dihapus",
-      "bad_item": "Elemen salah",
-      "item_doesnt_exist": "Tidak ada elemen",
+      "bad_item": "Kesalahan elemen",
+      "item_doesnt_exist": "Elemen tidak ditemukan",
       "http_error": "Kesalahan komunikasi peladen",
       "data_provider_error": "dataProvider galat. Periksa konsol untuk detailnya.",
       "i18n_error": "Tidak dapat memuat terjemahan untuk bahasa yang diatur",
@@ -419,7 +428,9 @@
     "downloadDialogTitle": "Unduh %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "Salin ke papan klip: Ctrl+C, Enter",
     "remove_missing_title": "Hapus file yang hilang",
-    "remove_missing_content": "Apakah Anda yakin ingin menghapus file-file yang hilang dari basis data? Tindakan ini akan menghapus secara permanen semua referensi ke file-file tersebut, termasuk jumlah pemutaran dan peringkatnya."
+    "remove_missing_content": "Apakah Anda yakin ingin menghapus file-file yang hilang dari basis data? Tindakan ini akan menghapus secara permanen semua referensi ke file-file tersebut, termasuk jumlah pemutaran dan peringkatnya.",
+    "remove_all_missing_title": "Hapus semua file yang hilang",
+    "remove_all_missing_content": "Apa kamu yakin ingin menghapus semua file dari database? Ini akan menghapus permanen dan apapun referensi ke mereka, termasuk hitungan pemutaran dan rating mereka."
   },
   "menu": {
     "library": "Pustaka",
@@ -451,7 +462,7 @@
     "sharedPlaylists": "Playlist yang Dibagikan"
   },
   "player": {
-    "playListsText": "Mainkan Antrean",
+    "playListsText": "Putar Antrean",
     "openText": "Buka",
     "closeText": "Tutup",
     "notContentText": "Tidak ada musik",
@@ -471,7 +482,7 @@
     "playModeText": {
       "order": "Berurutan",
       "orderLoop": "Ulang",
-      "singleLoop": "Ulangi Satu",
+      "singleLoop": "Ulangi Sekali",
       "shufflePlay": "Acak"
     }
   },
@@ -493,7 +504,10 @@
     "quickScan": "Pemindaian Cepat",
     "fullScan": "Pemindaian Penuh",
     "serverUptime": "Waktu Aktif Peladen",
-    "serverDown": "LURING"
+    "serverDown": "LURING",
+    "scanType": "Tipe",
+    "status": "Kesalahan Memindai",
+    "elapsedTime": "Waktu Berakhir"
   },
   "help": {
     "title": "Tombol Pintasan Navidrome",

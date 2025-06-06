@@ -11,7 +11,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -19,10 +18,9 @@ import (
 )
 
 type scannerImpl struct {
-	ds      model.DataStore
-	cw      artwork.CacheWarmer
-	pls     core.Playlists
-	metrics metrics.Metrics
+	ds  model.DataStore
+	cw  artwork.CacheWarmer
+	pls core.Playlists
 }
 
 // scanState holds the state of an in-progress scan, to be passed to the various phases
@@ -111,7 +109,6 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
 		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, err.Error())
 		state.sendError(err)
-		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return
 	}
 
@@ -121,7 +118,6 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
 	}
 
-	s.metrics.WriteAfterScanMetrics(ctx, err == nil)
 	log.Info(ctx, "Scanner: Finished scanning all libraries", "duration", time.Since(startTime))
 }
 

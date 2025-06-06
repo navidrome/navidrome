@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -76,9 +77,14 @@ func (m *MockMediaFileRepo) GetAll(...model.QueryOptions) (model.MediaFiles, err
 		return nil, errors.New("error")
 	}
 	values := slices.Collect(maps.Values(m.Data))
-	return slice.Map(values, func(p *model.MediaFile) model.MediaFile {
+	result := slice.Map(values, func(p *model.MediaFile) model.MediaFile {
 		return *p
-	}), nil
+	})
+	// Sort by ID to ensure deterministic ordering for tests
+	slices.SortFunc(result, func(a, b model.MediaFile) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+	return result, nil
 }
 
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
@@ -196,4 +202,30 @@ func (m *MockMediaFileRepo) DeleteAllMissing() (int64, error) {
 	return count, nil
 }
 
+// ResourceRepository methods
+func (m *MockMediaFileRepo) Count(...rest.QueryOptions) (int64, error) {
+	return m.CountAll()
+}
+
+func (m *MockMediaFileRepo) Read(id string) (interface{}, error) {
+	mf, err := m.Get(id)
+	if errors.Is(err, model.ErrNotFound) {
+		return nil, rest.ErrNotFound
+	}
+	return mf, err
+}
+
+func (m *MockMediaFileRepo) ReadAll(...rest.QueryOptions) (interface{}, error) {
+	return m.GetAll()
+}
+
+func (m *MockMediaFileRepo) EntityName() string {
+	return "mediafile"
+}
+
+func (m *MockMediaFileRepo) NewInstance() interface{} {
+	return &model.MediaFile{}
+}
+
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)
+var _ model.ResourceRepository = (*MockMediaFileRepo)(nil)

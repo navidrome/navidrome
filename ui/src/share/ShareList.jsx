@@ -2,13 +2,13 @@ import {
   Datagrid,
   FunctionField,
   BooleanField,
-  List,
   NumberField,
   SimpleList,
   TextField,
   useNotify,
   useTranslate,
 } from 'react-admin'
+import { List } from '../common'
 import React from 'react'
 import { IconButton, Link, useMediaQuery } from '@material-ui/core'
 import ShareIcon from '@material-ui/icons/Share'

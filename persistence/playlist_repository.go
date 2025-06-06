@@ -197,6 +197,25 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
+func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
+	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
+		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
+		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter()})
+	var res []dbPlaylist
+	err := r.queryAll(sel, &res)
+	if err != nil {
+		if errors.Is(err, model.ErrNotFound) {
+			return model.Playlists{}, nil
+		}
+		return nil, err
+	}
+	playlists := make(model.Playlists, len(res))
+	for i, p := range res {
+		playlists[i] = p.Playlist
+	}
+	return playlists, nil
+}
+
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")

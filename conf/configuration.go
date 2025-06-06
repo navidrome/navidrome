@@ -87,26 +87,25 @@ type configOptions struct {
 	PasswordEncryptionKey           string
 	ReverseProxyUserHeader          string
 	ReverseProxyWhitelist           string
-	HTTPSecurityHeaders             secureOptions
-	Prometheus                      prometheusOptions
-	Scanner                         scannerOptions
-	Jukebox                         jukeboxOptions
-	Backup                          backupOptions
-	PID                             pidOptions
-	Inspect                         inspectOptions
-	Subsonic                        subsonicOptions
 	Plugins                         pluginsOptions
 	PluginConfig                    map[string]map[string]string
-
-	Agents       string
-	LastFM       lastfmOptions
-	Spotify      spotifyOptions
-	ListenBrainz listenBrainzOptions
-	Tags         map[string]TagConf
+	HTTPSecurityHeaders             secureOptions       `json:",omitzero"`
+	Prometheus                      prometheusOptions   `json:",omitzero"`
+	Scanner                         scannerOptions      `json:",omitzero"`
+	Jukebox                         jukeboxOptions      `json:",omitzero"`
+	Backup                          backupOptions       `json:",omitzero"`
+	PID                             pidOptions          `json:",omitzero"`
+	Inspect                         inspectOptions      `json:",omitzero"`
+	Subsonic                        subsonicOptions     `json:",omitzero"`
+	LastFM                          lastfmOptions       `json:",omitzero"`
+	Spotify                         spotifyOptions      `json:",omitzero"`
+	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
+	Tags                            map[string]TagConf  `json:",omitempty"`
+	Agents                          string
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
+	DevLogLevels                     map[string]string `json:",omitempty"`
 	DevLogSourceLine                 bool
-	DevLogLevels                     map[string]string
 	DevEnableProfiler                bool
 	DevAutoCreateAdminPassword       string
 	DevAutoLoginUsername             string
@@ -114,6 +113,7 @@ type configOptions struct {
 	DevActivityPanelUpdateRate       time.Duration
 	DevSidebarPlaylists              bool
 	DevShowArtistPage                bool
+	DevUIShowConfig                  bool
 	DevOffsetOptimize                int
 	DevArtworkMaxRequests            int
 	DevArtworkThrottleBacklogLimit   int
@@ -148,19 +148,20 @@ type subsonicOptions struct {
 }
 
 type TagConf struct {
-	Ignore    bool     `yaml:"ignore"`
-	Aliases   []string `yaml:"aliases"`
-	Type      string   `yaml:"type"`
-	MaxLength int      `yaml:"maxLength"`
-	Split     []string `yaml:"split"`
-	Album     bool     `yaml:"album"`
+	Ignore    bool     `yaml:"ignore" json:",omitempty"`
+	Aliases   []string `yaml:"aliases" json:",omitempty"`
+	Type      string   `yaml:"type" json:",omitempty"`
+	MaxLength int      `yaml:"maxLength" json:",omitempty"`
+	Split     []string `yaml:"split" json:",omitempty"`
+	Album     bool     `yaml:"album" json:",omitempty"`
 }
 
 type lastfmOptions struct {
-	Enabled  bool
-	ApiKey   string
-	Secret   string
-	Language string
+	Enabled                 bool
+	ApiKey                  string
+	Secret                  string
+	Language                string
+	ScrobbleFirstArtistOnly bool
 }
 
 type spotifyOptions struct {
@@ -499,8 +500,7 @@ func setViperDefaults() {
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")
-	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display --pause %f --input-ipc-server=%s")
-
+	viper.SetDefault("mpvcmdtemplate", "mpv --audio-device=%d --no-audio-display %f --input-ipc-server=%s")
 	viper.SetDefault("coverartpriority", "cover.*, folder.*, front.*, embedded, external")
 	viper.SetDefault("coverjpegquality", 75)
 	viper.SetDefault("artistartpriority", "artist.*, album/artist.*, external")
@@ -524,19 +524,15 @@ func setViperDefaults() {
 	viper.SetDefault("authrequestlimit", 5)
 	viper.SetDefault("authwindowlength", 20*time.Second)
 	viper.SetDefault("passwordencryptionkey", "")
-
 	viper.SetDefault("reverseproxyuserheader", "Remote-User")
 	viper.SetDefault("reverseproxywhitelist", "")
-
 	viper.SetDefault("prometheus.enabled", false)
 	viper.SetDefault("prometheus.metricspath", consts.PrometheusDefaultPath)
 	viper.SetDefault("prometheus.password", "")
-
 	viper.SetDefault("jukebox.enabled", false)
 	viper.SetDefault("jukebox.devices", []AudioDeviceDefinition{})
 	viper.SetDefault("jukebox.default", "")
 	viper.SetDefault("jukebox.adminonly", true)
-
 	viper.SetDefault("scanner.enabled", true)
 	viper.SetDefault("scanner.schedule", "0")
 	viper.SetDefault("scanner.extractor", consts.DefaultScannerExtractor)
@@ -547,36 +543,30 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
-
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
-
 	viper.SetDefault("agents", "lastfm,spotify")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
+	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
 	viper.SetDefault("spotify.id", "")
 	viper.SetDefault("spotify.secret", "")
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", "https://api.listenbrainz.org/1/")
-
 	viper.SetDefault("httpsecurityheaders.customframeoptionsvalue", "DENY")
-
 	viper.SetDefault("backup.path", "")
 	viper.SetDefault("backup.schedule", "")
 	viper.SetDefault("backup.count", 0)
-
 	viper.SetDefault("pid.track", consts.DefaultTrackPID)
 	viper.SetDefault("pid.album", consts.DefaultAlbumPID)
-
 	viper.SetDefault("inspect.enabled", true)
 	viper.SetDefault("inspect.maxrequests", 1)
 	viper.SetDefault("inspect.backloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
-
 	viper.SetDefault("plugins.folder", "")
 	viper.SetDefault("plugins.enabled", false)
 
@@ -589,6 +579,7 @@ func setViperDefaults() {
 	viper.SetDefault("devactivitypanelupdaterate", 300*time.Millisecond)
 	viper.SetDefault("devsidebarplaylists", true)
 	viper.SetDefault("devshowartistpage", true)
+	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	viper.SetDefault("devartworkmaxrequests", max(2, runtime.NumCPU()/3))
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)

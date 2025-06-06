@@ -196,6 +196,12 @@ var _ = Describe("lastfmAgent", func() {
 				TrackNumber:    1,
 				Duration:       180,
 				MbzRecordingID: "mbz-123",
+				Participants: map[model.Role]model.ParticipantList{
+					model.RoleArtist: []model.Participant{
+						{Artist: model.Artist{ID: "ar-1", Name: "First Artist"}},
+						{Artist: model.Artist{ID: "ar-2", Name: "Second Artist"}},
+					},
+				},
 			}
 		})
 
@@ -245,6 +251,23 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("duration")).To(Equal(strconv.FormatFloat(float64(track.Duration), 'G', -1, 32)))
 				Expect(sentParams.Get("mbid")).To(Equal(track.MbzRecordingID))
 				Expect(sentParams.Get("timestamp")).To(Equal(strconv.FormatInt(ts.Unix(), 10)))
+			})
+
+			When("ScrobbleFirstArtistOnly is true", func() {
+				BeforeEach(func() {
+					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+				})
+
+				It("uses only the first artist", func() {
+					ts := time.Now()
+					httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+					err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: ts})
+
+					Expect(err).ToNot(HaveOccurred())
+					sentParams := httpClient.SavedRequest.URL.Query()
+					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
+				})
 			})
 
 			It("skips songs with less than 31 seconds", func() {

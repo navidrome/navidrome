@@ -112,6 +112,21 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("GetPlaylists", func() {
+		It("returns playlists for a track", func() {
+			pls, err := repo.GetPlaylists(songRadioactivity.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls).To(HaveLen(1))
+			Expect(pls[0].ID).To(Equal(plsBest.ID))
+		})
+
+		It("returns empty when none", func() {
+			pls, err := repo.GetPlaylists("9999")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pls).To(HaveLen(0))
+		})
+	})
+
 	Context("Smart Playlists", func() {
 		var rules *criteria.Criteria
 		BeforeEach(func() {

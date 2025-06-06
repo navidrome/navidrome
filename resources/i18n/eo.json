@@ -24,16 +24,18 @@
         "rating": "Takso",
         "quality": "Kvalito",
         "bpm": "Pulsrapideco",
-        "playDate": "",
-        "channels": "",
-        "createdAt": "",
+        "playDate": "Laste Ludita",
+        "channels": "Kanaloj",
+        "createdAt": "Dato de aligo",
         "grouping": "",
-        "mood": "",
+        "mood": "Humoro",
         "participants": "",
-        "tags": "",
-        "mappedTags": "",
-        "rawTags": "",
-        "bitDepth": ""
+        "tags": "Aldonaj Etikedoj",
+        "mappedTags": "Mapigitaj etikedoj",
+        "rawTags": "Krudaj etikedoj",
+        "bitDepth": "",
+        "sampleRate": "",
+        "missing": ""
       },
       "actions": {
         "addToQueue": "Ludi Poste",
@@ -42,7 +44,7 @@
         "shuffleAll": "Miksu Ĉiujn",
         "download": "Elŝuti",
         "playNext": "Ludu Poste",
-        "info": ""
+        "info": "Akiri Informon"
       }
     },
     "album": {
@@ -60,19 +62,20 @@
         "updatedAt": "Ĝisdatigita je :",
         "comment": "Komento",
         "rating": "Takso",
-        "createdAt": "",
-        "size": "",
-        "originalDate": "",
-        "releaseDate": "",
-        "releases": "",
-        "released": "",
+        "createdAt": "Dato aldonita",
+        "size": "Grando",
+        "originalDate": "Originala",
+        "releaseDate": "Publikiĝis",
+        "releases": "Publikiĝo |||| Publikiĝoj",
+        "released": "Publikiĝis",
         "recordLabel": "",
         "catalogNum": "",
-        "releaseType": "",
+        "releaseType": "Tipo",
         "grouping": "",
         "media": "",
-        "mood": "",
-        "date": ""
+        "mood": "Humoro",
+        "date": "",
+        "missing": ""
       },
       "actions": {
         "playAll": "Ludi",
@@ -81,43 +84,44 @@
         "shuffle": "Miksi",
         "addToPlaylist": "Aldoni al la Ludlisto",
         "download": "Elŝuti",
-        "info": "",
-        "share": ""
+        "info": "Akiri Informon",
+        "share": "Diskonigi"
       },
       "lists": {
         "all": "Ĉiuj",
-        "random": "Hazarda",
-        "recentlyAdded": "Lastatempe Aldonita",
-        "recentlyPlayed": "Lastatempe Ludita",
+        "random": "Hazardaj",
+        "recentlyAdded": "Lastatempe Aldonitaj",
+        "recentlyPlayed": "Lastatempe Luditaj",
         "mostPlayed": "Plej Luditaj",
-        "starred": "Stelplena",
-        "topRated": "Plej Alte Taksite"
+        "starred": "Stelplenaj",
+        "topRated": "Plej Alte Taksitaj"
       }
     },
     "artist": {
       "name": "Artisto |||| Artistoj",
       "fields": {
         "name": "Nomo",
-        "albumCount": "Nombro da albumoj",
-        "songCount": "Kanto kalkula",
-        "playCount": "Teatraĵoj",
+        "albumCount": "Kvanto da Albumoj",
+        "songCount": "Kanta Kalkulo",
+        "playCount": "Ludoj",
         "rating": "Takso",
-        "genre": "",
-        "size": "",
-        "role": ""
+        "genre": "Ĝenro",
+        "size": "Grando",
+        "role": "",
+        "missing": ""
       },
       "roles": {
-        "albumartist": "",
-        "artist": "",
-        "composer": "",
-        "conductor": "",
-        "lyricist": "",
-        "arranger": "",
+        "albumartist": "Albuma Artisto |||| Albumaj Artistoj",
+        "artist": "Artisto |||| Artistoj",
+        "composer": "Komponisto |||| Komponistoj",
+        "conductor": "Dirigento |||| Dirigentoj",
+        "lyricist": "Kantoteksisto |||| Kantotekstistoj",
+        "arranger": "Aranĝisto |||| Aranĝistoj",
         "producer": "",
         "director": "",
         "engineer": "",
-        "mixer": "",
-        "remixer": "",
+        "mixer": "Miksisto |||| Miksistoj",
+        "remixer": "Remiksisto |||| Remiksistoj",
         "djmixer": "",
         "performer": ""
       }
@@ -135,8 +139,8 @@
         "changePassword": "Ĉu Ŝanĝi Pasvorton?",
         "currentPassword": "Nuna Pasvorto",
         "newPassword": "Nova Pasvorto",
-        "token": "",
-        "lastAccessAt": ""
+        "token": "Ĵetono",
+        "lastAccessAt": "Lasta Atingo"
       },
       "helperTexts": {
         "name": "Ŝanĝoj de via nomo nur ĝisdatiĝs je via sekvanta ensaluto"
@@ -147,8 +151,8 @@
         "deleted": "Uzanto forigita"
       },
       "message": {
-        "listenBrainzToken": "",
-        "clickHereForToken": ""
+        "listenBrainzToken": "Enigi vian uzantan ĵetonon de ListenBrainz.",
+        "clickHereForToken": "Alkakli ĉi tie por akiri vian ĵetonon"
       }
     },
     "player": {
@@ -161,7 +165,7 @@
         "userName": "Uzantnomo",
         "lastSeen": "Laste Vidita Je",
         "reportRealPath": "Raporti vera pado",
-        "scrobbleEnabled": ""
+        "scrobbleEnabled": "Sendi Scrobbles al eksteraj servoj"
       }
     },
     "transcoding": {
@@ -191,8 +195,9 @@
         "selectPlaylist": "Elektu ludliston :",
         "addNewPlaylist": "Krei \"%{name}\"",
         "export": "Eksporti",
-        "makePublic": "",
-        "makePrivate": ""
+        "makePublic": "Publikigi",
+        "makePrivate": "Malpublikigi",
+        "saveQueue": ""
       },
       "message": {
         "duplicate_song": "Aldoni duobligitajn kantojn",
@@ -200,33 +205,33 @@
       }
     },
     "radio": {
-      "name": "",
+      "name": "Radio |||| Radioj",
       "fields": {
-        "name": "",
-        "streamUrl": "",
-        "homePageUrl": "",
-        "updatedAt": "",
-        "createdAt": ""
+        "name": "Nomo",
+        "streamUrl": "Flua Ligilo",
+        "homePageUrl": "Hejmpaĝa Ligilo",
+        "updatedAt": "Ĝisdatiĝis je",
+        "createdAt": "Kreiĝis je"
       },
       "actions": {
-        "playNow": ""
+        "playNow": "Ludi Nun"
       }
     },
     "share": {
-      "name": "",
+      "name": "Diskonigo |||| Diskonigoj",
       "fields": {
-        "username": "",
-        "url": "",
-        "description": "",
-        "contents": "",
-        "expiresAt": "",
-        "lastVisitedAt": "",
-        "visitCount": "",
-        "format": "",
-        "maxBitRate": "",
-        "updatedAt": "",
-        "createdAt": "",
-        "downloadable": ""
+        "username": "Diskonigite De",
+        "url": "Ligilo",
+        "description": "Priskribo",
+        "contents": "Enhavo",
+        "expiresAt": "Senvalidiĝas",
+        "lastVisitedAt": "Laste Vizitita",
+        "visitCount": "Vizitoj",
+        "format": "Formato",
+        "maxBitRate": "Maks. Bitrapido",
+        "updatedAt": "Ĝisdatiĝis je",
+        "createdAt": "Fariĝis je",
+        "downloadable": "Ĉu Ebligi Elŝutojn?"
       }
     },
     "missing": {
@@ -237,7 +242,8 @@
         "updatedAt": ""
       },
       "actions": {
-        "remove": ""
+        "remove": "",
+        "remove_all": ""
       },
       "notifications": {
         "removed": ""
@@ -258,7 +264,7 @@
       "sign_in": "Ensaluti",
       "sign_in_error": "Aŭtentikigo malsukcesis, bonvolu reprovi",
       "logout": "Elsaluti",
-      "insightsCollectionNote": ""
+      "insightsCollectionNote": "Navidrome kolektas anoniman uzdatumon por helpi\nplibonigi la projekton. Alklaku [ĉi tie] por lerni pli kaj\nsupozi permeson se vi volas"
     },
     "validation": {
       "invalidChars": "Bonvolu uzi nur literojn kaj ciferojn",
@@ -273,7 +279,7 @@
       "oneOf": "Devas esti unu el: %{options}",
       "regex": "Devas kongrui kun specifa formato (regexp): %{pattern}",
       "unique": "Devas esti unika",
-      "url": ""
+      "url": "Devas esti valida ligilo"
     },
     "action": {
       "add_filter": "Aldoni filtrilon",
@@ -303,9 +309,9 @@
       "close_menu": "Fermu menuon",
       "unselect": "Malelekti",
       "skip": "Pasigi",
-      "bulk_actions_mobile": "",
-      "share": "",
-      "download": ""
+      "bulk_actions_mobile": "1 |||| %{smart_count}",
+      "share": "Diskonigi",
+      "download": "Elŝuti"
     },
     "boolean": {
       "true": "Jes",
@@ -381,13 +387,13 @@
       "i18n_error": "Ne eblas ŝargi la tradukojn por la specifa lingvo",
       "canceled": "Ago nuligita",
       "logged_out": "Via seanco finiĝis, bonvolu rekonekti.",
-      "new_version": ""
+      "new_version": "Nova versio haveblas! Bonvolu reŝargi la fenestron."
     },
     "toggleFieldsMenu": {
-      "columnsToDisplay": "",
+      "columnsToDisplay": "Kolumnoj Por Montri",
       "layout": "Aranĝo",
       "grid": "Krado",
-      "table": ""
+      "table": "Tabelo"
     }
   },
   "message": {
@@ -400,29 +406,31 @@
     "delete_user_content": "Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton kaj ĉiujn iliajn datumojn (inkluzive ludlistojn kaj preferojn) ?",
     "notifications_blocked": "Vi blokis sciigojn por ĉi tiu retejo en la agordoj de via retumilo",
     "notifications_not_available": "Ĉi tiu retumilo ne subtenas labortablajn sciigojn aŭ vi ne aliras Navidrome per https",
-    "lastfmLinkSuccess": "",
-    "lastfmLinkFailure": "",
-    "lastfmUnlinkSuccess": "",
-    "lastfmUnlinkFailure": "",
+    "lastfmLinkSuccess": "Last.fm sukcese ligiĝis kaj scrobbling ebliĝis",
+    "lastfmLinkFailure": "Last.fm ne povis ligiĝi",
+    "lastfmUnlinkSuccess": "Last.fm malligiĝis kaj scrobbling malebliĝis",
+    "lastfmUnlinkFailure": "Last.fm ne povis malligiĝi",
     "openIn": {
-      "lastfm": "",
-      "musicbrainz": ""
+      "lastfm": "Malfermi en Last.fm",
+      "musicbrainz": "Malfermi en MusicBrainz"
     },
-    "lastfmLink": "",
-    "listenBrainzLinkSuccess": "",
-    "listenBrainzLinkFailure": "",
-    "listenBrainzUnlinkSuccess": "",
-    "listenBrainzUnlinkFailure": "",
-    "downloadOriginalFormat": "",
-    "shareOriginalFormat": "",
-    "shareDialogTitle": "",
-    "shareBatchDialogTitle": "",
-    "shareSuccess": "",
-    "shareFailure": "",
-    "downloadDialogTitle": "",
-    "shareCopyToClipboard": "",
+    "lastfmLink": "Legi Pli...",
+    "listenBrainzLinkSuccess": "ListenBrainz sukcese ligiĝis kaj scrobbling ebliĝis kiel uzanto: %{user}",
+    "listenBrainzLinkFailure": "ListenBrainz ne povis ligiĝi: %{error}",
+    "listenBrainzUnlinkSuccess": "ListenBrainz malligiĝis kaj scrobbling malebliĝis",
+    "listenBrainzUnlinkFailure": "ListenBrainz ne povis malligiĝi",
+    "downloadOriginalFormat": "Elŝuti en originala formato",
+    "shareOriginalFormat": "Diskonigi en originala formato",
+    "shareDialogTitle": "Diskonigi %{resource} '%{name}'",
+    "shareBatchDialogTitle": "Diskonigi 1 %{resource} |||| Diskonigi %{smart_count} %{resource}",
+    "shareSuccess": "Ligilo kopiiĝis al la tondujo: %{url}",
+    "shareFailure": "Eraro de kopio de ligilo %{url} al la tondujo",
+    "downloadDialogTitle": "Elŝuti %{resource} '%{name}' (%{size})",
+    "shareCopyToClipboard": "Kopii al la tondujo: Ctrl+C, Enter",
     "remove_missing_title": "",
-    "remove_missing_content": ""
+    "remove_missing_content": "Ĉu vi certas, ke vi volas forigi la elektitajn mankajn dosierojn de la datumbazo? Ĉi tio forigos eterne ĉiujn referencojn de ili, inkluzive iliajn ludkvantojn kaj taksojn.",
+    "remove_all_missing_title": "",
+    "remove_all_missing_content": ""
   },
   "menu": {
     "library": "Biblioteko",
@@ -436,22 +444,22 @@
         "language": "Lingvo",
         "defaultView": "Defaŭlta Vido",
         "desktop_notifications": "Labortablaj sciigoj",
-        "lastfmScrobbling": "",
-        "listenBrainzScrobbling": "",
-        "replaygain": "",
-        "preAmp": "",
+        "lastfmScrobbling": "Scrobble al Last.fm",
+        "listenBrainzScrobbling": "Scrobble al ListenBrainz",
+        "replaygain": "ReplayGain-Reĝimo",
+        "preAmp": "ReplayGain PreAmp (dB)",
         "gain": {
-          "none": "",
-          "album": "",
-          "track": ""
+          "none": "Malebligita",
+          "album": "Uzi Albuman Songajnon",
+          "track": "Uzi Kantan Songajnon"
         },
         "lastfmNotConfigured": ""
       }
     },
     "albumList": "Albumoj",
     "about": "Pri",
-    "playlists": "",
-    "sharedPlaylists": ""
+    "playlists": "Ludlistoj",
+    "sharedPlaylists": "Diskonigitaj Ludistoj"
   },
   "player": {
     "playListsText": "Atendovico",
@@ -485,7 +493,7 @@
       "featureRequests": "Trajta peto",
       "lastInsightsCollection": "",
       "insights": {
-        "disabled": "",
+        "disabled": "Malebligita",
         "waiting": ""
       }
     }
@@ -496,7 +504,10 @@
     "quickScan": "Rapida Skanado",
     "fullScan": "Plena Skanado",
     "serverUptime": "Servila daŭro de funkciado",
-    "serverDown": "SENKONEKTA"
+    "serverDown": "SENKONEKTA",
+    "scanType": "",
+    "status": "",
+    "elapsedTime": ""
   },
   "help": {
     "title": "Navidrome klavkomando",
@@ -509,7 +520,7 @@
       "vol_up": "Pli volumo",
       "vol_down": "Malpli volumo",
       "toggle_love": "Baskuli la stelon de nuna kanto",
-      "current_song": ""
+      "current_song": "Iri al Nuna Kanto"
     }
   }
 }

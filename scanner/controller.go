@@ -63,13 +63,12 @@ func (s *controller) getScanner() scanner {
 	if conf.Server.DevExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls, metrics: s.metrics}
+	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
 }
 
 // CallScan starts an in-process scan of the music library.
 // This is meant to be called from the command line (see cmd/scan.go).
-func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, pls core.Playlists,
-	metrics metrics.Metrics, fullScan bool) (<-chan *ProgressInfo, error) {
+func CallScan(ctx context.Context, ds model.DataStore, pls core.Playlists, fullScan bool) (<-chan *ProgressInfo, error) {
 	release, err := lockScan(ctx)
 	if err != nil {
 		return nil, err
@@ -80,7 +79,7 @@ func CallScan(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, p
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: cw, pls: pls, metrics: metrics}
+		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
 		scanner.scanAll(ctx, fullScan, progress)
 	}()
 	return progress, nil
@@ -230,9 +229,11 @@ func (s *controller) ScanAll(requestCtx context.Context, fullScan bool) ([]strin
 	}
 	// Send the final scan status event, with totals
 	if count, folderCount, err := s.getCounters(ctx); err != nil {
+		s.metrics.WriteAfterScanMetrics(ctx, false)
 		return scanWarnings, err
 	} else {
 		scanType, elapsed, lastErr := s.getScanInfo(ctx)
+		s.metrics.WriteAfterScanMetrics(ctx, true)
 		s.sendMessage(ctx, &events.ScanStatus{
 			Scanning:    false,
 			Count:       count,

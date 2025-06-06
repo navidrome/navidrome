@@ -12,6 +12,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  makeStyles,
 } from '@material-ui/core'
 import {
   closeAddToPlaylist,
@@ -23,7 +24,21 @@ import DuplicateSongDialog from './DuplicateSongDialog'
 import { httpClient } from '../dataProvider'
 import { REST_URL } from '../consts'
 
+const useStyles = makeStyles({
+  dialogPaper: {
+    height: '26em',
+    maxHeight: '26em',
+  },
+  dialogContent: {
+    height: '17.5em',
+    overflowY: 'auto',
+    paddingTop: '0.5em',
+    paddingBottom: '0.5em',
+  },
+})
+
 export const AddToPlaylistDialog = () => {
+  const classes = useStyles()
   const { open, selectedIds, onSuccess, duplicateSong, duplicateIds } =
     useSelector((state) => state.addToPlaylistDialog)
   const dispatch = useDispatch()
@@ -145,11 +160,14 @@ export const AddToPlaylistDialog = () => {
         aria-labelledby="form-dialog-new-playlist"
         fullWidth={true}
         maxWidth={'sm'}
+        classes={{
+          paper: classes.dialogPaper,
+        }}
       >
         <DialogTitle id="form-dialog-new-playlist">
           {translate('resources.playlist.actions.selectPlaylist')}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent className={classes.dialogContent}>
           <SelectPlaylistInput onChange={handleChange} />
         </DialogContent>
         <DialogActions>
