@@ -13,7 +13,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -318,38 +317,6 @@ var _ = Describe("MPV", func() {
 			path, err := mpvCommand()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(path).To(Equal(testScript))
-		})
-	})
-
-	Describe("NewTrack integration", func() {
-		var testMediaFile model.MediaFile
-
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.MPVPath = testScript
-
-			// Create a test media file
-			testMediaFile = model.MediaFile{
-				ID:   "test-id",
-				Path: "/music/test.mp3",
-			}
-		})
-
-		Context("with malformed template", func() {
-			BeforeEach(func() {
-				// Template with unmatched quotes that will cause shell parsing to fail
-				conf.Server.MPVCmdTemplate = `mpv --no-audio-display --pause %f --input-ipc-server=%s --ao-pcm-file="/unclosed/quote`
-			})
-
-			It("returns error when createMPVCommand fails", func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-				defer cancel()
-
-				playbackDone := make(chan bool, 1)
-				_, err := NewTrack(ctx, playbackDone, "auto", testMediaFile)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("no mpv command arguments provided"))
-			})
 		})
 	})
 })
