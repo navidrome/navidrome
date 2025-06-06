@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -206,11 +207,34 @@ func (r *libraryRepository) RefreshStats(id int) error {
 	return err
 }
 
+func (r *libraryRepository) Delete(id int) error {
+	if !isAdmin(r.ctx) {
+		return rest.ErrPermissionDenied
+	}
+
+	err := r.delete(Eq{"id": id})
+	if err != nil {
+		return err
+	}
+
+	// Clear cache entry for this library only if DB operation was successful
+	libLock.Lock()
+	defer libLock.Unlock()
+	delete(libCache, id)
+
+	return nil
+}
+
 func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, error) {
 	sq := r.newSelect(ops...).Columns("*")
 	res := model.Libraries{}
 	err := r.queryAll(sq, &res)
 	return res, err
+}
+
+func (r *libraryRepository) CountAll(ops ...model.QueryOptions) (int64, error) {
+	sq := r.newSelect(ops...)
+	return r.count(sq)
 }
 
 // User-library association methods
