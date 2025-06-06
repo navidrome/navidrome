@@ -61,8 +61,9 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Columns("folder.*", "library.path as library_path").
+	sql := r.newSelect(options...).Columns("folder.*", "library.path as library_path").
 		Join("library on library.id = folder.library_id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r folderRepository) Get(id string) (*model.Folder, error) {

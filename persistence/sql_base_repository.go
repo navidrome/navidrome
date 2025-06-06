@@ -199,6 +199,29 @@ func (r sqlRepository) applyFilters(sq SelectBuilder, options ...model.QueryOpti
 	return sq
 }
 
+// applyLibraryFilter adds library filtering to queries for tables that have a library_id column
+// This ensures users only see content from libraries they have access to
+func (r sqlRepository) applyLibraryFilter(sq SelectBuilder) SelectBuilder {
+	user := loggedUser(r.ctx)
+
+	// Admin users see all content
+	if user.IsAdmin {
+		return sq
+	}
+
+	// Get user's accessible library IDs
+	userID := userId(r.ctx)
+	if userID == invalidUserId {
+		// No user context - return empty result set
+		return sq.Where(Eq{"1": "0"})
+	}
+
+	// Use subquery to filter by user's library access
+	// This approach doesn't require DataStore in context
+	return sq.Where(Expr(r.tableName+".library_id IN ("+
+		"SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", userID))
+}
+
 func (r sqlRepository) seedKey() string {
 	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
 	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
