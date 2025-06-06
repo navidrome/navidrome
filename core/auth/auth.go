@@ -145,3 +145,68 @@ func getEncKey() []byte {
 	sum := sha256.Sum256([]byte(key))
 	return sum[:]
 }
+
+// Library-based permission helpers
+
+// HasLibraryAccess checks if a user has access to a specific library
+func HasLibraryAccess(ctx context.Context, ds model.DataStore, userID string, libraryID int) bool {
+	user, ok := request.UserFrom(ctx)
+	if !ok {
+		return false
+	}
+
+	// Admin users have access to all libraries
+	if user.IsAdmin {
+		return true
+	}
+
+	// Check if user has explicit access to this library
+	libraries, err := ds.User(ctx).GetUserLibraries(userID)
+	if err != nil {
+		log.Error(ctx, "Error checking library access", "userID", userID, "libraryID", libraryID, err)
+		return false
+	}
+
+	for _, lib := range libraries {
+		if lib.ID == libraryID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// GetUserLibraryIDs returns a list of library IDs the user has access to
+func GetUserLibraryIDs(ctx context.Context, ds model.DataStore, userID string) []int {
+	user, ok := request.UserFrom(ctx)
+	if !ok {
+		return []int{}
+	}
+
+	// Admin users have access to all libraries
+	if user.IsAdmin {
+		libraries, err := ds.Library(ctx).GetAll()
+		if err != nil {
+			log.Error(ctx, "Error getting all libraries for admin", "userID", userID, err)
+			return []int{}
+		}
+		var ids []int
+		for _, lib := range libraries {
+			ids = append(ids, lib.ID)
+		}
+		return ids
+	}
+
+	// Get user's accessible libraries
+	libraries, err := ds.User(ctx).GetUserLibraries(userID)
+	if err != nil {
+		log.Error(ctx, "Error getting user libraries", "userID", userID, err)
+		return []int{}
+	}
+
+	var ids []int
+	for _, lib := range libraries {
+		ids = append(ids, lib.ID)
+	}
+	return ids
+}

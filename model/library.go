@@ -36,6 +36,9 @@ type LibraryRepository interface {
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error
 
+	// User-library association methods
+	GetUsersWithLibraryAccess(libraryID int) (Users, error)
+
 	// TODO These methods should be moved to a core service
 	ScanBegin(id int, fullScan bool) error
 	ScanEnd(id int) error

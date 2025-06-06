@@ -79,18 +79,34 @@ func (r *userRepository) Put(u *model.User) error {
 		return fmt.Errorf("error converting user to SQL args: %w", err)
 	}
 	delete(values, "current_password")
+
+	// Save/update the user
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
 	count, err := r.executeSQL(update)
 	if err != nil {
 		return err
 	}
-	if count > 0 {
-		return nil
+	if count == 0 {
+		values["created_at"] = time.Now()
+		insert := Insert(r.tableName).SetMap(values)
+		_, err = r.executeSQL(insert)
+		if err != nil {
+			return err
+		}
 	}
-	values["created_at"] = time.Now()
-	insert := Insert(r.tableName).SetMap(values)
-	_, err = r.executeSQL(insert)
-	return err
+
+	// Auto-assign all libraries to admin users in a single SQL operation
+	if u.IsAdmin {
+		sql := Expr(
+			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library",
+			u.ID,
+		)
+		if _, err := r.executeSQL(sql); err != nil {
+			return fmt.Errorf("failed to assign all libraries to admin user: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
@@ -363,6 +379,57 @@ func (r *userRepository) decryptAllPasswords(users model.Users) error {
 		}
 	}
 	return nil
+}
+
+// Library association methods
+
+func (r *userRepository) GetUserLibraries(userID string) (model.Libraries, error) {
+	sel := Select("l.*").
+		From("library l").
+		Join("user_library ul ON l.id = ul.library_id").
+		Where(Eq{"ul.user_id": userID}).
+		OrderBy("l.name")
+
+	var res model.Libraries
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error {
+	// Remove existing associations
+	delSql := Delete("user_library").Where(Eq{"user_id": userID})
+	if _, err := r.executeSQL(delSql); err != nil {
+		return err
+	}
+
+	// Add new associations
+	if len(libraryIDs) > 0 {
+		insert := Insert("user_library").Columns("user_id", "library_id")
+		for _, libID := range libraryIDs {
+			insert = insert.Values(userID, libID)
+		}
+		_, err := r.executeSQL(insert)
+		return err
+	}
+	return nil
+}
+
+func (r *userRepository) AddUserLibrary(userID string, libraryID int) error {
+	insert := Insert("user_library").
+		Columns("user_id", "library_id").
+		Values(userID, libraryID).
+		Suffix("ON CONFLICT (user_id, library_id) DO NOTHING")
+	_, err := r.executeSQL(insert)
+	return err
+}
+
+func (r *userRepository) RemoveUserLibrary(userID string, libraryID int) error {
+	del := Delete("user_library").Where(And{
+		Eq{"user_id": userID},
+		Eq{"library_id": libraryID},
+	})
+	_, err := r.executeSQL(del)
+	return err
 }
 
 var _ model.UserRepository = (*userRepository)(nil)
