@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -28,7 +29,7 @@ var _ = Describe("Config API", func() {
 		conf.Server.DevUIShowConfig = true // Enable config endpoint for tests
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, nil, nil, core.NewMockLibraryService())
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users

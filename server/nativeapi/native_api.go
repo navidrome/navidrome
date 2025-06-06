@@ -70,8 +70,8 @@ func (n *Router) routes() http.Handler {
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
 			n.addInspectRoute(r)
 			n.addConfigRoute(r)
-			n.addLibraryRoute(r)
 			n.addUserLibraryRoute(r)
+			n.RX(r, "/library", n.libs.NewRepository, true)
 		})
 	})
 
