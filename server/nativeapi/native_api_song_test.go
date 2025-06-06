@@ -2,51 +2,22 @@ package nativeapi
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"time"
 
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-// Simple mock implementations for missing types
-type mockShare struct {
-	core.Share
-}
-
-func (m *mockShare) NewRepository(ctx context.Context) rest.Repository {
-	return &tests.MockShareRepo{}
-}
-
-type mockPlaylists struct {
-	core.Playlists
-}
-
-func (m *mockPlaylists) ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
-	return &model.Playlist{}, nil
-}
-
-type mockInsights struct {
-	metrics.Insights
-}
-
-func (m *mockInsights) LastRun(ctx context.Context) (time.Time, bool) {
-	return time.Now(), true
-}
 
 var _ = Describe("Song Endpoints", func() {
 	var (
@@ -122,13 +93,8 @@ var _ = Describe("Song Endpoints", func() {
 		}
 		mfRepo.SetData(testSongs)
 
-		// Setup router with mocked dependencies
-		mockShareImpl := &mockShare{}
-		mockPlaylistsImpl := &mockPlaylists{}
-		mockInsightsImpl := &mockInsights{}
-
 		// Create the native API router and wrap it with the JWTVerifier middleware
-		nativeRouter := New(ds, mockShareImpl, mockPlaylistsImpl, mockInsightsImpl)
+		nativeRouter := New(ds, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})

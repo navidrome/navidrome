@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -28,7 +29,7 @@ var _ = Describe("Library API", func() {
 		DeferCleanup(configtest.SetupConfig())
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil)
+		nativeRouter := New(ds, nil, nil, nil, &mockLibraryService{})
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -162,7 +163,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("Library name is required"))
+					Expect(w.Body.String()).To(ContainSubstring("library name is required"))
 				})
 
 				It("validates path field", func() {
@@ -177,7 +178,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("Library path is required"))
+					Expect(w.Body.String()).To(ContainSubstring("library path is required"))
 				})
 			})
 
@@ -352,7 +353,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("Library ID 999 does not exist"))
+					Expect(w.Body.String()).To(ContainSubstring("library ID 999 does not exist"))
 				})
 
 				It("requires at least one library for regular users", func() {
@@ -366,7 +367,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("At least one library must be assigned"))
+					Expect(w.Body.String()).To(ContainSubstring("at least one library must be assigned"))
 				})
 
 				It("prevents manual assignment to admin users", func() {
@@ -380,7 +381,7 @@ var _ = Describe("Library API", func() {
 					router.ServeHTTP(w, req)
 
 					Expect(w.Code).To(Equal(http.StatusBadRequest))
-					Expect(w.Body.String()).To(ContainSubstring("Cannot manually assign libraries to admin users"))
+					Expect(w.Body.String()).To(ContainSubstring("cannot manually assign libraries to admin users"))
 				})
 			})
 		})
@@ -439,4 +440,92 @@ func Split(s, sep string) []string {
 	}
 	result = append(result, s[start:])
 	return result
+}
+
+// Mock library service for testing
+type mockLibraryService struct {
+	core.Library
+}
+
+func (m *mockLibraryService) GetAll(ctx context.Context) (model.Libraries, error) {
+	return model.Libraries{
+		{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
+		{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
+	}, nil
+}
+
+func (m *mockLibraryService) Get(ctx context.Context, id int) (*model.Library, error) {
+	if id == 999 {
+		return nil, model.ErrNotFound
+	}
+	return &model.Library{ID: 1, Name: "Test Library 1", Path: "/music/library1"}, nil
+}
+
+func (m *mockLibraryService) Create(ctx context.Context, library *model.Library) error {
+	if library.Name == "" {
+		return fmt.Errorf("%w: library name is required", model.ErrValidation)
+	}
+	if library.Path == "" {
+		return fmt.Errorf("%w: library path is required", model.ErrValidation)
+	}
+	return nil
+}
+
+func (m *mockLibraryService) Update(ctx context.Context, library *model.Library) error {
+	if library.ID == 999 {
+		return model.ErrNotFound
+	}
+	if library.Name == "" {
+		return fmt.Errorf("%w: library name is required", model.ErrValidation)
+	}
+	if library.Path == "" {
+		return fmt.Errorf("%w: library path is required", model.ErrValidation)
+	}
+	return nil
+}
+
+func (m *mockLibraryService) Delete(ctx context.Context, id int) error {
+	if id == 999 {
+		return model.ErrNotFound
+	}
+	return nil
+}
+
+func (m *mockLibraryService) GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error) {
+	if userID == "non-existent" {
+		return nil, model.ErrNotFound
+	}
+	// If setting multiple libraries, return all requested ones
+	if userID == "user-1" {
+		return model.Libraries{
+			{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
+			{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
+		}, nil
+	}
+	return model.Libraries{
+		{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
+	}, nil
+}
+
+func (m *mockLibraryService) SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error {
+	if userID == "non-existent" {
+		return model.ErrNotFound
+	}
+	if userID == "admin-1" {
+		return fmt.Errorf("%w: cannot manually assign libraries to admin users", model.ErrValidation)
+	}
+	if len(libraryIDs) == 0 {
+		return fmt.Errorf("%w: at least one library must be assigned to non-admin users", model.ErrValidation)
+	}
+	for _, id := range libraryIDs {
+		if id == 999 {
+			return fmt.Errorf("%w: library ID 999 does not exist", model.ErrValidation)
+		}
+	}
+	return nil
+}
+
+func (m *mockLibraryService) ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error {
+	// For testing purposes, allow admin access and check basic user access
+	return nil
 }

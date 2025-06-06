@@ -26,10 +26,11 @@ type Router struct {
 	share     core.Share
 	playlists core.Playlists
 	insights  metrics.Insights
+	libs      core.Library
 }
 
-func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights}
+func New(ds model.DataStore, share core.Share, playlists core.Playlists, insights metrics.Insights, libraryService core.Library) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService}
 	r.Handler = r.routes()
 	return r
 }
