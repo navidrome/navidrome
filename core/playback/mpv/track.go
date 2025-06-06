@@ -25,46 +25,15 @@ type MpvTrack struct {
 	CloseCalled   bool
 }
 
-func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
+func NewTrack(ctx context.Context, playbackDoneChannel chan bool, conn MpvConnection, mf model.MediaFile) (*MpvTrack, error) {
 	log.Debug("Loading track", "trackPath", mf.Path, "mediaType", mf.ContentType())
 
-	if _, err := mpvCommand(); err != nil {
-		return nil, err
-	}
-
-	tmpSocketName := socketName("mpv-ctrl-", ".socket")
-
-	args := createMPVCommand(deviceName, mf.AbsolutePath(), tmpSocketName)
-	if len(args) == 0 {
-		return nil, fmt.Errorf("no mpv command arguments provided")
-	}
-	exe, err := start(ctx, args)
-	if err != nil {
-		log.Error("Error starting mpv process", err)
-		return nil, err
-	}
-
-	// wait for socket to show up
-	err = waitForSocket(tmpSocketName, 3*time.Second, 100*time.Millisecond)
-	if err != nil {
-		log.Error("Error or timeout waiting for control socket", "socketname", tmpSocketName, err)
-		return nil, err
-	}
-
-	conn := mpvipc.NewConnection(tmpSocketName)
-	err = conn.Open()
-
-	if err != nil {
-		log.Error("Error opening new connection", err)
-		return nil, err
-	}
-
-	theTrack := &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn, IPCSocketName: tmpSocketName, Exe: &exe, CloseCalled: false}
+	theTrack := &MpvTrack{MediaFile: mf, PlaybackDone: playbackDoneChannel, Conn: conn.Conn, IPCSocketName: conn.IPCSocketName, Exe: conn.Exe, CloseCalled: false}
 
 	go func() {
-		conn.WaitUntilClosed()
-		log.Info("Hitting end-of-stream, signalling on channel")
+		log.Info("Hitting end-of-track, signalling on channel")
 		if !theTrack.CloseCalled {
+			log.Debug("Close cleanup")
 			playbackDoneChannel <- true
 		}
 	}()
@@ -74,6 +43,29 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName str
 
 func (t *MpvTrack) String() string {
 	return fmt.Sprintf("Name: %s, Socket: %s", t.MediaFile.Path, t.IPCSocketName)
+}
+
+func (t *MpvTrack) LoadFile(append bool, playNow bool) {
+	log.Debug("Loading file", "track", t, "append", append, "playNow", playNow)
+
+	command := ""
+	if append {
+		command += "append"
+		if playNow {
+			_, err := t.Conn.Call("playlist-play-index", "none")
+			if err != nil {
+				log.Error("Error stopping current file", "track", t, err)
+			}
+			command += "-play"
+		}
+	} else {
+		command += "replace"
+	}
+
+	_, err := t.Conn.Call("loadfile", t.MediaFile.AbsolutePath(), command)
+	if err != nil {
+		log.Error("Error loading file", "track", t, err)
+	}
 }
 
 // Used to control the playback volume. A float value between 0.0 and 1.0.
@@ -109,35 +101,6 @@ func (t *MpvTrack) Pause() {
 func (t *MpvTrack) Close() {
 	log.Debug("Closing resources", "track", t)
 	t.CloseCalled = true
-	// trying to shutdown mpv process using socket
-	if t.isSocketFilePresent() {
-		log.Debug("sending shutdown command")
-		_, err := t.Conn.Call("quit")
-		if err != nil {
-			log.Warn("Error sending quit command to mpv-ipc socket", err)
-
-			if t.Exe != nil {
-				log.Debug("cancelling executor")
-				err = t.Exe.Cancel()
-				if err != nil {
-					log.Warn("Error canceling executor", err)
-				}
-			}
-		}
-	}
-
-	if t.isSocketFilePresent() {
-		removeSocket(t.IPCSocketName)
-	}
-}
-
-func (t *MpvTrack) isSocketFilePresent() bool {
-	if len(t.IPCSocketName) < 1 {
-		return false
-	}
-
-	fileInfo, err := os.Stat(t.IPCSocketName)
-	return err == nil && fileInfo != nil && !fileInfo.IsDir()
 }
 
 // Position returns the playback position in seconds.
@@ -200,6 +163,7 @@ func (t *MpvTrack) IsPlaying() bool {
 		log.Error("Could not cast pausing to boolean", "track", t, "value", pausing)
 		return false
 	}
+	log.Debug("Checked if track is playing", "track", t, "pausing", pause)
 	return !pause
 }
 

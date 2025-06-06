@@ -20,6 +20,7 @@ type Track interface {
 	SetPosition(offset int) error
 	Close()
 	String() string
+	LoadFile(append bool, playNow bool)
 }
 
 type playbackDevice struct {
@@ -148,6 +149,7 @@ func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 	}
 
 	if index != pd.PlaybackQueue.Index && pd.ActiveTrack != nil {
+		// Should be stop or move to end?
 		pd.ActiveTrack.Close()
 		pd.ActiveTrack = nil
 	}
@@ -248,6 +250,7 @@ func (pd *playbackDevice) SetGain(ctx context.Context, gain float32) (DeviceStat
 }
 
 func (pd *playbackDevice) isPlaying() bool {
+	log.Debug("Checking if track are playing", "device", pd)
 	return pd.ActiveTrack != nil && pd.ActiveTrack.IsPlaying()
 }
 
@@ -289,11 +292,18 @@ func (pd *playbackDevice) switchActiveTrackByIndex(index int) error {
 		return errors.New("could not get current track")
 	}
 
-	track, err := mpv.NewTrack(pd.serviceCtx, pd.PlaybackDone, pd.DeviceName, *currentTrack)
+	conn, err := pd.ParentPlaybackServer.GetConnection()
+	if err != nil {
+		return err
+	}
+
+	track, err := mpv.NewTrack(pd.serviceCtx, pd.PlaybackDone, *conn, *currentTrack)
 	if err != nil {
 		return err
 	}
 	pd.ActiveTrack = track
+	pd.ActiveTrack.LoadFile(false, true)
 	pd.ActiveTrack.SetVolume(pd.Gain)
+	pd.ActiveTrack.Unpause()
 	return nil
 }

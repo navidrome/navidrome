@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/playback/mpv"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -19,18 +20,25 @@ type PlaybackServer interface {
 	Run(ctx context.Context) error
 	GetDeviceForUser(user string) (*playbackDevice, error)
 	GetMediaFile(id string) (*model.MediaFile, error)
+	GetConnection() (*mpv.MpvConnection, error)
 }
 
 type playbackServer struct {
 	ctx             *context.Context
 	datastore       model.DataStore
 	playbackDevices []playbackDevice
+	Conn            *mpv.MpvConnection
 }
 
 // GetInstance returns the playback-server singleton
 func GetInstance(ds model.DataStore) PlaybackServer {
 	return singleton.GetInstance(func() *playbackServer {
-		return &playbackServer{datastore: ds}
+		conn, err := mpv.NewConnection(context.Background(), "auto")
+		if err != nil {
+			log.Error("Error opening new connection", err)
+			return nil
+		}
+		return &playbackServer{datastore: ds, Conn: conn}
 	})
 }
 
@@ -53,6 +61,11 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 
 	// Should confirm all subprocess are terminated before returning
 	return nil
+}
+
+func (ps *playbackServer) GetConnection() (*mpv.MpvConnection, error) {
+	log.Debug("Returning connection")
+	return ps.Conn, nil
 }
 
 func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {

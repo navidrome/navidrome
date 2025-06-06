@@ -9,7 +9,9 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/dexterlb/mpvipc"
 	"github.com/kballard/go-shellquote"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -122,6 +124,84 @@ func mpvCommand() (string, error) {
 		}
 	})
 	return mpvPath, mpvErr
+}
+
+type MpvConnection struct {
+	Conn          *mpvipc.Connection
+	Exe           *Executor
+	CloseCalled   bool
+	IPCSocketName string
+}
+
+func (t *MpvConnection) isSocketFilePresent() bool {
+	if len(t.IPCSocketName) < 1 {
+		return false
+	}
+
+	fileInfo, err := os.Stat(t.IPCSocketName)
+	return err == nil && fileInfo != nil && !fileInfo.IsDir()
+}
+
+func NewConnection(ctx context.Context, deviceName string) (*MpvConnection, error) {
+	log.Debug("Loading mpv connection")
+
+	if _, err := mpvCommand(); err != nil {
+		return nil, err
+	}
+
+	tmpSocketName := socketName("mpv-ctrl-", ".socket")
+
+	args := createMPVCommand(deviceName, "null", tmpSocketName)
+	exe, err := start(ctx, args)
+	if err != nil {
+		log.Error("Error starting mpv process", err)
+		return nil, err
+	}
+
+	// wait for socket to show up
+	err = waitForSocket(tmpSocketName, 3*time.Second, 100*time.Millisecond)
+	if err != nil {
+		log.Error("Error or timeout waiting for control socket", "socketname", tmpSocketName, err)
+		return nil, err
+	}
+
+	conn := mpvipc.NewConnection(tmpSocketName)
+	err = conn.Open()
+
+	if err != nil {
+		log.Error("Error opening new connection", err)
+		return nil, err
+	}
+
+	theConn := &MpvConnection{Conn: conn, IPCSocketName: tmpSocketName, Exe: &exe, CloseCalled: false}
+
+	go func() {
+		conn.WaitUntilClosed()
+		log.Info("Hitting end-of-stream, signalling on channel")
+
+		if !theConn.CloseCalled {
+			log.Debug("Close cleanup")
+			// trying to shutdown mpv process using socket
+			if theConn.isSocketFilePresent() {
+				log.Debug("sending shutdown command")
+				_, err := theConn.Conn.Call("quit")
+				if err != nil {
+					log.Warn("Error sending quit command to mpv-ipc socket", err)
+
+					if theConn.Exe != nil {
+						log.Debug("cancelling executor")
+						err = theConn.Exe.Cancel()
+						if err != nil {
+							log.Warn("Error canceling executor", err)
+						}
+					}
+					removeSocket(theConn.IPCSocketName)
+				}
+			}
+		}
+	}()
+
+	return theConn, nil
 }
 
 var (
