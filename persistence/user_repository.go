@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,11 +18,32 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
 type userRepository struct {
 	sqlRepository
+}
+
+type dbUser struct {
+	*model.User   `structs:",flatten"`
+	LibrariesJSON string `structs:"-" json:"-"`
+}
+
+func (u *dbUser) PostScan() error {
+	if u.LibrariesJSON != "" {
+		if err := json.Unmarshal([]byte(u.LibrariesJSON), &u.User.Libraries); err != nil {
+			return fmt.Errorf("parsing user libraries from db: %w", err)
+		}
+	}
+	return nil
+}
+
+type dbUsers []dbUser
+
+func (us dbUsers) toModels() model.Users {
+	return slice.Map(us, func(u dbUser) model.User { return *u.User })
 }
 
 var (
@@ -33,6 +55,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r := &userRepository{}
 	r.ctx = ctx
 	r.db = db
+	r.tableName = "user"
 	r.registerModel(&model.User{}, map[string]filterFunc{
 		"password": invalidFilter(ctx),
 	})
@@ -42,28 +65,48 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	return r
 }
 
+// selectUserWithLibraries returns a SelectBuilder that includes library information
+func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) SelectBuilder {
+	return r.newSelect(options...).
+		Columns(`user.*`,
+			`COALESCE(json_group_array(json_object(
+				'id', library.id,
+				'name', library.name,
+				'path', library.path,
+				'remote_path', library.remote_path,
+				'last_scan_at', library.last_scan_at,
+				'last_scan_started_at', library.last_scan_started_at,
+				'full_scan_in_progress', library.full_scan_in_progress,
+				'updated_at', library.updated_at,
+				'created_at', library.created_at
+			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
+		LeftJoin("user_library ul ON user.id = ul.user_id").
+		LeftJoin("library ON ul.library_id = library.id").
+		GroupBy("user.id")
+}
+
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
 	return r.count(Select(), qo...)
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"id": id})
-	var res model.User
+	sel := r.selectUserWithLibraries().Where(Eq{"user.id": id})
+	var res dbUser
 	err := r.queryOne(sel, &res)
 	if err != nil {
 		return nil, err
 	}
-	return &res, nil
+	return res.User, nil
 }
 
 func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, error) {
-	sel := r.newSelect(options...).Columns("*")
-	res := model.Users{}
+	sel := r.selectUserWithLibraries(options...)
+	var res dbUsers
 	err := r.queryAll(sel, &res)
 	if err != nil {
 		return nil, err
 	}
-	return res, nil
+	return res.toModels(), nil
 }
 
 func (r *userRepository) Put(u *model.User) error {
@@ -110,23 +153,23 @@ func (r *userRepository) Put(u *model.User) error {
 }
 
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
-	sel := r.newSelect(model.QueryOptions{Sort: "updated_at", Max: 1}).Columns("*").Where(Eq{"is_admin": true})
-	var usr model.User
+	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user.is_admin": true})
+	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {
 		return nil, err
 	}
-	return &usr, nil
+	return usr.User, nil
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	sel := r.newSelect().Columns("*").Where(Expr("user_name = ? COLLATE NOCASE", username))
-	var usr model.User
+	sel := r.selectUserWithLibraries().Where(Expr("user.user_name = ? COLLATE NOCASE", username))
+	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {
 		return nil, err
 	}
-	return &usr, nil
+	return usr.User, nil
 }
 
 func (r *userRepository) FindByUsernameWithPassword(username string) (*model.User, error) {
