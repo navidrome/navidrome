@@ -1,9 +1,11 @@
-package core
+package core_test
 
 import (
 	"context"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -12,7 +14,7 @@ import (
 )
 
 var _ = Describe("Library Service", func() {
-	var service Library
+	var service core.Library
 	var ds *tests.MockDataStore
 	var libraryRepo *tests.MockLibraryRepo
 	var userRepo *tests.MockedUserRepo
@@ -27,60 +29,23 @@ var _ = Describe("Library Service", func() {
 		ds.MockedLibrary = libraryRepo
 		ds.MockedUser = userRepo
 
-		service = NewLibrary(ds)
+		service = core.NewLibrary(ds)
 		ctx = context.Background()
 	})
 
 	Describe("Library CRUD Operations", func() {
-		Describe("GetAll", func() {
-			It("returns all libraries", func() {
-				libraries := model.Libraries{
-					{ID: 1, Name: "Library 1", Path: "/music1"},
-					{ID: 2, Name: "Library 2", Path: "/music2"},
-				}
-				libraryRepo.SetData(libraries)
+		var repo rest.Persistable
 
-				result, err := service.GetAll(ctx)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(HaveLen(2))
-				Expect(result[0].Name).To(Equal("Library 1"))
-				Expect(result[1].Name).To(Equal("Library 2"))
-			})
-
-			It("returns empty list when no libraries exist", func() {
-				result, err := service.GetAll(ctx)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(HaveLen(0))
-			})
-		})
-
-		Describe("Get", func() {
-			It("returns a specific library", func() {
-				library := &model.Library{ID: 1, Name: "Test Library", Path: "/music"}
-				libraryRepo.SetData(model.Libraries{*library})
-
-				result, err := service.Get(ctx, 1)
-
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result.Name).To(Equal("Test Library"))
-				Expect(result.Path).To(Equal("/music"))
-			})
-
-			It("returns error when library not found", func() {
-				_, err := service.Get(ctx, 999)
-
-				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(model.ErrNotFound))
-			})
+		BeforeEach(func() {
+			r := service.NewRepository(ctx)
+			repo = r.(rest.Persistable)
 		})
 
 		Describe("Create", func() {
 			It("creates a new library successfully", func() {
 				library := &model.Library{ID: 1, Name: "New Library", Path: "/new/music"}
 
-				err := service.Create(ctx, library)
+				_, err := repo.Save(library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Name).To(Equal("New Library"))
@@ -90,7 +55,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library name is empty", func() {
 				library := &model.Library{Path: "/music"}
 
-				err := service.Create(ctx, library)
+				_, err := repo.Save(library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("library name is required"))
@@ -99,7 +64,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library path is empty", func() {
 				library := &model.Library{Name: "Test"}
 
-				err := service.Create(ctx, library)
+				_, err := repo.Save(library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("library path is required"))
@@ -116,7 +81,7 @@ var _ = Describe("Library Service", func() {
 			It("updates an existing library successfully", func() {
 				library := &model.Library{ID: 1, Name: "Updated Library", Path: "/updated"}
 
-				err := service.Update(ctx, library)
+				err := repo.Update("1", library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Name).To(Equal("Updated Library"))
@@ -126,7 +91,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library doesn't exist", func() {
 				library := &model.Library{ID: 999, Name: "Non-existent", Path: "/path"}
 
-				err := service.Update(ctx, library)
+				err := repo.Update("999", library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(model.ErrNotFound))
@@ -135,7 +100,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library name is empty", func() {
 				library := &model.Library{ID: 1, Path: "/music"}
 
-				err := service.Update(ctx, library)
+				err := repo.Update("1", library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("library name is required"))
@@ -150,14 +115,14 @@ var _ = Describe("Library Service", func() {
 			})
 
 			It("deletes an existing library successfully", func() {
-				err := service.Delete(ctx, 1)
+				err := repo.Delete("1")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data).To(HaveLen(0))
 			})
 
 			It("fails when library doesn't exist", func() {
-				err := service.Delete(ctx, 999)
+				err := repo.Delete("999")
 
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(model.ErrNotFound))
@@ -238,14 +203,14 @@ var _ = Describe("Library Service", func() {
 				err := service.SetUserLibraries(ctx, "user1", []int{999})
 
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("library ID 999 does not exist"))
+				Expect(err.Error()).To(ContainSubstring("one or more library IDs are invalid"))
 			})
 
 			It("fails when some libraries don't exist", func() {
 				err := service.SetUserLibraries(ctx, "user1", []int{1, 999, 2})
 
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("library ID 999 does not exist"))
+				Expect(err.Error()).To(ContainSubstring("one or more library IDs are invalid"))
 			})
 		})
 

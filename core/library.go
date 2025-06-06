@@ -2,9 +2,12 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -12,17 +15,11 @@ import (
 
 // Library provides business logic for library management and user-library associations
 type Library interface {
-	// Library CRUD operations
-	GetAll(ctx context.Context) (model.Libraries, error)
-	Get(ctx context.Context, id int) (*model.Library, error)
-	Create(ctx context.Context, library *model.Library) error
-	Update(ctx context.Context, library *model.Library) error
-	Delete(ctx context.Context, id int) error
-
-	// User-library association operations
 	GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error)
 	SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error
 	ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error
+
+	NewRepository(ctx context.Context) rest.Repository
 }
 
 type libraryService struct {
@@ -32,46 +29,6 @@ type libraryService struct {
 // NewLibrary creates a new Library service
 func NewLibrary(ds model.DataStore) Library {
 	return &libraryService{ds: ds}
-}
-
-// Library CRUD operations
-
-func (s *libraryService) GetAll(ctx context.Context) (model.Libraries, error) {
-	return s.ds.Library(ctx).GetAll()
-}
-
-func (s *libraryService) Get(ctx context.Context, id int) (*model.Library, error) {
-	return s.ds.Library(ctx).Get(id)
-}
-
-func (s *libraryService) Create(ctx context.Context, library *model.Library) error {
-	if err := s.validateLibrary(library); err != nil {
-		return err
-	}
-
-	return s.ds.Library(ctx).Put(library)
-}
-
-func (s *libraryService) Update(ctx context.Context, library *model.Library) error {
-	if err := s.validateLibrary(library); err != nil {
-		return err
-	}
-
-	// Verify library exists
-	if _, err := s.ds.Library(ctx).Get(library.ID); err != nil {
-		return err
-	}
-
-	return s.ds.Library(ctx).Put(library)
-}
-
-func (s *libraryService) Delete(ctx context.Context, id int) error {
-	// Verify library exists
-	if _, err := s.ds.Library(ctx).Get(id); err != nil {
-		return err
-	}
-
-	return s.ds.Library(ctx).Delete(id)
 }
 
 // User-library association operations
@@ -139,20 +96,110 @@ func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID strin
 	return fmt.Errorf("%w: user does not have access to library %d", model.ErrNotAuthorized, libraryID)
 }
 
+// REST repository wrapper
+
+func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
+	repo := s.ds.Library(ctx)
+	wrapper := &libraryRepositoryWrapper{
+		ctx:               ctx,
+		LibraryRepository: repo,
+		Repository:        repo.(rest.Repository),
+		ds:                s.ds,
+		service:           s,
+	}
+	return wrapper
+}
+
+type libraryRepositoryWrapper struct {
+	rest.Repository
+	model.LibraryRepository
+	ctx     context.Context
+	ds      model.DataStore
+	service *libraryService
+}
+
+func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
+	lib := entity.(*model.Library)
+	if err := r.validateLibrary(lib); err != nil {
+		return "", err
+	}
+
+	err := r.LibraryRepository.Put(lib)
+	if err != nil {
+		return "", r.mapError(err)
+	}
+
+	return strconv.Itoa(lib.ID), nil
+}
+
+func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ...string) error {
+	lib := entity.(*model.Library)
+	libID, err := strconv.Atoi(id)
+	if err != nil {
+		return fmt.Errorf("invalid library ID: %s", id)
+	}
+
+	lib.ID = libID
+	if err := r.validateLibrary(lib); err != nil {
+		return err
+	}
+
+	// Verify library exists
+	if _, err := r.Get(libID); err != nil {
+		return r.mapError(err)
+	}
+
+	err = r.LibraryRepository.Put(lib)
+	return r.mapError(err)
+}
+
+func (r *libraryRepositoryWrapper) Delete(id string) error {
+	libID, err := strconv.Atoi(id)
+	if err != nil {
+		return rest.ValidationError{Errors: map[string]string{
+			"id": "invalid library ID format",
+		}}
+	}
+
+	err = r.LibraryRepository.Delete(libID)
+	return r.mapError(err)
+}
+
 // Helper methods
 
-func (s *libraryService) validateLibrary(library *model.Library) error {
+func (r *libraryRepositoryWrapper) mapError(err error) error {
+	switch {
+	case errors.Is(err, model.ErrNotFound):
+		return rest.ErrNotFound
+	case errors.Is(err, model.ErrNotAuthorized):
+		return rest.ErrPermissionDenied
+	default:
+		return err
+	}
+}
+
+func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error {
 	if library.Name == "" {
-		return fmt.Errorf("%w: library name is required", model.ErrValidation)
+		return rest.ValidationError{Errors: map[string]string{
+			"name": "library name is required",
+		}}
 	}
+
 	if library.Path == "" {
-		return fmt.Errorf("%w: library path is required", model.ErrValidation)
+		return rest.ValidationError{Errors: map[string]string{
+			"path": "library path is required",
+		}}
 	}
+
 	return nil
 }
 
 func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []int) error {
-	// Use CountAll with IN filter to efficiently check if all library IDs exist
+	if len(libraryIDs) == 0 {
+		return nil
+	}
+
+	// Use CountAll to efficiently validate library IDs exist
 	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{
 		Filters: squirrel.Eq{"id": libraryIDs},
 	})
@@ -161,24 +208,7 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	}
 
 	if int(count) != len(libraryIDs) {
-		// Find which library IDs don't exist for better error message
-		existingLibraries, err := s.ds.Library(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.Eq{"id": libraryIDs},
-		})
-		if err != nil {
-			return fmt.Errorf("error getting libraries: %w", err)
-		}
-
-		libraryMap := make(map[int]bool)
-		for _, lib := range existingLibraries {
-			libraryMap[lib.ID] = true
-		}
-
-		for _, libID := range libraryIDs {
-			if !libraryMap[libID] {
-				return fmt.Errorf("%w: library ID %d does not exist", model.ErrNotFound, libID)
-			}
-		}
+		return fmt.Errorf("%w: one or more library IDs are invalid", model.ErrValidation)
 	}
 
 	return nil

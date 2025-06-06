@@ -1,9 +1,12 @@
 package tests
 
 import (
+	"errors"
 	"slices"
+	"strconv"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -155,4 +158,30 @@ func (m *MockLibraryRepo) GetUsersWithLibraryAccess(libraryID int) (model.Users,
 	return model.Users{}, nil
 }
 
-var _ model.LibraryRepository = &MockLibraryRepo{}
+func (m *MockLibraryRepo) Count(options ...rest.QueryOptions) (int64, error) {
+	return m.CountAll()
+}
+
+func (m *MockLibraryRepo) Read(id string) (interface{}, error) {
+	idInt, _ := strconv.Atoi(id)
+	mf, err := m.Get(idInt)
+	if errors.Is(err, model.ErrNotFound) {
+		return nil, rest.ErrNotFound
+	}
+	return mf, err
+}
+
+func (m *MockLibraryRepo) ReadAll(options ...rest.QueryOptions) (interface{}, error) {
+	return m.GetAll()
+}
+
+func (m *MockLibraryRepo) EntityName() string {
+	return "library"
+}
+
+func (m *MockLibraryRepo) NewInstance() interface{} {
+	return &model.Library{}
+}
+
+var _ model.LibraryRepository = (*MockLibraryRepo)(nil)
+var _ model.ResourceRepository = (*MockLibraryRepo)(nil)
