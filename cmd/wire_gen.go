@@ -57,7 +57,8 @@ func CreateNativeAPIRouter() *nativeapi.Router {
 	share := core.NewShare(dataStore)
 	playlists := core.NewPlaylists(dataStore)
 	insights := metrics.GetInstance(dataStore)
-	router := nativeapi.New(dataStore, share, playlists, insights)
+	library := core.NewLibrary(dataStore)
+	router := nativeapi.New(dataStore, share, playlists, insights, library)
 	return router
 }
 

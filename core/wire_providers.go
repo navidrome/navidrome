@@ -17,6 +17,7 @@ var Set = wire.NewSet(
 	NewPlayers,
 	NewShare,
 	NewPlaylists,
+	NewLibrary,
 	agents.GetAgents,
 	external.NewProvider,
 	wire.Bind(new(external.Agents), new(*agents.Agents)),
