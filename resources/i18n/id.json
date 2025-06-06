@@ -44,7 +44,8 @@
         "shuffleAll": "Acak Semua",
         "download": "Unduh",
         "playNext": "Putar Berikutnya",
-        "info": "Lihat Info"
+        "info": "Lihat Info",
+        "showInPlaylist": "Tampilkan di Playlist"
       }
     },
     "album": {
@@ -197,11 +198,17 @@
         "export": "Ekspor",
         "makePublic": "Jadikan Publik",
         "makePrivate": "Jadikan Pribadi",
-        "saveQueue": "Simpan Antrean ke Playlist"
+        "saveQueue": "Simpan Antrean ke Playlist",
+        "searchOrCreate": "Cari playlist atau ketik untuk buat baru..",
+        "pressEnterToCreate": "Tekan Enter untuk membuat playlist baru",
+        "removeFromSelection": "Hapus yang dipilih",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Tambahkan lagu duplikat",
-        "song_exist": "Ada lagu duplikat yang ditambahkan ke daftar putar. Apakah Kamu ingin menambahkan lagu duplikat atau melewatkannya?"
+        "song_exist": "Ada lagu duplikat yang ditambahkan ke daftar putar. Apakah Kamu ingin menambahkan lagu duplikat atau melewatkannya?",
+        "noPlaylistsFound": "Playlist tidak ditemukan",
+        "noPlaylists": "Playlist tidak tersedia"
       }
     },
     "radio": {
@@ -496,6 +503,21 @@
         "disabled": "Nonaktifkan",
         "waiting": "Menunggu"
       }
+    },
+    "tabs": {
+      "about": "Tentang",
+      "config": "Konfigurasi"
+    },
+    "config": {
+      "configName": "Nama Konfigurasi",
+      "environmentVariable": "",
+      "currentValue": "Value Saat Ini",
+      "configurationFile": "File Konfigurasi",
+      "exportToml": "Ekspor Konfigurasi (TOML)",
+      "exportSuccess": "Konfigurasi sudah diekspor ke papan klip dalam bentuk format TOML",
+      "exportFailed": "Gagal menyalin konfigurasi",
+      "devFlagsHeader": "Flag Pengembangan (subyek untuk perubahan/pemindahan)",
+      "devFlagsComment": "Ini adalan pengaturan eksperimen dan mungkin akan dihapus di versi mendatang"
     }
   },
   "activity": {
