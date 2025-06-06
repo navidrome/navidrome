@@ -32,7 +32,9 @@ type LibraryRepository interface {
 	// Its implementation must be optimized to avoid unnecessary queries.
 	GetPath(id int) (string, error)
 	GetAll(...QueryOptions) (Libraries, error)
+	CountAll(...QueryOptions) (int64, error)
 	Put(*Library) error
+	Delete(id int) error
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error
 
