@@ -74,3 +74,37 @@ func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
 	}
 	return u.Error
 }
+
+// Library association methods - mock implementations
+
+func (u *MockedUserRepo) GetUserLibraries(userID string) (model.Libraries, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+	// Mock: return empty libraries for now
+	return model.Libraries{}, nil
+}
+
+func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	// Mock: do nothing for now
+	return nil
+}
+
+func (u *MockedUserRepo) AddUserLibrary(userID string, libraryID int) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	// Mock: do nothing for now
+	return nil
+}
+
+func (u *MockedUserRepo) RemoveUserLibrary(userID string, libraryID int) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	// Mock: do nothing for now
+	return nil
+}

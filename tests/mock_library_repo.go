@@ -35,4 +35,14 @@ func (m *MockLibraryRepo) GetPath(id int) (string, error) {
 	return "", model.ErrNotFound
 }
 
+// User-library association methods - mock implementations
+
+func (m *MockLibraryRepo) GetUsersWithLibraryAccess(libraryID int) (model.Users, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	// Mock: return empty users for now
+	return model.Users{}, nil
+}
+
 var _ model.LibraryRepository = &MockLibraryRepo{}
