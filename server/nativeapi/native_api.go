@@ -66,6 +66,8 @@ func (n *Router) routes() http.Handler {
 		n.addConfigRoute(r)
 		n.addKeepAliveRoute(r)
 		n.addInsightsRoute(r)
+		n.addLibraryRoute(r)
+		n.addUserLibraryRoute(r)
 	})
 
 	return r
