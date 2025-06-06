@@ -39,4 +39,14 @@ func (m *MockLibraryRepo) RefreshStats(id int) error {
 	return nil
 }
 
+// User-library association methods - mock implementations
+
+func (m *MockLibraryRepo) GetUsersWithLibraryAccess(libraryID int) (model.Users, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	// Mock: return empty users for now
+	return model.Users{}, nil
+}
+
 var _ model.LibraryRepository = &MockLibraryRepo{}

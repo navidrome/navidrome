@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -86,6 +87,17 @@ func (r *libraryRepository) Put(l *model.Library) error {
 		libLock.Lock()
 		defer libLock.Unlock()
 		libCache[l.ID] = l.Path
+	}
+
+	// Auto-assign library to all admin users
+	if err == nil {
+		sql := Expr(
+			"INSERT INTO user_library (user_id, library_id) SELECT id, ? FROM user WHERE is_admin = true ON CONFLICT (user_id, library_id) DO NOTHING",
+			l.ID,
+		)
+		if _, addErr := r.executeSQL(sql); addErr != nil {
+			return fmt.Errorf("failed to assign library to admin users: %w", addErr)
+		}
 	}
 	return err
 }
@@ -198,6 +210,20 @@ func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, 
 	sq := r.newSelect(ops...).Columns("*")
 	res := model.Libraries{}
 	err := r.queryAll(sq, &res)
+	return res, err
+}
+
+// User-library association methods
+
+func (r *libraryRepository) GetUsersWithLibraryAccess(libraryID int) (model.Users, error) {
+	sel := Select("u.*").
+		From("user u").
+		Join("user_library ul ON u.id = ul.user_id").
+		Where(Eq{"ul.library_id": libraryID}).
+		OrderBy("u.name")
+
+	var res model.Users
+	err := r.queryAll(sel, &res)
 	return res, err
 }
 
