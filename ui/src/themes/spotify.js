@@ -204,7 +204,6 @@ export default {
       },
       details: {
         fontSize: '.875rem',
-        minWidth: '75vw',
         color: 'rgba(255,255,255, 0.8)',
       },
     },
