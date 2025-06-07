@@ -17,7 +17,6 @@ import {
   playNext,
   addTracks,
   setTrack,
-  playTracks,
   openAddToPlaylist,
   openExtendedInfoDialog,
   openDownloadMenu,
