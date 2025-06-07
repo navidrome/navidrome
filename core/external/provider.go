@@ -424,32 +424,53 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 }
 
 func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
-	if mbid != "" {
-		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Eq{"mbz_recording_id": mbid},
-				squirrel.Eq{"missing": false},
-			},
-		})
-		if err == nil && len(mfs) > 0 {
-			return &mfs[0], nil
-		}
-		return e.findMatchingTrack(ctx, "", artistID, title)
+	titleCond := squirrel.And{
+		squirrel.Or{
+			squirrel.Eq{"artist_id": artistID},
+			squirrel.Eq{"album_artist_id": artistID},
+		},
+		squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
 	}
+
+	var (
+		filter squirrel.Sqlizer
+		sort   = "starred desc, rating desc, year asc, compilation asc"
+		max    = 1
+	)
+
+	if mbid != "" {
+		filter = squirrel.Or{
+			squirrel.Eq{"mbz_recording_id": mbid},
+			titleCond,
+		}
+		expr, args, _ := squirrel.Expr("(mbz_recording_id=?) desc", mbid).ToSql()
+		if len(args) > 0 {
+			val := strings.ReplaceAll(args[0].(string), "'", "''")
+			expr = strings.Replace(expr, "?", "'"+val+"'", 1)
+		}
+		sort = expr + ", " + sort
+		max = 2
+	} else {
+		filter = titleCond
+	}
+
 	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
-			squirrel.Or{
-				squirrel.Eq{"artist_id": artistID},
-				squirrel.Eq{"album_artist_id": artistID},
-			},
-			squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
+			filter,
 			squirrel.Eq{"missing": false},
 		},
-		Sort: "starred desc, rating desc, year asc, compilation asc ",
-		Max:  1,
+		Sort: sort,
+		Max:  max,
 	})
 	if err != nil || len(mfs) == 0 {
 		return nil, model.ErrNotFound
+	}
+	if mbid != "" {
+		for _, mf := range mfs {
+			if mf.MbzRecordingID == mbid {
+				return &mf, nil
+			}
+		}
 	}
 	return &mfs[0], nil
 }
