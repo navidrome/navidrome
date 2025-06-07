@@ -12,10 +12,12 @@ import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import clsx from 'clsx'
+import subsonic from '../subsonic'
 import {
   playNext,
   addTracks,
   setTrack,
+  playTracks,
   openAddToPlaylist,
   openExtendedInfoDialog,
   openDownloadMenu,
@@ -85,6 +87,31 @@ export const SongContextMenu = ({
       enabled: true,
       label: translate('resources.song.actions.addToQueue'),
       action: (record) => dispatch(addTracks({ [record.id]: record })),
+    },
+    playSimilar: {
+      enabled: true,
+      label: translate('resources.song.actions.playSimilar'),
+      action: (record) => {
+        const id = record.mediaFileId || record.id
+        subsonic
+          .getSimilarSongs2(id, 100)
+          .then((res) => res.json['subsonic-response'])
+          .then((data) => {
+            if (data.status === 'ok') {
+              const songs = data.similarSongs2.song || []
+              const songData = {}
+              const ids = []
+              songs.forEach((s) => {
+                songData[s.id] = s
+                ids.push(s.id)
+              })
+              dispatch(playTracks(songData, ids))
+            }
+          })
+          .catch(() => {
+            notify('ra.page.error', 'warning')
+          })
+      },
     },
     addToPlaylist: {
       enabled: true,
