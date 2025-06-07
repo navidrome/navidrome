@@ -3,7 +3,6 @@ package external
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -444,8 +443,12 @@ func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID,
 			squirrel.Eq{"mbz_recording_id": mbid},
 			titleCond,
 		}
-		escaped := strings.ReplaceAll(mbid, "'", "''")
-		sort = fmt.Sprintf("(mbz_recording_id='%s') desc, %s", escaped, sort)
+		expr, args, _ := squirrel.Expr("(mbz_recording_id=?) desc", mbid).ToSql()
+		if len(args) > 0 {
+			val := strings.ReplaceAll(args[0].(string), "'", "''")
+			expr = strings.Replace(expr, "?", "'"+val+"'", 1)
+		}
+		sort = expr + ", " + sort
 		max = 2
 	} else {
 		filter = titleCond
