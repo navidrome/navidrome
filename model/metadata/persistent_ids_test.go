@@ -61,6 +61,7 @@ var _ = Describe("getPID", func() {
 			})
 		})
 	})
+
 	Context("calculated attributes", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
@@ -111,6 +112,38 @@ var _ = Describe("getPID", func() {
 				spec := "album|title"
 				md.tags = map[model.TagName][]string{"album": {"Album Name"}}
 				Expect(getPID(mf, md, spec)).To(Equal("(album name)"))
+			})
+		})
+	})
+
+	Context("edge cases", func() {
+		When("the spec has spaces between groups", func() {
+			It("should return the pid", func() {
+				spec := "albumartist| Album"
+				md.tags = map[model.TagName][]string{
+					"album": {"album name"},
+				}
+				Expect(getPID(mf, md, spec)).To(Equal("(album name)"))
+			})
+		})
+		When("the spec has spaces", func() {
+			It("should return the pid", func() {
+				spec := "albumartist, album"
+				md.tags = map[model.TagName][]string{
+					"albumartist": {"Album Artist"},
+					"album":       {"album name"},
+				}
+				Expect(getPID(mf, md, spec)).To(Equal("(Album Artist\\album name)"))
+			})
+		})
+		When("the spec has mixed case fields", func() {
+			It("should return the pid", func() {
+				spec := "albumartist,Album"
+				md.tags = map[model.TagName][]string{
+					"albumartist": {"Album Artist"},
+					"album":       {"album name"},
+				}
+				Expect(getPID(mf, md, spec)).To(Equal("(Album Artist\\album name)"))
 			})
 		})
 	})
