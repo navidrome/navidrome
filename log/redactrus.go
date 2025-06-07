@@ -42,8 +42,9 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 				e.Data[k] = "[REDACTED]"
 				continue
 			}
-
-			// Redact based on value matching in Data fields
+			if v == nil {
+				continue
+			}
 			switch reflect.TypeOf(v).Kind() {
 			case reflect.String:
 				e.Data[k] = re.ReplaceAllString(v.(string), "$1[REDACTED]$2")

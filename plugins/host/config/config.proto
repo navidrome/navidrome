@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package config;
+
+option go_package = "github.com/navidrome/navidrome/plugins/host/config;config";
+
+// go:plugin type=host version=1
+service ConfigService {
+    rpc GetPluginConfig(GetPluginConfigRequest) returns (GetPluginConfigResponse);
+}
+
+message GetPluginConfigRequest {
+    // No fields needed; plugin name is inferred from context
+}
+
+message GetPluginConfigResponse {
+    map<string, string> config = 1;
+} 

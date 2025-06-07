@@ -9,36 +9,61 @@ import (
 )
 
 var (
-	instances = make(map[string]any)
+	instances = map[string]interface{}{}
+	pending   = map[string]chan struct{}{}
 	lock      sync.RWMutex
 )
 
-// GetInstance returns an existing instance of object. If it is not yet created, calls `constructor`, stores the
-// result for future calls and returns it
 func GetInstance[T any](constructor func() T) T {
 	var v T
 	name := reflect.TypeOf(v).String()
 
-	v, available := func() (T, bool) {
+	// First check with read lock
+	lock.RLock()
+	if instance, ok := instances[name]; ok {
+		defer lock.RUnlock()
+		return instance.(T)
+	}
+	lock.RUnlock()
+
+	// Now check if someone is already creating this type
+	lock.Lock()
+
+	// Check again with the write lock - someone might have created it
+	if instance, ok := instances[name]; ok {
+		lock.Unlock()
+		return instance.(T)
+	}
+
+	// Check if creation is pending
+	wait, isPending := pending[name]
+	if !isPending {
+		// We'll be the one creating it
+		pending[name] = make(chan struct{})
+		wait = pending[name]
+	}
+	lock.Unlock()
+
+	// If someone else is creating it, wait for them
+	if isPending {
+		<-wait // Wait for creation to complete
+
+		// Now it should be in the instances map
 		lock.RLock()
 		defer lock.RUnlock()
-		v, available := instances[name].(T)
-		return v, available
-	}()
-
-	if available {
-		return v
+		return instances[name].(T)
 	}
 
+	// We're responsible for creating the instance
+	newInstance := constructor()
+
+	// Store it and signal other goroutines
 	lock.Lock()
-	defer lock.Unlock()
-	v, available = instances[name].(T)
-	if available {
-		return v
-	}
+	instances[name] = newInstance
+	close(wait)           // Signal that creation is complete
+	delete(pending, name) // Clean up
+	log.Trace("Created new singleton", "type", name, "instance", fmt.Sprintf("%+v", newInstance))
+	lock.Unlock()
 
-	v = constructor()
-	log.Trace("Created new singleton", "type", name, "instance", fmt.Sprintf("%+v", v))
-	instances[name] = v
-	return v
+	return newInstance
 }
