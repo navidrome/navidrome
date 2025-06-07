@@ -9,19 +9,27 @@ import (
 	"github.com/navidrome/navidrome/utils/gg"
 )
 
-func CreateMockUserRepo() *MockedUserRepo {
+func CreateMockUserRepo(apiKeyRepo ...*MockedAPIKeyRepo) *MockedUserRepo {
+	var repo *MockedAPIKeyRepo
+	if len(apiKeyRepo) > 0 {
+		repo = apiKeyRepo[0]
+	} else {
+		repo = CreateMockApiKeyRepo()
+	}
 	return &MockedUserRepo{
-		Data: map[string]*model.User{},
+		Data:       map[string]*model.User{},
+		APIKeyRepo: repo,
 	}
 }
 
 type MockedUserRepo struct {
 	model.UserRepository
-	Error error
-	Data  map[string]*model.User
+	Error      error
+	Data       map[string]*model.User
+	APIKeyRepo *MockedAPIKeyRepo
 }
 
-func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+func (u *MockedUserRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
 	if u.Error != nil {
 		return 0, u.Error
 	}
@@ -73,4 +81,23 @@ func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
 		}
 	}
 	return u.Error
+}
+
+func (u *MockedUserRepo) FindByAPIKey(key string) (*model.User, error) {
+	if u.Error != nil {
+		return nil, u.Error
+	}
+
+	apiKey, err := u.APIKeyRepo.FindByKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, usr := range u.Data {
+		if usr.ID == apiKey.UserID {
+			return usr, nil
+		}
+	}
+
+	return nil, model.ErrNotFound
 }
