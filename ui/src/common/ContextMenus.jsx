@@ -24,7 +24,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
-import subsonic from '../subsonic'
+import { playSimilar } from '../utils'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -94,26 +94,7 @@ const ContextMenu = ({
       enabled: true,
       needData: false,
       label: translate('resources.album.actions.playSimilar'),
-      action: (record) => {
-        subsonic
-          .getSimilarSongs2(record.id, 100)
-          .then((res) => res.json['subsonic-response'])
-          .then((data) => {
-            if (data.status === 'ok') {
-              const songs = data.similarSongs2.song || []
-              const songData = {}
-              const ids = []
-              songs.forEach((s) => {
-                songData[s.id] = s
-                ids.push(s.id)
-              })
-              dispatch(playTracks(songData, ids))
-            }
-          })
-          .catch(() => {
-            notify('ra.page.error', 'warning')
-          })
-      },
+      action: (record) => playSimilar(dispatch, notify, record.id),
     },
     shuffle: {
       enabled: true,
