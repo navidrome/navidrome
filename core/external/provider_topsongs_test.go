@@ -11,6 +11,7 @@ import (
 	. "github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/str"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
@@ -158,14 +159,64 @@ var _ = Describe("Provider - TopSongs", func() {
 		// Mock finding matching tracks (only find song 1)
 		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", MbzRecordingID: "mbid-song-1"}
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
-		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{}, nil).Once() // For mbid-song-2 (fails)
-		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{}, nil).Once() // For title fallback (fails)
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{}, nil).Once() // For song two search
 
 		songs, err := p.TopSongs(ctx, "Artist One", 2)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
 		Expect(songs[0].ID).To(Equal("song-1"))
+		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
+
+	It("matches tracks by title when MBID is missing", func() {
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+		agentSongs := []agents.Song{
+			{Name: "Song One", MBID: ""},
+			{Name: "Song Two", MBID: "not-found"},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
+
+		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", OrderTitle: str.SanitizeFieldForSorting("Song One")}
+		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", OrderTitle: str.SanitizeFieldForSorting("Song Two")}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song2}, nil).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", 2)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(2))
+		Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("song-1", "song-2"))
+		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
+
+	It("uses two queries when MBID lookup fails", func() {
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+		agentSongs := []agents.Song{
+			{Name: "Song One", MBID: "missing1"},
+			{Name: "Song Two", MBID: "missing2"},
+		}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 2).Return(agentSongs, nil).Once()
+
+		song1 := model.MediaFile{ID: "song-1", Title: "Song One", ArtistID: "artist-1", OrderTitle: str.SanitizeFieldForSorting("Song One")}
+		song2 := model.MediaFile{ID: "song-2", Title: "Song Two", ArtistID: "artist-1", OrderTitle: str.SanitizeFieldForSorting("Song Two")}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song2}, nil).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", 2)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(2))
+		Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("song-1", "song-2"))
+		mediaFileRepo.AssertNumberOfCalls(GinkgoT(), "GetAll", 2)
 		artistRepo.AssertExpectations(GinkgoT())
 		ag.AssertExpectations(GinkgoT())
 		mediaFileRepo.AssertExpectations(GinkgoT())
