@@ -196,7 +196,7 @@ var _ = Describe("Provider - TopSongs", func() {
 		mediaFileRepo.AssertExpectations(GinkgoT())
 	})
 
-	It("uses two queries when MBID lookup fails", func() {
+	It("uses a single query when MBID lookup fails", func() {
 		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
 		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
 
@@ -217,6 +217,27 @@ var _ = Describe("Provider - TopSongs", func() {
 		Expect(songs).To(HaveLen(2))
 		Expect([]string{songs[0].ID, songs[1].ID}).To(ConsistOf("song-1", "song-2"))
 		mediaFileRepo.AssertNumberOfCalls(GinkgoT(), "GetAll", 2)
+		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+		mediaFileRepo.AssertExpectations(GinkgoT())
+	})
+
+	It("prioritizes MBID matches over higher-rated title matches", func() {
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+
+		agentSongs := []agents.Song{{Name: "Song One", MBID: "mbid-song-1"}}
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 1).Return(agentSongs, nil).Once()
+
+		songMBID := model.MediaFile{ID: "song-mbid", Title: "Song One", MbzRecordingID: "mbid-song-1", Annotations: model.Annotations{Rating: 1}}
+		songTitle := model.MediaFile{ID: "song-title", Title: "Song One", ArtistID: "artist-1", Annotations: model.Annotations{Rating: 5}}
+		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{songTitle, songMBID}, nil).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", 1)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(songs).To(HaveLen(1))
+		Expect(songs[0].ID).To(Equal("song-mbid"))
 		artistRepo.AssertExpectations(GinkgoT())
 		ag.AssertExpectations(GinkgoT())
 		mediaFileRepo.AssertExpectations(GinkgoT())
