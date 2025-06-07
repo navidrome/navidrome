@@ -8,4 +8,5 @@ var (
 	ErrNotAuthorized = errors.New("not authorized")
 	ErrExpired       = errors.New("access expired")
 	ErrNotAvailable  = errors.New("functionality not available")
+	ErrValidation    = errors.New("validation error")
 )

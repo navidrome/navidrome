@@ -5,15 +5,15 @@ import (
 )
 
 type Library struct {
-	ID                 int
-	Name               string
-	Path               string
-	RemotePath         string
-	LastScanAt         time.Time
-	LastScanStartedAt  time.Time
-	FullScanInProgress bool
-	UpdatedAt          time.Time
-	CreatedAt          time.Time
+	ID                 int       `json:"id"`
+	Name               string    `json:"name"`
+	Path               string    `json:"path"`
+	RemotePath         string    `json:"remotePath"`
+	LastScanAt         time.Time `json:"lastScanAt"`
+	LastScanStartedAt  time.Time `json:"lastScanStartedAt"`
+	FullScanInProgress bool      `json:"fullScanInProgress"`
+	UpdatedAt          time.Time `json:"updatedAt"`
+	CreatedAt          time.Time `json:"createdAt"`
 }
 
 type Libraries []Library
@@ -24,9 +24,14 @@ type LibraryRepository interface {
 	// Its implementation must be optimized to avoid unnecessary queries.
 	GetPath(id int) (string, error)
 	GetAll(...QueryOptions) (Libraries, error)
+	CountAll(...QueryOptions) (int64, error)
 	Put(*Library) error
+	Delete(id int) error
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error
+
+	// User-library association methods
+	GetUsersWithLibraryAccess(libraryID int) (Users, error)
 
 	// TODO These methods should be moved to a core service
 	ScanBegin(id int, fullScan bool) error
