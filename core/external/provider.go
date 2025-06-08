@@ -3,6 +3,7 @@ package external
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -400,12 +401,19 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artist.Name, err)
 	}
 
-	mbidMatches, _ := e.loadTracksByMBID(ctx, songs)
-	titleMatches, _ := e.loadTracksByTitle(ctx, songs, artist, mbidMatches)
+	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
+	}
+	titleMatches, err := e.loadTracksByTitle(ctx, songs, artist, mbidMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	}
 
+	log.Trace(ctx, "Top Songs loaded", "name", artist.Name, "numSongs", len(songs), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
 	mfs := e.selectTopSongs(songs, mbidMatches, titleMatches, count)
 
 	if len(mfs) == 0 {
