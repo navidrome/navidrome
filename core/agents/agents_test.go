@@ -173,6 +173,42 @@ var _ = Describe("Agents", func() {
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
 			})
+
+			Context("with multiple image agents", func() {
+				var first *testImageAgent
+				var second *testImageAgent
+
+				BeforeEach(func() {
+					first = &testImageAgent{Name: "imgFail", Err: errors.New("fail")}
+					second = &testImageAgent{Name: "imgOk", Images: []ExternalImage{{URL: "ok", Size: 1}}}
+					Register("imgFail", func(model.DataStore) Interface { return first })
+					Register("imgOk", func(model.DataStore) Interface { return second })
+				})
+
+				It("falls back to the next agent on error", func() {
+					conf.Server.Agents = "imgFail,imgOk"
+					ag = createAgents(ds)
+
+					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(images).To(Equal([]ExternalImage{{URL: "ok", Size: 1}}))
+					Expect(first.Args).To(HaveExactElements("id", "artist", "mbid"))
+					Expect(second.Args).To(HaveExactElements("id", "artist", "mbid"))
+				})
+
+				It("falls back if the first agent returns no images", func() {
+					first.Err = nil
+					first.Images = []ExternalImage{}
+					conf.Server.Agents = "imgFail,imgOk"
+					ag = createAgents(ds)
+
+					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(images).To(Equal([]ExternalImage{{URL: "ok", Size: 1}}))
+					Expect(first.Args).To(HaveExactElements("id", "artist", "mbid"))
+					Expect(second.Args).To(HaveExactElements("id", "artist", "mbid"))
+				})
+			})
 		})
 
 		Describe("GetSimilarArtists", func() {
@@ -354,4 +390,18 @@ type emptyAgent struct {
 
 func (e *emptyAgent) AgentName() string {
 	return "empty"
+}
+
+type testImageAgent struct {
+	Name   string
+	Images []ExternalImage
+	Err    error
+	Args   []interface{}
+}
+
+func (t *testImageAgent) AgentName() string { return t.Name }
+
+func (t *testImageAgent) GetArtistImages(_ context.Context, id, name, mbid string) ([]ExternalImage, error) {
+	t.Args = []interface{}{id, name, mbid}
+	return t.Images, t.Err
 }
