@@ -403,16 +403,46 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, err
 	}
 
+	// Bulk load all tracks matching by MBID first
+	var mbidList []string
+	for _, s := range songs {
+		if s.MBID != "" {
+			mbidList = append(mbidList, s.MBID)
+		}
+	}
+	mbidMatches := map[string]model.MediaFile{}
+	if len(mbidList) > 0 {
+		dbRes, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Eq{"mbz_recording_id": mbidList},
+				squirrel.Eq{"missing": false},
+			},
+		})
+		if err == nil {
+			for _, mf := range dbRes {
+				if mf.MbzRecordingID != "" {
+					if _, exists := mbidMatches[mf.MbzRecordingID]; !exists {
+						mbidMatches[mf.MbzRecordingID] = mf
+					}
+				}
+			}
+		}
+	}
+
 	var mfs model.MediaFiles
 	for _, t := range songs {
-		mf, err := e.findMatchingTrack(ctx, t.MBID, artist.ID, t.Name)
+		if len(mfs) == count {
+			break
+		}
+		if mf, ok := mbidMatches[t.MBID]; ok && t.MBID != "" {
+			mfs = append(mfs, mf)
+			continue
+		}
+		mf, err := e.findMatchingTrackByTitle(ctx, artist.ID, t.Name)
 		if err != nil {
 			continue
 		}
 		mfs = append(mfs, *mf)
-		if len(mfs) == count {
-			break
-		}
 	}
 	if len(mfs) == 0 {
 		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
@@ -434,8 +464,11 @@ func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID,
 		if err == nil && len(mfs) > 0 {
 			return &mfs[0], nil
 		}
-		return e.findMatchingTrack(ctx, "", artistID, title)
 	}
+	return e.findMatchingTrackByTitle(ctx, artistID, title)
+}
+
+func (e *provider) findMatchingTrackByTitle(ctx context.Context, artistID, title string) (*model.MediaFile, error) {
 	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Or{
