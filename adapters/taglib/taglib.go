@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -147,5 +148,8 @@ func init() {
 	local.RegisterExtractor("taglib", func(_ fs.FS, baseDir string) local.Extractor {
 		// ignores fs, as taglib extractor only works with local files
 		return &extractor{baseDir}
+	})
+	conf.AddHook(func() {
+		log.Debug("TagLib version", "version", Version())
 	})
 }
