@@ -403,27 +403,67 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 		return nil, err
 	}
 
-	// Bulk load all tracks matching by MBID first
+	// Bulk load tracks matching by MBID
 	var mbidList []string
 	for _, s := range songs {
 		if s.MBID != "" {
 			mbidList = append(mbidList, s.MBID)
 		}
 	}
+
 	mbidMatches := map[string]model.MediaFile{}
 	if len(mbidList) > 0 {
-		dbRes, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 			Filters: squirrel.And{
 				squirrel.Eq{"mbz_recording_id": mbidList},
 				squirrel.Eq{"missing": false},
 			},
 		})
 		if err == nil {
-			for _, mf := range dbRes {
-				if mf.MbzRecordingID != "" {
-					if _, exists := mbidMatches[mf.MbzRecordingID]; !exists {
-						mbidMatches[mf.MbzRecordingID] = mf
+			for _, mf := range res {
+				id := mf.MbzRecordingID
+				if id != "" {
+					if _, ok := mbidMatches[id]; !ok {
+						mbidMatches[id] = mf
 					}
+				}
+			}
+		}
+	}
+
+	// Prepare title queries for songs without MBID match
+	titleMap := map[string]string{}
+	for _, s := range songs {
+		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
+			continue
+		}
+		sanitized := str.SanitizeFieldForSorting(s.Name)
+		titleMap[sanitized] = s.Name
+	}
+
+	titleMatches := map[string]model.MediaFile{}
+	if len(titleMap) > 0 {
+		titleFilters := squirrel.Or{}
+		for sanitized := range titleMap {
+			titleFilters = append(titleFilters, squirrel.Like{"order_title": sanitized})
+		}
+
+		res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{
+				squirrel.Or{
+					squirrel.Eq{"artist_id": artist.ID},
+					squirrel.Eq{"album_artist_id": artist.ID},
+				},
+				titleFilters,
+				squirrel.Eq{"missing": false},
+			},
+			Sort: "starred desc, rating desc, year asc, compilation asc ",
+		})
+		if err == nil {
+			for _, mf := range res {
+				sanitized := str.SanitizeFieldForSorting(mf.Title)
+				if _, ok := titleMatches[sanitized]; !ok {
+					titleMatches[sanitized] = mf
 				}
 			}
 		}
@@ -438,11 +478,10 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 			mfs = append(mfs, mf)
 			continue
 		}
-		mf, err := e.findMatchingTrackByTitle(ctx, artist.ID, t.Name)
-		if err != nil {
-			continue
+		sanitized := str.SanitizeFieldForSorting(t.Name)
+		if mf, ok := titleMatches[sanitized]; ok {
+			mfs = append(mfs, mf)
 		}
-		mfs = append(mfs, *mf)
 	}
 	if len(mfs) == 0 {
 		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
@@ -451,21 +490,6 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 	}
 
 	return mfs, nil
-}
-
-func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
-	if mbid != "" {
-		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Eq{"mbz_recording_id": mbid},
-				squirrel.Eq{"missing": false},
-			},
-		})
-		if err == nil && len(mfs) > 0 {
-			return &mfs[0], nil
-		}
-	}
-	return e.findMatchingTrackByTitle(ctx, artistID, title)
 }
 
 func (e *provider) findMatchingTrackByTitle(ctx context.Context, artistID, title string) (*model.MediaFile, error) {
