@@ -12,6 +12,7 @@ vi.mock('@material-ui/core', async () => {
 })
 
 vi.mock('react-router-dom', () => ({
+  // eslint-disable-next-line react/display-name
   Link: React.forwardRef(({ to, children, ...props }, ref) => (
     <a href={to} ref={ref} {...props}>
       {children}
