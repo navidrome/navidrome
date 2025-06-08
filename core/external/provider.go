@@ -3,6 +3,7 @@ package external
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -400,20 +401,21 @@ func (e *provider) TopSongs(ctx context.Context, artistName string, count int) (
 func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistTopSongsRetriever, artist *auxArtist, count int) (model.MediaFiles, error) {
 	songs, err := agent.GetArtistTopSongs(ctx, artist.ID, artist.Name, artist.MbzArtistID, count)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get top songs for artist %s: %w", artist.Name, err)
 	}
 
-	var mfs model.MediaFiles
-	for _, t := range songs {
-		mf, err := e.findMatchingTrack(ctx, t.MBID, artist.ID, t.Name)
-		if err != nil {
-			continue
-		}
-		mfs = append(mfs, *mf)
-		if len(mfs) == count {
-			break
-		}
+	mbidMatches, err := e.loadTracksByMBID(ctx, songs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by MBID: %w", err)
 	}
+	titleMatches, err := e.loadTracksByTitle(ctx, songs, artist, mbidMatches)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load tracks by title: %w", err)
+	}
+
+	log.Trace(ctx, "Top Songs loaded", "name", artist.Name, "numSongs", len(songs), "numMBIDMatches", len(mbidMatches), "numTitleMatches", len(titleMatches))
+	mfs := e.selectTopSongs(songs, mbidMatches, titleMatches, count)
+
 	if len(mfs) == 0 {
 		log.Debug(ctx, "No matching top songs found", "name", artist.Name)
 	} else {
@@ -423,35 +425,94 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 	return mfs, nil
 }
 
-func (e *provider) findMatchingTrack(ctx context.Context, mbid string, artistID, title string) (*model.MediaFile, error) {
-	if mbid != "" {
-		mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Eq{"mbz_recording_id": mbid},
-				squirrel.Eq{"missing": false},
-			},
-		})
-		if err == nil && len(mfs) > 0 {
-			return &mfs[0], nil
+func (e *provider) loadTracksByMBID(ctx context.Context, songs []agents.Song) (map[string]model.MediaFile, error) {
+	var mbids []string
+	for _, s := range songs {
+		if s.MBID != "" {
+			mbids = append(mbids, s.MBID)
 		}
-		return e.findMatchingTrack(ctx, "", artistID, title)
 	}
-	mfs, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	matches := map[string]model.MediaFile{}
+	if len(mbids) == 0 {
+		return matches, nil
+	}
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Eq{"mbz_recording_id": mbids},
+			squirrel.Eq{"missing": false},
+		},
+	})
+	if err != nil {
+		return matches, err
+	}
+	for _, mf := range res {
+		if id := mf.MbzRecordingID; id != "" {
+			if _, ok := matches[id]; !ok {
+				matches[id] = mf
+			}
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) loadTracksByTitle(ctx context.Context, songs []agents.Song, artist *auxArtist, mbidMatches map[string]model.MediaFile) (map[string]model.MediaFile, error) {
+	titleMap := map[string]string{}
+	for _, s := range songs {
+		if s.MBID != "" && mbidMatches[s.MBID].ID != "" {
+			continue
+		}
+		sanitized := str.SanitizeFieldForSorting(s.Name)
+		titleMap[sanitized] = s.Name
+	}
+	matches := map[string]model.MediaFile{}
+	if len(titleMap) == 0 {
+		return matches, nil
+	}
+	titleFilters := squirrel.Or{}
+	for sanitized := range titleMap {
+		titleFilters = append(titleFilters, squirrel.Like{"order_title": sanitized})
+	}
+
+	res, err := e.ds.MediaFile(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Or{
-				squirrel.Eq{"artist_id": artistID},
-				squirrel.Eq{"album_artist_id": artistID},
+				squirrel.Eq{"artist_id": artist.ID},
+				squirrel.Eq{"album_artist_id": artist.ID},
 			},
-			squirrel.Like{"order_title": str.SanitizeFieldForSorting(title)},
+			titleFilters,
 			squirrel.Eq{"missing": false},
 		},
 		Sort: "starred desc, rating desc, year asc, compilation asc ",
-		Max:  1,
 	})
-	if err != nil || len(mfs) == 0 {
-		return nil, model.ErrNotFound
+	if err != nil {
+		return matches, err
 	}
-	return &mfs[0], nil
+	for _, mf := range res {
+		sanitized := str.SanitizeFieldForSorting(mf.Title)
+		if _, ok := matches[sanitized]; !ok {
+			matches[sanitized] = mf
+		}
+	}
+	return matches, nil
+}
+
+func (e *provider) selectTopSongs(songs []agents.Song, byMBID, byTitle map[string]model.MediaFile, count int) model.MediaFiles {
+	var mfs model.MediaFiles
+	for _, t := range songs {
+		if len(mfs) == count {
+			break
+		}
+		if t.MBID != "" {
+			if mf, ok := byMBID[t.MBID]; ok {
+				mfs = append(mfs, mf)
+				continue
+			}
+		}
+		if mf, ok := byTitle[str.SanitizeFieldForSorting(t.Name)]; ok {
+			mfs = append(mfs, mf)
+		}
+	}
+	return mfs
 }
 
 func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
