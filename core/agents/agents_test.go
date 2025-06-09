@@ -192,7 +192,7 @@ var _ = Describe("Agents", func() {
 
 				It("falls back to the next agent on error", func() {
 					conf.Server.Agents = "imgFail,imgOk"
-					ag = createAgents(ds)
+					ag = createAgents(ds, nil)
 
 					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
 					Expect(err).ToNot(HaveOccurred())
@@ -205,7 +205,7 @@ var _ = Describe("Agents", func() {
 					first.Err = nil
 					first.Images = []ExternalImage{}
 					conf.Server.Agents = "imgFail,imgOk"
-					ag = createAgents(ds)
+					ag = createAgents(ds, nil)
 
 					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
 					Expect(err).ToNot(HaveOccurred())
