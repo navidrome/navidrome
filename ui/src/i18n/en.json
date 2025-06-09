@@ -127,7 +127,7 @@
         "performer": "Performer |||| Performers"
       },
       "actions": {
-        "play": "Play",
+        "topSongs": "Top Songs",
         "shuffle": "Shuffle",
         "radio": "Radio"
       }

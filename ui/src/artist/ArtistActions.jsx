@@ -14,7 +14,7 @@ import {
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { IoIosRadio } from 'react-icons/io'
-import { playShuffle, playSimilar, playTopSongs } from './utils.js'
+import { playShuffle, playSimilar, playTopSongs } from './actions.js'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -90,7 +90,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
     >
       <Button
         onClick={handlePlay}
-        label={translate('resources.artist.actions.play')}
+        label={translate('resources.artist.actions.topSongs')}
         className={classes.button}
         size={isMobile ? 'small' : 'medium'}
       >

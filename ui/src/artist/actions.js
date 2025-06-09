@@ -1,8 +1,8 @@
 import subsonic from '../subsonic/index.js'
 import { playTracks } from '../actions/index.js'
 
-export const playTopSongs = async (dispatch, notify, id) => {
-  const res = await subsonic.getTopSongs(id, 100)
+export const playTopSongs = async (dispatch, notify, artistName) => {
+  const res = await subsonic.getTopSongs(artistName, 100)
   const data = res.json['subsonic-response']
 
   if (data.status !== 'ok') {

@@ -98,7 +98,7 @@ describe('ArtistActions', () => {
   describe('Play action', () => {
     it('plays top songs when clicked', async () => {
       renderArtistActions()
-      clickActionButton('play')
+      clickActionButton('topSongs')
 
       await waitFor(() =>
         expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
@@ -110,7 +110,7 @@ describe('ArtistActions', () => {
       subsonic.getTopSongs.mockRejectedValue(new Error('Network error'))
 
       renderArtistActions()
-      clickActionButton('play')
+      clickActionButton('topSongs')
 
       await waitFor(() =>
         expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
@@ -130,7 +130,7 @@ describe('ArtistActions', () => {
       })
 
       renderArtistActions()
-      clickActionButton('play')
+      clickActionButton('topSongs')
 
       await waitFor(() =>
         expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
@@ -150,7 +150,7 @@ describe('ArtistActions', () => {
       })
 
       renderArtistActions()
-      clickActionButton('play')
+      clickActionButton('topSongs')
 
       await waitFor(() =>
         expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
@@ -173,7 +173,7 @@ describe('ArtistActions', () => {
       })
 
       renderArtistActions()
-      clickActionButton('play')
+      clickActionButton('topSongs')
 
       await waitFor(() =>
         expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),

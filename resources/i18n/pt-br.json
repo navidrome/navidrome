@@ -126,6 +126,7 @@
         "performer": "Músico |||| Músicos"
       },
       "actions": {
+        "topSongs": "Mais tocadas",
         "shuffle": "Aleatório",
         "radio": "Rádio"
       }
