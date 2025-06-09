@@ -4,7 +4,7 @@ import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ArtistActions from './ArtistActions'
 import subsonic from '../subsonic'
-import { ThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 
 const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
@@ -48,7 +48,7 @@ describe('ArtistActions', () => {
   })
 
   it('shuffles songs when Shuffle is clicked', async () => {
-    const theme = createMuiTheme()
+    const theme = createTheme()
     render(
       <TestContext>
         <ThemeProvider theme={theme}>
@@ -69,7 +69,7 @@ describe('ArtistActions', () => {
   })
 
   it('starts radio when Radio is clicked', async () => {
-    const theme = createMuiTheme()
+    const theme = createTheme()
     render(
       <TestContext>
         <ThemeProvider theme={theme}>
@@ -86,7 +86,7 @@ describe('ArtistActions', () => {
   })
 
   it('plays top songs when Play is clicked', async () => {
-    const theme = createMuiTheme()
+    const theme = createTheme()
     render(
       <TestContext>
         <ThemeProvider theme={theme}>
@@ -97,7 +97,7 @@ describe('ArtistActions', () => {
 
     fireEvent.click(screen.getByText('resources.artist.actions.play'))
     await waitFor(() =>
-      expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 50),
+      expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
     )
     expect(mockDispatch).toHaveBeenCalled()
   })

@@ -14,9 +14,7 @@ import {
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { IoIosRadio } from 'react-icons/io'
-import { playTracks } from '../actions'
-import { playSimilar } from '../utils'
-import subsonic from '../subsonic'
+import { playShuffle, playSimilar, playTopSongs } from './utils.js'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -57,28 +55,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
 
   const handlePlay = React.useCallback(async () => {
     try {
-      const res = await subsonic.getTopSongs(record.name, 50)
-      const data = res.json['subsonic-response']
-
-      if (data.status !== 'ok') {
-        throw new Error(
-          `Error fetching top songs: ${data.error?.message || 'Unknown error'} (Code: ${data.error?.code || 'unknown'})`,
-        )
-      }
-
-      const songs = data.topSongs?.song || []
-      if (!songs.length) {
-        notify('message.noTopSongsFound', 'warning')
-        return
-      }
-
-      const songData = {}
-      const ids = []
-      songs.forEach((s) => {
-        songData[s.id] = s
-        ids.push(s.id)
-      })
-      dispatch(playTracks(songData, ids))
+      await playTopSongs(dispatch, notify, record.name)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Error fetching top songs for artist:', e)
@@ -88,19 +65,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
 
   const handleShuffle = React.useCallback(async () => {
     try {
-      const res = await dataProvider.getList('song', {
-        pagination: { page: 1, perPage: 500 },
-        sort: { field: 'random', order: 'ASC' },
-        filter: { album_artist_id: record.id, missing: false },
-      })
-
-      const data = {}
-      const ids = []
-      res.data.forEach((s) => {
-        data[s.id] = s
-        ids.push(s.id)
-      })
-      dispatch(playTracks(data, ids))
+      await playShuffle(dataProvider, dispatch, record.id)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Error fetching songs for shuffle:', e)
