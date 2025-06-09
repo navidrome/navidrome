@@ -12,9 +12,11 @@ import {
   useTranslate,
 } from 'react-admin'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
+import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { IoIosRadio } from 'react-icons/io'
 import { playTracks } from '../actions'
 import { playSimilar } from '../utils'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -53,6 +55,37 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const classes = useStyles()
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
+  const handlePlay = React.useCallback(async () => {
+    try {
+      const res = await subsonic.getTopSongs(record.name, 50)
+      const data = res.json['subsonic-response']
+
+      if (data.status !== 'ok') {
+        throw new Error(
+          `Error fetching top songs: ${data.error?.message || 'Unknown error'} (Code: ${data.error?.code || 'unknown'})`,
+        )
+      }
+
+      const songs = data.topSongs?.song || []
+      if (!songs.length) {
+        notify('message.noTopSongsFound', 'warning')
+        return
+      }
+
+      const songData = {}
+      const ids = []
+      songs.forEach((s) => {
+        songData[s.id] = s
+        ids.push(s.id)
+      })
+      dispatch(playTracks(songData, ids))
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching top songs for artist:', e)
+      notify('ra.page.error', 'warning')
+    }
+  }, [dispatch, notify, record])
+
   const handleShuffle = React.useCallback(async () => {
     try {
       const res = await dataProvider.getList('song', {
@@ -90,6 +123,14 @@ const ArtistActions = ({ className, record, ...rest }) => {
       className={`${className} ${classes.toolbar}`}
       {...sanitizeListRestProps(rest)}
     >
+      <Button
+        onClick={handlePlay}
+        label={translate('resources.artist.actions.play')}
+        className={classes.button}
+        size={isMobile ? 'small' : 'medium'}
+      >
+        <PlayArrowIcon />
+      </Button>
       <Button
         onClick={handleShuffle}
         label={translate('resources.artist.actions.shuffle')}

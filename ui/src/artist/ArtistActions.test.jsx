@@ -10,7 +10,7 @@ const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
 
 vi.mock('../subsonic', () => ({
-  default: { getSimilarSongs2: vi.fn() },
+  default: { getSimilarSongs2: vi.fn(), getTopSongs: vi.fn() },
 }))
 
 const mockNotify = vi.fn()
@@ -34,6 +34,14 @@ describe('ArtistActions', () => {
         'subsonic-response': {
           status: 'ok',
           similarSongs2: { song: [{ id: 'rec1' }] },
+        },
+      },
+    })
+    subsonic.getTopSongs.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          status: 'ok',
+          topSongs: { song: [{ id: 'rec1' }] },
         },
       },
     })
@@ -73,6 +81,23 @@ describe('ArtistActions', () => {
     fireEvent.click(screen.getByText('resources.artist.actions.radio'))
     await waitFor(() =>
       expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('ar1', 100),
+    )
+    expect(mockDispatch).toHaveBeenCalled()
+  })
+
+  it('plays top songs when Play is clicked', async () => {
+    const theme = createMuiTheme()
+    render(
+      <TestContext>
+        <ThemeProvider theme={theme}>
+          <ArtistActions record={{ id: 'ar1', name: 'Artist' }} />
+        </ThemeProvider>
+      </TestContext>,
+    )
+
+    fireEvent.click(screen.getByText('resources.artist.actions.play'))
+    await waitFor(() =>
+      expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 50),
     )
     expect(mockDispatch).toHaveBeenCalled()
   })
