@@ -17,31 +17,36 @@ import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
 import ArtistActions from './ArtistActions'
 import { makeStyles } from '@material-ui/core'
 
-const useStyles = makeStyles((theme) => ({
-  actions: {
-    width: '100%',
-    justifyContent: 'flex-start',
-    display: 'flex',
-    paddingTop: '0.25em',
-    paddingBottom: '0.25em',
-    paddingLeft: '1em',
-    paddingRight: '1em',
-    flexWrap: 'wrap',
-    overflowX: 'auto',
-    [theme.breakpoints.down('xs')]: {
-      paddingLeft: '0.5em',
-      paddingRight: '0.5em',
-      gap: '0.5em',
-      justifyContent: 'space-around',
+const useStyles = makeStyles(
+  (theme) => ({
+    actions: {
+      width: '100%',
+      justifyContent: 'flex-start',
+      display: 'flex',
+      paddingTop: '0.25em',
+      paddingBottom: '0.25em',
+      paddingLeft: '1em',
+      paddingRight: '1em',
+      flexWrap: 'wrap',
+      overflowX: 'auto',
+      [theme.breakpoints.down('xs')]: {
+        paddingLeft: '0.5em',
+        paddingRight: '0.5em',
+        gap: '0.5em',
+        justifyContent: 'space-around',
+      },
     },
-  },
-  actionsContainer: {
-    paddingLeft: '.75rem',
-    [theme.breakpoints.down('xs')]: {
-      padding: '.5rem',
+    actionsContainer: {
+      paddingLeft: '.75rem',
+      [theme.breakpoints.down('xs')]: {
+        padding: '.5rem',
+      },
     },
+  }),
+  {
+    name: 'NDArtistShow',
   },
-}))
+)
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
