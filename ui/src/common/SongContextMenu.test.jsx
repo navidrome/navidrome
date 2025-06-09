@@ -8,10 +8,7 @@ vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
 }))
 
-const mockDispatch = vi.fn()
-vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
-
-const mockNotify = vi.fn()
+vi.mock('react-redux', () => ({ useDispatch: () => vi.fn() }))
 
 vi.mock('react-admin', async (importOriginal) => {
   const actual = await importOriginal()
@@ -20,7 +17,6 @@ vi.mock('react-admin', async (importOriginal) => {
     useRedirect: () => (url) => {
       window.location.hash = `#${url}`
     },
-    useNotify: () => mockNotify,
     useDataProvider: () => ({
       getPlaylists: vi.fn().mockResolvedValue({
         data: [{ id: 'pl1', name: 'Pl 1' }],
