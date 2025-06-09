@@ -83,6 +83,10 @@ const getAlbumInfo = (id) => {
   return httpClient(url('getAlbumInfo', id))
 }
 
+const getSimilarSongs2 = (id, count = 100) => {
+  return httpClient(url('getSimilarSongs2', id, { count }))
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -107,4 +111,5 @@ export default {
   streamUrl,
   getAlbumInfo,
   getArtistInfo,
+  getSimilarSongs2,
 }
