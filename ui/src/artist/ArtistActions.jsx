@@ -10,7 +10,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
-import RadioIcon from '@material-ui/icons/Radio'
+import { IoIosRadio } from 'react-icons/io'
 import { playTracks } from '../actions'
 import { playSimilar } from '../utils'
 
@@ -46,7 +46,11 @@ const ArtistActions = ({ className, record, ...rest }) => {
   }, [dispatch, notify, record])
 
   return (
-    <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
+    <TopToolbar
+      sx={{ justifyContent: 'flex-start' }}
+      className={className}
+      {...sanitizeListRestProps(rest)}
+    >
       <Button
         onClick={handleShuffle}
         label={translate('resources.artist.actions.shuffle')}
@@ -57,7 +61,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
         onClick={handleRadio}
         label={translate('resources.artist.actions.radio')}
       >
-        <RadioIcon />
+        <IoIosRadio />
       </Button>
     </TopToolbar>
   )

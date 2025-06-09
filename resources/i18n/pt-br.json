@@ -44,7 +44,8 @@
         "shuffleAll": "Aleatório",
         "download": "Baixar",
         "playNext": "Toca a seguir",
-        "info": "Detalhes"
+        "info": "Detalhes",
+        "playSimilar": "Tocar semelhantes"
       }
     },
     "album": {
@@ -85,6 +86,7 @@
         "addToPlaylist": "Adicionar à playlist",
         "download": "Baixar",
         "info": "Detalhes",
+        "playSimilar": "Tocar semelhantes",
         "share": "Compartilhar"
       },
       "lists": {
@@ -127,7 +129,8 @@
       },
       "actions": {
         "shuffle": "Aleatório",
-        "radio": "Rádio"
+        "radio": "Rádio",
+        "playSimilar": "Tocar semelhantes"
       }
     },
     "user": {

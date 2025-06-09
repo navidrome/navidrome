@@ -45,7 +45,8 @@
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
-        "info": "Get Info"
+        "info": "Get Info",
+        "playSimilar": "Play Similar"
       }
     },
     "album": {
@@ -86,7 +87,8 @@
         "shuffle": "Shuffle",
         "addToPlaylist": "Add to Playlist",
         "download": "Download",
-        "info": "Get Info"
+        "info": "Get Info",
+        "playSimilar": "Play Similar"
       },
       "lists": {
         "all": "All",
@@ -128,7 +130,8 @@
       },
       "actions": {
         "shuffle": "Shuffle",
-        "radio": "Radio"
+        "radio": "Radio",
+        "playSimilar": "Play Similar"
       }
     },
     "user": {

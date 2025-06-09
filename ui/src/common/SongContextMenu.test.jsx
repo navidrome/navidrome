@@ -3,6 +3,7 @@ import { render, fireEvent, screen, waitFor } from '@testing-library/react'
 import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SongContextMenu } from './SongContextMenu'
+import { playSimilar } from '../utils'
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
@@ -29,6 +30,14 @@ vi.mock('react-admin', async (importOriginal) => {
         data: { rawTags: {} },
       }),
     }),
+  }
+})
+
+vi.mock('../utils', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    playSimilar: vi.fn(),
   }
 })
 
@@ -82,5 +91,20 @@ describe('SongContextMenu', () => {
     fireEvent.click(document.body)
 
     expect(mockOnClick).not.toHaveBeenCalled()
+  })
+
+  it('plays similar songs when Play Similar is clicked', async () => {
+    render(
+      <TestContext>
+        <SongContextMenu record={{ id: 'song1', size: 1 }} resource="song" />
+      </TestContext>,
+    )
+
+    fireEvent.click(screen.getAllByRole('button')[1])
+    await waitFor(() =>
+      screen.getByText(/resources\.song\.actions\.playSimilar/),
+    )
+    fireEvent.click(screen.getByText(/resources\.song\.actions\.playSimilar/))
+    expect(playSimilar).toHaveBeenCalledWith(mockDispatch, mockNotify, 'song1')
   })
 })
