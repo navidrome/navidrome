@@ -44,7 +44,6 @@
         "shuffleAll": "Aleatório",
         "download": "Baixar",
         "playNext": "Toca a seguir",
-        "playSimilar": "Tocar similares",
         "info": "Detalhes"
       }
     },
@@ -85,7 +84,6 @@
         "shuffle": "Aleatório",
         "addToPlaylist": "Adicionar à playlist",
         "download": "Baixar",
-        "playSimilar": "Tocar similares",
         "info": "Detalhes",
         "share": "Compartilhar"
       },
@@ -126,6 +124,10 @@
         "remixer": "Remixador |||| Remixadores",
         "djmixer": "DJ Mixer |||| DJ Mixers",
         "performer": "Músico |||| Músicos"
+      },
+      "actions": {
+        "shuffle": "Aleatório",
+        "radio": "Rádio"
       }
     },
     "user": {

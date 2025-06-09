@@ -14,6 +14,7 @@ import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
 import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
+import ArtistActions from './ArtistActions'
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
@@ -79,6 +80,7 @@ const ArtistShowLayout = (props) => {
     <>
       {record && <RaTitle title={<Title subTitle={record.name} />} />}
       {record && <ArtistDetails />}
+      {record && <ArtistActions record={record} />}
       {record && (
         <ReferenceManyField
           {...showContext}

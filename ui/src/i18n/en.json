@@ -45,7 +45,6 @@
         "shuffleAll": "Shuffle All",
         "download": "Download",
         "playNext": "Play Next",
-        "playSimilar": "Play Similar",
         "info": "Get Info"
       }
     },
@@ -87,7 +86,6 @@
         "shuffle": "Shuffle",
         "addToPlaylist": "Add to Playlist",
         "download": "Download",
-        "playSimilar": "Play Similar",
         "info": "Get Info"
       },
       "lists": {
@@ -127,6 +125,10 @@
         "remixer": "Remixer |||| Remixers",
         "djmixer": "DJ Mixer |||| DJ Mixers",
         "performer": "Performer |||| Performers"
+      },
+      "actions": {
+        "shuffle": "Shuffle",
+        "radio": "Radio"
       }
     },
     "user": {

@@ -12,7 +12,6 @@ import { makeStyles } from '@material-ui/core/styles'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import clsx from 'clsx'
-import { playSimilar } from '../utils'
 import {
   playNext,
   addTracks,
@@ -86,12 +85,6 @@ export const SongContextMenu = ({
       enabled: true,
       label: translate('resources.song.actions.addToQueue'),
       action: (record) => dispatch(addTracks({ [record.id]: record })),
-    },
-    playSimilar: {
-      enabled: true,
-      label: translate('resources.song.actions.playSimilar'),
-      action: (record) =>
-        playSimilar(dispatch, notify, record.mediaFileId || record.id),
     },
     addToPlaylist: {
       enabled: true,

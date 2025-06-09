@@ -24,7 +24,6 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
-import { playSimilar } from '../utils'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -89,12 +88,6 @@ const ContextMenu = ({
       needData: true,
       label: translate('resources.album.actions.addToQueue'),
       action: (data, ids) => dispatch(addTracks(data, ids)),
-    },
-    playSimilar: {
-      enabled: true,
-      needData: false,
-      label: translate('resources.album.actions.playSimilar'),
-      action: (record) => playSimilar(dispatch, notify, record.id),
     },
     shuffle: {
       enabled: true,
