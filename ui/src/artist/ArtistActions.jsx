@@ -69,7 +69,9 @@ const ArtistActions = ({ className, record, ...rest }) => {
         })
         dispatch(playTracks(data, ids))
       })
-      .catch(() => {
+      .catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error('Error fetching songs for shuffle:', e)
         notify('ra.page.error', 'warning')
       })
   }, [dataProvider, dispatch, record, notify])
