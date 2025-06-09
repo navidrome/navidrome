@@ -53,27 +53,26 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const classes = useStyles()
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
-  const handleShuffle = React.useCallback(() => {
-    dataProvider
-      .getList('song', {
+  const handleShuffle = React.useCallback(async () => {
+    try {
+      const res = await dataProvider.getList('song', {
         pagination: { page: 1, perPage: 500 },
         sort: { field: 'random', order: 'ASC' },
         filter: { album_artist_id: record.id, missing: false },
       })
-      .then((res) => {
-        const data = {}
-        const ids = []
-        res.data.forEach((s) => {
-          data[s.id] = s
-          ids.push(s.id)
-        })
-        dispatch(playTracks(data, ids))
+
+      const data = {}
+      const ids = []
+      res.data.forEach((s) => {
+        data[s.id] = s
+        ids.push(s.id)
       })
-      .catch((e) => {
-        // eslint-disable-next-line no-console
-        console.error('Error fetching songs for shuffle:', e)
-        notify('ra.page.error', 'warning')
-      })
+      dispatch(playTracks(data, ids))
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching songs for shuffle:', e)
+      notify('ra.page.error', 'warning')
+    }
   }, [dataProvider, dispatch, record, notify])
 
   const handleRadio = React.useCallback(async () => {
