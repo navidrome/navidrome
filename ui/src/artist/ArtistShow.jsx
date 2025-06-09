@@ -18,7 +18,14 @@ import ArtistActions from './ArtistActions'
 import { makeStyles } from '@material-ui/core'
 
 const useStyles = makeStyles({
-  actions: { width: '100%' },
+  actions: {
+    width: '100%',
+    justifyContent: 'flex-start',
+    display: 'flex',
+    paddingTop: '0.25em',
+    paddingBottom: '0.25em',
+    paddingLeft: '1em',
+  },
 })
 
 const ArtistDetails = (props) => {

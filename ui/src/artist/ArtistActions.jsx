@@ -50,11 +50,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
   }, [dispatch, notify, record])
 
   return (
-    <TopToolbar
-      sx={{ justifyContent: 'flex-start' }}
-      className={className}
-      {...sanitizeListRestProps(rest)}
-    >
+    <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
       <Button
         onClick={handleShuffle}
         label={translate('resources.artist.actions.shuffle')}
