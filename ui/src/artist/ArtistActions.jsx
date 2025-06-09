@@ -92,11 +92,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
     >
       <Button
         onClick={handleShuffle}
-        label={
-          isMobile
-            ? translate('resources.artist.actions.shuffle')
-            : translate('resources.artist.actions.shuffle')
-        }
+        label={translate('resources.artist.actions.shuffle')}
         className={classes.button}
         size={isMobile ? 'small' : 'medium'}
       >
@@ -104,11 +100,7 @@ const ArtistActions = ({ className, record, ...rest }) => {
       </Button>
       <Button
         onClick={handleRadio}
-        label={
-          isMobile
-            ? translate('resources.artist.actions.radio')
-            : translate('resources.artist.actions.radio')
-        }
+        label={translate('resources.artist.actions.radio')}
         className={classes.button}
         size={isMobile ? 'small' : 'medium'}
       >
@@ -125,7 +117,6 @@ ArtistActions.propTypes = {
 
 ArtistActions.defaultProps = {
   className: '',
-  record: {},
 }
 
 export default ArtistActions
