@@ -24,7 +24,7 @@ import {
 } from '../actions'
 import { LoveButton } from './LoveButton'
 import config from '../config'
-import { formatBytes, playSimilar } from '../utils'
+import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
 
 const useStyles = makeStyles({
@@ -117,11 +117,6 @@ export const SongContextMenu = ({
             record.title,
           ),
         ),
-    },
-    playSimilar: {
-      enabled: true,
-      label: translate('resources.song.actions.playSimilar'),
-      action: (record) => playSimilar(dispatch, notify, record.id),
     },
     download: {
       enabled: config.enableDownloads,

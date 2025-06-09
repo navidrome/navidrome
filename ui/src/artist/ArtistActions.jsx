@@ -41,8 +41,12 @@ const ArtistActions = ({ className, record, ...rest }) => {
       })
   }, [dataProvider, dispatch, record, notify])
 
-  const handleRadio = React.useCallback(() => {
-    playSimilar(dispatch, notify, record.id)
+  const handleRadio = React.useCallback(async () => {
+    try {
+      await playSimilar(dispatch, notify, record.id)
+    } catch {
+      notify('ra.page.error', 'warning')
+    }
   }, [dispatch, notify, record])
 
   return (

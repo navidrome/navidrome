@@ -15,6 +15,11 @@ import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
 import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
 import ArtistActions from './ArtistActions'
+import { makeStyles } from '@material-ui/core'
+
+const useStyles = makeStyles({
+  actions: { width: '100%' },
+})
 
 const ArtistDetails = (props) => {
   const record = useRecordContext(props)
@@ -57,6 +62,7 @@ const ArtistShowLayout = (props) => {
   const record = useRecordContext()
   const { width } = props
   const [, perPageOptions] = useAlbumsPerPage(width)
+  const classes = useStyles()
   useResourceRefresh('artist', 'album')
 
   const maxPerPage = 90
@@ -80,7 +86,7 @@ const ArtistShowLayout = (props) => {
     <>
       {record && <RaTitle title={<Title subTitle={record.name} />} />}
       {record && <ArtistDetails />}
-      {record && <ArtistActions record={record} />}
+      {record && <ArtistActions record={record} className={classes.actions} />}
       {record && (
         <ReferenceManyField
           {...showContext}
