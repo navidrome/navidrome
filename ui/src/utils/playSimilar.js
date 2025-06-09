@@ -6,7 +6,9 @@ export const playSimilar = async (dispatch, notify, id) => {
   const data = res.json['subsonic-response']
 
   if (data.status !== 'ok') {
-    throw new Error('api error')
+    throw new Error(
+      `Error fetching similar songs: ${data.error?.message || 'Unknown error'} (Code: ${data.error?.code || 'unknown'})`,
+    )
   }
 
   const songs = data.similarSongs2?.song || []

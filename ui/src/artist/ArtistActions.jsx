@@ -77,7 +77,9 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const handleRadio = React.useCallback(async () => {
     try {
       await playSimilar(dispatch, notify, record.id)
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Error starting radio for artist:', e)
       notify('ra.page.error', 'warning')
     }
   }, [dispatch, notify, record])
