@@ -60,6 +60,7 @@ type auxArtist struct {
 
 type Agents interface {
 	agents.AlbumInfoRetriever
+	agents.AlbumImageRetriever
 	agents.ArtistBiographyRetriever
 	agents.ArtistMBIDRetriever
 	agents.ArtistImageRetriever
@@ -140,19 +141,20 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		album.Description = info.Description
 	}
 
-	if len(info.Images) > 0 {
-		sort.Slice(info.Images, func(i, j int) bool {
-			return info.Images[i].Size > info.Images[j].Size
+	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	if err == nil && len(images) > 0 {
+		sort.Slice(images, func(i, j int) bool {
+			return images[i].Size > images[j].Size
 		})
 
-		album.LargeImageUrl = info.Images[0].URL
+		album.LargeImageUrl = images[0].URL
 
-		if len(info.Images) >= 2 {
-			album.MediumImageUrl = info.Images[1].URL
+		if len(images) >= 2 {
+			album.MediumImageUrl = images[1].URL
 		}
 
-		if len(info.Images) >= 3 {
-			album.SmallImageUrl = info.Images[2].URL
+		if len(images) >= 3 {
+			album.SmallImageUrl = images[2].URL
 		}
 	}
 
@@ -341,29 +343,28 @@ func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) 
 		return nil, err
 	}
 
-	info, err := e.ag.GetAlbumInfo(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
+	images, err := e.ag.GetAlbumImages(ctx, album.Name, album.AlbumArtist, album.MbzAlbumID)
 	if err != nil {
 		switch {
 		case errors.Is(err, agents.ErrNotFound):
 			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
 			return nil, model.ErrNotFound
 		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumInfo call canceled", err)
+			log.Debug(ctx, "GetAlbumImages call canceled", err)
 		default:
-			log.Warn(ctx, "Error getting album info from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
+			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", album.Name, "artist", album.AlbumArtist, err)
 		}
-
 		return nil, err
 	}
 
-	if info == nil {
-		log.Warn(ctx, "Agent returned nil info without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
+	if len(images) == 0 {
+		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", album.Name, "artist", album.AlbumArtist)
 		return nil, model.ErrNotFound
 	}
 
 	// Return the biggest image
 	var img agents.ExternalImage
-	for _, i := range info.Images {
+	for _, i := range images {
 		if img.Size <= i.Size {
 			img = i
 		}

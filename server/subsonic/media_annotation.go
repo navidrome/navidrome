@@ -165,6 +165,7 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 		return nil, newError(responses.ErrorGeneric, "Wrong number of timestamps: %d, should be %d", len(times), len(ids))
 	}
 	submission := p.BoolOr("submission", true)
+	position := p.IntOr("position", 0)
 	ctx := r.Context()
 
 	if submission {
@@ -173,7 +174,7 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
 		}
 	} else {
-		err := api.scrobblerNowPlaying(ctx, ids[0])
+		err := api.scrobblerNowPlaying(ctx, ids[0], position)
 		if err != nil {
 			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)
 		}
@@ -198,7 +199,7 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 	return api.scrobbler.Submit(ctx, submissions)
 }
 
-func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) error {
+func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int) error {
 	mf, err := api.ds.MediaFile(ctx).Get(trackId)
 	if err != nil {
 		return err
@@ -215,7 +216,7 @@ func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string) erro
 		clientId = player.ID
 	}
 
-	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name)
-	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId)
+	log.Info(ctx, "Now Playing", "title", mf.Title, "artist", mf.Artist, "user", username, "player", player.Name, "position", position)
+	err = api.scrobbler.NowPlaying(ctx, clientId, client, trackId, position)
 	return err
 }
