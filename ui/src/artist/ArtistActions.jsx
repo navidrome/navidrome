@@ -1,6 +1,8 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
+import { useMediaQuery } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import {
   Button,
   TopToolbar,
@@ -14,11 +16,42 @@ import { IoIosRadio } from 'react-icons/io'
 import { playTracks } from '../actions'
 import { playSimilar } from '../utils'
 
+const useStyles = makeStyles((theme) => ({
+  toolbar: {
+    minHeight: 'auto',
+    padding: '0 !important',
+    background: 'transparent',
+    boxShadow: 'none',
+    '& .MuiToolbar-root': {
+      minHeight: 'auto',
+      padding: '0 !important',
+      background: 'transparent',
+    },
+  },
+  button: {
+    [theme.breakpoints.down('xs')]: {
+      minWidth: 'auto',
+      padding: '8px 12px',
+      fontSize: '0.75rem',
+      '& .MuiButton-startIcon': {
+        marginRight: '4px',
+      },
+    },
+  },
+  radioIcon: {
+    [theme.breakpoints.down('xs')]: {
+      fontSize: '1.5rem',
+    },
+  },
+}))
+
 const ArtistActions = ({ className, record, ...rest }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const notify = useNotify()
+  const classes = useStyles()
+  const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
   const handleShuffle = React.useCallback(() => {
     dataProvider
@@ -50,18 +83,33 @@ const ArtistActions = ({ className, record, ...rest }) => {
   }, [dispatch, notify, record])
 
   return (
-    <TopToolbar className={className} {...sanitizeListRestProps(rest)}>
+    <TopToolbar
+      className={`${className} ${classes.toolbar}`}
+      {...sanitizeListRestProps(rest)}
+    >
       <Button
         onClick={handleShuffle}
-        label={translate('resources.artist.actions.shuffle')}
+        label={
+          isMobile
+            ? translate('resources.artist.actions.shuffle')
+            : translate('resources.artist.actions.shuffle')
+        }
+        className={classes.button}
+        size={isMobile ? 'small' : 'medium'}
       >
         <ShuffleIcon />
       </Button>
       <Button
         onClick={handleRadio}
-        label={translate('resources.artist.actions.radio')}
+        label={
+          isMobile
+            ? translate('resources.artist.actions.radio')
+            : translate('resources.artist.actions.radio')
+        }
+        className={classes.button}
+        size={isMobile ? 'small' : 'medium'}
       >
-        <IoIosRadio />
+        <IoIosRadio className={classes.radioIcon} />
       </Button>
     </TopToolbar>
   )
