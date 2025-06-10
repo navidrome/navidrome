@@ -107,7 +107,8 @@ const NowPlayingPanel = () => {
           }
         })
         .catch((error) => {
-          // Failed to fetch now playing data, silently ignore
+          // eslint-disable-next-line no-console
+          console.error('Failed to fetch now playing data:', error)
         }),
     [dispatch],
   )
