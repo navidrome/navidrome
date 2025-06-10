@@ -152,6 +152,24 @@ func (t *MpvConnection) isSocketFilePresent() bool {
 	return err == nil && fileInfo != nil && !fileInfo.IsDir()
 }
 
+func waitForSocket(path string, timeout time.Duration, pause time.Duration) error {
+	start := time.Now()
+	end := start.Add(timeout)
+	var retries int = 0
+	for {
+		fileInfo, err := os.Stat(path)
+		if err == nil && fileInfo != nil && !fileInfo.IsDir() {
+			log.Debug("Socket found", "retries", retries, "waitTime", time.Since(start))
+			return nil
+		}
+		if time.Now().After(end) {
+			return fmt.Errorf("timeout reached: %s", timeout)
+		}
+		time.Sleep(pause)
+		retries += 1
+	}
+}
+
 func NewConnection(ctx context.Context, deviceName string) (*MpvConnection, error) {
 	log.Debug("Loading mpv connection")
 
