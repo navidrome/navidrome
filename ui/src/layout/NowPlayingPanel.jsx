@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import PropTypes from 'prop-types'
 import { useSelector, useDispatch } from 'react-redux'
-import { useTranslate, Link } from 'react-admin'
+import { useTranslate, Link, useNotify } from 'react-admin'
 import {
   Popover,
   IconButton,
@@ -63,10 +64,173 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+// NowPlayingButton component - handles the button with badge
+const NowPlayingButton = React.memo(({ count, onClick }) => {
+  const classes = useStyles()
+  const translate = useTranslate()
+
+  return (
+    <Tooltip title={translate('nowPlaying.title')}>
+      <IconButton
+        className={classes.button}
+        onClick={onClick}
+        aria-label={translate('nowPlaying.title')}
+        aria-haspopup="true"
+      >
+        <Badge
+          badgeContent={count}
+          color="primary"
+          overlap="rectangular"
+          className={classes.badge}
+        >
+          <FaRegCirclePlay size={20} />
+        </Badge>
+      </IconButton>
+    </Tooltip>
+  )
+})
+
+NowPlayingButton.displayName = 'NowPlayingButton'
+
+NowPlayingButton.propTypes = {
+  count: PropTypes.number.isRequired,
+  onClick: PropTypes.func.isRequired,
+}
+
+// NowPlayingItem component - individual list item
+const NowPlayingItem = React.memo(
+  ({ nowPlayingEntry, onLinkClick, getArtistLink }) => {
+    const classes = useStyles()
+    const translate = useTranslate()
+
+    return (
+      <ListItem key={nowPlayingEntry.playerId}>
+        <ListItemAvatar>
+          <Link
+            to={`/album/${nowPlayingEntry.albumId}/show`}
+            onClick={onLinkClick}
+          >
+            <Avatar
+              className={classes.avatar}
+              src={subsonic.getCoverArtUrl(nowPlayingEntry, 80)}
+              variant="square"
+              alt={`${nowPlayingEntry.album} cover art`}
+              loading="lazy"
+            />
+          </Link>
+        </ListItemAvatar>
+        <ListItemText
+          primary={
+            <div className={classes.primaryText}>
+              {nowPlayingEntry.albumArtistId || nowPlayingEntry.artistId ? (
+                <Link
+                  to={getArtistLink(
+                    nowPlayingEntry.albumArtistId || nowPlayingEntry.artistId,
+                  )}
+                  className={classes.artistLink}
+                  onClick={onLinkClick}
+                >
+                  {nowPlayingEntry.albumArtist || nowPlayingEntry.artist}
+                </Link>
+              ) : (
+                <span>
+                  {nowPlayingEntry.albumArtist || nowPlayingEntry.artist}
+                </span>
+              )}
+              &nbsp;-&nbsp;{nowPlayingEntry.title}
+            </div>
+          }
+          secondary={`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}`}
+        />
+      </ListItem>
+    )
+  },
+)
+
+NowPlayingItem.displayName = 'NowPlayingItem'
+
+NowPlayingItem.propTypes = {
+  nowPlayingEntry: PropTypes.shape({
+    playerId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+      .isRequired,
+    albumId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
+      .isRequired,
+    albumArtistId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    artistId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    albumArtist: PropTypes.string,
+    artist: PropTypes.string,
+    title: PropTypes.string.isRequired,
+    username: PropTypes.string.isRequired,
+    playerName: PropTypes.string,
+    minutesAgo: PropTypes.number.isRequired,
+    album: PropTypes.string,
+  }).isRequired,
+  onLinkClick: PropTypes.func.isRequired,
+  getArtistLink: PropTypes.func.isRequired,
+}
+
+// NowPlayingList component - handles the popover content
+const NowPlayingList = React.memo(
+  ({ anchorEl, open, onClose, entries, onLinkClick, getArtistLink }) => {
+    const classes = useStyles({ entryCount: entries.length })
+    const translate = useTranslate()
+
+    return (
+      <Popover
+        id="panel-nowplaying"
+        anchorEl={anchorEl}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        open={open}
+        onClose={onClose}
+        aria-labelledby="now-playing-title"
+      >
+        <Card>
+          <CardContent>
+            {entries.length === 0 ? (
+              <Typography id="now-playing-title">
+                {translate('nowPlaying.empty')}
+              </Typography>
+            ) : (
+              <List
+                className={classes.list}
+                dense
+                aria-label={translate('nowPlaying.title')}
+              >
+                {entries.map((nowPlayingEntry) => (
+                  <NowPlayingItem
+                    key={nowPlayingEntry.playerId}
+                    nowPlayingEntry={nowPlayingEntry}
+                    onLinkClick={onLinkClick}
+                    getArtistLink={getArtistLink}
+                  />
+                ))}
+              </List>
+            )}
+          </CardContent>
+        </Card>
+      </Popover>
+    )
+  },
+)
+
+NowPlayingList.displayName = 'NowPlayingList'
+
+NowPlayingList.propTypes = {
+  anchorEl: PropTypes.object,
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  entries: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onLinkClick: PropTypes.func.isRequired,
+  getArtistLink: PropTypes.func.isRequired,
+}
+
+// Main NowPlayingPanel component
 const NowPlayingPanel = () => {
   const dispatch = useDispatch()
   const count = useSelector((state) => state.activity.nowPlayingCount)
   const translate = useTranslate()
+  const notify = useNotify()
   const theme = useTheme()
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -74,17 +238,20 @@ const NowPlayingPanel = () => {
   const [entries, setEntries] = useState([])
   const open = Boolean(anchorEl)
 
-  const classes = useStyles({ entryCount: entries.length })
+  const handleMenuOpen = useCallback((event) => {
+    setAnchorEl(event.currentTarget)
+  }, [])
 
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget)
-  const handleMenuClose = () => setAnchorEl(null)
+  const handleMenuClose = useCallback(() => {
+    setAnchorEl(null)
+  }, [])
 
   // Close panel when link is clicked on small screens
   const handleLinkClick = useCallback(() => {
     if (isSmallScreen) {
       handleMenuClose()
     }
-  }, [isSmallScreen])
+  }, [isSmallScreen, handleMenuClose])
 
   const getArtistLink = useCallback((artistId) => {
     if (!artistId) return null
@@ -104,13 +271,18 @@ const NowPlayingPanel = () => {
             setEntries(nowPlayingEntries)
             // Also update the count in Redux store
             dispatch(nowPlayingCountUpdate({ count: nowPlayingEntries.length }))
+          } else {
+            throw new Error(
+              data.error?.message || 'Failed to fetch now playing data',
+            )
           }
         })
         .catch((error) => {
-          // eslint-disable-next-line no-console
-          console.error('Failed to fetch now playing data:', error)
+          notify('ra.page.error', 'warning', {
+            messageArgs: { error: error.message || 'Unknown error' },
+          })
         }),
-    [dispatch],
+    [dispatch, notify],
   )
 
   // Initialize count and entries on mount
@@ -132,74 +304,19 @@ const NowPlayingPanel = () => {
 
   return (
     <div>
-      <Tooltip title={translate('nowPlaying.title')}>
-        <IconButton className={classes.button} onClick={handleMenuOpen}>
-          <Badge
-            badgeContent={count}
-            color="primary"
-            overlap="rectangular"
-            className={classes.badge}
-          >
-            <FaRegCirclePlay size={20} />
-          </Badge>
-        </IconButton>
-      </Tooltip>
-      <Popover
-        id="panel-nowplaying"
+      <NowPlayingButton count={count} onClick={handleMenuOpen} />
+      <NowPlayingList
         anchorEl={anchorEl}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         open={open}
         onClose={handleMenuClose}
-      >
-        <Card>
-          <CardContent>
-            {entries.length === 0 ? (
-              <Typography>{translate('nowPlaying.empty')}</Typography>
-            ) : (
-              <List className={classes.list} dense>
-                {entries.map((e) => (
-                  <ListItem key={e.playerId}>
-                    <ListItemAvatar>
-                      <Link
-                        to={`/album/${e.albumId}/show`}
-                        onClick={handleLinkClick}
-                      >
-                        <Avatar
-                          className={classes.avatar}
-                          src={subsonic.getCoverArtUrl(e, 80)}
-                          variant="square"
-                        />
-                      </Link>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <div className={classes.primaryText}>
-                          {e.albumArtistId || e.artistId ? (
-                            <Link
-                              to={getArtistLink(e.albumArtistId || e.artistId)}
-                              className={classes.artistLink}
-                              onClick={handleLinkClick}
-                            >
-                              {e.albumArtist || e.artist}
-                            </Link>
-                          ) : (
-                            <span>{e.albumArtist || e.artist}</span>
-                          )}
-                          &nbsp;-&nbsp;{e.title}
-                        </div>
-                      }
-                      secondary={`${e.username}${e.playerName ? ` (${e.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: e.minutesAgo })}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </CardContent>
-        </Card>
-      </Popover>
+        entries={entries}
+        onLinkClick={handleLinkClick}
+        getArtistLink={getArtistLink}
+      />
     </div>
   )
 }
+
+NowPlayingPanel.propTypes = {}
 
 export default NowPlayingPanel
