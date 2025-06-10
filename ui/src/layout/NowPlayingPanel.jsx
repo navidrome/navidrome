@@ -133,7 +133,12 @@ const NowPlayingPanel = () => {
     <div>
       <Tooltip title={translate('nowPlaying.title')}>
         <IconButton className={classes.button} onClick={handleMenuOpen}>
-          <Badge badgeContent={count} color="primary" overlap="rectangular" className={classes.badge}>
+          <Badge
+            badgeContent={count}
+            color="primary"
+            overlap="rectangular"
+            className={classes.badge}
+          >
             <FaRegCirclePlay size={20} />
           </Badge>
         </IconButton>
