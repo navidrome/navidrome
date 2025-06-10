@@ -51,6 +51,10 @@ func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
 func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
 	m := cache.NewSimpleCache[string, NowPlayingInfo]()
 	p := &playTracker{ds: ds, playMap: m, broker: broker}
+	m.OnExpiration(func(_ string, _ NowPlayingInfo) {
+		ctx := events.BroadcastToAll(context.Background())
+		broker.SendMessage(ctx, &events.NowPlayingCount{Count: m.Len()})
+	})
 	p.scrobblers = make(map[string]Scrobbler)
 	var enabled []string
 	for name, constructor := range constructors {
@@ -85,6 +89,8 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 
 	ttl := time.Duration(int(mf.Duration)+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
+	ctx = events.BroadcastToAll(ctx)
+	p.broker.SendMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
 		p.dispatchNowPlaying(ctx, user.ID, mf)

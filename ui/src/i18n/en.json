@@ -540,6 +540,11 @@
     "status": "Scan Error",
     "elapsedTime": "Elapsed Time"
   },
+  "nowPlaying": {
+    "title": "Now Playing",
+    "empty": "Nothing playing",
+    "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago"
+  },
   "help": {
     "title": "Navidrome Hotkeys",
     "hotkeys": {
