@@ -524,7 +524,7 @@ func setViperDefaults() {
 	viper.SetDefault("subsonic.artistparticipations", false)
 	viper.SetDefault("subsonic.defaultreportrealpath", false)
 	viper.SetDefault("subsonic.legacyclients", "DSub")
-	viper.SetDefault("agents", "lastfm,spotify")
+	viper.SetDefault("agents", "lastfm,spotify,deezer")
 	viper.SetDefault("lastfm.enabled", true)
 	viper.SetDefault("lastfm.language", "en")
 	viper.SetDefault("lastfm.apikey", "")

@@ -36,7 +36,7 @@ This is a music streaming server written in Go with a React frontend. The applic
 5. Document configuration options in code
 6. Consider performance implications when working with music libraries
 7. Follow existing error handling patterns
-8. Ensure compatibility with external services (LastFM, Spotify)
+8. Ensure compatibility with external services (LastFM, Spotify, Deezer)
 
 ## Development Workflow
 - Test changes thoroughly, especially around concurrent operations
