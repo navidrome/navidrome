@@ -124,6 +124,11 @@
         "remixer": "Remixador |||| Remixadores",
         "djmixer": "DJ Mixer |||| DJ Mixers",
         "performer": "Músico |||| Músicos"
+      },
+      "actions": {
+        "topSongs": "Mais tocadas",
+        "shuffle": "Aleatório",
+        "radio": "Rádio"
       }
     },
     "user": {
@@ -407,6 +412,8 @@
     "transcodingDisabled": "Por questão de segurança, esta tela de configuração está desabilitada. Se você quiser alterar estas configurações, reinicie o servidor com a opção %{config}",
     "transcodingEnabled": "Navidrome está sendo executado com a opção %{config}. Isto permite que potencialmente se execute comandos do sistema pela interface Web. É recomendado que vc mantenha esta opção desabilitada, e só a habilite quando precisar configurar opções de Conversão",
     "songsAddedToPlaylist": "Música adicionada à playlist |||| %{smart_count} músicas adicionadas à playlist",
+    "noSimilarSongsFound": "Nenhuma música semelhante encontrada",
+    "noTopSongsFound": "Nenhuma música mais tocada encontrada",
     "noPlaylistsAvailable": "Nenhuma playlist",
     "delete_user_title": "Excluir usuário '%{name}'",
     "delete_user_content": "Você tem certeza que deseja excluir o usuário e todos os seus dados (incluindo suas playlists e preferências)?",
