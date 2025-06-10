@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
@@ -106,8 +107,9 @@ var _ = Describe("PlayTracker", func() {
 		It("sends event with count", func() {
 			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(eventBroker.events).ToNot(BeEmpty())
-			evt, ok := eventBroker.events[0].(*events.NowPlayingCount)
+			eventList := eventBroker.getEvents()
+			Expect(eventList).ToNot(BeEmpty())
+			evt, ok := eventList[0].(*events.NowPlayingCount)
 			Expect(ok).To(BeTrue())
 			Expect(evt.Count).To(Equal(1))
 		})
@@ -143,8 +145,9 @@ var _ = Describe("PlayTracker", func() {
 		It("sends event when entry expires", func() {
 			info := NowPlayingInfo{MediaFile: track, Start: time.Now(), Username: "user"}
 			_ = tracker.(*playTracker).playMap.AddWithTTL("player-1", info, 10*time.Millisecond)
-			Eventually(func() int { return len(eventBroker.events) }).Should(BeNumerically(">", 0))
-			evt, ok := eventBroker.events[len(eventBroker.events)-1].(*events.NowPlayingCount)
+			Eventually(func() int { return len(eventBroker.getEvents()) }).Should(BeNumerically(">", 0))
+			eventList := eventBroker.getEvents()
+			evt, ok := eventList[len(eventList)-1].(*events.NowPlayingCount)
 			Expect(ok).To(BeTrue())
 			Expect(evt.Count).To(Equal(0))
 		})
@@ -270,10 +273,19 @@ func _p(id, name string, sortName ...string) model.Participant {
 type fakeEventBroker struct {
 	http.Handler
 	events []events.Event
+	mu     sync.Mutex
 }
 
 func (f *fakeEventBroker) SendMessage(_ context.Context, event events.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.events = append(f.events, event)
+}
+
+func (f *fakeEventBroker) getEvents() []events.Event {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.events
 }
 
 var _ events.Broker = (*fakeEventBroker)(nil)
