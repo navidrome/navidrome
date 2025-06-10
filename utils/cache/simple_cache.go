@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sync/atomic"
 	"time"
 
@@ -46,6 +47,12 @@ func NewSimpleCache[K comparable, V any](options ...Options) SimpleCache[K, V] {
 		data: c,
 	}
 	go cache.data.Start()
+
+	// Automatic cleanup to prevent goroutine leak when cache is garbage collected
+	runtime.AddCleanup(cache, func(ttlCache *ttlcache.Cache[K, V]) {
+		ttlCache.Stop()
+	}, cache.data)
+
 	return cache
 }
 
