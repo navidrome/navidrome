@@ -52,14 +52,15 @@ func (api *Router) JukeboxControl(r *http.Request) (*responses.Subsonic, error) 
 
 	switch actionString {
 	case ActionGet:
-		mediafiles, status, err := pb.Get(ctx)
+		playlistTrackIds, status, err := pb.Get(ctx)
 		if err != nil {
 			return nil, err
 		}
+		log.Info(ctx, "JukeboxControl get", "playlistTracks", playlistTrackIds, "status", status)
 
 		playlist := responses.JukeboxPlaylist{
 			JukeboxStatus: *deviceStatusToJukeboxStatus(status),
-			Entry:         slice.MapWithArg(mediafiles, ctx, childFromMediaFile),
+			Entry:         slice.MapWithArg(playlistTrackIds, ctx, api.childFromPlaylistTrack),
 		}
 
 		response := newResponse()
