@@ -31,11 +31,27 @@ const useStyles = makeStyles((theme) => ({
     width: '30em',
     maxHeight: (props) => {
       // Calculate height for up to 4 entries before scrolling
-      const entryHeight = 72 // Approximate height of each ListItem
+      const entryHeight = 80
       const maxEntries = Math.min(props.entryCount || 0, 4)
       return maxEntries > 0 ? `${maxEntries * entryHeight}px` : '12em'
     },
     overflowY: 'auto',
+    padding: 0,
+  },
+  card: {
+    padding: 0,
+  },
+  cardContent: {
+    padding: `${theme.spacing(1)}px !important`, // Minimal padding, override default
+    '&:last-child': {
+      paddingBottom: `${theme.spacing(1)}px !important`, // Override Material-UI's last-child padding
+    },
+  },
+  listItem: {
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(0.5),
+    paddingLeft: theme.spacing(1),
+    paddingRight: theme.spacing(1),
   },
   avatar: {
     width: theme.spacing(6),
@@ -104,7 +120,7 @@ const NowPlayingItem = React.memo(
     const translate = useTranslate()
 
     return (
-      <ListItem key={nowPlayingEntry.playerId}>
+      <ListItem key={nowPlayingEntry.playerId} className={classes.listItem}>
         <ListItemAvatar>
           <Link
             to={`/album/${nowPlayingEntry.albumId}/show`}
@@ -185,8 +201,8 @@ const NowPlayingList = React.memo(
         onClose={onClose}
         aria-labelledby="now-playing-title"
       >
-        <Card>
-          <CardContent>
+        <Card className={classes.card}>
+          <CardContent className={classes.cardContent}>
             {entries.length === 0 ? (
               <Typography id="now-playing-title">
                 {translate('nowPlaying.empty')}
