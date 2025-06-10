@@ -54,6 +54,16 @@ const startScan = (options) => httpClient(url('startScan', null, options))
 
 const getScanStatus = () => httpClient(url('getScanStatus'))
 
+const getNowPlaying = () => httpClient(url('getNowPlaying'))
+
+const getAvatarUrl = (username, size) =>
+  baseUrl(
+    url('getAvatar', null, {
+      username,
+      ...(size && { size }),
+    }),
+  )
+
 const getCoverArtUrl = (record, size, square) => {
   const options = {
     ...(record.updatedAt && { _: record.updatedAt }),
@@ -110,7 +120,9 @@ export default {
   setRating,
   startScan,
   getScanStatus,
+  getNowPlaying,
   getCoverArtUrl,
+  getAvatarUrl,
   streamUrl,
   getAlbumInfo,
   getArtistInfo,
