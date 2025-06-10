@@ -142,7 +142,7 @@ var _ = Describe("PlayTracker", func() {
 	Describe("Expiration events", func() {
 		It("sends event when entry expires", func() {
 			info := NowPlayingInfo{MediaFile: track, Start: time.Now(), Username: "user"}
-			tracker.(*playTracker).playMap.AddWithTTL("player-1", info, 10*time.Millisecond)
+			_ = tracker.(*playTracker).playMap.AddWithTTL("player-1", info, 10*time.Millisecond)
 			Eventually(func() int { return len(eventBroker.events) }).Should(BeNumerically(">", 0))
 			evt, ok := eventBroker.events[len(eventBroker.events)-1].(*events.NowPlayingCount)
 			Expect(ok).To(BeTrue())
