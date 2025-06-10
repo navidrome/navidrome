@@ -537,6 +537,11 @@
     "status": "Erro",
     "elapsedTime": "Duração"
   },
+  "nowPlaying": {
+    "title": "Tocando agora",
+    "empty": "Nada tocando",
+    "minutesAgo": "%{smart_count} minuto atrás |||| %{smart_count} minutos atrás"
+  },
   "help": {
     "title": "Teclas de atalho",
     "hotkeys": {

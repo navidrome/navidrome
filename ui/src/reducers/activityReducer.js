@@ -2,6 +2,7 @@ import {
   EVENT_REFRESH_RESOURCE,
   EVENT_SCAN_STATUS,
   EVENT_SERVER_START,
+  EVENT_NOW_PLAYING_COUNT,
 } from '../actions'
 import config from '../config'
 
@@ -14,6 +15,7 @@ const initialState = {
     elapsedTime: 0,
   },
   serverStart: { version: config.version },
+  nowPlayingCount: 0,
 }
 
 export const activityReducer = (previousState = initialState, payload) => {
@@ -40,6 +42,8 @@ export const activityReducer = (previousState = initialState, payload) => {
           resources: data,
         },
       }
+    case EVENT_NOW_PLAYING_COUNT:
+      return { ...previousState, nowPlayingCount: data.count }
     default:
       return previousState
   }

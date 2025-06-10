@@ -14,6 +14,7 @@ import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
+import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
 
@@ -119,6 +120,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
+      {config.devActivityPanel && permissions === 'admin' && (
+        <NowPlayingPanel />
+      )}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />

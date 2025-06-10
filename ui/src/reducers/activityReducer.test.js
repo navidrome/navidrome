@@ -1,5 +1,9 @@
 import { activityReducer } from './activityReducer'
-import { EVENT_SCAN_STATUS, EVENT_SERVER_START } from '../actions'
+import {
+  EVENT_SCAN_STATUS,
+  EVENT_SERVER_START,
+  EVENT_NOW_PLAYING_COUNT,
+} from '../actions'
 import config from '../config'
 
 describe('activityReducer', () => {
@@ -12,6 +16,7 @@ describe('activityReducer', () => {
       elapsedTime: 0,
     },
     serverStart: { version: config.version },
+    nowPlayingCount: 0,
   }
 
   it('returns the initial state when no action is specified', () => {
@@ -115,5 +120,14 @@ describe('activityReducer', () => {
       version: '1.0.0',
       startTime: Date.parse('2023-01-01T00:00:00Z'),
     })
+  })
+
+  it('handles EVENT_NOW_PLAYING_COUNT', () => {
+    const action = {
+      type: EVENT_NOW_PLAYING_COUNT,
+      data: { count: 5 },
+    }
+    const newState = activityReducer(initialState, action)
+    expect(newState.nowPlayingCount).toEqual(5)
   })
 })

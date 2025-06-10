@@ -33,6 +33,7 @@ const startEventStream = async (dispatchFn) => {
         throttledEventHandler(dispatchFn),
       )
       newStream.addEventListener('refreshResource', eventHandler(dispatchFn))
+      newStream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
       newStream.addEventListener('keepAlive', eventHandler(dispatchFn))
       newStream.onerror = (e) => {
         // eslint-disable-next-line no-console

@@ -104,3 +104,26 @@ describe('getCoverArtUrl', () => {
     expect(url).not.toContain('_=')
   })
 })
+
+describe('getAvatarUrl', () => {
+  beforeEach(() => {
+    // Mock localStorage values required by subsonic
+    const localStorageMock = {
+      getItem: vi.fn((key) => {
+        const values = {
+          username: 'testuser',
+          'subsonic-token': 'testtoken',
+          'subsonic-salt': 'testsalt',
+        }
+        return values[key] || null
+      }),
+    }
+    Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+  })
+
+  it('should include username parameter', () => {
+    const url = subsonic.getAvatarUrl('john')
+    expect(url).toContain('getAvatar')
+    expect(url).toContain('username=john')
+  })
+})
