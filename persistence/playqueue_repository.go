@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -38,6 +39,18 @@ type playQueue struct {
 func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) error {
 	u := loggedUser(r.ctx)
 
+	// Always find existing playqueue for this user
+	existingQueue, err := r.Retrieve(q.UserID)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		log.Error(r.ctx, "Error retrieving existing playqueue", "user", u.UserName, err)
+		return err
+	}
+
+	// Use existing ID if found, otherwise keep the provided ID (which may be empty for new records)
+	if !errors.Is(err, model.ErrNotFound) && existingQueue.ID != "" {
+		q.ID = existingQueue.ID
+	}
+
 	// When no specific columns are provided, we replace the whole queue
 	if len(colNames) == 0 {
 		err := r.clearPlayQueue(q.UserID)
@@ -55,7 +68,7 @@ func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) erro
 		pq.CreatedAt = time.Now()
 	}
 	pq.UpdatedAt = time.Now()
-	_, err := r.put(pq.ID, pq, colNames...)
+	_, err = r.put(pq.ID, pq, colNames...)
 	if err != nil {
 		log.Error(r.ctx, "Error saving playqueue", "user", u.UserName, err)
 		return err
