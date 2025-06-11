@@ -3,7 +3,6 @@ package nativeapi
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"html"
 	"net/http"
 	"strconv"
@@ -17,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 )
 
@@ -169,67 +167,6 @@ func (n *Router) addMissingFilesRoute(r chi.Router) {
 			deleteMissingFiles(n.ds, w, r)
 		})
 	})
-}
-
-type queuePayload struct {
-	Ids      []string `json:"ids"`
-	Current  int      `json:"current"`
-	Position int64    `json:"position"`
-}
-
-func getQueue(ds model.DataStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		user, _ := request.UserFrom(ctx)
-		repo := ds.PlayQueue(ctx)
-		pq, err := repo.Retrieve(user.ID)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Error(ctx, "Error retrieving queue", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if pq == nil {
-			pq = &model.PlayQueue{}
-		}
-		resp, err := json.Marshal(pq)
-		if err != nil {
-			log.Error(ctx, "Error marshalling queue", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(resp)
-	}
-}
-
-func saveQueue(ds model.DataStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		var payload queuePayload
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		user, _ := request.UserFrom(ctx)
-		client, _ := request.ClientFrom(ctx)
-		var items model.MediaFiles
-		for _, id := range payload.Ids {
-			items = append(items, model.MediaFile{ID: id})
-		}
-		pq := &model.PlayQueue{
-			UserID:    user.ID,
-			Current:   payload.Current,
-			Position:  payload.Position,
-			ChangedBy: client,
-			Items:     items,
-		}
-		if err := ds.PlayQueue(ctx).Store(pq); err != nil {
-			log.Error(ctx, "Error saving queue", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
 }
 
 func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []string) {

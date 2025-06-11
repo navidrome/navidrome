@@ -106,10 +106,9 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 	client, _ := request.ClientFrom(r.Context())
 
-	var items model.MediaFiles
-	for _, id := range ids {
-		items = append(items, model.MediaFile{ID: id})
-	}
+	items := slice.Map(ids, func(id string) model.MediaFile {
+		return model.MediaFile{ID: id}
+	})
 
 	currentIndex := 0
 	for i, id := range ids {

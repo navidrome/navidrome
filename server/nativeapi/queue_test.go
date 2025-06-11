@@ -48,7 +48,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 	Describe("GET /queue", func() {
 		It("returns the queue", func() {
-			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 0, Items: model.MediaFiles{{ID: "s1"}}}
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2, Items: model.MediaFiles{{ID: "s1"}}}
 			req := httptest.NewRequest("GET", "/queue", nil)
 			req = req.WithContext(request.WithUser(req.Context(), user))
 			w := httptest.NewRecorder()
@@ -57,7 +57,7 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var resp model.PlayQueue
 			Expect(json.Unmarshal(w.Body.Bytes(), &resp)).To(Succeed())
-			Expect(resp.Current).To(Equal(0))
+			Expect(resp.Current).To(Equal(2))
 			Expect(resp.Items).To(HaveLen(1))
 			Expect(resp.Items[0].ID).To(Equal("s1"))
 		})
