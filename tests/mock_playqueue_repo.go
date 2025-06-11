@@ -40,6 +40,22 @@ func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
 	return &qCopy, nil
 }
 
+func (m *MockPlayQueueRepo) RetrieveLite(userId string) (*model.PlayQueue, error) {
+	if m.Err {
+		return nil, errors.New("error")
+	}
+	if m.Queue == nil || m.Queue.UserID != userId {
+		return nil, model.ErrNotFound
+	}
+	copyItems := make(model.MediaFiles, len(m.Queue.Items))
+	for i, t := range m.Queue.Items {
+		copyItems[i] = model.MediaFile{ID: t.ID}
+	}
+	qCopy := *m.Queue
+	qCopy.Items = copyItems
+	return &qCopy, nil
+}
+
 func (m *MockPlayQueueRepo) Clear(userId string) error {
 	if m.Err {
 		return errors.New("error")

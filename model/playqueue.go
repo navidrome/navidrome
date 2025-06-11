@@ -20,5 +20,8 @@ type PlayQueues []PlayQueue
 type PlayQueueRepository interface {
 	Store(queue *PlayQueue, colNames ...string) error
 	Retrieve(userId string) (*PlayQueue, error)
+	// RetrieveLite returns the playqueue without loading the full MediaFiles
+	// (Items only contain IDs)
+	RetrieveLite(userId string) (*PlayQueue, error)
 	Clear(userId string) error
 }

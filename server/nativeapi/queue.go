@@ -99,7 +99,7 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 			cols = append(cols, "items")
 
 			if payload.Current == nil {
-				if existing, err := ds.PlayQueue(ctx).Retrieve(user.ID); err == nil {
+				if existing, err := ds.PlayQueue(ctx).RetrieveLite(user.ID); err == nil {
 					if existing != nil && (existing.Current < 0 || existing.Current >= len(*payload.Ids)) {
 						http.Error(w, "current index out of bounds", http.StatusBadRequest)
 						return
@@ -115,9 +115,22 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 		if payload.Current != nil {
 			pq.Current = *payload.Current
 			cols = append(cols, "current")
-			if payload.Ids != nil && (*payload.Current < 0 || *payload.Current >= len(*payload.Ids)) {
-				http.Error(w, "current index out of bounds", http.StatusBadRequest)
-				return
+			if payload.Ids != nil {
+				if *payload.Current < 0 || *payload.Current >= len(*payload.Ids) {
+					http.Error(w, "current index out of bounds", http.StatusBadRequest)
+					return
+				}
+			} else {
+				if existing, err := ds.PlayQueue(ctx).RetrieveLite(user.ID); err == nil {
+					if existing != nil && (*payload.Current < 0 || *payload.Current >= len(existing.Items)) {
+						http.Error(w, "current index out of bounds", http.StatusBadRequest)
+						return
+					}
+				} else if !errors.Is(err, model.ErrNotFound) {
+					log.Error(ctx, "Error retrieving queue", err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 

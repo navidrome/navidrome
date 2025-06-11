@@ -165,7 +165,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 	Describe("PUT /queue", func() {
 		It("updates the queue fields", func() {
-			repo.Queue = &model.PlayQueue{UserID: user.ID}
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}, {ID: "s3"}}}
 			payload := updateQueuePayload{Current: gg.P(2), Position: gg.P(int64(20))}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
@@ -214,6 +214,18 @@ var _ = Describe("Queue Endpoints", func() {
 		It("returns bad request when new ids invalidate current", func() {
 			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2}
 			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("returns bad request when current out of bounds", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}}}
+			payload := updateQueuePayload{Current: gg.P(3)}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))

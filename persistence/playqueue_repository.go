@@ -71,6 +71,31 @@ func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) 
 	return &pls, err
 }
 
+func (r *playQueueRepository) RetrieveLite(userId string) (*model.PlayQueue, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
+	var res playQueue
+	err := r.queryOne(sel, &res)
+	if err != nil {
+		return nil, err
+	}
+	q := model.PlayQueue{
+		ID:        res.ID,
+		UserID:    res.UserID,
+		Current:   res.Current,
+		Position:  res.Position,
+		ChangedBy: res.ChangedBy,
+		CreatedAt: res.CreatedAt,
+		UpdatedAt: res.UpdatedAt,
+	}
+	if strings.TrimSpace(res.Items) != "" {
+		tracks := strings.Split(res.Items, ",")
+		for _, t := range tracks {
+			q.Items = append(q.Items, model.MediaFile{ID: t})
+		}
+	}
+	return &q, nil
+}
+
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {
 	pq := playQueue{
 		ID:        q.ID,
