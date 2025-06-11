@@ -27,7 +27,7 @@ func NewPlayQueueRepository(ctx context.Context, db dbx.Builder) model.PlayQueue
 type playQueue struct {
 	ID        string    `structs:"id"`
 	UserID    string    `structs:"user_id"`
-	Current   string    `structs:"current"`
+	Current   int       `structs:"current"`
 	Position  int64     `structs:"position"`
 	ChangedBy string    `structs:"changed_by"`
 	Items     string    `structs:"items"`

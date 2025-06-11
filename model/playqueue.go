@@ -7,7 +7,7 @@ import (
 type PlayQueue struct {
 	ID        string     `structs:"id" json:"id"`
 	UserID    string     `structs:"user_id" json:"userId"`
-	Current   string     `structs:"current" json:"current"`
+	Current   int        `structs:"current" json:"current"`
 	Position  int64      `structs:"position" json:"position"`
 	ChangedBy string     `structs:"changed_by" json:"changedBy"`
 	Items     MediaFiles `structs:"-" json:"items,omitempty"`
