@@ -2,16 +2,16 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS annotation_tmp
 (
-	user_id varchar(255) default '' not null
+	user_id     varchar(255)    not null
         REFERENCES user(id)
             ON DELETE CASCADE
             ON UPDATE CASCADE,
-	item_id     varchar(255) default '' not null,
-	item_type   varchar(255) default '' not null,
-	play_count  integer     default 0,
+	item_id     varchar(255)    default '' not null,
+	item_type   varchar(255)    default '' not null,
+	play_count  integer         default 0,
 	play_date   datetime,
-	rating      integer     default 0,
-	starred     bool        default FALSE not null,
+	rating      integer         default 0,
+	starred     bool            default FALSE not null,
 	starred_at  datetime,
 	unique (user_id, item_id, item_type)
 );
