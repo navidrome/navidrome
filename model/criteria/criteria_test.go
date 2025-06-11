@@ -138,6 +138,13 @@ var _ = Describe("Criteria", func() {
 					"media_file.date asc, COALESCE(json_extract(media_file.participants, '$.artist[0].name'), '') desc",
 				))
 			})
+
+			It("ignores invalid sort fields", func() {
+				goObj.Sort = "bogus,title"
+				gomega.Expect(goObj.OrderBy()).To(gomega.Equal(
+					"media_file.title asc",
+				))
+			})
 		})
 	})
 

@@ -51,11 +51,12 @@ func (c Criteria) OrderBy() string {
 
 		sortField := strings.ToLower(p)
 		f := fieldMap[sortField]
-		var mapped string
 		if f == nil {
-			log.Error("Invalid field in 'sort' field. Using 'title'", "sort", sortField)
-			f = fieldMap["title"]
+			log.Error("Invalid field in 'sort' field", "sort", sortField)
+			continue
 		}
+
+		var mapped string
 
 		if f.order != "" {
 			mapped = f.order
