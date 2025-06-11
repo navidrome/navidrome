@@ -32,7 +32,7 @@ var _ = Describe("PlayQueueRepository", func() {
 		It("stores and retrieves the playqueue for the user", func() {
 			By("Storing a playqueue for the user")
 
-			expected := aPlayQueue("userid", songDayInALife.ID, 123, songComeTogether, songDayInALife)
+			expected := aPlayQueue("userid", 1, 123, songComeTogether, songDayInALife)
 			Expect(repo.Store(expected)).To(Succeed())
 
 			actual, err := repo.Retrieve("userid")
@@ -42,7 +42,7 @@ var _ = Describe("PlayQueueRepository", func() {
 
 			By("Storing a new playqueue for the same user")
 
-			another := aPlayQueue("userid", songRadioactivity.ID, 321, songAntenna, songRadioactivity)
+			another := aPlayQueue("userid", 1, 321, songAntenna, songRadioactivity)
 			Expect(repo.Store(another)).To(Succeed())
 
 			actual, err = repo.Retrieve("userid")
@@ -62,7 +62,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(mfRepo.Put(&newSong)).To(Succeed())
 
 			// Create a playqueue with the new song
-			pq := aPlayQueue("userid", newSong.ID, 0, newSong, songAntenna)
+			pq := aPlayQueue("userid", 0, 0, newSong, songAntenna)
 			Expect(repo.Store(pq)).To(Succeed())
 
 			// Retrieve the playqueue
@@ -107,7 +107,7 @@ func AssertPlayQueue(expected, actual *model.PlayQueue) {
 	}
 }
 
-func aPlayQueue(userId, current string, position int64, items ...model.MediaFile) *model.PlayQueue {
+func aPlayQueue(userId string, current int, position int64, items ...model.MediaFile) *model.PlayQueue {
 	createdAt := time.Now()
 	updatedAt := createdAt.Add(time.Minute)
 	return &model.PlayQueue{
