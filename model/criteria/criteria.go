@@ -70,7 +70,8 @@ func (c Criteria) OrderBy() string {
 		if f.numeric {
 			mapped = fmt.Sprintf("CAST(%s AS REAL)", mapped)
 		}
-
+		// If the global 'order' field is set to 'desc', reverse the default or field-specific sort direction.
+		// This ensures that the global order applies consistently across all fields.
 		if order == "desc" {
 			if dir == "asc" {
 				dir = "desc"
