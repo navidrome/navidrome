@@ -8,11 +8,12 @@ import (
 
 type MockPlayQueueRepo struct {
 	model.PlayQueueRepository
-	Queue *model.PlayQueue
-	Err   bool
+	Queue    *model.PlayQueue
+	Err      bool
+	LastCols []string
 }
 
-func (m *MockPlayQueueRepo) Store(q *model.PlayQueue) error {
+func (m *MockPlayQueueRepo) Store(q *model.PlayQueue, cols ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -21,6 +22,7 @@ func (m *MockPlayQueueRepo) Store(q *model.PlayQueue) error {
 	qCopy := *q
 	qCopy.Items = copyItems
 	m.Queue = &qCopy
+	m.LastCols = cols
 	return nil
 }
 
@@ -36,4 +38,12 @@ func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
 	qCopy := *m.Queue
 	qCopy.Items = copyItems
 	return &qCopy, nil
+}
+
+func (m *MockPlayQueueRepo) Clear(userId string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	m.Queue = nil
+	return nil
 }

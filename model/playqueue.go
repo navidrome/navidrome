@@ -18,6 +18,7 @@ type PlayQueue struct {
 type PlayQueues []PlayQueue
 
 type PlayQueueRepository interface {
-	Store(queue *PlayQueue) error
+	Store(queue *PlayQueue, colNames ...string) error
 	Retrieve(userId string) (*PlayQueue, error)
+	Clear(userId string) error
 }
