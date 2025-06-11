@@ -25,7 +25,7 @@ var _ = Describe("PlayQueueRepository", func() {
 
 	Describe("PlayQueues", func() {
 		It("returns notfound error if there's no playqueue for the user", func() {
-			_, err := repo.Retrieve("user999")
+			_, err := repo.RetrieveWithMediaFiles("user999")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
@@ -35,7 +35,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			expected := aPlayQueue("userid", 1, 123, songComeTogether, songDayInALife)
 			Expect(repo.Store(expected)).To(Succeed())
 
-			actual, err := repo.Retrieve("userid")
+			actual, err := repo.RetrieveWithMediaFiles("userid")
 			Expect(err).ToNot(HaveOccurred())
 
 			AssertPlayQueue(expected, actual)
@@ -45,7 +45,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			another := aPlayQueue("userid", 1, 321, songAntenna, songRadioactivity)
 			Expect(repo.Store(another)).To(Succeed())
 
-			actual, err = repo.Retrieve("userid")
+			actual, err = repo.RetrieveWithMediaFiles("userid")
 			Expect(err).ToNot(HaveOccurred())
 
 			AssertPlayQueue(another, actual)
@@ -66,7 +66,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(repo.Store(pq)).To(Succeed())
 
 			// Retrieve the playqueue
-			actual, err := repo.Retrieve("userid")
+			actual, err := repo.RetrieveWithMediaFiles("userid")
 			Expect(err).ToNot(HaveOccurred())
 
 			// The playqueue should contain both tracks
@@ -76,7 +76,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			Expect(mfRepo.Delete("temp-track")).To(Succeed())
 
 			// Retrieve the playqueue
-			actual, err = repo.Retrieve("userid")
+			actual, err = repo.RetrieveWithMediaFiles("userid")
 			Expect(err).ToNot(HaveOccurred())
 
 			// The playqueue should not contain the deleted track

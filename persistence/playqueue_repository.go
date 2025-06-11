@@ -63,37 +63,21 @@ func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) erro
 	return nil
 }
 
+func (r *playQueueRepository) RetrieveWithMediaFiles(userId string) (*model.PlayQueue, error) {
+	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
+	var res playQueue
+	err := r.queryOne(sel, &res)
+	q := r.toModel(&res)
+	q.Items = r.loadTracks(q.Items)
+	return &q, err
+}
+
 func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) {
 	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
 	err := r.queryOne(sel, &res)
-	pls := r.toModel(&res)
-	return &pls, err
-}
-
-func (r *playQueueRepository) RetrieveLite(userId string) (*model.PlayQueue, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
-	var res playQueue
-	err := r.queryOne(sel, &res)
-	if err != nil {
-		return nil, err
-	}
-	q := model.PlayQueue{
-		ID:        res.ID,
-		UserID:    res.UserID,
-		Current:   res.Current,
-		Position:  res.Position,
-		ChangedBy: res.ChangedBy,
-		CreatedAt: res.CreatedAt,
-		UpdatedAt: res.UpdatedAt,
-	}
-	if strings.TrimSpace(res.Items) != "" {
-		tracks := strings.Split(res.Items, ",")
-		for _, t := range tracks {
-			q.Items = append(q.Items, model.MediaFile{ID: t})
-		}
-	}
-	return &q, nil
+	q := r.toModel(&res)
+	return &q, err
 }
 
 func (r *playQueueRepository) fromModel(q *model.PlayQueue) playQueue {
@@ -130,7 +114,6 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 			q.Items = append(q.Items, model.MediaFile{ID: t})
 		}
 	}
-	q.Items = r.loadTracks(q.Items)
 	return q
 }
 

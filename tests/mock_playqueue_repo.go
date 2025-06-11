@@ -26,7 +26,7 @@ func (m *MockPlayQueueRepo) Store(q *model.PlayQueue, cols ...string) error {
 	return nil
 }
 
-func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
+func (m *MockPlayQueueRepo) RetrieveWithMediaFiles(userId string) (*model.PlayQueue, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -40,7 +40,7 @@ func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
 	return &qCopy, nil
 }
 
-func (m *MockPlayQueueRepo) RetrieveLite(userId string) (*model.PlayQueue, error) {
+func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}

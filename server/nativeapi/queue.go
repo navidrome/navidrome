@@ -23,7 +23,7 @@ func getQueue(ds model.DataStore) http.HandlerFunc {
 		ctx := r.Context()
 		user, _ := request.UserFrom(ctx)
 		repo := ds.PlayQueue(ctx)
-		pq, err := repo.Retrieve(user.ID)
+		pq, err := repo.RetrieveWithMediaFiles(user.ID)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			log.Error(ctx, "Error retrieving queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -99,7 +99,7 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 			cols = append(cols, "items")
 
 			if payload.Current == nil {
-				if existing, err := ds.PlayQueue(ctx).RetrieveLite(user.ID); err == nil {
+				if existing, err := ds.PlayQueue(ctx).Retrieve(user.ID); err == nil {
 					if existing != nil && (existing.Current < 0 || existing.Current >= len(*payload.Ids)) {
 						http.Error(w, "current index out of bounds", http.StatusBadRequest)
 						return
@@ -121,7 +121,7 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 					return
 				}
 			} else {
-				if existing, err := ds.PlayQueue(ctx).RetrieveLite(user.ID); err == nil {
+				if existing, err := ds.PlayQueue(ctx).Retrieve(user.ID); err == nil {
 					if existing != nil && (*payload.Current < 0 || *payload.Current >= len(existing.Items)) {
 						http.Error(w, "current index out of bounds", http.StatusBadRequest)
 						return
