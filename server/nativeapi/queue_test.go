@@ -182,6 +182,47 @@ var _ = Describe("Queue Endpoints", func() {
 			Expect(repo.Queue.ChangedBy).To(Equal("TestClient"))
 		})
 
+		It("updates only ids", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 1}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue.Items).To(HaveLen(2))
+			Expect(repo.LastCols).To(ConsistOf("items"))
+		})
+
+		It("updates ids and current", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"}), Current: gg.P(1)}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue.Items).To(HaveLen(2))
+			Expect(repo.Queue.Current).To(Equal(1))
+			Expect(repo.LastCols).To(ConsistOf("items", "current"))
+		})
+
+		It("returns bad request when new ids invalidate current", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
 		It("returns bad request for malformed JSON", func() {
 			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader([]byte("{")))
 			req = req.WithContext(request.WithUser(req.Context(), user))
