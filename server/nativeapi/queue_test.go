@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -31,7 +32,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 	Describe("POST /queue", func() {
 		It("saves the queue", func() {
-			payload := queuePayload{Ids: []string{"s1", "s2"}, Current: 1, Position: 10}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"}), Current: gg.P(1), Position: gg.P(int64(10))}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("POST", "/queue", bytes.NewReader(body))
 			ctx := request.WithUser(req.Context(), user)
@@ -49,7 +50,7 @@ var _ = Describe("Queue Endpoints", func() {
 		})
 
 		It("saves an empty queue", func() {
-			payload := queuePayload{Ids: []string{}, Current: 0, Position: 0}
+			payload := updateQueuePayload{Ids: gg.P([]string{}), Current: gg.P(0), Position: gg.P(int64(0))}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("POST", "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
@@ -62,7 +63,7 @@ var _ = Describe("Queue Endpoints", func() {
 		})
 
 		It("returns bad request for invalid current index (negative)", func() {
-			payload := queuePayload{Ids: []string{"s1", "s2"}, Current: -1, Position: 10}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"}), Current: gg.P(-1), Position: gg.P(int64(10))}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("POST", "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
@@ -74,7 +75,7 @@ var _ = Describe("Queue Endpoints", func() {
 		})
 
 		It("returns bad request for invalid current index (too large)", func() {
-			payload := queuePayload{Ids: []string{"s1", "s2"}, Current: 2, Position: 10}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"}), Current: gg.P(2), Position: gg.P(int64(10))}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("POST", "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
@@ -96,7 +97,7 @@ var _ = Describe("Queue Endpoints", func() {
 
 		It("returns internal server error when store fails", func() {
 			repo.Err = true
-			payload := queuePayload{Ids: []string{"s1"}, Current: 0, Position: 10}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1"}), Current: gg.P(0), Position: gg.P(int64(10))}
 			body, _ := json.Marshal(payload)
 			req := httptest.NewRequest("POST", "/queue", bytes.NewReader(body))
 			req = req.WithContext(request.WithUser(req.Context(), user))
@@ -158,6 +159,123 @@ var _ = Describe("Queue Endpoints", func() {
 			w := httptest.NewRecorder()
 
 			getQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
+
+	Describe("PUT /queue", func() {
+		It("updates the queue fields", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}, {ID: "s3"}}}
+			payload := updateQueuePayload{Current: gg.P(2), Position: gg.P(int64(20))}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			ctx := request.WithUser(req.Context(), user)
+			ctx = request.WithClient(ctx, "TestClient")
+			req = req.WithContext(ctx)
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue).ToNot(BeNil())
+			Expect(repo.Queue.Current).To(Equal(2))
+			Expect(repo.Queue.Position).To(Equal(int64(20)))
+			Expect(repo.Queue.ChangedBy).To(Equal("TestClient"))
+		})
+
+		It("updates only ids", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 1}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue.Items).To(HaveLen(2))
+			Expect(repo.LastCols).To(ConsistOf("items"))
+		})
+
+		It("updates ids and current", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"}), Current: gg.P(1)}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue.Items).To(HaveLen(2))
+			Expect(repo.Queue.Current).To(Equal(1))
+			Expect(repo.LastCols).To(ConsistOf("items", "current"))
+		})
+
+		It("returns bad request when new ids invalidate current", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2}
+			payload := updateQueuePayload{Ids: gg.P([]string{"s1", "s2"})}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("returns bad request when current out of bounds", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}}}
+			payload := updateQueuePayload{Current: gg.P(3)}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("returns bad request for malformed JSON", func() {
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader([]byte("{")))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("returns internal server error when store fails", func() {
+			repo.Err = true
+			payload := updateQueuePayload{Position: gg.P(int64(10))}
+			body, _ := json.Marshal(payload)
+			req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			updateQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+	})
+
+	Describe("DELETE /queue", func() {
+		It("clears the queue", func() {
+			repo.Queue = &model.PlayQueue{UserID: user.ID, Items: model.MediaFiles{{ID: "s1"}}}
+			req := httptest.NewRequest("DELETE", "/queue", nil)
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			clearQueue(ds)(w, req)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(repo.Queue).To(BeNil())
+		})
+
+		It("returns internal server error when clear fails", func() {
+			repo.Err = true
+			req := httptest.NewRequest("DELETE", "/queue", nil)
+			req = req.WithContext(request.WithUser(req.Context(), user))
+			w := httptest.NewRecorder()
+
+			clearQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

@@ -157,6 +157,8 @@ func (n *Router) addQueueRoute(r chi.Router) {
 	r.Route("/queue", func(r chi.Router) {
 		r.Get("/", getQueue(n.ds))
 		r.Post("/", saveQueue(n.ds))
+		r.Put("/", updateQueue(n.ds))
+		r.Delete("/", clearQueue(n.ds))
 	})
 }
 

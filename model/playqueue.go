@@ -18,6 +18,11 @@ type PlayQueue struct {
 type PlayQueues []PlayQueue
 
 type PlayQueueRepository interface {
-	Store(queue *PlayQueue) error
+	Store(queue *PlayQueue, colNames ...string) error
+	// Retrieve returns the playqueue without loading the full MediaFiles
+	// (Items only contain IDs)
 	Retrieve(userId string) (*PlayQueue, error)
+	// RetrieveWithMediaFiles returns the playqueue with full MediaFiles loaded
+	RetrieveWithMediaFiles(userId string) (*PlayQueue, error)
+	Clear(userId string) error
 }

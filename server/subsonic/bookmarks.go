@@ -73,7 +73,7 @@ func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
 	repo := api.ds.PlayQueue(r.Context())
-	pq, err := repo.Retrieve(user.ID)
+	pq, err := repo.RetrieveWithMediaFiles(user.ID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
