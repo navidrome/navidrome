@@ -123,6 +123,28 @@ var _ = Describe("Criteria", func() {
 				newObj.Sort = "random"
 				gomega.Expect(newObj.OrderBy()).To(gomega.Equal("random() asc"))
 			})
+
+			It("sorts by multiple fields", func() {
+				goObj.Sort = "title,-rating"
+				gomega.Expect(goObj.OrderBy()).To(gomega.Equal(
+					"media_file.title asc, COALESCE(annotation.rating, 0) desc",
+				))
+			})
+
+			It("reverts order when order is desc", func() {
+				goObj.Sort = "-date,artist"
+				goObj.Order = "desc"
+				gomega.Expect(goObj.OrderBy()).To(gomega.Equal(
+					"media_file.date asc, COALESCE(json_extract(media_file.participants, '$.artist[0].name'), '') desc",
+				))
+			})
+
+			It("ignores invalid sort fields", func() {
+				goObj.Sort = "bogus,title"
+				gomega.Expect(goObj.OrderBy()).To(gomega.Equal(
+					"media_file.title asc",
+				))
+			})
 		})
 	})
 
