@@ -62,7 +62,7 @@ func saveQueue(ds model.DataStore) http.HandlerFunc {
 		pq := &model.PlayQueue{
 			UserID:    user.ID,
 			Current:   payload.Current,
-			Position:  payload.Position,
+			Position:  max(payload.Position, 0),
 			ChangedBy: client,
 			Items:     items,
 		}
