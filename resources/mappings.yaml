@@ -69,7 +69,7 @@ main:
   remixer:
     aliases: [ tpe4, remixer, mixartist, ----:com.apple.itunes:remixer, wm/modifiedby ]
   albumartist:
-    aliases: [ tpe2, albumartist, album artist, aart, wm/albumartist ]
+    aliases: [ tpe2, albumartist, album artist, album_artist, aart, wm/albumartist ]
   albumartistsort:
     aliases: [ tso2, txxx:albumartistsort, albumartistsort, soaa, wm/albumartistsortorder ]
   albumartists:
