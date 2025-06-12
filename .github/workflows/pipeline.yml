@@ -106,7 +106,8 @@ jobs:
       - name: Test
         run: |
           pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo -race -cover ./... -v
+          make testci
+#          go test -shuffle=on -tags netgo -race -cover ./... -v
 
   js:
     name: Test JS code
