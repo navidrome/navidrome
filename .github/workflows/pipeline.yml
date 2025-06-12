@@ -111,7 +111,7 @@ jobs:
 
       - name: Annotate Ginkgo failures
         if: failure()
-        run: python .github/scripts/ginkgo_annotations.py /tmp/go-test.log
+        run: bash .github/scripts/ginkgo_annotations.sh /tmp/go-test.log
 
   js:
     name: Test JS code
