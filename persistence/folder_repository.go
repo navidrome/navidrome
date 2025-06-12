@@ -89,19 +89,20 @@ func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
 	return r.count(sq)
 }
 
-func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]time.Time, error) {
-	sq := r.newSelect().Columns("id", "updated_at").Where(Eq{"library_id": lib.ID, "missing": false})
+func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]model.FolderUpdateInfo, error) {
+	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(Eq{"library_id": lib.ID, "missing": false})
 	var res []struct {
 		ID        string
 		UpdatedAt time.Time
+		Hash      string
 	}
 	err := r.queryAll(sq, &res)
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[string]time.Time, len(res))
+	m := make(map[string]model.FolderUpdateInfo, len(res))
 	for _, f := range res {
-		m[f.ID] = f.UpdatedAt
+		m[f.ID] = model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash}
 	}
 	return m, nil
 }
