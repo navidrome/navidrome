@@ -62,7 +62,7 @@ type scanJob struct {
 	lib         model.Library
 	fs          storage.MusicFS
 	cw          artwork.CacheWarmer
-	lastUpdates map[string]time.Time
+	lastUpdates map[string]model.FolderUpdateInfo
 	lock        sync.Mutex
 	numFolders  atomic.Int64
 }
@@ -91,7 +91,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	}, nil
 }
 
-func (j *scanJob) popLastUpdate(folderID string) time.Time {
+func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 

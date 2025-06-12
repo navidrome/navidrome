@@ -3,6 +3,10 @@ package scanner
 import (
 	"bufio"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"path"
@@ -33,6 +37,7 @@ type folderEntry struct {
 	numPlaylists    int
 	numSubFolders   int
 	imagesUpdatedAt time.Time
+	prevHash        string
 	tracks          model.MediaFiles
 	albums          model.Albums
 	albumIDMap      map[string]string
@@ -57,11 +62,28 @@ func (f *folderEntry) toFolder() *model.Folder {
 	}
 	folder.ImageFiles = slices.Collect(maps.Keys(f.imageFiles))
 	folder.ImagesUpdatedAt = f.imagesUpdatedAt
+	folder.Hash = f.hash()
 	return folder
+}
+
+func (f *folderEntry) hash() string {
+	audioKeys := slices.Collect(maps.Keys(f.audioFiles))
+	slices.Sort(audioKeys)
+	imageKeys := slices.Collect(maps.Keys(f.imageFiles))
+	slices.Sort(imageKeys)
+
+	h := md5.New()
+	io.WriteString(h, f.modTime.UTC().String())
+	io.WriteString(h, strings.Join(audioKeys, ","))
+	io.WriteString(h, strings.Join(imageKeys, ","))
+	fmt.Fprintf(h, "%d%d", f.numPlaylists, f.numSubFolders)
+	io.WriteString(h, f.imagesUpdatedAt.UTC().String())
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func newFolderEntry(job *scanJob, path string) *folderEntry {
 	id := model.FolderID(job.lib, path)
+	info := job.popLastUpdate(id)
 	f := &folderEntry{
 		id:         id,
 		job:        job,
@@ -69,16 +91,17 @@ func newFolderEntry(job *scanJob, path string) *folderEntry {
 		audioFiles: make(map[string]fs.DirEntry),
 		imageFiles: make(map[string]fs.DirEntry),
 		albumIDMap: make(map[string]string),
-		updTime:    job.popLastUpdate(id),
+		updTime:    info.UpdatedAt,
+		prevHash:   info.Hash,
 	}
 	return f
 }
 
 func (f *folderEntry) isOutdated() bool {
-	if f.job.lib.FullScanInProgress {
-		return f.updTime.Before(f.job.lib.LastScanStartedAt)
+	if f.job.lib.FullScanInProgress && f.updTime.Before(f.job.lib.LastScanStartedAt) {
+		return true
 	}
-	return f.updTime.Before(f.modTime)
+	return f.prevHash != f.hash()
 }
 
 func walkDirTree(ctx context.Context, job *scanJob) (<-chan *folderEntry, error) {
