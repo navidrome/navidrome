@@ -9,19 +9,69 @@ fi
 
 log_file="$1"
 
-awk '
-  /^\s*\[FAIL\]/ {
-    name=$0
-    sub(/^\s*\[FAIL\]\s*/, "", name)
+# Strip ANSI color codes first, then process with AWK
+sed 's/\[[0-9;]*m//g' "$log_file" | awk '
+  BEGIN {
+    processed_tests = ""
+  }
+  
+  # Match the detailed failure format first: • [FAILED] (more specific line numbers)
+  /• \[FAILED\]/ {
+    # Get the test name from the next line
     getline
-    if (match($0, /([^ ]+\.go):([0-9]+)/, m)) {
-      file=m[1]; line_no=m[2]
+    test_name = $0
+    
+    # Look for the file path in the next line
+    getline
+    file_line = $0
+    
+    if (file_line ~ /\.go:[0-9]+/) {
+      # Extract file and line number, trim whitespace
+      gsub(/^[ \t]+|[ \t]+$/, "", file_line)
+      split(file_line, parts, ":")
+      file = parts[1]
+      line_no = parts[2]
+      
+      # Trim workspace path if present
       ws=ENVIRON["GITHUB_WORKSPACE"]
       if (ws != "" && index(file, ws) == 1) {
         file=substr(file, length(ws)+2)
       }
-      printf "::error file=%s,line=%s,title=Test Failure::%s\n", file, line_no, name
+      
+      # Mark this test as processed to avoid duplicates (use test name as key)
+      if (index(processed_tests, test_name) == 0) {
+        processed_tests = processed_tests test_name "|"
+        printf "::error file=%s,line=%s::%s\n", file, line_no, test_name
+      }
     }
   }
-' "$log_file"
+  # Match the summary format: [FAIL] test name (only if not already processed)
+  /^[ \t]*\[FAIL\]/ {
+    name=$0
+    sub(/^[ \t]*\[FAIL\][ \t]*/, "", name)
+    
+    # Only process if we haven'\''t already processed this test
+    if (index(processed_tests, name) == 0) {
+      getline
+      file_line = $0
+      
+      if (file_line ~ /\.go:[0-9]+/) {
+        # Extract file and line number, trim whitespace
+        gsub(/^[ \t]+|[ \t]+$/, "", file_line)
+        split(file_line, parts, ":")
+        file = parts[1]
+        line_no = parts[2]
+        
+        # Trim workspace path if present
+        ws=ENVIRON["GITHUB_WORKSPACE"]
+        if (ws != "" && index(file, ws) == 1) {
+          file=substr(file, length(ws)+2)
+        }
+        
+        processed_tests = processed_tests name "|"
+        printf "::error file=%s,line=%s::%s\n", file, line_no, name
+      }
+    }
+  }
+'
 
