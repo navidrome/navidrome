@@ -73,11 +73,11 @@ func (f *folderEntry) hash() string {
 	slices.Sort(imageKeys)
 
 	h := md5.New()
-	io.WriteString(h, f.modTime.UTC().String())
-	io.WriteString(h, strings.Join(audioKeys, ","))
-	io.WriteString(h, strings.Join(imageKeys, ","))
+	_, _ = io.WriteString(h, f.modTime.UTC().String())
+	_, _ = io.WriteString(h, strings.Join(audioKeys, ","))
+	_, _ = io.WriteString(h, strings.Join(imageKeys, ","))
 	fmt.Fprintf(h, "%d%d", f.numPlaylists, f.numSubFolders)
-	io.WriteString(h, f.imagesUpdatedAt.UTC().String())
+	_, _ = io.WriteString(h, f.imagesUpdatedAt.UTC().String())
 	return hex.EncodeToString(h.Sum(nil))
 }
 
