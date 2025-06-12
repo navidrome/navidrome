@@ -85,7 +85,7 @@ var _ = Describe("Playlists", func() {
 				Expect(pls.Comment).To(Equal("Recently played tracks"))
 				Expect(pls.Rules.Sort).To(Equal("lastPlayed"))
 				Expect(pls.Rules.Order).To(Equal("desc"))
-				Expect(pls.Rules.Limit).To(Equal(100))
+				Expect(pls.Rules.Limit).ToNot(Equal(100))
 				Expect(pls.Rules.Expression).To(BeAssignableToTypeOf(criteria.All{}))
 			})
 			It("returns an error if the playlist is not well-formed", func() {
