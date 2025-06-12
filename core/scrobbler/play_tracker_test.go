@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
@@ -29,6 +31,7 @@ var _ = Describe("PlayTracker", func() {
 	var fake fakeScrobbler
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
@@ -113,6 +116,13 @@ var _ = Describe("PlayTracker", func() {
 			Expect(ok).To(BeTrue())
 			Expect(evt.Count).To(Equal(1))
 		})
+
+		It("does not send event when disabled", func() {
+			conf.Server.EnableNowPlaying = false
+			err := tracker.NowPlaying(ctx, "player-1", "player-one", "123")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(eventBroker.getEvents()).To(BeEmpty())
+		})
 	})
 
 	Describe("GetNowPlaying", func() {
@@ -150,6 +160,14 @@ var _ = Describe("PlayTracker", func() {
 			evt, ok := eventList[len(eventList)-1].(*events.NowPlayingCount)
 			Expect(ok).To(BeTrue())
 			Expect(evt.Count).To(Equal(0))
+		})
+
+		It("does not send event when disabled", func() {
+			conf.Server.EnableNowPlaying = false
+			tracker = newPlayTracker(ds, eventBroker)
+			info := NowPlayingInfo{MediaFile: track, Start: time.Now(), Username: "user"}
+			_ = tracker.(*playTracker).playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
+			Consistently(func() int { return len(eventBroker.getEvents()) }).Should(Equal(0))
 		})
 	})
 
