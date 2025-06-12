@@ -83,7 +83,7 @@ func (f *folderEntry) hash() string {
 	_, _ = io.WriteString(h, f.modTime.UTC().String())
 	_, _ = io.WriteString(h, strings.Join(audioKeys, ","))
 	_, _ = io.WriteString(h, strings.Join(imageKeys, ","))
-	fmt.Fprintf(h, "%d%d", f.numPlaylists, f.numSubFolders)
+	fmt.Fprintf(h, "%d-%d", f.numPlaylists, f.numSubFolders)
 	_, _ = io.WriteString(h, f.imagesUpdatedAt.UTC().String())
 	return hex.EncodeToString(h.Sum(nil))
 }
