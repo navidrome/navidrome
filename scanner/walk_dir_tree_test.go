@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing/fstest"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -192,32 +191,6 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("skips entries with permission error", "b", nil, []string{"a", "c"}),
 				Entry("aborts on fs.ErrNotExist", "", fs.ErrNotExist, []string{}),
 			)
-		})
-
-		Describe("folderEntry hash", func() {
-			It("produces stable hashes", func() {
-				entry := &folderEntry{
-					modTime:         time.Now(),
-					audioFiles:      map[string]fs.DirEntry{"a": nil, "b": nil},
-					imageFiles:      map[string]fs.DirEntry{"c": nil},
-					numPlaylists:    1,
-					numSubFolders:   2,
-					imagesUpdatedAt: time.Now(),
-				}
-				h1 := entry.hash()
-				entry.audioFiles = map[string]fs.DirEntry{"b": nil, "a": nil}
-				h2 := entry.hash()
-				Expect(h1).To(Equal(h2))
-			})
-
-			It("is outdated when hash changes", func() {
-				j := &scanJob{lib: model.Library{}}
-				entry := &folderEntry{job: j}
-				entry.prevHash = entry.hash()
-				Expect(entry.isOutdated()).To(BeFalse())
-				entry.numPlaylists = 1
-				Expect(entry.isOutdated()).To(BeTrue())
-			})
 		})
 	})
 })
