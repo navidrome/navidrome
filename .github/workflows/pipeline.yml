@@ -105,8 +105,13 @@ jobs:
 
       - name: Test
         run: |
+          set -o pipefail
           pkg-config --define-prefix --cflags --libs taglib # for debugging
-          go test -shuffle=on -tags netgo -race -cover ./... -v
+          go test -shuffle=on -tags netgo -race -cover ./... -v 2>&1 | tee /tmp/go-test.log
+
+      - name: Annotate Ginkgo failures
+        if: failure()
+        run: python .github/scripts/ginkgo_annotations.py /tmp/go-test.log
 
   js:
     name: Test JS code
