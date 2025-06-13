@@ -2,6 +2,7 @@ import { baseUrl } from './utils'
 import throttle from 'lodash.throttle'
 import { processEvent, serverDown } from './actions'
 import { REST_URL } from './consts'
+import config from './config'
 
 const newEventStream = async () => {
   let url = baseUrl(`${REST_URL}/events`)
@@ -33,7 +34,9 @@ const startEventStream = async (dispatchFn) => {
         throttledEventHandler(dispatchFn),
       )
       newStream.addEventListener('refreshResource', eventHandler(dispatchFn))
-      newStream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
+      if (config.enableNowPlaying) {
+        newStream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
+      }
       newStream.addEventListener('keepAlive', eventHandler(dispatchFn))
       newStream.onerror = (e) => {
         // eslint-disable-next-line no-console
