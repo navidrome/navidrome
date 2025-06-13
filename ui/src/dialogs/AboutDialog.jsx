@@ -33,17 +33,11 @@ const useStyles = makeStyles((theme) => ({
     overflowWrap: 'break-word',
   },
   envVarColumn: {
-    maxWidth: '200px',
-    width: '200px',
+    maxWidth: '250px',
+    width: '250px',
     fontFamily: 'monospace',
     wordWrap: 'break-word',
     overflowWrap: 'break-word',
-  },
-  configFileValue: {
-    maxWidth: '300px',
-    width: '300px',
-    fontFamily: 'monospace',
-    wordBreak: 'break-all',
   },
   copyButton: {
     marginBottom: theme.spacing(2),
@@ -65,6 +59,12 @@ const useStyles = makeStyles((theme) => ({
   tableContainer: {
     maxHeight: '60vh',
     overflow: 'auto',
+  },
+  devFlagsTitle: {
+    fontWeight: 600,
+  },
+  expandableDialog: {
+    transition: 'max-width 300ms ease',
   },
 }))
 
@@ -291,9 +291,7 @@ const ConfigTabContent = ({ configData }) => {
                 <TableCell align="left" className={classes.envVarColumn}>
                   ND_CONFIGFILE
                 </TableCell>
-                <TableCell align="left" className={classes.configFileValue}>
-                  {configData.configFile}
-                </TableCell>
+                <TableCell align="left">{configData.configFile}</TableCell>
               </TableRow>
             )}
             {regularConfigs.map(({ key, envVar, value }) => (
@@ -318,7 +316,7 @@ const ConfigTabContent = ({ configData }) => {
                   <Typography
                     variant="subtitle1"
                     component="div"
-                    style={{ fontWeight: 600 }}
+                    className={classes.devFlagsTitle}
                   >
                     🚧 {translate('about.config.devFlagsHeader')}
                   </Typography>
@@ -406,6 +404,7 @@ const TabContent = ({
 }
 
 const AboutDialog = ({ open, onClose }) => {
+  const classes = useStyles()
   const { permissions } = usePermissions()
   const { data: insightsData, loading } = useGetOne(
     'insights',
@@ -442,7 +441,7 @@ const AboutDialog = ({ open, onClose }) => {
       open={open}
       fullWidth={true}
       maxWidth={expanded ? 'lg' : 'sm'}
-      style={{ transition: 'max-width 300ms ease' }}
+      className={classes.expandableDialog}
     >
       <DialogTitle id="about-dialog-title" onClose={onClose}>
         Navidrome Music Server
