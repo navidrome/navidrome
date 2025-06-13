@@ -50,7 +50,7 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
     <>
       <MenuItem ref={ref} onClick={handleOpen} className={classes.root}>
         <ListItemIcon className={classes.icon}>
-          <MdInfo titleAccess={label} size={24} />
+          <MdInfo title={label} size={24} />
         </ListItemIcon>
         {label}
       </MenuItem>
