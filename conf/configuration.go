@@ -80,6 +80,7 @@ type configOptions struct {
 	DefaultUIVolume                 int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
+	EnableNowPlaying                bool
 	GATrackingID                    string
 	EnableLogRedacting              bool
 	AuthRequestLimit                int
@@ -491,6 +492,7 @@ func setViperDefaults() {
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
+	viper.SetDefault("enablenowplaying", true)
 	viper.SetDefault("enablesharing", false)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)

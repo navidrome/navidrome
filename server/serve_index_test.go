@@ -196,6 +196,17 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(HaveKeyWithValue("enableCoverAnimation", true))
 	})
 
+	It("sets the enableNowPlaying", func() {
+		conf.Server.EnableNowPlaying = true
+		r := httptest.NewRequest("GET", "/index.html", nil)
+		w := httptest.NewRecorder()
+
+		serveIndex(ds, fs, nil)(w, r)
+
+		config := extractAppConfig(w.Body.String())
+		Expect(config).To(HaveKeyWithValue("enableNowPlaying", true))
+	})
+
 	It("sets the gaTrackingId", func() {
 		conf.Server.GATrackingID = "UA-12345"
 		r := httptest.NewRequest("GET", "/index.html", nil)
