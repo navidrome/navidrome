@@ -195,11 +195,14 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 					log.Error(ctx, "Scanner: Error updating album PID conf", err)
 					return fmt.Errorf("updating album PID conf: %w", err)
 				}
-				if !state.changesDetected.Load() {
+				if state.changesDetected.Load() {
+					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
 					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
 						log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
 						return fmt.Errorf("refreshing library stats: %w", err)
 					}
+				} else {
+					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)
 				}
 			}
 			log.Debug(ctx, "Scanner: Updated libraries after scan", "elapsed", time.Since(start), "numLibraries", len(libs))
