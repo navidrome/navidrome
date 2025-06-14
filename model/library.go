@@ -14,6 +14,14 @@ type Library struct {
 	FullScanInProgress bool
 	UpdatedAt          time.Time
 	CreatedAt          time.Time
+
+	TotalSongs        int
+	TotalAlbums       int
+	TotalArtists      int
+	TotalFolders      int
+	TotalFiles        int
+	TotalMissingFiles int
+	TotalSize         int64
 }
 
 type Libraries []Library
@@ -32,4 +40,5 @@ type LibraryRepository interface {
 	ScanBegin(id int, fullScan bool) error
 	ScanEnd(id int) error
 	ScanInProgress() (bool, error)
+	RefreshStats(id int) error
 }
