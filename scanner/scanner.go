@@ -177,6 +177,7 @@ func (s *scannerImpl) runOptimize(ctx context.Context) func() error {
 
 func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries) func() error {
 	return func() error {
+		start := time.Now()
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			for _, lib := range libs {
 				if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
@@ -199,6 +200,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 					return fmt.Errorf("updating album PID conf: %w", err)
 				}
 			}
+			log.Debug(ctx, "Scanner: Updated libraries after scan", "elapsed", time.Since(start), "numLibraries", len(libs))
 			return nil
 		}, "scanner: update libraries")
 	}
