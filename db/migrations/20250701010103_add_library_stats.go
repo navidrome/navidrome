@@ -24,8 +24,12 @@ update library set
     total_songs = (
         select count(*) from media_file where library_id = library.id and missing = 0
     ),
-    total_albums = (select count(*) from album where library_id = library.id),
-    total_artists = (select count(*) from library_artist where library_id = library.id),
+    total_albums = (select count(*) from album where library_id = library.id and missing = 0),
+    total_artists = (
+        select count(*) from library_artist la 
+        join artist a on la.artist_id = a.id 
+        where la.library_id = library.id and a.missing = 0
+    ),
     total_folders = (select count(*) from folder where library_id = library.id and missing = 0),
     total_files = (
         select ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0)
@@ -34,12 +38,11 @@ update library set
     total_missing_files = (
         select count(*) from media_file where library_id = library.id and missing = 1
     ),
-    total_size = (select ifnull(sum(size),0) from album where library_id = library.id);
+    total_size = (select ifnull(sum(size),0) from album where library_id = library.id and missing = 0);
 `)
 	return err
 }
 
 func downAddLibraryStats(ctx context.Context, tx *sql.Tx) error {
-	// SQLite cannot drop columns easily; nothing to do here
 	return nil
 }

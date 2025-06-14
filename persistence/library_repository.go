@@ -156,10 +156,12 @@ func (r *libraryRepository) RefreshStats(id int) error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": false}), &songsRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("album").Where(Eq{"library_id": id}), &albumsRes)
+			return r.queryOne(Select("count(*) as count").From("album").Where(Eq{"library_id": id, "missing": false}), &albumsRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("library_artist").Where(Eq{"library_id": id}), &artistsRes)
+			return r.queryOne(Select("count(*) as count").From("library_artist la").
+				Join("artist a on la.artist_id = a.id").
+				Where(Eq{"la.library_id": id, "a.missing": false}), &artistsRes)
 		},
 		func() error {
 			return r.queryOne(Select("count(*) as count").From("folder").Where(Eq{"library_id": id, "missing": false}), &foldersRes)
@@ -171,7 +173,7 @@ func (r *libraryRepository) RefreshStats(id int) error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id}), &sizeRes)
+			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
 		},
 	)()
 	if err != nil {
