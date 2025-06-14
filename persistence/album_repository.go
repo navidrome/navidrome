@@ -216,7 +216,8 @@ func (r *albumRepository) UpdateExternalInfo(al *model.Album) error {
 
 func (r *albumRepository) selectAlbum(options ...model.QueryOptions) SelectBuilder {
 	sql := r.newSelect(options...).Columns("album.*")
-	return r.withAnnotation(sql, "album.id")
+	sql = r.withAnnotation(sql, "album.id")
+	return r.applyLibraryFilter(sql)
 }
 
 func (r *albumRepository) Get(id string) (*model.Album, error) {
