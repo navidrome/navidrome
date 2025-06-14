@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"maps"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core"
@@ -54,11 +53,22 @@ type folderEntry struct {
 }
 
 func (f *folderEntry) hasNoFiles() bool {
-	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && f.numPlaylists == 0 && f.numSubFolders == 0
+	return len(f.audioFiles) == 0 && len(f.imageFiles) == 0 && f.numPlaylists == 0
+}
+
+func (f *folderEntry) isEmpty() bool {
+	return f.hasNoFiles() && f.numSubFolders == 0
 }
 
 func (f *folderEntry) isNew() bool {
 	return f.updTime.IsZero()
+}
+
+func (f *folderEntry) isOutdated() bool {
+	if f.job.lib.FullScanInProgress && f.updTime.Before(f.job.lib.LastScanStartedAt) {
+		return true
+	}
+	return f.prevHash != f.hash()
 }
 
 func (f *folderEntry) toFolder() *model.Folder {
@@ -74,23 +84,37 @@ func (f *folderEntry) toFolder() *model.Folder {
 }
 
 func (f *folderEntry) hash() string {
+	h := md5.New()
+	_, _ = fmt.Fprintf(
+		h,
+		"%s:%d:%d:%s",
+		f.modTime.UTC(),
+		f.numPlaylists,
+		f.numSubFolders,
+		f.imagesUpdatedAt.UTC(),
+	)
+
+	// Sort the keys of audio and image files to ensure consistent hashing
 	audioKeys := slices.Collect(maps.Keys(f.audioFiles))
 	slices.Sort(audioKeys)
 	imageKeys := slices.Collect(maps.Keys(f.imageFiles))
 	slices.Sort(imageKeys)
 
-	h := md5.New()
-	_, _ = io.WriteString(h, f.modTime.UTC().String())
-	_, _ = io.WriteString(h, strings.Join(audioKeys, ","))
-	_, _ = io.WriteString(h, strings.Join(imageKeys, ","))
-	fmt.Fprintf(h, "%d-%d", f.numPlaylists, f.numSubFolders)
-	_, _ = io.WriteString(h, f.imagesUpdatedAt.UTC().String())
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-func (f *folderEntry) isOutdated() bool {
-	if f.job.lib.FullScanInProgress && f.updTime.Before(f.job.lib.LastScanStartedAt) {
-		return true
+	// Include audio files with their size and modtime
+	for _, key := range audioKeys {
+		_, _ = io.WriteString(h, key)
+		if info, err := f.audioFiles[key].Info(); err == nil {
+			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+		}
 	}
-	return f.prevHash != f.hash()
+
+	// Include image files with their size and modtime
+	for _, key := range imageKeys {
+		_, _ = io.WriteString(h, key)
+		if info, err := f.imageFiles[key].Info(); err == nil {
+			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+		}
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
 }

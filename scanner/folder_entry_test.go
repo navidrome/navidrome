@@ -75,7 +75,7 @@ var _ = Describe("folder_entry", func() {
 		})
 	})
 
-	Describe("folderEntry methods", func() {
+	Describe("folderEntry", func() {
 		var entry *folderEntry
 
 		BeforeEach(func() {
@@ -102,9 +102,9 @@ var _ = Describe("folder_entry", func() {
 				Expect(entry.hasNoFiles()).To(BeFalse())
 			})
 
-			It("returns false when folder has subfolders", func() {
+			It("ignores subfolders when checking for no files", func() {
 				entry.numSubFolders = 1
-				Expect(entry.hasNoFiles()).To(BeFalse())
+				Expect(entry.hasNoFiles()).To(BeTrue())
 			})
 
 			It("returns false when folder has multiple types of content", func() {
@@ -113,6 +113,20 @@ var _ = Describe("folder_entry", func() {
 				entry.numPlaylists = 2
 				entry.numSubFolders = 3
 				Expect(entry.hasNoFiles()).To(BeFalse())
+			})
+		})
+
+		Describe("isEmpty", func() {
+			It("returns true when folder has no files or subfolders", func() {
+				Expect(entry.isEmpty()).To(BeTrue())
+			})
+			It("returns false when folder has audio files", func() {
+				entry.audioFiles["test.mp3"] = &fakeDirEntry{name: "test.mp3"}
+				Expect(entry.isEmpty()).To(BeFalse())
+			})
+			It("returns false when folder has subfolders", func() {
+				entry.numSubFolders = 1
+				Expect(entry.isEmpty()).To(BeFalse())
 			})
 		})
 
@@ -268,6 +282,104 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 
+			It("produces different hash when audio file size changes", func() {
+				entry.audioFiles["test.mp3"] = &fakeDirEntry{
+					name: "test.mp3",
+					fileInfo: &fakeFileInfo{
+						name:    "test.mp3",
+						size:    1000,
+						modTime: time.Now(),
+					},
+				}
+				hash1 := entry.hash()
+
+				entry.audioFiles["test.mp3"] = &fakeDirEntry{
+					name: "test.mp3",
+					fileInfo: &fakeFileInfo{
+						name:    "test.mp3",
+						size:    2000, // Different size
+						modTime: time.Now(),
+					},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when audio file modification time changes", func() {
+				baseTime := time.Now()
+				entry.audioFiles["test.mp3"] = &fakeDirEntry{
+					name: "test.mp3",
+					fileInfo: &fakeFileInfo{
+						name:    "test.mp3",
+						size:    1000,
+						modTime: baseTime,
+					},
+				}
+				hash1 := entry.hash()
+
+				entry.audioFiles["test.mp3"] = &fakeDirEntry{
+					name: "test.mp3",
+					fileInfo: &fakeFileInfo{
+						name:    "test.mp3",
+						size:    1000,
+						modTime: baseTime.Add(1 * time.Hour), // Different modtime
+					},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when image file size changes", func() {
+				entry.imageFiles["cover.jpg"] = &fakeDirEntry{
+					name: "cover.jpg",
+					fileInfo: &fakeFileInfo{
+						name:    "cover.jpg",
+						size:    5000,
+						modTime: time.Now(),
+					},
+				}
+				hash1 := entry.hash()
+
+				entry.imageFiles["cover.jpg"] = &fakeDirEntry{
+					name: "cover.jpg",
+					fileInfo: &fakeFileInfo{
+						name:    "cover.jpg",
+						size:    6000, // Different size
+						modTime: time.Now(),
+					},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when image file modification time changes", func() {
+				baseTime := time.Now()
+				entry.imageFiles["cover.jpg"] = &fakeDirEntry{
+					name: "cover.jpg",
+					fileInfo: &fakeFileInfo{
+						name:    "cover.jpg",
+						size:    5000,
+						modTime: baseTime,
+					},
+				}
+				hash1 := entry.hash()
+
+				entry.imageFiles["cover.jpg"] = &fakeDirEntry{
+					name: "cover.jpg",
+					fileInfo: &fakeFileInfo{
+						name:    "cover.jpg",
+						size:    5000,
+						modTime: baseTime.Add(1 * time.Hour), // Different modtime
+					},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
 			It("produces valid hex-encoded hash", func() {
 				hash := entry.hash()
 				Expect(hash).To(HaveLen(32)) // MD5 hash should be 32 hex characters
@@ -386,9 +498,10 @@ var _ = Describe("folder_entry", func() {
 
 // fakeDirEntry implements fs.DirEntry for testing
 type fakeDirEntry struct {
-	name  string
-	isDir bool
-	typ   fs.FileMode
+	name     string
+	isDir    bool
+	typ      fs.FileMode
+	fileInfo fs.FileInfo
 }
 
 func (f *fakeDirEntry) Name() string {
@@ -404,6 +517,9 @@ func (f *fakeDirEntry) Type() fs.FileMode {
 }
 
 func (f *fakeDirEntry) Info() (fs.FileInfo, error) {
+	if f.fileInfo != nil {
+		return f.fileInfo, nil
+	}
 	return &fakeFileInfo{
 		name:  f.name,
 		isDir: f.isDir,

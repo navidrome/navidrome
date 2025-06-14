@@ -164,7 +164,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
-						log.Trace(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
+						log.Debug(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
 					}
 					totalChanged++
 					folder.elapsed.Stop()
@@ -439,7 +439,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 
 func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	logCall := log.Info
-	if entry.hasNoFiles() {
+	if entry.isEmpty() {
 		logCall = log.Trace
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",
