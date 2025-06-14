@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/pocketbase/dbx"
 )
 
@@ -151,7 +151,7 @@ func (r *libraryRepository) RefreshStats(id int) error {
 	var songsRes, albumsRes, artistsRes, foldersRes, filesRes, missingRes struct{ Count int64 }
 	var sizeRes struct{ Sum int64 }
 
-	err := chain.RunParallel(
+	err := run.Parallel(
 		func() error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": false}), &songsRes)
 		},

@@ -14,7 +14,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 )
 
 type scannerImpl struct {
@@ -75,7 +75,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		}
 	}
 
-	err = chain.RunSequentially(
+	err = run.Sequentially(
 		// Phase 1: Scan all libraries and import new/updated files
 		runPhase[*folderEntry](ctx, 1, createPhaseFolders(ctx, &state, s.ds, s.cw, libs)),
 
@@ -83,7 +83,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		runPhase[*missingTracks](ctx, 2, createPhaseMissingTracks(ctx, &state, s.ds)),
 
 		// Phases 3 and 4 can be run in parallel
-		chain.RunParallel(
+		run.Parallel(
 			// Phase 3: Refresh all new/changed albums and update artists
 			runPhase[*model.Album](ctx, 3, createPhaseRefreshAlbums(ctx, &state, s.ds, libs)),
 

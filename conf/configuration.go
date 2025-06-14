@@ -14,7 +14,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/chain"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/robfig/cron/v3"
 	"github.com/spf13/viper"
 )
@@ -287,7 +287,7 @@ func Load(noConfigDump bool) {
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
 
-	err = chain.RunSequentially(
+	err = run.Sequentially(
 		validateScanSchedule,
 		validateBackupSchedule,
 		validatePlaylistsPath,
