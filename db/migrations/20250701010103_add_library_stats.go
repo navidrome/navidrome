@@ -21,7 +21,9 @@ alter table library add column total_folders integer default 0 not null;
     alter table library add column total_missing_files integer default 0 not null;
     alter table library add column total_size integer default 0 not null;
 update library set
-    total_songs = (select count(*) from media_file where library_id = library.id),
+    total_songs = (
+        select count(*) from media_file where library_id = library.id and missing = 0
+    ),
     total_albums = (select count(*) from album where library_id = library.id),
     total_artists = (select count(*) from library_artist where library_id = library.id),
     total_folders = (select count(*) from folder where library_id = library.id and missing = 0),
