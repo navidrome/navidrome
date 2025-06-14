@@ -35,4 +35,8 @@ func (m *MockLibraryRepo) GetPath(id int) (string, error) {
 	return "", model.ErrNotFound
 }
 
+func (m *MockLibraryRepo) RefreshStats(id int) error {
+	return nil
+}
+
 var _ model.LibraryRepository = &MockLibraryRepo{}

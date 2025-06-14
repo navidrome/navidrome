@@ -100,7 +100,7 @@ func (s *scannerImpl) scanAll(ctx context.Context, fullScan bool, progress chan<
 		s.runRefreshStats(ctx, &state),
 
 		// Update last_scan_completed_at for all libraries
-		s.runUpdateLibraries(ctx, libs),
+		s.runUpdateLibraries(ctx, libs, &state),
 
 		// Optimize DB
 		s.runOptimize(ctx),
@@ -175,8 +175,9 @@ func (s *scannerImpl) runOptimize(ctx context.Context) func() error {
 	}
 }
 
-func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries) func() error {
+func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Libraries, state *scanState) func() error {
 	return func() error {
+		start := time.Now()
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			for _, lib := range libs {
 				err := tx.Library(ctx).ScanEnd(lib.ID)
@@ -194,7 +195,17 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, libs model.Librari
 					log.Error(ctx, "Scanner: Error updating album PID conf", err)
 					return fmt.Errorf("updating album PID conf: %w", err)
 				}
+				if state.changesDetected.Load() {
+					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
+					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
+						log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
+						return fmt.Errorf("refreshing library stats: %w", err)
+					}
+				} else {
+					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)
+				}
 			}
+			log.Debug(ctx, "Scanner: Updated libraries after scan", "elapsed", time.Since(start), "numLibraries", len(libs))
 			return nil
 		}, "scanner: update libraries")
 	}
