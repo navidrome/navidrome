@@ -9,7 +9,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/request"
 )
 
 // sensitiveFieldsPartialMask contains configuration field names that should be redacted
@@ -99,11 +98,6 @@ func applySensitiveFieldMasking(ctx context.Context, config map[string]interface
 
 func getConfig(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	user, _ := request.UserFrom(ctx)
-	if !user.IsAdmin {
-		http.Error(w, "Config endpoint is only available to admin users", http.StatusUnauthorized)
-		return
-	}
 
 	// Marshal the actual configuration struct to preserve original field names
 	configBytes, err := json.Marshal(*conf.Server)
