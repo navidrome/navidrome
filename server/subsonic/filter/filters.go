@@ -108,14 +108,13 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	return addDefaultFilters(options)
 }
 
-func SongWithLyrics(artist, title string) Options {
+func SongWithArtistTitle(artist, title string) Options {
 	return addDefaultFilters(Options{
 		Sort:  "updated_at",
 		Order: "desc",
 		Max:   1,
 		Filters: And{
 			Eq{"title": title},
-			NotEq{"lyrics": "[]"},
 			Or{
 				persistence.Exists("json_tree(participants, '$.albumartist')", Eq{"value": artist}),
 				persistence.Exists("json_tree(participants, '$.artist')", Eq{"value": artist}),
