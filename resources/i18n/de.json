@@ -2,7 +2,7 @@
   "languageName": "Deutsch",
   "resources": {
     "song": {
-      "name": "Song |||| Songs",
+      "name": "Titel |||| Titel",
       "fields": {
         "albumArtist": "Albuminterpret",
         "duration": "Dauer",
@@ -44,7 +44,8 @@
         "shuffleAll": "Zufallswiedergabe",
         "download": "Herunterladen",
         "playNext": "Als nächstes abspielen",
-        "info": "Mehr Informationen"
+        "info": "Mehr Informationen",
+        "showInPlaylist": "In Wiedergabeliste anzeigen"
       }
     },
     "album": {
@@ -124,6 +125,11 @@
         "remixer": "Remixer |||| Remixer",
         "djmixer": "DJ Mixer |||| DJ Mixer",
         "performer": "ausübender Künstler |||| ausübende Künstler"
+      },
+      "actions": {
+        "shuffle": "Zufallswiedergabe",
+        "radio": "Radio",
+        "topSongs": "Beliebteste Titel"
       }
     },
     "user": {
@@ -197,11 +203,17 @@
         "export": "Exportieren",
         "makePublic": "Öffentlich machen",
         "makePrivate": "Privat stellen",
-        "saveQueue": "Warteschlange in Wiedergabeliste speichern"
+        "saveQueue": "Warteschlange in Wiedergabeliste speichern",
+        "searchOrCreate": "Wiedergabeliste suchen oder neue erstellen...",
+        "pressEnterToCreate": "Enter drücken um neue Wiedergabeliste zu erstellen",
+        "removeFromSelection": "Von Auswahl entfernen",
+        "removeSymbol": "×"
       },
       "message": {
         "duplicate_song": "Duplikate hinzufügen",
-        "song_exist": "Manche Titel sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?"
+        "song_exist": "Manche Titel sind bereits in der Playlist. Möchtest du sie trotzdem hinzufügen oder überspringen?",
+        "noPlaylistsFound": "Keine Wiedergabeliste gefunden",
+        "noPlaylists": "Keine Wiedergabelisten vorhanden"
       }
     },
     "radio": {
@@ -430,7 +442,9 @@
     "remove_missing_title": "Fehlende Dateien entfernen",
     "remove_missing_content": "Möchtest du die ausgewählten Fehlenden Dateien wirklich aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
     "remove_all_missing_title": "Alle fehlenden Dateien entfernen",
-    "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht."
+    "remove_all_missing_content": "Möchtest du wirklich alle Fehlenden Dateien aus der Datenbank entfernen? Alle Referenzen zu den Dateien wie Anzahl Wiedergaben und Bewertungen werden permanent gelöscht.",
+    "noSimilarSongsFound": "Keine ähnlichen Titel gefunden",
+    "noTopSongsFound": "Keine beliebten Titel gefunden"
   },
   "menu": {
     "library": "Bibliothek",
@@ -462,7 +476,7 @@
     "sharedPlaylists": "Geteilte Wiedergabelisten"
   },
   "player": {
-    "playListsText": "Wiedergabeliste abspielen",
+    "playListsText": "Warteschlange abspielen",
     "openText": "Öffnen",
     "closeText": "Schließen",
     "notContentText": "Keine Musik",
@@ -496,6 +510,21 @@
         "disabled": "Deaktiviert",
         "waiting": "Warten"
       }
+    },
+    "tabs": {
+      "about": "Über",
+      "config": "Konfiguration"
+    },
+    "config": {
+      "configName": "Einstellung",
+      "environmentVariable": "Umbegungsvariable",
+      "currentValue": "Wert",
+      "configurationFile": "Konfigurationsdatei",
+      "exportToml": "Konfiguration exportieren (TOML)",
+      "exportSuccess": "Konfiguration im TOML Format in die Zwischenablage kopiert",
+      "exportFailed": "Fehler beim Kopieren der Konfiguration",
+      "devFlagsHeader": "Entwicklungseinstellungen (können sich ändern)",
+      "devFlagsComment": "Experimentelle Einstellungen, die eventuell in Zukunft entfernt oder geändert werden"
     }
   },
   "activity": {
@@ -522,5 +551,10 @@
       "toggle_love": "Titel zu Favoriten hinzufügen",
       "current_song": "Aktuellen Titel Anzeigen"
     }
+  },
+  "nowPlaying": {
+    "title": "Aktuelle Wiedergabe",
+    "empty": "Keine Wiedergabe",
+    "minutesAgo": "Vor %{smart_count} Minute |||| Vor %{smart_count} Minuten"
   }
 }
