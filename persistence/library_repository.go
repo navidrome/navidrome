@@ -167,7 +167,7 @@ func (r *libraryRepository) ScanInProgress() (bool, error) {
 
 func (r *libraryRepository) RefreshStats(id int) error {
 	var songsRes, albumsRes, artistsRes, foldersRes, filesRes, missingRes struct{ Count int64 }
-	var sizeRes struct{ Sum int64 }
+	var sizeRes, durationRes struct{ Sum int64 }
 
 	err := run.Parallel(
 		func() error {
@@ -193,6 +193,9 @@ func (r *libraryRepository) RefreshStats(id int) error {
 		func() error {
 			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
 		},
+		func() error {
+			return r.queryOne(Select("ifnull(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
+		},
 	)()
 	if err != nil {
 		return err
@@ -206,6 +209,7 @@ func (r *libraryRepository) RefreshStats(id int) error {
 		Set("total_files", filesRes.Count).
 		Set("total_missing_files", missingRes.Count).
 		Set("total_size", sizeRes.Sum).
+		Set("total_duration", durationRes.Sum).
 		Set("updated_at", time.Now()).
 		Where(Eq{"id": id})
 	_, err = r.executeSQL(sq)
