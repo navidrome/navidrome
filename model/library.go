@@ -21,6 +21,7 @@ type Library struct {
 	TotalFiles         int       `json:"totalFiles"`
 	TotalMissingFiles  int       `json:"totalMissingFiles"`
 	TotalSize          int64     `json:"totalSize"`
+	TotalDuration      int       `json:"totalDuration"`
 }
 
 type Libraries []Library

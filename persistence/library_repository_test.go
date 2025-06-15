@@ -31,7 +31,7 @@ var _ = Describe("LibraryRepository", func() {
 		Expect(libAfter.UpdatedAt).To(BeTemporally(">", libBefore.UpdatedAt))
 
 		var songsRes, albumsRes, artistsRes, foldersRes, filesRes, missingRes struct{ Count int64 }
-		var sizeRes struct{ Sum int64 }
+		var sizeRes, durationRes struct{ Sum int64 }
 
 		Expect(conn.NewQuery("select count(*) as count from media_file where library_id = {:id} and missing = 0").Bind(dbx.Params{"id": 1}).One(&songsRes)).To(Succeed())
 		Expect(conn.NewQuery("select count(*) as count from album where library_id = {:id} and missing = 0").Bind(dbx.Params{"id": 1}).One(&albumsRes)).To(Succeed())
@@ -40,6 +40,7 @@ var _ = Describe("LibraryRepository", func() {
 		Expect(conn.NewQuery("select ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count from folder where library_id = {:id} and missing = 0").Bind(dbx.Params{"id": 1}).One(&filesRes)).To(Succeed())
 		Expect(conn.NewQuery("select count(*) as count from media_file where library_id = {:id} and missing = 1").Bind(dbx.Params{"id": 1}).One(&missingRes)).To(Succeed())
 		Expect(conn.NewQuery("select ifnull(sum(size),0) as sum from album where library_id = {:id} and missing = 0").Bind(dbx.Params{"id": 1}).One(&sizeRes)).To(Succeed())
+		Expect(conn.NewQuery("select ifnull(sum(duration),0) as sum from album where library_id = {:id} and missing = 0").Bind(dbx.Params{"id": 1}).One(&durationRes)).To(Succeed())
 
 		Expect(libAfter.TotalSongs).To(Equal(int(songsRes.Count)))
 		Expect(libAfter.TotalAlbums).To(Equal(int(albumsRes.Count)))
@@ -48,5 +49,6 @@ var _ = Describe("LibraryRepository", func() {
 		Expect(libAfter.TotalFiles).To(Equal(int(filesRes.Count)))
 		Expect(libAfter.TotalMissingFiles).To(Equal(int(missingRes.Count)))
 		Expect(libAfter.TotalSize).To(Equal(sizeRes.Sum))
+		Expect(libAfter.TotalDuration).To(Equal(int(durationRes.Sum)))
 	})
 })
