@@ -45,9 +45,17 @@ var _ = Describe("MediaRetrievalController", func() {
 			_, err := router.GetCoverArt(w, r)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(artwork.recvId).To(Equal("34"))
 			Expect(artwork.recvSize).To(Equal(128))
 			Expect(artwork.recvSquare).To(BeTrue())
+			Expect(w.Body.String()).To(Equal(artwork.data))
+		})
+
+		It("should return placeholder if id parameter is missing (mimicking Subsonic)", func() {
+			r := newGetRequest() // No id parameter
+			_, err := router.GetCoverArt(w, r)
+
+			Expect(err).To(BeNil())
+			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
 		})
 
