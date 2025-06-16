@@ -332,10 +332,10 @@ func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, 
 			cmp.Compare(a.Lyrics, b.Lyrics),
 			cmp.Compare(a.UpdatedAt.Unix(), b.UpdatedAt.Unix()),
 		)
-		if opts[0].Order == "asc" {
-			return diff
+		if opts[0].Order == "desc" {
+			return -diff
 		}
-		return -diff
+		return diff
 	})
 	return result, nil
 }
