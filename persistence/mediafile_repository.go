@@ -79,6 +79,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"album_artist": "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
 		"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
 		"random":       "random",
+		"lyrics":       "lyrics != '[]'",
 		"created_at":   "media_file.created_at",
 		"starred_at":   "starred, starred_at",
 	})
@@ -154,16 +155,6 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
-	if err != nil {
-		return nil, err
-	}
-	return res.toModels(), nil
-}
-
-func (r *mediaFileRepository) GetAllByLyrics(options ...model.QueryOptions) (model.MediaFiles, error) {
-	sq := r.selectMediaFile(options...).Column("lyrics != '[]'").OrderBy("lyrics desc")
-	var res dbMediaFiles
-	err := r.queryAll(sq, &res)
 	if err != nil {
 		return nil, err
 	}

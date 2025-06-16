@@ -313,11 +313,12 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 	m.data = mfs
 }
 
-func (m *mockedMediaFile) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
-	return m.data, nil
-}
+func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
+	if len(opts) == 0 || opts[0].Sort != "lyrics,updated_at" {
+		return m.data, nil
+	}
 
-func (m *mockedMediaFile) GetAllByLyrics(...model.QueryOptions) (model.MediaFiles, error) {
+	// hardcoded support for lyrics sorting
 	result := m.data
 	// Sort by presence of lyrics, and then by id
 	slices.SortFunc(result, func(a, b model.MediaFile) int {
