@@ -22,7 +22,8 @@ var _ = Describe("client", func() {
 
 	Describe("ArtistImages", func() {
 		It("returns artist images from a successful request", func() {
-			f, _ := os.Open("tests/fixtures/deezer.search.artist.json")
+			f, err := os.Open("tests/fixtures/deezer.search.artist.json")
+			Expect(err).To(BeNil())
 			httpClient.mock("https://api.deezer.com/search/artist", http.Response{Body: f, StatusCode: 200})
 
 			artists, err := client.searchArtists(context.TODO(), "Michael Jackson", 20)

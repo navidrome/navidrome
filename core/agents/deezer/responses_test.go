@@ -12,8 +12,9 @@ var _ = Describe("Responses", func() {
 	Describe("Search type=artist", func() {
 		It("parses the artist search result correctly ", func() {
 			var resp SearchArtistResults
-			body, _ := os.ReadFile("tests/fixtures/deezer.search.artist.json")
-			err := json.Unmarshal(body, &resp)
+			body, err := os.ReadFile("tests/fixtures/deezer.search.artist.json")
+			Expect(err).To(BeNil())
+			err = json.Unmarshal(body, &resp)
 			Expect(err).To(BeNil())
 
 			Expect(resp.Data).To(HaveLen(17))
