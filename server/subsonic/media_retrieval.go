@@ -98,7 +98,7 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	lyricsResponse := responses.Lyrics{}
 	response.Lyrics = &lyricsResponse
-	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongWithArtistTitle(artist, title))
+	mediaFiles, err := api.ds.MediaFile(r.Context()).GetAll(filter.SongsByArtistTitleWithLyricsFirst(artist, title))
 
 	if err != nil {
 		return nil, err
