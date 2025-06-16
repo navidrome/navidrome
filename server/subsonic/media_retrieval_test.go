@@ -86,22 +86,26 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
+			baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 			mockRepo.SetData(model.MediaFiles{
 				{
-					ID:     "2",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
+					ID:        "2",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					UpdatedAt: baseTime.Add(2 * time.Hour), // No lyrics, newer
 				},
 				{
-					ID:     "1",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJson),
+					ID:        "1",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					Lyrics:    string(lyricsJson),
+					UpdatedAt: baseTime.Add(1 * time.Hour), // Has lyrics, older
 				},
 				{
-					ID:     "3",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
+					ID:        "3",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					UpdatedAt: baseTime.Add(3 * time.Hour), // No lyrics, newest
 				},
 			})
 			response, err := router.GetLyrics(r)
@@ -314,7 +318,7 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 }
 
 func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
-	if len(opts) == 0 || opts[0].Sort != "has_lyrics" {
+	if len(opts) == 0 || opts[0].Sort != "lyrics, updated_at" {
 		return m.data, nil
 	}
 
@@ -322,18 +326,20 @@ func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, 
 	result := m.data
 	// Sort by presence of lyrics, and then by id
 	slices.SortFunc(result, func(a, b model.MediaFile) int {
-		aHasLyrics := a.Lyrics != "[]"
-		bHasLyrics := b.Lyrics != "[]"
+		lyricsDiff := cmp.Compare(a.Lyrics, b.Lyrics)
 
-		if aHasLyrics && bHasLyrics {
-			return cmp.Compare(a.ID, b.ID)
+		if lyricsDiff != 0 {
+			if opts[0].Order == "asc" {
+				return lyricsDiff
+			}
+			return -lyricsDiff
 		}
 
-		if aHasLyrics {
-			return -1
-		} else {
-			return 1
+		timeDiff := cmp.Compare(a.UpdatedAt.Unix(), b.UpdatedAt.Unix())
+		if opts[0].Order == "asc" {
+			return timeDiff
 		}
+		return -timeDiff
 	})
 	return result, nil
 }

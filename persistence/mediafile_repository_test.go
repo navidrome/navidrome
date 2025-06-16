@@ -41,7 +41,7 @@ var _ = Describe("MediaRepository", func() {
 	It("returns songs ordered by lyrics with a specific title/artist", func() {
 		// attempt to mimic filters.SongByArtistTitle, except we want all items
 		results, err := mr.GetAll(model.QueryOptions{
-			Sort:  "has_lyrics",
+			Sort:  "lyrics, updated_at",
 			Order: "desc",
 			Filters: squirrel.And{
 				squirrel.Eq{"title": "Antenna"},
