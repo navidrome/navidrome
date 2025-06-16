@@ -38,6 +38,9 @@ func mf(mf model.MediaFile) model.MediaFile {
 			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
 		},
 	}
+	if mf.Lyrics == "" {
+		mf.Lyrics = "[]"
+	}
 	return mf
 }
 
@@ -78,11 +81,22 @@ var (
 		Path:        p("/kraft/radio/antenna.mp3"),
 		RGAlbumGain: 1.0, RGAlbumPeak: 2.0, RGTrackGain: 3.0, RGTrackPeak: 4.0,
 	})
-	testSongs = model.MediaFiles{
+	songAntennaWithLyrics = mf(model.MediaFile{
+		ID:       "1005",
+		Title:    "Antenna",
+		ArtistID: "2",
+		Artist:   "Kraftwerk",
+		AlbumID:  "103",
+		Lyrics:   `[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`,
+	})
+	songAntenna2 = mf(model.MediaFile{ID: "1006", Title: "Antenna", ArtistID: "2", Artist: "Kraftwerk", AlbumID: "103"})
+	testSongs    = model.MediaFiles{
 		songDayInALife,
 		songComeTogether,
 		songRadioactivity,
 		songAntenna,
+		songAntennaWithLyrics,
+		songAntenna2,
 	}
 )
 
