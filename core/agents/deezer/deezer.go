@@ -39,7 +39,7 @@ func (s *deezerAgent) AgentName() string {
 	return deezerAgentName
 }
 
-func (s *deezerAgent) GetArtistImages(ctx context.Context, id, name, mbid string) ([]agents.ExternalImage, error) {
+func (s *deezerAgent) GetArtistImages(ctx context.Context, _, name, _ string) ([]agents.ExternalImage, error) {
 	artist, err := s.searchArtist(ctx, name)
 	if err != nil {
 		if errors.Is(err, agents.ErrNotFound) {
