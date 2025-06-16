@@ -161,7 +161,7 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 }
 
 func (r *mediaFileRepository) GetAllByLyrics(options ...model.QueryOptions) (model.MediaFiles, error) {
-	sq := r.selectMediaFile().Column("lyrics != '[]'").OrderBy("lyrics desc")
+	sq := r.selectMediaFile(options...).Column("lyrics != '[]'").OrderBy("lyrics desc")
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res)
 	if err != nil {

@@ -45,7 +45,6 @@ var _ = Describe("MediaRepository", func() {
 			Order: "desc",
 			Filters: squirrel.And{
 				squirrel.Eq{"title": "Antenna"},
-				squirrel.NotEq{"lyrics": "[]"},
 				squirrel.Or{
 					Exists("json_tree(participants, '$.albumartist')", squirrel.Eq{"value": "Kraftwerk"}),
 					Exists("json_tree(participants, '$.artist')", squirrel.Eq{"value": "Kraftwerk"}),
