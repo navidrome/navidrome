@@ -15,10 +15,10 @@ import (
 )
 
 const deezerAgentName = "deezer"
-const DEEZER_API_PICTURE_XL_SIZE = 1000
-const DEEZER_API_PICTURE_BIG_SIZE = 500
-const DEEZER_API_PICTURE_MEDIUM_SIZE = 250
-const DEEZER_API_PICTURE_SMALL_SIZE = 56
+const deezerApiPictureXlSize = 1000
+const deezerApiPictureBigSize = 500
+const deezerApiPictureMediumSize = 250
+const deezerApiPictureSmallSize = 56
 
 type deezerAgent struct {
 	dataStore model.DataStore
@@ -51,22 +51,23 @@ func (s *deezerAgent) GetArtistImages(ctx context.Context, id, name, mbid string
 	}
 
 	var res []agents.ExternalImage
-	res = append(res, agents.ExternalImage{
-		URL:  artist.PictureXl,
-		Size: DEEZER_API_PICTURE_XL_SIZE,
-	})
-	res = append(res, agents.ExternalImage{
-		URL:  artist.PictureBig,
-		Size: DEEZER_API_PICTURE_BIG_SIZE,
-	})
-	res = append(res, agents.ExternalImage{
-		URL:  artist.PictureMedium,
-		Size: DEEZER_API_PICTURE_MEDIUM_SIZE,
-	})
-	res = append(res, agents.ExternalImage{
-		URL:  artist.PictureSmall,
-		Size: DEEZER_API_PICTURE_SMALL_SIZE,
-	})
+	possibleImages := []struct {
+		URL  string
+		Size int
+	}{
+		{artist.PictureXl, deezerApiPictureXlSize},
+		{artist.PictureBig, deezerApiPictureBigSize},
+		{artist.PictureMedium, deezerApiPictureMediumSize},
+		{artist.PictureSmall, deezerApiPictureSmallSize},
+	}
+	for _, imgData := range possibleImages {
+		if imgData.URL != "" {
+			res = append(res, agents.ExternalImage{
+				URL:  imgData.URL,
+				Size: imgData.Size,
+			})
+		}
+	}
 	return res, nil
 }
 
