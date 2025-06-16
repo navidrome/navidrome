@@ -39,7 +39,7 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("returns songs ordered by lyrics with a specific title/artist", func() {
-		// attempt to mimic filters.SongByArtistTitle, except we want all items
+		// attempt to mimic filters.SongsByArtistTitleWithLyricsFirst, except we want all items
 		results, err := mr.GetAll(model.QueryOptions{
 			Sort:  "lyrics, updated_at",
 			Order: "desc",

@@ -86,12 +86,13 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+			baseTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 			mockRepo.SetData(model.MediaFiles{
 				{
 					ID:        "2",
 					Artist:    "Rick Astley",
 					Title:     "Never Gonna Give You Up",
+					Lyrics:    "[]",
 					UpdatedAt: baseTime.Add(2 * time.Hour), // No lyrics, newer
 				},
 				{
@@ -105,6 +106,7 @@ var _ = Describe("MediaRetrievalController", func() {
 					ID:        "3",
 					Artist:    "Rick Astley",
 					Title:     "Never Gonna Give You Up",
+					Lyrics:    "[]",
 					UpdatedAt: baseTime.Add(3 * time.Hour), // No lyrics, newest
 				},
 			})
@@ -322,24 +324,18 @@ func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, 
 		return m.data, nil
 	}
 
-	// hardcoded support for lyrics sorting
-	result := m.data
-	// Sort by presence of lyrics, and then by id
+	// Hardcoded support for lyrics sorting
+	result := slices.Clone(m.data)
+	// Sort by presence of lyrics, then by updated_at. Respect the order specified in opts.
 	slices.SortFunc(result, func(a, b model.MediaFile) int {
-		lyricsDiff := cmp.Compare(a.Lyrics, b.Lyrics)
-
-		if lyricsDiff != 0 {
-			if opts[0].Order == "asc" {
-				return lyricsDiff
-			}
-			return -lyricsDiff
-		}
-
-		timeDiff := cmp.Compare(a.UpdatedAt.Unix(), b.UpdatedAt.Unix())
+		diff := cmp.Or(
+			cmp.Compare(a.Lyrics, b.Lyrics),
+			cmp.Compare(a.UpdatedAt.Unix(), b.UpdatedAt.Unix()),
+		)
 		if opts[0].Order == "asc" {
-			return timeDiff
+			return diff
 		}
-		return -timeDiff
+		return -diff
 	})
 	return result, nil
 }

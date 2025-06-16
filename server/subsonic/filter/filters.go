@@ -108,7 +108,7 @@ func SongsByRandom(genre string, fromYear, toYear int) Options {
 	return addDefaultFilters(options)
 }
 
-func SongByArtistTitle(artist, title string) Options {
+func SongsByArtistTitleWithLyricsFirst(artist, title string) Options {
 	return addDefaultFilters(Options{
 		Sort:  "lyrics, updated_at",
 		Order: "desc",
