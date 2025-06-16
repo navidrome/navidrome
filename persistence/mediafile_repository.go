@@ -79,7 +79,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"album_artist": "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
 		"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
 		"random":       "random",
-		"has_lyrics":   "lyrics != '[]'",
+		"has_lyrics":   "(lyrics != '[]'), updated_at",
 		"created_at":   "media_file.created_at",
 		"starred_at":   "starred, starred_at",
 	})
