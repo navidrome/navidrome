@@ -2,11 +2,13 @@ package subsonic
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http/httptest"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -84,12 +86,28 @@ var _ = Describe("MediaRetrievalController", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
+			baseTime := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 			mockRepo.SetData(model.MediaFiles{
 				{
-					ID:     "1",
-					Artist: "Rick Astley",
-					Title:  "Never Gonna Give You Up",
-					Lyrics: string(lyricsJson),
+					ID:        "2",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					Lyrics:    "[]",
+					UpdatedAt: baseTime.Add(2 * time.Hour), // No lyrics, newer
+				},
+				{
+					ID:        "1",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					Lyrics:    string(lyricsJson),
+					UpdatedAt: baseTime.Add(1 * time.Hour), // Has lyrics, older
+				},
+				{
+					ID:        "3",
+					Artist:    "Rick Astley",
+					Title:     "Never Gonna Give You Up",
+					Lyrics:    "[]",
+					UpdatedAt: baseTime.Add(3 * time.Hour), // No lyrics, newest
 				},
 			})
 			response, err := router.GetLyrics(r)
@@ -119,6 +137,12 @@ var _ = Describe("MediaRetrievalController", func() {
 				{
 					Path:   "tests/fixtures/test.mp3",
 					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+				},
+				{
+					Path:   "tests/fixtures/test.mp3",
+					ID:     "2",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
 				},
@@ -295,8 +319,25 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 	m.data = mfs
 }
 
-func (m *mockedMediaFile) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
-	return m.data, nil
+func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
+	if len(opts) == 0 || opts[0].Sort != "lyrics, updated_at" {
+		return m.data, nil
+	}
+
+	// Hardcoded support for lyrics sorting
+	result := slices.Clone(m.data)
+	// Sort by presence of lyrics, then by updated_at. Respect the order specified in opts.
+	slices.SortFunc(result, func(a, b model.MediaFile) int {
+		diff := cmp.Or(
+			cmp.Compare(a.Lyrics, b.Lyrics),
+			cmp.Compare(a.UpdatedAt.Unix(), b.UpdatedAt.Unix()),
+		)
+		if opts[0].Order == "desc" {
+			return -diff
+		}
+		return diff
+	})
+	return result, nil
 }
 
 func (m *mockedMediaFile) Get(id string) (*model.MediaFile, error) {
