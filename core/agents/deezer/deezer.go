@@ -19,6 +19,7 @@ const deezerApiPictureXlSize = 1000
 const deezerApiPictureBigSize = 500
 const deezerApiPictureMediumSize = 250
 const deezerApiPictureSmallSize = 56
+const deezerArtistSearchLimit = 50
 
 type deezerAgent struct {
 	dataStore model.DataStore
@@ -72,7 +73,7 @@ func (s *deezerAgent) GetArtistImages(ctx context.Context, _, name, _ string) ([
 }
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
-	artists, err := s.client.searchArtists(ctx, name, 50)
+	artists, err := s.client.searchArtists(ctx, name, deezerArtistSearchLimit)
 	if errors.Is(err, ErrNotFound) || len(artists) == 0 {
 		return nil, agents.ErrNotFound
 	}
