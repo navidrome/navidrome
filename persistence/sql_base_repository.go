@@ -140,8 +140,28 @@ func (r sqlRepository) sortMapping(sort string) string {
 	return sort
 }
 
+func (r sqlRepository) parseSortOrderItem(sort, order, reverse string) (string, string, string) {
+	sort = strings.TrimSpace(sort)
+	components := strings.FieldsFunc(sort, splitFunc(' '))
+
+	switch len(components) {
+	case 2:
+		switch components[1] {
+		case "desc":
+			return components[0], reverse, order
+		case "asc":
+			return components[0], order, reverse
+		}
+		fallthrough
+	default:
+		// either a single item (no sort), or some more complicated function
+		return sort, order, reverse
+	}
+}
+
 func (r sqlRepository) buildSortOrder(sort, order string) string {
-	sort = r.sortMapping(sort)
+	log.Error("buildSortOrder", "sort", sort, "order", order, "mapping", r.sortMappings)
+
 	order = strings.ToLower(strings.TrimSpace(order))
 	var reverseOrder string
 	if order == "desc" {
@@ -155,20 +175,14 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 	newSort := make([]string, 0, len(parts))
 
 	for _, p := range parts {
-		mapped := r.sortMapping(p)
-		f := strings.FieldsFunc(mapped, splitFunc(' '))
-		newField := make([]string, 1, len(f))
-		newField[0] = f[0]
-		if len(f) == 1 {
-			newField = append(newField, order)
-		} else {
-			if f[1] == "asc" {
-				newField = append(newField, order)
-			} else {
-				newField = append(newField, reverseOrder)
-			}
+		part, partOrder, partOrderReverse := r.parseSortOrderItem(p, order, reverseOrder)
+		mapped := r.sortMapping(part)
+		mappedParts := strings.FieldsFunc(mapped, splitFunc(','))
+
+		for _, m := range mappedParts {
+			field, fieldOrder, _ := r.parseSortOrderItem(m, partOrder, partOrderReverse)
+			newSort = append(newSort, field+" "+fieldOrder)
 		}
-		newSort = append(newSort, strings.Join(newField, " "))
 	}
 	return strings.Join(newSort, ", ")
 }

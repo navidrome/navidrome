@@ -136,6 +136,10 @@ var _ = Describe("sqlRepository", func() {
 	})
 
 	Describe("buildSortOrder", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{}
+		})
+
 		Context("single field", func() {
 			It("sorts by specified field", func() {
 				sql := r.buildSortOrder("name", "desc")
@@ -162,6 +166,28 @@ var _ = Describe("sqlRepository", func() {
 			It("inverts multiple fields", func() {
 				sql := r.buildSortOrder("name desc, age, status asc", "desc")
 				Expect(sql).To(Equal("name asc, age desc, status desc"))
+			})
+
+		})
+		Context("mapped fields", func() {
+			BeforeEach(func() {
+				r.sortMappings = map[string]string{
+					"name":       "title",
+					"field":      "artist asc, field desc",
+					"has_lyrics": "lyrics != '[]'",
+				}
+			})
+			It("handles multiple mapped fields", func() {
+				sql := r.buildSortOrder("name desc, age, field, has_lyrics", "asc")
+				Expect(sql).To(Equal("title desc, age asc, artist asc, field desc, lyrics != '[]' asc"))
+			})
+			It("inverts multiple mapped fields", func() {
+				sql := r.buildSortOrder("name desc, age, field, has_lyrics", "desc")
+				Expect(sql).To(Equal("title asc, age desc, artist desc, field asc, lyrics != '[]' desc"))
+			})
+			It("handles multiple mapped fields, double nested swap", func() {
+				sql := r.buildSortOrder("name desc, age, field desc", "desc")
+				Expect(sql).To(Equal("title asc, age desc, artist asc, field desc"))
 			})
 		})
 		Context("function fields", func() {
