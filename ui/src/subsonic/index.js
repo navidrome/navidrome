@@ -55,6 +55,16 @@ const startScan = (options) => httpClient(url('startScan', null, options))
 
 const getScanStatus = () => httpClient(url('getScanStatus'))
 
+const getNowPlaying = () => httpClient(url('getNowPlaying'))
+
+const getAvatarUrl = (username, size) =>
+  baseUrl(
+    url('getAvatar', null, {
+      username,
+      ...(size && { size }),
+    }),
+  )
+
 const getCoverArtUrl = (record, size, square) => {
   const options = {
     ...(record.updatedAt && { _: record.updatedAt }),
@@ -87,6 +97,10 @@ const getSimilarSongs2 = (id, count = 100) => {
   return httpClient(url('getSimilarSongs2', id, { count }))
 }
 
+const getTopSongs = (artist, count = 50) => {
+  return httpClient(url('getTopSongs', null, { artist, count }))
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -107,9 +121,12 @@ export default {
   setRating,
   startScan,
   getScanStatus,
+  getNowPlaying,
   getCoverArtUrl,
+  getAvatarUrl,
   streamUrl,
   getAlbumInfo,
   getArtistInfo,
+  getTopSongs,
   getSimilarSongs2,
 }

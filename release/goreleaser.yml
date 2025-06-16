@@ -25,7 +25,8 @@ builds:
 archives:
   - format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
 
 checksum:

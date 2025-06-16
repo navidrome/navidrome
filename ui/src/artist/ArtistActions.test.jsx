@@ -4,13 +4,13 @@ import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ArtistActions from './ArtistActions'
 import subsonic from '../subsonic'
-import { ThemeProvider, createMuiTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 
 const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
 
 vi.mock('../subsonic', () => ({
-  default: { getSimilarSongs2: vi.fn() },
+  default: { getSimilarSongs2: vi.fn(), getTopSongs: vi.fn() },
 }))
 
 const mockNotify = vi.fn()
@@ -27,8 +27,28 @@ vi.mock('react-admin', async (importOriginal) => {
 })
 
 describe('ArtistActions', () => {
+  const defaultRecord = { id: 'ar1', name: 'Artist' }
+
+  const renderArtistActions = (record = defaultRecord) => {
+    const theme = createTheme()
+    return render(
+      <TestContext>
+        <ThemeProvider theme={theme}>
+          <ArtistActions record={record} />
+        </ThemeProvider>
+      </TestContext>,
+    )
+  }
+
+  const clickActionButton = (actionKey) => {
+    fireEvent.click(screen.getByText(`resources.artist.actions.${actionKey}`))
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
+    // Mock console.error to suppress error logging in tests
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
     subsonic.getSimilarSongs2.mockResolvedValue({
       json: {
         'subsonic-response': {
@@ -37,43 +57,132 @@ describe('ArtistActions', () => {
         },
       },
     })
+    subsonic.getTopSongs.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          status: 'ok',
+          topSongs: { song: [{ id: 'rec1' }] },
+        },
+      },
+    })
   })
 
-  it('shuffles songs when Shuffle is clicked', async () => {
-    const theme = createMuiTheme()
-    render(
-      <TestContext>
-        <ThemeProvider theme={theme}>
-          <ArtistActions record={{ id: 'ar1' }} />
-        </ThemeProvider>
-      </TestContext>,
-    )
+  describe('Shuffle action', () => {
+    it('shuffles songs when clicked', async () => {
+      renderArtistActions()
+      clickActionButton('shuffle')
 
-    fireEvent.click(screen.getByText('resources.artist.actions.shuffle'))
-    await waitFor(() =>
-      expect(mockGetList).toHaveBeenCalledWith('song', {
-        pagination: { page: 1, perPage: 500 },
-        sort: { field: 'random', order: 'ASC' },
-        filter: { album_artist_id: 'ar1', missing: false },
-      }),
-    )
-    expect(mockDispatch).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(mockGetList).toHaveBeenCalledWith('song', {
+          pagination: { page: 1, perPage: 500 },
+          sort: { field: 'random', order: 'ASC' },
+          filter: { album_artist_id: 'ar1', missing: false },
+        }),
+      )
+      expect(mockDispatch).toHaveBeenCalled()
+    })
   })
 
-  it('starts radio when Radio is clicked', async () => {
-    const theme = createMuiTheme()
-    render(
-      <TestContext>
-        <ThemeProvider theme={theme}>
-          <ArtistActions record={{ id: 'ar1' }} />
-        </ThemeProvider>
-      </TestContext>,
-    )
+  describe('Radio action', () => {
+    it('starts radio when clicked', async () => {
+      renderArtistActions()
+      clickActionButton('radio')
 
-    fireEvent.click(screen.getByText('resources.artist.actions.radio'))
-    await waitFor(() =>
-      expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('ar1', 100),
-    )
-    expect(mockDispatch).toHaveBeenCalled()
+      await waitFor(() =>
+        expect(subsonic.getSimilarSongs2).toHaveBeenCalledWith('ar1', 100),
+      )
+      expect(mockDispatch).toHaveBeenCalled()
+    })
+  })
+
+  describe('Play action', () => {
+    it('plays top songs when clicked', async () => {
+      renderArtistActions()
+      clickActionButton('topSongs')
+
+      await waitFor(() =>
+        expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
+      )
+      expect(mockDispatch).toHaveBeenCalled()
+    })
+
+    it('handles API rejection', async () => {
+      subsonic.getTopSongs.mockRejectedValue(new Error('Network error'))
+
+      renderArtistActions()
+      clickActionButton('topSongs')
+
+      await waitFor(() =>
+        expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
+      )
+      expect(mockNotify).toHaveBeenCalledWith('ra.page.error', 'warning')
+      expect(mockDispatch).not.toHaveBeenCalled()
+    })
+
+    it('handles failed API response', async () => {
+      subsonic.getTopSongs.mockResolvedValue({
+        json: {
+          'subsonic-response': {
+            status: 'failed',
+            error: { code: 40, message: 'Wrong username or password' },
+          },
+        },
+      })
+
+      renderArtistActions()
+      clickActionButton('topSongs')
+
+      await waitFor(() =>
+        expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
+      )
+      expect(mockNotify).toHaveBeenCalledWith('ra.page.error', 'warning')
+      expect(mockDispatch).not.toHaveBeenCalled()
+    })
+
+    it('handles empty song list', async () => {
+      subsonic.getTopSongs.mockResolvedValue({
+        json: {
+          'subsonic-response': {
+            status: 'ok',
+            topSongs: { song: [] },
+          },
+        },
+      })
+
+      renderArtistActions()
+      clickActionButton('topSongs')
+
+      await waitFor(() =>
+        expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
+      )
+      expect(mockNotify).toHaveBeenCalledWith(
+        'message.noTopSongsFound',
+        'warning',
+      )
+      expect(mockDispatch).not.toHaveBeenCalled()
+    })
+
+    it('handles missing topSongs property', async () => {
+      subsonic.getTopSongs.mockResolvedValue({
+        json: {
+          'subsonic-response': {
+            status: 'ok',
+            // topSongs property is missing
+          },
+        },
+      })
+
+      renderArtistActions()
+      clickActionButton('topSongs')
+
+      await waitFor(() =>
+        expect(subsonic.getTopSongs).toHaveBeenCalledWith('Artist', 100),
+      )
+      expect(mockNotify).toHaveBeenCalledWith(
+        'message.noTopSongsFound',
+        'warning',
+      )
+      expect(mockDispatch).not.toHaveBeenCalled()
+    })
   })
 })

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -71,6 +72,13 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		pluginScrobblers:  make(map[string]Scrobbler),
 		pluginLoader:      pluginManager,
 	}
+	if conf.Server.EnableNowPlaying {
+		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
+			ctx := events.BroadcastToAll(context.Background())
+			broker.SendMessage(ctx, &events.NowPlayingCount{Count: m.Len()})
+		})
+	}
+
 	var enabled []string
 	for name, constructor := range constructors {
 		s := constructor(ds)
@@ -191,6 +199,10 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	// Add 5 seconds buffer to ensure the NowPlaying info is available slightly longer than the track duration.
 	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
+	if conf.Server.EnableNowPlaying {
+		ctx = events.BroadcastToAll(ctx)
+		p.broker.SendMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
+	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
 		p.dispatchNowPlaying(ctx, user.ID, mf, position)

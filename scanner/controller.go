@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -178,20 +177,14 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 }
 
 func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
-	count, err := s.ds.MediaFile(ctx).CountAll()
+	libs, err := s.ds.Library(ctx).GetAll()
 	if err != nil {
-		return 0, 0, fmt.Errorf("media file count: %w", err)
+		return 0, 0, fmt.Errorf("library count: %w", err)
 	}
-	folderCount, err := s.ds.Folder(ctx).CountAll(
-		model.QueryOptions{
-			Filters: squirrel.And{
-				squirrel.Gt{"num_audio_files": 0},
-				squirrel.Eq{"missing": false},
-			},
-		},
-	)
-	if err != nil {
-		return 0, 0, fmt.Errorf("folder count: %w", err)
+	var count, folderCount int64
+	for _, l := range libs {
+		count += int64(l.TotalSongs)
+		folderCount += int64(l.TotalFolders)
 	}
 	return count, folderCount, nil
 }

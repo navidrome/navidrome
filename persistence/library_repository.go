@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/run"
 	"github.com/pocketbase/dbx"
 )
 
@@ -144,6 +145,53 @@ func (r *libraryRepository) ScanInProgress() (bool, error) {
 	query := r.newSelect().Where(NotEq{"last_scan_started_at": time.Time{}})
 	count, err := r.count(query)
 	return count > 0, err
+}
+
+func (r *libraryRepository) RefreshStats(id int) error {
+	var songsRes, albumsRes, artistsRes, foldersRes, filesRes, missingRes struct{ Count int64 }
+	var sizeRes struct{ Sum int64 }
+
+	err := run.Parallel(
+		func() error {
+			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": false}), &songsRes)
+		},
+		func() error {
+			return r.queryOne(Select("count(*) as count").From("album").Where(Eq{"library_id": id, "missing": false}), &albumsRes)
+		},
+		func() error {
+			return r.queryOne(Select("count(*) as count").From("library_artist la").
+				Join("artist a on la.artist_id = a.id").
+				Where(Eq{"la.library_id": id, "a.missing": false}), &artistsRes)
+		},
+		func() error {
+			return r.queryOne(Select("count(*) as count").From("folder").Where(Eq{"library_id": id, "missing": false}), &foldersRes)
+		},
+		func() error {
+			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
+		},
+		func() error {
+			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)
+		},
+		func() error {
+			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
+		},
+	)()
+	if err != nil {
+		return err
+	}
+
+	sq := Update(r.tableName).
+		Set("total_songs", songsRes.Count).
+		Set("total_albums", albumsRes.Count).
+		Set("total_artists", artistsRes.Count).
+		Set("total_folders", foldersRes.Count).
+		Set("total_files", filesRes.Count).
+		Set("total_missing_files", missingRes.Count).
+		Set("total_size", sizeRes.Sum).
+		Set("updated_at", time.Now()).
+		Where(Eq{"id": id})
+	_, err = r.executeSQL(sq)
+	return err
 }
 
 func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, error) {

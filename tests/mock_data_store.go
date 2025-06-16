@@ -20,12 +20,13 @@ type MockDataStore struct {
 	MockedProperty       model.PropertyRepository
 	MockedPlayer         model.PlayerRepository
 	MockedPlaylist       model.PlaylistRepository
+	MockedPlayQueue      model.PlayQueueRepository
 	MockedShare          model.ShareRepository
 	MockedTranscoding    model.TranscodingRepository
 	MockedUserProps      model.UserPropsRepository
 	MockedScrobbleBuffer model.ScrobbleBufferRepository
 	MockedRadio          model.RadioRepository
-	mu                   sync.Mutex
+	scrobbleBufferMu     sync.Mutex
 }
 
 func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
@@ -117,10 +118,14 @@ func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository 
 }
 
 func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	if db.RealDS != nil {
-		return db.RealDS.PlayQueue(ctx)
+	if db.MockedPlayQueue == nil {
+		if db.RealDS != nil {
+			db.MockedPlayQueue = db.RealDS.PlayQueue(ctx)
+		} else {
+			db.MockedPlayQueue = &MockPlayQueueRepo{}
+		}
 	}
-	return struct{ model.PlayQueueRepository }{}
+	return db.MockedPlayQueue
 }
 
 func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepository {
@@ -190,8 +195,8 @@ func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
 }
 
 func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	db.scrobbleBufferMu.Lock()
+	defer db.scrobbleBufferMu.Unlock()
 	if db.MockedScrobbleBuffer == nil {
 		if db.RealDS != nil {
 			db.MockedScrobbleBuffer = db.RealDS.ScrobbleBuffer(ctx)

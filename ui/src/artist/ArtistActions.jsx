@@ -12,9 +12,9 @@ import {
   useTranslate,
 } from 'react-admin'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
+import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import { IoIosRadio } from 'react-icons/io'
-import { playTracks } from '../actions'
-import { playSimilar } from '../utils'
+import { playShuffle, playSimilar, playTopSongs } from './actions.js'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -53,21 +53,19 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const classes = useStyles()
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
 
+  const handlePlay = React.useCallback(async () => {
+    try {
+      await playTopSongs(dispatch, notify, record.name)
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Error fetching top songs for artist:', e)
+      notify('ra.page.error', 'warning')
+    }
+  }, [dispatch, notify, record])
+
   const handleShuffle = React.useCallback(async () => {
     try {
-      const res = await dataProvider.getList('song', {
-        pagination: { page: 1, perPage: 500 },
-        sort: { field: 'random', order: 'ASC' },
-        filter: { album_artist_id: record.id, missing: false },
-      })
-
-      const data = {}
-      const ids = []
-      res.data.forEach((s) => {
-        data[s.id] = s
-        ids.push(s.id)
-      })
-      dispatch(playTracks(data, ids))
+      await playShuffle(dataProvider, dispatch, record.id)
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Error fetching songs for shuffle:', e)
@@ -90,6 +88,14 @@ const ArtistActions = ({ className, record, ...rest }) => {
       className={`${className} ${classes.toolbar}`}
       {...sanitizeListRestProps(rest)}
     >
+      <Button
+        onClick={handlePlay}
+        label={translate('resources.artist.actions.topSongs')}
+        className={classes.button}
+        size={isMobile ? 'small' : 'medium'}
+      >
+        <PlayArrowIcon />
+      </Button>
       <Button
         onClick={handleShuffle}
         label={translate('resources.artist.actions.shuffle')}
