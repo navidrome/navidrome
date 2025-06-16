@@ -314,7 +314,7 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 }
 
 func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
-	if len(opts) == 0 || opts[0].Sort != "lyrics,updated_at" {
+	if len(opts) == 0 || opts[0].Sort != "has_lyrics,updated_at" {
 		return m.data, nil
 	}
 

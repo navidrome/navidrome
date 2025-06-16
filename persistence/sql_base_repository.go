@@ -153,8 +153,10 @@ func (r sqlRepository) buildSortOrder(sort, order string) string {
 
 	parts := strings.FieldsFunc(sort, splitFunc(','))
 	newSort := make([]string, 0, len(parts))
+
 	for _, p := range parts {
-		f := strings.FieldsFunc(p, splitFunc(' '))
+		mapped := r.sortMapping(p)
+		f := strings.FieldsFunc(mapped, splitFunc(' '))
 		newField := make([]string, 1, len(f))
 		newField[0] = f[0]
 		if len(f) == 1 {
