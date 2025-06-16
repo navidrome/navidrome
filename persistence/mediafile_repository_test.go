@@ -35,7 +35,28 @@ var _ = Describe("MediaRepository", func() {
 	})
 
 	It("counts the number of mediafiles in the DB", func() {
-		Expect(mr.CountAll()).To(Equal(int64(4)))
+		Expect(mr.CountAll()).To(Equal(int64(6)))
+	})
+
+	It("returns songs ordered by lyrcs", func() {
+		// attempt to mimic filters.SongWithArtistTitle, except we want all items
+		results, err := mr.GetAllByLyrics(model.QueryOptions{
+			Sort:  "updated_at",
+			Order: "desc",
+			Filters: squirrel.And{
+				squirrel.Eq{"title": "Antenna"},
+				squirrel.NotEq{"lyrics": "[]"},
+				squirrel.Or{
+					Exists("json_tree(participants, '$.albumartist')", squirrel.Eq{"value": "Kraftwerk"}),
+					Exists("json_tree(participants, '$.artist')", squirrel.Eq{"value": "Kraftwerk"}),
+				},
+			},
+		})
+
+		Expect(err).To(BeNil())
+		Expect(results[0].Lyrics).To(Equal(`[{"lang":"xxx","line":[{"value":"This is a set of lyrics"}],"synced":false}]`))
+		Expect(results[1].Lyrics).To(Equal("[]"))
+		Expect(results[2].Lyrics).To(Equal("[]"))
 	})
 
 	It("checks existence of mediafiles in the DB", func() {

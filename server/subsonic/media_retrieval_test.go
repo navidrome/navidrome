@@ -2,11 +2,13 @@ package subsonic
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http/httptest"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -86,10 +88,20 @@ var _ = Describe("MediaRetrievalController", func() {
 
 			mockRepo.SetData(model.MediaFiles{
 				{
+					ID:     "2",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+				},
+				{
 					ID:     "1",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
 					Lyrics: string(lyricsJson),
+				},
+				{
+					ID:     "3",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
 				},
 			})
 			response, err := router.GetLyrics(r)
@@ -119,6 +131,12 @@ var _ = Describe("MediaRetrievalController", func() {
 				{
 					Path:   "tests/fixtures/test.mp3",
 					ID:     "1",
+					Artist: "Rick Astley",
+					Title:  "Never Gonna Give You Up",
+				},
+				{
+					Path:   "tests/fixtures/test.mp3",
+					ID:     "2",
 					Artist: "Rick Astley",
 					Title:  "Never Gonna Give You Up",
 				},
@@ -297,6 +315,26 @@ func (m *mockedMediaFile) SetData(mfs model.MediaFiles) {
 
 func (m *mockedMediaFile) GetAll(...model.QueryOptions) (model.MediaFiles, error) {
 	return m.data, nil
+}
+
+func (m *mockedMediaFile) GetAllByLyrics(...model.QueryOptions) (model.MediaFiles, error) {
+	result := m.data
+	// Sort by presence of lyrics, and then by id
+	slices.SortFunc(result, func(a, b model.MediaFile) int {
+		aHasLyrics := a.Lyrics != "[]"
+		bHasLyrics := b.Lyrics != "[]"
+
+		if aHasLyrics && bHasLyrics {
+			return cmp.Compare(a.ID, b.ID)
+		}
+
+		if aHasLyrics {
+			return -1
+		} else {
+			return 1
+		}
+	})
+	return result, nil
 }
 
 func (m *mockedMediaFile) Get(id string) (*model.MediaFile, error) {

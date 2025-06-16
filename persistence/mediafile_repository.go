@@ -160,6 +160,16 @@ func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.Media
 	return res.toModels(), nil
 }
 
+func (r *mediaFileRepository) GetAllByLyrics(options ...model.QueryOptions) (model.MediaFiles, error) {
+	sq := r.selectMediaFile().Column("lyrics != '[]'").OrderBy("lyrics desc")
+	var res dbMediaFiles
+	err := r.queryAll(sq, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
 func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	sq := r.selectMediaFile(options...)
 	cursor, err := queryWithStableResults[dbMediaFile](r.sqlRepository, sq)
