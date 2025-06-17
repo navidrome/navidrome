@@ -53,9 +53,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.MbzAlbumType = md.String(model.TagReleaseType)
 
 	// ReplayGain
-	mf.RGAlbumPeak = md.FloatPointer(model.TagReplayGainAlbumPeak)
+	mf.RGAlbumPeak = md.NullableFloat(model.TagReplayGainAlbumPeak)
 	mf.RGAlbumGain = md.mapGain(model.TagReplayGainAlbumGain, model.TagR128AlbumGain)
-	mf.RGTrackPeak = md.FloatPointer(model.TagReplayGainTrackPeak)
+	mf.RGTrackPeak = md.NullableFloat(model.TagReplayGainTrackPeak)
 	mf.RGTrackGain = md.mapGain(model.TagReplayGainTrackGain, model.TagR128TrackGain)
 
 	// General properties
