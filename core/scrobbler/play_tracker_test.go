@@ -400,12 +400,12 @@ func (f *fakeScrobbler) NowPlaying(ctx context.Context, userId string, track *mo
 }
 
 func (f *fakeScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
+	f.UserID = userId
+	f.LastScrobble.Store(&s)
 	f.ScrobbleCalled.Store(true)
 	if f.Error != nil {
 		return f.Error
 	}
-	f.UserID = userId
-	f.LastScrobble.Store(&s)
 	return nil
 }
 
