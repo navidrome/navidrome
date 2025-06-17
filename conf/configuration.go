@@ -259,14 +259,9 @@ func Load(noConfigDump bool) {
 	if Server.Plugins.Folder == "" {
 		Server.Plugins.Folder = filepath.Join(Server.DataFolder, "plugins")
 	}
-	err = os.MkdirAll(Server.Plugins.Folder, os.ModePerm)
+	err = os.MkdirAll(Server.Plugins.Folder, 0700)
 	if err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error creating plugins path:", err)
-		os.Exit(1)
-	}
-	// Set restrictive permissions on plugins folder (user only)
-	if err := os.Chmod(Server.Plugins.Folder, 0700); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "FATAL: Error setting plugins folder permissions:", err)
 		os.Exit(1)
 	}
 

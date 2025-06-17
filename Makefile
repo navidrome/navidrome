@@ -232,7 +232,7 @@ plugin-examples: check_go_env ##@Development Build all example plugins
 
 plugin-tests: check_go_env ##@Development Build all test plugins
 	$(MAKE) -C plugins/testdata clean all
-.PHONY: plugin-examples
+.PHONY: plugin-tests
 
 .DEFAULT_GOAL := help
 
