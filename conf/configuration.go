@@ -213,8 +213,9 @@ type inspectOptions struct {
 }
 
 type pluginsOptions struct {
-	Enabled bool
-	Folder  string
+	Enabled   bool
+	Folder    string
+	CacheSize string
 }
 
 var (
@@ -566,6 +567,7 @@ func setViperDefaults() {
 	viper.SetDefault("inspect.backlogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("plugins.folder", "")
 	viper.SetDefault("plugins.enabled", false)
+	viper.SetDefault("plugins.cachesize", "100MB")
 
 	// DevFlags. These are used to enable/disable debugging and incomplete features
 	viper.SetDefault("devlogsourceline", false)

@@ -73,10 +73,11 @@ var (
 func getCompilationCache() wazero.CompilationCache {
 	cacheOnce.Do(func() {
 		cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
+		purgeCacheBySize(cacheDir, conf.Server.Plugins.CacheSize)
 		var err error
 		compilationCache, err = wazero.NewCompilationCacheWithDir(cacheDir)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to create wazero compilation cache: %v", err))
+			log.Error("Failed to create plugins compilation cache", err)
 		}
 	})
 	return compilationCache
@@ -378,7 +379,7 @@ func (m *Manager) ScanPlugins() {
 		return
 	}
 	// Get compilation cache to speed up WASM module loading
-	cache := getCompilationCache()
+	ccache := getCompilationCache()
 
 	// Clear existing plugins
 	m.mu.Lock()
@@ -387,7 +388,7 @@ func (m *Manager) ScanPlugins() {
 	m.mu.Unlock()
 
 	// Process each directory in the plugins folder
-	log.Debug("Found entries", "count", len(entries))
+	log.Debug("Found entries in plugin directory", "count", len(entries), "entries", slice.Map(entries, func(e os.DirEntry) string { return e.Name() }))
 	for _, entry := range entries {
 		name := entry.Name()
 		pluginDir := filepath.Join(root, name)
@@ -473,7 +474,7 @@ func (m *Manager) ScanPlugins() {
 		log.Debug("Manifest loaded successfully", "name", manifest.Name, "capabilities", manifest.Capabilities)
 
 		// Register the plugin
-		m.registerPlugin(pluginDir, wasmPath, manifest, cache)
+		m.registerPlugin(pluginDir, wasmPath, manifest, ccache)
 	}
 }
 
