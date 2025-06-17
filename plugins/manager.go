@@ -270,6 +270,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 		}
 
 		// Load only permitted services
+		var grantedPermissions []string
 		var libraries []map[string]wazeroapi.FunctionDefinition
 		for _, service := range availableServices {
 			if _, hasPermission := permissions[service.name]; hasPermission {
@@ -278,8 +279,10 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 					return nil, fmt.Errorf("error loading %s lib: %w", service.name, err)
 				}
 				libraries = append(libraries, lib)
+				grantedPermissions = append(grantedPermissions, service.name)
 			}
 		}
+		log.Trace(ctx, "Granting permissions for plugin", "plugin", pluginName, "permissions", grantedPermissions)
 
 		// Combine the permitted libraries
 		if err := m.combineLibraries(ctx, r, libraries...); err != nil {

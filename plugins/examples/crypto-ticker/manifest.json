@@ -9,8 +9,14 @@
     "SchedulerCallback"
   ],
   "permissions": {
-    "config": {},
-    "scheduler": {},
-    "websocket": {}
+    "config": {
+      "reason": "To read API configuration and WebSocket endpoint settings"
+    },
+    "scheduler": {
+      "reason": "To schedule periodic reconnection attempts and status updates"
+    },
+    "websocket": {
+      "reason": "To connect to Coinbase WebSocket API for real-time cryptocurrency prices"
+    }
   }
 }

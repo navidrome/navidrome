@@ -5,11 +5,23 @@
   "description": "Discord Rich Presence integration for Navidrome",
   "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"],
   "permissions": {
-    "config": {},
-    "artwork": {},
-    "scheduler": {},
-    "websocket": {},
-    "http": {},
-    "cache": {}
+    "config": {
+      "reason": "To read Discord application ID and Rich Presence configuration settings"
+    },
+    "artwork": {
+      "reason": "To generate public URLs for album/artist artwork to display in Discord"
+    },
+    "scheduler": {
+      "reason": "To schedule periodic presence updates and handle connection timeouts"
+    },
+    "websocket": {
+      "reason": "To connect to Discord Gateway for real-time Rich Presence updates"
+    },
+    "http": {
+      "reason": "To communicate with Discord API for authentication and presence management"
+    },
+    "cache": {
+      "reason": "To cache Discord session tokens and avoid redundant API calls"
+    }
   }
 }

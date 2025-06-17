@@ -5,6 +5,8 @@
   "description": "Album cover art from the Cover Art Archive",
   "capabilities": ["MetadataAgent"],
   "permissions": {
-    "http": {}
+    "http": {
+      "reason": "To fetch album cover art from the Cover Art Archive API"
+    }
   }
 }

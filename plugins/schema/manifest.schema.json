@@ -50,27 +50,81 @@
       "properties": {
         "http": {
           "type": "object",
-          "description": "HTTP service permissions"
+          "description": "HTTP service permissions",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Explanation of why HTTP access is needed"
+            }
+          },
+          "additionalProperties": false
         },
         "config": {
           "type": "object",
-          "description": "Configuration service permissions"
+          "description": "Configuration service permissions",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Explanation of why configuration access is needed"
+            }
+          },
+          "additionalProperties": false
         },
         "scheduler": {
           "type": "object",
-          "description": "Scheduler service permissions"
+          "description": "Scheduler service permissions",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Explanation of why scheduler access is needed"
+            }
+          },
+          "additionalProperties": false
         },
         "websocket": {
           "type": "object",
-          "description": "WebSocket service permissions"
+          "description": "WebSocket service permissions",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Explanation of why WebSocket access is needed"
+            }
+          },
+          "additionalProperties": false
         },
         "cache": {
           "type": "object",
-          "description": "Cache service permissions"
+          "description": "Cache service permissions",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Explanation of why cache access is needed"
+            }
+          },
+          "additionalProperties": false
         },
         "artwork": {
           "type": "object",
-          "description": "Artwork service permissions"
+          "description": "Artwork service permissions",
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Explanation of why artwork service access is needed"
+            }
+          },
+          "additionalProperties": false
         }
       }
     }

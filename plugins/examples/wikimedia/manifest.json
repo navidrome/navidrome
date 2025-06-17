@@ -5,6 +5,8 @@
   "description": "Artist information and images from Wikimedia Commons",
   "capabilities": ["MetadataAgent"],
   "permissions": {
-    "http": {}
+    "http": {
+      "reason": "To fetch artist information and images from Wikimedia Commons API"
+    }
   }
 }

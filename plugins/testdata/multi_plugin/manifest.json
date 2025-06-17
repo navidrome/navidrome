@@ -5,6 +5,8 @@
   "description": "Test data for multiple services",
   "capabilities": ["MetadataAgent", "SchedulerCallback", "LifecycleManagement"],
   "permissions": {
-    "scheduler": {}
+    "scheduler": {
+      "reason": "For testing scheduled callback functionality"
+    }
   }
 }

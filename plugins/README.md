@@ -246,13 +246,26 @@ Permissions are declared in the plugin's `manifest.json` file using the `permiss
   "description": "A plugin that fetches data and caches results",
   "capabilities": ["MetadataAgent"],
   "permissions": {
-    "http": {},
-    "cache": {}
+    "http": {
+      "reason": "To fetch metadata from external APIs"
+    },
+    "cache": {
+      "reason": "To cache API responses and reduce rate limiting"
+    }
   }
 }
 ```
 
-Each permission is represented as a key in the permissions object. The value must be an empty object `{}` for basic access (additional configuration may be supported in the future). If no permissions are needed, use an empty permissions object: `"permissions": {}`.
+Each permission is represented as a key in the permissions object. The value must be an object containing a `reason` field that explains why the permission is needed.
+
+**Security Benefits of Required Reasons:**
+
+- **Transparency**: Users can see exactly what each plugin will do with its permissions
+- **Security Auditing**: Makes it easier to identify suspicious or overly broad permission requests
+- **Developer Accountability**: Forces plugin authors to justify each permission they request
+- **Trust Building**: Clear explanations help users make informed decisions about plugin installation
+
+If no permissions are needed, use an empty permissions object: `"permissions": {}`.
 
 ### Available Permissions
 
@@ -307,33 +320,63 @@ The permission system provides multiple layers of security:
   "permissions": {}
 }
 
-// Good: Only request what you need
+// Good: Only request what you need with clear reasoning
 {
   "permissions": {
-    "http": {}
+    "http": {
+      "reason": "To fetch artist biography from external music database"
+    }
   }
 }
 
 // Avoid: Requesting unnecessary permissions
 {
   "permissions": {
-    "http": {},
-    "cache": {},
-    "scheduler": {},
-    "websocket": {}
+    "http": {
+      "reason": "To fetch data"
+    },
+    "cache": {
+      "reason": "For caching"
+    },
+    "scheduler": {
+      "reason": "For scheduling"
+    },
+    "websocket": {
+      "reason": "For real-time updates"
+    }
   }
 }
 ```
 
-#### Document Required Permissions
+#### Write Clear Permission Reasons
 
-Always document in your plugin's README why each permission is needed:
+Provide specific, descriptive reasons for each permission that explain exactly what the plugin does. Good reasons should:
 
-```markdown
-## Required Permissions
+- Specify **what data** will be accessed/fetched
+- Mention **which external services** will be contacted (if applicable)
+- Explain **why** the permission is necessary for the plugin's functionality
+- Use clear, non-technical language that users can understand
 
-- `http`: To fetch metadata from external APIs
-- `cache`: To cache API responses and reduce rate limiting
+```jsonc
+// Good: Specific and informative
+{
+  "http": {
+    "reason": "To fetch album reviews from AllMusic API and artist biographies from MusicBrainz"
+  },
+  "cache": {
+    "reason": "To cache API responses for 24 hours to respect rate limits and improve performance"
+  }
+}
+
+// Bad: Vague and unhelpful
+{
+  "http": {
+    "reason": "To make requests"
+  },
+  "cache": {
+    "reason": "For caching"
+  }
+}
 ```
 
 #### Handle Missing Permissions Gracefully
@@ -348,7 +391,7 @@ func (p *Plugin) GetArtistInfo(ctx context.Context, req *api.ArtistInfoRequest) 
         // Check if it's a permission error
         if strings.Contains(err.Error(), "not exported") {
             return &api.ArtistInfoResponse{
-                Error: "Plugin requires 'http' permission to fetch artist information",
+                Error: "Plugin requires 'http' permission (reason: 'To fetch artist metadata from external APIs') - please add to manifest.json",
             }, nil
         }
         return &api.ArtistInfoResponse{Error: err.Error()}, nil
@@ -623,10 +666,18 @@ Every plugin must provide a `manifest.json` file that declares metadata, capabil
     "LifecycleManagement"
   ],
   "permissions": {
-    "http": {},
-    "cache": {},
-    "config": {},
-    "scheduler": {}
+    "http": {
+      "reason": "To fetch metadata from external music APIs"
+    },
+    "cache": {
+      "reason": "To cache API responses and reduce rate limiting"
+    },
+    "config": {
+      "reason": "To read API keys and service configuration"
+    },
+    "scheduler": {
+      "reason": "To schedule periodic data refresh tasks"
+    }
   }
 }
 ```

@@ -2,15 +2,12 @@ package plugins
 
 import (
 	"context"
-	"maps"
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,10 +29,9 @@ var _ = Describe("Plugin Permissions", func() {
 		pluginDir := filepath.Join(tempDir, name)
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
-		permKeys := slices.Collect(maps.Keys(permissions))
-		perms := slice.Map(permKeys, func(k string) string {
-			return `"` + k + `": {}` // Convert to JSON format
-		})
+		// Convert permissions map to JSON
+		permissionsJSON, err := json.Marshal(permissions)
+		Expect(err).NotTo(HaveOccurred())
 
 		// Create a minimal manifest with specified permissions
 		manifest := `{
@@ -44,12 +40,12 @@ var _ = Describe("Plugin Permissions", func() {
 			"version": "1.0.0",
 			"description": "Test plugin for permission testing",
 			"capabilities": ["MetadataAgent"],
-			"permissions": {` + strings.Join(perms, ", ") + `}}`
+			"permissions": ` + string(permissionsJSON) + `}`
 
 		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 
 		// Create a dummy WASM file
-		Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), []byte("dummy wasm"), 0644)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), []byte("dummy wasm"), 0600)).To(Succeed())
 
 		return pluginDir
 	}
@@ -58,8 +54,12 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should only load services specified in permissions", func() {
 			// Test with limited permissions
 			permissions := map[string]interface{}{
-				"http":   struct{}{},
-				"config": struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
+				"config": map[string]interface{}{
+					"reason": "To read configuration settings",
+				},
 			}
 
 			ccache, _ := getCompilationCache()
@@ -95,12 +95,24 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should handle all available permissions", func() {
 			// Test with all possible permissions
 			permissions := map[string]interface{}{
-				"http":      struct{}{},
-				"config":    struct{}{},
-				"scheduler": struct{}{},
-				"websocket": struct{}{},
-				"cache":     struct{}{},
-				"artwork":   struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
+				"config": map[string]interface{}{
+					"reason": "To read configuration settings",
+				},
+				"scheduler": map[string]interface{}{
+					"reason": "To schedule periodic tasks",
+				},
+				"websocket": map[string]interface{}{
+					"reason": "To handle real-time communication",
+				},
+				"cache": map[string]interface{}{
+					"reason": "To cache data and reduce API calls",
+				},
+				"artwork": map[string]interface{}{
+					"reason": "To generate artwork URLs",
+				},
 			}
 
 			ccache, _ := getCompilationCache()
@@ -122,7 +134,9 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should discover plugin with valid permissions manifest", func() {
 			// Create plugin with http permission
 			permissions := map[string]interface{}{
-				"http": struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch metadata from external APIs",
+				},
 			}
 			createTestPluginWithPermissions("valid-plugin", permissions)
 
@@ -147,9 +161,15 @@ var _ = Describe("Plugin Permissions", func() {
 
 		It("should discover plugin with multiple permissions", func() {
 			permissions := map[string]interface{}{
-				"http":      struct{}{},
-				"config":    struct{}{},
-				"scheduler": struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch metadata from external APIs",
+				},
+				"config": map[string]interface{}{
+					"reason": "To read plugin configuration settings",
+				},
+				"scheduler": map[string]interface{}{
+					"reason": "To schedule periodic data updates",
+				},
 			}
 			createTestPluginWithPermissions("multi-perms-plugin", permissions)
 
@@ -237,8 +257,12 @@ var _ = Describe("Plugin Permissions", func() {
 				"description": "Test plugin for permission testing",
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
-					"http": {},
-					"unknown": {}
+					"http": {
+						"reason": "To fetch data from external APIs"
+					},
+					"unknown": {
+						"reason": "Future functionality not yet implemented"
+					}
 				}
 			}`
 
@@ -258,8 +282,16 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create two different permission sets
-			permissions1 := map[string]interface{}{"http": struct{}{}}
-			permissions2 := map[string]interface{}{"config": struct{}{}}
+			permissions1 := map[string]interface{}{
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
+			}
+			permissions2 := map[string]interface{}{
+				"config": map[string]interface{}{
+					"reason": "To read configuration settings",
+				},
+			}
 
 			runtimeFunc1 := mgr.createCustomRuntime(ccache, "plugin1", permissions1)
 			runtimeFunc2 := mgr.createCustomRuntime(ccache, "plugin2", permissions2)
@@ -290,8 +322,12 @@ var _ = Describe("Plugin Permissions", func() {
 				"description": "Valid manifest with permissions",
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
-					"http": {},
-					"config": {}
+					"http": {
+						"reason": "To fetch metadata from external APIs"
+					},
+					"config": {
+						"reason": "To read plugin configuration settings"
+					}
 				}
 			}`
 
@@ -308,12 +344,20 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should track which services are requested per plugin", func() {
 			// Test that different plugins can have different permission sets
 			permissions1 := map[string]interface{}{
-				"http":   struct{}{},
-				"config": struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
+				"config": map[string]interface{}{
+					"reason": "To read configuration settings",
+				},
 			}
 			permissions2 := map[string]interface{}{
-				"scheduler": struct{}{},
-				"websocket": struct{}{},
+				"scheduler": map[string]interface{}{
+					"reason": "To schedule periodic tasks",
+				},
+				"websocket": map[string]interface{}{
+					"reason": "To handle real-time communication",
+				},
 			}
 			permissions3 := map[string]interface{}{} // Empty permissions
 
@@ -338,7 +382,9 @@ var _ = Describe("Plugin Permissions", func() {
 
 			// Create runtime with HTTP permission
 			permissions := map[string]interface{}{
-				"http": struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
 			}
 
 			runtimeFunc := mgr.createCustomRuntime(ccache, "http-only-plugin", permissions)
@@ -355,9 +401,15 @@ var _ = Describe("Plugin Permissions", func() {
 
 			// Create runtime with multiple permissions
 			permissions := map[string]interface{}{
-				"http":      struct{}{},
-				"config":    struct{}{},
-				"scheduler": struct{}{},
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
+				"config": map[string]interface{}{
+					"reason": "To read configuration settings",
+				},
+				"scheduler": map[string]interface{}{
+					"reason": "To schedule periodic tasks",
+				},
 			}
 
 			runtimeFunc := mgr.createCustomRuntime(ccache, "multi-service-plugin", permissions)
@@ -405,8 +457,16 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create two different runtimes with different permissions
-			httpOnlyPermissions := map[string]interface{}{"http": struct{}{}}
-			configOnlyPermissions := map[string]interface{}{"config": struct{}{}}
+			httpOnlyPermissions := map[string]interface{}{
+				"http": map[string]interface{}{
+					"reason": "To fetch data from external APIs",
+				},
+			}
+			configOnlyPermissions := map[string]interface{}{
+				"config": map[string]interface{}{
+					"reason": "To read configuration settings",
+				},
+			}
 
 			httpRuntime, err := mgr.createCustomRuntime(ccache, "http-only", httpOnlyPermissions)(ctx)
 			Expect(err).NotTo(HaveOccurred())
