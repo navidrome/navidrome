@@ -16,7 +16,9 @@
       "reason": "To schedule periodic reconnection attempts and status updates"
     },
     "websocket": {
-      "reason": "To connect to Coinbase WebSocket API for real-time cryptocurrency prices"
+      "reason": "To connect to Coinbase WebSocket API for real-time cryptocurrency prices",
+      "allowedUrls": ["wss://ws-feed.exchange.coinbase.com"],
+      "allowLocalNetwork": false
     }
   }
 }

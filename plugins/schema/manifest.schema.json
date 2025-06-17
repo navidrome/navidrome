@@ -122,12 +122,27 @@
         "websocket": {
           "type": "object",
           "description": "WebSocket service permissions",
-          "required": ["reason"],
+          "required": ["reason", "allowedUrls"],
           "properties": {
             "reason": {
               "type": "string",
               "minLength": 1,
               "description": "Explanation of why WebSocket access is needed"
+            },
+            "allowedUrls": {
+              "type": "array",
+              "description": "List of WebSocket URL patterns that the plugin is allowed to connect to",
+              "items": {
+                "type": "string",
+                "pattern": "^wss?://.*$"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "allowLocalNetwork": {
+              "type": "boolean",
+              "description": "Whether to allow connections to local/private network addresses",
+              "default": false
             }
           },
           "additionalProperties": false

@@ -111,7 +111,8 @@ var _ = Describe("Plugin Permissions", func() {
 					"reason": "To schedule periodic tasks",
 				},
 				"websocket": map[string]any{
-					"reason": "To handle real-time communication",
+					"reason":      "To handle real-time communication",
+					"allowedUrls": []any{"wss://api.example.com"},
 				},
 				"cache": map[string]any{
 					"reason": "To cache data and reduce API calls",
@@ -379,8 +380,8 @@ var _ = Describe("Plugin Permissions", func() {
 				"scheduler": map[string]any{
 					"reason": "To schedule periodic tasks",
 				},
-				"websocket": map[string]any{
-					"reason": "To handle real-time communication",
+				"config": map[string]any{
+					"reason": "To read configuration for scheduler",
 				},
 			}
 			permissions3 := map[string]any{} // Empty permissions

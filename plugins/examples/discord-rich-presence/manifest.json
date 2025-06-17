@@ -1,33 +1,33 @@
 {
   "name": "discord-rich-presence",
-  "author": "Navidrome",
-  "version": "0.1.0",
+  "author": "Navidrome Team",
+  "version": "1.0.0",
   "description": "Discord Rich Presence integration for Navidrome",
   "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"],
   "permissions": {
-    "config": {
-      "reason": "To read Discord application ID and Rich Presence configuration settings"
-    },
-    "artwork": {
-      "reason": "To generate public URLs for album/artist artwork to display in Discord"
-    },
-    "scheduler": {
-      "reason": "To schedule periodic presence updates and handle connection timeouts"
-    },
-    "websocket": {
-      "reason": "To connect to Discord Gateway for real-time Rich Presence updates"
-    },
     "http": {
-      "reason": "To communicate with Discord API for authentication and presence management",
+      "reason": "To communicate with Discord API for gateway discovery and image uploads",
       "allowedUrls": {
-        "https://discord.com/api": ["GET", "POST", "PUT"],
-        "https://discordapp.com/api": ["GET", "POST", "PUT"],
-        "https://gateway.discord.gg": ["GET"]
+        "https://discord.com/api/*": ["GET", "POST"]
       },
       "allowLocalNetwork": false
     },
+    "websocket": {
+      "reason": "To maintain real-time connection with Discord gateway",
+      "allowedUrls": ["wss://gateway.discord.gg"],
+      "allowLocalNetwork": false
+    },
+    "config": {
+      "reason": "To access plugin configuration (client ID and user tokens)"
+    },
     "cache": {
-      "reason": "To cache Discord session tokens and avoid redundant API calls"
+      "reason": "To store connection state and sequence numbers"
+    },
+    "scheduler": {
+      "reason": "To schedule heartbeat messages and activity clearing"
+    },
+    "artwork": {
+      "reason": "To get track artwork URLs for rich presence display"
     }
   }
 }

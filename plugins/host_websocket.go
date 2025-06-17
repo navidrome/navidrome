@@ -26,12 +26,13 @@ type WebSocketConnection struct {
 
 // WebSocketHostFunctions implements the websocket.WebSocketService interface
 type WebSocketHostFunctions struct {
-	ws         *websocketService
-	pluginName string
+	ws          *websocketService
+	pluginName  string
+	permissions *WebSocketPermissions
 }
 
 func (s WebSocketHostFunctions) Connect(ctx context.Context, req *websocket.ConnectRequest) (*websocket.ConnectResponse, error) {
-	return s.ws.connect(ctx, s.pluginName, req)
+	return s.ws.connect(ctx, s.pluginName, req, s.permissions)
 }
 
 func (s WebSocketHostFunctions) SendText(ctx context.Context, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
@@ -62,10 +63,11 @@ func newWebsocketService(manager *Manager) *websocketService {
 }
 
 // HostFunctions returns the WebSocketHostFunctions for the given plugin
-func (s *websocketService) HostFunctions(pluginName string) WebSocketHostFunctions {
+func (s *websocketService) HostFunctions(pluginName string, permissions *WebSocketPermissions) WebSocketHostFunctions {
 	return WebSocketHostFunctions{
-		ws:         s,
-		pluginName: pluginName,
+		ws:          s,
+		pluginName:  pluginName,
+		permissions: permissions,
 	}
 }
 
@@ -113,9 +115,17 @@ func extractConnectionID(internalID string) (string, error) {
 }
 
 // connect establishes a new WebSocket connection
-func (s *websocketService) connect(ctx context.Context, pluginName string, req *websocket.ConnectRequest) (*websocket.ConnectResponse, error) {
+func (s *websocketService) connect(ctx context.Context, pluginName string, req *websocket.ConnectRequest, permissions *WebSocketPermissions) (*websocket.ConnectResponse, error) {
 	if s.manager == nil {
 		return nil, fmt.Errorf("websocket service not properly initialized")
+	}
+
+	// Check permissions if they exist
+	if permissions != nil {
+		if err := permissions.IsConnectionAllowed(req.Url); err != nil {
+			log.Warn(ctx, "WebSocket connection blocked by permissions", "plugin", pluginName, "url", req.Url, err)
+			return &websocket.ConnectResponse{Error: "Connection blocked by plugin permissions: " + err.Error()}, nil
+		}
 	}
 
 	// Create websocket dialer with the headers

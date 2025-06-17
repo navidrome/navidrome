@@ -8,30 +8,33 @@ import (
 	"strings"
 )
 
-// Maximum number of HTTP redirects allowed for plugin requests
-const httpMaxRedirects = 5
-
-// HttpPermissions represents granular HTTP access permissions for plugins
-type HttpPermissions struct {
-	Reason string `json:"reason"`
-	// AllowedUrls maps URL patterns to allowed HTTP methods
-	// Redirect destinations must also be included in this list
+// NetworkPermissionsBase contains common functionality for network-based permissions
+type NetworkPermissionsBase struct {
+	Reason            string              `json:"reason"`
 	AllowedUrls       map[string][]string `json:"allowedUrls"`
 	AllowLocalNetwork bool                `json:"allowLocalNetwork,omitempty"`
 }
 
-// ParseHttpPermissions extracts HTTP permissions from the raw permission map
-func ParseHttpPermissions(permissionData any) (*HttpPermissions, error) {
+// URLMatcher provides URL pattern matching functionality
+type URLMatcher struct{}
+
+// NewURLMatcher creates a new URL matcher instance
+func NewURLMatcher() *URLMatcher {
+	return &URLMatcher{}
+}
+
+// ParseNetworkPermissionsBase extracts common network permission fields
+func ParseNetworkPermissionsBase(permissionData any) (*NetworkPermissionsBase, error) {
 	if permissionData == nil {
-		return nil, fmt.Errorf("http permission data is nil")
+		return nil, fmt.Errorf("network permission data is nil")
 	}
 
 	permMap, ok := permissionData.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("http permission data is not a map")
+		return nil, fmt.Errorf("network permission data is not a map")
 	}
 
-	perms := &HttpPermissions{
+	perms := &NetworkPermissionsBase{
 		AllowLocalNetwork: false, // Default to false for security
 	}
 
@@ -39,7 +42,7 @@ func ParseHttpPermissions(permissionData any) (*HttpPermissions, error) {
 	if reason, ok := permMap["reason"].(string); ok && reason != "" {
 		perms.Reason = reason
 	} else {
-		return nil, fmt.Errorf("http permission reason is required and must be a non-empty string")
+		return nil, fmt.Errorf("network permission reason is required and must be a non-empty string")
 	}
 
 	// Extract allowedUrls
@@ -61,14 +64,14 @@ func ParseHttpPermissions(permissionData any) (*HttpPermissions, error) {
 	for urlPattern, methodsRaw := range allowedUrlsMap {
 		methodsArray, ok := methodsRaw.([]any)
 		if !ok {
-			return nil, fmt.Errorf("methods for URL pattern %s must be an array", urlPattern)
+			return nil, fmt.Errorf("operations for URL pattern %s must be an array", urlPattern)
 		}
 
 		var methods []string
 		for _, methodRaw := range methodsArray {
 			method, ok := methodRaw.(string)
 			if !ok {
-				return nil, fmt.Errorf("HTTP method must be a string")
+				return nil, fmt.Errorf("operation must be a string")
 			}
 			methods = append(methods, strings.ToUpper(method))
 		}
@@ -87,60 +90,62 @@ func ParseHttpPermissions(permissionData any) (*HttpPermissions, error) {
 	return perms, nil
 }
 
-// IsRequestAllowed checks if a specific HTTP request is allowed by the permissions
-func (h *HttpPermissions) IsRequestAllowed(requestURL, method string) error {
+// IsRequestAllowed checks if a specific network request is allowed by the permissions
+func (n *NetworkPermissionsBase) IsRequestAllowed(requestURL, operation string) error {
 	parsedURL, err := url.Parse(requestURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
 	// Check local network restrictions
-	if !h.AllowLocalNetwork {
-		if err := h.checkLocalNetwork(parsedURL); err != nil {
+	if !n.AllowLocalNetwork {
+		if err := CheckLocalNetwork(parsedURL); err != nil {
 			return err
 		}
 	}
 
 	// allowedUrls is now required - no fallback to allow all URLs
-	if h.AllowedUrls == nil || len(h.AllowedUrls) == 0 {
+	if n.AllowedUrls == nil || len(n.AllowedUrls) == 0 {
 		return fmt.Errorf("no allowed URLs configured for plugin")
 	}
 
-	// Check URL patterns and methods
+	matcher := NewURLMatcher()
+
+	// Check URL patterns and operations
 	// First try exact matches, then wildcard matches
-	method = strings.ToUpper(method)
+	operation = strings.ToUpper(operation)
 
 	// Phase 1: Check for exact matches first
-	for urlPattern, allowedMethods := range h.AllowedUrls {
-		if !strings.Contains(urlPattern, "*") && h.matchesURLPattern(requestURL, urlPattern) {
-			// Check if method is allowed
-			for _, allowedMethod := range allowedMethods {
-				if allowedMethod == "*" || allowedMethod == method {
+	for urlPattern, allowedOperations := range n.AllowedUrls {
+		if !strings.Contains(urlPattern, "*") && matcher.MatchesURLPattern(requestURL, urlPattern) {
+			// Check if operation is allowed
+			for _, allowedOperation := range allowedOperations {
+				if allowedOperation == "*" || allowedOperation == operation {
 					return nil
 				}
 			}
-			return fmt.Errorf("HTTP method %s not allowed for URL pattern %s", method, urlPattern)
+			return fmt.Errorf("operation %s not allowed for URL pattern %s", operation, urlPattern)
 		}
 	}
 
 	// Phase 2: Check wildcard patterns
-	for urlPattern, allowedMethods := range h.AllowedUrls {
-		if strings.Contains(urlPattern, "*") && h.matchesURLPattern(requestURL, urlPattern) {
-			// Check if method is allowed
-			for _, allowedMethod := range allowedMethods {
-				if allowedMethod == "*" || allowedMethod == method {
+	for urlPattern, allowedOperations := range n.AllowedUrls {
+		if strings.Contains(urlPattern, "*") && matcher.MatchesURLPattern(requestURL, urlPattern) {
+			// Check if operation is allowed
+			for _, allowedOperation := range allowedOperations {
+				if allowedOperation == "*" || allowedOperation == operation {
 					return nil
 				}
 			}
-			return fmt.Errorf("HTTP method %s not allowed for URL pattern %s", method, urlPattern)
+			return fmt.Errorf("operation %s not allowed for URL pattern %s", operation, urlPattern)
 		}
 	}
 
 	return fmt.Errorf("URL %s does not match any allowed URL patterns", requestURL)
 }
 
-// matchesURLPattern checks if a URL matches a given pattern
-func (h *HttpPermissions) matchesURLPattern(requestURL, pattern string) bool {
+// MatchesURLPattern checks if a URL matches a given pattern
+func (m *URLMatcher) MatchesURLPattern(requestURL, pattern string) bool {
 	// Handle wildcard pattern
 	if pattern == "*" {
 		return true
@@ -155,7 +160,7 @@ func (h *HttpPermissions) matchesURLPattern(requestURL, pattern string) bool {
 	patternURL, err := url.Parse(pattern)
 	if err != nil {
 		// If pattern is not a valid URL, treat it as a simple string pattern
-		regexPattern := h.urlPatternToRegex(pattern)
+		regexPattern := m.urlPatternToRegex(pattern)
 		matched, err := regexp.MatchString(regexPattern, requestURL)
 		if err != nil {
 			return false
@@ -169,7 +174,7 @@ func (h *HttpPermissions) matchesURLPattern(requestURL, pattern string) bool {
 	}
 
 	// Match host with wildcard support
-	if !h.matchesHost(reqURL.Host, patternURL.Host) {
+	if !m.matchesHost(reqURL.Host, patternURL.Host) {
 		return false
 	}
 
@@ -179,7 +184,7 @@ func (h *HttpPermissions) matchesURLPattern(requestURL, pattern string) bool {
 		// This is a domain-only wildcard pattern, allow any path
 		return true
 	}
-	if !h.matchesPath(reqURL.Path, patternURL.Path) {
+	if !m.matchesPath(reqURL.Path, patternURL.Path) {
 		return false
 	}
 
@@ -187,7 +192,7 @@ func (h *HttpPermissions) matchesURLPattern(requestURL, pattern string) bool {
 }
 
 // urlPatternToRegex converts a URL pattern with wildcards to a regex pattern
-func (h *HttpPermissions) urlPatternToRegex(pattern string) string {
+func (m *URLMatcher) urlPatternToRegex(pattern string) string {
 	// Escape special regex characters except *
 	escaped := regexp.QuoteMeta(pattern)
 
@@ -201,7 +206,7 @@ func (h *HttpPermissions) urlPatternToRegex(pattern string) string {
 }
 
 // matchesHost checks if a host matches a pattern with wildcard support
-func (h *HttpPermissions) matchesHost(host, pattern string) bool {
+func (m *URLMatcher) matchesHost(host, pattern string) bool {
 	if pattern == "" {
 		return true
 	}
@@ -230,7 +235,7 @@ func (h *HttpPermissions) matchesHost(host, pattern string) bool {
 }
 
 // matchesPath checks if a path matches a pattern with wildcard support
-func (h *HttpPermissions) matchesPath(path, pattern string) bool {
+func (m *URLMatcher) matchesPath(path, pattern string) bool {
 	// Normalize empty paths to "/"
 	if path == "" {
 		path = "/"
@@ -249,68 +254,45 @@ func (h *HttpPermissions) matchesPath(path, pattern string) bool {
 		if prefix == "" {
 			prefix = "/"
 		}
-		return strings.HasPrefix(path, prefix) || path == prefix
+		return strings.HasPrefix(path, prefix)
 	}
 
 	return path == pattern
 }
 
-// checkLocalNetwork checks if the URL points to a local/private network address
-func (h *HttpPermissions) checkLocalNetwork(parsedURL *url.URL) error {
+// CheckLocalNetwork checks if the URL is accessing local network resources
+func CheckLocalNetwork(parsedURL *url.URL) error {
 	host := parsedURL.Hostname()
 
-	// Check for localhost
+	// Check for localhost variants
 	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
 		return fmt.Errorf("requests to localhost are not allowed")
 	}
 
-	// Check for private IP ranges
+	// Try to parse as IP address
 	ip := net.ParseIP(host)
-	if ip != nil {
-		if h.isPrivateIP(ip) {
-			return fmt.Errorf("requests to private IP addresses are not allowed")
-		}
+	if ip != nil && IsPrivateIP(ip) {
+		return fmt.Errorf("requests to private IP addresses are not allowed")
 	}
 
 	return nil
 }
 
-// isPrivateIP checks if an IP address is in a private range
-func (h *HttpPermissions) isPrivateIP(ip net.IP) bool {
-	// Private IPv4 ranges
-	privateRanges := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"127.0.0.0/8",
-		"169.254.0.0/16", // Link-local
+// IsPrivateIP checks if an IP is loopback, private, or link-local (IPv4/IPv6).
+func IsPrivateIP(ip net.IP) bool {
+	if ip == nil {
+		return false
 	}
-
-	for _, rangeStr := range privateRanges {
-		_, privateCIDR, err := net.ParseCIDR(rangeStr)
-		if err != nil {
-			continue
-		}
-		if privateCIDR.Contains(ip) {
-			return true
-		}
+	if ip.IsLoopback() || ip.IsPrivate() {
+		return true
 	}
-
-	// Check for IPv6 private ranges
-	if ip.To4() == nil { // IPv6
-		// Link-local IPv6 (fe80::/10)
-		if ip.IsLinkLocalUnicast() {
-			return true
-		}
-		// Loopback IPv6 (::1)
-		if ip.IsLoopback() {
-			return true
-		}
-		// Unique local IPv6 (fc00::/7)
-		if len(ip) == 16 && (ip[0]&0xfe) == 0xfc {
-			return true
-		}
+	// IPv4 link-local: 169.254.0.0/16
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 169 && ip4[1] == 254
 	}
-
+	// IPv6 link-local: fe80::/10
+	if ip16 := ip.To16(); ip16 != nil && ip.To4() == nil {
+		return ip16[0] == 0xfe && (ip16[1]&0xc0) == 0x80
+	}
 	return false
 }

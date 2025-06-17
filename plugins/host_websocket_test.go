@@ -111,7 +111,7 @@ var _ = Describe("WebSocket Host Service", func() {
 				ConnectionId: connectionID,
 			}
 
-			resp, err := wsService.connect(ctx, pluginName, req)
+			resp, err := wsService.connect(ctx, pluginName, req, nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ConnectionId).ToNot(BeEmpty())
 			connectionID = resp.ConnectionId
@@ -131,7 +131,7 @@ var _ = Describe("WebSocket Host Service", func() {
 				ConnectionId: connectionID,
 			}
 
-			resp, err := wsService.connect(ctx, pluginName, req)
+			resp, err := wsService.connect(ctx, pluginName, req, nil)
 			Expect(err).ToNot(HaveOccurred())
 			connectionID = resp.ConnectionId
 
@@ -162,7 +162,7 @@ var _ = Describe("WebSocket Host Service", func() {
 				ConnectionId: connectionID,
 			}
 
-			resp, err := wsService.connect(ctx, pluginName, req)
+			resp, err := wsService.connect(ctx, pluginName, req, nil)
 			Expect(err).ToNot(HaveOccurred())
 			connectionID = resp.ConnectionId
 
@@ -195,7 +195,7 @@ var _ = Describe("WebSocket Host Service", func() {
 				ConnectionId: connectionID,
 			}
 
-			_, err := wsService.connect(ctx, pluginName, req)
+			_, err := wsService.connect(ctx, pluginName, req, nil)
 			Expect(err).To(HaveOccurred())
 		})
 

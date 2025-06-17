@@ -13,7 +13,7 @@ import (
 
 type httpServiceImpl struct {
 	pluginName  string
-	permissions *HttpPermissions
+	permissions *HTTPPermissions
 }
 
 func (s *httpServiceImpl) Get(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {

@@ -253,10 +253,10 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
 			}},
 			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				var httpPerms *HttpPermissions
+				var httpPerms *HTTPPermissions
 				if httpPermData, exists := permissions["http"]; exists {
 					var err error
-					httpPerms, err = ParseHttpPermissions(httpPermData)
+					httpPerms, err = ParseHTTPPermissions(httpPermData)
 					if err != nil {
 						return nil, fmt.Errorf("invalid HTTP permissions for plugin %s: %w", pluginName, err)
 					}
@@ -270,7 +270,15 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
 			}},
 			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName))
+				var wsPerms *WebSocketPermissions
+				if wsPermData, exists := permissions["websocket"]; exists {
+					var err error
+					wsPerms, err = ParseWebSocketPermissions(wsPermData)
+					if err != nil {
+						return nil, fmt.Errorf("invalid WebSocket permissions for plugin %s: %w", pluginName, err)
+					}
+				}
+				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName, wsPerms))
 			}},
 			{"cache", func() (map[string]wazeroapi.FunctionDefinition, error) {
 				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginName))
