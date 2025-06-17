@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -91,7 +92,7 @@ var _ = Describe("sendResponse", func() {
 		It("should return a fail response", func() {
 			payload.Song = &responses.Child{OpenSubsonicChild: &responses.OpenSubsonicChild{}}
 			// An +Inf value will cause an error when marshalling to JSON
-			payload.Song.ReplayGain = responses.ReplayGain{TrackGain: math.Inf(1)}
+			payload.Song.ReplayGain = responses.ReplayGain{TrackGain: gg.P(math.Inf(1))}
 			q := r.URL.Query()
 			q.Add("f", "json")
 			r.URL.RawQuery = q.Encode()

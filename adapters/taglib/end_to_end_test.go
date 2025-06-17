@@ -8,6 +8,7 @@ import (
 	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/navidrome/navidrome/utils/gg"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -80,6 +81,29 @@ var _ = Describe("Extractor", func() {
 
 	BeforeEach(func() {
 		e = &extractor{}
+	})
+
+	Describe("ReplayGain", func() {
+		DescribeTable("test replaygain end-to-end", func(file string, trackGain, trackPeak, albumGain, albumPeak *float64) {
+			path := "tests/fixtures/" + file
+			mds, err := e.Parse(path)
+			Expect(err).ToNot(HaveOccurred())
+
+			info := mds[path]
+			fileInfo, _ := os.Stat(path)
+			info.FileInfo = testFileInfo{FileInfo: fileInfo}
+
+			metadata := metadata.New(path, info)
+			mf := metadata.ToMediaFile(1, "folderID")
+
+			Expect(mf.RGTrackGain).To(Equal(trackGain))
+			Expect(mf.RGTrackPeak).To(Equal(trackPeak))
+			Expect(mf.RGAlbumGain).To(Equal(albumGain))
+			Expect(mf.RGAlbumPeak).To(Equal(albumPeak))
+		},
+			Entry("mp3 with no replaygain", "no_replaygain.mp3", nil, nil, nil, nil),
+			Entry("mp3 with no zero replaygain", "zero_replaygain.mp3", gg.P(0.0), gg.P(1.0), gg.P(0.0), gg.P(1.0)),
+		)
 	})
 
 	Describe("Participants", func() {
