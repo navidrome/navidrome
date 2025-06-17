@@ -70,17 +70,14 @@ var (
 	runtimePool      sync.Map // map[string]*pooledRuntime
 )
 
-func getCompilationCache() wazero.CompilationCache {
+func getCompilationCache() (wazero.CompilationCache, error) {
+	var err error
 	cacheOnce.Do(func() {
 		cacheDir := filepath.Join(conf.Server.CacheFolder, "plugins")
 		purgeCacheBySize(cacheDir, conf.Server.Plugins.CacheSize)
-		var err error
 		compilationCache, err = wazero.NewCompilationCacheWithDir(cacheDir)
-		if err != nil {
-			log.Error("Failed to create plugins compilation cache", err)
-		}
 	})
-	return compilationCache
+	return compilationCache, err
 }
 
 type pluginState struct {
@@ -370,6 +367,12 @@ func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
 
 // ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
 func (m *Manager) ScanPlugins() {
+	// Clear existing plugins
+	m.mu.Lock()
+	m.plugins = make(map[string]*PluginInfo)
+	m.adapters = make(map[string]WasmPlugin)
+	m.mu.Unlock()
+
 	// Get plugins directory from config and read its contents
 	root := conf.Server.Plugins.Folder
 	log.Debug("Scanning plugins folder", "root", root)
@@ -379,13 +382,11 @@ func (m *Manager) ScanPlugins() {
 		return
 	}
 	// Get compilation cache to speed up WASM module loading
-	ccache := getCompilationCache()
-
-	// Clear existing plugins
-	m.mu.Lock()
-	m.plugins = make(map[string]*PluginInfo)
-	m.adapters = make(map[string]WasmPlugin)
-	m.mu.Unlock()
+	ccache, err := getCompilationCache()
+	if err != nil {
+		log.Error("Failed to initialize plugins compilation cache. Disabling plugins", err)
+		return
+	}
 
 	// Process each directory in the plugins folder
 	log.Debug("Found entries in plugin directory", "count", len(entries), "entries", slice.Map(entries, func(e os.DirEntry) string { return e.Name() }))

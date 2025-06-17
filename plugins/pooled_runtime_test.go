@@ -21,7 +21,8 @@ var _ = Describe("PooledRuntime", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		mgr = createManager()
-		rtFunc := mgr.createCustomRuntime(getCompilationCache(), "fake_scrobbler")
+		ccache, _ := getCompilationCache()
+		rtFunc := mgr.createCustomRuntime(ccache, "fake_scrobbler")
 		plugin = NewWasmScrobblerPlugin(
 			filepath.Join(testDataDir, "fake_scrobbler", "plugin.wasm"),
 			"fake_scrobbler",
