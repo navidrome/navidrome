@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/api"
 	. "github.com/onsi/ginkgo/v2"
@@ -16,6 +18,11 @@ var _ = Describe("Adapter Media Agent", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
+
+		// Ensure plugins folder is set to testdata
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.Plugins.Folder = testDataDir
+
 		mgr = createManager()
 		mgr.ScanPlugins()
 	})
@@ -23,11 +30,12 @@ var _ = Describe("Adapter Media Agent", func() {
 	Describe("AgentName and PluginName", func() {
 		It("should return the plugin name", func() {
 			agent := mgr.LoadPlugin("multi_plugin", "MetadataAgent")
+			Expect(agent).NotTo(BeNil(), "multi_plugin should be loaded")
 			Expect(agent.PluginName()).To(Equal("multi_plugin"))
 		})
 		It("should return the agent name", func() {
 			agent, ok := mgr.LoadMediaAgent("multi_plugin")
-			Expect(ok).To(BeTrue())
+			Expect(ok).To(BeTrue(), "multi_plugin should be loaded as media agent")
 			Expect(agent.AgentName()).To(Equal("multi_plugin"))
 		})
 	})
@@ -36,7 +44,8 @@ var _ = Describe("Adapter Media Agent", func() {
 		var agent *wasmMediaAgent
 
 		BeforeEach(func() {
-			a, _ := mgr.LoadMediaAgent("fake_album_agent")
+			a, ok := mgr.LoadMediaAgent("fake_album_agent")
+			Expect(ok).To(BeTrue(), "fake_album_agent should be loaded")
 			agent = a.(*wasmMediaAgent)
 		})
 
@@ -82,7 +91,8 @@ var _ = Describe("Adapter Media Agent", func() {
 		var agent *wasmMediaAgent
 
 		BeforeEach(func() {
-			a, _ := mgr.LoadMediaAgent("fake_artist_agent")
+			a, ok := mgr.LoadMediaAgent("fake_artist_agent")
+			Expect(ok).To(BeTrue(), "fake_artist_agent should be loaded")
 			agent = a.(*wasmMediaAgent)
 		})
 

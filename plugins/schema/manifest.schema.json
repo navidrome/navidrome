@@ -46,7 +46,7 @@
     "permissions": {
       "type": "object",
       "description": "Host services the plugin is allowed to access",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "http": {
           "type": "object",
