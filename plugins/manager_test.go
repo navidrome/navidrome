@@ -37,10 +37,11 @@ var _ = Describe("Plugin Manager", func() {
 		Expect(mgr).NotTo(BeNil())
 
 		mediaAgentNames := mgr.PluginNames("MetadataAgent")
-		Expect(mediaAgentNames).To(HaveLen(3))
+		Expect(mediaAgentNames).To(HaveLen(4))
 		Expect(mediaAgentNames).To(ContainElement("fake_artist_agent"))
 		Expect(mediaAgentNames).To(ContainElement("fake_album_agent"))
 		Expect(mediaAgentNames).To(ContainElement("multi_plugin"))
+		Expect(mediaAgentNames).To(ContainElement("unauthorized_plugin"))
 
 		scrobblerNames := mgr.PluginNames("Scrobbler")
 		Expect(scrobblerNames).To(ContainElement("fake_scrobbler"))
@@ -67,12 +68,12 @@ var _ = Describe("Plugin Manager", func() {
 
 	It("should load all MetadataAgent plugins", func() {
 		agents := mgr.LoadAllMediaAgents()
-		Expect(agents).To(HaveLen(3))
+		Expect(agents).To(HaveLen(4))
 		var names []string
 		for _, a := range agents {
 			names = append(names, a.AgentName())
 		}
-		Expect(names).To(ContainElements("fake_artist_agent", "fake_album_agent", "multi_plugin"))
+		Expect(names).To(ContainElements("fake_artist_agent", "fake_album_agent", "multi_plugin", "unauthorized_plugin"))
 	})
 
 	It("should use DevPluginCompilationTimeout config for plugin compilation timeout", func() {
@@ -193,6 +194,31 @@ var _ = Describe("Plugin Manager", func() {
 			albumInfo, err := fakeAlbumPlugin.(agents.AlbumInfoRetriever).GetAlbumInfo(ctx, "Test Album", "Test Artist", "mbid")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(albumInfo.Name).To(Equal("Test Album"))
+		})
+	})
+
+	Describe("Permission Enforcement Integration", func() {
+		It("should fail when plugin tries to access unauthorized services", func() {
+			// Load the unauthorized_plugin which has no permissions but tries to call HTTP service
+			plugin := mgr.LoadPlugin("unauthorized_plugin", CapabilityMetadataAgent)
+			Expect(plugin).NotTo(BeNil(), "unauthorized_plugin should be loaded")
+
+			agent, ok := plugin.(agents.Interface)
+			Expect(ok).To(BeTrue(), "plugin should implement agents.Interface")
+			Expect(agent.AgentName()).To(Equal("unauthorized_plugin"))
+
+			// Try to call GetAlbumInfo which attempts to make an HTTP call without permission
+			// This should fail because the plugin has no "http" permission in its manifest
+			albumRetriever, ok := agent.(agents.AlbumInfoRetriever)
+			Expect(ok).To(BeTrue(), "plugin should implement AlbumInfoRetriever")
+
+			_, err := albumRetriever.GetAlbumInfo(ctx, "Test Album", "Test Artist", "test-mbid")
+			Expect(err).To(HaveOccurred(), "should fail when trying to access unauthorized HTTP service")
+
+			// The error should indicate that the HTTP function is not available
+			// This happens because the HTTP host functions were not loaded into the WASM runtime
+			// since the plugin doesn't have "http" permission
+			Expect(err.Error()).To(ContainSubstring("is not exported"), "error should indicate missing HTTP functions")
 		})
 	})
 })
