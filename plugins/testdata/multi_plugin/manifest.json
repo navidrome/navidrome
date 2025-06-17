@@ -3,5 +3,8 @@
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test data for multiple services",
-  "capabilities": ["MetadataAgent", "SchedulerCallback", "LifecycleManagement"]
+  "capabilities": ["MetadataAgent", "SchedulerCallback", "LifecycleManagement"],
+  "permissions": {
+    "scheduler": {}
+  }
 }

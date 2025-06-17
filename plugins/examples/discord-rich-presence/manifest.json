@@ -3,5 +3,13 @@
   "author": "Navidrome",
   "version": "0.1.0",
   "description": "Discord Rich Presence integration for Navidrome",
-  "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"]
+  "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"],
+  "permissions": {
+    "config": {},
+    "artwork": {},
+    "scheduler": {},
+    "websocket": {},
+    "http": {},
+    "cache": {}
+  }
 }

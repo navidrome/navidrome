@@ -22,7 +22,8 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"capabilities": ["MetadataAgent", "Scrobbler"]
+			"capabilities": ["MetadataAgent", "Scrobbler"],
+			"permissions": {}
 		}`
 
 		pluginDir := filepath.Join(tempDir, "test-plugin")
@@ -53,7 +54,8 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author"
 			"version": "1.0.0"
 			"description": "A test plugin",
-			"capabilities": ["MetadataAgent"]
+			"capabilities": ["MetadataAgent"],
+			"permissions": {}
 		}`
 
 		pluginDir := filepath.Join(tempDir, "invalid-json")
@@ -72,7 +74,8 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"capabilities": ["MetadataAgent"]
+			"capabilities": ["MetadataAgent"],
+			"permissions": {}
 		}`
 
 		pluginDir := filepath.Join(tempDir, "missing-name")
@@ -92,7 +95,8 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"capabilities": ["UnsupportedService"]
+			"capabilities": ["UnsupportedService"],
+			"permissions": {}
 		}`
 
 		pluginDir := filepath.Join(tempDir, "invalid-capability")
@@ -113,7 +117,8 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"capabilities": []
+			"capabilities": [],
+			"permissions": {}
 		}`
 
 		pluginDir := filepath.Join(tempDir, "empty-capabilities")

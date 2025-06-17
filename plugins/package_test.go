@@ -25,7 +25,8 @@ var _ = Describe("Plugin Package", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
-			"capabilities": ["MetadataAgent"]
+			"capabilities": ["MetadataAgent"],
+			"permissions": {}
 		}`)
 
 		wasmContent := []byte("dummy wasm content")

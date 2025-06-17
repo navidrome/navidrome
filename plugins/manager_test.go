@@ -115,7 +115,8 @@ var _ = Describe("Plugin Manager", func() {
 				"version": "1.0.0",
 				"capabilities": ["MetadataAgent"],
 				"author": "Test Author",
-				"description": "Test Plugin"
+				"description": "Test Plugin",
+				"permissions": {}
 			}`
 			err = os.WriteFile(manifestPath, []byte(manifestContent), 0644) //nolint:gosec
 			Expect(err).ToNot(HaveOccurred())

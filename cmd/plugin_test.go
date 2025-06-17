@@ -33,7 +33,8 @@ var _ = Describe("Plugin CLI Commands", func() {
 			"author": "` + author + `",
 			"version": "` + version + `",
 			"description": "Plugin for testing",
-			"capabilities": [` + capabilitiesJSON + `]
+			"capabilities": [` + capabilitiesJSON + `],
+			"permissions": {}
 		}`
 
 		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
@@ -153,7 +154,8 @@ var _ = Describe("Plugin CLI Commands", func() {
 				"author": "Dev Author",
 				"version": "0.1.0",
 				"description": "Development plugin for testing",
-				"capabilities": ["Scrobbler"]
+				"capabilities": ["Scrobbler"],
+				"permissions": {}
 			}`
 			Expect(os.WriteFile(filepath.Join(sourceDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 

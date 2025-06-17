@@ -3,5 +3,6 @@
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test data for scrobbler",
-  "capabilities": ["Scrobbler"]
+  "capabilities": ["Scrobbler"],
+  "permissions": {}
 }
