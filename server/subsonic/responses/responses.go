@@ -546,16 +546,16 @@ type ItemGenre struct {
 }
 
 type ReplayGain struct {
-	TrackGain    float64 `xml:"trackGain,omitempty,attr"    json:"trackGain,omitempty"`
-	AlbumGain    float64 `xml:"albumGain,omitempty,attr"    json:"albumGain,omitempty"`
-	TrackPeak    float64 `xml:"trackPeak,omitempty,attr"    json:"trackPeak,omitempty"`
-	AlbumPeak    float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
-	BaseGain     float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
-	FallbackGain float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
+	TrackGain    *float64 `xml:"trackGain,omitempty,attr"    json:"trackGain,omitempty"`
+	AlbumGain    *float64 `xml:"albumGain,omitempty,attr"    json:"albumGain,omitempty"`
+	TrackPeak    *float64 `xml:"trackPeak,omitempty,attr"    json:"trackPeak,omitempty"`
+	AlbumPeak    *float64 `xml:"albumPeak,omitempty,attr"    json:"albumPeak,omitempty"`
+	BaseGain     *float64 `xml:"baseGain,omitempty,attr"     json:"baseGain,omitempty"`
+	FallbackGain *float64 `xml:"fallbackGain,omitempty,attr" json:"fallbackGain,omitempty"`
 }
 
 func (r ReplayGain) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	if r.TrackGain == 0 && r.AlbumGain == 0 && r.TrackPeak == 0 && r.AlbumPeak == 0 && r.BaseGain == 0 && r.FallbackGain == 0 {
+	if r.TrackGain == nil && r.AlbumGain == nil && r.TrackPeak == nil && r.AlbumPeak == nil && r.BaseGain == nil && r.FallbackGain == nil {
 		return nil
 	}
 	type replayGain ReplayGain
