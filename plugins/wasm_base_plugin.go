@@ -1,47 +1,25 @@
 package plugins
 
 import (
-	"cmp"
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
 )
 
-// LoaderFunc is a generic function type that loads a plugin
-// This function is needed to bridge the type gap between the non-exported interface returned
-// by the plugin loader's Load() method and the public interface we use in our code.
+// LoaderFunc is a generic function type that loads a plugin instance.
 type LoaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (S, error)
 
 // wasmBasePlugin is a generic base implementation for WASM plugins.
-// It requires two generic type parameters:
-// - S: The service interface type that the plugin implements
-// - P: The plugin loader type that creates plugin instances
-//
-// Note: Both loader and loadFunc are necessary due to a limitation in the code generated
-// by protoc-gen-go-plugin. The plugin loaders (like ScrobblerPlugin) have Load() methods
-// that return non-exported interface types (like Scrobbler), while our code works
-// with the exported interfaces (like Scrobbler). The loadFunc bridges this gap.
+// S is the service interface type and P is the plugin loader type.
 type wasmBasePlugin[S any, P any] struct {
 	wasmPath   string
 	name       string
 	capability string
 	loader     P
 	loadFunc   LoaderFunc[S, P]
-	poolSize   int
-	poolTTL    time.Duration
-
-	pool     *wasmInstancePool[S]
-	poolOnce sync.Once
 }
-
-// Instance pool configuration
-const (
-	defaultMaxInstances = 8
-	defaultTTL          = time.Minute
-)
 
 func (w *wasmBasePlugin[S, P]) PluginName() string {
 	return w.name
@@ -59,43 +37,29 @@ func (w *wasmBasePlugin[S, P]) serviceName() string {
 	return w.name + "_" + w.capability
 }
 
-func (w *wasmBasePlugin[S, P]) initPool(ctx context.Context) {
-	w.poolOnce.Do(func() {
-		w.pool = NewWasmInstancePool[S](
-			w.serviceName(),
-			cmp.Or(w.poolSize, defaultMaxInstances),
-			cmp.Or(w.poolTTL, defaultTTL),
-			func(ctx context.Context) (S, error) {
-				inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
-				log.Trace(
-					ctx, "wasmBasePlugin: created new instance", "plugin", w.serviceName(),
-					"instanceID", getInstanceID(inst), err, //nolint:govet
-				)
-				return inst, err
-			},
-		)
-	})
-}
-
-func getInstanceID(inst any) string {
-	return fmt.Sprintf("%p", inst) //nolint:govet
-}
-
-// getInstance returns a new plugin instance, a cleanup function, and error
+// getInstance loads a new plugin instance and returns a cleanup function.
 func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName string) (S, func(), error) {
-	w.initPool(ctx)
 	start := time.Now()
-
-	inst, err := w.pool.Get(ctx)
+	inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
 	if err != nil {
-		return inst, func() {}, fmt.Errorf("wasmBasePlugin: failed to get instance for %s: %w", w.serviceName(), err)
+		var zero S
+		return zero, func() {}, fmt.Errorf("wasmBasePlugin: failed to load instance for %s: %w", w.serviceName(), err)
 	}
 	instanceID := getInstanceID(inst)
-	log.Trace(ctx, "wasmBasePlugin: got instance from pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))
+	log.Trace(ctx, "wasmBasePlugin: loaded instance", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))
 	return inst, func() {
-		log.Trace(ctx, "wasmBasePlugin: returning instance to pool", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName)
-		w.pool.Put(ctx, inst)
+		if closer, ok := any(inst).(interface{ Close(context.Context) error }); ok {
+			_ = closer.Close(ctx)
+		}
 	}, nil
+}
+
+type wasmPlugin[S any] interface {
+	getInstance(ctx context.Context, methodName string) (S, func(), error)
+}
+
+type errorMapper interface {
+	mapError(err error) error
 }
 
 func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName string, fn func(inst S) (R, error)) (R, error) {
@@ -110,12 +74,4 @@ func callMethod[S any, R any](ctx context.Context, w wasmPlugin[S], methodName s
 		return r, em.mapError(err)
 	}
 	return r, err
-}
-
-type wasmPlugin[S any] interface {
-	getInstance(ctx context.Context, methodName string) (S, func(), error)
-}
-
-type errorMapper interface {
-	mapError(err error) error
 }

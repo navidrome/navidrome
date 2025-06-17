@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -39,17 +40,22 @@ func NewWasmInstancePool[T any](name string, maxInstances int, ttl time.Duration
 	return p
 }
 
+func getInstanceID(inst any) string {
+	return fmt.Sprintf("%p", inst) //nolint:govet
+}
+
 func (p *wasmInstancePool[T]) Get(ctx context.Context) (T, error) {
 	p.mu.Lock()
 	n := len(p.items)
 	if n > 0 {
 		item := p.items[n-1]
 		p.items = p.items[:n-1]
+		log.Trace(ctx, "wasmInstancePool: got instance from pool", "pool", p.name, "instanceID", getInstanceID(item.value), "poolSize", len(p.items))
 		p.mu.Unlock()
-		log.Trace(ctx, "wasmInstancePool: got instance from pool", "pool", p.name)
 		return item.value, nil
 	}
 	p.mu.Unlock()
+	log.Trace(ctx, "wasmInstancePool: creating new instance", "pool", p.name, "instanceID", getInstanceID(p.new), "poolSize", n)
 	return p.new(ctx)
 }
 
@@ -63,10 +69,10 @@ func (p *wasmInstancePool[T]) Put(ctx context.Context, v T) {
 	}
 	if len(p.items) < p.maxInstances {
 		p.items = append(p.items, poolItem[T]{value: v, lastUsed: time.Now()})
-		log.Trace(ctx, "wasmInstancePool: returned instance to pool", "pool", p.name, "poolSize", len(p.items))
+		log.Trace(ctx, "wasmInstancePool: returned instance to pool", "pool", p.name, "instanceID", getInstanceID(v), "poolSize", len(p.items))
 		p.mu.Unlock()
 	} else {
-		log.Trace(ctx, "wasmInstancePool: pool full, closing instance", "pool", p.name, "poolSize", len(p.items))
+		log.Trace(ctx, "wasmInstancePool: pool full, closing instance", "pool", p.name, "instanceID", getInstanceID(v), "poolSize", len(p.items))
 		p.mu.Unlock()
 		p.closeItem(ctx, v)
 	}

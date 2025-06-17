@@ -61,10 +61,13 @@ type WasmPlugin interface {
 	Instantiate(ctx context.Context) (any, func(), error)
 }
 
+const maxParallelCompilations = 2 // Limit to 2 concurrent compilations
+
 var (
-	compileSemaphore = make(chan struct{}, 2) // Limit to 2 concurrent compilations; adjust as needed
+	compileSemaphore = make(chan struct{}, maxParallelCompilations)
 	compilationCache wazero.CompilationCache
 	cacheOnce        sync.Once
+	runtimePool      sync.Map // map[string]*pooledRuntime
 )
 
 func getCompilationCache() wazero.CompilationCache {
@@ -228,6 +231,13 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 // and instantiates the required host functions
 func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
+		// Check if runtime already exists
+		if rt, ok := runtimePool.Load(pluginName); ok {
+			log.Trace(ctx, "Using existing runtime", "plugin", pluginName, "runtime", fmt.Sprintf("%p", rt))
+			return rt.(wazero.Runtime), nil
+		}
+
+		// Create the runtime
 		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(compCache)
 		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
 		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
@@ -265,7 +275,19 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 		if err != nil {
 			return nil, err
 		}
-		return r, nil
+
+		pooled := newPooledRuntime(r, pluginName)
+
+		// Use LoadOrStore to atomically check and store, preventing race conditions
+		if existing, loaded := runtimePool.LoadOrStore(pluginName, pooled); loaded {
+			// Another goroutine created the runtime first, close ours and return the existing one
+			log.Trace(ctx, "Race condition detected, using existing runtime", "plugin", pluginName, "runtime", fmt.Sprintf("%p", existing))
+			_ = r.Close(ctx)
+			return existing.(wazero.Runtime), nil
+		}
+		log.Trace(ctx, "Created new runtime", "plugin", pluginName, "runtime", fmt.Sprintf("%p", pooled))
+
+		return pooled, nil
 	}
 }
 
