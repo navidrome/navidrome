@@ -12,27 +12,56 @@ import (
 )
 
 type httpServiceImpl struct {
-	pluginName string
+	pluginName  string
+	permissions *HttpPermissions
 }
 
 func (s *httpServiceImpl) Get(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
-	return doHttp(ctx, http.MethodGet, req)
+	return s.doHttp(ctx, http.MethodGet, req)
 }
 
 func (s *httpServiceImpl) Post(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
-	return doHttp(ctx, http.MethodPost, req)
+	return s.doHttp(ctx, http.MethodPost, req)
 }
 
 func (s *httpServiceImpl) Put(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
-	return doHttp(ctx, http.MethodPut, req)
+	return s.doHttp(ctx, http.MethodPut, req)
 }
 
 func (s *httpServiceImpl) Delete(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
-	return doHttp(ctx, http.MethodDelete, req)
+	return s.doHttp(ctx, http.MethodDelete, req)
 }
 
-func doHttp(ctx context.Context, method string, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
-	client := &http.Client{Timeout: time.Duration(req.TimeoutMs) * time.Millisecond}
+func (s *httpServiceImpl) doHttp(ctx context.Context, method string, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
+	// Check permissions if they exist
+	if s.permissions != nil {
+		if err := s.permissions.IsRequestAllowed(req.Url, method); err != nil {
+			log.Warn(ctx, "HTTP request blocked by permissions", "plugin", s.pluginName, "url", req.Url, "method", method, err)
+			return &hosthttp.HttpResponse{Error: "Request blocked by plugin permissions: " + err.Error()}, nil
+		}
+	}
+	client := &http.Client{
+		Timeout: time.Duration(req.TimeoutMs) * time.Millisecond,
+	}
+
+	// Configure redirect policy based on permissions
+	if s.permissions != nil {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			// Enforce maximum redirect limit
+			if len(via) >= httpMaxRedirects {
+				log.Warn(ctx, "HTTP redirect limit exceeded", "plugin", s.pluginName, "url", req.URL.String(), "redirectCount", len(via))
+				return http.ErrUseLastResponse
+			}
+
+			// Check if redirect destination is allowed
+			if err := s.permissions.IsRequestAllowed(req.URL.String(), req.Method); err != nil {
+				log.Warn(ctx, "HTTP redirect blocked by permissions", "plugin", s.pluginName, "url", req.URL.String(), "method", req.Method, err)
+				return http.ErrUseLastResponse
+			}
+
+			return nil // Allow redirect
+		}
+	}
 	var body io.Reader
 	if method == http.MethodPost || method == http.MethodPut {
 		body = bytes.NewReader(req.Body)

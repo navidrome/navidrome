@@ -6,7 +6,12 @@
   "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {
-      "reason": "To fetch album cover art from the Cover Art Archive API"
+      "reason": "To fetch album cover art from the Cover Art Archive API",
+      "allowedUrls": {
+        "https://coverartarchive.org": ["GET"],
+        "https://*.archive.org": ["GET"]
+      },
+      "allowLocalNetwork": false
     }
   }
 }

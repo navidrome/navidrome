@@ -18,7 +18,13 @@
       "reason": "To connect to Discord Gateway for real-time Rich Presence updates"
     },
     "http": {
-      "reason": "To communicate with Discord API for authentication and presence management"
+      "reason": "To communicate with Discord API for authentication and presence management",
+      "allowedUrls": {
+        "https://discord.com/api": ["GET", "POST", "PUT"],
+        "https://discordapp.com/api": ["GET", "POST", "PUT"],
+        "https://gateway.discord.gg": ["GET"]
+      },
+      "allowLocalNetwork": false
     },
     "cache": {
       "reason": "To cache Discord session tokens and avoid redundant API calls"

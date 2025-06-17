@@ -51,12 +51,44 @@
         "http": {
           "type": "object",
           "description": "HTTP service permissions",
-          "required": ["reason"],
+          "required": ["reason", "allowedUrls"],
           "properties": {
             "reason": {
               "type": "string",
               "minLength": 1,
               "description": "Explanation of why HTTP access is needed"
+            },
+            "allowedUrls": {
+              "type": "object",
+              "description": "Map of URL patterns to allowed HTTP methods. Redirect destinations must also be included.",
+              "patternProperties": {
+                "^.*$": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "GET",
+                      "POST",
+                      "PUT",
+                      "DELETE",
+                      "PATCH",
+                      "HEAD",
+                      "OPTIONS",
+                      "*"
+                    ]
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              },
+              "additionalProperties": false,
+              "minProperties": 1
+            },
+
+            "allowLocalNetwork": {
+              "type": "boolean",
+              "description": "Whether to allow requests to local/private network addresses",
+              "default": false
             }
           },
           "additionalProperties": false

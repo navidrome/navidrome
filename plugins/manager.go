@@ -227,7 +227,7 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string, permissions map[string]interface{}) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string, permissions map[string]any) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginName); ok {
@@ -253,7 +253,18 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
 			}},
 			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
+				var httpPerms *HttpPermissions
+				if httpPermData, exists := permissions["http"]; exists {
+					var err error
+					httpPerms, err = ParseHttpPermissions(httpPermData)
+					if err != nil {
+						return nil, fmt.Errorf("invalid HTTP permissions for plugin %s: %w", pluginName, err)
+					}
+				}
+				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{
+					pluginName:  pluginName,
+					permissions: httpPerms,
+				})
 			}},
 			{"scheduler", func() (map[string]wazeroapi.FunctionDefinition, error) {
 				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))

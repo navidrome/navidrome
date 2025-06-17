@@ -25,7 +25,7 @@ var _ = Describe("Plugin Permissions", func() {
 	})
 
 	// Helper function to create a test plugin with specific permissions
-	createTestPluginWithPermissions := func(name string, permissions map[string]interface{}) string {
+	createTestPluginWithPermissions := func(name string, permissions map[string]any) string {
 		pluginDir := filepath.Join(tempDir, name)
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
@@ -53,11 +53,14 @@ var _ = Describe("Plugin Permissions", func() {
 	Describe("Permission Enforcement in createCustomRuntime", func() {
 		It("should only load services specified in permissions", func() {
 			// Test with limited permissions
-			permissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"reason": "To read configuration settings",
 				},
 			}
@@ -79,7 +82,7 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should create runtime with empty permissions", func() {
-			permissions := map[string]interface{}{}
+			permissions := map[string]any{}
 
 			ccache, _ := getCompilationCache()
 			runtimeFunc := mgr.createCustomRuntime(ccache, "empty-permissions-plugin", permissions)
@@ -94,23 +97,26 @@ var _ = Describe("Plugin Permissions", func() {
 
 		It("should handle all available permissions", func() {
 			// Test with all possible permissions
-			permissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"reason": "To read configuration settings",
 				},
-				"scheduler": map[string]interface{}{
+				"scheduler": map[string]any{
 					"reason": "To schedule periodic tasks",
 				},
-				"websocket": map[string]interface{}{
+				"websocket": map[string]any{
 					"reason": "To handle real-time communication",
 				},
-				"cache": map[string]interface{}{
+				"cache": map[string]any{
 					"reason": "To cache data and reduce API calls",
 				},
-				"artwork": map[string]interface{}{
+				"artwork": map[string]any{
 					"reason": "To generate artwork URLs",
 				},
 			}
@@ -133,9 +139,12 @@ var _ = Describe("Plugin Permissions", func() {
 
 		It("should discover plugin with valid permissions manifest", func() {
 			// Create plugin with http permission
-			permissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch metadata from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
 			}
 			createTestPluginWithPermissions("valid-plugin", permissions)
@@ -150,7 +159,7 @@ var _ = Describe("Plugin Permissions", func() {
 
 		It("should discover plugin with no permissions", func() {
 			// Create plugin with empty permissions
-			permissions := map[string]interface{}{}
+			permissions := map[string]any{}
 			createTestPluginWithPermissions("no-perms-plugin", permissions)
 
 			mgr.ScanPlugins()
@@ -160,14 +169,17 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should discover plugin with multiple permissions", func() {
-			permissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch metadata from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"reason": "To read plugin configuration settings",
 				},
-				"scheduler": map[string]interface{}{
+				"scheduler": map[string]any{
 					"reason": "To schedule periodic data updates",
 				},
 			}
@@ -258,7 +270,10 @@ var _ = Describe("Plugin Permissions", func() {
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
 					"http": {
-						"reason": "To fetch data from external APIs"
+						"reason": "To fetch data from external APIs",
+						"allowedUrls": {
+							"*": ["*"]
+						}
 					},
 					"unknown": {
 						"reason": "Future functionality not yet implemented"
@@ -282,13 +297,16 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create two different permission sets
-			permissions1 := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions1 := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
 			}
-			permissions2 := map[string]interface{}{
-				"config": map[string]interface{}{
+			permissions2 := map[string]any{
+				"config": map[string]any{
 					"reason": "To read configuration settings",
 				},
 			}
@@ -323,7 +341,10 @@ var _ = Describe("Plugin Permissions", func() {
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
 					"http": {
-						"reason": "To fetch metadata from external APIs"
+						"reason": "To fetch metadata from external APIs",
+						"allowedUrls": {
+							"*": ["*"]
+						}
 					},
 					"config": {
 						"reason": "To read plugin configuration settings"
@@ -343,23 +364,26 @@ var _ = Describe("Plugin Permissions", func() {
 
 		It("should track which services are requested per plugin", func() {
 			// Test that different plugins can have different permission sets
-			permissions1 := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions1 := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"reason": "To read configuration settings",
 				},
 			}
-			permissions2 := map[string]interface{}{
-				"scheduler": map[string]interface{}{
+			permissions2 := map[string]any{
+				"scheduler": map[string]any{
 					"reason": "To schedule periodic tasks",
 				},
-				"websocket": map[string]interface{}{
+				"websocket": map[string]any{
 					"reason": "To handle real-time communication",
 				},
 			}
-			permissions3 := map[string]interface{}{} // Empty permissions
+			permissions3 := map[string]any{} // Empty permissions
 
 			createTestPluginWithPermissions("plugin-with-http", permissions1)
 			createTestPluginWithPermissions("plugin-with-scheduler", permissions2)
@@ -381,9 +405,12 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create runtime with HTTP permission
-			permissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
 			}
 
@@ -400,14 +427,17 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create runtime with multiple permissions
-			permissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			permissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
-				"config": map[string]interface{}{
+				"config": map[string]any{
 					"reason": "To read configuration settings",
 				},
-				"scheduler": map[string]interface{}{
+				"scheduler": map[string]any{
 					"reason": "To schedule periodic tasks",
 				},
 			}
@@ -425,7 +455,7 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create runtime with empty permissions
-			emptyPermissions := map[string]interface{}{}
+			emptyPermissions := map[string]any{}
 
 			runtimeFunc := mgr.createCustomRuntime(ccache, "no-service-plugin", emptyPermissions)
 			runtime, err := runtimeFunc(ctx)
@@ -457,13 +487,16 @@ var _ = Describe("Plugin Permissions", func() {
 			ccache, _ := getCompilationCache()
 
 			// Create two different runtimes with different permissions
-			httpOnlyPermissions := map[string]interface{}{
-				"http": map[string]interface{}{
+			httpOnlyPermissions := map[string]any{
+				"http": map[string]any{
 					"reason": "To fetch data from external APIs",
+					"allowedUrls": map[string]any{
+						"*": []any{"*"},
+					},
 				},
 			}
-			configOnlyPermissions := map[string]interface{}{
-				"config": map[string]interface{}{
+			configOnlyPermissions := map[string]any{
+				"config": map[string]any{
 					"reason": "To read configuration settings",
 				},
 			}

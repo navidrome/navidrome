@@ -811,6 +811,236 @@ _, err = websocket.Close(ctx, &websocket.CloseRequest{
 })
 ```
 
+## Host Services
+
+Navidrome provides several host services that plugins can use to interact with external systems and access functionality. Plugins must declare permissions for each service they want to use in their `manifest.json`.
+
+### HTTP Service
+
+The HTTP service allows plugins to make HTTP requests to external APIs and services. To use this service, declare the `http` permission in your manifest.
+
+#### Basic Usage
+
+```json
+{
+  "permissions": {
+    "http": {
+      "reason": "To fetch artist metadata from external music APIs"
+    }
+  }
+}
+```
+
+#### Granular Permissions
+
+For enhanced security, you can specify granular HTTP permissions that restrict which URLs and HTTP methods your plugin can access:
+
+```json
+{
+  "permissions": {
+    "http": {
+      "reason": "To fetch album reviews from AllMusic and artist data from MusicBrainz",
+      "allowedUrls": {
+        "https://api.allmusic.com": ["GET", "POST"],
+        "https://*.musicbrainz.org": ["GET"],
+        "https://coverartarchive.org": ["GET"],
+        "*": ["GET"]
+      },
+      "allowLocalNetwork": false
+    }
+  }
+}
+```
+
+**Permission Fields:**
+
+- `reason` (required): Clear explanation of why HTTP access is needed
+- `allowedUrls` (required): Map of URL patterns to allowed HTTP methods
+
+  - Must contain at least one URL pattern
+  - For unrestricted access, use: `{"*": ["*"]}`
+  - Keys can be exact URLs, wildcard patterns, or `*` for any URL
+  - Values are arrays of HTTP methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, or `*` for any method
+  - **Important**: Redirect destinations must also be included in this list. If a URL redirects to another URL not in `allowedUrls`, the redirect will be blocked.
+
+- `allowLocalNetwork` (optional, default: `false`): Whether to allow requests to localhost/private IPs
+
+**URL Pattern Matching:**
+
+- Exact URLs: `https://api.example.com`
+- Wildcard subdomains: `https://*.example.com` (matches any subdomain)
+- Wildcard paths: `https://example.com/api/*` (matches any path under /api/)
+- Global wildcard: `*` (matches any URL - use with caution)
+
+**Examples:**
+
+```json
+// Allow only GET requests to specific APIs
+{
+  "allowedUrls": {
+    "https://api.last.fm": ["GET"],
+    "https://ws.audioscrobbler.com": ["GET"]
+  }
+}
+
+// Allow any method to a trusted domain, GET everywhere else
+{
+  "allowedUrls": {
+    "https://my-trusted-api.com": ["*"],
+    "*": ["GET"]
+  }
+}
+
+// Handle redirects by including redirect destinations
+{
+  "allowedUrls": {
+    "https://short.ly/api123": ["GET"],      // Original URL
+    "https://api.actual-service.com": ["GET"] // Redirect destination
+  }
+}
+
+// Strict permissions for a secure plugin (blocks redirects by not including redirect destinations)
+{
+  "allowedUrls": {
+    "https://api.musicbrainz.org/ws/2": ["GET"]
+  },
+  "allowLocalNetwork": false
+}
+```
+
+#### Security Considerations
+
+The HTTP service implements several security features:
+
+1. **Local Network Protection**: By default, requests to localhost and private IP ranges are blocked
+2. **URL Filtering**: Only URLs matching `allowedUrls` patterns are allowed
+3. **Method Restrictions**: HTTP methods are validated against the allowed list for each URL pattern
+4. **Redirect Security**:
+   - Redirect destinations must also match `allowedUrls` patterns and methods
+   - Maximum of 5 redirects per request to prevent redirect loops
+   - To block all redirects, simply don't include any redirect destinations in `allowedUrls`
+
+**Private IP Ranges Blocked (when `allowLocalNetwork: false`):**
+
+- IPv4: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `169.254.0.0/16`
+- IPv6: `::1`, `fe80::/10`, `fc00::/7`
+- Hostnames: `localhost`
+
+#### Making HTTP Requests
+
+```go
+import "github.com/navidrome/navidrome/plugins/host/http"
+
+// GET request
+resp, err := httpClient.Get(ctx, &http.HttpRequest{
+    Url: "https://api.example.com/data",
+    Headers: map[string]string{
+        "Authorization": "Bearer " + token,
+        "User-Agent": "MyPlugin/1.0",
+    },
+    TimeoutMs: 5000,
+})
+
+// POST request with body
+resp, err := httpClient.Post(ctx, &http.HttpRequest{
+    Url: "https://api.example.com/submit",
+    Headers: map[string]string{
+        "Content-Type": "application/json",
+    },
+    Body: []byte(`{"key": "value"}`),
+    TimeoutMs: 10000,
+})
+
+// Handle response
+if err != nil {
+    return &api.Response{Error: "HTTP request failed: " + err.Error()}, nil
+}
+
+if resp.Error != "" {
+    return &api.Response{Error: "HTTP error: " + resp.Error}, nil
+}
+
+if resp.Status != 200 {
+    return &api.Response{Error: fmt.Sprintf("HTTP %d: %s", resp.Status, string(resp.Body))}, nil
+}
+
+// Use response data
+data := resp.Body
+headers := resp.Headers
+```
+
+### Other Host Services
+
+#### Config Service
+
+Access plugin-specific configuration:
+
+```json
+{
+  "permissions": {
+    "config": {
+      "reason": "To read API keys and service endpoints from plugin configuration"
+    }
+  }
+}
+```
+
+#### Cache Service
+
+Store and retrieve data to improve performance:
+
+```json
+{
+  "permissions": {
+    "cache": {
+      "reason": "To cache API responses and reduce external service calls"
+    }
+  }
+}
+```
+
+#### Scheduler Service
+
+Schedule recurring or one-time tasks:
+
+```json
+{
+  "permissions": {
+    "scheduler": {
+      "reason": "To schedule periodic metadata refresh and cleanup tasks"
+    }
+  }
+}
+```
+
+#### WebSocket Service
+
+Connect to WebSocket endpoints:
+
+```json
+{
+  "permissions": {
+    "websocket": {
+      "reason": "To connect to real-time music service APIs for live data"
+    }
+  }
+}
+```
+
+#### Artwork Service
+
+Generate public URLs for artwork:
+
+```json
+{
+  "permissions": {
+    "artwork": {
+      "reason": "To generate public URLs for album and artist images"
+    }
+  }
+}
+```
+
 ### Error Handling
 
 Plugins should use the standard error values (`plugin:not_found`, `plugin:not_implemented`) to indicate resource-not-found and unimplemented-method scenarios. All other errors will be propagated directly to the caller. Ensure your capability methods return errors via the response message `error` fields rather than panicking or relying on transport errors.

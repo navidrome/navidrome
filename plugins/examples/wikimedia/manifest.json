@@ -6,7 +6,13 @@
   "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {
-      "reason": "To fetch artist information and images from Wikimedia Commons API"
+      "reason": "To fetch artist information and images from Wikimedia Commons API",
+      "allowedUrls": {
+        "https://*.wikimedia.org": ["GET"],
+        "https://*.wikipedia.org": ["GET"],
+        "https://commons.wikimedia.org": ["GET"]
+      },
+      "allowLocalNetwork": false
     }
   }
 }

@@ -23,8 +23,13 @@ var _ = Describe("PooledRuntime", func() {
 		mgr = createManager()
 		ccache, _ := getCompilationCache()
 		// Add permissions for the test plugin
-		permissions := map[string]interface{}{
-			"http":   struct{}{},
+		permissions := map[string]any{
+			"http": map[string]any{
+				"reason": "For testing HTTP functionality",
+				"allowedUrls": map[string]any{
+					"*": []any{"*"},
+				},
+			},
 			"config": struct{}{},
 		}
 		rtFunc := mgr.createCustomRuntime(ccache, "fake_scrobbler", permissions)
