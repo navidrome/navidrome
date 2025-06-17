@@ -13,6 +13,9 @@ type User struct {
 	CreatedAt    time.Time  `structs:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
 
+	// Library associations (many-to-many relationship)
+	Libraries []Library `structs:"-" json:"libraries,omitempty"`
+
 	// This is only available on the backend, and it is never sent over the wire
 	Password string `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
@@ -35,4 +38,10 @@ type UserRepository interface {
 	FindByUsername(username string) (*User, error)
 	// FindByUsernameWithPassword is the same as above, but also returns the decrypted password
 	FindByUsernameWithPassword(username string) (*User, error)
+
+	// Library association methods
+	GetUserLibraries(userID string) (Libraries, error)
+	SetUserLibraries(userID string, libraryIDs []int) error
+	AddUserLibrary(userID string, libraryID int) error
+	RemoveUserLibrary(userID string, libraryID int) error
 }
