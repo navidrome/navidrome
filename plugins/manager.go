@@ -227,7 +227,7 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string, permissions map[string]interface{}) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginName); ok {
@@ -242,35 +242,47 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 			return nil, err
 		}
 
-		// Load each host library
-		configLib, err := loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
-		if err != nil {
-			return nil, fmt.Errorf("error loading config lib: %w", err)
-		}
-		httpLib, err := loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
-		if err != nil {
-			return nil, fmt.Errorf("error loading http lib: %w", err)
-		}
-		schedulerLib, err := loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
-		if err != nil {
-			return nil, fmt.Errorf("error loading scheduler lib: %w", err)
-		}
-		websocketLib, err := loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName))
-		if err != nil {
-			return nil, fmt.Errorf("error loading websocket lib: %w", err)
-		}
-		cacheLib, err := loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginName))
-		if err != nil {
-			return nil, fmt.Errorf("error loading cache lib: %w", err)
-		}
-		artworkLib, err := loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
-		if err != nil {
-			return nil, fmt.Errorf("error loading artwork lib: %w", err)
+		// Define all available host services
+		type hostService struct {
+			name     string
+			loadFunc func() (map[string]wazeroapi.FunctionDefinition, error)
 		}
 
-		// Combine the libraries
-		err = m.combineLibraries(ctx, r, configLib, httpLib, schedulerLib, websocketLib, cacheLib, artworkLib)
-		if err != nil {
+		availableServices := []hostService{
+			{"config", func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
+			}},
+			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{pluginName: pluginName})
+			}},
+			{"scheduler", func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
+			}},
+			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName))
+			}},
+			{"cache", func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginName))
+			}},
+			{"artwork", func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
+			}},
+		}
+
+		// Load only permitted services
+		var libraries []map[string]wazeroapi.FunctionDefinition
+		for _, service := range availableServices {
+			if _, hasPermission := permissions[service.name]; hasPermission {
+				lib, err := service.loadFunc()
+				if err != nil {
+					return nil, fmt.Errorf("error loading %s lib: %w", service.name, err)
+				}
+				libraries = append(libraries, lib)
+			}
+		}
+
+		// Combine the permitted libraries
+		if err := m.combineLibraries(ctx, r, libraries...); err != nil {
 			return nil, err
 		}
 
@@ -293,7 +305,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 // Used internally by ScanPlugins to register plugins
 func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *PluginInfo {
 	// Create custom runtime function
-	customRuntime := m.createCustomRuntime(cache, manifest.Name)
+	customRuntime := m.createCustomRuntime(cache, manifest.Name, manifest.Permissions)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()

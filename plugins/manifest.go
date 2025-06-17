@@ -15,11 +15,12 @@ import (
 var schemaData []byte
 
 type PluginManifest struct {
-	Name         string   `json:"name"`
-	Author       string   `json:"author"`
-	Version      string   `json:"version"`
-	Description  string   `json:"description"`
-	Capabilities []string `json:"capabilities"`
+	Name         string                 `json:"name"`
+	Author       string                 `json:"author"`
+	Version      string                 `json:"version"`
+	Description  string                 `json:"description"`
+	Capabilities []string               `json:"capabilities"`
+	Permissions  map[string]interface{} `json:"permissions"`
 }
 
 // LoadManifest loads and parses the manifest.json file from the given plugin directory.

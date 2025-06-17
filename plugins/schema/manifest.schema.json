@@ -3,7 +3,14 @@
   "title": "Navidrome Plugin Manifest",
   "description": "Schema for Navidrome Plugin manifest.json files",
   "type": "object",
-  "required": ["name", "author", "version", "description", "capabilities"],
+  "required": [
+    "name",
+    "author",
+    "version",
+    "description",
+    "capabilities",
+    "permissions"
+  ],
   "properties": {
     "name": {
       "type": "string",
@@ -34,6 +41,37 @@
           "LifecycleManagement",
           "WebSocketCallback"
         ]
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Host services the plugin is allowed to access",
+      "additionalProperties": false,
+      "properties": {
+        "http": {
+          "type": "object",
+          "description": "HTTP service permissions"
+        },
+        "config": {
+          "type": "object",
+          "description": "Configuration service permissions"
+        },
+        "scheduler": {
+          "type": "object",
+          "description": "Scheduler service permissions"
+        },
+        "websocket": {
+          "type": "object",
+          "description": "WebSocket service permissions"
+        },
+        "cache": {
+          "type": "object",
+          "description": "Cache service permissions"
+        },
+        "artwork": {
+          "type": "object",
+          "description": "Artwork service permissions"
+        }
       }
     }
   }
