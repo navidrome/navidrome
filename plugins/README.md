@@ -194,7 +194,6 @@ See the [cache.proto](host/cache/cache.proto) file for the full API definition.
 
 The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
 
-
 ```protobuf
 service SchedulerService {
    // One-time event scheduling
@@ -220,6 +219,175 @@ service SchedulerCallback {
 ```
 
 The `IsRecurring` field in the request allows plugins to differentiate between one-time and recurring callbacks.
+
+## Plugin Permission System
+
+Navidrome implements a permission-based security system that controls which host services plugins can access. This system enforces security at load-time by only making authorized services available to plugins in their WebAssembly runtime environment.
+
+### How Permissions Work
+
+The permission system follows a **secure-by-default** approach:
+
+1. **Default Behavior**: Plugins have access to **no host services** unless explicitly declared
+2. **Load-time Enforcement**: Only services listed in a plugin's permissions are loaded into its WASM runtime
+3. **Runtime Security**: Unauthorized services are completely unavailable - attempts to call them result in "function not exported" errors
+
+This design ensures that even if malicious code tries to access unauthorized services, the calls will fail because the functions simply don't exist in the plugin's runtime environment.
+
+### Permission Syntax
+
+Permissions are declared in the plugin's `manifest.json` file using the `permissions` field as an object:
+
+```json
+{
+  "name": "my-plugin",
+  "author": "Plugin Developer",
+  "version": "1.0.0",
+  "description": "A plugin that fetches data and caches results",
+  "capabilities": ["MetadataAgent"],
+  "permissions": {
+    "http": {},
+    "cache": {}
+  }
+}
+```
+
+Each permission is represented as a key in the permissions object. The value must be an empty object `{}` for basic access (additional configuration may be supported in the future). If no permissions are needed, use an empty permissions object: `"permissions": {}`.
+
+### Available Permissions
+
+The following permission keys correspond to host services:
+
+| Permission  | Host Service     | Description                                 |
+| ----------- | ---------------- | ------------------------------------------- |
+| `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE) |
+| `cache`     | CacheService     | Store and retrieve cached data with TTL     |
+| `config`    | ConfigService    | Access Navidrome configuration values       |
+| `scheduler` | SchedulerService | Schedule one-time and recurring tasks       |
+| `websocket` | WebSocketService | Connect to and communicate via WebSockets   |
+| `artwork`   | ArtworkService   | Generate public URLs for artwork images     |
+
+### Permission Validation
+
+The plugin system validates permissions during loading:
+
+1. **Schema Validation**: The manifest is validated against the JSON schema
+2. **Permission Recognition**: Unknown permission keys are silently accepted for forward compatibility
+3. **Service Loading**: Only services with corresponding permissions are made available to the plugin
+
+### Security Model
+
+The permission system provides multiple layers of security:
+
+#### 1. Principle of Least Privilege
+
+- Plugins start with zero permissions
+- Only explicitly requested services are available
+- No way to escalate privileges at runtime
+
+#### 2. Load-time Enforcement
+
+- Unauthorized services are not loaded into the WASM runtime
+- No performance overhead for permission checks during execution
+- Impossible to bypass restrictions through code manipulation
+
+#### 3. Service Isolation
+
+- Each plugin gets its own isolated service instances
+- Plugins cannot interfere with each other's service usage
+- Host services are sandboxed within the WASM environment
+
+### Best Practices for Plugin Developers
+
+#### Request Minimal Permissions
+
+```json
+// Good: No permissions if none needed
+{
+  "permissions": {}
+}
+
+// Good: Only request what you need
+{
+  "permissions": {
+    "http": {}
+  }
+}
+
+// Avoid: Requesting unnecessary permissions
+{
+  "permissions": {
+    "http": {},
+    "cache": {},
+    "scheduler": {},
+    "websocket": {}
+  }
+}
+```
+
+#### Document Required Permissions
+
+Always document in your plugin's README why each permission is needed:
+
+```markdown
+## Required Permissions
+
+- `http`: To fetch metadata from external APIs
+- `cache`: To cache API responses and reduce rate limiting
+```
+
+#### Handle Missing Permissions Gracefully
+
+Your plugin should provide clear error messages when permissions are missing:
+
+```go
+func (p *Plugin) GetArtistInfo(ctx context.Context, req *api.ArtistInfoRequest) (*api.ArtistInfoResponse, error) {
+    // This will fail with "function not exported" if http permission is missing
+    resp, err := p.httpClient.Get(ctx, &http.HttpRequest{Url: apiURL})
+    if err != nil {
+        // Check if it's a permission error
+        if strings.Contains(err.Error(), "not exported") {
+            return &api.ArtistInfoResponse{
+                Error: "Plugin requires 'http' permission to fetch artist information",
+            }, nil
+        }
+        return &api.ArtistInfoResponse{Error: err.Error()}, nil
+    }
+    // ... process response
+}
+```
+
+### Troubleshooting Permissions
+
+#### Common Error Messages
+
+**"function not exported in module env"**
+
+- Cause: Plugin trying to call a service without proper permission
+- Solution: Add the required permission to your manifest.json
+
+**Permission silently ignored**
+
+- Cause: Using a permission key not recognized by current Navidrome version
+- Effect: The unknown permission is silently ignored (no error or warning)
+- Solution: This is actually normal behavior for forward compatibility
+
+#### Debugging Permission Issues
+
+1. **Check the manifest**: Ensure required permissions are spelled correctly and present
+2. **Review logs**: Check for plugin loading errors and WASM runtime errors
+3. **Test incrementally**: Add permissions one at a time to identify which services your plugin needs
+4. **Verify service names**: Ensure permission keys match exactly: `http`, `cache`, `config`, `scheduler`, `websocket`, `artwork`
+
+### Future Considerations
+
+The permission system is designed for extensibility:
+
+- **Unknown permissions** are allowed in manifests for forward compatibility
+- **New services** can be added with corresponding permission keys
+- **Permission scoping** could be added in the future (e.g., read-only vs. read-write access)
+
+This ensures that plugins developed today will continue to work as the system evolves, while maintaining strong security boundaries.
 
 ## Plugin System Implementation
 
@@ -423,20 +591,23 @@ The refresh process:
 
 ### Plugin Security
 
-Plugins are executed in a WebAssembly sandbox, but for additional security:
+Navidrome provides multiple layers of security for plugin execution:
 
-1. The plugins folder is configured with restricted permissions (0700) accessible only by the user running Navidrome
-2. All plugin files are also restricted with appropriate permissions
-3. Plugins can only access resources through the provided host functions
+1. **WebAssembly Sandbox**: Plugins run in isolated WebAssembly environments with no direct system access
+2. **Permission System**: Plugins can only access host services they explicitly request in their manifest (see [Plugin Permission System](#plugin-permission-system))
+3. **File System Security**: The plugins folder is configured with restricted permissions (0700) accessible only by the user running Navidrome
+4. **Resource Isolation**: Each plugin instance is isolated and cannot interfere with other plugins or core Navidrome functionality
 
-Always ensure you trust the source of any plugins you install, as they run with the same user permissions as Navidrome itself.
+The permission system ensures that plugins follow the principle of least privilege - they start with no access to host services and must explicitly declare what they need. This prevents malicious or poorly written plugins from accessing unauthorized functionality.
+
+Always ensure you trust the source of any plugins you install, and review their requested permissions before installation.
 
 ## Plugin Manifest
 
 **Capability Names Are Case-Sensitive**: Entries in the `capabilities` array must exactly match one of the supported capabilities: `MetadataAgent`, `Scrobbler`, `SchedulerCallback`, `WebSocketCallback`, or `LifecycleManagement`.
 **Manifest Validation**: The `manifest.json` is validated against the embedded JSON schema (`plugins/schema/manifest.schema.json`). Invalid manifests will be rejected during plugin discovery.
 
-Every plugin must provide a `manifest.json` file that declares metadata and which capabilities it implements:
+Every plugin must provide a `manifest.json` file that declares metadata, capabilities, and permissions:
 
 ```json
 {
@@ -450,7 +621,13 @@ Every plugin must provide a `manifest.json` file that declares metadata and whic
     "SchedulerCallback",
     "WebSocketCallback",
     "LifecycleManagement"
-  ]
+  ],
+  "permissions": {
+    "http": {},
+    "cache": {},
+    "config": {},
+    "scheduler": {}
+  }
 }
 ```
 
@@ -461,6 +638,7 @@ Required fields:
 - `author`: The creator or organization behind the plugin
 - `version`: Version identifier (recommended to follow semantic versioning)
 - `description`: A brief description of what the plugin does
+- `permissions`: Object mapping host service names to their configurations (use empty object `{}` for no permissions)
 
 Currently supported capabilities:
 
@@ -656,7 +834,7 @@ The plugin system implements a compilation cache to improve performance:
 1. Compiled WASM modules are cached in `[CacheFolder]/plugins`
 2. This reduces startup time for plugins that have already been compiled
 3. The cache has a automatic cleanup mechanism to remove old modules.
-   - when the cache folder exceeds `Plugins.CacheSize` (default 100MB), 
+   - when the cache folder exceeds `Plugins.CacheSize` (default 100MB),
      the oldest modules are removed
 
 ## Best Practices
@@ -678,8 +856,10 @@ The plugin system implements a compilation cache to improve performance:
    - Use efficient algorithms that work well in single-call scenarios
 
 4. **Security**:
+   - Only request permissions you actually need (see [Plugin Permission System](#plugin-permission-system))
    - Validate inputs to prevent injection attacks
    - Don't store sensitive credentials in the plugin code
+   - Use configuration for API keys and sensitive data
 
 ## Limitations
 
@@ -695,12 +875,20 @@ The plugin system implements a compilation cache to improve performance:
 
    - Ensure `plugin.wasm` and `manifest.json` exist in the plugin directory
    - Check that the manifest contains valid capabilities names
+   - Verify the manifest schema is valid (see [Plugin Permission System](#plugin-permission-system))
 
-2. **Compilation errors**:
+2. **Permission errors**:
+
+   - **"function not exported in module env"**: Plugin trying to use a service without proper permission
+   - Check that required permissions are declared in `manifest.json`
+   - See [Troubleshooting Permissions](#troubleshooting-permissions) for detailed guidance
+
+3. **Compilation errors**:
 
    - Check logs for WASM compilation errors
    - Verify the plugin is compatible with the current API version
 
-3. **Runtime errors**:
+4. **Runtime errors**:
    - Look for error messages in the Navidrome logs
    - Add debug logging to your plugin
+   - Check if the error is permission-related before debugging plugin logic
