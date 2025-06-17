@@ -2,15 +2,13 @@ package plugins
 
 import (
 	"fmt"
-	"net/url"
 )
 
 // WebSocketPermissions represents granular WebSocket access permissions for plugins
 type WebSocketPermissions struct {
-	Reason            string   `json:"reason"`
-	AllowedUrls       []string `json:"allowedUrls"`
-	AllowLocalNetwork bool     `json:"allowLocalNetwork,omitempty"`
-	matcher           *URLMatcher
+	*NetworkPermissionsBase
+	AllowedUrls []string `json:"allowedUrls"`
+	matcher     *URLMatcher
 }
 
 // ParseWebSocketPermissions extracts WebSocket permissions from the raw permission map
@@ -24,16 +22,9 @@ func ParseWebSocketPermissions(permissionData any) (*WebSocketPermissions, error
 		return nil, fmt.Errorf("websocket permission data is not a map")
 	}
 
-	perms := &WebSocketPermissions{
-		AllowLocalNetwork: false, // Default to false for security
-		matcher:           NewURLMatcher(),
-	}
-
-	// Extract reason (required)
-	if reason, ok := permMap["reason"].(string); ok && reason != "" {
-		perms.Reason = reason
-	} else {
-		return nil, fmt.Errorf("websocket permission reason is required and must be a non-empty string")
+	base, err := parseNetworkPermissionsBase(permMap)
+	if err != nil {
+		return nil, err
 	}
 
 	// Extract allowedUrls (array format)
@@ -51,39 +42,26 @@ func ParseWebSocketPermissions(permissionData any) (*WebSocketPermissions, error
 		return nil, fmt.Errorf("allowedUrls must contain at least one URL pattern")
 	}
 
-	perms.AllowedUrls = make([]string, len(allowedUrlsArray))
+	allowedUrls := make([]string, len(allowedUrlsArray))
 	for i, urlRaw := range allowedUrlsArray {
 		urlPattern, ok := urlRaw.(string)
 		if !ok {
 			return nil, fmt.Errorf("URL pattern at index %d must be a string", i)
 		}
-		perms.AllowedUrls[i] = urlPattern
+		allowedUrls[i] = urlPattern
 	}
 
-	// Extract allowLocalNetwork (optional)
-	if allowLocalNetwork, exists := permMap["allowLocalNetwork"]; exists {
-		if localNet, ok := allowLocalNetwork.(bool); ok {
-			perms.AllowLocalNetwork = localNet
-		} else {
-			return nil, fmt.Errorf("allowLocalNetwork must be a boolean")
-		}
-	}
-
-	return perms, nil
+	return &WebSocketPermissions{
+		NetworkPermissionsBase: base,
+		AllowedUrls:            allowedUrls,
+		matcher:                NewURLMatcher(),
+	}, nil
 }
 
 // IsConnectionAllowed checks if a WebSocket connection is allowed
 func (w *WebSocketPermissions) IsConnectionAllowed(requestURL string) error {
-	parsedURL, err := url.Parse(requestURL)
-	if err != nil {
-		return fmt.Errorf("invalid URL: %w", err)
-	}
-
-	// Check local network restrictions
-	if !w.AllowLocalNetwork {
-		if err := CheckLocalNetwork(parsedURL); err != nil {
-			return err
-		}
+	if _, err := checkURLPolicy(requestURL, w.AllowLocalNetwork); err != nil {
+		return err
 	}
 
 	// allowedUrls is required - no fallback to allow all URLs

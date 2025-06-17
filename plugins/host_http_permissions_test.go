@@ -19,11 +19,11 @@ var _ = Describe("HTTPPermissions", func() {
 
 			perms, err := ParseHTTPPermissions(permData)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(perms.NetworkPermissionsBase.Reason).To(Equal("To fetch data from APIs"))
-			Expect(perms.NetworkPermissionsBase.AllowedUrls).To(HaveLen(2))
-			Expect(perms.NetworkPermissionsBase.AllowedUrls["https://api.example.com"]).To(Equal([]string{"GET", "POST"}))
-			Expect(perms.NetworkPermissionsBase.AllowedUrls["https://*.example.com"]).To(Equal([]string{"*"}))
-			Expect(perms.NetworkPermissionsBase.AllowLocalNetwork).To(BeTrue())
+			Expect(perms.Reason).To(Equal("To fetch data from APIs"))
+			Expect(perms.AllowedUrls).To(HaveLen(2))
+			Expect(perms.AllowedUrls["https://api.example.com"]).To(Equal([]string{"GET", "POST"}))
+			Expect(perms.AllowedUrls["https://*.example.com"]).To(Equal([]string{"*"}))
+			Expect(perms.AllowLocalNetwork).To(BeTrue())
 		})
 
 		DescribeTable("HTTP method validation",
@@ -71,14 +71,14 @@ var _ = Describe("HTTPPermissions", func() {
 			BeforeEach(func() {
 				perms = &HTTPPermissions{
 					NetworkPermissionsBase: &NetworkPermissionsBase{
-						Reason: "Test permissions",
-						AllowedUrls: map[string][]string{
-							"https://api.example.com":     {"GET", "POST"},
-							"https://upload.example.com":  {"PUT", "PATCH"},
-							"https://admin.example.com":   {"DELETE"},
-							"https://webhook.example.com": {"*"},
-						},
+						Reason:            "Test permissions",
 						AllowLocalNetwork: false,
+					},
+					AllowedUrls: map[string][]string{
+						"https://api.example.com":     {"GET", "POST"},
+						"https://upload.example.com":  {"PUT", "PATCH"},
+						"https://admin.example.com":   {"DELETE"},
+						"https://webhook.example.com": {"*"},
 					},
 					matcher: NewURLMatcher(),
 				}
@@ -113,11 +113,11 @@ var _ = Describe("HTTPPermissions", func() {
 			BeforeEach(func() {
 				perms = &HTTPPermissions{
 					NetworkPermissionsBase: &NetworkPermissionsBase{
-						Reason: "Test permissions",
-						AllowedUrls: map[string][]string{
-							"https://api.example.com": {"GET", "POST"}, // Both uppercase for consistency
-						},
+						Reason:            "Test permissions",
 						AllowLocalNetwork: false,
+					},
+					AllowedUrls: map[string][]string{
+						"https://api.example.com": {"GET", "POST"}, // Both uppercase for consistency
 					},
 					matcher: NewURLMatcher(),
 				}
@@ -146,14 +146,14 @@ var _ = Describe("HTTPPermissions", func() {
 			BeforeEach(func() {
 				perms = &HTTPPermissions{
 					NetworkPermissionsBase: &NetworkPermissionsBase{
-						Reason: "Test permissions",
-						AllowedUrls: map[string][]string{
-							"https://api.example.com/v1/*":     {"GET"},
-							"https://api.example.com/v1/users": {"POST", "PUT"},
-							"https://*.example.com/public/*":   {"GET", "HEAD"},
-							"https://admin.*.example.com":      {"*"},
-						},
+						Reason:            "Test permissions",
 						AllowLocalNetwork: false,
+					},
+					AllowedUrls: map[string][]string{
+						"https://api.example.com/v1/*":     {"GET"},
+						"https://api.example.com/v1/users": {"POST", "PUT"},
+						"https://*.example.com/public/*":   {"GET", "HEAD"},
+						"https://admin.*.example.com":      {"*"},
 					},
 					matcher: NewURLMatcher(),
 				}

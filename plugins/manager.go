@@ -225,6 +225,20 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 	return nil
 }
 
+// parsePermission extracts and validates a specific permission set from the raw permissions map.
+// It returns the parsed permission struct (of type T) or a zero value if the permission is not present.
+func parsePermission[T any](permissions map[string]any, permissionName, pluginName string, parser func(any) (T, error)) (T, error) {
+	var parsed T
+	if permData, exists := permissions[permissionName]; exists {
+		var err error
+		parsed, err = parser(permData)
+		if err != nil {
+			return parsed, fmt.Errorf("invalid %s permissions for plugin %s: %w", permissionName, pluginName, err)
+		}
+	}
+	return parsed, nil
+}
+
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
 func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string, permissions map[string]any) api.WazeroNewRuntime {
@@ -253,13 +267,9 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
 			}},
 			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				var httpPerms *HTTPPermissions
-				if httpPermData, exists := permissions["http"]; exists {
-					var err error
-					httpPerms, err = ParseHTTPPermissions(httpPermData)
-					if err != nil {
-						return nil, fmt.Errorf("invalid HTTP permissions for plugin %s: %w", pluginName, err)
-					}
+				httpPerms, err := parsePermission(permissions, "http", pluginName, ParseHTTPPermissions)
+				if err != nil {
+					return nil, err
 				}
 				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{
 					pluginName:  pluginName,
@@ -270,13 +280,9 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
 			}},
 			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				var wsPerms *WebSocketPermissions
-				if wsPermData, exists := permissions["websocket"]; exists {
-					var err error
-					wsPerms, err = ParseWebSocketPermissions(wsPermData)
-					if err != nil {
-						return nil, fmt.Errorf("invalid WebSocket permissions for plugin %s: %w", pluginName, err)
-					}
+				wsPerms, err := parsePermission(permissions, "websocket", pluginName, ParseWebSocketPermissions)
+				if err != nil {
+					return nil, err
 				}
 				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName, wsPerms))
 			}},
