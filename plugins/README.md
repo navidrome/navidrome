@@ -46,6 +46,8 @@ These services are defined in `plugins/host/` and implemented in corresponding h
 - Scheduler service (in `plugins/host_scheduler.go`) for scheduling timed events
 - Config service (in `plugins/host_config.go`) for accessing plugin-specific configuration
 - WebSocket service (in `plugins/host_websocket.go`) for WebSocket communication
+- Cache service (in `plugins/host_cache.go`) for TTL-based plugin caching
+- Artwork service (in `plugins/host_artwork.go`) for generating public artwork URLs
 
 ### Available Host Services
 
@@ -192,6 +194,20 @@ See the [cache.proto](host/cache/cache.proto) file for the full API definition.
 
 The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
 
+
+```protobuf
+service SchedulerService {
+   // One-time event scheduling
+   rpc ScheduleOneTime(ScheduleOneTimeRequest) returns (ScheduleResponse);
+
+   // Recurring event scheduling
+   rpc ScheduleRecurring(ScheduleRecurringRequest) returns (ScheduleResponse);
+
+   // Cancel any scheduled job
+   rpc CancelSchedule(CancelRequest) returns (CancelResponse);
+}
+```
+
 - **One-time scheduling**: Schedule a callback to be executed once after a specified delay.
 - **Recurring scheduling**: Schedule a callback to be executed repeatedly according to a cron expression.
 
@@ -249,6 +265,8 @@ The protobuf definitions are located in:
 - `plugins/host/scheduler/scheduler.proto`: Scheduler service interface
 - `plugins/host/config/config.proto`: Config service interface
 - `plugins/host/websocket/websocket.proto`: WebSocket service interface
+- `plugins/host/cache/cache.proto`: Cache service interface
+- `plugins/host/artwork/artwork.proto`: Artwork service interface
 
 ### 4. Integration Architecture
 
@@ -564,139 +582,6 @@ _, err = websocket.Close(ctx, &websocket.CloseRequest{
 })
 ```
 
-### Host Functions
-
-Plugins can access host functionality through the host interface:
-
-#### HttpService
-
-```protobuf
-// HTTP methods available to plugins
-service HttpService {
-  rpc Get(HttpRequest) returns (HttpResponse);
-  rpc Post(HttpRequest) returns (HttpResponse);
-  rpc Put(HttpRequest) returns (HttpResponse);
-  rpc Delete(HttpRequest) returns (HttpResponse);
-}
-```
-
-#### ConfigService
-
-```protobuf
-service ConfigService {
-    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
-}
-```
-
-The ConfigService allows plugins to access Navidrome's configuration. See the [config.proto](host/config/config.proto) file for the full API.
-
-#### CacheService
-
-```protobuf
-service CacheService {
-    // Set a string value in the cache
-    rpc SetString(SetStringRequest) returns (SetResponse);
-
-    // Get a string value from the cache
-    rpc GetString(GetRequest) returns (GetStringResponse);
-
-    // Set an integer value in the cache
-    rpc SetInt(SetIntRequest) returns (SetResponse);
-
-    // Get an integer value from the cache
-    rpc GetInt(GetRequest) returns (GetIntResponse);
-
-    // Set a float value in the cache
-    rpc SetFloat(SetFloatRequest) returns (SetResponse);
-
-    // Get a float value from the cache
-    rpc GetFloat(GetRequest) returns (GetFloatResponse);
-
-    // Set a byte slice value in the cache
-    rpc SetBytes(SetBytesRequest) returns (SetResponse);
-
-    // Get a byte slice value from the cache
-    rpc GetBytes(GetRequest) returns (GetBytesResponse);
-
-    // Remove a value from the cache
-    rpc Remove(RemoveRequest) returns (RemoveResponse);
-
-    // Check if a key exists in the cache
-    rpc Has(HasRequest) returns (HasResponse);
-}
-```
-
-The CacheService provides a TTL-based cache for plugins. Each plugin gets its own isolated cache instance. By default, cached items expire after 24 hours unless a custom TTL is specified.
-
-Key features:
-
-- **Isolated Caches**: Each plugin has its own cache namespace, so different plugins can use the same key names without conflicts
-- **Typed Values**: Store and retrieve values with their proper types (string, int64, float64, or byte slice)
-- **Configurable TTL**: Set custom expiration times per item, or use the default 24-hour TTL
-- **Type Safety**: The system handles type checking, returning "not exists" if there's a type mismatch
-
-Example usage:
-
-```go
-// Store a string value with default TTL (24 hours)
-cacheService.SetString(ctx, &cache.SetStringRequest{
-    Key:   "user_preference",
-    Value: "dark_mode",
-})
-
-// Store an integer with custom TTL (5 minutes)
-cacheService.SetInt(ctx, &cache.SetIntRequest{
-    Key:        "api_call_count",
-    Value:      42,
-    TtlSeconds: 300, // 5 minutes
-})
-
-// Retrieve a value
-resp, err := cacheService.GetString(ctx, &cache.GetRequest{
-    Key: "user_preference",
-})
-if err != nil {
-    // Handle error
-}
-if resp.Exists {
-    // Use resp.Value
-} else {
-    // Key doesn't exist or has expired
-}
-
-// Check if a key exists
-hasResp, err := cacheService.Has(ctx, &cache.HasRequest{
-    Key: "api_call_count",
-})
-if hasResp.Exists {
-    // Key exists and hasn't expired
-}
-
-// Remove a value
-cacheService.Remove(ctx, &cache.RemoveRequest{
-    Key: "user_preference",
-})
-```
-
-See the [cache.proto](host/cache/cache.proto) file for the full API definition.
-
-#### SchedulerService
-
-The SchedulerService provides a unified interface for scheduling both one-time and recurring tasks. See the [scheduler.proto](host/scheduler/scheduler.proto) file for the full API.
-
-- **One-time scheduling**: Schedule a callback to be executed once after a specified delay.
-- **Recurring scheduling**: Schedule a callback to be executed repeatedly according to a cron expression.
-
-Plugins using this service must implement the `SchedulerCallback` interface:
-
-```protobuf
-service SchedulerCallback {
-    rpc OnSchedulerCallback(SchedulerCallbackRequest) returns (SchedulerCallbackResponse);
-}
-```
-
-The `IsRecurring` field in the request allows plugins to differentiate between one-time and recurring callbacks.
-
 ### Error Handling
 
 Plugins should use the standard error values (`plugin:not_found`, `plugin:not_implemented`) to indicate resource-not-found and unimplemented-method scenarios. All other errors will be propagated directly to the caller. Ensure your capability methods return errors via the response message `error` fields rather than panicking or relying on transport errors.
@@ -764,14 +649,15 @@ Remember, the `OnInit` method is called only once when the plugin is loaded. It 
 3. Verifying connectivity to external services
 4. Initializing any external resources
 
-**Initialization Semantics**: The `OnInit` call is invoked once when the plugin is first loaded for a given version. If the plugin's version changes, initialization will run again for that new version.
-
 ## Caching
 
 The plugin system implements a compilation cache to improve performance:
 
 1. Compiled WASM modules are cached in `[CacheFolder]/plugins`
 2. This reduces startup time for plugins that have already been compiled
+3. The cache has a automatic cleanup mechanism to remove old modules.
+   - when the cache folder exceeds `Plugins.CacheSize` (default 100MB), 
+     the oldest modules are removed
 
 ## Best Practices
 
@@ -788,7 +674,7 @@ The plugin system implements a compilation cache to improve performance:
 
 3. **Performance**:
 
-   - Remember plugins are stateless, so don't rely on in-memory caching
+   - Remember plugins are stateless, so don't rely on local variables for caching. Use the CacheService for caching data.
    - Use efficient algorithms that work well in single-call scenarios
 
 4. **Security**:
@@ -798,7 +684,8 @@ The plugin system implements a compilation cache to improve performance:
 ## Limitations
 
 1. WASM plugins have limited access to system resources
-2. Plugin compilation has an initial overhead on first load
+2. Plugin compilation has an initial overhead on first load, as it needs to be compiled to WebAssembly
+   - Subsequent calls are faster due to caching
 3. New plugin capabilities types require changes to the core codebase
 4. Stateless nature prevents certain optimizations
 
