@@ -85,7 +85,7 @@ func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.Scrobbler
 	// Schedule a timer to clear the activity after the track completes
 	_, err = d.sched.ScheduleOneTime(ctx, &scheduler.ScheduleOneTimeRequest{
 		ScheduleId:   request.Username,
-		DelaySeconds: request.Track.Length + 5,
+		DelaySeconds: request.Track.Length - request.Track.Position + 5,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule completion timer: %w", err)
