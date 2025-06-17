@@ -53,9 +53,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.MbzAlbumType = md.String(model.TagReleaseType)
 
 	// ReplayGain
-	mf.RGAlbumPeak = md.Float(model.TagReplayGainAlbumPeak, 1)
+	mf.RGAlbumPeak = md.NullableFloat(model.TagReplayGainAlbumPeak)
 	mf.RGAlbumGain = md.mapGain(model.TagReplayGainAlbumGain, model.TagR128AlbumGain)
-	mf.RGTrackPeak = md.Float(model.TagReplayGainTrackPeak, 1)
+	mf.RGTrackPeak = md.NullableFloat(model.TagReplayGainTrackPeak)
 	mf.RGTrackGain = md.mapGain(model.TagReplayGainTrackGain, model.TagR128TrackGain)
 
 	// General properties
@@ -108,23 +108,24 @@ func (md Metadata) AlbumID(mf model.MediaFile, pidConf string) string {
 	return getPID(mf, md, pidConf)
 }
 
-func (md Metadata) mapGain(rg, r128 model.TagName) float64 {
+func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {
 	v := md.Gain(rg)
-	if v != 0 {
+	if v != nil {
 		return v
 	}
 	r128value := md.String(r128)
 	if r128value != "" {
 		var v, err = strconv.Atoi(r128value)
 		if err != nil {
-			return 0
+			return nil
 		}
 		// Convert Q7.8 to float
-		var value = float64(v) / 256.0
+		value := float64(v) / 256.0
 		// Adding 5 dB to normalize with ReplayGain level
-		return value + 5
+		value += 5
+		return &value
 	}
-	return 0
+	return nil
 }
 
 func (md Metadata) mapLyrics() string {

@@ -103,9 +103,11 @@ func (md Metadata) NumAndTotal(key model.TagName) (int, int) { return md.tuple(k
 func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 	return float(md.first(key), def...)
 }
-func (md Metadata) Gain(key model.TagName) float64 {
+func (md Metadata) NullableFloat(key model.TagName) *float64 { return nullableFloat(md.first(key)) }
+
+func (md Metadata) Gain(key model.TagName) *float64 {
 	v := strings.TrimSpace(strings.Replace(md.first(key), "dB", "", 1))
-	return float(v)
+	return nullableFloat(v)
 }
 func (md Metadata) Pairs(key model.TagName) []Pair {
 	values := md.tags[key]
@@ -119,14 +121,22 @@ func (md Metadata) first(key model.TagName) string {
 }
 
 func float(value string, def ...float64) float64 {
+	v := nullableFloat(value)
+	if v != nil {
+		return *v
+	}
+	if len(def) > 0 {
+		return def[0]
+	}
+	return 0
+}
+
+func nullableFloat(value string) *float64 {
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil || v == math.Inf(-1) || math.IsInf(v, 1) || math.IsNaN(v) {
-		if len(def) > 0 {
-			return def[0]
-		}
-		return 0
+		return nil
 	}
-	return v
+	return &v
 }
 
 // Used for tracks and discs
