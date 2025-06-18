@@ -14,7 +14,7 @@ import (
 )
 
 // Helper function to create test plugins with typed permissions
-func createTestPluginWithTypedPermissions(tempDir, name string, permissions schema.PluginManifestPermissions) string {
+func createTestPlugin(tempDir, name string, permissions schema.PluginManifestPermissions) string {
 	pluginDir := filepath.Join(tempDir, name)
 	Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
@@ -57,32 +57,6 @@ var _ = Describe("Plugin Permissions", func() {
 		mgr = createManager()
 		tempDir = GinkgoT().TempDir()
 	})
-
-	// Keep the old helper for backward compatibility with existing tests that haven't been migrated yet
-	createTestPluginWithPermissions := func(name string, permissions map[string]any) string {
-		pluginDir := filepath.Join(tempDir, name)
-		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-
-		// Convert permissions map to JSON
-		permissionsJSON, err := json.Marshal(permissions)
-		Expect(err).NotTo(HaveOccurred())
-
-		// Create a minimal manifest with specified permissions
-		manifest := `{
-			"name": "` + name + `",
-			"author": "Test Author",
-			"version": "1.0.0",
-			"description": "Test plugin for permission testing",
-			"capabilities": ["MetadataAgent"],
-			"permissions": ` + string(permissionsJSON) + `}`
-
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
-
-		// Create a dummy WASM file
-		Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), []byte("dummy wasm"), 0600)).To(Succeed())
-
-		return pluginDir
-	}
 
 	Describe("Permission Enforcement in createCustomRuntime", func() {
 		It("should only load services specified in permissions", func() {
@@ -176,16 +150,16 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should discover plugin with valid permissions manifest", func() {
-			// Create plugin with http permission
-			permissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch metadata from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Create plugin with http permission using typed structs
+			permissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch metadata from external APIs",
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 				},
 			}
-			createTestPluginWithPermissions("valid-plugin", permissions)
+			createTestPlugin(tempDir, "valid-plugin", permissions)
 
 			// Scan for plugins
 			mgr.ScanPlugins()
@@ -196,9 +170,9 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should discover plugin with no permissions", func() {
-			// Create plugin with empty permissions
-			permissions := map[string]any{}
-			createTestPluginWithPermissions("no-perms-plugin", permissions)
+			// Create plugin with empty permissions using typed structs
+			permissions := schema.PluginManifestPermissions{}
+			createTestPlugin(tempDir, "no-perms-plugin", permissions)
 
 			mgr.ScanPlugins()
 
@@ -207,21 +181,22 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should discover plugin with multiple permissions", func() {
-			permissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch metadata from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Create plugin with multiple permissions using typed structs
+			permissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch metadata from external APIs",
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 				},
-				"config": map[string]any{
-					"reason": "To read plugin configuration settings",
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read plugin configuration settings",
 				},
-				"scheduler": map[string]any{
-					"reason": "To schedule periodic data updates",
+				Scheduler: &schema.PluginManifestPermissionsScheduler{
+					Reason: "To schedule periodic data updates",
 				},
 			}
-			createTestPluginWithPermissions("multi-perms-plugin", permissions)
+			createTestPlugin(tempDir, "multi-perms-plugin", permissions)
 
 			mgr.ScanPlugins()
 
@@ -423,9 +398,9 @@ var _ = Describe("Plugin Permissions", func() {
 			}
 			permissions3 := schema.PluginManifestPermissions{} // Empty permissions
 
-			createTestPluginWithTypedPermissions(tempDir, "plugin-with-http", permissions1)
-			createTestPluginWithTypedPermissions(tempDir, "plugin-with-scheduler", permissions2)
-			createTestPluginWithTypedPermissions(tempDir, "plugin-with-none", permissions3)
+			createTestPlugin(tempDir, "plugin-with-http", permissions1)
+			createTestPlugin(tempDir, "plugin-with-scheduler", permissions2)
+			createTestPlugin(tempDir, "plugin-with-none", permissions3)
 
 			conf.Server.Plugins.Folder = tempDir
 			mgr.ScanPlugins()
