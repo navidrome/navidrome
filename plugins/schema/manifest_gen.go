@@ -6,6 +6,32 @@ import "encoding/json"
 import "fmt"
 import "reflect"
 
+type BasePermission struct {
+	// Explanation of why this permission is needed
+	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *BasePermission) UnmarshalJSON(value []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(value, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["reason"]; raw != nil && !ok {
+		return fmt.Errorf("field reason in BasePermission: required")
+	}
+	type Plain BasePermission
+	var plain Plain
+	if err := json.Unmarshal(value, &plain); err != nil {
+		return err
+	}
+	if len(plain.Reason) < 1 {
+		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
+	}
+	*j = BasePermission(plain)
+	return nil
+}
+
 // Schema for Navidrome Plugin manifest.json files
 type PluginManifest struct {
 	// Author or organization that created the plugin
@@ -68,22 +94,22 @@ func (j *PluginManifestCapabilitiesElem) UnmarshalJSON(value []byte) error {
 
 // Host services the plugin is allowed to access
 type PluginManifestPermissions struct {
-	// Artwork service permissions
+	// Artwork corresponds to the JSON schema field "artwork".
 	Artwork *PluginManifestPermissionsArtwork `json:"artwork,omitempty" yaml:"artwork,omitempty" mapstructure:"artwork,omitempty"`
 
-	// Cache service permissions
+	// Cache corresponds to the JSON schema field "cache".
 	Cache *PluginManifestPermissionsCache `json:"cache,omitempty" yaml:"cache,omitempty" mapstructure:"cache,omitempty"`
 
-	// Configuration service permissions
+	// Config corresponds to the JSON schema field "config".
 	Config *PluginManifestPermissionsConfig `json:"config,omitempty" yaml:"config,omitempty" mapstructure:"config,omitempty"`
 
-	// HTTP service permissions
+	// Http corresponds to the JSON schema field "http".
 	Http *PluginManifestPermissionsHttp `json:"http,omitempty" yaml:"http,omitempty" mapstructure:"http,omitempty"`
 
-	// Scheduler service permissions
+	// Scheduler corresponds to the JSON schema field "scheduler".
 	Scheduler *PluginManifestPermissionsScheduler `json:"scheduler,omitempty" yaml:"scheduler,omitempty" mapstructure:"scheduler,omitempty"`
 
-	// WebSocket service permissions
+	// Websocket corresponds to the JSON schema field "websocket".
 	Websocket *PluginManifestPermissionsWebsocket `json:"websocket,omitempty" yaml:"websocket,omitempty" mapstructure:"websocket,omitempty"`
 
 	AdditionalProperties interface{} `mapstructure:",remain"`
@@ -91,7 +117,7 @@ type PluginManifestPermissions struct {
 
 // Artwork service permissions
 type PluginManifestPermissionsArtwork struct {
-	// Explanation of why artwork service access is needed
+	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
 
@@ -118,7 +144,7 @@ func (j *PluginManifestPermissionsArtwork) UnmarshalJSON(value []byte) error {
 
 // Cache service permissions
 type PluginManifestPermissionsCache struct {
-	// Explanation of why cache access is needed
+	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
 
@@ -145,7 +171,7 @@ func (j *PluginManifestPermissionsCache) UnmarshalJSON(value []byte) error {
 
 // Configuration service permissions
 type PluginManifestPermissionsConfig struct {
-	// Explanation of why configuration access is needed
+	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
 
@@ -179,7 +205,7 @@ type PluginManifestPermissionsHttp struct {
 	// methods. Redirect destinations must also be included.
 	AllowedUrls map[string][]PluginManifestPermissionsHttpAllowedUrlsValueElem `json:"allowedUrls" yaml:"allowedUrls" mapstructure:"allowedUrls"`
 
-	// Explanation of why HTTP access is needed
+	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
 
@@ -254,7 +280,7 @@ func (j *PluginManifestPermissionsHttp) UnmarshalJSON(value []byte) error {
 
 // Scheduler service permissions
 type PluginManifestPermissionsScheduler struct {
-	// Explanation of why scheduler access is needed
+	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
 
@@ -287,7 +313,7 @@ type PluginManifestPermissionsWebsocket struct {
 	// List of WebSocket URL patterns that the plugin is allowed to connect to
 	AllowedUrls []string `json:"allowedUrls" yaml:"allowedUrls" mapstructure:"allowedUrls"`
 
-	// Explanation of why WebSocket access is needed
+	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
 

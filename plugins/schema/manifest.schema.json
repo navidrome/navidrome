@@ -56,128 +56,123 @@
       "additionalProperties": true,
       "properties": {
         "http": {
-          "type": "object",
-          "description": "HTTP service permissions",
-          "required": ["reason", "allowedUrls"],
-          "properties": {
-            "reason": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Explanation of why HTTP access is needed"
-            },
-            "allowedUrls": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
               "type": "object",
-              "description": "Map of URL patterns (e.g., 'https://api.example.com/*') to allowed HTTP methods. Redirect destinations must also be included.",
-              "additionalProperties": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "GET",
-                    "POST",
-                    "PUT",
-                    "DELETE",
-                    "PATCH",
-                    "HEAD",
-                    "OPTIONS",
-                    "*"
-                  ]
+              "description": "HTTP service permissions",
+              "required": ["allowedUrls"],
+              "properties": {
+                "allowedUrls": {
+                  "type": "object",
+                  "description": "Map of URL patterns (e.g., 'https://api.example.com/*') to allowed HTTP methods. Redirect destinations must also be included.",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "PATCH",
+                        "HEAD",
+                        "OPTIONS",
+                        "*"
+                      ]
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true
+                  },
+                  "minProperties": 1
                 },
-                "minItems": 1,
-                "uniqueItems": true
-              },
-              "minProperties": 1
-            },
-
-            "allowLocalNetwork": {
-              "type": "boolean",
-              "description": "Whether to allow requests to local/private network addresses",
-              "default": false
+                "allowLocalNetwork": {
+                  "type": "boolean",
+                  "description": "Whether to allow requests to local/private network addresses",
+                  "default": false
+                }
+              }
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "config": {
-          "type": "object",
-          "description": "Configuration service permissions",
-          "required": ["reason"],
-          "properties": {
-            "reason": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Explanation of why configuration access is needed"
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Configuration service permissions"
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "scheduler": {
-          "type": "object",
-          "description": "Scheduler service permissions",
-          "required": ["reason"],
-          "properties": {
-            "reason": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Explanation of why scheduler access is needed"
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Scheduler service permissions"
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "websocket": {
-          "type": "object",
-          "description": "WebSocket service permissions",
-          "required": ["reason", "allowedUrls"],
-          "properties": {
-            "reason": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Explanation of why WebSocket access is needed"
-            },
-            "allowedUrls": {
-              "type": "array",
-              "description": "List of WebSocket URL patterns that the plugin is allowed to connect to",
-              "items": {
-                "type": "string",
-                "pattern": "^wss?://.*$"
-              },
-              "minItems": 1,
-              "uniqueItems": true
-            },
-            "allowLocalNetwork": {
-              "type": "boolean",
-              "description": "Whether to allow connections to local/private network addresses",
-              "default": false
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "WebSocket service permissions",
+              "required": ["allowedUrls"],
+              "properties": {
+                "allowedUrls": {
+                  "type": "array",
+                  "description": "List of WebSocket URL patterns that the plugin is allowed to connect to",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^wss?://.*$"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                },
+                "allowLocalNetwork": {
+                  "type": "boolean",
+                  "description": "Whether to allow connections to local/private network addresses",
+                  "default": false
+                }
+              }
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "cache": {
-          "type": "object",
-          "description": "Cache service permissions",
-          "required": ["reason"],
-          "properties": {
-            "reason": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Explanation of why cache access is needed"
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Cache service permissions"
             }
-          },
-          "additionalProperties": false
+          ]
         },
         "artwork": {
-          "type": "object",
-          "description": "Artwork service permissions",
-          "required": ["reason"],
-          "properties": {
-            "reason": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Explanation of why artwork service access is needed"
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "Artwork service permissions"
             }
-          },
-          "additionalProperties": false
+          ]
         }
       }
+    }
+  },
+  "$defs": {
+    "basePermission": {
+      "type": "object",
+      "required": ["reason"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explanation of why this permission is needed"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
