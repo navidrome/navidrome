@@ -17,11 +17,11 @@ func hasInitService(info *pluginInfo) bool {
 }
 
 var _ = Describe("LifecycleManagement", func() {
-	Describe("Plugin Initialization Tracking", func() {
-		var initializedTracker *initializedPlugins
+	Describe("Plugin Lifecycle Manager", func() {
+		var lifecycleManager *pluginLifecycleManager
 
 		BeforeEach(func() {
-			initializedTracker = newInitializedPlugins()
+			lifecycleManager = newPluginLifecycleManager()
 		})
 
 		It("should track initialization state of plugins", func() {
@@ -43,22 +43,22 @@ var _ = Describe("LifecycleManagement", func() {
 			}
 
 			// Initially, no plugins should be initialized
-			Expect(initializedTracker.isInitialized(plugin1)).To(BeFalse())
-			Expect(initializedTracker.isInitialized(plugin2)).To(BeFalse())
+			Expect(lifecycleManager.isInitialized(plugin1)).To(BeFalse())
+			Expect(lifecycleManager.isInitialized(plugin2)).To(BeFalse())
 
 			// Mark first plugin as initialized
-			initializedTracker.markInitialized(plugin1)
+			lifecycleManager.markInitialized(plugin1)
 
 			// Check state
-			Expect(initializedTracker.isInitialized(plugin1)).To(BeTrue())
-			Expect(initializedTracker.isInitialized(plugin2)).To(BeFalse())
+			Expect(lifecycleManager.isInitialized(plugin1)).To(BeTrue())
+			Expect(lifecycleManager.isInitialized(plugin2)).To(BeFalse())
 
 			// Mark second plugin as initialized
-			initializedTracker.markInitialized(plugin2)
+			lifecycleManager.markInitialized(plugin2)
 
 			// Both should be initialized now
-			Expect(initializedTracker.isInitialized(plugin1)).To(BeTrue())
-			Expect(initializedTracker.isInitialized(plugin2)).To(BeTrue())
+			Expect(lifecycleManager.isInitialized(plugin1)).To(BeTrue())
+			Expect(lifecycleManager.isInitialized(plugin2)).To(BeTrue())
 		})
 
 		It("should handle plugins with same name but different versions", func() {
@@ -79,24 +79,24 @@ var _ = Describe("LifecycleManagement", func() {
 			}
 
 			// Mark v1 as initialized
-			initializedTracker.markInitialized(plugin1)
+			lifecycleManager.markInitialized(plugin1)
 
 			// v1 should be initialized but not v2
-			Expect(initializedTracker.isInitialized(plugin1)).To(BeTrue())
-			Expect(initializedTracker.isInitialized(plugin2)).To(BeFalse())
+			Expect(lifecycleManager.isInitialized(plugin1)).To(BeTrue())
+			Expect(lifecycleManager.isInitialized(plugin2)).To(BeFalse())
 
 			// Mark v2 as initialized
-			initializedTracker.markInitialized(plugin2)
+			lifecycleManager.markInitialized(plugin2)
 
 			// Both versions should be initialized now
-			Expect(initializedTracker.isInitialized(plugin1)).To(BeTrue())
-			Expect(initializedTracker.isInitialized(plugin2)).To(BeTrue())
+			Expect(lifecycleManager.isInitialized(plugin1)).To(BeTrue())
+			Expect(lifecycleManager.isInitialized(plugin2)).To(BeTrue())
 
 			// Verify the keys used for tracking
 			key1 := plugin1.Name + consts.Zwsp + plugin1.Manifest.Version
 			key2 := plugin2.Name + consts.Zwsp + plugin2.Manifest.Version
-			Expect(initializedTracker.plugins).To(HaveKey(key1))
-			Expect(initializedTracker.plugins).To(HaveKey(key2))
+			Expect(lifecycleManager.plugins).To(HaveKey(key1))
+			Expect(lifecycleManager.plugins).To(HaveKey(key2))
 			Expect(key1).NotTo(Equal(key2))
 		})
 

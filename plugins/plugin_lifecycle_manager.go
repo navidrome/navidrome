@@ -12,36 +12,36 @@ import (
 	"github.com/navidrome/navidrome/plugins/api"
 )
 
-// initializedPlugins tracks which plugins have been initialized
-type initializedPlugins struct {
+// pluginLifecycleManager tracks which plugins have been initialized and manages their lifecycle
+type pluginLifecycleManager struct {
 	plugins map[string]bool
 	mu      sync.RWMutex
 	confMu  sync.RWMutex // Mutex to protect configuration access
 }
 
-// newInitializedPlugins creates a new initialized plugins tracker
-func newInitializedPlugins() *initializedPlugins {
-	return &initializedPlugins{
+// newPluginLifecycleManager creates a new plugin lifecycle manager
+func newPluginLifecycleManager() *pluginLifecycleManager {
+	return &pluginLifecycleManager{
 		plugins: make(map[string]bool),
 	}
 }
 
 // isInitialized checks if a plugin has been initialized
-func (i *initializedPlugins) isInitialized(info *pluginInfo) bool {
-	i.mu.RLock()
-	defer i.mu.RUnlock()
-	return i.plugins[info.Name+consts.Zwsp+info.Manifest.Version]
+func (m *pluginLifecycleManager) isInitialized(info *pluginInfo) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.plugins[info.Name+consts.Zwsp+info.Manifest.Version]
 }
 
 // markInitialized marks a plugin as initialized
-func (i *initializedPlugins) markInitialized(info *pluginInfo) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	i.plugins[info.Name+consts.Zwsp+info.Manifest.Version] = true
+func (m *pluginLifecycleManager) markInitialized(info *pluginInfo) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.plugins[info.Name+consts.Zwsp+info.Manifest.Version] = true
 }
 
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
-func (i *initializedPlugins) callOnInit(info *pluginInfo) {
+func (m *pluginLifecycleManager) callOnInit(info *pluginInfo) {
 	ctx := context.Background()
 	log.Debug("Initializing plugin", "name", info.Name)
 	start := time.Now()
@@ -64,8 +64,8 @@ func (i *initializedPlugins) callOnInit(info *pluginInfo) {
 	req := &api.InitRequest{}
 
 	// Add plugin configuration if available
-	i.confMu.Lock()
-	defer i.confMu.Unlock()
+	m.confMu.Lock()
+	defer m.confMu.Unlock()
 	if conf.Server.PluginConfig != nil {
 		if pluginConfig, ok := conf.Server.PluginConfig[info.Name]; ok && len(pluginConfig) > 0 {
 			req.Config = maps.Clone(pluginConfig)

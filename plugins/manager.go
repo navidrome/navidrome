@@ -104,12 +104,12 @@ type pluginInfo struct {
 
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins          map[string]*pluginInfo // Map of plugin name to plugin info
-	mu               sync.RWMutex           // Protects plugins map
-	schedulerService *schedulerService      // Service for handling scheduled tasks
-	websocketService *websocketService      // Service for handling WebSocket connections
-	initialized      *initializedPlugins    // Tracks which plugins have been initialized
-	adapters         map[string]WasmPlugin  // Map of plugin name + capability to adapter
+	plugins          map[string]*pluginInfo  // Map of plugin name to plugin info
+	mu               sync.RWMutex            // Protects plugins map
+	schedulerService *schedulerService       // Service for handling scheduled tasks
+	websocketService *websocketService       // Service for handling WebSocket connections
+	lifecycle        *pluginLifecycleManager // Manages plugin lifecycle and initialization
+	adapters         map[string]WasmPlugin   // Map of plugin name + capability to adapter
 }
 
 // GetManager returns the singleton instance of Manager
@@ -122,8 +122,8 @@ func GetManager() *Manager {
 // createManager creates a new Manager instance. Used in tests
 func createManager() *Manager {
 	m := &Manager{
-		plugins:     make(map[string]*pluginInfo),
-		initialized: newInitializedPlugins(),
+		plugins:   make(map[string]*pluginInfo),
+		lifecycle: newPluginLifecycleManager(),
 	}
 
 	// Create the host services
@@ -391,15 +391,15 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 // initializePluginIfNeeded calls OnInit on plugins that implement LifecycleManagement
 func (m *Manager) initializePluginIfNeeded(plugin *pluginInfo) {
 	// Skip if already initialized
-	if m.initialized.isInitialized(plugin) {
+	if m.lifecycle.isInitialized(plugin) {
 		return
 	}
 
 	// Check if the plugin implements LifecycleManagement
 	for _, capability := range plugin.Capabilities {
 		if capability == CapabilityLifecycleManagement {
-			m.initialized.callOnInit(plugin)
-			m.initialized.markInitialized(plugin)
+			m.lifecycle.callOnInit(plugin)
+			m.lifecycle.markInitialized(plugin)
 			break
 		}
 	}
