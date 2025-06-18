@@ -27,8 +27,8 @@ var _ = Describe("PooledRuntime", func() {
 		permissions := schema.PluginManifestPermissions{
 			Http: &schema.PluginManifestPermissionsHttp{
 				Reason: "For testing HTTP functionality",
-				AllowedUrls: map[string]interface{}{
-					"*": []interface{}{"*"},
+				AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+					"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 				},
 				AllowLocalNetwork: false,
 			},

@@ -172,12 +172,54 @@ type PluginManifestPermissionsHttp struct {
 	// Whether to allow requests to local/private network addresses
 	AllowLocalNetwork bool `json:"allowLocalNetwork,omitempty" yaml:"allowLocalNetwork,omitempty" mapstructure:"allowLocalNetwork,omitempty"`
 
-	// Map of URL patterns to allowed HTTP methods. Redirect destinations must also be
-	// included.
-	AllowedUrls map[string]interface{} `json:"allowedUrls" yaml:"allowedUrls" mapstructure:"allowedUrls"`
+	// Map of URL patterns (e.g., 'https://api.example.com/*') to allowed HTTP
+	// methods. Redirect destinations must also be included.
+	AllowedUrls map[string][]PluginManifestPermissionsHttpAllowedUrlsValueElem `json:"allowedUrls" yaml:"allowedUrls" mapstructure:"allowedUrls"`
 
 	// Explanation of why HTTP access is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
+}
+
+type PluginManifestPermissionsHttpAllowedUrlsValueElem string
+
+const PluginManifestPermissionsHttpAllowedUrlsValueElemDELETE PluginManifestPermissionsHttpAllowedUrlsValueElem = "DELETE"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemGET PluginManifestPermissionsHttpAllowedUrlsValueElem = "GET"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemHEAD PluginManifestPermissionsHttpAllowedUrlsValueElem = "HEAD"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemOPTIONS PluginManifestPermissionsHttpAllowedUrlsValueElem = "OPTIONS"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemPATCH PluginManifestPermissionsHttpAllowedUrlsValueElem = "PATCH"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemPOST PluginManifestPermissionsHttpAllowedUrlsValueElem = "POST"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemPUT PluginManifestPermissionsHttpAllowedUrlsValueElem = "PUT"
+const PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard PluginManifestPermissionsHttpAllowedUrlsValueElem = "*"
+
+var enumValues_PluginManifestPermissionsHttpAllowedUrlsValueElem = []interface{}{
+	"GET",
+	"POST",
+	"PUT",
+	"DELETE",
+	"PATCH",
+	"HEAD",
+	"OPTIONS",
+	"*",
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *PluginManifestPermissionsHttpAllowedUrlsValueElem) UnmarshalJSON(value []byte) error {
+	var v string
+	if err := json.Unmarshal(value, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_PluginManifestPermissionsHttpAllowedUrlsValueElem {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_PluginManifestPermissionsHttpAllowedUrlsValueElem, v)
+	}
+	*j = PluginManifestPermissionsHttpAllowedUrlsValueElem(v)
+	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler.

@@ -7,31 +7,44 @@ import (
 )
 
 var _ = Describe("WebSocket Permissions", func() {
-	Describe("parseWebSocketPermissionsTyped", func() {
+	Describe("parseWebSocketPermissions", func() {
 		It("should parse valid WebSocket permissions", func() {
 			permData := &schema.PluginManifestPermissionsWebsocket{
-				Reason:            "Need to connect to external services",
+				Reason:            "Need to connect to WebSocket API",
 				AllowLocalNetwork: false,
-				AllowedUrls:       []string{"wss://api.example.com/*", "ws://localhost:*"},
+				AllowedUrls:       []string{"wss://api.example.com/ws", "wss://cdn.example.com/*"},
 			}
 
-			perms, err := parseWebSocketPermissionsTyped(permData)
+			perms, err := parseWebSocketPermissions(permData)
 			Expect(err).To(BeNil())
 			Expect(perms).ToNot(BeNil())
 			Expect(perms.AllowLocalNetwork).To(BeFalse())
-			Expect(perms.AllowedUrls).To(Equal([]string{"wss://api.example.com/*", "ws://localhost:*"}))
+			Expect(perms.AllowedUrls).To(Equal([]string{"wss://api.example.com/ws", "wss://cdn.example.com/*"}))
 		})
 
 		It("should fail if allowedUrls is empty", func() {
 			permData := &schema.PluginManifestPermissionsWebsocket{
-				Reason:            "Need to connect to external services",
+				Reason:            "Need to connect to WebSocket API",
 				AllowLocalNetwork: false,
 				AllowedUrls:       []string{},
 			}
 
-			_, err := parseWebSocketPermissionsTyped(permData)
+			_, err := parseWebSocketPermissions(permData)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("allowedUrls must contain at least one URL pattern"))
+		})
+
+		It("should handle wildcard patterns", func() {
+			permData := &schema.PluginManifestPermissionsWebsocket{
+				Reason:            "Need to connect to any WebSocket",
+				AllowLocalNetwork: true,
+				AllowedUrls:       []string{"wss://*"},
+			}
+
+			perms, err := parseWebSocketPermissions(permData)
+			Expect(err).To(BeNil())
+			Expect(perms.AllowLocalNetwork).To(BeTrue())
+			Expect(perms.AllowedUrls).To(Equal([]string{"wss://*"}))
 		})
 
 		Context("URL matching", func() {
@@ -44,7 +57,7 @@ var _ = Describe("WebSocket Permissions", func() {
 					AllowedUrls:       []string{"wss://api.example.com/*", "ws://localhost:8080"},
 				}
 				var err error
-				perms, err = parseWebSocketPermissionsTyped(permData)
+				perms, err = parseWebSocketPermissions(permData)
 				Expect(err).To(BeNil())
 			})
 

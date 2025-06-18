@@ -7,18 +7,23 @@ import (
 )
 
 var _ = Describe("HTTP Permissions", func() {
-	Describe("parseHTTPPermissionsTyped", func() {
+	Describe("parseHTTPPermissions", func() {
 		It("should parse valid HTTP permissions", func() {
 			permData := &schema.PluginManifestPermissionsHttp{
 				Reason:            "Need to fetch album artwork",
 				AllowLocalNetwork: false,
-				AllowedUrls: map[string]interface{}{
-					"https://api.example.com/*": []interface{}{"GET", "POST"},
-					"https://cdn.example.com/*": []interface{}{"GET"},
+				AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+					"https://api.example.com/*": {
+						schema.PluginManifestPermissionsHttpAllowedUrlsValueElemGET,
+						schema.PluginManifestPermissionsHttpAllowedUrlsValueElemPOST,
+					},
+					"https://cdn.example.com/*": {
+						schema.PluginManifestPermissionsHttpAllowedUrlsValueElemGET,
+					},
 				},
 			}
 
-			perms, err := parseHTTPPermissionsTyped(permData)
+			perms, err := parseHTTPPermissions(permData)
 			Expect(err).To(BeNil())
 			Expect(perms).ToNot(BeNil())
 			Expect(perms.AllowLocalNetwork).To(BeFalse())
@@ -31,25 +36,28 @@ var _ = Describe("HTTP Permissions", func() {
 			permData := &schema.PluginManifestPermissionsHttp{
 				Reason:            "Need to fetch album artwork",
 				AllowLocalNetwork: false,
-				AllowedUrls:       map[string]interface{}{},
+				AllowedUrls:       map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{},
 			}
 
-			_, err := parseHTTPPermissionsTyped(permData)
+			_, err := parseHTTPPermissions(permData)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("allowedUrls must contain at least one URL pattern"))
 		})
 
-		It("should handle invalid method types gracefully", func() {
+		It("should handle method enum types correctly", func() {
 			permData := &schema.PluginManifestPermissionsHttp{
 				Reason:            "Need to fetch album artwork",
 				AllowLocalNetwork: false,
-				AllowedUrls: map[string]interface{}{
-					"https://api.example.com/*": []interface{}{"GET", 123}, // Invalid method type
+				AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+					"https://api.example.com/*": {
+						schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard, // "*"
+					},
 				},
 			}
 
-			_, err := parseHTTPPermissionsTyped(permData)
-			Expect(err).To(HaveOccurred())
+			perms, err := parseHTTPPermissions(permData)
+			Expect(err).To(BeNil())
+			Expect(perms.AllowedUrls["https://api.example.com/*"]).To(Equal([]string{"*"}))
 		})
 	})
 

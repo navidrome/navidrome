@@ -112,20 +112,6 @@ type pluginInfo struct {
 	ModConfig    wazero.ModuleConfig
 }
 
-// capabilityToString converts a PluginManifestCapabilitiesElem to string
-func capabilityToString(cap schema.PluginManifestCapabilitiesElem) string {
-	return string(cap)
-}
-
-// capabilitiesToStrings converts a slice of capability enums to strings
-func capabilitiesToStrings(caps []schema.PluginManifestCapabilitiesElem) []string {
-	result := make([]string, len(caps))
-	for i, cap := range caps {
-		result[i] = capabilityToString(cap)
-	}
-	return result
-}
-
 // Manager is a singleton that manages plugins
 type Manager struct {
 	plugins          map[string]*pluginInfo  // Map of plugin folder name to plugin info
@@ -292,7 +278,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 				if permissions.Http == nil {
 					return nil, fmt.Errorf("http permissions not granted")
 				}
-				httpPerms, err := parseHTTPPermissionsTyped(permissions.Http)
+				httpPerms, err := parseHTTPPermissions(permissions.Http)
 				if err != nil {
 					return nil, fmt.Errorf("invalid http permissions for plugin %s: %w", pluginID, err)
 				}
@@ -308,7 +294,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 				if permissions.Websocket == nil {
 					return nil, fmt.Errorf("websocket permissions not granted")
 				}
-				wsPerms, err := parseWebSocketPermissionsTyped(permissions.Websocket)
+				wsPerms, err := parseWebSocketPermissions(permissions.Websocket)
 				if err != nil {
 					return nil, fmt.Errorf("invalid websocket permissions for plugin %s: %w", pluginID, err)
 				}
@@ -393,7 +379,7 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 	pluginInfo := &pluginInfo{
 		ID:           pluginID,
 		Path:         pluginDir,
-		Capabilities: capabilitiesToStrings(manifest.Capabilities),
+		Capabilities: slice.Map(manifest.Capabilities, func(cap schema.PluginManifestCapabilitiesElem) string { return string(cap) }),
 		WasmPath:     wasmPath,
 		Manifest:     manifest,
 		State:        state,
@@ -416,7 +402,7 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 
 	// Register one plugin adapter for each capability
 	for _, capability := range manifest.Capabilities {
-		capabilityStr := capabilityToString(capability)
+		capabilityStr := string(capability)
 		constructor := pluginCreators[capabilityStr]
 		if constructor == nil {
 			// Warn about unknown capabilities, except for LifecycleManagement (it does not have an adapter)
@@ -636,7 +622,7 @@ func (m *Manager) PluginNames(capability string) []string {
 	var names []string
 	for name, plugin := range m.plugins {
 		for _, c := range plugin.Manifest.Capabilities {
-			if capabilityToString(c) == capability {
+			if string(c) == capability {
 				names = append(names, name)
 				break
 			}

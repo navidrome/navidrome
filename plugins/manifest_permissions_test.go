@@ -90,8 +90,8 @@ var _ = Describe("Plugin Permissions", func() {
 			permissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},
@@ -135,8 +135,8 @@ var _ = Describe("Plugin Permissions", func() {
 			permissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},
@@ -333,8 +333,8 @@ var _ = Describe("Plugin Permissions", func() {
 			permissions1 := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},
@@ -404,8 +404,8 @@ var _ = Describe("Plugin Permissions", func() {
 			permissions1 := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},
@@ -446,8 +446,8 @@ var _ = Describe("Plugin Permissions", func() {
 			permissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},
@@ -469,8 +469,8 @@ var _ = Describe("Plugin Permissions", func() {
 			permissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},
@@ -531,8 +531,8 @@ var _ = Describe("Plugin Permissions", func() {
 			httpOnlyPermissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
 					Reason: "To fetch data from external APIs",
-					AllowedUrls: map[string]interface{}{
-						"*": []interface{}{"*"},
+					AllowedUrls: map[string][]schema.PluginManifestPermissionsHttpAllowedUrlsValueElem{
+						"*": {schema.PluginManifestPermissionsHttpAllowedUrlsValueElemWildcard},
 					},
 					AllowLocalNetwork: false,
 				},

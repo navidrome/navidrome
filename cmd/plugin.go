@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/cobra"
 )
 
@@ -177,18 +178,6 @@ func extractAndSetupPlugin(ndpPath, targetDir string) error {
 
 // Display helpers
 
-func formatCapabilities(capabilities []schema.PluginManifestCapabilitiesElem) string {
-	if len(capabilities) == 0 {
-		return ""
-	}
-
-	result := string(capabilities[0])
-	for i := 1; i < len(capabilities); i++ {
-		result += ", " + string(capabilities[i])
-	}
-	return result
-}
-
 func displayPluginTableRow(w *tabwriter.Writer, discovery plugins.PluginDiscoveryEntry) {
 	if discovery.Error != nil {
 		// Handle global errors (like directory read failure)
@@ -207,12 +196,17 @@ func displayPluginTableRow(w *tabwriter.Writer, discovery plugins.PluginDiscover
 		nameDisplay = nameDisplay + " (dev)"
 	}
 
+	// Convert capabilities to strings
+	capabilities := slice.Map(discovery.Manifest.Capabilities, func(cap schema.PluginManifestCapabilitiesElem) string {
+		return string(cap)
+	})
+
 	fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
 		discovery.ID,
 		nameDisplay,
 		cmp.Or(discovery.Manifest.Author, "-"),
 		cmp.Or(discovery.Manifest.Version, "-"),
-		formatCapabilities(discovery.Manifest.Capabilities),
+		strings.Join(capabilities, ", "),
 		cmp.Or(discovery.Manifest.Description, "-"))
 }
 
@@ -222,18 +216,12 @@ func displayTypedPermissions(permissions schema.PluginManifestPermissions, inden
 		fmt.Printf("%s  Reason: %s\n", indent, permissions.Http.Reason)
 		fmt.Printf("%s  Allow Local Network: %t\n", indent, permissions.Http.AllowLocalNetwork)
 		fmt.Printf("%s  Allowed URLs:\n", indent)
-		// TODO: AllowedUrls should be properly typed in the schema (map[string][]string)
-		// Currently it's map[string]interface{} which requires type assertions
-		for urlPattern, methods := range permissions.Http.AllowedUrls {
-			if methodList, ok := methods.([]interface{}); ok {
-				methodStrs := make([]string, len(methodList))
-				for i, method := range methodList {
-					if methodStr, ok := method.(string); ok {
-						methodStrs[i] = methodStr
-					}
-				}
-				fmt.Printf("%s    %s: [%s]\n", indent, urlPattern, strings.Join(methodStrs, ", "))
+		for urlPattern, methodEnums := range permissions.Http.AllowedUrls {
+			methods := make([]string, len(methodEnums))
+			for i, methodEnum := range methodEnums {
+				methods[i] = string(methodEnum)
 			}
+			fmt.Printf("%s    %s: [%s]\n", indent, urlPattern, strings.Join(methods, ", "))
 		}
 		fmt.Println()
 	}
@@ -279,12 +267,11 @@ func displayPluginDetails(manifest *schema.PluginManifest, fileInfo *pluginFileI
 	fmt.Printf("  Description: %s\n", manifest.Description)
 
 	fmt.Print("  Capabilities:    ")
-	for i, capability := range manifest.Capabilities {
-		if i > 0 {
-			fmt.Print(", ")
-		}
-		fmt.Print(capability)
+	capabilities := make([]string, len(manifest.Capabilities))
+	for i, cap := range manifest.Capabilities {
+		capabilities[i] = string(cap)
 	}
+	fmt.Print(strings.Join(capabilities, ", "))
 	fmt.Println()
 
 	// Display manifest permissions using the typed permissions

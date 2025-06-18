@@ -17,8 +17,8 @@ type httpPermissions struct {
 	matcher     *urlMatcher
 }
 
-// parseHTTPPermissionsTyped extracts HTTP permissions from the typed permission struct
-func parseHTTPPermissionsTyped(permData *schema.PluginManifestPermissionsHttp) (*httpPermissions, error) {
+// parseHTTPPermissions extracts HTTP permissions from the schema
+func parseHTTPPermissions(permData *schema.PluginManifestPermissionsHttp) (*httpPermissions, error) {
 	base := &networkPermissionsBase{
 		AllowLocalNetwork: permData.AllowLocalNetwork,
 	}
@@ -28,35 +28,12 @@ func parseHTTPPermissionsTyped(permData *schema.PluginManifestPermissionsHttp) (
 	}
 
 	allowedUrls := make(map[string][]string)
-	for urlPattern, methodsRaw := range permData.AllowedUrls {
-		methodsArray, ok := methodsRaw.([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("operations for URL pattern %s must be an array", urlPattern)
-		}
-
-		var methods []string
-		for _, methodRaw := range methodsArray {
-			method, ok := methodRaw.(string)
-			if !ok {
-				return nil, fmt.Errorf("operation must be a string")
-			}
-			methods = append(methods, strings.ToUpper(method))
+	for urlPattern, methodEnums := range permData.AllowedUrls {
+		methods := make([]string, len(methodEnums))
+		for i, methodEnum := range methodEnums {
+			methods[i] = string(methodEnum)
 		}
 		allowedUrls[urlPattern] = methods
-	}
-
-	// Validate HTTP methods
-	validMethods := map[string]bool{
-		"GET": true, "POST": true, "PUT": true, "DELETE": true,
-		"PATCH": true, "HEAD": true, "OPTIONS": true, "*": true,
-	}
-
-	for urlPattern, methods := range allowedUrls {
-		for _, method := range methods {
-			if !validMethods[strings.ToUpper(method)] {
-				return nil, fmt.Errorf("invalid HTTP method '%s' for URL pattern '%s'", method, urlPattern)
-			}
-		}
 	}
 
 	return &httpPermissions{

@@ -13,20 +13,18 @@ type webSocketPermissions struct {
 	matcher     *urlMatcher
 }
 
-// parseWebSocketPermissionsTyped extracts WebSocket permissions from the typed permission struct
-func parseWebSocketPermissionsTyped(permData *schema.PluginManifestPermissionsWebsocket) (*webSocketPermissions, error) {
-	base := &networkPermissionsBase{
-		AllowLocalNetwork: permData.AllowLocalNetwork,
-	}
-
+// parseWebSocketPermissions extracts WebSocket permissions from the schema
+func parseWebSocketPermissions(permData *schema.PluginManifestPermissionsWebsocket) (*webSocketPermissions, error) {
 	if len(permData.AllowedUrls) == 0 {
 		return nil, fmt.Errorf("allowedUrls must contain at least one URL pattern")
 	}
 
 	return &webSocketPermissions{
-		networkPermissionsBase: base,
-		AllowedUrls:            permData.AllowedUrls,
-		matcher:                newURLMatcher(),
+		networkPermissionsBase: &networkPermissionsBase{
+			AllowLocalNetwork: permData.AllowLocalNetwork,
+		},
+		AllowedUrls: permData.AllowedUrls,
+		matcher:     newURLMatcher(),
 	}, nil
 }
 

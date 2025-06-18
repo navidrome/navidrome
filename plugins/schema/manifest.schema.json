@@ -61,28 +61,25 @@
             },
             "allowedUrls": {
               "type": "object",
-              "description": "Map of URL patterns to allowed HTTP methods. Redirect destinations must also be included.",
-              "patternProperties": {
-                "^.*$": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": [
-                      "GET",
-                      "POST",
-                      "PUT",
-                      "DELETE",
-                      "PATCH",
-                      "HEAD",
-                      "OPTIONS",
-                      "*"
-                    ]
-                  },
-                  "minItems": 1,
-                  "uniqueItems": true
-                }
+              "description": "Map of URL patterns (e.g., 'https://api.example.com/*') to allowed HTTP methods. Redirect destinations must also be included.",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "DELETE",
+                    "PATCH",
+                    "HEAD",
+                    "OPTIONS",
+                    "*"
+                  ]
+                },
+                "minItems": 1,
+                "uniqueItems": true
               },
-              "additionalProperties": false,
               "minProperties": 1
             },
 
