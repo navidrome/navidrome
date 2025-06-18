@@ -26,6 +26,7 @@ var _ = Describe("Plugin Package", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
+			"website": "https://test.navidrome.org/test-plugin",
 			"capabilities": ["MetadataAgent"],
 			"permissions": {}
 		}`)

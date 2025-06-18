@@ -9,6 +9,7 @@
     "author",
     "version",
     "description",
+    "website",
     "capabilities",
     "permissions"
   ],
@@ -28,6 +29,11 @@
     "description": {
       "type": "string",
       "description": "A brief description of the plugin's functionality"
+    },
+    "website": {
+      "type": "string",
+      "format": "uri",
+      "description": "Website URL for the plugin or its documentation"
     },
     "capabilities": {
       "type": "array",

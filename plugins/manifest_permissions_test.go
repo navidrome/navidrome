@@ -24,6 +24,7 @@ func createTestPlugin(tempDir, name string, permissions schema.PluginManifestPer
 		Author:      "Test Author",
 		Version:     "1.0.0",
 		Description: "Test plugin for permissions",
+		Website:     "https://test.navidrome.org/" + name,
 		Capabilities: []schema.PluginManifestCapabilitiesElem{
 			schema.PluginManifestCapabilitiesElemMetadataAgent,
 		},
@@ -250,6 +251,7 @@ var _ = Describe("Plugin Permissions", func() {
 				"author": "Test Author",
 				"version": "1.0.0",
 				"description": "A test plugin",
+				"website": "https://test.navidrome.org/test-plugin",
 				"capabilities": ["MetadataAgent"]
 			}`
 
@@ -272,6 +274,7 @@ var _ = Describe("Plugin Permissions", func() {
 				"author": "Test Author",
 				"version": "1.0.0",
 				"description": "Manifest with unknown permissions",
+				"website": "https://test.navidrome.org/unknown-perms",
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
 					"http": {
@@ -347,6 +350,7 @@ var _ = Describe("Plugin Permissions", func() {
 				"author": "Test Author", 
 				"version": "1.0.0",
 				"description": "Valid manifest with permissions",
+				"website": "https://test.navidrome.org/valid-manifest",
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
 					"http": {

@@ -244,6 +244,7 @@ Permissions are declared in the plugin's `manifest.json` file using the `permiss
   "author": "Plugin Developer",
   "version": "1.0.0",
   "description": "A plugin that fetches data and caches results",
+  "website": "https://github.com/plugindeveloper/my-plugin",
   "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {
@@ -837,6 +838,7 @@ Every plugin must provide a `manifest.json` file that declares metadata, capabil
   "author": "Your Name",
   "version": "1.0.0",
   "description": "A plugin that does awesome things",
+  "website": "https://github.com/yourname/my-awesome-plugin",
   "capabilities": [
     "MetadataAgent",
     "Scrobbler",
@@ -864,10 +866,11 @@ Every plugin must provide a `manifest.json` file that declares metadata, capabil
 Required fields:
 
 - `name`: Display name of the plugin (used for documentation/display purposes; folder name is used for identification)
-- `capabilities`: Array of capability types the plugin implements
 - `author`: The creator or organization behind the plugin
 - `version`: Version identifier (recommended to follow semantic versioning)
 - `description`: A brief description of what the plugin does
+- `website`: Website URL for the plugin documentation, source code, or homepage (must be a valid URI)
+- `capabilities`: Array of capability types the plugin implements
 - `permissions`: Object mapping host service names to their configurations (use empty object `{}` for no permissions)
 
 Currently supported capabilities:

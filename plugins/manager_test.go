@@ -115,6 +115,7 @@ var _ = Describe("Plugin Manager", func() {
 				"capabilities": ["MetadataAgent"],
 				"author": "Test Author",
 				"description": "Test Plugin",
+				"website": "https://test.navidrome.org/` + manifestName + `",
 				"permissions": {}
 			}`
 			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
@@ -242,6 +243,7 @@ var _ = Describe("Plugin Manager", func() {
 				"author": "` + author + `",
 				"version": "` + version + `",
 				"description": "Test plugin",
+				"website": "https://test.navidrome.org/` + manifestName + `",
 				"capabilities": ["` + capabilities[0] + `"],
 				"permissions": {}
 			}`
@@ -262,6 +264,7 @@ var _ = Describe("Plugin Manager", func() {
 				"author": "Test Author",
 				"version": "1.0.0",
 				"description": "Test plugin",
+				"website": "https://test.navidrome.org/` + name + `",
 				"capabilities": ["MetadataAgent"],
 				"permissions": {}
 			}`
@@ -299,6 +302,7 @@ var _ = Describe("Plugin Manager", func() {
 				"author": "Test Author", 
 				"version": "1.0.0",
 				"description": "Test plugin",
+				"website": "https://test.navidrome.org/` + name + `",
 				"capabilities": [],
 				"permissions": {}
 			}`
@@ -463,6 +467,7 @@ var _ = Describe("Plugin Manager", func() {
 					"author": "Author",
 					"version": "1.0",
 					"description": "Test plugin",
+					"website": "https://test.navidrome.org/real-plugin",
 					"capabilities": ["MetadataAgent"],
 					"permissions": {}
 				}`

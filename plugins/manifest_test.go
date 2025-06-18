@@ -23,6 +23,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
+			"website": "https://test.navidrome.org/test-plugin",
 			"capabilities": ["MetadataAgent", "Scrobbler"],
 			"permissions": {
 				"http": {
@@ -84,6 +85,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
+			"website": "https://test.navidrome.org/test-plugin",
 			"capabilities": ["MetadataAgent"],
 			"permissions": {}
 		}`
@@ -104,6 +106,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
+			"website": "https://test.navidrome.org/test-plugin",
 			"capabilities": ["UnsupportedService"],
 			"permissions": {}
 		}`
@@ -125,6 +128,7 @@ var _ = Describe("Plugin Manifest", func() {
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
+			"website": "https://test.navidrome.org/test-plugin",
 			"capabilities": [],
 			"permissions": {}
 		}`

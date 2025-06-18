@@ -3,6 +3,7 @@
   "author": "Navidrome",
   "version": "1.0.0",
   "description": "Album cover art from the Cover Art Archive",
+  "website": "https://coverartarchive.org",
   "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {

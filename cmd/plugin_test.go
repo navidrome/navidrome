@@ -33,6 +33,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 			"author": "` + author + `",
 			"version": "` + version + `",
 			"description": "Plugin for testing",
+			"website": "https://test.navidrome.org/` + name + `",
 			"capabilities": [` + capabilitiesJSON + `],
 			"permissions": {}
 		}`
@@ -159,6 +160,7 @@ var _ = Describe("Plugin CLI Commands", func() {
 				"author": "Dev Author",
 				"version": "0.1.0",
 				"description": "Development plugin for testing",
+				"website": "https://test.navidrome.org/dev-plugin",
 				"capabilities": ["Scrobbler"],
 				"permissions": {}
 			}`

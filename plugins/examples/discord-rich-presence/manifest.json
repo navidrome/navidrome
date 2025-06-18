@@ -3,6 +3,7 @@
   "author": "Navidrome Team",
   "version": "1.0.0",
   "description": "Discord Rich Presence integration for Navidrome",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/discord-rich-presence",
   "capabilities": ["Scrobbler", "SchedulerCallback", "WebSocketCallback"],
   "permissions": {
     "http": {

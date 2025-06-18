@@ -25,6 +25,9 @@ type PluginManifest struct {
 
 	// Plugin version using semantic versioning format
 	Version string `json:"version" yaml:"version" mapstructure:"version"`
+
+	// Website URL for the plugin or its documentation
+	Website string `json:"website" yaml:"website" mapstructure:"website"`
 }
 
 type PluginManifestCapabilitiesElem string
@@ -341,6 +344,9 @@ func (j *PluginManifest) UnmarshalJSON(value []byte) error {
 	}
 	if _, ok := raw["version"]; raw != nil && !ok {
 		return fmt.Errorf("field version in PluginManifest: required")
+	}
+	if _, ok := raw["website"]; raw != nil && !ok {
+		return fmt.Errorf("field website in PluginManifest: required")
 	}
 	type Plain PluginManifest
 	var plain Plain

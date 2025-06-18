@@ -4,5 +4,6 @@
   "capabilities": ["LifecycleManagement"],
   "author": "Test Author",
   "description": "Test LifecycleManagement Callback",
+  "website": "https://test.navidrome.org/fake-init-service",
   "permissions": {}
 }

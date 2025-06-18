@@ -3,6 +3,7 @@
   "author": "Navidrome Test",
   "version": "1.0.0",
   "description": "Test plugin that tries to access unauthorized services",
+  "website": "https://test.navidrome.org/unauthorized-plugin",
   "capabilities": ["MetadataAgent"],
   "permissions": {}
 }
