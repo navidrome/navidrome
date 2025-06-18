@@ -152,6 +152,79 @@ var _ = Describe("Plugin Manager", func() {
 			Expect(pluginNames).To(HaveLen(1), "should only have one MetadataAgent plugin")
 			Expect(pluginNames).To(ContainElement("real-plugin"), "should have loaded the real-plugin")
 		})
+
+		It("should allow multiple plugins with same manifest.name to coexist in different folders", func() {
+			// This test validates the scenario where multiple plugins with the same manifest.name
+			// can coexist by using folder names as unique identifiers
+
+			// Helper function to create a plugin with given folder name and manifest name
+			createPlugin := func(folderName, manifestName string) {
+				pluginDir := filepath.Join(tempPluginsDir, folderName)
+				err := os.MkdirAll(pluginDir, 0755)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Copy a real WASM file from testdata (use fake_artist_agent as source)
+				sourceWasmPath := filepath.Join(testDataDir, "fake_artist_agent", "plugin.wasm")
+				targetWasmPath := filepath.Join(pluginDir, "plugin.wasm")
+
+				sourceWasm, err := os.ReadFile(sourceWasmPath)
+				Expect(err).ToNot(HaveOccurred())
+				err = os.WriteFile(targetWasmPath, sourceWasm, 0644) //nolint:gosec
+				Expect(err).ToNot(HaveOccurred())
+
+				// Create manifest.json with same name but different folder
+				manifestPath := filepath.Join(pluginDir, "manifest.json")
+				manifestContent := `{
+					"name": "` + manifestName + `",
+					"version": "1.0.0",
+					"capabilities": ["MetadataAgent"],
+					"author": "Test Author",
+					"description": "Test Plugin in ` + folderName + `",
+					"permissions": {}
+				}`
+				err = os.WriteFile(manifestPath, []byte(manifestContent), 0644) //nolint:gosec
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Create three plugins with same manifest.name but different folders
+			createPlugin("lastfm-official", "lastfm")
+			createPlugin("lastfm-custom", "lastfm")
+			createPlugin("lastfm-dev", "lastfm")
+
+			// Scan plugins
+			m.ScanPlugins()
+
+			// Verify all three plugins are discovered and can coexist
+			pluginNames := m.PluginNames("MetadataAgent")
+			Expect(pluginNames).To(HaveLen(3), "should find all three lastfm plugins")
+			Expect(pluginNames).To(ConsistOf("lastfm-official", "lastfm-custom", "lastfm-dev"))
+
+			// Verify each plugin can be loaded independently by folder name
+			officialPlugin := m.LoadPlugin("lastfm-official", CapabilityMetadataAgent)
+			Expect(officialPlugin).NotTo(BeNil(), "should load lastfm-official plugin")
+			Expect(officialPlugin.PluginName()).To(Equal("lastfm-official"))
+
+			customPlugin := m.LoadPlugin("lastfm-custom", CapabilityMetadataAgent)
+			Expect(customPlugin).NotTo(BeNil(), "should load lastfm-custom plugin")
+			Expect(customPlugin.PluginName()).To(Equal("lastfm-custom"))
+
+			devPlugin := m.LoadPlugin("lastfm-dev", CapabilityMetadataAgent)
+			Expect(devPlugin).NotTo(BeNil(), "should load lastfm-dev plugin")
+			Expect(devPlugin.PluginName()).To(Equal("lastfm-dev"))
+
+			// Verify the plugins map contains all three with folder names as keys
+			Expect(m.plugins).To(SatisfyAll(
+				HaveLen(3),
+				HaveKey("lastfm-official"),
+				HaveKey("lastfm-custom"),
+				HaveKey("lastfm-dev"),
+			))
+
+			// Verify all manifest names are the same (demonstrating coexistence despite same name)
+			Expect(m.plugins["lastfm-official"].Manifest.Name).To(Equal("lastfm"))
+			Expect(m.plugins["lastfm-custom"].Manifest.Name).To(Equal("lastfm"))
+			Expect(m.plugins["lastfm-dev"].Manifest.Name).To(Equal("lastfm"))
+		})
 	})
 
 	Describe("LoadPlugin", func() {
