@@ -16,7 +16,7 @@ var _ = Describe("wasmBasePlugin", func() {
 		called := false
 		plugin := &wasmBasePlugin[*nilInstance, any]{
 			wasmPath:   "",
-			name:       "test",
+			id:         "test",
 			capability: "test",
 			loadFunc: func(ctx context.Context, _ any, path string) (*nilInstance, error) {
 				called = true

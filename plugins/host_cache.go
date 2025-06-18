@@ -16,7 +16,7 @@ const (
 
 // cacheServiceImpl implements the cache.CacheService interface
 type cacheServiceImpl struct {
-	pluginName string
+	pluginID   string
 	defaultTTL time.Duration
 }
 
@@ -26,7 +26,7 @@ var (
 )
 
 // newCacheService creates a new cacheServiceImpl instance
-func newCacheService(pluginName string) *cacheServiceImpl {
+func newCacheService(pluginID string) *cacheServiceImpl {
 	initCacheOnce.Do(func() {
 		opts := []ttlcache.Option[string, any]{
 			ttlcache.WithTTL[string, any](defaultCacheTTL),
@@ -38,14 +38,14 @@ func newCacheService(pluginName string) *cacheServiceImpl {
 	})
 
 	return &cacheServiceImpl{
-		pluginName: pluginName,
+		pluginID:   pluginID,
 		defaultTTL: defaultCacheTTL,
 	}
 }
 
 // mapKey combines the plugin name and a provided key to create a unique cache key.
 func (s *cacheServiceImpl) mapKey(key string) string {
-	return s.pluginName + ":" + key
+	return s.pluginID + ":" + key
 }
 
 // getTTL converts seconds to a duration, using default if 0
@@ -75,7 +75,7 @@ func getCacheValue[T any](ctx context.Context, cs *cacheServiceImpl, key string,
 
 	value, ok := item.Value().(T)
 	if !ok {
-		log.Debug(ctx, "Type mismatch in cache", "plugin", cs.pluginName, "key", key, "expected", typeName)
+		log.Debug(ctx, "Type mismatch in cache", "plugin", cs.pluginID, "key", key, "expected", typeName)
 		return zero, false, nil
 	}
 	return value, true, nil

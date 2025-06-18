@@ -27,24 +27,24 @@ type WebSocketConnection struct {
 // WebSocketHostFunctions implements the websocket.WebSocketService interface
 type WebSocketHostFunctions struct {
 	ws          *websocketService
-	pluginName  string
+	pluginID    string
 	permissions *webSocketPermissions
 }
 
 func (s WebSocketHostFunctions) Connect(ctx context.Context, req *websocket.ConnectRequest) (*websocket.ConnectResponse, error) {
-	return s.ws.connect(ctx, s.pluginName, req, s.permissions)
+	return s.ws.connect(ctx, s.pluginID, req, s.permissions)
 }
 
 func (s WebSocketHostFunctions) SendText(ctx context.Context, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
-	return s.ws.sendText(ctx, s.pluginName, req)
+	return s.ws.sendText(ctx, s.pluginID, req)
 }
 
 func (s WebSocketHostFunctions) SendBinary(ctx context.Context, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
-	return s.ws.sendBinary(ctx, s.pluginName, req)
+	return s.ws.sendBinary(ctx, s.pluginID, req)
 }
 
 func (s WebSocketHostFunctions) Close(ctx context.Context, req *websocket.CloseRequest) (*websocket.CloseResponse, error) {
-	return s.ws.close(ctx, s.pluginName, req)
+	return s.ws.close(ctx, s.pluginID, req)
 }
 
 // websocketService implements the WebSocket service functionality
@@ -63,10 +63,10 @@ func newWebsocketService(manager *Manager) *websocketService {
 }
 
 // HostFunctions returns the WebSocketHostFunctions for the given plugin
-func (s *websocketService) HostFunctions(pluginName string, permissions *webSocketPermissions) WebSocketHostFunctions {
+func (s *websocketService) HostFunctions(pluginID string, permissions *webSocketPermissions) WebSocketHostFunctions {
 	return WebSocketHostFunctions{
 		ws:          s,
-		pluginName:  pluginName,
+		pluginID:    pluginID,
 		permissions: permissions,
 	}
 }
@@ -115,7 +115,7 @@ func extractConnectionID(internalID string) (string, error) {
 }
 
 // connect establishes a new WebSocket connection
-func (s *websocketService) connect(ctx context.Context, pluginName string, req *websocket.ConnectRequest, permissions *webSocketPermissions) (*websocket.ConnectResponse, error) {
+func (s *websocketService) connect(ctx context.Context, pluginID string, req *websocket.ConnectRequest, permissions *webSocketPermissions) (*websocket.ConnectResponse, error) {
 	if s.manager == nil {
 		return nil, fmt.Errorf("websocket service not properly initialized")
 	}
@@ -123,7 +123,7 @@ func (s *websocketService) connect(ctx context.Context, pluginName string, req *
 	// Check permissions if they exist
 	if permissions != nil {
 		if err := permissions.IsConnectionAllowed(req.Url); err != nil {
-			log.Warn(ctx, "WebSocket connection blocked by permissions", "plugin", pluginName, "url", req.Url, err)
+			log.Warn(ctx, "WebSocket connection blocked by permissions", "plugin", pluginID, "url", req.Url, err)
 			return &websocket.ConnectResponse{Error: "Connection blocked by plugin permissions: " + err.Error()}, nil
 		}
 	}
@@ -147,12 +147,12 @@ func (s *websocketService) connect(ctx context.Context, pluginName string, req *
 		req.ConnectionId, _ = gonanoid.New(10)
 	}
 	connectionID := req.ConnectionId
-	internal := internalConnectionID(pluginName, connectionID)
+	internal := internalConnectionID(pluginID, connectionID)
 
 	// Create the connection object
 	wsConn := &WebSocketConnection{
 		Conn:         conn,
-		PluginName:   pluginName,
+		PluginName:   pluginID,
 		ConnectionID: connectionID,
 		Done:         make(chan struct{}),
 	}
@@ -162,7 +162,7 @@ func (s *websocketService) connect(ctx context.Context, pluginName string, req *
 	defer s.mu.Unlock()
 	s.connections[internal] = wsConn
 
-	log.Debug("WebSocket connection established", "plugin", pluginName, "connectionID", connectionID, "url", req.Url)
+	log.Debug("WebSocket connection established", "plugin", pluginID, "connectionID", connectionID, "url", req.Url)
 
 	// Start the message handling goroutine
 	go s.handleMessages(internal, wsConn)
@@ -173,8 +173,8 @@ func (s *websocketService) connect(ctx context.Context, pluginName string, req *
 }
 
 // writeMessage is a helper to send messages to a websocket connection
-func (s *websocketService) writeMessage(pluginName string, connID string, messageType int, data []byte) error {
-	internal := internalConnectionID(pluginName, connID)
+func (s *websocketService) writeMessage(pluginID string, connID string, messageType int, data []byte) error {
+	internal := internalConnectionID(pluginID, connID)
 
 	conn, err := s.getConnection(internal)
 	if err != nil {
@@ -192,24 +192,24 @@ func (s *websocketService) writeMessage(pluginName string, connID string, messag
 }
 
 // sendText sends a text message over a WebSocket connection
-func (s *websocketService) sendText(_ context.Context, pluginName string, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
-	if err := s.writeMessage(pluginName, req.ConnectionId, gorillaws.TextMessage, []byte(req.Message)); err != nil {
+func (s *websocketService) sendText(ctx context.Context, pluginID string, req *websocket.SendTextRequest) (*websocket.SendTextResponse, error) {
+	if err := s.writeMessage(pluginID, req.ConnectionId, gorillaws.TextMessage, []byte(req.Message)); err != nil {
 		return &websocket.SendTextResponse{Error: err.Error()}, nil //nolint:nilerr
 	}
 	return &websocket.SendTextResponse{}, nil
 }
 
 // sendBinary sends binary data over a WebSocket connection
-func (s *websocketService) sendBinary(_ context.Context, pluginName string, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
-	if err := s.writeMessage(pluginName, req.ConnectionId, gorillaws.BinaryMessage, req.Data); err != nil {
+func (s *websocketService) sendBinary(ctx context.Context, pluginID string, req *websocket.SendBinaryRequest) (*websocket.SendBinaryResponse, error) {
+	if err := s.writeMessage(pluginID, req.ConnectionId, gorillaws.BinaryMessage, req.Data); err != nil {
 		return &websocket.SendBinaryResponse{Error: err.Error()}, nil //nolint:nilerr
 	}
 	return &websocket.SendBinaryResponse{}, nil
 }
 
 // close closes a WebSocket connection
-func (s *websocketService) close(_ context.Context, pluginName string, req *websocket.CloseRequest) (*websocket.CloseResponse, error) {
-	internal := internalConnectionID(pluginName, req.ConnectionId)
+func (s *websocketService) close(ctx context.Context, pluginID string, req *websocket.CloseRequest) (*websocket.CloseResponse, error) {
+	internal := internalConnectionID(pluginID, req.ConnectionId)
 
 	s.mu.Lock()
 	conn, exists := s.connections[internal]
@@ -233,14 +233,14 @@ func (s *websocketService) close(_ context.Context, pluginName string, req *webs
 		time.Now().Add(time.Second),
 	)
 	if err != nil {
-		log.Error("Error sending close message", "plugin", pluginName, "error", err)
+		log.Error("Error sending close message", "plugin", pluginID, "error", err)
 	}
 
 	if err := conn.Conn.Close(); err != nil {
 		return nil, fmt.Errorf("error closing connection: %w", err)
 	}
 
-	log.Debug("WebSocket connection closed", "plugin", pluginName, "connectionID", req.ConnectionId)
+	log.Debug("WebSocket connection closed", "plugin", pluginID, "connectionID", req.ConnectionId)
 	return &websocket.CloseResponse{}, nil
 }
 
@@ -314,13 +314,13 @@ func (s *websocketService) handleMessages(internalID string, conn *WebSocketConn
 
 // executeCallback is a common function that handles the plugin loading and execution
 // for all types of callbacks
-func (s *websocketService) executeCallback(ctx context.Context, pluginName string, fn func(context.Context, api.WebSocketCallback) error) {
+func (s *websocketService) executeCallback(ctx context.Context, pluginID string, fn func(context.Context, api.WebSocketCallback) error) {
 	log.Debug(ctx, "WebSocket received")
 
 	start := time.Now()
 
 	// Get the plugin
-	p := s.manager.LoadPlugin(pluginName, CapabilityWebSocketCallback)
+	p := s.manager.LoadPlugin(pluginID, CapabilityWebSocketCallback)
 	if p == nil {
 		log.Error(ctx, "Plugin not found for WebSocket callback")
 		return

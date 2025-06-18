@@ -15,18 +15,14 @@ type loaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (
 // S is the service interface type and P is the plugin loader type.
 type wasmBasePlugin[S any, P any] struct {
 	wasmPath   string
-	name       string
+	id         string
 	capability string
 	loader     P
 	loadFunc   loaderFunc[S, P]
 }
 
-func (w *wasmBasePlugin[S, P]) PluginName() string {
-	return w.name
-}
-
-func (w *wasmBasePlugin[S, P]) ServiceType() string {
-	return w.capability
+func (w *wasmBasePlugin[S, P]) PluginID() string {
+	return w.id
 }
 
 func (w *wasmBasePlugin[S, P]) Instantiate(ctx context.Context) (any, func(), error) {
@@ -34,7 +30,7 @@ func (w *wasmBasePlugin[S, P]) Instantiate(ctx context.Context) (any, func(), er
 }
 
 func (w *wasmBasePlugin[S, P]) serviceName() string {
-	return w.name + "_" + w.capability
+	return w.id + "_" + w.capability
 }
 
 // getInstance loads a new plugin instance and returns a cleanup function.

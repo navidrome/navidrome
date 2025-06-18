@@ -8,11 +8,11 @@ import (
 )
 
 type configServiceImpl struct {
-	pluginName string
+	pluginID string
 }
 
 func (c *configServiceImpl) GetPluginConfig(ctx context.Context, req *config.GetPluginConfigRequest) (*config.GetPluginConfigResponse, error) {
-	cfg, ok := conf.Server.PluginConfig[c.pluginName]
+	cfg, ok := conf.Server.PluginConfig[c.pluginID]
 	if !ok {
 		cfg = map[string]string{}
 	}

@@ -603,15 +603,15 @@ By default, the plugins folder is created under `[DataFolder]/plugins` with rest
 
 ### Plugin-specific Configuration
 
-You can also provide plugin-specific configuration using the `PluginConfig` section. Each plugin can have its own configuration map:
+You can also provide plugin-specific configuration using the `PluginConfig` section. Each plugin can have its own configuration map using the **folder name** as the key:
 
 ```toml
-[PluginConfig.my-plugin-name]
+[PluginConfig.my-plugin-folder]
 api_key = "your-api-key"
 user_id = "your-user-id"
 enable_feature = "true"
 
-[PluginConfig.another-plugin]
+[PluginConfig.another-plugin-folder]
 server_url = "https://example.com/api"
 timeout = "30"
 ```
@@ -633,7 +633,44 @@ plugins/
 │   └── manifest.json
 ```
 
-**Note**: The folder name does not need to match the `name` field in `manifest.json`. Navidrome registers plugins by the manifest `name`, which must be unique across all plugins.
+**Note**: Plugin identification has changed! Navidrome now uses the **folder name** as the unique identifier for plugins, not the `name` field in `manifest.json`. This means:
+
+- **Multiple plugins can have the same `name` in their manifest**, as long as they are in different folders
+- **Plugin loading and commands use the folder name**, not the manifest name
+- **Folder names must be unique** across all plugins in your plugins directory
+
+This change allows you to have multiple versions or variants of the same plugin (e.g., `lastfm-official`, `lastfm-custom`, `lastfm-dev`) that all have the same manifest name but coexist peacefully.
+
+### Example: Multiple Plugin Variants
+
+```
+plugins/
+├── lastfm-official/
+│   ├── plugin.wasm
+│   └── manifest.json         # {"name": "LastFM Agent", ...}
+├── lastfm-custom/
+│   ├── plugin.wasm
+│   └── manifest.json         # {"name": "LastFM Agent", ...}
+└── lastfm-dev/
+    ├── plugin.wasm
+    └── manifest.json         # {"name": "LastFM Agent", ...}
+```
+
+All three plugins can have the same `"name": "LastFM Agent"` in their manifest, but they are identified and loaded by their folder names:
+
+```bash
+# Load specific variants
+navidrome plugin refresh lastfm-official
+navidrome plugin refresh lastfm-custom
+navidrome plugin refresh lastfm-dev
+
+# Configure each variant separately
+[PluginConfig.lastfm-official]
+api_key = "production-key"
+
+[PluginConfig.lastfm-dev]
+api_key = "development-key"
+```
 
 ## Plugin Package Format (.ndp)
 
@@ -687,14 +724,14 @@ navidrome plugin info plugin-name-or-package.ndp
 # Install a plugin from a .ndp file
 navidrome plugin install /path/to/plugin.ndp
 
-# Remove an installed plugin
-navidrome plugin remove plugin-name
+# Remove an installed plugin (use folder name)
+navidrome plugin remove plugin-folder-name
 
 # Update an existing plugin
 navidrome plugin update /path/to/updated-plugin.ndp
 
-# Reload a plugin without restarting Navidrome
-navidrome plugin refresh plugin-name
+# Reload a plugin without restarting Navidrome (use folder name)
+navidrome plugin refresh plugin-folder-name
 
 # Create a symlink to a plugin development folder
 navidrome plugin dev /path/to/dev/folder
@@ -710,7 +747,7 @@ The `dev` and `refresh` commands are particularly useful for plugin development:
 2. Run `navidrome plugin dev /path/to/your/plugin` to create a symlink in the plugins directory
 3. Make changes to your plugin code
 4. Recompile the WebAssembly module
-5. Run `navidrome plugin refresh your-plugin-name` to reload the plugin without restarting Navidrome
+5. Run `navidrome plugin refresh your-plugin-folder-name` to reload the plugin without restarting Navidrome
 
 The `dev` command creates a symlink from your development folder to the plugins directory, allowing you to edit the plugin files directly in your development environment without copying them to the plugins directory after each change.
 
@@ -773,7 +810,7 @@ Every plugin must provide a `manifest.json` file that declares metadata, capabil
 
 Required fields:
 
-- `name`: The name of the plugin
+- `name`: Display name of the plugin (used for documentation/display purposes; folder name is used for identification)
 - `capabilities`: Array of capability types the plugin implements
 - `author`: The creator or organization behind the plugin
 - `version`: Version identifier (recommended to follow semantic versioning)
@@ -794,8 +831,8 @@ Currently supported capabilities:
 2. For each subdirectory containing a `plugin.wasm` file and valid `manifest.json`, the manager:
    - Validates the manifest and checks for supported capabilities
    - Pre-compiles the WASM module in the background
-   - Registers the plugin and its capabilities in the plugin registry
-3. Plugins can be loaded on-demand or all at once, depending on the manager's method calls
+   - Registers the plugin using the **folder name** as the unique identifier in the plugin registry
+3. Plugins can be loaded on-demand by folder name or all at once, depending on the manager's method calls
 
 ## Writing a Plugin
 

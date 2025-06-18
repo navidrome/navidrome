@@ -17,7 +17,7 @@ var _ = Describe("configServiceImpl", func() {
 
 	BeforeEach(func() {
 		pluginName = "testplugin"
-		svc = &configServiceImpl{pluginName: pluginName}
+		svc = &configServiceImpl{pluginID: pluginName}
 		conf.Server.PluginConfig = map[string]map[string]string{
 			pluginName: {"foo": "bar", "baz": "qux"},
 		}
@@ -31,7 +31,7 @@ var _ = Describe("configServiceImpl", func() {
 	})
 
 	It("returns error for unknown plugin", func() {
-		svc.pluginName = "unknown"
+		svc.pluginID = "unknown"
 		resp, err := svc.GetPluginConfig(context.Background(), &hostconfig.GetPluginConfigRequest{})
 		Expect(err).To(BeNil())
 		Expect(resp.Config).To(BeEmpty())

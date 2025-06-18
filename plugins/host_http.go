@@ -12,7 +12,7 @@ import (
 )
 
 type httpServiceImpl struct {
-	pluginName  string
+	pluginID    string
 	permissions *httpPermissions
 }
 
@@ -48,7 +48,7 @@ func (s *httpServiceImpl) doHttp(ctx context.Context, method string, req *hostht
 	// Check permissions if they exist
 	if s.permissions != nil {
 		if err := s.permissions.IsRequestAllowed(req.Url, method); err != nil {
-			log.Warn(ctx, "HTTP request blocked by permissions", "plugin", s.pluginName, "url", req.Url, "method", method, err)
+			log.Warn(ctx, "HTTP request blocked by permissions", "plugin", s.pluginID, "url", req.Url, "method", method, err)
 			return &hosthttp.HttpResponse{Error: "Request blocked by plugin permissions: " + err.Error()}, nil
 		}
 	}
@@ -61,13 +61,13 @@ func (s *httpServiceImpl) doHttp(ctx context.Context, method string, req *hostht
 		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			// Enforce maximum redirect limit
 			if len(via) >= httpMaxRedirects {
-				log.Warn(ctx, "HTTP redirect limit exceeded", "plugin", s.pluginName, "url", req.URL.String(), "redirectCount", len(via))
+				log.Warn(ctx, "HTTP redirect limit exceeded", "plugin", s.pluginID, "url", req.URL.String(), "redirectCount", len(via))
 				return http.ErrUseLastResponse
 			}
 
 			// Check if redirect destination is allowed
 			if err := s.permissions.IsRequestAllowed(req.URL.String(), req.Method); err != nil {
-				log.Warn(ctx, "HTTP redirect blocked by permissions", "plugin", s.pluginName, "url", req.URL.String(), "method", req.Method, err)
+				log.Warn(ctx, "HTTP redirect blocked by permissions", "plugin", s.pluginID, "url", req.URL.String(), "method", req.Method, err)
 				return http.ErrUseLastResponse
 			}
 

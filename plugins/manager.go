@@ -44,7 +44,7 @@ const (
 )
 
 // pluginCreators maps capability types to their respective creator functions
-type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
+type pluginConstructor func(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
 	CapabilityMetadataAgent:     newWasmMediaAgent,
@@ -55,9 +55,9 @@ var pluginCreators = map[string]pluginConstructor{
 
 // WasmPlugin is the base interface that all WASM plugins implement
 type WasmPlugin interface {
-	// PluginName returns the name of the plugin
-	PluginName() string
-	ServiceType() string
+	// PluginID returns the unique identifier of the plugin (folder name)
+	PluginID() string
+	// Instantiate creates a new instance of the plugin and returns it along with a cleanup function
 	Instantiate(ctx context.Context) (any, func(), error)
 }
 
@@ -92,7 +92,7 @@ func newWazeroModuleConfig() wazero.ModuleConfig {
 
 // pluginInfo represents a plugin that has been discovered but not yet instantiated
 type pluginInfo struct {
-	Name         string
+	ID           string // Unique plugin identifier (folder name)
 	Path         string
 	Capabilities []string
 	WasmPath     string
@@ -169,16 +169,16 @@ func pluginCompilationTimeout() time.Duration {
 }
 
 // waitForPluginReady blocks until the plugin is compiled and returns true if ready, false otherwise.
-func waitForPluginReady(state *pluginState, pluginName, wasmPath string) bool {
+func waitForPluginReady(state *pluginState, pluginID, wasmPath string) bool {
 	timeout := pluginCompilationTimeout()
 	select {
 	case <-state.ready:
 	case <-time.After(timeout):
-		log.Error("Timed out waiting for plugin compilation", "name", pluginName, "path", wasmPath, "timeout", timeout)
+		log.Error("Timed out waiting for plugin compilation", "name", pluginID, "path", wasmPath, "timeout", timeout)
 		return false
 	}
 	if state.err != nil {
-		log.Error("Failed to compile plugin", "name", pluginName, "path", wasmPath, state.err)
+		log.Error("Failed to compile plugin", "name", pluginID, "path", wasmPath, state.err)
 		return false
 	}
 	return true
@@ -227,13 +227,13 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 
 // parsePermission extracts and validates a specific permission set from the raw permissions map.
 // It returns the parsed permission struct (of type T) or a zero value if the permission is not present.
-func parsePermission[T any](permissions map[string]any, permissionName, pluginName string, parser func(any) (T, error)) (T, error) {
+func parsePermission[T any](permissions map[string]any, permissionName, pluginID string, parser func(any) (T, error)) (T, error) {
 	var parsed T
 	if permData, exists := permissions[permissionName]; exists {
 		var err error
 		parsed, err = parser(permData)
 		if err != nil {
-			return parsed, fmt.Errorf("invalid %s permissions for plugin %s: %w", permissionName, pluginName, err)
+			return parsed, fmt.Errorf("invalid %s permissions for plugin %s: %w", permissionName, pluginID, err)
 		}
 	}
 	return parsed, nil
@@ -241,11 +241,11 @@ func parsePermission[T any](permissions map[string]any, permissionName, pluginNa
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginName string, permissions map[string]any) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginID string, permissions map[string]any) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
-		if rt, ok := runtimePool.Load(pluginName); ok {
-			log.Trace(ctx, "Using existing runtime", "plugin", pluginName, "runtime", fmt.Sprintf("%p", rt))
+		if rt, ok := runtimePool.Load(pluginID); ok {
+			log.Trace(ctx, "Using existing runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", rt))
 			return rt.(wazero.Runtime), nil
 		}
 
@@ -264,30 +264,30 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 
 		availableServices := []hostService{
 			{"config", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
+				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginID: pluginID})
 			}},
 			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				httpPerms, err := parsePermission(permissions, "http", pluginName, parseHTTPPermissions)
+				httpPerms, err := parsePermission(permissions, "http", pluginID, parseHTTPPermissions)
 				if err != nil {
 					return nil, err
 				}
 				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{
-					pluginName:  pluginName,
+					pluginID:    pluginID,
 					permissions: httpPerms,
 				})
 			}},
 			{"scheduler", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
+				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginID))
 			}},
 			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				wsPerms, err := parsePermission(permissions, "websocket", pluginName, parseWebSocketPermissions)
+				wsPerms, err := parsePermission(permissions, "websocket", pluginID, parseWebSocketPermissions)
 				if err != nil {
 					return nil, err
 				}
-				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginName, wsPerms))
+				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
 			}},
 			{"cache", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginName))
+				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginID))
 			}},
 			{"artwork", func() (map[string]wazeroapi.FunctionDefinition, error) {
 				return loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
@@ -307,23 +307,23 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				grantedPermissions = append(grantedPermissions, service.name)
 			}
 		}
-		log.Trace(ctx, "Granting permissions for plugin", "plugin", pluginName, "permissions", grantedPermissions)
+		log.Trace(ctx, "Granting permissions for plugin", "plugin", pluginID, "permissions", grantedPermissions)
 
 		// Combine the permitted libraries
 		if err := m.combineLibraries(ctx, r, libraries...); err != nil {
 			return nil, err
 		}
 
-		pooled := newPooledRuntime(r, pluginName)
+		pooled := newPooledRuntime(r, pluginID)
 
 		// Use LoadOrStore to atomically check and store, preventing race conditions
-		if existing, loaded := runtimePool.LoadOrStore(pluginName, pooled); loaded {
+		if existing, loaded := runtimePool.LoadOrStore(pluginID, pooled); loaded {
 			// Another goroutine created the runtime first, close ours and return the existing one
-			log.Trace(ctx, "Race condition detected, using existing runtime", "plugin", pluginName, "runtime", fmt.Sprintf("%p", existing))
+			log.Trace(ctx, "Race condition detected, using existing runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", existing))
 			_ = r.Close(ctx)
 			return existing.(wazero.Runtime), nil
 		}
-		log.Trace(ctx, "Created new runtime", "plugin", pluginName, "runtime", fmt.Sprintf("%p", pooled))
+		log.Trace(ctx, "Created new runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", pooled))
 
 		return pooled, nil
 	}
@@ -350,7 +350,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 	// Store plugin info
 	state := &pluginState{ready: make(chan struct{})}
 	pluginInfo := &pluginInfo{
-		Name:         folderName, // Use folder name as the unique identifier
+		ID:           folderName, // Use folder name as the unique identifier
 		Path:         pluginDir,
 		Capabilities: manifest.Capabilities,
 		WasmPath:     wasmPath,
@@ -566,7 +566,7 @@ func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
 
 	log.Debug("Loading plugin", "name", name, "path", info.WasmPath)
 
-	if !waitForPluginReady(info.State, info.Name, info.WasmPath) {
+	if !waitForPluginReady(info.State, info.ID, info.WasmPath) {
 		log.Warn("Plugin not ready", "name", name, "capability", capability)
 		return nil
 	}

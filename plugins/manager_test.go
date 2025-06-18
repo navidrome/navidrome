@@ -202,15 +202,15 @@ var _ = Describe("Plugin Manager", func() {
 			// Verify each plugin can be loaded independently by folder name
 			officialPlugin := m.LoadPlugin("lastfm-official", CapabilityMetadataAgent)
 			Expect(officialPlugin).NotTo(BeNil(), "should load lastfm-official plugin")
-			Expect(officialPlugin.PluginName()).To(Equal("lastfm-official"))
+			Expect(officialPlugin.PluginID()).To(Equal("lastfm-official"))
 
 			customPlugin := m.LoadPlugin("lastfm-custom", CapabilityMetadataAgent)
 			Expect(customPlugin).NotTo(BeNil(), "should load lastfm-custom plugin")
-			Expect(customPlugin.PluginName()).To(Equal("lastfm-custom"))
+			Expect(customPlugin.PluginID()).To(Equal("lastfm-custom"))
 
 			devPlugin := m.LoadPlugin("lastfm-dev", CapabilityMetadataAgent)
 			Expect(devPlugin).NotTo(BeNil(), "should load lastfm-dev plugin")
-			Expect(devPlugin.PluginName()).To(Equal("lastfm-dev"))
+			Expect(devPlugin.PluginID()).To(Equal("lastfm-dev"))
 
 			// Verify the plugins map contains all three with folder names as keys
 			Expect(m.plugins).To(SatisfyAll(

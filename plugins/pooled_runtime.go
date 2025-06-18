@@ -40,7 +40,7 @@ func (m *pooledModule) IsClosed() bool {
 // pooledRuntime wraps wazero.Runtime and pools module instances per plugin.
 type pooledRuntime struct {
 	wazero.Runtime
-	pluginName   string
+	pluginID     string
 	maxInstances int
 	ttl          time.Duration
 
@@ -51,10 +51,10 @@ type pooledRuntime struct {
 	active []wazeroapi.Module
 }
 
-func newPooledRuntime(r wazero.Runtime, pluginName string) *pooledRuntime {
+func newPooledRuntime(r wazero.Runtime, pluginID string) *pooledRuntime {
 	return &pooledRuntime{
 		Runtime:      r,
-		pluginName:   pluginName,
+		pluginID:     pluginID,
 		maxInstances: defaultMaxInstances,
 		ttl:          defaultInstanceTTL,
 	}
@@ -62,8 +62,8 @@ func newPooledRuntime(r wazero.Runtime, pluginName string) *pooledRuntime {
 
 func (r *pooledRuntime) initPool(code wazero.CompiledModule, config wazero.ModuleConfig) {
 	r.once.Do(func() {
-		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginName, r.maxInstances, r.ttl, func(ctx context.Context) (wazeroapi.Module, error) {
-			log.Trace(ctx, "pooledRuntime: creating new module", "plugin", r.pluginName)
+		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginID, r.maxInstances, r.ttl, func(ctx context.Context) (wazeroapi.Module, error) {
+			log.Trace(ctx, "pooledRuntime: creating new module", "plugin", r.pluginID)
 			return r.Runtime.InstantiateModule(ctx, code, config)
 		})
 	})
@@ -76,7 +76,7 @@ func (r *pooledRuntime) InstantiateModule(ctx context.Context, code wazero.Compi
 		return nil, err
 	}
 	wrapped := &pooledModule{Module: mod, pool: r.pool}
-	log.Trace(ctx, "pooledRuntime: created wrapper for module", "plugin", r.pluginName, "underlyingModuleID", fmt.Sprintf("%p", mod), "wrapperID", fmt.Sprintf("%p", wrapped))
+	log.Trace(ctx, "pooledRuntime: created wrapper for module", "plugin", r.pluginID, "underlyingModuleID", fmt.Sprintf("%p", mod), "wrapperID", fmt.Sprintf("%p", wrapped))
 	r.mu.Lock()
 	r.active = append(r.active, wrapped)
 	r.mu.Unlock()

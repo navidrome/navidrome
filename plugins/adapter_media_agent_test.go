@@ -31,7 +31,7 @@ var _ = Describe("Adapter Media Agent", func() {
 		It("should return the plugin name", func() {
 			agent := mgr.LoadPlugin("multi_plugin", "MetadataAgent")
 			Expect(agent).NotTo(BeNil(), "multi_plugin should be loaded")
-			Expect(agent.PluginName()).To(Equal("multi_plugin"))
+			Expect(agent.PluginID()).To(Equal("multi_plugin"))
 		})
 		It("should return the agent name", func() {
 			agent, ok := mgr.LoadMediaAgent("multi_plugin")

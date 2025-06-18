@@ -27,7 +27,7 @@ var _ = Describe("LifecycleManagement", func() {
 		It("should track initialization state of plugins", func() {
 			// Create test plugins
 			plugin1 := &pluginInfo{
-				Name:         "test-plugin",
+				ID:           "test-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
@@ -35,7 +35,7 @@ var _ = Describe("LifecycleManagement", func() {
 			}
 
 			plugin2 := &pluginInfo{
-				Name:         "another-plugin",
+				ID:           "another-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "0.5.0",
@@ -63,7 +63,7 @@ var _ = Describe("LifecycleManagement", func() {
 
 		It("should handle plugins with same name but different versions", func() {
 			plugin1 := &pluginInfo{
-				Name:         "test-plugin",
+				ID:           "test-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
@@ -71,7 +71,7 @@ var _ = Describe("LifecycleManagement", func() {
 			}
 
 			plugin2 := &pluginInfo{
-				Name:         "test-plugin", // Same name
+				ID:           "test-plugin", // Same name
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "2.0.0", // Different version
@@ -93,8 +93,8 @@ var _ = Describe("LifecycleManagement", func() {
 			Expect(lifecycleManager.isInitialized(plugin2)).To(BeTrue())
 
 			// Verify the keys used for tracking
-			key1 := plugin1.Name + consts.Zwsp + plugin1.Manifest.Version
-			key2 := plugin2.Name + consts.Zwsp + plugin2.Manifest.Version
+			key1 := plugin1.ID + consts.Zwsp + plugin1.Manifest.Version
+			key2 := plugin1.ID + consts.Zwsp + plugin2.Manifest.Version
 			Expect(lifecycleManager.plugins).To(HaveKey(key1))
 			Expect(lifecycleManager.plugins).To(HaveKey(key2))
 			Expect(key1).NotTo(Equal(key2))
@@ -103,7 +103,7 @@ var _ = Describe("LifecycleManagement", func() {
 		It("should only consider plugins that implement LifecycleManagement", func() {
 			// Plugin that implements LifecycleManagement
 			initPlugin := &pluginInfo{
-				Name:         "init-plugin",
+				ID:           "init-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
@@ -112,7 +112,7 @@ var _ = Describe("LifecycleManagement", func() {
 
 			// Plugin that doesn't implement LifecycleManagement
 			regularPlugin := &pluginInfo{
-				Name:         "regular-plugin",
+				ID:           "regular-plugin",
 				Capabilities: []string{"MetadataAgent"},
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
@@ -126,14 +126,14 @@ var _ = Describe("LifecycleManagement", func() {
 
 		It("should properly construct the plugin key", func() {
 			plugin := &pluginInfo{
-				Name: "test-plugin",
+				ID: "test-plugin",
 				Manifest: &PluginManifest{
 					Version: "1.0.0",
 				},
 			}
 
 			expectedKey := "test-plugin" + consts.Zwsp + "1.0.0"
-			actualKey := plugin.Name + consts.Zwsp + plugin.Manifest.Version
+			actualKey := plugin.ID + consts.Zwsp + plugin.Manifest.Version
 
 			Expect(actualKey).To(Equal(expectedKey))
 		})

@@ -18,7 +18,7 @@ func newWasmSchedulerCallback(wasmPath, pluginName string, runtime api.WazeroNew
 	return &wasmSchedulerCallback{
 		wasmBasePlugin: &wasmBasePlugin[api.SchedulerCallback, *api.SchedulerCallbackPlugin]{
 			wasmPath:   wasmPath,
-			name:       pluginName,
+			id:         pluginName,
 			capability: CapabilitySchedulerCallback,
 			loader:     loader,
 			loadFunc: func(ctx context.Context, l *api.SchedulerCallbackPlugin, path string) (api.SchedulerCallback, error) {
