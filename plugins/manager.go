@@ -254,18 +254,27 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 
 		// Define all available host services
 		type hostService struct {
-			name     string
-			loadFunc func() (map[string]wazeroapi.FunctionDefinition, error)
+			name        string
+			isPermitted bool
+			loadFunc    func() (map[string]wazeroapi.FunctionDefinition, error)
 		}
 
+		// List of all available host services with their permissions and loading functions. For each service, we check
+		// if the plugin has the required permission before loading it.
 		availableServices := []hostService{
-			{"config", func() (map[string]wazeroapi.FunctionDefinition, error) {
+			{"config", permissions.Config != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
 				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginID: pluginID})
 			}},
-			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				if permissions.Http == nil {
-					return nil, fmt.Errorf("http permissions not granted")
-				}
+			{"scheduler", permissions.Scheduler != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginID))
+			}},
+			{"cache", permissions.Cache != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginID))
+			}},
+			{"artwork", permissions.Artwork != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+				return loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
+			}},
+			{"http", permissions.Http != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
 				httpPerms, err := parseHTTPPermissions(permissions.Http)
 				if err != nil {
 					return nil, fmt.Errorf("invalid http permissions for plugin %s: %w", pluginID, err)
@@ -275,24 +284,12 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 					permissions: httpPerms,
 				})
 			}},
-			{"scheduler", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginID))
-			}},
-			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				if permissions.Websocket == nil {
-					return nil, fmt.Errorf("websocket permissions not granted")
-				}
+			{"websocket", permissions.Websocket != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
 				wsPerms, err := parseWebSocketPermissions(permissions.Websocket)
 				if err != nil {
 					return nil, fmt.Errorf("invalid websocket permissions for plugin %s: %w", pluginID, err)
 				}
 				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
-			}},
-			{"cache", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginID))
-			}},
-			{"artwork", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
 			}},
 		}
 
@@ -300,23 +297,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 		var grantedPermissions []string
 		var libraries []map[string]wazeroapi.FunctionDefinition
 		for _, service := range availableServices {
-			var hasPermission bool
-			switch service.name {
-			case "config":
-				hasPermission = permissions.Config != nil
-			case "http":
-				hasPermission = permissions.Http != nil
-			case "scheduler":
-				hasPermission = permissions.Scheduler != nil
-			case "websocket":
-				hasPermission = permissions.Websocket != nil
-			case "cache":
-				hasPermission = permissions.Cache != nil
-			case "artwork":
-				hasPermission = permissions.Artwork != nil
-			}
-
-			if hasPermission {
+			if service.isPermitted {
 				lib, err := service.loadFunc()
 				if err != nil {
 					return nil, fmt.Errorf("error loading %s lib: %w", service.name, err)
