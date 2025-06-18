@@ -672,6 +672,59 @@ api_key = "production-key"
 api_key = "development-key"
 ```
 
+### Using Symlinks for Plugin Variants
+
+Symlinks provide a powerful way to create multiple configurations for the same plugin without duplicating files. When you create a symlink to a plugin directory, Navidrome treats the symlink as a separate plugin with its own configuration.
+
+**Example: Discord Rich Presence with Multiple Configurations**
+
+```bash
+# Create symlinks for different environments
+cd /path/to/navidrome/plugins
+ln -s /path/to/discord-rich-presence-plugin drp-prod
+ln -s /path/to/discord-rich-presence-plugin drp-dev
+ln -s /path/to/discord-rich-presence-plugin drp-test
+```
+
+Directory structure:
+
+```
+plugins/
+├── drp-prod -> /path/to/discord-rich-presence-plugin/
+├── drp-dev -> /path/to/discord-rich-presence-plugin/
+├── drp-test -> /path/to/discord-rich-presence-plugin/
+```
+
+Each symlink can have its own configuration:
+
+```toml
+[PluginConfig.drp-prod]
+clientid = "production-client-id"
+users = "admin:prod-token"
+
+[PluginConfig.drp-dev]
+clientid = "development-client-id"
+users = "admin:dev-token,testuser:test-token"
+
+[PluginConfig.drp-test]
+clientid = "test-client-id"
+users = "testuser:test-token"
+```
+
+**Key Benefits:**
+
+- **Single Source**: One plugin implementation serves multiple use cases
+- **Independent Configuration**: Each symlink has its own configuration namespace
+- **Development Workflow**: Easy to test different configurations without code changes
+- **Resource Sharing**: All symlinks share the same compiled WASM binary
+
+**Important Notes:**
+
+- The **symlink name** (not the target folder name) is used as the plugin ID
+- Configuration keys use the symlink name: `PluginConfig.<symlink-name>`
+- Each symlink appears as a separate plugin in `navidrome plugin list`
+- CLI commands use the symlink name: `navidrome plugin refresh drp-dev`
+
 ## Plugin Package Format (.ndp)
 
 Navidrome Plugin Packages (.ndp) are ZIP archives that bundle all files needed for a plugin. They can be installed using the `navidrome plugin install` command.

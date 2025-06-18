@@ -91,7 +91,7 @@ func pluginList(cmd *cobra.Command, args []string) {
 
 	// Create a tab writer for aligned output
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tAUTHOR\tVERSION\tCAPABILITIES\tDESCRIPTION")
+	fmt.Fprintln(w, "ID\tNAME\tAUTHOR\tVERSION\tCAPABILITIES\tDESCRIPTION")
 
 	// Scan plugin directories
 	entries, err := os.ReadDir(pluginsDir)
@@ -154,7 +154,7 @@ func pluginList(cmd *cobra.Command, args []string) {
 
 		manifest, err := plugins.LoadManifest(pluginDir)
 		if err != nil {
-			fmt.Fprintf(w, "%s\tERROR\tERROR\tERROR\t%v\n", name, err)
+			fmt.Fprintf(w, "%s\tERROR\tERROR\tERROR\tERROR\t%v\n", name, err)
 			continue
 		}
 
@@ -170,7 +170,8 @@ func pluginList(cmd *cobra.Command, args []string) {
 			nameDisplay = nameDisplay + " (dev)"
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			name,
 			nameDisplay,
 			cmp.Or(manifest.Author, "-"),
 			cmp.Or(manifest.Version, "-"),
