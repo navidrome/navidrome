@@ -8,10 +8,9 @@ package api
 
 import (
 	fmt "fmt"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	bits "math/bits"
-
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -1126,15 +1125,15 @@ func (m *TrackInfo) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.Length != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.Length))
-		i--
-		dAtA[i] = 0x40
-	}
 	if m.Position != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.Position))
 		i--
 		dAtA[i] = 0x48
+	}
+	if m.Length != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Length))
+		i--
+		dAtA[i] = 0x40
 	}
 	if len(m.AlbumArtists) > 0 {
 		for iNdEx := len(m.AlbumArtists) - 1; iNdEx >= 0; iNdEx-- {

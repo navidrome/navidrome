@@ -10,13 +10,16 @@ service HttpService {
     rpc Post(HttpRequest) returns (HttpResponse);
     rpc Put(HttpRequest) returns (HttpResponse);
     rpc Delete(HttpRequest) returns (HttpResponse);
+    rpc Patch(HttpRequest) returns (HttpResponse);
+    rpc Head(HttpRequest) returns (HttpResponse);
+    rpc Options(HttpRequest) returns (HttpResponse);
 }
 
 message HttpRequest {
     string url = 1;
     map<string, string> headers = 2;
     int32 timeout_ms = 3;
-    bytes body = 4; // Ignored for GET/DELETE
+    bytes body = 4; // Ignored for GET/DELETE/HEAD/OPTIONS
 }
 
 message HttpResponse {

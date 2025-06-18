@@ -90,6 +90,58 @@ var _ = Describe("httpServiceImpl", func() {
 		Expect(resp.Status).To(Equal(int32(204)))
 	})
 
+	It("should handle PATCH requests with body", func() {
+		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			b := make([]byte, r.ContentLength)
+			_, _ = r.Body.Read(b)
+			_, _ = w.Write([]byte("patch:" + string(b)))
+		}))
+		resp, err := svc.Patch(context.Background(), &hosthttp.HttpRequest{
+			Url:       ts.URL,
+			Body:      []byte("test-patch"),
+			TimeoutMs: 1000,
+		})
+		Expect(err).To(BeNil())
+		Expect(resp.Error).To(BeEmpty())
+		Expect(string(resp.Body)).To(Equal("patch:test-patch"))
+	})
+
+	It("should handle HEAD requests", func() {
+		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Length", "42")
+			w.WriteHeader(200)
+			// HEAD responses shouldn't have a body, but the headers should be present
+		}))
+		resp, err := svc.Head(context.Background(), &hosthttp.HttpRequest{
+			Url:       ts.URL,
+			TimeoutMs: 1000,
+		})
+		Expect(err).To(BeNil())
+		Expect(resp.Error).To(BeEmpty())
+		Expect(resp.Status).To(Equal(int32(200)))
+		Expect(resp.Headers["Content-Type"]).To(Equal("application/json"))
+		Expect(resp.Headers["Content-Length"]).To(Equal("42"))
+		Expect(resp.Body).To(BeEmpty()) // HEAD responses have no body
+	})
+
+	It("should handle OPTIONS requests", func() {
+		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Allow", "GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS")
+			w.WriteHeader(200)
+		}))
+		resp, err := svc.Options(context.Background(), &hosthttp.HttpRequest{
+			Url:       ts.URL,
+			TimeoutMs: 1000,
+		})
+		Expect(err).To(BeNil())
+		Expect(resp.Error).To(BeEmpty())
+		Expect(resp.Status).To(Equal(int32(200)))
+		Expect(resp.Headers["Allow"]).To(Equal("GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS"))
+		Expect(resp.Headers["Access-Control-Allow-Methods"]).To(Equal("GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS"))
+	})
+
 	It("should handle timeouts and errors", func() {
 		ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(50 * time.Millisecond)

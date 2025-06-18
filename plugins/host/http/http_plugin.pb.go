@@ -111,3 +111,72 @@ func (h httpService) Delete(ctx context.Context, request *HttpRequest) (*HttpRes
 	}
 	return response, nil
 }
+
+//go:wasmimport env patch
+func _patch(ptr uint32, size uint32) uint64
+
+func (h httpService) Patch(ctx context.Context, request *HttpRequest) (*HttpResponse, error) {
+	buf, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	ptr, size := wasm.ByteToPtr(buf)
+	ptrSize := _patch(ptr, size)
+	wasm.Free(ptr)
+
+	ptr = uint32(ptrSize >> 32)
+	size = uint32(ptrSize)
+	buf = wasm.PtrToByte(ptr, size)
+
+	response := new(HttpResponse)
+	if err = response.UnmarshalVT(buf); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+//go:wasmimport env head
+func _head(ptr uint32, size uint32) uint64
+
+func (h httpService) Head(ctx context.Context, request *HttpRequest) (*HttpResponse, error) {
+	buf, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	ptr, size := wasm.ByteToPtr(buf)
+	ptrSize := _head(ptr, size)
+	wasm.Free(ptr)
+
+	ptr = uint32(ptrSize >> 32)
+	size = uint32(ptrSize)
+	buf = wasm.PtrToByte(ptr, size)
+
+	response := new(HttpResponse)
+	if err = response.UnmarshalVT(buf); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+//go:wasmimport env options
+func _options(ptr uint32, size uint32) uint64
+
+func (h httpService) Options(ctx context.Context, request *HttpRequest) (*HttpResponse, error) {
+	buf, err := request.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	ptr, size := wasm.ByteToPtr(buf)
+	ptrSize := _options(ptr, size)
+	wasm.Free(ptr)
+
+	ptr = uint32(ptrSize >> 32)
+	size = uint32(ptrSize)
+	buf = wasm.PtrToByte(ptr, size)
+
+	response := new(HttpResponse)
+	if err = response.UnmarshalVT(buf); err != nil {
+		return nil, err
+	}
+	return response, nil
+}

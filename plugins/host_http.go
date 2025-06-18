@@ -32,6 +32,18 @@ func (s *httpServiceImpl) Delete(ctx context.Context, req *hosthttp.HttpRequest)
 	return s.doHttp(ctx, http.MethodDelete, req)
 }
 
+func (s *httpServiceImpl) Patch(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
+	return s.doHttp(ctx, http.MethodPatch, req)
+}
+
+func (s *httpServiceImpl) Head(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
+	return s.doHttp(ctx, http.MethodHead, req)
+}
+
+func (s *httpServiceImpl) Options(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
+	return s.doHttp(ctx, http.MethodOptions, req)
+}
+
 func (s *httpServiceImpl) doHttp(ctx context.Context, method string, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	// Check permissions if they exist
 	if s.permissions != nil {
@@ -63,7 +75,7 @@ func (s *httpServiceImpl) doHttp(ctx context.Context, method string, req *hostht
 		}
 	}
 	var body io.Reader
-	if method == http.MethodPost || method == http.MethodPut {
+	if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch {
 		body = bytes.NewReader(req.Body)
 	}
 	httpReq, err := http.NewRequestWithContext(ctx, method, req.Url, body)

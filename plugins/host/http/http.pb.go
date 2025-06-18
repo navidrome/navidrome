@@ -27,7 +27,7 @@ type HttpRequest struct {
 	Url       string            `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
 	Headers   map[string]string `protobuf:"bytes,2,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	TimeoutMs int32             `protobuf:"varint,3,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
-	Body      []byte            `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"` // Ignored for GET/DELETE
+	Body      []byte            `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"` // Ignored for GET/DELETE/HEAD/OPTIONS
 }
 
 func (x *HttpRequest) ProtoReflect() protoreflect.Message {
@@ -111,4 +111,7 @@ type HttpService interface {
 	Post(context.Context, *HttpRequest) (*HttpResponse, error)
 	Put(context.Context, *HttpRequest) (*HttpResponse, error)
 	Delete(context.Context, *HttpRequest) (*HttpResponse, error)
+	Patch(context.Context, *HttpRequest) (*HttpResponse, error)
+	Head(context.Context, *HttpRequest) (*HttpResponse, error)
+	Options(context.Context, *HttpRequest) (*HttpResponse, error)
 }
