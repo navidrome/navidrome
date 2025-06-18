@@ -19,7 +19,7 @@ type updateQueuePayload struct {
 	Position *int64    `json:"position,omitempty"`
 }
 
-// validateCurrentIndex validates that the current index is within bounds of the items array.
+// validateCurrentIndex validates that the current index is within bounds of the items array, or is nil.
 // Returns false if validation fails (and sends error response), true if validation passes.
 func validateCurrentIndex(w http.ResponseWriter, current *int, itemsLength int) bool {
 	if current == nil {
