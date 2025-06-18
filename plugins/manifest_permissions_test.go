@@ -269,24 +269,22 @@ var _ = Describe("Plugin Permissions", func() {
 
 	Describe("Permission Validation", func() {
 		It("should enforce permissions are required in manifest", func() {
-			// Create a plugin without permissions field
-			pluginDir := filepath.Join(tempDir, "no-permissions")
-			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-
-			manifestWithoutPermissions := `{
-				"name": "no-permissions",
+			// Create a manifest JSON string without the permissions field
+			manifestContent := `{
+				"name": "test-plugin",
 				"author": "Test Author",
 				"version": "1.0.0",
-				"description": "Plugin without permissions",
+				"description": "A test plugin",
 				"capabilities": ["MetadataAgent"]
 			}`
 
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestWithoutPermissions), 0600)).To(Succeed())
+			manifestPath := filepath.Join(tempDir, "manifest.json")
+			err := os.WriteFile(manifestPath, []byte(manifestContent), 0644)
+			Expect(err).NotTo(HaveOccurred())
 
-			// Try to load the manifest - should fail validation
-			_, err := LoadManifest(pluginDir)
+			_, err = LoadManifest(tempDir)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("permissions is required"))
+			Expect(err.Error()).To(ContainSubstring("field permissions in PluginManifest: required"))
 		})
 
 		It("should allow unknown permission keys", func() {

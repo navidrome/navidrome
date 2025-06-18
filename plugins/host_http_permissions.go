@@ -23,81 +23,13 @@ func parseHTTPPermissionsTyped(permData *schema.PluginManifestPermissionsHttp) (
 		AllowLocalNetwork: permData.AllowLocalNetwork,
 	}
 
-	// Convert allowedUrls from map[string]interface{} to map[string][]string
+	if len(permData.AllowedUrls) == 0 {
+		return nil, fmt.Errorf("allowedUrls must contain at least one URL pattern")
+	}
+
 	allowedUrls := make(map[string][]string)
 	for urlPattern, methodsRaw := range permData.AllowedUrls {
-		// Handle both []interface{} and []string cases
-		var methods []string
-		switch v := methodsRaw.(type) {
-		case []interface{}:
-			for _, methodRaw := range v {
-				if method, ok := methodRaw.(string); ok {
-					methods = append(methods, strings.ToUpper(method))
-				} else {
-					return nil, fmt.Errorf("operation must be a string")
-				}
-			}
-		case []string:
-			for _, method := range v {
-				methods = append(methods, strings.ToUpper(method))
-			}
-		default:
-			return nil, fmt.Errorf("operations for URL pattern %s must be an array", urlPattern)
-		}
-		allowedUrls[urlPattern] = methods
-	}
-
-	// Validate HTTP methods
-	validMethods := map[string]bool{
-		"GET": true, "POST": true, "PUT": true, "DELETE": true,
-		"PATCH": true, "HEAD": true, "OPTIONS": true, "*": true,
-	}
-
-	for urlPattern, methods := range allowedUrls {
-		for _, method := range methods {
-			if !validMethods[strings.ToUpper(method)] {
-				return nil, fmt.Errorf("invalid HTTP method '%s' for URL pattern '%s'", method, urlPattern)
-			}
-		}
-	}
-
-	return &httpPermissions{
-		networkPermissionsBase: base,
-		AllowedUrls:            allowedUrls,
-		matcher:                newURLMatcher(),
-	}, nil
-}
-
-// ParseHTTPPermissions extracts HTTP permissions from the raw permission map
-func parseHTTPPermissions(permissionData any) (*httpPermissions, error) {
-	permMap, ok := permissionData.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("http permission data is not a map")
-	}
-
-	base, err := parseNetworkPermissionsBase(permMap)
-	if err != nil {
-		return nil, err
-	}
-
-	// Extract allowedUrls
-	allowedUrlsRaw, exists := permMap["allowedUrls"]
-	if !exists {
-		return nil, fmt.Errorf("allowedUrls field is required for http permissions")
-	}
-
-	allowedUrlsMap, ok := allowedUrlsRaw.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("allowedUrls must be a map for http permissions")
-	}
-
-	if len(allowedUrlsMap) == 0 {
-		return nil, fmt.Errorf("allowedUrls must contain at least one URL pattern for http permissions")
-	}
-
-	allowedUrls := make(map[string][]string)
-	for urlPattern, methodsRaw := range allowedUrlsMap {
-		methodsArray, ok := methodsRaw.([]any)
+		methodsArray, ok := methodsRaw.([]interface{})
 		if !ok {
 			return nil, fmt.Errorf("operations for URL pattern %s must be an array", urlPattern)
 		}

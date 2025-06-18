@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -69,7 +70,9 @@ var _ = Describe("Plugin Package", func() {
 		Expect(pkg.Manifest.Name).To(Equal("test-plugin"))
 		Expect(pkg.Manifest.Author).To(Equal("Test Author"))
 		Expect(pkg.Manifest.Version).To(Equal("1.0.0"))
-		Expect(pkg.Manifest.Capabilities).To(ContainElement("MetadataAgent"))
+		Expect(pkg.Manifest.Description).To(Equal("A test plugin"))
+		Expect(pkg.Manifest.Capabilities).To(HaveLen(1))
+		Expect(pkg.Manifest.Capabilities[0]).To(Equal(schema.PluginManifestCapabilitiesElemMetadataAgent))
 
 		// Check WASM file was loaded
 		Expect(pkg.WasmBytes).NotTo(BeEmpty())

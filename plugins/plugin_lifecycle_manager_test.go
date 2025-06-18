@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -29,7 +30,7 @@ var _ = Describe("LifecycleManagement", func() {
 			plugin1 := &pluginInfo{
 				ID:           "test-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "1.0.0",
 				},
 			}
@@ -37,7 +38,7 @@ var _ = Describe("LifecycleManagement", func() {
 			plugin2 := &pluginInfo{
 				ID:           "another-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "0.5.0",
 				},
 			}
@@ -65,7 +66,7 @@ var _ = Describe("LifecycleManagement", func() {
 			plugin1 := &pluginInfo{
 				ID:           "test-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "1.0.0",
 				},
 			}
@@ -73,7 +74,7 @@ var _ = Describe("LifecycleManagement", func() {
 			plugin2 := &pluginInfo{
 				ID:           "test-plugin", // Same name
 				Capabilities: []string{CapabilityLifecycleManagement},
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "2.0.0", // Different version
 				},
 			}
@@ -105,7 +106,7 @@ var _ = Describe("LifecycleManagement", func() {
 			initPlugin := &pluginInfo{
 				ID:           "init-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "1.0.0",
 				},
 			}
@@ -114,7 +115,7 @@ var _ = Describe("LifecycleManagement", func() {
 			regularPlugin := &pluginInfo{
 				ID:           "regular-plugin",
 				Capabilities: []string{"MetadataAgent"},
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "1.0.0",
 				},
 			}
@@ -127,7 +128,7 @@ var _ = Describe("LifecycleManagement", func() {
 		It("should properly construct the plugin key", func() {
 			plugin := &pluginInfo{
 				ID: "test-plugin",
-				Manifest: &PluginManifest{
+				Manifest: &schema.PluginManifest{
 					Version: "1.0.0",
 				},
 			}

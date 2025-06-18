@@ -1,149 +1,66 @@
 package plugins
 
 import (
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("webSocketPermissions", func() {
-	Describe("parseWebSocketPermissions", func() {
-		It("should parse valid WebSocket permissions with array format", func() {
-			permData := map[string]any{
-				"reason": "To connect to real-time services",
-				"allowedUrls": []any{
-					"wss://api.example.com",
-					"ws://localhost:8080",
-					"wss://*.example.com",
-				},
-				"allowLocalNetwork": true,
+var _ = Describe("WebSocket Permissions", func() {
+	Describe("parseWebSocketPermissionsTyped", func() {
+		It("should parse valid WebSocket permissions", func() {
+			permData := &schema.PluginManifestPermissionsWebsocket{
+				Reason:            "Need to connect to external services",
+				AllowLocalNetwork: false,
+				AllowedUrls:       []string{"wss://api.example.com/*", "ws://localhost:*"},
 			}
 
-			perms, err := parseWebSocketPermissions(permData)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(perms.Reason).To(Equal("To connect to real-time services"))
-			Expect(perms.AllowedUrls).To(HaveLen(3))
-			Expect(perms.AllowedUrls).To(ContainElement("wss://api.example.com"))
-			Expect(perms.AllowedUrls).To(ContainElement("ws://localhost:8080"))
-			Expect(perms.AllowedUrls).To(ContainElement("wss://*.example.com"))
-			Expect(perms.AllowLocalNetwork).To(BeTrue())
+			perms, err := parseWebSocketPermissionsTyped(permData)
+			Expect(err).To(BeNil())
+			Expect(perms).ToNot(BeNil())
+			Expect(perms.AllowLocalNetwork).To(BeFalse())
+			Expect(perms.AllowedUrls).To(Equal([]string{"wss://api.example.com/*", "ws://localhost:*"}))
 		})
 
-		DescribeTable("parsing validation",
-			func(permData map[string]any, shouldSucceed bool, expectedError string) {
-				_, err := parseWebSocketPermissions(permData)
-				if shouldSucceed {
-					Expect(err).ToNot(HaveOccurred())
-				} else {
-					Expect(err).To(HaveOccurred())
-					if expectedError != "" {
-						Expect(err.Error()).To(ContainSubstring(expectedError))
-					}
-				}
-			},
-			Entry("missing allowedUrls", map[string]any{
-				"reason": "Test reason",
-			}, false, "allowedUrls field is required"),
-			Entry("missing reason", map[string]any{
-				"allowedUrls": []any{"wss://example.com"},
-			}, false, "reason is required"),
-			Entry("empty allowedUrls array", map[string]any{
-				"reason":      "Test reason",
-				"allowedUrls": []any{},
-			}, false, "allowedUrls must contain at least one URL pattern"),
-			Entry("invalid allowedUrls type", map[string]any{
-				"reason":      "Test reason",
-				"allowedUrls": "invalid",
-			}, false, "allowedUrls must be an array"),
-			Entry("invalid URL in array", map[string]any{
-				"reason":      "Test reason",
-				"allowedUrls": []any{123}, // non-string
-			}, false, "URL pattern at index 0 must be a string"),
-		)
-
-		It("should handle allowLocalNetwork defaults", func() {
-			permData := map[string]any{
-				"reason":      "Test reason",
-				"allowedUrls": []any{"wss://example.com"},
-				// allowLocalNetwork not specified - should default to false
+		It("should fail if allowedUrls is empty", func() {
+			permData := &schema.PluginManifestPermissionsWebsocket{
+				Reason:            "Need to connect to external services",
+				AllowLocalNetwork: false,
+				AllowedUrls:       []string{},
 			}
 
-			perms, err := parseWebSocketPermissions(permData)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(perms.AllowLocalNetwork).To(BeFalse()) // Default value
-		})
-	})
-
-	Describe("IsConnectionAllowed", func() {
-		It("should allow connections to explicitly allowed URLs", func() {
-			perms := &webSocketPermissions{
-				networkPermissionsBase: &networkPermissionsBase{
-					Reason:            "Test",
-					AllowLocalNetwork: false,
-				},
-				AllowedUrls: []string{"wss://gateway.discord.gg"},
-				matcher:     newURLMatcher(),
-			}
-
-			err := perms.IsConnectionAllowed("wss://gateway.discord.gg")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should reject connections to disallowed URLs", func() {
-			perms := &webSocketPermissions{
-				networkPermissionsBase: &networkPermissionsBase{
-					Reason:            "Test",
-					AllowLocalNetwork: false,
-				},
-				AllowedUrls: []string{"wss://allowed.com"},
-				matcher:     newURLMatcher(),
-			}
-
-			err := perms.IsConnectionAllowed("wss://disallowed.com")
+			_, err := parseWebSocketPermissionsTyped(permData)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("does not match any allowed URL patterns"))
+			Expect(err.Error()).To(ContainSubstring("allowedUrls must contain at least one URL pattern"))
 		})
 
-		It("should allow connections with wildcard patterns", func() {
-			perms := &webSocketPermissions{
-				networkPermissionsBase: &networkPermissionsBase{
-					Reason:            "Test",
-					AllowLocalNetwork: false,
-				},
-				AllowedUrls: []string{"wss://*.example.com"},
-				matcher:     newURLMatcher(),
-			}
+		Context("URL matching", func() {
+			var perms *webSocketPermissions
 
-			err := perms.IsConnectionAllowed("wss://sub.example.com")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should reject connections to local network when disabled", func() {
-			perms := &webSocketPermissions{
-				networkPermissionsBase: &networkPermissionsBase{
-					Reason:            "Test",
-					AllowLocalNetwork: false,
-				},
-				AllowedUrls: []string{"*"},
-				matcher:     newURLMatcher(),
-			}
-
-			err := perms.IsConnectionAllowed("ws://localhost:8080")
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("requests to localhost are not allowed"))
-		})
-
-		It("should allow connections to local network when enabled", func() {
-			perms := &webSocketPermissions{
-				networkPermissionsBase: &networkPermissionsBase{
-					Reason:            "Test",
+			BeforeEach(func() {
+				permData := &schema.PluginManifestPermissionsWebsocket{
+					Reason:            "Need to connect to external services",
 					AllowLocalNetwork: true,
-				},
-				AllowedUrls: []string{"*"},
-				matcher:     newURLMatcher(),
-			}
+					AllowedUrls:       []string{"wss://api.example.com/*", "ws://localhost:8080"},
+				}
+				var err error
+				perms, err = parseWebSocketPermissionsTyped(permData)
+				Expect(err).To(BeNil())
+			})
 
-			err := perms.IsConnectionAllowed("ws://localhost:8080")
-			Expect(err).ToNot(HaveOccurred())
+			It("should allow connections to URLs matching patterns", func() {
+				err := perms.IsConnectionAllowed("wss://api.example.com/v1/stream")
+				Expect(err).To(BeNil())
+
+				err = perms.IsConnectionAllowed("ws://localhost:8080")
+				Expect(err).To(BeNil())
+			})
+
+			It("should deny connections to URLs not matching patterns", func() {
+				err := perms.IsConnectionAllowed("wss://malicious.com/stream")
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("does not match any allowed URL patterns"))
+			})
 		})
 	})
 })

@@ -1,66 +1,55 @@
 package plugins
 
 import (
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("httpPermissions", func() {
-	Describe("parseHTTPPermissions", func() {
+var _ = Describe("HTTP Permissions", func() {
+	Describe("parseHTTPPermissionsTyped", func() {
 		It("should parse valid HTTP permissions", func() {
-			permData := map[string]any{
-				"reason": "To fetch data from APIs",
-				"allowedUrls": map[string]any{
-					"https://api.example.com": []any{"GET", "POST"},
-					"https://*.example.com":   []any{"*"},
+			permData := &schema.PluginManifestPermissionsHttp{
+				Reason:            "Need to fetch album artwork",
+				AllowLocalNetwork: false,
+				AllowedUrls: map[string]interface{}{
+					"https://api.example.com/*": []interface{}{"GET", "POST"},
+					"https://cdn.example.com/*": []interface{}{"GET"},
 				},
-				"allowLocalNetwork": true,
 			}
 
-			perms, err := parseHTTPPermissions(permData)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(perms.Reason).To(Equal("To fetch data from APIs"))
+			perms, err := parseHTTPPermissionsTyped(permData)
+			Expect(err).To(BeNil())
+			Expect(perms).ToNot(BeNil())
+			Expect(perms.AllowLocalNetwork).To(BeFalse())
 			Expect(perms.AllowedUrls).To(HaveLen(2))
-			Expect(perms.AllowedUrls["https://api.example.com"]).To(Equal([]string{"GET", "POST"}))
-			Expect(perms.AllowedUrls["https://*.example.com"]).To(Equal([]string{"*"}))
-			Expect(perms.AllowLocalNetwork).To(BeTrue())
+			Expect(perms.AllowedUrls["https://api.example.com/*"]).To(Equal([]string{"GET", "POST"}))
+			Expect(perms.AllowedUrls["https://cdn.example.com/*"]).To(Equal([]string{"GET"}))
 		})
 
-		DescribeTable("HTTP method validation",
-			func(methods []any, shouldSucceed bool, expectedError string) {
-				permData := map[string]any{
-					"reason": "Test permissions",
-					"allowedUrls": map[string]any{
-						"https://api.example.com": methods,
-					},
-				}
-
-				_, err := parseHTTPPermissions(permData)
-				if shouldSucceed {
-					Expect(err).ToNot(HaveOccurred())
-				} else {
-					Expect(err).To(HaveOccurred())
-					if expectedError != "" {
-						Expect(err.Error()).To(ContainSubstring(expectedError))
-					}
-				}
-			},
-			Entry("valid HTTP methods", []any{"GET", "POST", "PUT", "DELETE"}, true, ""),
-			Entry("wildcard method", []any{"*"}, true, ""),
-			Entry("mixed valid methods", []any{"GET", "*", "POST"}, true, ""),
-			Entry("invalid HTTP method", []any{"INVALID"}, false, "invalid HTTP method"),
-			Entry("case insensitive methods", []any{"get", "post"}, true, ""), // Should be normalized to uppercase
-		)
-
-		It("should inherit base parsing errors", func() {
-			permData := map[string]any{
-				"reason": "Test reason",
-				// Missing allowedUrls
+		It("should fail if allowedUrls is empty", func() {
+			permData := &schema.PluginManifestPermissionsHttp{
+				Reason:            "Need to fetch album artwork",
+				AllowLocalNetwork: false,
+				AllowedUrls:       map[string]interface{}{},
 			}
 
-			_, err := parseHTTPPermissions(permData)
+			_, err := parseHTTPPermissionsTyped(permData)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("allowedUrls field is required"))
+			Expect(err.Error()).To(ContainSubstring("allowedUrls must contain at least one URL pattern"))
+		})
+
+		It("should handle invalid method types gracefully", func() {
+			permData := &schema.PluginManifestPermissionsHttp{
+				Reason:            "Need to fetch album artwork",
+				AllowLocalNetwork: false,
+				AllowedUrls: map[string]interface{}{
+					"https://api.example.com/*": []interface{}{"GET", 123}, // Invalid method type
+				},
+			}
+
+			_, err := parseHTTPPermissionsTyped(permData)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 

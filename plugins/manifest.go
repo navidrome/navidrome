@@ -17,24 +17,16 @@ import (
 //go:embed schema/manifest.schema.json
 var schemaData []byte
 
-type PluginManifest struct {
-	Name         string                           `json:"name"`
-	Author       string                           `json:"author"`
-	Version      string                           `json:"version"`
-	Description  string                           `json:"description"`
-	Capabilities []string                         `json:"capabilities"`
-	Permissions  schema.PluginManifestPermissions `json:"permissions"`
-}
-
 // LoadManifest loads and parses the manifest.json file from the given plugin directory.
-func LoadManifest(pluginDir string) (*PluginManifest, error) {
+// Returns the generated schema.PluginManifest type with full validation and type safety.
+func LoadManifest(pluginDir string) (*schema.PluginManifest, error) {
 	manifestPath := filepath.Join(pluginDir, "manifest.json")
 	data, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest file: %w", err)
 	}
 
-	var manifest PluginManifest
+	var manifest schema.PluginManifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("failed to parse manifest JSON: %w", err)
 	}

@@ -177,14 +177,14 @@ func extractAndSetupPlugin(ndpPath, targetDir string) error {
 
 // Display helpers
 
-func formatCapabilities(capabilities []string) string {
+func formatCapabilities(capabilities []schema.PluginManifestCapabilitiesElem) string {
 	if len(capabilities) == 0 {
 		return ""
 	}
 
-	result := capabilities[0]
+	result := string(capabilities[0])
 	for i := 1; i < len(capabilities); i++ {
-		result += ", " + capabilities[i]
+		result += ", " + string(capabilities[i])
 	}
 	return result
 }
@@ -222,6 +222,8 @@ func displayTypedPermissions(permissions schema.PluginManifestPermissions, inden
 		fmt.Printf("%s  Reason: %s\n", indent, permissions.Http.Reason)
 		fmt.Printf("%s  Allow Local Network: %t\n", indent, permissions.Http.AllowLocalNetwork)
 		fmt.Printf("%s  Allowed URLs:\n", indent)
+		// TODO: AllowedUrls should be properly typed in the schema (map[string][]string)
+		// Currently it's map[string]interface{} which requires type assertions
 		for urlPattern, methods := range permissions.Http.AllowedUrls {
 			if methodList, ok := methods.([]interface{}); ok {
 				methodStrs := make([]string, len(methodList))
@@ -269,65 +271,7 @@ func displayTypedPermissions(permissions schema.PluginManifestPermissions, inden
 	}
 }
 
-func displayManifestPermissions(permissions map[string]any, indent string) {
-	for permType, permData := range permissions {
-		fmt.Printf("%s%s:\n", indent, permType)
-
-		if permMap, ok := permData.(map[string]any); ok {
-			// Display reason if available
-			if reason, ok := permMap["reason"].(string); ok && reason != "" {
-				fmt.Printf("%s  Reason: %s\n", indent, reason)
-			}
-
-			// Display other permission details
-			for key, value := range permMap {
-				if key == "reason" {
-					continue // Already displayed above
-				}
-
-				switch v := value.(type) {
-				case string:
-					fmt.Printf("%s  %s: %s\n", indent, strings.ToTitle(key[:1])+key[1:], v)
-				case bool:
-					fmt.Printf("%s  %s: %t\n", indent, strings.ToTitle(key[:1])+key[1:], v)
-				case map[string]any:
-					fmt.Printf("%s  %s:\n", indent, strings.ToTitle(key[:1])+key[1:])
-					for subKey, subValue := range v {
-						if subList, ok := subValue.([]any); ok {
-							methods := make([]string, len(subList))
-							for i, method := range subList {
-								if methodStr, ok := method.(string); ok {
-									methods[i] = methodStr
-								}
-							}
-							fmt.Printf("%s    %s: [%s]\n", indent, subKey, strings.Join(methods, ", "))
-						} else {
-							fmt.Printf("%s    %s: %v\n", indent, subKey, subValue)
-						}
-					}
-				case []any:
-					items := make([]string, len(v))
-					for i, item := range v {
-						if itemStr, ok := item.(string); ok {
-							items[i] = itemStr
-						}
-					}
-					fmt.Printf("%s  %s: [%s]\n", indent, strings.ToTitle(key[:1])+key[1:], strings.Join(items, ", "))
-				default:
-					fmt.Printf("%s  %s: %v\n", indent, strings.ToTitle(key[:1])+key[1:], v)
-				}
-			}
-		} else {
-			// Simple permission type
-			fmt.Printf("%s  Value: %v\n", indent, permData)
-		}
-		if len(permissions) > 1 {
-			fmt.Println()
-		}
-	}
-}
-
-func displayPluginDetails(manifest *plugins.PluginManifest, fileInfo *pluginFileInfo, permInfo *pluginPermissionInfo) {
+func displayPluginDetails(manifest *schema.PluginManifest, fileInfo *pluginFileInfo, permInfo *pluginPermissionInfo) {
 	fmt.Println("\nPlugin Information:")
 	fmt.Printf("  Name:        %s\n", manifest.Name)
 	fmt.Printf("  Author:      %s\n", manifest.Author)
@@ -474,7 +418,7 @@ func pluginInfo(cmd *cobra.Command, args []string) {
 	path := args[0]
 	pluginsDir := conf.Server.Plugins.Folder
 
-	var manifest *plugins.PluginManifest
+	var manifest *schema.PluginManifest
 	var fileInfo *pluginFileInfo
 	var permInfo *pluginPermissionInfo
 

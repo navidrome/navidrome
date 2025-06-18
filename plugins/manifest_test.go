@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -16,29 +17,38 @@ var _ = Describe("Plugin Manifest", func() {
 	})
 
 	It("should load and parse a valid manifest", func() {
-		// Create test manifest
-		manifestContent := `{
+		manifestPath := filepath.Join(tempDir, "manifest.json")
+		manifestContent := []byte(`{
 			"name": "test-plugin",
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
 			"capabilities": ["MetadataAgent", "Scrobbler"],
-			"permissions": {}
-		}`
+			"permissions": {
+				"http": {
+					"reason": "To fetch metadata",
+					"allowedUrls": {
+						"https://api.example.com/*": ["GET"]
+					}
+				}
+			}
+		}`)
 
-		pluginDir := filepath.Join(tempDir, "test-plugin")
-		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
+		err := os.WriteFile(manifestPath, manifestContent, 0644)
+		Expect(err).NotTo(HaveOccurred())
 
-		// Test loading the manifest
-		manifest, err := LoadManifest(pluginDir)
+		manifest, err := LoadManifest(tempDir)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(manifest).NotTo(BeNil())
 		Expect(manifest.Name).To(Equal("test-plugin"))
 		Expect(manifest.Author).To(Equal("Test Author"))
 		Expect(manifest.Version).To(Equal("1.0.0"))
 		Expect(manifest.Description).To(Equal("A test plugin"))
-		Expect(manifest.Capabilities).To(ConsistOf("MetadataAgent", "Scrobbler"))
+		Expect(manifest.Capabilities).To(HaveLen(2))
+		Expect(manifest.Capabilities[0]).To(Equal(schema.PluginManifestCapabilitiesElemMetadataAgent))
+		Expect(manifest.Capabilities[1]).To(Equal(schema.PluginManifestCapabilitiesElemScrobbler))
+		Expect(manifest.Permissions.Http).NotTo(BeNil())
+		Expect(manifest.Permissions.Http.Reason).To(Equal("To fetch metadata"))
 	})
 
 	It("should fail with proper error for non-existent manifest", func() {
@@ -69,8 +79,8 @@ var _ = Describe("Plugin Manifest", func() {
 	})
 
 	It("should validate manifest against schema with detailed error for missing required field", func() {
-		// Create invalid manifest (missing required 'name' field)
-		invalidManifest := `{
+		// Create manifest missing required name field
+		manifestContent := `{
 			"author": "Test Author",
 			"version": "1.0.0",
 			"description": "A test plugin",
@@ -78,19 +88,18 @@ var _ = Describe("Plugin Manifest", func() {
 			"permissions": {}
 		}`
 
-		pluginDir := filepath.Join(tempDir, "missing-name")
+		pluginDir := filepath.Join(tempDir, "test-plugin")
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
 
-		// Test validation fails
 		_, err := LoadManifest(pluginDir)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("(root): name is required"))
+		Expect(err.Error()).To(ContainSubstring("field name in PluginManifest: required"))
 	})
 
 	It("should validate manifest with wrong capability type", func() {
-		// Create invalid manifest with invalid capability type
-		invalidManifest := `{
+		// Create manifest with invalid capability
+		manifestContent := `{
 			"name": "test-plugin",
 			"author": "Test Author",
 			"version": "1.0.0",
@@ -99,20 +108,19 @@ var _ = Describe("Plugin Manifest", func() {
 			"permissions": {}
 		}`
 
-		pluginDir := filepath.Join(tempDir, "invalid-capability")
+		pluginDir := filepath.Join(tempDir, "test-plugin")
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
 
-		// Test validation fails
 		_, err := LoadManifest(pluginDir)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("capabilities.0: capabilities.0 must be one of the following"))
+		Expect(err.Error()).To(ContainSubstring("invalid value"))
 		Expect(err.Error()).To(ContainSubstring("UnsupportedService"))
 	})
 
 	It("should validate manifest with empty capabilities array", func() {
-		// Create invalid manifest with empty capabilities array
-		invalidManifest := `{
+		// Create manifest with empty capabilities array
+		manifestContent := `{
 			"name": "test-plugin",
 			"author": "Test Author",
 			"version": "1.0.0",
@@ -121,13 +129,12 @@ var _ = Describe("Plugin Manifest", func() {
 			"permissions": {}
 		}`
 
-		pluginDir := filepath.Join(tempDir, "empty-capabilities")
+		pluginDir := filepath.Join(tempDir, "test-plugin")
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
-		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
 
-		// Test validation fails
 		_, err := LoadManifest(pluginDir)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("capabilities: Array must have at least 1 items"))
+		Expect(err.Error()).To(ContainSubstring("field capabilities length: must be >= 1"))
 	})
 })

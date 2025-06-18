@@ -91,26 +91,39 @@ func newWazeroModuleConfig() wazero.ModuleConfig {
 	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithStderr(log.Writer())
 }
 
-// pluginInfo represents a plugin that has been discovered but not yet instantiated
+// PluginDiscoveryEntry represents the result of plugin discovery
+type PluginDiscoveryEntry struct {
+	ID        string                 // Plugin ID (directory name)
+	Path      string                 // Resolved plugin directory path
+	WasmPath  string                 // Path to the WASM file
+	Manifest  *schema.PluginManifest // Loaded manifest (nil if failed)
+	IsSymlink bool                   // Whether the plugin is a development symlink
+	Error     error                  // Error encountered during discovery
+}
+
 type pluginInfo struct {
-	ID           string // Unique plugin identifier (folder name)
+	ID           string
 	Path         string
 	Capabilities []string
 	WasmPath     string
-	Manifest     *PluginManifest
+	Manifest     *schema.PluginManifest // Loaded manifest
 	State        *pluginState
 	Runtime      api.WazeroNewRuntime
 	ModConfig    wazero.ModuleConfig
 }
 
-// PluginDiscoveryEntry represents a discovered plugin with its metadata
-type PluginDiscoveryEntry struct {
-	ID        string          // Plugin identifier (folder/symlink name)
-	Path      string          // Resolved plugin directory path
-	WasmPath  string          // Path to the WASM file
-	Manifest  *PluginManifest // Loaded manifest
-	IsSymlink bool            // Whether this is a symlink
-	Error     error           // Any error encountered during discovery
+// capabilityToString converts a PluginManifestCapabilitiesElem to string
+func capabilityToString(cap schema.PluginManifestCapabilitiesElem) string {
+	return string(cap)
+}
+
+// capabilitiesToStrings converts a slice of capability enums to strings
+func capabilitiesToStrings(caps []schema.PluginManifestCapabilitiesElem) []string {
+	result := make([]string, len(caps))
+	for i, cap := range caps {
+		result[i] = capabilityToString(cap)
+	}
+	return result
 }
 
 // Manager is a singleton that manages plugins
@@ -362,7 +375,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *pluginInfo {
+func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest, cache wazero.CompilationCache) *pluginInfo {
 	// Create custom runtime function
 	customRuntime := m.createCustomRuntime(cache, pluginID, manifest.Permissions)
 
@@ -380,7 +393,7 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 	pluginInfo := &pluginInfo{
 		ID:           pluginID,
 		Path:         pluginDir,
-		Capabilities: manifest.Capabilities,
+		Capabilities: capabilitiesToStrings(manifest.Capabilities),
 		WasmPath:     wasmPath,
 		Manifest:     manifest,
 		State:        state,
@@ -403,7 +416,8 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 
 	// Register one plugin adapter for each capability
 	for _, capability := range manifest.Capabilities {
-		constructor := pluginCreators[capability]
+		capabilityStr := capabilityToString(capability)
+		constructor := pluginCreators[capabilityStr]
 		if constructor == nil {
 			// Warn about unknown capabilities, except for LifecycleManagement (it does not have an adapter)
 			if capability != CapabilityLifecycleManagement {
@@ -412,7 +426,7 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 			continue
 		}
 		adapter := constructor(wasmPath, pluginID, customRuntime, mc)
-		m.adapters[pluginID+"_"+capability] = adapter
+		m.adapters[pluginID+"_"+capabilityStr] = adapter
 	}
 
 	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
@@ -427,7 +441,7 @@ func (m *Manager) initializePluginIfNeeded(plugin *pluginInfo) {
 	}
 
 	// Check if the plugin implements LifecycleManagement
-	for _, capability := range plugin.Capabilities {
+	for _, capability := range plugin.Manifest.Capabilities {
 		if capability == CapabilityLifecycleManagement {
 			m.lifecycle.callOnInit(plugin)
 			m.lifecycle.markInitialized(plugin)
@@ -521,11 +535,9 @@ func DiscoverPlugins(pluginsDir string) []PluginDiscoveryEntry {
 		wasmPath := filepath.Join(pluginDir, "plugin.wasm")
 		if _, err := os.Stat(wasmPath); err != nil {
 			discoveries = append(discoveries, PluginDiscoveryEntry{
-				ID:        name,
-				Path:      pluginDir,
-				WasmPath:  wasmPath,
-				IsSymlink: isSymlink,
-				Error:     fmt.Errorf("no plugin.wasm found: %w", err),
+				ID:    name,
+				Path:  pluginDir,
+				Error: fmt.Errorf("no plugin.wasm found: %w", err),
 			})
 			continue
 		}
@@ -534,11 +546,9 @@ func DiscoverPlugins(pluginsDir string) []PluginDiscoveryEntry {
 		manifest, err := LoadManifest(pluginDir)
 		if err != nil {
 			discoveries = append(discoveries, PluginDiscoveryEntry{
-				ID:        name,
-				Path:      pluginDir,
-				WasmPath:  wasmPath,
-				IsSymlink: isSymlink,
-				Error:     fmt.Errorf("failed to load manifest: %w", err),
+				ID:    name,
+				Path:  pluginDir,
+				Error: fmt.Errorf("failed to load manifest: %w", err),
 			})
 			continue
 		}
@@ -546,12 +556,9 @@ func DiscoverPlugins(pluginsDir string) []PluginDiscoveryEntry {
 		// Check for capabilities
 		if len(manifest.Capabilities) == 0 {
 			discoveries = append(discoveries, PluginDiscoveryEntry{
-				ID:        name,
-				Path:      pluginDir,
-				WasmPath:  wasmPath,
-				Manifest:  manifest,
-				IsSymlink: isSymlink,
-				Error:     fmt.Errorf("no capabilities found in manifest"),
+				ID:    name,
+				Path:  pluginDir,
+				Error: fmt.Errorf("no capabilities found in manifest"),
 			})
 			continue
 		}
@@ -628,8 +635,8 @@ func (m *Manager) PluginNames(capability string) []string {
 
 	var names []string
 	for name, plugin := range m.plugins {
-		for _, c := range plugin.Capabilities {
-			if c == capability {
+		for _, c := range plugin.Manifest.Capabilities {
+			if capabilityToString(c) == capability {
 				names = append(names, name)
 				break
 			}
@@ -663,7 +670,7 @@ func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
 		return nil
 	}
 
-	log.Debug("Loading plugin", "name", name, "path", info.WasmPath)
+	log.Debug("Loading plugin", "name", name, "path", info.Path)
 
 	if !waitForPluginReady(info.State, info.ID, info.WasmPath) {
 		log.Warn("Plugin not ready", "name", name, "capability", capability)
