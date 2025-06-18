@@ -98,7 +98,7 @@ var _ = Describe("Plugin Manager", func() {
 			m = createManager()
 		})
 
-		It("processes symlinks correctly", func() {
+		It("processes symlinks correctly by treating them as separate plugins", func() {
 			// Create a real plugin directory
 			pluginDir := filepath.Join(tempPluginsDir, "real-plugin")
 			err := os.MkdirAll(pluginDir, 0755)
@@ -144,13 +144,24 @@ var _ = Describe("Plugin Manager", func() {
 			}
 			log.Debug("Plugins after scan", "plugins", pluginNames)
 
-			// We should have one plugin loaded (not duplicated due to symlink)
-			Expect(m.plugins).To(HaveLen(1), "should only find one plugin, not duplicates")
+			// We should have two plugins: the real plugin and the symlinked plugin
+			// This allows multiple symlinks to the same plugin with different configurations
+			Expect(m.plugins).To(HaveLen(2), "should find both the real plugin and symlinked plugin")
 
-			// Verify the plugin was loaded with correct name
+			// Verify both plugins were loaded with correct names
 			pluginNames = m.PluginNames("MetadataAgent")
-			Expect(pluginNames).To(HaveLen(1), "should only have one MetadataAgent plugin")
-			Expect(pluginNames).To(ContainElement("real-plugin"), "should have loaded the real-plugin")
+			Expect(pluginNames).To(HaveLen(2), "should have two MetadataAgent plugins")
+			Expect(pluginNames).To(ConsistOf("real-plugin", "symlinked-plugin"), "should have both real and symlinked plugins")
+
+			// Verify they have different IDs but point to the same underlying plugin files
+			realPlugin := m.plugins["real-plugin"]
+			symlinkedPlugin := m.plugins["symlinked-plugin"]
+			Expect(realPlugin).NotTo(BeNil())
+			Expect(symlinkedPlugin).NotTo(BeNil())
+			Expect(realPlugin.ID).To(Equal("real-plugin"))
+			Expect(symlinkedPlugin.ID).To(Equal("symlinked-plugin"))
+			// They should point to the same WASM file since symlinked-plugin resolves to real-plugin's directory
+			Expect(symlinkedPlugin.Path).To(Equal(realPlugin.Path))
 		})
 
 		It("should allow multiple plugins with same manifest.name to coexist in different folders", func() {

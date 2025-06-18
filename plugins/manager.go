@@ -331,12 +331,9 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *pluginInfo {
-	// Use folder name as the unique identifier
-	folderName := filepath.Base(pluginDir)
-
+func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *pluginInfo {
 	// Create custom runtime function
-	customRuntime := m.createCustomRuntime(cache, folderName, manifest.Permissions)
+	customRuntime := m.createCustomRuntime(cache, pluginID, manifest.Permissions)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()
@@ -350,7 +347,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 	// Store plugin info
 	state := &pluginState{ready: make(chan struct{})}
 	pluginInfo := &pluginInfo{
-		ID:           folderName, // Use folder name as the unique identifier
+		ID:           pluginID,
 		Path:         pluginDir,
 		Capabilities: manifest.Capabilities,
 		WasmPath:     wasmPath,
@@ -362,7 +359,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 
 	// Start pre-compilation of WASM module in background
 	go func() {
-		precompilePlugin(state, customRuntime, wasmPath, folderName)
+		precompilePlugin(state, customRuntime, wasmPath, pluginID)
 
 		// Check if this plugin implements InitService and hasn't been initialized yet
 		m.initializePluginIfNeeded(pluginInfo)
@@ -371,7 +368,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 	// Register the plugin
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.plugins[folderName] = pluginInfo
+	m.plugins[pluginID] = pluginInfo
 
 	// Register one plugin adapter for each capability
 	for _, capability := range manifest.Capabilities {
@@ -379,16 +376,16 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 		if constructor == nil {
 			// Warn about unknown capabilities, except for LifecycleManagement (it does not have an adapter)
 			if capability != CapabilityLifecycleManagement {
-				log.Warn("Unknown plugin capability type", "capability", capability, "plugin", folderName)
+				log.Warn("Unknown plugin capability type", "capability", capability, "plugin", pluginID)
 			}
 			continue
 		}
-		adapter := constructor(wasmPath, folderName, customRuntime, mc)
-		m.adapters[folderName+"_"+capability] = adapter
+		adapter := constructor(wasmPath, pluginID, customRuntime, mc)
+		m.adapters[pluginID+"_"+capability] = adapter
 	}
 
-	log.Info("Discovered plugin", "folder", folderName, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
-	return m.plugins[folderName]
+	log.Info("Discovered plugin", "folder", pluginID, "name", manifest.Name, "capabilities", manifest.Capabilities, "wasm", wasmPath, "dev_mode", isSymlink)
+	return m.plugins[pluginID]
 }
 
 // initializePluginIfNeeded calls OnInit on plugins that implement LifecycleManagement
@@ -518,7 +515,7 @@ func (m *Manager) ScanPlugins() {
 		log.Debug("Manifest loaded successfully", "folder", name, "name", manifest.Name, "capabilities", manifest.Capabilities)
 
 		// Register the plugin
-		m.registerPlugin(pluginDir, wasmPath, manifest, ccache)
+		m.registerPlugin(name, pluginDir, wasmPath, manifest, ccache)
 	}
 }
 
