@@ -1,5 +1,7 @@
 package plugins
 
+//go:generate go tool go-jsonschema --schema-root-type navidrome://plugins/manifest=PluginManifest -p schema --output schema/manifest_gen.go schema/manifest.schema.json
+
 import (
 	_ "embed"
 	"encoding/json"

@@ -1,4 +1,5 @@
 {
+  "$id": "navidrome://plugins/manifest",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Navidrome Plugin Manifest",
   "description": "Schema for Navidrome Plugin manifest.json files",
