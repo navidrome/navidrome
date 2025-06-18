@@ -15,13 +15,9 @@ import (
 
 // PluginPackage represents a Navidrome Plugin Package (.ndp file)
 type PluginPackage struct {
-	FilePath     string
 	ManifestJSON []byte
 	Manifest     *schema.PluginManifest
 	WasmBytes    []byte
-	manifestFile *zip.File
-	wasmFile     *zip.File
-	zipReader    *zip.ReadCloser
 	Docs         map[string][]byte
 }
 
@@ -151,11 +147,9 @@ func LoadPackage(ndpPath string) (*PluginPackage, error) {
 		// Process based on file name
 		switch strings.ToLower(f.Name) {
 		case "manifest.json":
-			pkg.manifestFile = f
 			pkg.ManifestJSON = content
 			hasManifest = true
 		case "plugin.wasm":
-			pkg.wasmFile = f
 			pkg.WasmBytes = content
 			hasWasm = true
 		default:
