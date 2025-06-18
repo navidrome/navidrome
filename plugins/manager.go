@@ -235,18 +235,6 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 	return nil
 }
 
-func parseTypedPermission[T any](permissions schema.PluginManifestPermissions, permissionName, pluginID string, getter func(schema.PluginManifestPermissions) *T, parser func(*T) (T, error)) (T, error) {
-	var parsed T
-	if permData := getter(permissions); permData != nil {
-		var err error
-		parsed, err = parser(permData)
-		if err != nil {
-			return parsed, fmt.Errorf("invalid %s permissions for plugin %s: %w", permissionName, pluginID, err)
-		}
-	}
-	return parsed, nil
-}
-
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
 func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {

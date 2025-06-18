@@ -107,7 +107,7 @@ var _ = Describe("Plugin Manager", func() {
 			targetWasmPath := filepath.Join(pluginDir, "plugin.wasm")
 			sourceWasm, err := os.ReadFile(sourceWasmPath)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(os.WriteFile(targetWasmPath, sourceWasm, 0644)).To(Succeed())
+			Expect(os.WriteFile(targetWasmPath, sourceWasm, 0600)).To(Succeed())
 
 			manifest := `{
 				"name": "` + manifestName + `",
@@ -117,7 +117,7 @@ var _ = Describe("Plugin Manager", func() {
 				"description": "Test Plugin",
 				"permissions": {}
 			}`
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 		}
 
 		It("should register and compile discovered plugins", func() {
@@ -245,11 +245,11 @@ var _ = Describe("Plugin Manager", func() {
 				"capabilities": ["` + capabilities[0] + `"],
 				"permissions": {}
 			}`
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 
 			// Create dummy WASM file
 			wasmContent := []byte("dummy wasm content")
-			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0600)).To(Succeed())
 		}
 
 		// Helper to create plugin directory with only manifest (missing WASM)
@@ -265,7 +265,7 @@ var _ = Describe("Plugin Manager", func() {
 				"capabilities": ["MetadataAgent"],
 				"permissions": {}
 			}`
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 		}
 
 		// Helper to create plugin directory with only WASM (missing manifest)
@@ -274,7 +274,7 @@ var _ = Describe("Plugin Manager", func() {
 			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
 			wasmContent := []byte("dummy wasm content")
-			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0600)).To(Succeed())
 		}
 
 		// Helper to create plugin with invalid manifest
@@ -283,10 +283,10 @@ var _ = Describe("Plugin Manager", func() {
 			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
 			invalidManifest := `{ "invalid": json content }`
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0600)).To(Succeed())
 
 			wasmContent := []byte("dummy wasm content")
-			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0600)).To(Succeed())
 		}
 
 		// Helper to create plugin with empty capabilities
@@ -302,10 +302,10 @@ var _ = Describe("Plugin Manager", func() {
 				"capabilities": [],
 				"permissions": {}
 			}`
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
 
 			wasmContent := []byte("dummy wasm content")
-			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0600)).To(Succeed())
 		}
 
 		BeforeEach(func() {
@@ -466,8 +466,8 @@ var _ = Describe("Plugin Manager", func() {
 					"capabilities": ["MetadataAgent"],
 					"permissions": {}
 				}`
-				Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
-				Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), []byte("wasm"), 0644)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), []byte("wasm"), 0600)).To(Succeed())
 
 				// Create relative symlink
 				symlinkPath := filepath.Join(tempDir, "relative-link")
@@ -501,7 +501,7 @@ var _ = Describe("Plugin Manager", func() {
 			It("should report error for symlinks pointing to files", func() {
 				// Create a regular file
 				filePath := filepath.Join(tempDir, "regular-file.txt")
-				Expect(os.WriteFile(filePath, []byte("content"), 0644)).To(Succeed())
+				Expect(os.WriteFile(filePath, []byte("content"), 0600)).To(Succeed())
 
 				// Create symlink to file
 				symlinkPath := filepath.Join(tempDir, "file-link")
@@ -536,7 +536,7 @@ var _ = Describe("Plugin Manager", func() {
 				createValidPlugin("valid-plugin", "Valid", "Author", "1.0", []string{"MetadataAgent"})
 
 				// Create regular file in plugins directory
-				Expect(os.WriteFile(filepath.Join(tempDir, "regular-file.txt"), []byte("content"), 0644)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(tempDir, "regular-file.txt"), []byte("content"), 0600)).To(Succeed())
 
 				discoveries := DiscoverPlugins(tempDir)
 

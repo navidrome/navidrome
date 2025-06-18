@@ -22,26 +22,6 @@ func newURLMatcher() *urlMatcher {
 	return &urlMatcher{}
 }
 
-func parseNetworkPermissionsBase(permMap map[string]any) (*networkPermissionsBase, error) {
-	reason, ok := permMap["reason"].(string)
-	if !ok || reason == "" {
-		return nil, fmt.Errorf("permission reason is required and must be a non-empty string")
-	}
-
-	allowLocalNetwork := false
-	if val, ok := permMap["allowLocalNetwork"]; ok {
-		var isBool bool
-		allowLocalNetwork, isBool = val.(bool)
-		if !isBool {
-			return nil, fmt.Errorf("allowLocalNetwork must be a boolean")
-		}
-	}
-	return &networkPermissionsBase{
-		Reason:            reason,
-		AllowLocalNetwork: allowLocalNetwork,
-	}, nil
-}
-
 // checkURLPolicy performs common checks for a URL against network policies.
 func checkURLPolicy(requestURL string, allowLocalNetwork bool) (*url.URL, error) {
 	parsedURL, err := url.Parse(requestURL)

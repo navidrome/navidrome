@@ -279,7 +279,7 @@ var _ = Describe("Plugin Permissions", func() {
 			}`
 
 			manifestPath := filepath.Join(tempDir, "manifest.json")
-			err := os.WriteFile(manifestPath, []byte(manifestContent), 0644)
+			err := os.WriteFile(manifestPath, []byte(manifestContent), 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = LoadManifest(tempDir)

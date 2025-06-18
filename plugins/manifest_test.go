@@ -34,7 +34,7 @@ var _ = Describe("Plugin Manifest", func() {
 			}
 		}`)
 
-		err := os.WriteFile(manifestPath, manifestContent, 0644)
+		err := os.WriteFile(manifestPath, manifestContent, 0600)
 		Expect(err).NotTo(HaveOccurred())
 
 		manifest, err := LoadManifest(tempDir)
