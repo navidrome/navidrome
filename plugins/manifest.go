@@ -8,14 +8,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/navidrome/navidrome/plugins/schema"
-	"github.com/xeipuuv/gojsonschema"
 )
-
-//go:embed schema/manifest.schema.json
-var schemaData []byte
 
 // LoadManifest loads and parses the manifest.json file from the given plugin directory.
 // Returns the generated schema.PluginManifest type with full validation and type safety.
@@ -28,40 +23,8 @@ func LoadManifest(pluginDir string) (*schema.PluginManifest, error) {
 
 	var manifest schema.PluginManifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
-		return nil, fmt.Errorf("failed to parse manifest JSON: %w", err)
-	}
-
-	// Validate against schema
-	if err := validateManifest(data); err != nil {
 		return nil, fmt.Errorf("invalid manifest: %w", err)
 	}
 
 	return &manifest, nil
-}
-
-// validateManifest validates the manifest JSON against the schema
-func validateManifest(data []byte) error {
-	schemaLoader := gojsonschema.NewBytesLoader(schemaData)
-	documentLoader := gojsonschema.NewBytesLoader(data)
-
-	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
-	if err != nil {
-		return fmt.Errorf("error validating manifest: %w", err)
-	}
-
-	if !result.Valid() {
-		var errorDetails []string
-		for _, err := range result.Errors() {
-			// Format detailed error message
-			field := err.Field()
-			message := err.Description()
-			if err.Value() != nil {
-				message = fmt.Sprintf("%s (got: %v)", message, err.Value())
-			}
-			errorDetails = append(errorDetails, fmt.Sprintf("%s: %s", field, message))
-		}
-		return fmt.Errorf("validation failed: %s", strings.Join(errorDetails, "; "))
-	}
-
-	return nil
 }

@@ -75,7 +75,7 @@ var _ = Describe("Plugin Manifest", func() {
 		// Test validation fails
 		_, err := LoadManifest(pluginDir)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("failed to parse manifest JSON"))
+		Expect(err.Error()).To(ContainSubstring("invalid manifest"))
 	})
 
 	It("should validate manifest against schema with detailed error for missing required field", func() {

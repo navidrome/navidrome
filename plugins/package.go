@@ -175,11 +175,6 @@ func LoadPackage(ndpPath string) (*PluginPackage, error) {
 	// Parse and validate the manifest
 	var manifest schema.PluginManifest
 	if err := json.Unmarshal(pkg.ManifestJSON, &manifest); err != nil {
-		return nil, fmt.Errorf("error parsing manifest: %w", err)
-	}
-
-	// Validate against schema
-	if err := validateManifest(pkg.ManifestJSON); err != nil {
 		return nil, fmt.Errorf("invalid manifest: %w", err)
 	}
 
