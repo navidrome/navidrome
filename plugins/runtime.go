@@ -36,14 +36,20 @@ var (
 	runtimePool      sync.Map // map[string]*pooledRuntime
 )
 
-// createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
-// and instantiates the required host functions
-func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
+// createCustomRuntime returns a function that creates a new wazero runtime and instantiates the required host functions
+// based on the given plugin permissions
+func (m *Manager) createCustomRuntime(pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginID); ok {
 			log.Trace(ctx, "Using existing runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", rt))
 			return rt.(wazero.Runtime), nil
+		}
+
+		// Get compilation cache
+		compCache, err := getCompilationCache()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get compilation cache: %w", err)
 		}
 
 		// Create the runtime

@@ -75,8 +75,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			ccache, _ := getCompilationCache()
-			runtimeFunc := mgr.createCustomRuntime(ccache, "test-plugin", permissions)
+			runtimeFunc := mgr.createCustomRuntime("test-plugin", permissions)
 
 			// Create runtime to test service availability
 			runtime, err := runtimeFunc(ctx)
@@ -94,8 +93,7 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should create runtime with empty permissions", func() {
 			permissions := schema.PluginManifestPermissions{}
 
-			ccache, _ := getCompilationCache()
-			runtimeFunc := mgr.createCustomRuntime(ccache, "empty-permissions-plugin", permissions)
+			runtimeFunc := mgr.createCustomRuntime("empty-permissions-plugin", permissions)
 
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -134,8 +132,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			ccache, _ := getCompilationCache()
-			runtimeFunc := mgr.createCustomRuntime(ccache, "full-permissions-plugin", permissions)
+			runtimeFunc := mgr.createCustomRuntime("full-permissions-plugin", permissions)
 
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -305,8 +302,6 @@ var _ = Describe("Plugin Permissions", func() {
 
 	Describe("Runtime Pool with Permissions", func() {
 		It("should create separate runtimes for different permission sets", func() {
-			ccache, _ := getCompilationCache()
-
 			// Create two different permission sets using typed structs
 			permissions1 := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
@@ -323,8 +318,8 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc1 := mgr.createCustomRuntime(ccache, "plugin1", permissions1)
-			runtimeFunc2 := mgr.createCustomRuntime(ccache, "plugin2", permissions2)
+			runtimeFunc1 := mgr.createCustomRuntime("plugin1", permissions1)
+			runtimeFunc2 := mgr.createCustomRuntime("plugin2", permissions2)
 
 			runtime1, err1 := runtimeFunc1(ctx)
 			Expect(err1).NotTo(HaveOccurred())
@@ -419,8 +414,6 @@ var _ = Describe("Plugin Permissions", func() {
 
 	Describe("Runtime Service Access Control", func() {
 		It("should successfully create runtime with permitted services", func() {
-			ccache, _ := getCompilationCache()
-
 			// Create runtime with HTTP permission using typed struct
 			permissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
@@ -432,7 +425,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc := mgr.createCustomRuntime(ccache, "http-only-plugin", permissions)
+			runtimeFunc := mgr.createCustomRuntime("http-only-plugin", permissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -442,8 +435,6 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should successfully create runtime with multiple permitted services", func() {
-			ccache, _ := getCompilationCache()
-
 			// Create runtime with multiple permissions using typed structs
 			permissions := schema.PluginManifestPermissions{
 				Http: &schema.PluginManifestPermissionsHttp{
@@ -461,7 +452,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc := mgr.createCustomRuntime(ccache, "multi-service-plugin", permissions)
+			runtimeFunc := mgr.createCustomRuntime("multi-service-plugin", permissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -471,12 +462,10 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should create runtime with no services when no permissions granted", func() {
-			ccache, _ := getCompilationCache()
-
 			// Create runtime with empty permissions using typed struct
 			emptyPermissions := schema.PluginManifestPermissions{}
 
-			runtimeFunc := mgr.createCustomRuntime(ccache, "no-service-plugin", emptyPermissions)
+			runtimeFunc := mgr.createCustomRuntime("no-service-plugin", emptyPermissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -486,11 +475,9 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should demonstrate secure-by-default behavior", func() {
-			ccache, _ := getCompilationCache()
-
 			// Test that default (empty permissions) provides no services
 			defaultPermissions := schema.PluginManifestPermissions{}
-			runtimeFunc := mgr.createCustomRuntime(ccache, "default-plugin", defaultPermissions)
+			runtimeFunc := mgr.createCustomRuntime("default-plugin", defaultPermissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -503,8 +490,6 @@ var _ = Describe("Plugin Permissions", func() {
 			// This test demonstrates that plugins would fail at runtime when trying to call
 			// host functions they don't have permission for, since those functions are simply
 			// not loaded into the WASM runtime environment.
-
-			ccache, _ := getCompilationCache()
 
 			// Create two different runtimes with different permissions using typed structs
 			httpOnlyPermissions := schema.PluginManifestPermissions{
@@ -522,11 +507,11 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			httpRuntime, err := mgr.createCustomRuntime(ccache, "http-only", httpOnlyPermissions)(ctx)
+			httpRuntime, err := mgr.createCustomRuntime("http-only", httpOnlyPermissions)(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer httpRuntime.Close(ctx)
 
-			configRuntime, err := mgr.createCustomRuntime(ccache, "config-only", configOnlyPermissions)(ctx)
+			configRuntime, err := mgr.createCustomRuntime("config-only", configOnlyPermissions)(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer configRuntime.Close(ctx)
 

@@ -42,7 +42,6 @@ var _ = Describe("PooledRuntime", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		mgr = createManager()
-		ccache, _ := getCompilationCache()
 		// Add permissions for the test plugin using typed struct
 		permissions := schema.PluginManifestPermissions{
 			Http: &schema.PluginManifestPermissionsHttp{
@@ -56,7 +55,7 @@ var _ = Describe("PooledRuntime", func() {
 				Reason: "For testing config functionality",
 			},
 		}
-		rtFunc := mgr.createCustomRuntime(ccache, "fake_scrobbler", permissions)
+		rtFunc := mgr.createCustomRuntime("fake_scrobbler", permissions)
 		plugin = newWasmScrobblerPlugin(
 			filepath.Join(testDataDir, "fake_scrobbler", "plugin.wasm"),
 			"fake_scrobbler",

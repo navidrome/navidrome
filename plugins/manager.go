@@ -94,9 +94,9 @@ func createManager() *Manager {
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest, cache wazero.CompilationCache) *pluginInfo {
+func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest) *pluginInfo {
 	// Create custom runtime function
-	customRuntime := m.createCustomRuntime(cache, pluginID, manifest.Permissions)
+	customRuntime := m.createCustomRuntime(pluginID, manifest.Permissions)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()
@@ -169,7 +169,7 @@ func (m *Manager) initializePluginIfNeeded(plugin *pluginInfo) {
 	}
 }
 
-// ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
+// ScanPlugins scans the plugins directory, discovers all valid plugins, and registers them for use.
 func (m *Manager) ScanPlugins() {
 	// Clear existing plugins
 	m.mu.Lock()
@@ -181,8 +181,8 @@ func (m *Manager) ScanPlugins() {
 	root := conf.Server.Plugins.Folder
 	log.Debug("Scanning plugins folder", "root", root)
 
-	// Get compilation cache to speed up WASM module loading
-	ccache, err := getCompilationCache()
+	// Fail fast if the compilation cache cannot be initialized
+	_, err := getCompilationCache()
 	if err != nil {
 		log.Error("Failed to initialize plugins compilation cache. Disabling plugins", err)
 		return
@@ -215,7 +215,7 @@ func (m *Manager) ScanPlugins() {
 		validPluginNames = append(validPluginNames, discovery.ID)
 
 		// Register the plugin
-		m.registerPlugin(discovery.ID, discovery.Path, discovery.WasmPath, discovery.Manifest, ccache)
+		m.registerPlugin(discovery.ID, discovery.Path, discovery.WasmPath, discovery.Manifest)
 	}
 
 	log.Debug("Found valid plugins", "count", len(validPluginNames), "plugins", validPluginNames)
