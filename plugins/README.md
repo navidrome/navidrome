@@ -247,7 +247,12 @@ Permissions are declared in the plugin's `manifest.json` file using the `permiss
   "capabilities": ["MetadataAgent"],
   "permissions": {
     "http": {
-      "reason": "To fetch metadata from external APIs"
+      "reason": "To fetch metadata from external APIs",
+      "allowedUrls": {
+        "https://api.musicbrainz.org": ["GET"],
+        "https://coverartarchive.org": ["GET"]
+      },
+      "allowLocalNetwork": false
     },
     "cache": {
       "reason": "To cache API responses and reduce rate limiting"
@@ -257,6 +262,12 @@ Permissions are declared in the plugin's `manifest.json` file using the `permiss
 ```
 
 Each permission is represented as a key in the permissions object. The value must be an object containing a `reason` field that explains why the permission is needed.
+
+**Important**: Some permissions require additional configuration fields:
+
+- **`http`**: Requires `allowedUrls` object mapping URL patterns to allowed HTTP methods, and optional `allowLocalNetwork` boolean
+- **`websocket`**: Requires `allowedUrls` array of WebSocket URL patterns, and optional `allowLocalNetwork` boolean
+- **`config`**, **`cache`**, **`scheduler`**, **`artwork`**: Only require the `reason` field
 
 **Security Benefits of Required Reasons:**
 
@@ -271,14 +282,66 @@ If no permissions are needed, use an empty permissions object: `"permissions": {
 
 The following permission keys correspond to host services:
 
-| Permission  | Host Service     | Description                                 |
-| ----------- | ---------------- | ------------------------------------------- |
-| `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE) |
-| `cache`     | CacheService     | Store and retrieve cached data with TTL     |
-| `config`    | ConfigService    | Access Navidrome configuration values       |
-| `scheduler` | SchedulerService | Schedule one-time and recurring tasks       |
-| `websocket` | WebSocketService | Connect to and communicate via WebSockets   |
-| `artwork`   | ArtworkService   | Generate public URLs for artwork images     |
+| Permission  | Host Service     | Description                                 | Required Fields         |
+| ----------- | ---------------- | ------------------------------------------- | ----------------------- |
+| `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE) | `reason`, `allowedUrls` |
+| `websocket` | WebSocketService | Connect to and communicate via WebSockets   | `reason`, `allowedUrls` |
+| `cache`     | CacheService     | Store and retrieve cached data with TTL     | `reason`                |
+| `config`    | ConfigService    | Access Navidrome configuration values       | `reason`                |
+| `scheduler` | SchedulerService | Schedule one-time and recurring tasks       | `reason`                |
+| `artwork`   | ArtworkService   | Generate public URLs for artwork images     | `reason`                |
+
+#### HTTP Permission Structure
+
+HTTP permissions require explicit URL whitelisting for security:
+
+```json
+{
+  "http": {
+    "reason": "To fetch artist data from MusicBrainz and album covers from Cover Art Archive",
+    "allowedUrls": {
+      "https://musicbrainz.org/ws/2/*": ["GET"],
+      "https://coverartarchive.org/*": ["GET"],
+      "https://api.example.com/submit": ["POST"]
+    },
+    "allowLocalNetwork": false
+  }
+}
+```
+
+**Fields:**
+
+- `reason` (required): Explanation of why HTTP access is needed
+- `allowedUrls` (required): Object mapping URL patterns to allowed HTTP methods
+- `allowLocalNetwork` (optional, default false): Whether to allow requests to localhost/private IPs
+
+**URL Pattern Matching:**
+
+- Exact URLs: `"https://api.example.com/endpoint": ["GET"]`
+- Wildcard paths: `"https://api.example.com/*": ["GET", "POST"]`
+- Subdomain wildcards: `"https://*.example.com": ["GET"]`
+
+**Important**: Redirect destinations must also be included in `allowedUrls` if you want to follow redirects.
+
+#### WebSocket Permission Structure
+
+WebSocket permissions require explicit URL whitelisting:
+
+```json
+{
+  "websocket": {
+    "reason": "To connect to Discord gateway for real-time Rich Presence updates",
+    "allowedUrls": ["wss://gateway.discord.gg", "wss://*.discord.gg"],
+    "allowLocalNetwork": false
+  }
+}
+```
+
+**Fields:**
+
+- `reason` (required): Explanation of why WebSocket access is needed
+- `allowedUrls` (required): Array of WebSocket URL patterns (must start with `ws://` or `wss://`)
+- `allowLocalNetwork` (optional, default false): Whether to allow connections to localhost/private IPs
 
 ### Permission Validation
 
@@ -314,7 +377,7 @@ The permission system provides multiple layers of security:
 
 #### Request Minimal Permissions
 
-```json
+```jsonc
 // Good: No permissions if none needed
 {
   "permissions": {}
@@ -324,7 +387,11 @@ The permission system provides multiple layers of security:
 {
   "permissions": {
     "http": {
-      "reason": "To fetch artist biography from external music database"
+      "reason": "To fetch artist biography from MusicBrainz database",
+      "allowedUrls": {
+        "https://musicbrainz.org/ws/2/artist/*": ["GET"]
+      },
+      "allowLocalNetwork": false
     }
   }
 }
@@ -333,7 +400,11 @@ The permission system provides multiple layers of security:
 {
   "permissions": {
     "http": {
-      "reason": "To fetch data"
+      "reason": "To fetch data",
+      "allowedUrls": {
+        "https://*": ["*"]
+      },
+      "allowLocalNetwork": true
     },
     "cache": {
       "reason": "For caching"
@@ -342,7 +413,9 @@ The permission system provides multiple layers of security:
       "reason": "For scheduling"
     },
     "websocket": {
-      "reason": "For real-time updates"
+      "reason": "For real-time updates",
+      "allowedUrls": ["wss://*"],
+      "allowLocalNetwork": true
     }
   }
 }
@@ -361,7 +434,12 @@ Provide specific, descriptive reasons for each permission that explain exactly w
 // Good: Specific and informative
 {
   "http": {
-    "reason": "To fetch album reviews from AllMusic API and artist biographies from MusicBrainz"
+    "reason": "To fetch album reviews from AllMusic API and artist biographies from MusicBrainz",
+    "allowedUrls": {
+      "https://www.allmusic.com/api/*": ["GET"],
+      "https://musicbrainz.org/ws/2/*": ["GET"]
+    },
+    "allowLocalNetwork": false
   },
   "cache": {
     "reason": "To cache API responses for 24 hours to respect rate limits and improve performance"
@@ -371,7 +449,11 @@ Provide specific, descriptive reasons for each permission that explain exactly w
 // Bad: Vague and unhelpful
 {
   "http": {
-    "reason": "To make requests"
+    "reason": "To make requests",
+    "allowedUrls": {
+      "https://*": ["*"]
+    },
+    "allowLocalNetwork": true
   },
   "cache": {
     "reason": "For caching"
@@ -409,6 +491,11 @@ func (p *Plugin) GetArtistInfo(ctx context.Context, req *api.ArtistInfoRequest) 
 - Cause: Plugin trying to call a service without proper permission
 - Solution: Add the required permission to your manifest.json
 
+**"manifest validation failed" or "missing required field"**
+
+- Cause: Plugin manifest is missing required fields (e.g., `allowedUrls` for HTTP/WebSocket permissions)
+- Solution: Ensure your manifest includes all required fields for each permission type
+
 **Permission silently ignored**
 
 - Cause: Using a permission key not recognized by current Navidrome version
@@ -418,9 +505,11 @@ func (p *Plugin) GetArtistInfo(ctx context.Context, req *api.ArtistInfoRequest) 
 #### Debugging Permission Issues
 
 1. **Check the manifest**: Ensure required permissions are spelled correctly and present
-2. **Review logs**: Check for plugin loading errors and WASM runtime errors
-3. **Test incrementally**: Add permissions one at a time to identify which services your plugin needs
-4. **Verify service names**: Ensure permission keys match exactly: `http`, `cache`, `config`, `scheduler`, `websocket`, `artwork`
+2. **Verify required fields**: Check that HTTP and WebSocket permissions include `allowedUrls` and other required fields
+3. **Review logs**: Check for plugin loading errors, manifest validation errors, and WASM runtime errors
+4. **Test incrementally**: Add permissions one at a time to identify which services your plugin needs
+5. **Verify service names**: Ensure permission keys match exactly: `http`, `cache`, `config`, `scheduler`, `websocket`, `artwork`
+6. **Validate manifest**: Use a JSON schema validator to check your manifest against the schema
 
 ### Future Considerations
 
@@ -1021,7 +1110,12 @@ Connect to WebSocket endpoints:
 {
   "permissions": {
     "websocket": {
-      "reason": "To connect to real-time music service APIs for live data"
+      "reason": "To connect to real-time music service APIs for live data",
+      "allowedUrls": [
+        "wss://api.musicservice.com/ws",
+        "wss://realtime.example.com"
+      ],
+      "allowLocalNetwork": false
     }
   }
 }
