@@ -38,6 +38,11 @@ var _ = Describe("Plugin CLI Commands", func() {
 		}`
 
 		Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+
+		// Create a dummy WASM file
+		wasmContent := []byte("dummy wasm content for testing")
+		Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0600)).To(Succeed())
+
 		return pluginDir
 	}
 
@@ -158,6 +163,10 @@ var _ = Describe("Plugin CLI Commands", func() {
 				"permissions": {}
 			}`
 			Expect(os.WriteFile(filepath.Join(sourceDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+
+			// Create a dummy WASM file
+			wasmContent := []byte("dummy wasm content for testing")
+			Expect(os.WriteFile(filepath.Join(sourceDir, "plugin.wasm"), wasmContent, 0600)).To(Succeed())
 
 			// Create a symlink in the plugins directory
 			symlinkPath := filepath.Join(tempDir, "dev-plugin")

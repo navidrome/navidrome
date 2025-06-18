@@ -93,90 +93,40 @@ func pluginList(cmd *cobra.Command, args []string) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ID\tNAME\tAUTHOR\tVERSION\tCAPABILITIES\tDESCRIPTION")
 
-	// Scan plugin directories
-	entries, err := os.ReadDir(pluginsDir)
-	if err != nil {
-		log.Error("Failed to read plugins directory", "folder", pluginsDir, err)
-		return
-	}
+	// Discover plugins using the shared discovery function
+	discoveries := plugins.DiscoverPlugins(pluginsDir)
 
-	for _, entry := range entries {
-		name := entry.Name()
-
-		// Skip hidden files
-		if name[0] == '.' {
-			continue
-		}
-
-		pluginPath := filepath.Join(pluginsDir, name)
-
-		// Get file info to check if it's a directory or symlink
-		info, err := os.Lstat(pluginPath)
-		if err != nil {
-			log.Error("Failed to stat entry", "path", pluginPath, err)
-			continue
-		}
-
-		isSymlink := info.Mode()&os.ModeSymlink != 0
-		isDir := info.IsDir()
-
-		// Skip if not a directory or symlink
-		if !isDir && !isSymlink {
-			continue
-		}
-
-		// If it's a symlink, resolve it
-		pluginDir := pluginPath
-		if isSymlink {
-			targetDir, err := os.Readlink(pluginPath)
-			if err != nil {
-				log.Error("Failed to resolve symlink", "path", pluginPath, err)
-				continue
+	for _, discovery := range discoveries {
+		if discovery.Error != nil {
+			// Handle global errors (like directory read failure)
+			if discovery.ID == "" {
+				log.Error("Failed to read plugins directory", "folder", pluginsDir, discovery.Error)
+				return
 			}
-
-			// If target is a relative path, make it absolute
-			if !filepath.IsAbs(targetDir) {
-				targetDir = filepath.Join(filepath.Dir(pluginPath), targetDir)
-			}
-
-			// Verify that the target is a directory
-			targetInfo, err := os.Stat(targetDir)
-			if err != nil {
-				log.Error("Failed to stat symlink target", "path", targetDir, err)
-				continue
-			}
-
-			if !targetInfo.IsDir() {
-				log.Debug("Symlink target is not a directory, skipping", "name", name, "target", targetDir)
-				continue
-			}
-		}
-
-		manifest, err := plugins.LoadManifest(pluginDir)
-		if err != nil {
-			fmt.Fprintf(w, "%s\tERROR\tERROR\tERROR\tERROR\t%v\n", name, err)
+			// Handle individual plugin errors - show them in the table
+			fmt.Fprintf(w, "%s\tERROR\tERROR\tERROR\tERROR\t%v\n", discovery.ID, discovery.Error)
 			continue
 		}
 
 		// Format capabilities as comma-separated list
-		capabilities := manifest.Capabilities[0]
-		for i := 1; i < len(manifest.Capabilities); i++ {
-			capabilities += ", " + manifest.Capabilities[i]
+		capabilities := discovery.Manifest.Capabilities[0]
+		for i := 1; i < len(discovery.Manifest.Capabilities); i++ {
+			capabilities += ", " + discovery.Manifest.Capabilities[i]
 		}
 
 		// Mark symlinks with an indicator
-		nameDisplay := manifest.Name
-		if isSymlink {
+		nameDisplay := discovery.Manifest.Name
+		if discovery.IsSymlink {
 			nameDisplay = nameDisplay + " (dev)"
 		}
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-			name,
+			discovery.ID,
 			nameDisplay,
-			cmp.Or(manifest.Author, "-"),
-			cmp.Or(manifest.Version, "-"),
+			cmp.Or(discovery.Manifest.Author, "-"),
+			cmp.Or(discovery.Manifest.Version, "-"),
 			capabilities,
-			cmp.Or(manifest.Description, "-"))
+			cmp.Or(discovery.Manifest.Description, "-"))
 	}
 	w.Flush()
 }

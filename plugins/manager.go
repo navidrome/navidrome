@@ -102,6 +102,16 @@ type pluginInfo struct {
 	ModConfig    wazero.ModuleConfig
 }
 
+// PluginDiscoveryEntry represents a discovered plugin with its metadata
+type PluginDiscoveryEntry struct {
+	ID        string          // Plugin identifier (folder/symlink name)
+	Path      string          // Resolved plugin directory path
+	WasmPath  string          // Path to the WASM file
+	Manifest  *PluginManifest // Loaded manifest
+	IsSymlink bool            // Whether this is a symlink
+	Error     error           // Any error encountered during discovery
+}
+
 // Manager is a singleton that manages plugins
 type Manager struct {
 	plugins          map[string]*pluginInfo  // Map of plugin folder name to plugin info
@@ -405,6 +415,139 @@ func (m *Manager) initializePluginIfNeeded(plugin *pluginInfo) {
 	}
 }
 
+// DiscoverPlugins scans the plugins directory and returns information about all discoverable plugins
+// This shared function eliminates duplication between ScanPlugins and plugin list commands
+func DiscoverPlugins(pluginsDir string) []PluginDiscoveryEntry {
+	var discoveries []PluginDiscoveryEntry
+
+	entries, err := os.ReadDir(pluginsDir)
+	if err != nil {
+		// Return a single entry with the error
+		return []PluginDiscoveryEntry{{
+			Error: fmt.Errorf("failed to read plugins directory %s: %w", pluginsDir, err),
+		}}
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		pluginPath := filepath.Join(pluginsDir, name)
+
+		// Skip hidden files
+		if name[0] == '.' {
+			continue
+		}
+
+		// Check if it's a directory or symlink
+		info, err := os.Lstat(pluginPath)
+		if err != nil {
+			discoveries = append(discoveries, PluginDiscoveryEntry{
+				ID:    name,
+				Error: fmt.Errorf("failed to stat entry %s: %w", pluginPath, err),
+			})
+			continue
+		}
+
+		isSymlink := info.Mode()&os.ModeSymlink != 0
+		isDir := info.IsDir()
+
+		// Skip if not a directory or symlink
+		if !isDir && !isSymlink {
+			continue
+		}
+
+		// Resolve symlinks
+		pluginDir := pluginPath
+		if isSymlink {
+			targetDir, err := os.Readlink(pluginPath)
+			if err != nil {
+				discoveries = append(discoveries, PluginDiscoveryEntry{
+					ID:        name,
+					IsSymlink: true,
+					Error:     fmt.Errorf("failed to resolve symlink %s: %w", pluginPath, err),
+				})
+				continue
+			}
+
+			// If target is a relative path, make it absolute
+			if !filepath.IsAbs(targetDir) {
+				targetDir = filepath.Join(filepath.Dir(pluginPath), targetDir)
+			}
+
+			// Verify that the target is a directory
+			targetInfo, err := os.Stat(targetDir)
+			if err != nil {
+				discoveries = append(discoveries, PluginDiscoveryEntry{
+					ID:        name,
+					IsSymlink: true,
+					Error:     fmt.Errorf("failed to stat symlink target %s: %w", targetDir, err),
+				})
+				continue
+			}
+
+			if !targetInfo.IsDir() {
+				discoveries = append(discoveries, PluginDiscoveryEntry{
+					ID:        name,
+					IsSymlink: true,
+					Error:     fmt.Errorf("symlink target is not a directory: %s", targetDir),
+				})
+				continue
+			}
+
+			pluginDir = targetDir
+		}
+
+		// Check for WASM file
+		wasmPath := filepath.Join(pluginDir, "plugin.wasm")
+		if _, err := os.Stat(wasmPath); err != nil {
+			discoveries = append(discoveries, PluginDiscoveryEntry{
+				ID:        name,
+				Path:      pluginDir,
+				WasmPath:  wasmPath,
+				IsSymlink: isSymlink,
+				Error:     fmt.Errorf("no plugin.wasm found: %w", err),
+			})
+			continue
+		}
+
+		// Load manifest
+		manifest, err := LoadManifest(pluginDir)
+		if err != nil {
+			discoveries = append(discoveries, PluginDiscoveryEntry{
+				ID:        name,
+				Path:      pluginDir,
+				WasmPath:  wasmPath,
+				IsSymlink: isSymlink,
+				Error:     fmt.Errorf("failed to load manifest: %w", err),
+			})
+			continue
+		}
+
+		// Check for capabilities
+		if len(manifest.Capabilities) == 0 {
+			discoveries = append(discoveries, PluginDiscoveryEntry{
+				ID:        name,
+				Path:      pluginDir,
+				WasmPath:  wasmPath,
+				Manifest:  manifest,
+				IsSymlink: isSymlink,
+				Error:     fmt.Errorf("no capabilities found in manifest"),
+			})
+			continue
+		}
+
+		// Success!
+		discoveries = append(discoveries, PluginDiscoveryEntry{
+			ID:        name,
+			Path:      pluginDir,
+			WasmPath:  wasmPath,
+			Manifest:  manifest,
+			IsSymlink: isSymlink,
+		})
+	}
+
+	return discoveries
+}
+
 // ScanPlugins scans the plugins directory and compiles all valid plugins without registering them.
 func (m *Manager) ScanPlugins() {
 	// Clear existing plugins
@@ -413,14 +556,10 @@ func (m *Manager) ScanPlugins() {
 	m.adapters = make(map[string]WasmPlugin)
 	m.mu.Unlock()
 
-	// Get plugins directory from config and read its contents
+	// Get plugins directory from config
 	root := conf.Server.Plugins.Folder
 	log.Debug("Scanning plugins folder", "root", root)
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		log.Error("Failed to read plugins folder", "folder", root, err)
-		return
-	}
+
 	// Get compilation cache to speed up WASM module loading
 	ccache, err := getCompilationCache()
 	if err != nil {
@@ -428,95 +567,37 @@ func (m *Manager) ScanPlugins() {
 		return
 	}
 
-	// Process each directory in the plugins folder
-	log.Debug("Found entries in plugin directory", "count", len(entries), "entries", slice.Map(entries, func(e os.DirEntry) string { return e.Name() }))
-	for _, entry := range entries {
-		name := entry.Name()
-		pluginDir := filepath.Join(root, name)
+	// Discover all plugins using the shared discovery function
+	discoveries := DiscoverPlugins(root)
 
-		// First check if it's a hidden file (starting with .)
-		if name[0] == '.' {
-			log.Debug("Skipping hidden entry", "name", name)
-			continue
-		}
-
-		// Check if it's a symlink
-		info, err := os.Lstat(pluginDir)
-		if err != nil {
-			log.Error("Failed to stat entry", "path", pluginDir, err)
-			continue
-		}
-
-		isSymlink := info.Mode()&os.ModeSymlink != 0
-		isDir := info.IsDir()
-
-		log.Debug("Processing entry", "name", name, "isDir", isDir, "isSymlink", isSymlink)
-
-		// Skip if not a directory or symlink
-		if !isDir && !isSymlink {
-			log.Debug("Skipping non-directory, non-symlink entry", "name", name)
-			continue
-		}
-
-		// Check if it's a symlink and resolve it if needed
-		if isSymlink {
-			// Resolve the symlink target
-			targetDir, err := os.Readlink(pluginDir)
-			if err != nil {
-				log.Error("Failed to resolve symlink", "path", pluginDir, err)
-				continue
+	var validPluginNames []string
+	for _, discovery := range discoveries {
+		if discovery.Error != nil {
+			// Handle global errors (like directory read failure)
+			if discovery.ID == "" {
+				log.Error("Plugin discovery failed", discovery.Error)
+				return
 			}
-			log.Debug("Processing symlinked plugin directory", "name", name, "path", pluginDir, "target", targetDir)
-
-			// If target is a relative path, make it absolute
-			if !filepath.IsAbs(targetDir) {
-				targetDir = filepath.Join(filepath.Dir(pluginDir), targetDir)
-			}
-
-			// Update the plugin directory to the resolved target
-			pluginDir = targetDir
-			log.Debug("Updated plugin directory to resolved target", "name", name, "path", pluginDir)
-
-			// Verify that the target is a directory
-			targetInfo, err := os.Stat(pluginDir)
-			if err != nil {
-				log.Error("Failed to stat symlink target", "path", pluginDir, err)
-				continue
-			}
-
-			if !targetInfo.IsDir() {
-				log.Debug("Symlink target is not a directory, skipping", "name", name, "target", pluginDir)
-				continue
-			}
-		}
-
-		wasmPath := filepath.Join(pluginDir, "plugin.wasm")
-		log.Debug("Checking for plugin.wasm", "wasmPath", wasmPath)
-
-		// Skip if no WASM file found
-		if _, err := os.Stat(wasmPath); err != nil {
-			log.Debug("No plugin.wasm found in plugin directory", "plugin", name, "path", wasmPath, "error", err)
+			// Handle individual plugin errors
+			log.Error("Failed to process plugin", "plugin", discovery.ID, discovery.Error)
 			continue
 		}
 
-		// Load and validate plugin manifest
-		manifestPath := filepath.Join(pluginDir, "manifest.json")
-		log.Debug("Loading manifest", "manifestPath", manifestPath)
-		manifest, err := LoadManifest(pluginDir)
-		if err != nil {
-			log.Error("Failed to load manifest", "path", manifestPath, err)
-			continue
+		// Log discovery details
+		log.Debug("Processing entry", "name", discovery.ID, "isSymlink", discovery.IsSymlink)
+		if discovery.IsSymlink {
+			log.Debug("Processing symlinked plugin directory", "name", discovery.ID, "target", discovery.Path)
 		}
+		log.Debug("Checking for plugin.wasm", "wasmPath", discovery.WasmPath)
+		log.Debug("Manifest loaded successfully", "folder", discovery.ID, "name", discovery.Manifest.Name, "capabilities", discovery.Manifest.Capabilities)
 
-		if len(manifest.Capabilities) == 0 {
-			log.Warn("No capabilities found in plugin manifest", "plugin", name, "path", pluginDir)
-			continue
-		}
-		log.Debug("Manifest loaded successfully", "folder", name, "name", manifest.Name, "capabilities", manifest.Capabilities)
+		validPluginNames = append(validPluginNames, discovery.ID)
 
 		// Register the plugin
-		m.registerPlugin(name, pluginDir, wasmPath, manifest, ccache)
+		m.registerPlugin(discovery.ID, discovery.Path, discovery.WasmPath, discovery.Manifest, ccache)
 	}
+
+	log.Debug("Found valid plugins", "count", len(validPluginNames), "plugins", validPluginNames)
 }
 
 // PluginNames returns the folder names of all plugins that implement the specified capability

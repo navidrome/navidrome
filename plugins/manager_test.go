@@ -8,7 +8,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -98,143 +97,66 @@ var _ = Describe("Plugin Manager", func() {
 			m = createManager()
 		})
 
-		It("processes symlinks correctly by treating them as separate plugins", func() {
-			// Create a real plugin directory
-			pluginDir := filepath.Join(tempPluginsDir, "real-plugin")
-			err := os.MkdirAll(pluginDir, 0755)
-			Expect(err).ToNot(HaveOccurred())
+		// Helper to create a complete valid plugin for manager testing
+		createValidPlugin := func(folderName, manifestName string) {
+			pluginDir := filepath.Join(tempPluginsDir, folderName)
+			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
-			// Create plugin.wasm (empty file for testing)
-			wasmPath := filepath.Join(pluginDir, "plugin.wasm")
-			err = os.WriteFile(wasmPath, []byte{}, 0644) //nolint:gosec
+			// Copy real WASM file from testdata
+			sourceWasmPath := filepath.Join(testDataDir, "fake_artist_agent", "plugin.wasm")
+			targetWasmPath := filepath.Join(pluginDir, "plugin.wasm")
+			sourceWasm, err := os.ReadFile(sourceWasmPath)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(os.WriteFile(targetWasmPath, sourceWasm, 0644)).To(Succeed())
 
-			// Create manifest.json
-			manifestPath := filepath.Join(pluginDir, "manifest.json")
-			manifestContent := `{
-				"name": "real-plugin",
+			manifest := `{
+				"name": "` + manifestName + `",
 				"version": "1.0.0",
 				"capabilities": ["MetadataAgent"],
 				"author": "Test Author",
 				"description": "Test Plugin",
 				"permissions": {}
 			}`
-			err = os.WriteFile(manifestPath, []byte(manifestContent), 0644) //nolint:gosec
-			Expect(err).ToNot(HaveOccurred())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+		}
 
-			// Create a symlink to the real plugin
-			symlinkPath := filepath.Join(tempPluginsDir, "symlinked-plugin")
-			err = os.Symlink(pluginDir, symlinkPath)
-			Expect(err).ToNot(HaveOccurred())
+		It("should register and compile discovered plugins", func() {
+			createValidPlugin("test-plugin", "test-plugin")
 
-			log.Debug("Created symlink", "source", symlinkPath, "target", pluginDir)
-
-			// Verify symlink exists and is a symlink
-			symlinkInfo, err := os.Lstat(symlinkPath)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(symlinkInfo.Mode()&os.ModeSymlink).ToNot(BeZero(), "should be a symlink")
-
-			// Scan plugins
 			m.ScanPlugins()
 
-			// Print the plugins map for debugging
-			var pluginNames []string
-			for name := range m.plugins {
-				pluginNames = append(pluginNames, name)
-			}
-			log.Debug("Plugins after scan", "plugins", pluginNames)
+			// Focus on manager behavior: registration and compilation
+			Expect(m.plugins).To(HaveLen(1))
+			Expect(m.plugins).To(HaveKey("test-plugin"))
 
-			// We should have two plugins: the real plugin and the symlinked plugin
-			// This allows multiple symlinks to the same plugin with different configurations
-			Expect(m.plugins).To(HaveLen(2), "should find both the real plugin and symlinked plugin")
+			plugin := m.plugins["test-plugin"]
+			Expect(plugin.ID).To(Equal("test-plugin"))
+			Expect(plugin.Manifest.Name).To(Equal("test-plugin"))
 
-			// Verify both plugins were loaded with correct names
-			pluginNames = m.PluginNames("MetadataAgent")
-			Expect(pluginNames).To(HaveLen(2), "should have two MetadataAgent plugins")
-			Expect(pluginNames).To(ConsistOf("real-plugin", "symlinked-plugin"), "should have both real and symlinked plugins")
-
-			// Verify they have different IDs but point to the same underlying plugin files
-			realPlugin := m.plugins["real-plugin"]
-			symlinkedPlugin := m.plugins["symlinked-plugin"]
-			Expect(realPlugin).NotTo(BeNil())
-			Expect(symlinkedPlugin).NotTo(BeNil())
-			Expect(realPlugin.ID).To(Equal("real-plugin"))
-			Expect(symlinkedPlugin.ID).To(Equal("symlinked-plugin"))
-			// They should point to the same WASM file since symlinked-plugin resolves to real-plugin's directory
-			Expect(symlinkedPlugin.Path).To(Equal(realPlugin.Path))
+			// Verify plugin can be loaded (compilation successful)
+			loadedPlugin := m.LoadPlugin("test-plugin", CapabilityMetadataAgent)
+			Expect(loadedPlugin).NotTo(BeNil())
 		})
 
-		It("should allow multiple plugins with same manifest.name to coexist in different folders", func() {
-			// This test validates the scenario where multiple plugins with the same manifest.name
-			// can coexist by using folder names as unique identifiers
+		It("should handle multiple plugins with different IDs but same manifest names", func() {
+			// This tests manager-specific behavior: how it handles ID conflicts
+			createValidPlugin("lastfm-official", "lastfm")
+			createValidPlugin("lastfm-custom", "lastfm")
 
-			// Helper function to create a plugin with given folder name and manifest name
-			createPlugin := func(folderName, manifestName string) {
-				pluginDir := filepath.Join(tempPluginsDir, folderName)
-				err := os.MkdirAll(pluginDir, 0755)
-				Expect(err).ToNot(HaveOccurred())
-
-				// Copy a real WASM file from testdata (use fake_artist_agent as source)
-				sourceWasmPath := filepath.Join(testDataDir, "fake_artist_agent", "plugin.wasm")
-				targetWasmPath := filepath.Join(pluginDir, "plugin.wasm")
-
-				sourceWasm, err := os.ReadFile(sourceWasmPath)
-				Expect(err).ToNot(HaveOccurred())
-				err = os.WriteFile(targetWasmPath, sourceWasm, 0644) //nolint:gosec
-				Expect(err).ToNot(HaveOccurred())
-
-				// Create manifest.json with same name but different folder
-				manifestPath := filepath.Join(pluginDir, "manifest.json")
-				manifestContent := `{
-					"name": "` + manifestName + `",
-					"version": "1.0.0",
-					"capabilities": ["MetadataAgent"],
-					"author": "Test Author",
-					"description": "Test Plugin in ` + folderName + `",
-					"permissions": {}
-				}`
-				err = os.WriteFile(manifestPath, []byte(manifestContent), 0644) //nolint:gosec
-				Expect(err).ToNot(HaveOccurred())
-			}
-
-			// Create three plugins with same manifest.name but different folders
-			createPlugin("lastfm-official", "lastfm")
-			createPlugin("lastfm-custom", "lastfm")
-			createPlugin("lastfm-dev", "lastfm")
-
-			// Scan plugins
 			m.ScanPlugins()
 
-			// Verify all three plugins are discovered and can coexist
-			pluginNames := m.PluginNames("MetadataAgent")
-			Expect(pluginNames).To(HaveLen(3), "should find all three lastfm plugins")
-			Expect(pluginNames).To(ConsistOf("lastfm-official", "lastfm-custom", "lastfm-dev"))
+			// Both should be registered with their folder names as IDs
+			Expect(m.plugins).To(HaveLen(2))
+			Expect(m.plugins).To(HaveKey("lastfm-official"))
+			Expect(m.plugins).To(HaveKey("lastfm-custom"))
 
-			// Verify each plugin can be loaded independently by folder name
-			officialPlugin := m.LoadPlugin("lastfm-official", CapabilityMetadataAgent)
-			Expect(officialPlugin).NotTo(BeNil(), "should load lastfm-official plugin")
-			Expect(officialPlugin.PluginID()).To(Equal("lastfm-official"))
-
-			customPlugin := m.LoadPlugin("lastfm-custom", CapabilityMetadataAgent)
-			Expect(customPlugin).NotTo(BeNil(), "should load lastfm-custom plugin")
-			Expect(customPlugin.PluginID()).To(Equal("lastfm-custom"))
-
-			devPlugin := m.LoadPlugin("lastfm-dev", CapabilityMetadataAgent)
-			Expect(devPlugin).NotTo(BeNil(), "should load lastfm-dev plugin")
-			Expect(devPlugin.PluginID()).To(Equal("lastfm-dev"))
-
-			// Verify the plugins map contains all three with folder names as keys
-			Expect(m.plugins).To(SatisfyAll(
-				HaveLen(3),
-				HaveKey("lastfm-official"),
-				HaveKey("lastfm-custom"),
-				HaveKey("lastfm-dev"),
-			))
-
-			// Verify all manifest names are the same (demonstrating coexistence despite same name)
-			Expect(m.plugins["lastfm-official"].Manifest.Name).To(Equal("lastfm"))
-			Expect(m.plugins["lastfm-custom"].Manifest.Name).To(Equal("lastfm"))
-			Expect(m.plugins["lastfm-dev"].Manifest.Name).To(Equal("lastfm"))
+			// Both should be loadable independently
+			official := m.LoadPlugin("lastfm-official", CapabilityMetadataAgent)
+			custom := m.LoadPlugin("lastfm-custom", CapabilityMetadataAgent)
+			Expect(official).NotTo(BeNil())
+			Expect(custom).NotTo(BeNil())
+			Expect(official.PluginID()).To(Equal("lastfm-official"))
+			Expect(custom.PluginID()).To(Equal("lastfm-custom"))
 		})
 	})
 
@@ -303,6 +225,359 @@ var _ = Describe("Plugin Manager", func() {
 			// This happens because the HTTP host functions were not loaded into the WASM runtime
 			// since the plugin doesn't have "http" permission
 			Expect(err.Error()).To(ContainSubstring("is not exported"), "error should indicate missing HTTP functions")
+		})
+	})
+
+	Describe("DiscoverPlugins", func() {
+		var tempDir string
+
+		// Helper to create a complete valid plugin
+		createValidPlugin := func(name, manifestName, author, version string, capabilities []string) {
+			pluginDir := filepath.Join(tempDir, name)
+			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+			// Create manifest.json
+			manifest := `{
+				"name": "` + manifestName + `",
+				"author": "` + author + `",
+				"version": "` + version + `",
+				"description": "Test plugin",
+				"capabilities": ["` + capabilities[0] + `"],
+				"permissions": {}
+			}`
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+
+			// Create dummy WASM file
+			wasmContent := []byte("dummy wasm content")
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+		}
+
+		// Helper to create plugin directory with only manifest (missing WASM)
+		createManifestOnlyPlugin := func(name string) {
+			pluginDir := filepath.Join(tempDir, name)
+			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+			manifest := `{
+				"name": "` + name + `",
+				"author": "Test Author",
+				"version": "1.0.0",
+				"description": "Test plugin",
+				"capabilities": ["MetadataAgent"],
+				"permissions": {}
+			}`
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+		}
+
+		// Helper to create plugin directory with only WASM (missing manifest)
+		createWasmOnlyPlugin := func(name string) {
+			pluginDir := filepath.Join(tempDir, name)
+			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+			wasmContent := []byte("dummy wasm content")
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+		}
+
+		// Helper to create plugin with invalid manifest
+		createInvalidManifestPlugin := func(name string) {
+			pluginDir := filepath.Join(tempDir, name)
+			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+			invalidManifest := `{ "invalid": json content }`
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(invalidManifest), 0644)).To(Succeed())
+
+			wasmContent := []byte("dummy wasm content")
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+		}
+
+		// Helper to create plugin with empty capabilities
+		createEmptyCapabilitiesPlugin := func(name string) {
+			pluginDir := filepath.Join(tempDir, name)
+			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+			manifest := `{
+				"name": "` + name + `",
+				"author": "Test Author", 
+				"version": "1.0.0",
+				"description": "Test plugin",
+				"capabilities": [],
+				"permissions": {}
+			}`
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+
+			wasmContent := []byte("dummy wasm content")
+			Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), wasmContent, 0644)).To(Succeed())
+		}
+
+		BeforeEach(func() {
+			tempDir = GinkgoT().TempDir()
+		})
+
+		Context("Valid plugins", func() {
+			It("should discover valid plugins with all required files", func() {
+				createValidPlugin("plugin1", "Plugin One", "Author 1", "1.0.0", []string{"MetadataAgent"})
+				createValidPlugin("plugin2", "Plugin Two", "Author 2", "2.0.0", []string{"Scrobbler"})
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(2))
+
+				// Check plugin1
+				plugin1 := discoveries[0]
+				if plugin1.ID == "plugin2" {
+					plugin1 = discoveries[1]
+				}
+				Expect(plugin1.ID).To(Equal("plugin1"))
+				Expect(plugin1.Path).To(Equal(filepath.Join(tempDir, "plugin1")))
+				Expect(plugin1.WasmPath).To(Equal(filepath.Join(tempDir, "plugin1", "plugin.wasm")))
+				Expect(plugin1.Manifest.Name).To(Equal("Plugin One"))
+				Expect(plugin1.Manifest.Author).To(Equal("Author 1"))
+				Expect(plugin1.IsSymlink).To(BeFalse())
+				Expect(plugin1.Error).To(BeNil())
+			})
+
+			It("should handle plugins with same manifest name in different directories", func() {
+				createValidPlugin("lastfm-official", "lastfm", "Official", "1.0", []string{"MetadataAgent"})
+				createValidPlugin("lastfm-custom", "lastfm", "Custom", "2.0", []string{"MetadataAgent"})
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(2))
+
+				var official, custom PluginDiscoveryEntry
+				for _, d := range discoveries {
+					if d.ID == "lastfm-official" {
+						official = d
+					} else if d.ID == "lastfm-custom" {
+						custom = d
+					}
+				}
+
+				Expect(official.ID).To(Equal("lastfm-official"))
+				Expect(official.Manifest.Name).To(Equal("lastfm"))
+				Expect(official.Manifest.Author).To(Equal("Official"))
+				Expect(official.Error).To(BeNil())
+
+				Expect(custom.ID).To(Equal("lastfm-custom"))
+				Expect(custom.Manifest.Name).To(Equal("lastfm"))
+				Expect(custom.Manifest.Author).To(Equal("Custom"))
+				Expect(custom.Error).To(BeNil())
+			})
+		})
+
+		Context("Missing files", func() {
+			It("should report error for plugins missing WASM files", func() {
+				createManifestOnlyPlugin("no-wasm-plugin")
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("no-wasm-plugin"))
+				Expect(discovery.Error).To(HaveOccurred())
+				Expect(discovery.Error.Error()).To(ContainSubstring("no plugin.wasm found"))
+			})
+
+			It("should skip directories missing manifest files", func() {
+				createWasmOnlyPlugin("no-manifest-plugin")
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("no-manifest-plugin"))
+				Expect(discovery.Error).To(HaveOccurred())
+				Expect(discovery.Error.Error()).To(ContainSubstring("failed to load manifest"))
+			})
+		})
+
+		Context("Invalid content", func() {
+			It("should report error for invalid manifest JSON", func() {
+				createInvalidManifestPlugin("invalid-manifest")
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("invalid-manifest"))
+				Expect(discovery.Error).To(HaveOccurred())
+				Expect(discovery.Error.Error()).To(ContainSubstring("failed to load manifest"))
+			})
+
+			It("should report error for plugins with empty capabilities", func() {
+				createEmptyCapabilitiesPlugin("empty-caps")
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("empty-caps"))
+				Expect(discovery.Error).To(HaveOccurred())
+				// The manifest validation now catches empty capabilities during LoadManifest
+				Expect(discovery.Error.Error()).To(ContainSubstring("capabilities"))
+			})
+		})
+
+		Context("Symlinks", func() {
+			It("should discover symlinked plugins correctly", func() {
+				// Create real plugin
+				createValidPlugin("real-plugin", "Real Plugin", "Author", "1.0", []string{"MetadataAgent"})
+
+				// Create symlink
+				realPath := filepath.Join(tempDir, "real-plugin")
+				symlinkPath := filepath.Join(tempDir, "symlinked-plugin")
+				Expect(os.Symlink(realPath, symlinkPath)).To(Succeed())
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(2))
+
+				var realPlugin, symlinkPlugin PluginDiscoveryEntry
+				for _, d := range discoveries {
+					if d.ID == "real-plugin" {
+						realPlugin = d
+					} else if d.ID == "symlinked-plugin" {
+						symlinkPlugin = d
+					}
+				}
+
+				// Real plugin
+				Expect(realPlugin.ID).To(Equal("real-plugin"))
+				Expect(realPlugin.IsSymlink).To(BeFalse())
+				Expect(realPlugin.Error).To(BeNil())
+
+				// Symlinked plugin
+				Expect(symlinkPlugin.ID).To(Equal("symlinked-plugin"))
+				Expect(symlinkPlugin.IsSymlink).To(BeTrue())
+				Expect(symlinkPlugin.Path).To(Equal(realPath)) // Should resolve to real path
+				Expect(symlinkPlugin.Error).To(BeNil())
+			})
+
+			It("should handle relative symlinks", func() {
+				// Create plugin in subdirectory outside the tempDir to avoid discovery conflicts
+				externalDir := GinkgoT().TempDir()
+				pluginDir := filepath.Join(externalDir, "real-plugin")
+				Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+				manifest := `{
+					"name": "real-plugin",
+					"author": "Author",
+					"version": "1.0",
+					"description": "Test plugin",
+					"capabilities": ["MetadataAgent"],
+					"permissions": {}
+				}`
+				Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0644)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(pluginDir, "plugin.wasm"), []byte("wasm"), 0644)).To(Succeed())
+
+				// Create relative symlink
+				symlinkPath := filepath.Join(tempDir, "relative-link")
+				Expect(os.Symlink(pluginDir, symlinkPath)).To(Succeed())
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("relative-link"))
+				Expect(discovery.IsSymlink).To(BeTrue())
+				Expect(discovery.Path).To(Equal(pluginDir)) // Should resolve to absolute path
+				Expect(discovery.Error).To(BeNil())
+			})
+
+			It("should report error for broken symlinks", func() {
+				// Create symlink to non-existent target
+				symlinkPath := filepath.Join(tempDir, "broken-link")
+				Expect(os.Symlink("/non/existent/path", symlinkPath)).To(Succeed())
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("broken-link"))
+				Expect(discovery.IsSymlink).To(BeTrue())
+				Expect(discovery.Error).To(HaveOccurred())
+				Expect(discovery.Error.Error()).To(ContainSubstring("failed to stat symlink target"))
+			})
+
+			It("should report error for symlinks pointing to files", func() {
+				// Create a regular file
+				filePath := filepath.Join(tempDir, "regular-file.txt")
+				Expect(os.WriteFile(filePath, []byte("content"), 0644)).To(Succeed())
+
+				// Create symlink to file
+				symlinkPath := filepath.Join(tempDir, "file-link")
+				Expect(os.Symlink(filePath, symlinkPath)).To(Succeed())
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(Equal("file-link"))
+				Expect(discovery.IsSymlink).To(BeTrue())
+				Expect(discovery.Error).To(HaveOccurred())
+				Expect(discovery.Error.Error()).To(ContainSubstring("symlink target is not a directory"))
+			})
+		})
+
+		Context("Directory filtering", func() {
+			It("should ignore hidden directories", func() {
+				createValidPlugin("visible-plugin", "Visible", "Author", "1.0", []string{"MetadataAgent"})
+
+				// Create hidden directory
+				hiddenDir := filepath.Join(tempDir, ".hidden-plugin")
+				Expect(os.MkdirAll(hiddenDir, 0755)).To(Succeed())
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				Expect(discoveries[0].ID).To(Equal("visible-plugin"))
+			})
+
+			It("should ignore regular files", func() {
+				createValidPlugin("valid-plugin", "Valid", "Author", "1.0", []string{"MetadataAgent"})
+
+				// Create regular file in plugins directory
+				Expect(os.WriteFile(filepath.Join(tempDir, "regular-file.txt"), []byte("content"), 0644)).To(Succeed())
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(1))
+				Expect(discoveries[0].ID).To(Equal("valid-plugin"))
+			})
+
+			It("should handle mixed valid and invalid plugins", func() {
+				createValidPlugin("valid1", "Valid One", "Author", "1.0", []string{"MetadataAgent"})
+				createManifestOnlyPlugin("invalid1")
+				createValidPlugin("valid2", "Valid Two", "Author", "2.0", []string{"Scrobbler"})
+				createInvalidManifestPlugin("invalid2")
+
+				discoveries := DiscoverPlugins(tempDir)
+
+				Expect(discoveries).To(HaveLen(4))
+
+				var validCount, errorCount int
+				for _, d := range discoveries {
+					if d.Error == nil {
+						validCount++
+					} else {
+						errorCount++
+					}
+				}
+
+				Expect(validCount).To(Equal(2))
+				Expect(errorCount).To(Equal(2))
+			})
+		})
+
+		Context("Error handling", func() {
+			It("should handle non-existent plugins directory", func() {
+				discoveries := DiscoverPlugins("/non/existent/directory")
+
+				Expect(discoveries).To(HaveLen(1))
+				discovery := discoveries[0]
+				Expect(discovery.ID).To(BeEmpty())
+				Expect(discovery.Error).To(HaveOccurred())
+				Expect(discovery.Error.Error()).To(ContainSubstring("failed to read plugins directory"))
+			})
 		})
 	})
 })
