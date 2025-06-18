@@ -16,13 +16,15 @@ import (
 type pluginLifecycleManager struct {
 	plugins map[string]bool
 	mu      sync.RWMutex
-	confMu  sync.RWMutex // Mutex to protect configuration access
+	config  map[string]map[string]string
 }
 
 // newPluginLifecycleManager creates a new plugin lifecycle manager
 func newPluginLifecycleManager() *pluginLifecycleManager {
+	config := maps.Clone(conf.Server.PluginConfig)
 	return &pluginLifecycleManager{
 		plugins: make(map[string]bool),
+		config:  config,
 	}
 }
 
@@ -64,10 +66,8 @@ func (m *pluginLifecycleManager) callOnInit(info *pluginInfo) {
 	req := &api.InitRequest{}
 
 	// Add plugin configuration if available
-	m.confMu.Lock()
-	defer m.confMu.Unlock()
-	if conf.Server.PluginConfig != nil {
-		if pluginConfig, ok := conf.Server.PluginConfig[info.Name]; ok && len(pluginConfig) > 0 {
+	if m.config != nil {
+		if pluginConfig, ok := m.config[info.Name]; ok && len(pluginConfig) > 0 {
 			req.Config = maps.Clone(pluginConfig)
 			log.Debug("Passing configuration to plugin", "plugin", info.Name, "configKeys", len(pluginConfig))
 		}
