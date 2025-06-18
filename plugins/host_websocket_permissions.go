@@ -5,14 +5,14 @@ import (
 )
 
 // WebSocketPermissions represents granular WebSocket access permissions for plugins
-type WebSocketPermissions struct {
-	*NetworkPermissionsBase
+type webSocketPermissions struct {
+	*networkPermissionsBase
 	AllowedUrls []string `json:"allowedUrls"`
-	matcher     *URLMatcher
+	matcher     *urlMatcher
 }
 
 // ParseWebSocketPermissions extracts WebSocket permissions from the raw permission map
-func ParseWebSocketPermissions(permissionData any) (*WebSocketPermissions, error) {
+func parseWebSocketPermissions(permissionData any) (*webSocketPermissions, error) {
 	if permissionData == nil {
 		return nil, fmt.Errorf("websocket permission data is nil")
 	}
@@ -51,15 +51,15 @@ func ParseWebSocketPermissions(permissionData any) (*WebSocketPermissions, error
 		allowedUrls[i] = urlPattern
 	}
 
-	return &WebSocketPermissions{
-		NetworkPermissionsBase: base,
+	return &webSocketPermissions{
+		networkPermissionsBase: base,
 		AllowedUrls:            allowedUrls,
-		matcher:                NewURLMatcher(),
+		matcher:                newURLMatcher(),
 	}, nil
 }
 
 // IsConnectionAllowed checks if a WebSocket connection is allowed
-func (w *WebSocketPermissions) IsConnectionAllowed(requestURL string) error {
+func (w *webSocketPermissions) IsConnectionAllowed(requestURL string) error {
 	if _, err := checkURLPolicy(requestURL, w.AllowLocalNetwork); err != nil {
 		return err
 	}

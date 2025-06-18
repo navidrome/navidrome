@@ -9,14 +9,14 @@ import (
 const httpMaxRedirects = 5
 
 // HTTPPermissions represents granular HTTP access permissions for plugins
-type HTTPPermissions struct {
-	*NetworkPermissionsBase
+type httpPermissions struct {
+	*networkPermissionsBase
 	AllowedUrls map[string][]string `json:"allowedUrls"`
-	matcher     *URLMatcher
+	matcher     *urlMatcher
 }
 
 // ParseHTTPPermissions extracts HTTP permissions from the raw permission map
-func ParseHTTPPermissions(permissionData any) (*HTTPPermissions, error) {
+func parseHTTPPermissions(permissionData any) (*httpPermissions, error) {
 	permMap, ok := permissionData.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("http permission data is not a map")
@@ -74,15 +74,15 @@ func ParseHTTPPermissions(permissionData any) (*HTTPPermissions, error) {
 		}
 	}
 
-	return &HTTPPermissions{
-		NetworkPermissionsBase: base,
+	return &httpPermissions{
+		networkPermissionsBase: base,
 		AllowedUrls:            allowedUrls,
-		matcher:                NewURLMatcher(),
+		matcher:                newURLMatcher(),
 	}, nil
 }
 
 // IsRequestAllowed checks if a specific network request is allowed by the permissions
-func (p *HTTPPermissions) IsRequestAllowed(requestURL, operation string) error {
+func (p *httpPermissions) IsRequestAllowed(requestURL, operation string) error {
 	if _, err := checkURLPolicy(requestURL, p.AllowLocalNetwork); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (p *HTTPPermissions) IsRequestAllowed(requestURL, operation string) error {
 		return fmt.Errorf("no allowed URLs configured for plugin")
 	}
 
-	matcher := NewURLMatcher()
+	matcher := newURLMatcher()
 
 	// Check URL patterns and operations
 	// First try exact matches, then wildcard matches

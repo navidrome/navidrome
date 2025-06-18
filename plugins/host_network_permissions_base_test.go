@@ -8,12 +8,12 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("NetworkPermissionsBase", func() {
-	Describe("URLMatcher", func() {
-		var matcher *URLMatcher
+var _ = Describe("networkPermissionsBase", func() {
+	Describe("urlMatcher", func() {
+		var matcher *urlMatcher
 
 		BeforeEach(func() {
-			matcher = NewURLMatcher()
+			matcher = newURLMatcher()
 		})
 
 		Describe("MatchesURLPattern", func() {
@@ -43,12 +43,12 @@ var _ = Describe("NetworkPermissionsBase", func() {
 		})
 	})
 
-	Describe("IsPrivateIP", func() {
+	Describe("isPrivateIP", func() {
 		DescribeTable("IPv4 private IP detection",
 			func(ip string, expected bool) {
 				parsedIP := net.ParseIP(ip)
 				Expect(parsedIP).ToNot(BeNil(), "Failed to parse IP: %s", ip)
-				result := IsPrivateIP(parsedIP)
+				result := isPrivateIP(parsedIP)
 				Expect(result).To(Equal(expected))
 			},
 			// Private IPv4 ranges
@@ -75,7 +75,7 @@ var _ = Describe("NetworkPermissionsBase", func() {
 			func(ip string, expected bool) {
 				parsedIP := net.ParseIP(ip)
 				Expect(parsedIP).ToNot(BeNil(), "Failed to parse IP: %s", ip)
-				result := IsPrivateIP(parsedIP)
+				result := isPrivateIP(parsedIP)
 				Expect(result).To(Equal(expected))
 			},
 			// Private IPv6 ranges
@@ -90,13 +90,13 @@ var _ = Describe("NetworkPermissionsBase", func() {
 		)
 	})
 
-	Describe("CheckLocalNetwork", func() {
+	Describe("checkLocalNetwork", func() {
 		DescribeTable("local network detection",
 			func(urlStr string, shouldError bool, expectedErrorSubstring string) {
 				parsedURL, err := url.Parse(urlStr)
 				Expect(err).ToNot(HaveOccurred())
 
-				err = CheckLocalNetwork(parsedURL)
+				err = checkLocalNetwork(parsedURL)
 				if shouldError {
 					Expect(err).To(HaveOccurred())
 					if expectedErrorSubstring != "" {

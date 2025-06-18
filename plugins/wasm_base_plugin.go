@@ -9,7 +9,7 @@ import (
 )
 
 // LoaderFunc is a generic function type that loads a plugin instance.
-type LoaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (S, error)
+type loaderFunc[S any, P any] func(ctx context.Context, loader P, path string) (S, error)
 
 // wasmBasePlugin is a generic base implementation for WASM plugins.
 // S is the service interface type and P is the plugin loader type.
@@ -18,7 +18,7 @@ type wasmBasePlugin[S any, P any] struct {
 	name       string
 	capability string
 	loader     P
-	loadFunc   LoaderFunc[S, P]
+	loadFunc   loaderFunc[S, P]
 }
 
 func (w *wasmBasePlugin[S, P]) PluginName() string {

@@ -27,7 +27,7 @@ type poolItem[T any] struct {
 	lastUsed time.Time
 }
 
-func NewWasmInstancePool[T any](name string, maxInstances int, ttl time.Duration, newFn func(ctx context.Context) (T, error)) *wasmInstancePool[T] {
+func newWasmInstancePool[T any](name string, maxInstances int, ttl time.Duration, newFn func(ctx context.Context) (T, error)) *wasmInstancePool[T] {
 	p := &wasmInstancePool[T]{
 		name:         name,
 		new:          newFn,

@@ -5,8 +5,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("WebSocketPermissions", func() {
-	Describe("ParseWebSocketPermissions", func() {
+var _ = Describe("webSocketPermissions", func() {
+	Describe("parseWebSocketPermissions", func() {
 		It("should parse valid WebSocket permissions with array format", func() {
 			permData := map[string]any{
 				"reason": "To connect to real-time services",
@@ -18,7 +18,7 @@ var _ = Describe("WebSocketPermissions", func() {
 				"allowLocalNetwork": true,
 			}
 
-			perms, err := ParseWebSocketPermissions(permData)
+			perms, err := parseWebSocketPermissions(permData)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(perms.Reason).To(Equal("To connect to real-time services"))
 			Expect(perms.AllowedUrls).To(HaveLen(3))
@@ -30,7 +30,7 @@ var _ = Describe("WebSocketPermissions", func() {
 
 		DescribeTable("parsing validation",
 			func(permData map[string]any, shouldSucceed bool, expectedError string) {
-				_, err := ParseWebSocketPermissions(permData)
+				_, err := parseWebSocketPermissions(permData)
 				if shouldSucceed {
 					Expect(err).ToNot(HaveOccurred())
 				} else {
@@ -67,7 +67,7 @@ var _ = Describe("WebSocketPermissions", func() {
 				// allowLocalNetwork not specified - should default to false
 			}
 
-			perms, err := ParseWebSocketPermissions(permData)
+			perms, err := parseWebSocketPermissions(permData)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(perms.AllowLocalNetwork).To(BeFalse()) // Default value
 		})
@@ -75,13 +75,13 @@ var _ = Describe("WebSocketPermissions", func() {
 
 	Describe("IsConnectionAllowed", func() {
 		It("should allow connections to explicitly allowed URLs", func() {
-			perms := &WebSocketPermissions{
-				NetworkPermissionsBase: &NetworkPermissionsBase{
+			perms := &webSocketPermissions{
+				networkPermissionsBase: &networkPermissionsBase{
 					Reason:            "Test",
 					AllowLocalNetwork: false,
 				},
 				AllowedUrls: []string{"wss://gateway.discord.gg"},
-				matcher:     NewURLMatcher(),
+				matcher:     newURLMatcher(),
 			}
 
 			err := perms.IsConnectionAllowed("wss://gateway.discord.gg")
@@ -89,13 +89,13 @@ var _ = Describe("WebSocketPermissions", func() {
 		})
 
 		It("should reject connections to disallowed URLs", func() {
-			perms := &WebSocketPermissions{
-				NetworkPermissionsBase: &NetworkPermissionsBase{
+			perms := &webSocketPermissions{
+				networkPermissionsBase: &networkPermissionsBase{
 					Reason:            "Test",
 					AllowLocalNetwork: false,
 				},
 				AllowedUrls: []string{"wss://allowed.com"},
-				matcher:     NewURLMatcher(),
+				matcher:     newURLMatcher(),
 			}
 
 			err := perms.IsConnectionAllowed("wss://disallowed.com")
@@ -104,13 +104,13 @@ var _ = Describe("WebSocketPermissions", func() {
 		})
 
 		It("should allow connections with wildcard patterns", func() {
-			perms := &WebSocketPermissions{
-				NetworkPermissionsBase: &NetworkPermissionsBase{
+			perms := &webSocketPermissions{
+				networkPermissionsBase: &networkPermissionsBase{
 					Reason:            "Test",
 					AllowLocalNetwork: false,
 				},
 				AllowedUrls: []string{"wss://*.example.com"},
-				matcher:     NewURLMatcher(),
+				matcher:     newURLMatcher(),
 			}
 
 			err := perms.IsConnectionAllowed("wss://sub.example.com")
@@ -118,13 +118,13 @@ var _ = Describe("WebSocketPermissions", func() {
 		})
 
 		It("should reject connections to local network when disabled", func() {
-			perms := &WebSocketPermissions{
-				NetworkPermissionsBase: &NetworkPermissionsBase{
+			perms := &webSocketPermissions{
+				networkPermissionsBase: &networkPermissionsBase{
 					Reason:            "Test",
 					AllowLocalNetwork: false,
 				},
 				AllowedUrls: []string{"*"},
-				matcher:     NewURLMatcher(),
+				matcher:     newURLMatcher(),
 			}
 
 			err := perms.IsConnectionAllowed("ws://localhost:8080")
@@ -133,13 +133,13 @@ var _ = Describe("WebSocketPermissions", func() {
 		})
 
 		It("should allow connections to local network when enabled", func() {
-			perms := &WebSocketPermissions{
-				NetworkPermissionsBase: &NetworkPermissionsBase{
+			perms := &webSocketPermissions{
+				networkPermissionsBase: &networkPermissionsBase{
 					Reason:            "Test",
 					AllowLocalNetwork: true,
 				},
 				AllowedUrls: []string{"*"},
-				matcher:     NewURLMatcher(),
+				matcher:     newURLMatcher(),
 			}
 
 			err := perms.IsConnectionAllowed("ws://localhost:8080")

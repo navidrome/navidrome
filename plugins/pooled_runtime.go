@@ -62,7 +62,7 @@ func newPooledRuntime(r wazero.Runtime, pluginName string) *pooledRuntime {
 
 func (r *pooledRuntime) initPool(code wazero.CompiledModule, config wazero.ModuleConfig) {
 	r.once.Do(func() {
-		r.pool = NewWasmInstancePool[wazeroapi.Module](r.pluginName, r.maxInstances, r.ttl, func(ctx context.Context) (wazeroapi.Module, error) {
+		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginName, r.maxInstances, r.ttl, func(ctx context.Context) (wazeroapi.Module, error) {
 			log.Trace(ctx, "pooledRuntime: creating new module", "plugin", r.pluginName)
 			return r.Runtime.InstantiateModule(ctx, code, config)
 		})

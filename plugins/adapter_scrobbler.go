@@ -12,7 +12,7 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-func NewWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+func newWasmScrobblerPlugin(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, err := api.NewScrobblerPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating scrobbler service plugin", "plugin", pluginName, "path", wasmPath, err)

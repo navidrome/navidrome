@@ -8,8 +8,8 @@ import (
 	"github.com/tetratelabs/wazero"
 )
 
-// NewWasmWebSocketCallback creates a new adapter for a WebSocketCallback plugin
-func NewWasmWebSocketCallback(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+// newWasmWebSocketCallback creates a new adapter for a WebSocketCallback plugin
+func newWasmWebSocketCallback(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, err := api.NewWebSocketCallbackPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating WebSocket callback plugin", "plugin", pluginName, "path", wasmPath, err)

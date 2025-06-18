@@ -5,8 +5,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("HTTPPermissions", func() {
-	Describe("ParseHTTPPermissions", func() {
+var _ = Describe("httpPermissions", func() {
+	Describe("parseHTTPPermissions", func() {
 		It("should parse valid HTTP permissions", func() {
 			permData := map[string]any{
 				"reason": "To fetch data from APIs",
@@ -17,7 +17,7 @@ var _ = Describe("HTTPPermissions", func() {
 				"allowLocalNetwork": true,
 			}
 
-			perms, err := ParseHTTPPermissions(permData)
+			perms, err := parseHTTPPermissions(permData)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(perms.Reason).To(Equal("To fetch data from APIs"))
 			Expect(perms.AllowedUrls).To(HaveLen(2))
@@ -35,7 +35,7 @@ var _ = Describe("HTTPPermissions", func() {
 					},
 				}
 
-				_, err := ParseHTTPPermissions(permData)
+				_, err := parseHTTPPermissions(permData)
 				if shouldSucceed {
 					Expect(err).ToNot(HaveOccurred())
 				} else {
@@ -58,19 +58,19 @@ var _ = Describe("HTTPPermissions", func() {
 				// Missing allowedUrls
 			}
 
-			_, err := ParseHTTPPermissions(permData)
+			_, err := parseHTTPPermissions(permData)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("allowedUrls field is required"))
 		})
 	})
 
 	Describe("IsRequestAllowed", func() {
-		var perms *HTTPPermissions
+		var perms *httpPermissions
 
 		Context("HTTP method-specific validation", func() {
 			BeforeEach(func() {
-				perms = &HTTPPermissions{
-					NetworkPermissionsBase: &NetworkPermissionsBase{
+				perms = &httpPermissions{
+					networkPermissionsBase: &networkPermissionsBase{
 						Reason:            "Test permissions",
 						AllowLocalNetwork: false,
 					},
@@ -80,7 +80,7 @@ var _ = Describe("HTTPPermissions", func() {
 						"https://admin.example.com":   {"DELETE"},
 						"https://webhook.example.com": {"*"},
 					},
-					matcher: NewURLMatcher(),
+					matcher: newURLMatcher(),
 				}
 			})
 
@@ -111,15 +111,15 @@ var _ = Describe("HTTPPermissions", func() {
 
 		Context("case insensitive method handling", func() {
 			BeforeEach(func() {
-				perms = &HTTPPermissions{
-					NetworkPermissionsBase: &NetworkPermissionsBase{
+				perms = &httpPermissions{
+					networkPermissionsBase: &networkPermissionsBase{
 						Reason:            "Test permissions",
 						AllowLocalNetwork: false,
 					},
 					AllowedUrls: map[string][]string{
 						"https://api.example.com": {"GET", "POST"}, // Both uppercase for consistency
 					},
-					matcher: NewURLMatcher(),
+					matcher: newURLMatcher(),
 				}
 			})
 
@@ -144,8 +144,8 @@ var _ = Describe("HTTPPermissions", func() {
 
 		Context("with complex URL patterns and HTTP methods", func() {
 			BeforeEach(func() {
-				perms = &HTTPPermissions{
-					NetworkPermissionsBase: &NetworkPermissionsBase{
+				perms = &httpPermissions{
+					networkPermissionsBase: &networkPermissionsBase{
 						Reason:            "Test permissions",
 						AllowLocalNetwork: false,
 					},
@@ -155,7 +155,7 @@ var _ = Describe("HTTPPermissions", func() {
 						"https://*.example.com/public/*":   {"GET", "HEAD"},
 						"https://admin.*.example.com":      {"*"},
 					},
-					matcher: NewURLMatcher(),
+					matcher: newURLMatcher(),
 				}
 			})
 

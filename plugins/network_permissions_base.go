@@ -9,20 +9,20 @@ import (
 )
 
 // NetworkPermissionsBase contains common functionality for network-based permissions
-type NetworkPermissionsBase struct {
+type networkPermissionsBase struct {
 	Reason            string `json:"reason"`
 	AllowLocalNetwork bool   `json:"allowLocalNetwork,omitempty"`
 }
 
 // URLMatcher provides URL pattern matching functionality
-type URLMatcher struct{}
+type urlMatcher struct{}
 
-// NewURLMatcher creates a new URL matcher instance
-func NewURLMatcher() *URLMatcher {
-	return &URLMatcher{}
+// newURLMatcher creates a new URL matcher instance
+func newURLMatcher() *urlMatcher {
+	return &urlMatcher{}
 }
 
-func parseNetworkPermissionsBase(permMap map[string]any) (*NetworkPermissionsBase, error) {
+func parseNetworkPermissionsBase(permMap map[string]any) (*networkPermissionsBase, error) {
 	reason, ok := permMap["reason"].(string)
 	if !ok || reason == "" {
 		return nil, fmt.Errorf("permission reason is required and must be a non-empty string")
@@ -36,7 +36,7 @@ func parseNetworkPermissionsBase(permMap map[string]any) (*NetworkPermissionsBas
 			return nil, fmt.Errorf("allowLocalNetwork must be a boolean")
 		}
 	}
-	return &NetworkPermissionsBase{
+	return &networkPermissionsBase{
 		Reason:            reason,
 		AllowLocalNetwork: allowLocalNetwork,
 	}, nil
@@ -51,7 +51,7 @@ func checkURLPolicy(requestURL string, allowLocalNetwork bool) (*url.URL, error)
 
 	// Check local network restrictions
 	if !allowLocalNetwork {
-		if err := CheckLocalNetwork(parsedURL); err != nil {
+		if err := checkLocalNetwork(parsedURL); err != nil {
 			return nil, err
 		}
 	}
@@ -59,7 +59,7 @@ func checkURLPolicy(requestURL string, allowLocalNetwork bool) (*url.URL, error)
 }
 
 // MatchesURLPattern checks if a URL matches a given pattern
-func (m *URLMatcher) MatchesURLPattern(requestURL, pattern string) bool {
+func (m *urlMatcher) MatchesURLPattern(requestURL, pattern string) bool {
 	// Handle wildcard pattern
 	if pattern == "*" {
 		return true
@@ -106,7 +106,7 @@ func (m *URLMatcher) MatchesURLPattern(requestURL, pattern string) bool {
 }
 
 // urlPatternToRegex converts a URL pattern with wildcards to a regex pattern
-func (m *URLMatcher) urlPatternToRegex(pattern string) string {
+func (m *urlMatcher) urlPatternToRegex(pattern string) string {
 	// Escape special regex characters except *
 	escaped := regexp.QuoteMeta(pattern)
 
@@ -120,7 +120,7 @@ func (m *URLMatcher) urlPatternToRegex(pattern string) string {
 }
 
 // matchesHost checks if a host matches a pattern with wildcard support
-func (m *URLMatcher) matchesHost(host, pattern string) bool {
+func (m *urlMatcher) matchesHost(host, pattern string) bool {
 	if pattern == "" {
 		return true
 	}
@@ -149,7 +149,7 @@ func (m *URLMatcher) matchesHost(host, pattern string) bool {
 }
 
 // matchesPath checks if a path matches a pattern with wildcard support
-func (m *URLMatcher) matchesPath(path, pattern string) bool {
+func (m *urlMatcher) matchesPath(path, pattern string) bool {
 	// Normalize empty paths to "/"
 	if path == "" {
 		path = "/"
@@ -175,7 +175,7 @@ func (m *URLMatcher) matchesPath(path, pattern string) bool {
 }
 
 // CheckLocalNetwork checks if the URL is accessing local network resources
-func CheckLocalNetwork(parsedURL *url.URL) error {
+func checkLocalNetwork(parsedURL *url.URL) error {
 	host := parsedURL.Hostname()
 
 	// Check for localhost variants
@@ -185,7 +185,7 @@ func CheckLocalNetwork(parsedURL *url.URL) error {
 
 	// Try to parse as IP address
 	ip := net.ParseIP(host)
-	if ip != nil && IsPrivateIP(ip) {
+	if ip != nil && isPrivateIP(ip) {
 		return fmt.Errorf("requests to private IP addresses are not allowed")
 	}
 
@@ -193,7 +193,7 @@ func CheckLocalNetwork(parsedURL *url.URL) error {
 }
 
 // IsPrivateIP checks if an IP is loopback, private, or link-local (IPv4/IPv6).
-func IsPrivateIP(ip net.IP) bool {
+func isPrivateIP(ip net.IP) bool {
 	if ip == nil {
 		return false
 	}

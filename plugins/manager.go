@@ -47,10 +47,10 @@ const (
 type pluginConstructor func(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
-	CapabilityMetadataAgent:     NewWasmMediaAgent,
-	CapabilityScrobbler:         NewWasmScrobblerPlugin,
-	CapabilitySchedulerCallback: NewWasmSchedulerCallback,
-	CapabilityWebSocketCallback: NewWasmWebSocketCallback,
+	CapabilityMetadataAgent:     newWasmMediaAgent,
+	CapabilityScrobbler:         newWasmScrobblerPlugin,
+	CapabilitySchedulerCallback: newWasmSchedulerCallback,
+	CapabilityWebSocketCallback: newWasmWebSocketCallback,
 }
 
 // WasmPlugin is the base interface that all WASM plugins implement
@@ -90,8 +90,8 @@ func newWazeroModuleConfig() wazero.ModuleConfig {
 	return wazero.NewModuleConfig().WithStartFunctions("_initialize").WithStderr(log.Writer())
 }
 
-// PluginInfo represents a plugin that has been discovered but not yet instantiated
-type PluginInfo struct {
+// pluginInfo represents a plugin that has been discovered but not yet instantiated
+type pluginInfo struct {
 	Name         string
 	Path         string
 	Capabilities []string
@@ -104,7 +104,7 @@ type PluginInfo struct {
 
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins          map[string]*PluginInfo // Map of plugin name to plugin info
+	plugins          map[string]*pluginInfo // Map of plugin name to plugin info
 	mu               sync.RWMutex           // Protects plugins map
 	schedulerService *schedulerService      // Service for handling scheduled tasks
 	websocketService *websocketService      // Service for handling WebSocket connections
@@ -122,7 +122,7 @@ func GetManager() *Manager {
 // createManager creates a new Manager instance. Used in tests
 func createManager() *Manager {
 	m := &Manager{
-		plugins:     make(map[string]*PluginInfo),
+		plugins:     make(map[string]*pluginInfo),
 		initialized: newInitializedPlugins(),
 	}
 
@@ -267,7 +267,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginName: pluginName})
 			}},
 			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				httpPerms, err := parsePermission(permissions, "http", pluginName, ParseHTTPPermissions)
+				httpPerms, err := parsePermission(permissions, "http", pluginName, parseHTTPPermissions)
 				if err != nil {
 					return nil, err
 				}
@@ -280,7 +280,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginName))
 			}},
 			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				wsPerms, err := parsePermission(permissions, "websocket", pluginName, ParseWebSocketPermissions)
+				wsPerms, err := parsePermission(permissions, "websocket", pluginName, parseWebSocketPermissions)
 				if err != nil {
 					return nil, err
 				}
@@ -331,7 +331,7 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginN
 
 // registerPlugin adds a plugin to the registry with the given parameters
 // Used internally by ScanPlugins to register plugins
-func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *PluginInfo {
+func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginManifest, cache wazero.CompilationCache) *pluginInfo {
 	// Create custom runtime function
 	customRuntime := m.createCustomRuntime(cache, manifest.Name, manifest.Permissions)
 
@@ -346,7 +346,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 
 	// Store plugin info
 	state := &pluginState{ready: make(chan struct{})}
-	pluginInfo := &PluginInfo{
+	pluginInfo := &pluginInfo{
 		Name:         manifest.Name,
 		Path:         pluginDir,
 		Capabilities: manifest.Capabilities,
@@ -389,7 +389,7 @@ func (m *Manager) registerPlugin(pluginDir, wasmPath string, manifest *PluginMan
 }
 
 // initializePluginIfNeeded calls OnInit on plugins that implement LifecycleManagement
-func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
+func (m *Manager) initializePluginIfNeeded(plugin *pluginInfo) {
 	// Skip if already initialized
 	if m.initialized.isInitialized(plugin) {
 		return
@@ -409,7 +409,7 @@ func (m *Manager) initializePluginIfNeeded(plugin *PluginInfo) {
 func (m *Manager) ScanPlugins() {
 	// Clear existing plugins
 	m.mu.Lock()
-	m.plugins = make(map[string]*PluginInfo)
+	m.plugins = make(map[string]*pluginInfo)
 	m.adapters = make(map[string]WasmPlugin)
 	m.mu.Unlock()
 
@@ -536,7 +536,7 @@ func (m *Manager) PluginNames(capability string) []string {
 	return names
 }
 
-func (m *Manager) getPlugin(name string, capability string) (*PluginInfo, WasmPlugin) {
+func (m *Manager) getPlugin(name string, capability string) (*pluginInfo, WasmPlugin) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	info, infoOk := m.plugins[name]

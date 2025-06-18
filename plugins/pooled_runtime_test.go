@@ -33,7 +33,7 @@ var _ = Describe("PooledRuntime", func() {
 			"config": struct{}{},
 		}
 		rtFunc := mgr.createCustomRuntime(ccache, "fake_scrobbler", permissions)
-		plugin = NewWasmScrobblerPlugin(
+		plugin = newWasmScrobblerPlugin(
 			filepath.Join(testDataDir, "fake_scrobbler", "plugin.wasm"),
 			"fake_scrobbler",
 			rtFunc,

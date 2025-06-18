@@ -28,7 +28,7 @@ type WebSocketConnection struct {
 type WebSocketHostFunctions struct {
 	ws          *websocketService
 	pluginName  string
-	permissions *WebSocketPermissions
+	permissions *webSocketPermissions
 }
 
 func (s WebSocketHostFunctions) Connect(ctx context.Context, req *websocket.ConnectRequest) (*websocket.ConnectResponse, error) {
@@ -63,7 +63,7 @@ func newWebsocketService(manager *Manager) *websocketService {
 }
 
 // HostFunctions returns the WebSocketHostFunctions for the given plugin
-func (s *websocketService) HostFunctions(pluginName string, permissions *WebSocketPermissions) WebSocketHostFunctions {
+func (s *websocketService) HostFunctions(pluginName string, permissions *webSocketPermissions) WebSocketHostFunctions {
 	return WebSocketHostFunctions{
 		ws:          s,
 		pluginName:  pluginName,
@@ -115,7 +115,7 @@ func extractConnectionID(internalID string) (string, error) {
 }
 
 // connect establishes a new WebSocket connection
-func (s *websocketService) connect(ctx context.Context, pluginName string, req *websocket.ConnectRequest, permissions *WebSocketPermissions) (*websocket.ConnectResponse, error) {
+func (s *websocketService) connect(ctx context.Context, pluginName string, req *websocket.ConnectRequest, permissions *webSocketPermissions) (*websocket.ConnectResponse, error) {
 	if s.manager == nil {
 		return nil, fmt.Errorf("websocket service not properly initialized")
 	}

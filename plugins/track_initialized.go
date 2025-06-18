@@ -27,21 +27,21 @@ func newInitializedPlugins() *initializedPlugins {
 }
 
 // isInitialized checks if a plugin has been initialized
-func (i *initializedPlugins) isInitialized(info *PluginInfo) bool {
+func (i *initializedPlugins) isInitialized(info *pluginInfo) bool {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
 	return i.plugins[info.Name+consts.Zwsp+info.Manifest.Version]
 }
 
 // markInitialized marks a plugin as initialized
-func (i *initializedPlugins) markInitialized(info *PluginInfo) {
+func (i *initializedPlugins) markInitialized(info *pluginInfo) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.plugins[info.Name+consts.Zwsp+info.Manifest.Version] = true
 }
 
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
-func (i *initializedPlugins) callOnInit(info *PluginInfo) {
+func (i *initializedPlugins) callOnInit(info *pluginInfo) {
 	ctx := context.Background()
 	log.Debug("Initializing plugin", "name", info.Name)
 	start := time.Now()

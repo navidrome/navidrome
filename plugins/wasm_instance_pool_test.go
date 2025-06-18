@@ -24,7 +24,7 @@ var _ = Describe("wasmInstancePool", func() {
 	)
 
 	It("should Get and Put instances", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) (*testInstance, error) {
+		pool := newWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) (*testInstance, error) {
 			return &testInstance{}, nil
 		})
 		inst, err := pool.Get(ctx)
@@ -38,7 +38,7 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should not exceed max instances", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 1, time.Second, func(ctx context.Context) (*testInstance, error) {
+		pool := newWasmInstancePool[*testInstance]("test", 1, time.Second, func(ctx context.Context) (*testInstance, error) {
 			return &testInstance{}, nil
 		})
 		inst1, err := pool.Get(ctx)
@@ -51,7 +51,7 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should expire and close instances after TTL", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 2, 100*time.Millisecond, func(ctx context.Context) (*testInstance, error) {
+		pool := newWasmInstancePool[*testInstance]("test", 2, 100*time.Millisecond, func(ctx context.Context) (*testInstance, error) {
 			return &testInstance{}, nil
 		})
 		inst, err := pool.Get(ctx)
@@ -64,7 +64,7 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should close all on pool Close", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) (*testInstance, error) {
+		pool := newWasmInstancePool[*testInstance]("test", 2, time.Second, func(ctx context.Context) (*testInstance, error) {
 			return &testInstance{}, nil
 		})
 		inst1, err := pool.Get(ctx)
@@ -79,7 +79,7 @@ var _ = Describe("wasmInstancePool", func() {
 	})
 
 	It("should be safe for concurrent Get/Put", func() {
-		pool := NewWasmInstancePool[*testInstance]("test", 4, time.Second, func(ctx context.Context) (*testInstance, error) {
+		pool := newWasmInstancePool[*testInstance]("test", 4, time.Second, func(ctx context.Context) (*testInstance, error) {
 			return &testInstance{}, nil
 		})
 		done := make(chan struct{})
