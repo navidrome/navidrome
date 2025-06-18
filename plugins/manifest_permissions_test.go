@@ -8,23 +8,57 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
+// Helper function to create test plugins with typed permissions
+func createTestPluginWithTypedPermissions(tempDir, name string, permissions schema.PluginManifestPermissions) string {
+	pluginDir := filepath.Join(tempDir, name)
+	Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
+
+	// Use the generated PluginManifest type directly - it handles JSON marshaling automatically
+	manifest := schema.PluginManifest{
+		Name:        name,
+		Author:      "Test Author",
+		Version:     "1.0.0",
+		Description: "Test plugin for permissions",
+		Capabilities: []schema.PluginManifestCapabilitiesElem{
+			schema.PluginManifestCapabilitiesElemMetadataAgent,
+		},
+		Permissions: permissions,
+	}
+
+	// Marshal the typed manifest directly - gets all validation for free
+	manifestData, err := json.Marshal(manifest)
+	Expect(err).NotTo(HaveOccurred())
+
+	manifestPath := filepath.Join(pluginDir, "manifest.json")
+	Expect(os.WriteFile(manifestPath, manifestData, 0600)).To(Succeed())
+
+	// Create fake WASM file (since plugin discovery checks for it)
+	wasmPath := filepath.Join(pluginDir, "plugin.wasm")
+	Expect(os.WriteFile(wasmPath, []byte("fake wasm content"), 0600)).To(Succeed())
+
+	return pluginDir
+}
+
 var _ = Describe("Plugin Permissions", func() {
-	var ctx context.Context
-	var mgr *Manager
-	var tempDir string
+	var (
+		mgr     *Manager
+		tempDir string
+		ctx     context.Context
+	)
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		ctx = GinkgoT().Context()
+		ctx = context.Background()
 		mgr = createManager()
 		tempDir = GinkgoT().TempDir()
 	})
 
-	// Helper function to create a test plugin with specific permissions
+	// Keep the old helper for backward compatibility with existing tests that haven't been migrated yet
 	createTestPluginWithPermissions := func(name string, permissions map[string]any) string {
 		pluginDir := filepath.Join(tempDir, name)
 		Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
@@ -52,16 +86,17 @@ var _ = Describe("Plugin Permissions", func() {
 
 	Describe("Permission Enforcement in createCustomRuntime", func() {
 		It("should only load services specified in permissions", func() {
-			// Test with limited permissions
-			permissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Test with limited permissions using typed structs
+			permissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
-				"config": map[string]any{
-					"reason": "To read configuration settings",
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration settings",
 				},
 			}
 
@@ -82,7 +117,7 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should create runtime with empty permissions", func() {
-			permissions := map[string]any{}
+			permissions := schema.PluginManifestPermissions{}
 
 			ccache, _ := getCompilationCache()
 			runtimeFunc := mgr.createCustomRuntime(ccache, "empty-permissions-plugin", permissions)
@@ -96,29 +131,31 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should handle all available permissions", func() {
-			// Test with all possible permissions
-			permissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Test with all possible permissions using typed structs
+			permissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
-				"config": map[string]any{
-					"reason": "To read configuration settings",
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration settings",
 				},
-				"scheduler": map[string]any{
-					"reason": "To schedule periodic tasks",
+				Scheduler: &schema.PluginManifestPermissionsScheduler{
+					Reason: "To schedule periodic tasks",
 				},
-				"websocket": map[string]any{
-					"reason":      "To handle real-time communication",
-					"allowedUrls": []any{"wss://api.example.com"},
+				Websocket: &schema.PluginManifestPermissionsWebsocket{
+					Reason:            "To handle real-time communication",
+					AllowedUrls:       []string{"wss://api.example.com"},
+					AllowLocalNetwork: false,
 				},
-				"cache": map[string]any{
-					"reason": "To cache data and reduce API calls",
+				Cache: &schema.PluginManifestPermissionsCache{
+					Reason: "To cache data and reduce API calls",
 				},
-				"artwork": map[string]any{
-					"reason": "To generate artwork URLs",
+				Artwork: &schema.PluginManifestPermissionsArtwork{
+					Reason: "To generate artwork URLs",
 				},
 			}
 
@@ -253,21 +290,15 @@ var _ = Describe("Plugin Permissions", func() {
 		})
 
 		It("should allow unknown permission keys", func() {
-			// Test that LoadManifest accepts unknown permission keys for future extensibility
-			separateTempDir, _ := os.MkdirTemp("", "navidrome-plugin-test-*")
-			DeferCleanup(func() {
-				_ = os.RemoveAll(separateTempDir)
-			})
-
-			// Create plugin in separate temp dir
-			pluginDir := filepath.Join(separateTempDir, "unknown-perm-plugin")
+			// Create manifest with both known and unknown permission types
+			pluginDir := filepath.Join(tempDir, "unknown-perms")
 			Expect(os.MkdirAll(pluginDir, 0755)).To(Succeed())
 
-			manifest := `{
-				"name": "unknown-perm-plugin",
+			manifestContent := `{
+				"name": "unknown-perms",
 				"author": "Test Author",
 				"version": "1.0.0",
-				"description": "Test plugin for permission testing",
+				"description": "Manifest with unknown permissions",
 				"capabilities": ["MetadataAgent"],
 				"permissions": {
 					"http": {
@@ -277,19 +308,22 @@ var _ = Describe("Plugin Permissions", func() {
 						}
 					},
 					"unknown": {
-						"reason": "Future functionality not yet implemented"
+						"customField": "customValue"
 					}
 				}
 			}`
 
-			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifest), 0600)).To(Succeed())
+			Expect(os.WriteFile(filepath.Join(pluginDir, "manifest.json"), []byte(manifestContent), 0600)).To(Succeed())
 
 			// Test manifest loading directly - should succeed even with unknown permissions
 			loadedManifest, err := LoadManifest(pluginDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(loadedManifest).NotTo(BeNil())
-			Expect(loadedManifest.Permissions).To(HaveKey("http"))
-			Expect(loadedManifest.Permissions).To(HaveKey("unknown"))
+			// With typed permissions, we check the specific fields
+			Expect(loadedManifest.Permissions.Http).NotTo(BeNil())
+			Expect(loadedManifest.Permissions.Http.Reason).To(Equal("To fetch data from external APIs"))
+			// The key point is that the manifest loads successfully despite unknown permissions
+			// The actual handling of AdditionalProperties depends on the JSON schema implementation
 		})
 	})
 
@@ -297,18 +331,19 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should create separate runtimes for different permission sets", func() {
 			ccache, _ := getCompilationCache()
 
-			// Create two different permission sets
-			permissions1 := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Create two different permission sets using typed structs
+			permissions1 := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
 			}
-			permissions2 := map[string]any{
-				"config": map[string]any{
-					"reason": "To read configuration settings",
+			permissions2 := schema.PluginManifestPermissions{
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration settings",
 				},
 			}
 
@@ -359,36 +394,40 @@ var _ = Describe("Plugin Permissions", func() {
 			manifest, err := LoadManifest(pluginDir)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(manifest).NotTo(BeNil())
-			Expect(manifest.Permissions).To(HaveKey("http"))
-			Expect(manifest.Permissions).To(HaveKey("config"))
+			// With typed permissions, check the specific permission fields
+			Expect(manifest.Permissions.Http).NotTo(BeNil())
+			Expect(manifest.Permissions.Http.Reason).To(Equal("To fetch metadata from external APIs"))
+			Expect(manifest.Permissions.Config).NotTo(BeNil())
+			Expect(manifest.Permissions.Config.Reason).To(Equal("To read plugin configuration settings"))
 		})
 
 		It("should track which services are requested per plugin", func() {
 			// Test that different plugins can have different permission sets
-			permissions1 := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			permissions1 := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
-				"config": map[string]any{
-					"reason": "To read configuration settings",
-				},
-			}
-			permissions2 := map[string]any{
-				"scheduler": map[string]any{
-					"reason": "To schedule periodic tasks",
-				},
-				"config": map[string]any{
-					"reason": "To read configuration for scheduler",
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration settings",
 				},
 			}
-			permissions3 := map[string]any{} // Empty permissions
+			permissions2 := schema.PluginManifestPermissions{
+				Scheduler: &schema.PluginManifestPermissionsScheduler{
+					Reason: "To schedule periodic tasks",
+				},
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration for scheduler",
+				},
+			}
+			permissions3 := schema.PluginManifestPermissions{} // Empty permissions
 
-			createTestPluginWithPermissions("plugin-with-http", permissions1)
-			createTestPluginWithPermissions("plugin-with-scheduler", permissions2)
-			createTestPluginWithPermissions("plugin-with-none", permissions3)
+			createTestPluginWithTypedPermissions(tempDir, "plugin-with-http", permissions1)
+			createTestPluginWithTypedPermissions(tempDir, "plugin-with-scheduler", permissions2)
+			createTestPluginWithTypedPermissions(tempDir, "plugin-with-none", permissions3)
 
 			conf.Server.Plugins.Folder = tempDir
 			mgr.ScanPlugins()
@@ -405,13 +444,14 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should successfully create runtime with permitted services", func() {
 			ccache, _ := getCompilationCache()
 
-			// Create runtime with HTTP permission
-			permissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Create runtime with HTTP permission using typed struct
+			permissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
 			}
 
@@ -427,19 +467,20 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should successfully create runtime with multiple permitted services", func() {
 			ccache, _ := getCompilationCache()
 
-			// Create runtime with multiple permissions
-			permissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Create runtime with multiple permissions using typed structs
+			permissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
-				"config": map[string]any{
-					"reason": "To read configuration settings",
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration settings",
 				},
-				"scheduler": map[string]any{
-					"reason": "To schedule periodic tasks",
+				Scheduler: &schema.PluginManifestPermissionsScheduler{
+					Reason: "To schedule periodic tasks",
 				},
 			}
 
@@ -455,8 +496,8 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should create runtime with no services when no permissions granted", func() {
 			ccache, _ := getCompilationCache()
 
-			// Create runtime with empty permissions
-			emptyPermissions := map[string]any{}
+			// Create runtime with empty permissions using typed struct
+			emptyPermissions := schema.PluginManifestPermissions{}
 
 			runtimeFunc := mgr.createCustomRuntime(ccache, "no-service-plugin", emptyPermissions)
 			runtime, err := runtimeFunc(ctx)
@@ -470,8 +511,9 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should demonstrate secure-by-default behavior", func() {
 			ccache, _ := getCompilationCache()
 
-			// Test that default (nil permissions) provides no services
-			runtimeFunc := mgr.createCustomRuntime(ccache, "default-plugin", nil)
+			// Test that default (empty permissions) provides no services
+			defaultPermissions := schema.PluginManifestPermissions{}
+			runtimeFunc := mgr.createCustomRuntime(ccache, "default-plugin", defaultPermissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -487,18 +529,19 @@ var _ = Describe("Plugin Permissions", func() {
 
 			ccache, _ := getCompilationCache()
 
-			// Create two different runtimes with different permissions
-			httpOnlyPermissions := map[string]any{
-				"http": map[string]any{
-					"reason": "To fetch data from external APIs",
-					"allowedUrls": map[string]any{
-						"*": []any{"*"},
+			// Create two different runtimes with different permissions using typed structs
+			httpOnlyPermissions := schema.PluginManifestPermissions{
+				Http: &schema.PluginManifestPermissionsHttp{
+					Reason: "To fetch data from external APIs",
+					AllowedUrls: map[string]interface{}{
+						"*": []interface{}{"*"},
 					},
+					AllowLocalNetwork: false,
 				},
 			}
-			configOnlyPermissions := map[string]any{
-				"config": map[string]any{
-					"reason": "To read configuration settings",
+			configOnlyPermissions := schema.PluginManifestPermissions{
+				Config: &schema.PluginManifestPermissionsConfig{
+					Reason: "To read configuration settings",
 				},
 			}
 

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/navidrome/navidrome/plugins/schema"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tetratelabs/wazero"
@@ -22,15 +23,18 @@ var _ = Describe("PooledRuntime", func() {
 		ctx = GinkgoT().Context()
 		mgr = createManager()
 		ccache, _ := getCompilationCache()
-		// Add permissions for the test plugin
-		permissions := map[string]any{
-			"http": map[string]any{
-				"reason": "For testing HTTP functionality",
-				"allowedUrls": map[string]any{
-					"*": []any{"*"},
+		// Add permissions for the test plugin using typed struct
+		permissions := schema.PluginManifestPermissions{
+			Http: &schema.PluginManifestPermissionsHttp{
+				Reason: "For testing HTTP functionality",
+				AllowedUrls: map[string]interface{}{
+					"*": []interface{}{"*"},
 				},
+				AllowLocalNetwork: false,
 			},
-			"config": struct{}{},
+			Config: &schema.PluginManifestPermissionsConfig{
+				Reason: "For testing config functionality",
+			},
 		}
 		rtFunc := mgr.createCustomRuntime(ccache, "fake_scrobbler", permissions)
 		plugin = newWasmScrobblerPlugin(

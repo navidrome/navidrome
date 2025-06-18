@@ -3,6 +3,8 @@ package plugins
 import (
 	"fmt"
 	"strings"
+
+	"github.com/navidrome/navidrome/plugins/schema"
 )
 
 // Maximum number of HTTP redirects allowed for plugin requests
@@ -13,6 +15,57 @@ type httpPermissions struct {
 	*networkPermissionsBase
 	AllowedUrls map[string][]string `json:"allowedUrls"`
 	matcher     *urlMatcher
+}
+
+// parseHTTPPermissionsTyped extracts HTTP permissions from the typed permission struct
+func parseHTTPPermissionsTyped(permData *schema.PluginManifestPermissionsHttp) (*httpPermissions, error) {
+	base := &networkPermissionsBase{
+		AllowLocalNetwork: permData.AllowLocalNetwork,
+	}
+
+	// Convert allowedUrls from map[string]interface{} to map[string][]string
+	allowedUrls := make(map[string][]string)
+	for urlPattern, methodsRaw := range permData.AllowedUrls {
+		// Handle both []interface{} and []string cases
+		var methods []string
+		switch v := methodsRaw.(type) {
+		case []interface{}:
+			for _, methodRaw := range v {
+				if method, ok := methodRaw.(string); ok {
+					methods = append(methods, strings.ToUpper(method))
+				} else {
+					return nil, fmt.Errorf("operation must be a string")
+				}
+			}
+		case []string:
+			for _, method := range v {
+				methods = append(methods, strings.ToUpper(method))
+			}
+		default:
+			return nil, fmt.Errorf("operations for URL pattern %s must be an array", urlPattern)
+		}
+		allowedUrls[urlPattern] = methods
+	}
+
+	// Validate HTTP methods
+	validMethods := map[string]bool{
+		"GET": true, "POST": true, "PUT": true, "DELETE": true,
+		"PATCH": true, "HEAD": true, "OPTIONS": true, "*": true,
+	}
+
+	for urlPattern, methods := range allowedUrls {
+		for _, method := range methods {
+			if !validMethods[strings.ToUpper(method)] {
+				return nil, fmt.Errorf("invalid HTTP method '%s' for URL pattern '%s'", method, urlPattern)
+			}
+		}
+	}
+
+	return &httpPermissions{
+		networkPermissionsBase: base,
+		AllowedUrls:            allowedUrls,
+		matcher:                newURLMatcher(),
+	}, nil
 }
 
 // ParseHTTPPermissions extracts HTTP permissions from the raw permission map

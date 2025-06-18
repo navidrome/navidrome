@@ -28,6 +28,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
+	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/tetratelabs/wazero"
@@ -235,11 +236,9 @@ func (m *Manager) combineLibraries(ctx context.Context, r wazero.Runtime, libs .
 	return nil
 }
 
-// parsePermission extracts and validates a specific permission set from the raw permissions map.
-// It returns the parsed permission struct (of type T) or a zero value if the permission is not present.
-func parsePermission[T any](permissions map[string]any, permissionName, pluginID string, parser func(any) (T, error)) (T, error) {
+func parseTypedPermission[T any](permissions schema.PluginManifestPermissions, permissionName, pluginID string, getter func(schema.PluginManifestPermissions) *T, parser func(*T) (T, error)) (T, error) {
 	var parsed T
-	if permData, exists := permissions[permissionName]; exists {
+	if permData := getter(permissions); permData != nil {
 		var err error
 		parsed, err = parser(permData)
 		if err != nil {
@@ -251,7 +250,7 @@ func parsePermission[T any](permissions map[string]any, permissionName, pluginID
 
 // createCustomRuntime returns a function that creates a new wazero runtime with the given compilation cache
 // and instantiates the required host functions
-func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginID string, permissions map[string]any) api.WazeroNewRuntime {
+func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginID); ok {
@@ -277,9 +276,12 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginID: pluginID})
 			}},
 			{"http", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				httpPerms, err := parsePermission(permissions, "http", pluginID, parseHTTPPermissions)
+				if permissions.Http == nil {
+					return nil, fmt.Errorf("http permissions not granted")
+				}
+				httpPerms, err := parseHTTPPermissionsTyped(permissions.Http)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("invalid http permissions for plugin %s: %w", pluginID, err)
 				}
 				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{
 					pluginID:    pluginID,
@@ -290,9 +292,12 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginID))
 			}},
 			{"websocket", func() (map[string]wazeroapi.FunctionDefinition, error) {
-				wsPerms, err := parsePermission(permissions, "websocket", pluginID, parseWebSocketPermissions)
+				if permissions.Websocket == nil {
+					return nil, fmt.Errorf("websocket permissions not granted")
+				}
+				wsPerms, err := parseWebSocketPermissionsTyped(permissions.Websocket)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("invalid websocket permissions for plugin %s: %w", pluginID, err)
 				}
 				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
 			}},
@@ -308,7 +313,23 @@ func (m *Manager) createCustomRuntime(compCache wazero.CompilationCache, pluginI
 		var grantedPermissions []string
 		var libraries []map[string]wazeroapi.FunctionDefinition
 		for _, service := range availableServices {
-			if _, hasPermission := permissions[service.name]; hasPermission {
+			var hasPermission bool
+			switch service.name {
+			case "config":
+				hasPermission = permissions.Config != nil
+			case "http":
+				hasPermission = permissions.Http != nil
+			case "scheduler":
+				hasPermission = permissions.Scheduler != nil
+			case "websocket":
+				hasPermission = permissions.Websocket != nil
+			case "cache":
+				hasPermission = permissions.Cache != nil
+			case "artwork":
+				hasPermission = permissions.Artwork != nil
+			}
+
+			if hasPermission {
 				lib, err := service.loadFunc()
 				if err != nil {
 					return nil, fmt.Errorf("error loading %s lib: %w", service.name, err)

@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins"
+	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/spf13/cobra"
 )
@@ -215,6 +216,59 @@ func displayPluginTableRow(w *tabwriter.Writer, discovery plugins.PluginDiscover
 		cmp.Or(discovery.Manifest.Description, "-"))
 }
 
+func displayTypedPermissions(permissions schema.PluginManifestPermissions, indent string) {
+	if permissions.Http != nil {
+		fmt.Printf("%shttp:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Http.Reason)
+		fmt.Printf("%s  Allow Local Network: %t\n", indent, permissions.Http.AllowLocalNetwork)
+		fmt.Printf("%s  Allowed URLs:\n", indent)
+		for urlPattern, methods := range permissions.Http.AllowedUrls {
+			if methodList, ok := methods.([]interface{}); ok {
+				methodStrs := make([]string, len(methodList))
+				for i, method := range methodList {
+					if methodStr, ok := method.(string); ok {
+						methodStrs[i] = methodStr
+					}
+				}
+				fmt.Printf("%s    %s: [%s]\n", indent, urlPattern, strings.Join(methodStrs, ", "))
+			}
+		}
+		fmt.Println()
+	}
+
+	if permissions.Config != nil {
+		fmt.Printf("%sconfig:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Config.Reason)
+		fmt.Println()
+	}
+
+	if permissions.Scheduler != nil {
+		fmt.Printf("%sscheduler:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Scheduler.Reason)
+		fmt.Println()
+	}
+
+	if permissions.Websocket != nil {
+		fmt.Printf("%swebsocket:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Websocket.Reason)
+		fmt.Printf("%s  Allow Local Network: %t\n", indent, permissions.Websocket.AllowLocalNetwork)
+		fmt.Printf("%s  Allowed URLs: [%s]\n", indent, strings.Join(permissions.Websocket.AllowedUrls, ", "))
+		fmt.Println()
+	}
+
+	if permissions.Cache != nil {
+		fmt.Printf("%scache:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Cache.Reason)
+		fmt.Println()
+	}
+
+	if permissions.Artwork != nil {
+		fmt.Printf("%sartwork:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Artwork.Reason)
+		fmt.Println()
+	}
+}
+
 func displayManifestPermissions(permissions map[string]any, indent string) {
 	for permType, permData := range permissions {
 		fmt.Printf("%s%s:\n", indent, permType)
@@ -289,15 +343,13 @@ func displayPluginDetails(manifest *plugins.PluginManifest, fileInfo *pluginFile
 	}
 	fmt.Println()
 
-	// Display manifest permissions right after capabilities if available
-	if permInfo != nil && permInfo.manifestPermissions != nil && len(permInfo.manifestPermissions) > 0 {
-		fmt.Println("  Required Permissions:")
-		displayManifestPermissions(permInfo.manifestPermissions, "    ")
-	}
+	// Display manifest permissions using the typed permissions
+	fmt.Println("  Required Permissions:")
+	displayTypedPermissions(manifest.Permissions, "    ")
 
 	// Print file information if available
 	if fileInfo != nil {
-		fmt.Println("\nPackage Information:")
+		fmt.Println("Package Information:")
 		fmt.Printf("  File:        %s\n", fileInfo.path)
 		fmt.Printf("  Size:        %d bytes (%.2f KB)\n", fileInfo.size, float64(fileInfo.size)/1024)
 		fmt.Printf("  SHA-256:     %s\n", fileInfo.hash)
@@ -326,14 +378,13 @@ type pluginFileInfo struct {
 }
 
 type pluginPermissionInfo struct {
-	dirPath             string
-	dirMode             string
-	isSymlink           bool
-	targetPath          string
-	targetMode          string
-	manifestMode        string
-	wasmMode            string
-	manifestPermissions map[string]any
+	dirPath      string
+	dirMode      string
+	isSymlink    bool
+	targetPath   string
+	targetMode   string
+	manifestMode string
+	wasmMode     string
 }
 
 func getFileInfo(path string) *pluginFileInfo {
@@ -382,15 +433,10 @@ func getPermissionInfo(pluginDir string) *pluginPermissionInfo {
 		}
 	}
 
-	// Get manifest file permissions and content
+	// Get manifest file permissions
 	manifestPath := filepath.Join(pluginDir, "manifest.json")
 	if manifestInfo, err := os.Stat(manifestPath); err == nil {
 		permInfo.manifestMode = manifestInfo.Mode().String()
-	}
-
-	// Load manifest to get permission declarations
-	if manifest, err := plugins.LoadManifest(pluginDir); err == nil && manifest.Permissions != nil {
-		permInfo.manifestPermissions = manifest.Permissions
 	}
 
 	// Get WASM file permissions (look for .wasm files)

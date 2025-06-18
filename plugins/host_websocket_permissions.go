@@ -2,6 +2,8 @@ package plugins
 
 import (
 	"fmt"
+
+	"github.com/navidrome/navidrome/plugins/schema"
 )
 
 // WebSocketPermissions represents granular WebSocket access permissions for plugins
@@ -9,6 +11,23 @@ type webSocketPermissions struct {
 	*networkPermissionsBase
 	AllowedUrls []string `json:"allowedUrls"`
 	matcher     *urlMatcher
+}
+
+// parseWebSocketPermissionsTyped extracts WebSocket permissions from the typed permission struct
+func parseWebSocketPermissionsTyped(permData *schema.PluginManifestPermissionsWebsocket) (*webSocketPermissions, error) {
+	base := &networkPermissionsBase{
+		AllowLocalNetwork: permData.AllowLocalNetwork,
+	}
+
+	if len(permData.AllowedUrls) == 0 {
+		return nil, fmt.Errorf("allowedUrls must contain at least one URL pattern")
+	}
+
+	return &webSocketPermissions{
+		networkPermissionsBase: base,
+		AllowedUrls:            permData.AllowedUrls,
+		matcher:                newURLMatcher(),
+	}, nil
 }
 
 // ParseWebSocketPermissions extracts WebSocket permissions from the raw permission map

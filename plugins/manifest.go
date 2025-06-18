@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -17,12 +18,12 @@ import (
 var schemaData []byte
 
 type PluginManifest struct {
-	Name         string         `json:"name"`
-	Author       string         `json:"author"`
-	Version      string         `json:"version"`
-	Description  string         `json:"description"`
-	Capabilities []string       `json:"capabilities"`
-	Permissions  map[string]any `json:"permissions"`
+	Name         string                           `json:"name"`
+	Author       string                           `json:"author"`
+	Version      string                           `json:"version"`
+	Description  string                           `json:"description"`
+	Capabilities []string                         `json:"capabilities"`
+	Permissions  schema.PluginManifestPermissions `json:"permissions"`
 }
 
 // LoadManifest loads and parses the manifest.json file from the given plugin directory.
