@@ -312,7 +312,7 @@ func combineLibraries(ctx context.Context, r wazero.Runtime, libs ...map[string]
 
 // Instance pool configuration
 const (
-	defaultMaxInstances = 8
+	defaultMaxInstances = 0
 	defaultInstanceTTL  = time.Minute
 )
 
@@ -380,6 +380,7 @@ func (r *cachingRuntime) InstantiateModule(ctx context.Context, code wazero.Comp
 	r.initPool(code, config)
 	mod, err := r.pool.Get(ctx)
 	if err != nil {
+		log.Warn(ctx, "cachingRuntime: failed to get module from pool", "plugin", r.pluginID, "error", err)
 		return nil, err
 	}
 	wrapped := &pooledModule{Module: mod, pool: r.pool}
@@ -396,6 +397,8 @@ func (r *cachingRuntime) Close(ctx context.Context) error {
 	mods := r.active
 	r.active = nil
 	r.activeMu.Unlock()
+
+	log.Trace(ctx, "cachingRuntime: closing runtime", "plugin", r.pluginID, "activeModules", len(mods))
 	for _, m := range mods {
 		_ = m.Close(ctx)
 	}
