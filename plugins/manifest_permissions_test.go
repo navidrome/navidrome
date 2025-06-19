@@ -59,7 +59,7 @@ var _ = Describe("Plugin Permissions", func() {
 		tempDir = GinkgoT().TempDir()
 	})
 
-	Describe("Permission Enforcement in createCustomRuntime", func() {
+	Describe("Permission Enforcement in createRuntime", func() {
 		It("should only load services specified in permissions", func() {
 			// Test with limited permissions using typed structs
 			permissions := schema.PluginManifestPermissions{
@@ -75,7 +75,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc := mgr.createCustomRuntime("test-plugin", permissions)
+			runtimeFunc := mgr.createRuntime("test-plugin", permissions)
 
 			// Create runtime to test service availability
 			runtime, err := runtimeFunc(ctx)
@@ -93,7 +93,7 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should create runtime with empty permissions", func() {
 			permissions := schema.PluginManifestPermissions{}
 
-			runtimeFunc := mgr.createCustomRuntime("empty-permissions-plugin", permissions)
+			runtimeFunc := mgr.createRuntime("empty-permissions-plugin", permissions)
 
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -132,7 +132,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc := mgr.createCustomRuntime("full-permissions-plugin", permissions)
+			runtimeFunc := mgr.createRuntime("full-permissions-plugin", permissions)
 
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -318,8 +318,8 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc1 := mgr.createCustomRuntime("plugin1", permissions1)
-			runtimeFunc2 := mgr.createCustomRuntime("plugin2", permissions2)
+			runtimeFunc1 := mgr.createRuntime("plugin1", permissions1)
+			runtimeFunc2 := mgr.createRuntime("plugin2", permissions2)
 
 			runtime1, err1 := runtimeFunc1(ctx)
 			Expect(err1).NotTo(HaveOccurred())
@@ -425,7 +425,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc := mgr.createCustomRuntime("http-only-plugin", permissions)
+			runtimeFunc := mgr.createRuntime("http-only-plugin", permissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -452,7 +452,7 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			runtimeFunc := mgr.createCustomRuntime("multi-service-plugin", permissions)
+			runtimeFunc := mgr.createRuntime("multi-service-plugin", permissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -465,7 +465,7 @@ var _ = Describe("Plugin Permissions", func() {
 			// Create runtime with empty permissions using typed struct
 			emptyPermissions := schema.PluginManifestPermissions{}
 
-			runtimeFunc := mgr.createCustomRuntime("no-service-plugin", emptyPermissions)
+			runtimeFunc := mgr.createRuntime("no-service-plugin", emptyPermissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -477,7 +477,7 @@ var _ = Describe("Plugin Permissions", func() {
 		It("should demonstrate secure-by-default behavior", func() {
 			// Test that default (empty permissions) provides no services
 			defaultPermissions := schema.PluginManifestPermissions{}
-			runtimeFunc := mgr.createCustomRuntime("default-plugin", defaultPermissions)
+			runtimeFunc := mgr.createRuntime("default-plugin", defaultPermissions)
 			runtime, err := runtimeFunc(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer runtime.Close(ctx)
@@ -507,11 +507,11 @@ var _ = Describe("Plugin Permissions", func() {
 				},
 			}
 
-			httpRuntime, err := mgr.createCustomRuntime("http-only", httpOnlyPermissions)(ctx)
+			httpRuntime, err := mgr.createRuntime("http-only", httpOnlyPermissions)(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer httpRuntime.Close(ctx)
 
-			configRuntime, err := mgr.createCustomRuntime("config-only", configOnlyPermissions)(ctx)
+			configRuntime, err := mgr.createRuntime("config-only", configOnlyPermissions)(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer configRuntime.Close(ctx)
 

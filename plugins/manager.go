@@ -96,7 +96,7 @@ func createManager() *Manager {
 // Used internally by ScanPlugins to register plugins
 func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest *schema.PluginManifest) *pluginInfo {
 	// Create custom runtime function
-	customRuntime := m.createCustomRuntime(pluginID, manifest.Permissions)
+	customRuntime := m.createRuntime(pluginID, manifest.Permissions)
 
 	// Configure module and determine plugin name
 	mc := newWazeroModuleConfig()
@@ -123,27 +123,6 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 	// Start pre-compilation of WASM module in background
 	go func() {
 		precompilePlugin(state, customRuntime, wasmPath, pluginID)
-
-		// After precompilation, update to use optimized runtime if successful
-		if state.err == nil && state.compiledModule != nil {
-			optimizedRuntime := m.createOptimizedRuntime(pluginID, manifest.Permissions, state)
-			pluginInfo.Runtime = optimizedRuntime
-
-			// Recreate adapters with the optimized runtime
-			m.mu.Lock()
-			for _, capability := range manifest.Capabilities {
-				capabilityStr := string(capability)
-				constructor := pluginCreators[capabilityStr]
-				if constructor != nil {
-					adapter := constructor(wasmPath, pluginID, optimizedRuntime, mc)
-					m.adapters[pluginID+"_"+capabilityStr] = adapter
-				}
-			}
-			m.mu.Unlock()
-
-			log.Debug("Plugin updated to use optimized runtime", "plugin", pluginID)
-		}
-
 		// Check if this plugin implements InitService and hasn't been initialized yet
 		m.initializePluginIfNeeded(pluginInfo)
 	}()

@@ -34,12 +34,12 @@ var (
 	compileSemaphore = make(chan struct{}, maxParallelCompilations)
 	compilationCache wazero.CompilationCache
 	cacheOnce        sync.Once
-	runtimePool      sync.Map // map[string]*pooledRuntime
+	runtimePool      sync.Map // map[string]*cachingRuntime
 )
 
-// createCustomRuntime returns a function that creates a new wazero runtime and instantiates the required host functions
+// createRuntime returns a function that creates a new wazero runtime and instantiates the required host functions
 // based on the given plugin permissions
-func (m *Manager) createCustomRuntime(pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
+func (m *Manager) createRuntime(pluginID string, permissions schema.PluginManifestPermissions) api.WazeroNewRuntime {
 	return func(ctx context.Context) (wazero.Runtime, error) {
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginID); ok {
@@ -121,18 +121,18 @@ func (m *Manager) createCustomRuntime(pluginID string, permissions schema.Plugin
 			return nil, err
 		}
 
-		pooled := newPooledRuntime(r, pluginID)
+		cached := newCachingRuntime(r, pluginID)
 
 		// Use LoadOrStore to atomically check and store, preventing race conditions
-		if existing, loaded := runtimePool.LoadOrStore(pluginID, pooled); loaded {
+		if existing, loaded := runtimePool.LoadOrStore(pluginID, cached); loaded {
 			// Another goroutine created the runtime first, close ours and return the existing one
 			log.Trace(ctx, "Race condition detected, using existing runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", existing))
 			_ = r.Close(ctx)
 			return existing.(wazero.Runtime), nil
 		}
-		log.Trace(ctx, "Created new runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", pooled))
+		log.Trace(ctx, "Created new runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", cached))
 
-		return pooled, nil
+		return cached, nil
 	}
 }
 
@@ -214,10 +214,8 @@ func purgeCacheBySize(dir, maxSize string) {
 }
 
 type pluginState struct {
-	ready          chan struct{}
-	err            error
-	wasmHash       [16]byte              // MD5 hash of WASM file bytes
-	compiledModule wazero.CompiledModule // Cached compiled module
+	ready chan struct{}
+	err   error
 }
 
 // getCompilationCache returns the global compilation cache, creating it if necessary
@@ -245,31 +243,32 @@ func pluginCompilationTimeout() time.Duration {
 }
 
 // precompilePlugin compiles the WASM module in the background and updates the pluginState.
-func precompilePlugin(state *pluginState, customRuntime api.WazeroNewRuntime, wasmPath, name string) {
+func precompilePlugin(state *pluginState, runtimeFactory api.WazeroNewRuntime, wasmPath, name string) {
 	compileSemaphore <- struct{}{}
 	defer func() { <-compileSemaphore }()
 	ctx := context.Background()
-	r, err := customRuntime(ctx)
+	r, err := runtimeFactory(ctx)
 	if err != nil {
 		state.err = fmt.Errorf("failed to create runtime for plugin %s: %w", name, err)
 		close(state.ready)
 		return
 	}
-	defer r.Close(ctx)
+
 	b, err := os.ReadFile(wasmPath)
 	if err != nil {
 		state.err = fmt.Errorf("failed to read wasm file: %w", err)
 		close(state.ready)
 		return
 	}
-	compiledModule, err := r.CompileModule(ctx, b)
+
+	cr := r.(*cachingRuntime)
+	compiledModule, err := cr.Runtime.CompileModule(ctx, b)
 	if err != nil {
 		state.err = fmt.Errorf("failed to compile WASM for plugin %s: %w", name, err)
 		log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "err", err)
 	} else {
 		state.err = nil
-		state.wasmHash = md5.Sum(b)
-		state.compiledModule = compiledModule
+		cr.setCachedModule(compiledModule, md5.Sum(b))
 		log.Debug("Plugin compilation completed", "name", name, "path", wasmPath)
 	}
 	close(state.ready)
@@ -358,22 +357,30 @@ func (m *pooledModule) IsClosed() bool {
 	return false
 }
 
-// pooledRuntime wraps wazero.Runtime and pools module instances per plugin.
-type pooledRuntime struct {
+// cachingRuntime wraps wazero.Runtime and pools module instances per plugin,
+// while also caching the compiled module in memory.
+type cachingRuntime struct {
 	wazero.Runtime
 	pluginID     string
 	maxInstances int
 	ttl          time.Duration
 
-	once sync.Once
-	pool *wasmInstancePool[wazeroapi.Module]
+	// module instance pool
+	poolOnce sync.Once
+	pool     *wasmInstancePool[wazeroapi.Module]
 
-	mu     sync.Mutex
-	active []wazeroapi.Module
+	// compiled module cache
+	cacheMu      sync.RWMutex
+	cachedModule wazero.CompiledModule
+	cachedHash   [16]byte
+
+	// active instances
+	activeMu sync.Mutex
+	active   []wazeroapi.Module
 }
 
-func newPooledRuntime(r wazero.Runtime, pluginID string) *pooledRuntime {
-	return &pooledRuntime{
+func newCachingRuntime(r wazero.Runtime, pluginID string) *cachingRuntime {
+	return &cachingRuntime{
 		Runtime:      r,
 		pluginID:     pluginID,
 		maxInstances: defaultMaxInstances,
@@ -381,105 +388,69 @@ func newPooledRuntime(r wazero.Runtime, pluginID string) *pooledRuntime {
 	}
 }
 
-func (r *pooledRuntime) initPool(code wazero.CompiledModule, config wazero.ModuleConfig) {
-	r.once.Do(func() {
+func (r *cachingRuntime) initPool(code wazero.CompiledModule, config wazero.ModuleConfig) {
+	r.poolOnce.Do(func() {
 		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginID, r.maxInstances, r.ttl, func(ctx context.Context) (wazeroapi.Module, error) {
-			log.Trace(ctx, "pooledRuntime: creating new module", "plugin", r.pluginID)
+			log.Trace(ctx, "cachingRuntime: creating new module instance", "plugin", r.pluginID)
 			return r.Runtime.InstantiateModule(ctx, code, config)
 		})
 	})
 }
 
-func (r *pooledRuntime) InstantiateModule(ctx context.Context, code wazero.CompiledModule, config wazero.ModuleConfig) (wazeroapi.Module, error) {
+func (r *cachingRuntime) InstantiateModule(ctx context.Context, code wazero.CompiledModule, config wazero.ModuleConfig) (wazeroapi.Module, error) {
 	r.initPool(code, config)
 	mod, err := r.pool.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
 	wrapped := &pooledModule{Module: mod, pool: r.pool}
-	log.Trace(ctx, "pooledRuntime: created wrapper for module", "plugin", r.pluginID, "underlyingModuleID", fmt.Sprintf("%p", mod), "wrapperID", fmt.Sprintf("%p", wrapped))
-	r.mu.Lock()
+	log.Trace(ctx, "cachingRuntime: created wrapper for module", "plugin", r.pluginID, "underlyingModuleID", fmt.Sprintf("%p", mod), "wrapperID", fmt.Sprintf("%p", wrapped))
+	r.activeMu.Lock()
 	r.active = append(r.active, wrapped)
-	r.mu.Unlock()
+	r.activeMu.Unlock()
 	return wrapped, nil
 }
 
 // Close returns all active module instances to the pool without closing the runtime.
-func (r *pooledRuntime) Close(ctx context.Context) error {
-	r.mu.Lock()
+func (r *cachingRuntime) Close(ctx context.Context) error {
+	r.activeMu.Lock()
 	mods := r.active
 	r.active = nil
-	r.mu.Unlock()
+	r.activeMu.Unlock()
 	for _, m := range mods {
 		_ = m.Close(ctx)
 	}
 	return nil
 }
 
-func (r *pooledRuntime) CloseWithExitCode(ctx context.Context, code uint32) error {
+func (r *cachingRuntime) CloseWithExitCode(ctx context.Context, code uint32) error {
 	return r.Close(ctx)
 }
 
-// optimizedRuntime wraps a wazero.Runtime and caches compiled modules to avoid
-// repeated file reads and compilation for the same WASM bytes.
-type optimizedRuntime struct {
-	wazero.Runtime
-	pluginID     string
-	cachedHash   [16]byte // MD5 hash of cached WASM bytes
-	cachedModule wazero.CompiledModule
-}
-
-func newOptimizedRuntime(underlying wazero.Runtime, pluginID string, wasmHash [16]byte, compiledModule wazero.CompiledModule) *optimizedRuntime {
-	return &optimizedRuntime{
-		Runtime:      underlying,
-		pluginID:     pluginID,
-		cachedHash:   wasmHash,
-		cachedModule: compiledModule,
-	}
+func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, hash [16]byte) {
+	r.cacheMu.Lock()
+	defer r.cacheMu.Unlock()
+	r.cachedModule = module
+	r.cachedHash = hash
 }
 
 // CompileModule checks if the provided bytes match our cached hash and returns
 // the cached compiled module if so, avoiding both file read and compilation.
-func (r *optimizedRuntime) CompileModule(ctx context.Context, wasmBytes []byte) (wazero.CompiledModule, error) {
-	// Calculate hash of incoming bytes
+func (r *cachingRuntime) CompileModule(ctx context.Context, wasmBytes []byte) (wazero.CompiledModule, error) {
 	incomingHash := md5.Sum(wasmBytes)
 
+	r.cacheMu.RLock()
+	mod := r.cachedModule
+	hash := r.cachedHash
+	r.cacheMu.RUnlock()
+
 	// If the hash matches our cached hash, return the cached compiled module
-	if r.cachedModule != nil && incomingHash == r.cachedHash {
-		log.Trace(ctx, "optimizedRuntime: using cached compiled module", "plugin", r.pluginID)
-		return r.cachedModule, nil
+	if mod != nil && incomingHash == hash {
+		log.Trace(ctx, "cachingRuntime: using cached compiled module", "plugin", r.pluginID)
+		return mod, nil
 	}
 
 	// Fall back to normal compilation for different bytes
-	log.Trace(ctx, "optimizedRuntime: hash doesn't match cache, compiling normally", "plugin", r.pluginID)
+	log.Trace(ctx, "cachingRuntime: hash doesn't match cache, compiling normally", "plugin", r.pluginID)
 	return r.Runtime.CompileModule(ctx, wasmBytes)
-}
-
-// createOptimizedRuntime creates a new runtime function that uses cached WASM hash and compiled modules
-// when available, falling back to normal runtime creation otherwise.
-func (m *Manager) createOptimizedRuntime(pluginID string, permissions schema.PluginManifestPermissions, state *pluginState) api.WazeroNewRuntime {
-	baseRuntimeFunc := m.createCustomRuntime(pluginID, permissions)
-
-	return func(ctx context.Context) (wazero.Runtime, error) {
-		// Wait for precompilation to complete if it's still in progress
-		select {
-		case <-state.ready:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-
-		// If precompilation succeeded and we have cached data, create optimized runtime
-		if state.err == nil && state.compiledModule != nil {
-			baseRuntime, err := baseRuntimeFunc(ctx)
-			if err != nil {
-				return nil, err
-			}
-			log.Trace(ctx, "Creating optimized runtime with cached data", "plugin", pluginID)
-			return newOptimizedRuntime(baseRuntime, pluginID, state.wasmHash, state.compiledModule), nil
-		}
-
-		// Fall back to normal runtime if no cached data available
-		log.Trace(ctx, "Creating normal runtime (no cached data)", "plugin", pluginID)
-		return baseRuntimeFunc(ctx)
-	}
 }

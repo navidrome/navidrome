@@ -31,12 +31,12 @@ var _ = Describe("Runtime", func() {
 	})
 })
 
-var _ = Describe("PooledRuntime", func() {
+var _ = Describe("CachingRuntime", func() {
 	var (
 		ctx    context.Context
 		mgr    *Manager
 		plugin *wasmScrobblerPlugin
-		prt    *pooledRuntime
+		prt    *cachingRuntime
 	)
 
 	BeforeEach(func() {
@@ -55,7 +55,7 @@ var _ = Describe("PooledRuntime", func() {
 				Reason: "For testing config functionality",
 			},
 		}
-		rtFunc := mgr.createCustomRuntime("fake_scrobbler", permissions)
+		rtFunc := mgr.createRuntime("fake_scrobbler", permissions)
 		plugin = newWasmScrobblerPlugin(
 			filepath.Join(testDataDir, "fake_scrobbler", "plugin.wasm"),
 			"fake_scrobbler",
@@ -72,21 +72,21 @@ var _ = Describe("PooledRuntime", func() {
 
 		val, ok := runtimePool.Load("fake_scrobbler")
 		Expect(ok).To(BeTrue())
-		prt = val.(*pooledRuntime)
-		prt.mu.Lock()
+		prt = val.(*cachingRuntime)
+		prt.activeMu.Lock()
 		Expect(len(prt.pool.items)).To(Equal(1))
 		ptr1 := reflect.ValueOf(prt.pool.items[0].value).Pointer()
-		prt.mu.Unlock()
+		prt.activeMu.Unlock()
 
 		_, done, err = plugin.getInstance(ctx, "second")
 		Expect(err).ToNot(HaveOccurred())
 		done()
 
-		prt.mu.Lock()
+		prt.activeMu.Lock()
 		Expect(len(prt.pool.items)).To(Equal(1))
 		ptr2 := reflect.ValueOf(prt.pool.items[0].value).Pointer()
 		active := len(prt.active)
-		prt.mu.Unlock()
+		prt.activeMu.Unlock()
 
 		Expect(ptr2).To(Equal(ptr1))
 		Expect(active).To(Equal(0))
