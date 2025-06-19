@@ -62,6 +62,9 @@ service HttpService {
   rpc Post(HttpRequest) returns (HttpResponse);
   rpc Put(HttpRequest) returns (HttpResponse);
   rpc Delete(HttpRequest) returns (HttpResponse);
+  rpc Patch(HttpRequest) returns (HttpResponse);
+  rpc Head(HttpRequest) returns (HttpResponse);
+  rpc Options(HttpRequest) returns (HttpResponse);
 }
 ```
 
@@ -69,11 +72,11 @@ service HttpService {
 
 ```protobuf
 service ConfigService {
-    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+    rpc GetPluginConfig(GetPluginConfigRequest) returns (GetPluginConfigResponse);
 }
 ```
 
-The ConfigService allows plugins to access Navidrome's configuration. See the [config.proto](host/config/config.proto) file for the full API.
+The ConfigService allows plugins to access plugin-specific configuration. See the [config.proto](host/config/config.proto) file for the full API.
 
 #### ArtworkService
 
@@ -220,6 +223,75 @@ service SchedulerCallback {
 
 The `IsRecurring` field in the request allows plugins to differentiate between one-time and recurring callbacks.
 
+#### WebSocketService
+
+The WebSocketService enables plugins to connect to and interact with WebSocket endpoints. See the [websocket.proto](host/websocket/websocket.proto) file for the full API.
+
+```protobuf
+service WebSocketService {
+  // Connect to a WebSocket endpoint
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
+
+  // Send a text message
+  rpc SendText(SendTextRequest) returns (SendTextResponse);
+
+  // Send binary data
+  rpc SendBinary(SendBinaryRequest) returns (SendBinaryResponse);
+
+  // Close a connection
+  rpc Close(CloseRequest) returns (CloseResponse);
+}
+```
+
+- **Connect**: Establish a WebSocket connection to a specified URL with optional headers
+- **SendText**: Send text messages over an established connection
+- **SendBinary**: Send binary data over an established connection
+- **Close**: Close a WebSocket connection with optional close code and reason
+
+Plugins using this service must implement the `WebSocketCallback` interface to handle incoming messages and connection events:
+
+```protobuf
+service WebSocketCallback {
+  rpc OnTextMessage(OnTextMessageRequest) returns (OnTextMessageResponse);
+  rpc OnBinaryMessage(OnBinaryMessageRequest) returns (OnBinaryMessageResponse);
+  rpc OnError(OnErrorRequest) returns (OnErrorResponse);
+  rpc OnClose(OnCloseRequest) returns (OnCloseResponse);
+}
+```
+
+Example usage:
+
+```go
+// Connect to a WebSocket server
+connectResp, err := websocket.Connect(ctx, &websocket.ConnectRequest{
+    Url:          "wss://example.com/ws",
+    Headers:      map[string]string{"Authorization": "Bearer token"},
+    ConnectionId: "my-connection-id",
+})
+if err != nil {
+    return err
+}
+
+// Send a text message
+_, err = websocket.SendText(ctx, &websocket.SendTextRequest{
+    ConnectionId: "my-connection-id",
+    Message:      "Hello WebSocket",
+})
+
+// Send binary data
+_, err = websocket.SendBinary(ctx, &websocket.SendBinaryRequest{
+    ConnectionId: "my-connection-id",
+    Data:         []byte{0x01, 0x02, 0x03},
+})
+
+// Close the connection when done
+_, err = websocket.Close(ctx, &websocket.CloseRequest{
+    ConnectionId: "my-connection-id",
+    Code:         1000, // Normal closure
+    Reason:       "Done",
+})
+```
+
 ## Plugin Permission System
 
 Navidrome implements a permission-based security system that controls which host services plugins can access. This system enforces security at load-time by only making authorized services available to plugins in their WebAssembly runtime environment.
@@ -283,14 +355,14 @@ If no permissions are needed, use an empty permissions object: `"permissions": {
 
 The following permission keys correspond to host services:
 
-| Permission  | Host Service     | Description                                 | Required Fields         |
-| ----------- | ---------------- | ------------------------------------------- | ----------------------- |
-| `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE) | `reason`, `allowedUrls` |
-| `websocket` | WebSocketService | Connect to and communicate via WebSockets   | `reason`, `allowedUrls` |
-| `cache`     | CacheService     | Store and retrieve cached data with TTL     | `reason`                |
-| `config`    | ConfigService    | Access Navidrome configuration values       | `reason`                |
-| `scheduler` | SchedulerService | Schedule one-time and recurring tasks       | `reason`                |
-| `artwork`   | ArtworkService   | Generate public URLs for artwork images     | `reason`                |
+| Permission  | Host Service     | Description                                        | Required Fields         |
+|-------------|------------------|----------------------------------------------------|-------------------------|
+| `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls` |
+| `websocket` | WebSocketService | Connect to and communicate via WebSockets          | `reason`, `allowedUrls` |
+| `cache`     | CacheService     | Store and retrieve cached data with TTL            | `reason`                |
+| `config`    | ConfigService    | Access Navidrome configuration values              | `reason`                |
+| `scheduler` | SchedulerService | Schedule one-time and recurring tasks              | `reason`                |
+| `artwork`   | ArtworkService   | Generate public URLs for artwork images            | `reason`                |
 
 #### HTTP Permission Structure
 
@@ -898,6 +970,124 @@ Currently supported capabilities:
 2. Your plugin must implement at least one of the capability interfaces defined in `api.proto`
 3. Your plugin must be placed in its own directory with a proper `manifest.json`
 
+### Plugin Registration Functions
+
+The plugin API provides several registration functions that plugins can call during initialization to register capabilities and obtain host services. These functions should typically be called in your plugin's `init()` function.
+
+#### Standard Registration Functions
+
+```go
+func RegisterMetadataAgent(agent MetadataAgent)
+func RegisterScrobbler(scrobbler Scrobbler)
+func RegisterSchedulerCallback(callback SchedulerCallback)
+func RegisterLifecycleManagement(lifecycle LifecycleManagement)
+func RegisterWebSocketCallback(callback WebSocketCallback)
+```
+
+These functions register plugins for the standard capability interfaces:
+
+- **RegisterMetadataAgent**: Register a plugin that provides artist/album metadata and images
+- **RegisterScrobbler**: Register a plugin that handles scrobbling to external services
+- **RegisterSchedulerCallback**: Register a plugin that handles scheduled callbacks (single callback per plugin)
+- **RegisterLifecycleManagement**: Register a plugin that handles initialization and configuration
+- **RegisterWebSocketCallback**: Register a plugin that handles WebSocket events
+
+**Basic Usage Example:**
+
+```go
+type MyPlugin struct {
+    // plugin implementation
+}
+
+func init() {
+    plugin := &MyPlugin{}
+
+    // Register capabilities your plugin implements
+    api.RegisterScrobbler(plugin)
+    api.RegisterLifecycleManagement(plugin)
+}
+```
+
+#### RegisterNamedSchedulerCallback
+
+```go
+func RegisterNamedSchedulerCallback(name string, cb SchedulerCallback) scheduler.SchedulerService
+```
+
+This function registers a named scheduler callback and returns a scheduler service instance. Named callbacks allow a single plugin to register multiple scheduler callbacks for different purposes, each with its own identifier.
+
+**Parameters:**
+
+- `name` (string): A unique identifier for this scheduler callback within the plugin. This name is used to route scheduled events to the correct callback handler.
+- `cb` (SchedulerCallback): An object that implements the `SchedulerCallback` interface
+
+**Returns:**
+
+- `scheduler.SchedulerService`: A scheduler service instance that can be used to schedule one-time or recurring tasks for this specific callback
+
+**Usage Example** (from Discord Rich Presence plugin):
+
+```go
+func init() {
+    // Register multiple named scheduler callbacks for different purposes
+    plugin.sched = api.RegisterNamedSchedulerCallback("close-activity", plugin)
+    plugin.rpc.sched = api.RegisterNamedSchedulerCallback("heartbeat", plugin.rpc)
+}
+
+// The plugin implements SchedulerCallback to handle "close-activity" events
+func (d *DiscordRPPlugin) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
+    log.Printf("Removing presence for user %s", req.ScheduleId)
+    // Handle close-activity scheduling events
+    return nil, d.rpc.clearActivity(ctx, req.ScheduleId)
+}
+
+// The rpc component implements SchedulerCallback to handle "heartbeat" events
+func (r *discordRPC) OnSchedulerCallback(ctx context.Context, req *api.SchedulerCallbackRequest) (*api.SchedulerCallbackResponse, error) {
+    // Handle heartbeat scheduling events
+    return nil, r.sendHeartbeat(ctx, req.ScheduleId)
+}
+
+// Use the returned scheduler service to schedule tasks
+func (d *DiscordRPPlugin) NowPlaying(ctx context.Context, request *api.ScrobblerNowPlayingRequest) (*api.ScrobblerNowPlayingResponse, error) {
+    // Schedule a one-time callback to clear activity when track ends
+    _, err = d.sched.ScheduleOneTime(ctx, &scheduler.ScheduleOneTimeRequest{
+        ScheduleId:   request.Username,
+        DelaySeconds: request.Track.Length - request.Track.Position + 5,
+    })
+    return nil, err
+}
+
+func (r *discordRPC) connect(ctx context.Context, username string, token string) error {
+    // Schedule recurring heartbeats for Discord connection
+    _, err := r.sched.ScheduleRecurring(ctx, &scheduler.ScheduleRecurringRequest{
+        CronExpression: "@every 41s",
+        ScheduleId:     username,
+    })
+    return err
+}
+```
+
+**Key Benefits:**
+
+- **Multiple Schedulers**: A single plugin can have multiple named scheduler callbacks for different purposes (e.g., "heartbeat", "cleanup", "refresh")
+- **Isolated Scheduling**: Each named callback gets its own scheduler service, allowing independent scheduling management
+- **Clear Separation**: Different callback handlers can be implemented on different objects within your plugin
+- **Flexible Routing**: The scheduler automatically routes callbacks to the correct handler based on the registration name
+
+**Important Notes:**
+
+- The `name` parameter must be unique within your plugin, but can be the same across different plugins
+- The returned scheduler service is specifically tied to the named callback you registered
+- Scheduled events will call the `OnSchedulerCallback` method on the object you provided during registration
+- You must implement the `SchedulerCallback` interface on the object you register
+
+#### RegisterSchedulerCallback vs RegisterNamedSchedulerCallback
+
+- **Use `RegisterSchedulerCallback`** when your plugin only needs a single scheduler callback
+- **Use `RegisterNamedSchedulerCallback`** when your plugin needs multiple scheduler callbacks for different purposes (like the Discord plugin's "heartbeat" and "close-activity" callbacks)
+
+The named version allows better organization and separation of concerns when you have complex scheduling requirements.
+
 ### Capability Interfaces
 
 #### Metadata Agent
@@ -966,18 +1156,18 @@ service WebSocketCallback {
 Plugins can use the WebSocket host service to connect to WebSocket endpoints, send messages, and handle responses:
 
 ```go
+// Define a connection ID first
+connectionID := "my-connection-id"
+
 // Connect to a WebSocket server
 connectResp, err := websocket.Connect(ctx, &websocket.ConnectRequest{
-    Url:        "wss://example.com/ws",
-    Headers:    map[string]string{"Authorization": "Bearer token"},
+    Url:          "wss://example.com/ws",
+    Headers:      map[string]string{"Authorization": "Bearer token"},
     ConnectionId: connectionID,
 })
 if err != nil {
     return err
 }
-
-// Store the connection ID for later use
-connectionID := "mu-connection-id"
 
 // Send a text message
 _, err = websocket.SendText(ctx, &websocket.SendTextRequest{
