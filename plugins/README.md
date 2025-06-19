@@ -356,7 +356,7 @@ If no permissions are needed, use an empty permissions object: `"permissions": {
 The following permission keys correspond to host services:
 
 | Permission  | Host Service     | Description                                        | Required Fields         |
-|-------------|------------------|----------------------------------------------------|-------------------------|
+| ----------- | ---------------- | -------------------------------------------------- | ----------------------- |
 | `http`      | HttpService      | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls` |
 | `websocket` | WebSocketService | Connect to and communicate via WebSockets          | `reason`, `allowedUrls` |
 | `cache`     | CacheService     | Store and retrieve cached data with TTL            | `reason`                |
@@ -1494,6 +1494,22 @@ The plugin system implements a compilation cache to improve performance:
 3. The cache has a automatic cleanup mechanism to remove old modules.
    - when the cache folder exceeds `Plugins.CacheSize` (default 100MB),
      the oldest modules are removed
+
+### WASM Loading Optimization
+
+To improve performance during plugin instance creation, the system implements an optimization that avoids repeated file reads and compilation:
+
+1. **Precompilation**: During plugin discovery, WASM files are read and compiled in the background, with both the MD5 hash of the file bytes and compiled modules cached in memory.
+
+2. **Optimized Runtime**: After precompilation completes, plugins use an `optimizedRuntime` wrapper that overrides `CompileModule` to detect when the same WASM bytes are being compiled by comparing MD5 hashes.
+
+3. **Cache Hit**: When the generated plugin code calls `os.ReadFile()` and `CompileModule()`, the optimization calculates the MD5 hash of the incoming bytes and compares it with the cached hash. If they match, it returns the pre-compiled module directly.
+
+4. **Performance Benefit**: This eliminates repeated compilation while using minimal memory (16 bytes per plugin for the MD5 hash vs potentially MB of WASM bytes), significantly improving plugin instance creation speed while maintaining full compatibility with the generated API code.
+
+5. **Memory Efficiency**: By storing only MD5 hashes instead of full WASM bytes, the optimization scales efficiently regardless of plugin size or count.
+
+The optimization is transparent to plugin developers and automatically activates when plugins are successfully precompiled.
 
 ## Best Practices
 

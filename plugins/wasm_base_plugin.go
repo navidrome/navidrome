@@ -44,6 +44,7 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 	instanceID := getInstanceID(inst)
 	log.Trace(ctx, "wasmBasePlugin: loaded instance", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))
 	return inst, func() {
+		log.Trace(ctx, "wasmBasePlugin: finished using instance", "plugin", w.serviceName(), "instanceID", instanceID, "method", methodName, "elapsed", time.Since(start))
 		if closer, ok := any(inst).(interface{ Close(context.Context) error }); ok {
 			_ = closer.Close(ctx)
 		}

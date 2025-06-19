@@ -124,6 +124,26 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 	go func() {
 		precompilePlugin(state, customRuntime, wasmPath, pluginID)
 
+		// After precompilation, update to use optimized runtime if successful
+		if state.err == nil && state.compiledModule != nil {
+			optimizedRuntime := m.createOptimizedRuntime(pluginID, manifest.Permissions, state)
+			pluginInfo.Runtime = optimizedRuntime
+
+			// Recreate adapters with the optimized runtime
+			m.mu.Lock()
+			for _, capability := range manifest.Capabilities {
+				capabilityStr := string(capability)
+				constructor := pluginCreators[capabilityStr]
+				if constructor != nil {
+					adapter := constructor(wasmPath, pluginID, optimizedRuntime, mc)
+					m.adapters[pluginID+"_"+capabilityStr] = adapter
+				}
+			}
+			m.mu.Unlock()
+
+			log.Debug("Plugin updated to use optimized runtime", "plugin", pluginID)
+		}
+
 		// Check if this plugin implements InitService and hasn't been initialized yet
 		m.initializePluginIfNeeded(pluginInfo)
 	}()

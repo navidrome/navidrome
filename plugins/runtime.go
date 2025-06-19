@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -213,8 +214,10 @@ func purgeCacheBySize(dir, maxSize string) {
 }
 
 type pluginState struct {
-	ready chan struct{}
-	err   error
+	ready          chan struct{}
+	err            error
+	wasmHash       [16]byte              // MD5 hash of WASM file bytes
+	compiledModule wazero.CompiledModule // Cached compiled module
 }
 
 // getCompilationCache returns the global compilation cache, creating it if necessary
@@ -259,11 +262,14 @@ func precompilePlugin(state *pluginState, customRuntime api.WazeroNewRuntime, wa
 		close(state.ready)
 		return
 	}
-	if _, err := r.CompileModule(ctx, b); err != nil {
+	compiledModule, err := r.CompileModule(ctx, b)
+	if err != nil {
 		state.err = fmt.Errorf("failed to compile WASM for plugin %s: %w", name, err)
 		log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "err", err)
 	} else {
 		state.err = nil
+		state.wasmHash = md5.Sum(b)
+		state.compiledModule = compiledModule
 		log.Debug("Plugin compilation completed", "name", name, "path", wasmPath)
 	}
 	close(state.ready)
@@ -412,4 +418,68 @@ func (r *pooledRuntime) Close(ctx context.Context) error {
 
 func (r *pooledRuntime) CloseWithExitCode(ctx context.Context, code uint32) error {
 	return r.Close(ctx)
+}
+
+// optimizedRuntime wraps a wazero.Runtime and caches compiled modules to avoid
+// repeated file reads and compilation for the same WASM bytes.
+type optimizedRuntime struct {
+	wazero.Runtime
+	pluginID     string
+	cachedHash   [16]byte // MD5 hash of cached WASM bytes
+	cachedModule wazero.CompiledModule
+}
+
+func newOptimizedRuntime(underlying wazero.Runtime, pluginID string, wasmHash [16]byte, compiledModule wazero.CompiledModule) *optimizedRuntime {
+	return &optimizedRuntime{
+		Runtime:      underlying,
+		pluginID:     pluginID,
+		cachedHash:   wasmHash,
+		cachedModule: compiledModule,
+	}
+}
+
+// CompileModule checks if the provided bytes match our cached hash and returns
+// the cached compiled module if so, avoiding both file read and compilation.
+func (r *optimizedRuntime) CompileModule(ctx context.Context, wasmBytes []byte) (wazero.CompiledModule, error) {
+	// Calculate hash of incoming bytes
+	incomingHash := md5.Sum(wasmBytes)
+
+	// If the hash matches our cached hash, return the cached compiled module
+	if r.cachedModule != nil && incomingHash == r.cachedHash {
+		log.Trace(ctx, "optimizedRuntime: using cached compiled module", "plugin", r.pluginID)
+		return r.cachedModule, nil
+	}
+
+	// Fall back to normal compilation for different bytes
+	log.Trace(ctx, "optimizedRuntime: hash doesn't match cache, compiling normally", "plugin", r.pluginID)
+	return r.Runtime.CompileModule(ctx, wasmBytes)
+}
+
+// createOptimizedRuntime creates a new runtime function that uses cached WASM hash and compiled modules
+// when available, falling back to normal runtime creation otherwise.
+func (m *Manager) createOptimizedRuntime(pluginID string, permissions schema.PluginManifestPermissions, state *pluginState) api.WazeroNewRuntime {
+	baseRuntimeFunc := m.createCustomRuntime(pluginID, permissions)
+
+	return func(ctx context.Context) (wazero.Runtime, error) {
+		// Wait for precompilation to complete if it's still in progress
+		select {
+		case <-state.ready:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+
+		// If precompilation succeeded and we have cached data, create optimized runtime
+		if state.err == nil && state.compiledModule != nil {
+			baseRuntime, err := baseRuntimeFunc(ctx)
+			if err != nil {
+				return nil, err
+			}
+			log.Trace(ctx, "Creating optimized runtime with cached data", "plugin", pluginID)
+			return newOptimizedRuntime(baseRuntime, pluginID, state.wasmHash, state.compiledModule), nil
+		}
+
+		// Fall back to normal runtime if no cached data available
+		log.Trace(ctx, "Creating normal runtime (no cached data)", "plugin", pluginID)
+		return baseRuntimeFunc(ctx)
+	}
 }
