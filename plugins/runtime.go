@@ -213,11 +213,6 @@ func purgeCacheBySize(dir, maxSize string) {
 	}
 }
 
-type pluginState struct {
-	ready chan struct{}
-	err   error
-}
-
 // getCompilationCache returns the global compilation cache, creating it if necessary
 func getCompilationCache() (wazero.CompilationCache, error) {
 	var err error
@@ -243,51 +238,35 @@ func pluginCompilationTimeout() time.Duration {
 }
 
 // precompilePlugin compiles the WASM module in the background and updates the pluginState.
-func precompilePlugin(state *pluginState, runtimeFactory api.WazeroNewRuntime, wasmPath, name string) {
+func precompilePlugin(p *plugin) {
 	compileSemaphore <- struct{}{}
 	defer func() { <-compileSemaphore }()
 	ctx := context.Background()
-	r, err := runtimeFactory(ctx)
+	r, err := p.Runtime(ctx)
 	if err != nil {
-		state.err = fmt.Errorf("failed to create runtime for plugin %s: %w", name, err)
-		close(state.ready)
+		p.compilationErr = fmt.Errorf("failed to create runtime for plugin %s: %w", p.ID, err)
+		close(p.compilationReady)
 		return
 	}
 
-	b, err := os.ReadFile(wasmPath)
+	b, err := os.ReadFile(p.WasmPath)
 	if err != nil {
-		state.err = fmt.Errorf("failed to read wasm file: %w", err)
-		close(state.ready)
+		p.compilationErr = fmt.Errorf("failed to read wasm file: %w", err)
+		close(p.compilationReady)
 		return
 	}
 
 	cr := r.(*cachingRuntime)
 	compiledModule, err := cr.Runtime.CompileModule(ctx, b)
 	if err != nil {
-		state.err = fmt.Errorf("failed to compile WASM for plugin %s: %w", name, err)
-		log.Warn("Plugin compilation failed", "name", name, "path", wasmPath, "err", err)
+		p.compilationErr = fmt.Errorf("failed to compile WASM for plugin %s: %w", p.ID, err)
+		log.Warn("Plugin compilation failed", "name", p.ID, "path", p.WasmPath, "err", err)
 	} else {
-		state.err = nil
+		p.compilationErr = nil
 		cr.setCachedModule(compiledModule, md5.Sum(b))
-		log.Debug("Plugin compilation completed", "name", name, "path", wasmPath)
+		log.Debug("Plugin compilation completed", "name", p.ID, "path", p.WasmPath)
 	}
-	close(state.ready)
-}
-
-// waitForPluginReady blocks until the plugin is compiled and returns true if ready, false otherwise.
-func waitForPluginReady(state *pluginState, pluginID, wasmPath string) bool {
-	timeout := pluginCompilationTimeout()
-	select {
-	case <-state.ready:
-	case <-time.After(timeout):
-		log.Error("Timed out waiting for plugin compilation", "name", pluginID, "path", wasmPath, "timeout", timeout)
-		return false
-	}
-	if state.err != nil {
-		log.Error("Failed to compile plugin", "name", pluginID, "path", wasmPath, state.err)
-		return false
-	}
-	return true
+	close(p.compilationReady)
 }
 
 // loadHostLibrary loads the given host library and returns its exported functions

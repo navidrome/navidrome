@@ -29,35 +29,35 @@ func newPluginLifecycleManager() *pluginLifecycleManager {
 }
 
 // isInitialized checks if a plugin has been initialized
-func (m *pluginLifecycleManager) isInitialized(info *pluginInfo) bool {
+func (m *pluginLifecycleManager) isInitialized(plugin *plugin) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.plugins[info.ID+consts.Zwsp+info.Manifest.Version]
+	return m.plugins[plugin.ID+consts.Zwsp+plugin.Manifest.Version]
 }
 
 // markInitialized marks a plugin as initialized
-func (m *pluginLifecycleManager) markInitialized(info *pluginInfo) {
+func (m *pluginLifecycleManager) markInitialized(plugin *plugin) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.plugins[info.ID+consts.Zwsp+info.Manifest.Version] = true
+	m.plugins[plugin.ID+consts.Zwsp+plugin.Manifest.Version] = true
 }
 
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
-func (m *pluginLifecycleManager) callOnInit(info *pluginInfo) {
+func (m *pluginLifecycleManager) callOnInit(plugin *plugin) {
 	ctx := context.Background()
-	log.Debug("Initializing plugin", "name", info.ID)
+	log.Debug("Initializing plugin", "name", plugin.ID)
 	start := time.Now()
 
 	// Create LifecycleManagement plugin instance
-	loader, err := api.NewLifecycleManagementPlugin(ctx, api.WazeroRuntime(info.Runtime), api.WazeroModuleConfig(info.ModConfig))
+	loader, err := api.NewLifecycleManagementPlugin(ctx, api.WazeroRuntime(plugin.Runtime), api.WazeroModuleConfig(plugin.ModConfig))
 	if loader == nil || err != nil {
-		log.Error("Error creating LifecycleManagement plugin", "plugin", info.ID, err)
+		log.Error("Error creating LifecycleManagement plugin", "plugin", plugin.ID, err)
 		return
 	}
 
-	initPlugin, err := loader.Load(ctx, info.WasmPath)
+	initPlugin, err := loader.Load(ctx, plugin.WasmPath)
 	if err != nil {
-		log.Error("Error loading LifecycleManagement plugin", "plugin", info.ID, "path", info.WasmPath, err)
+		log.Error("Error loading LifecycleManagement plugin", "plugin", plugin.ID, "path", plugin.WasmPath, err)
 		return
 	}
 	defer initPlugin.Close(ctx)
@@ -67,23 +67,23 @@ func (m *pluginLifecycleManager) callOnInit(info *pluginInfo) {
 
 	// Add plugin configuration if available
 	if m.config != nil {
-		if pluginConfig, ok := m.config[info.ID]; ok && len(pluginConfig) > 0 {
+		if pluginConfig, ok := m.config[plugin.ID]; ok && len(pluginConfig) > 0 {
 			req.Config = maps.Clone(pluginConfig)
-			log.Debug("Passing configuration to plugin", "plugin", info.ID, "configKeys", len(pluginConfig))
+			log.Debug("Passing configuration to plugin", "plugin", plugin.ID, "configKeys", len(pluginConfig))
 		}
 	}
 
 	// Call OnInit
 	resp, err := initPlugin.OnInit(ctx, req)
 	if err != nil {
-		log.Error("Error initializing plugin", "plugin", info.ID, "elapsed", time.Since(start), err)
+		log.Error("Error initializing plugin", "plugin", plugin.ID, "elapsed", time.Since(start), err)
 		return
 	}
 
 	if resp.Error != "" {
-		log.Error("Plugin reported error during initialization", "plugin", info.ID, "error", resp.Error)
+		log.Error("Plugin reported error during initialization", "plugin", plugin.ID, "error", resp.Error)
 		return
 	}
 
-	log.Debug("Plugin initialized successfully", "plugin", info.ID, "elapsed", time.Since(start))
+	log.Debug("Plugin initialized successfully", "plugin", plugin.ID, "elapsed", time.Since(start))
 }

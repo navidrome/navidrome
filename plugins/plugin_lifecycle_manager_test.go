@@ -8,9 +8,9 @@ import (
 )
 
 // Helper function to check if a plugin implements LifecycleManagement
-func hasInitService(info *pluginInfo) bool {
-	for _, s := range info.Capabilities {
-		if s == CapabilityLifecycleManagement {
+func hasInitService(info *plugin) bool {
+	for _, c := range info.Capabilities {
+		if c == CapabilityLifecycleManagement {
 			return true
 		}
 	}
@@ -27,7 +27,7 @@ var _ = Describe("LifecycleManagement", func() {
 
 		It("should track initialization state of plugins", func() {
 			// Create test plugins
-			plugin1 := &pluginInfo{
+			plugin1 := &plugin{
 				ID:           "test-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &schema.PluginManifest{
@@ -35,7 +35,7 @@ var _ = Describe("LifecycleManagement", func() {
 				},
 			}
 
-			plugin2 := &pluginInfo{
+			plugin2 := &plugin{
 				ID:           "another-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &schema.PluginManifest{
@@ -63,7 +63,7 @@ var _ = Describe("LifecycleManagement", func() {
 		})
 
 		It("should handle plugins with same name but different versions", func() {
-			plugin1 := &pluginInfo{
+			plugin1 := &plugin{
 				ID:           "test-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &schema.PluginManifest{
@@ -71,7 +71,7 @@ var _ = Describe("LifecycleManagement", func() {
 				},
 			}
 
-			plugin2 := &pluginInfo{
+			plugin2 := &plugin{
 				ID:           "test-plugin", // Same name
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &schema.PluginManifest{
@@ -103,7 +103,7 @@ var _ = Describe("LifecycleManagement", func() {
 
 		It("should only consider plugins that implement LifecycleManagement", func() {
 			// Plugin that implements LifecycleManagement
-			initPlugin := &pluginInfo{
+			initPlugin := &plugin{
 				ID:           "init-plugin",
 				Capabilities: []string{CapabilityLifecycleManagement},
 				Manifest: &schema.PluginManifest{
@@ -112,7 +112,7 @@ var _ = Describe("LifecycleManagement", func() {
 			}
 
 			// Plugin that doesn't implement LifecycleManagement
-			regularPlugin := &pluginInfo{
+			regularPlugin := &plugin{
 				ID:           "regular-plugin",
 				Capabilities: []string{"MetadataAgent"},
 				Manifest: &schema.PluginManifest{
@@ -126,7 +126,7 @@ var _ = Describe("LifecycleManagement", func() {
 		})
 
 		It("should properly construct the plugin key", func() {
-			plugin := &pluginInfo{
+			plugin := &plugin{
 				ID: "test-plugin",
 				Manifest: &schema.PluginManifest{
 					Version: "1.0.0",
