@@ -294,6 +294,21 @@ func (m *Manager) LoadPlugin(name string, capability string) WasmPlugin {
 	return adapter
 }
 
+// EnsureCompiled waits for a plugin to finish compilation and returns any compilation error.
+// This is useful when you need to wait for compilation without loading a specific capability,
+// such as during plugin refresh operations or health checks.
+func (m *Manager) EnsureCompiled(name string) error {
+	m.mu.RLock()
+	plugin, ok := m.plugins[name]
+	m.mu.RUnlock()
+
+	if !ok {
+		return fmt.Errorf("plugin not found: %s", name)
+	}
+
+	return plugin.waitForCompilation()
+}
+
 // LoadAllPlugins instantiates and returns all plugins that implement the specified capability
 func (m *Manager) LoadAllPlugins(capability string) []WasmPlugin {
 	names := m.PluginNames(capability)

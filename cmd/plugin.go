@@ -554,10 +554,9 @@ func pluginRefresh(cmd *cobra.Command, args []string) {
 
 	log.Info("Waiting for plugin compilation to complete", "name", pluginName)
 
-	// Load the plugin to wait for compilation to complete
-	plugin := mgr.LoadPlugin(pluginName, "")
-	if plugin == nil {
-		log.Fatal("Failed to load refreshed plugin - compilation may have failed", "name", pluginName)
+	// Wait for compilation to complete
+	if err := mgr.EnsureCompiled(pluginName); err != nil {
+		log.Fatal("Failed to compile refreshed plugin", "name", pluginName, err)
 	}
 
 	log.Info("Plugin compilation completed successfully", "name", pluginName)

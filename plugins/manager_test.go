@@ -169,6 +169,28 @@ var _ = Describe("Plugin Manager", func() {
 		})
 	})
 
+	Describe("EnsureCompiled", func() {
+		It("should successfully wait for plugin compilation", func() {
+			err := mgr.EnsureCompiled("fake_artist_agent")
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error for non-existent plugin", func() {
+			err := mgr.EnsureCompiled("non-existent-plugin")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("plugin not found: non-existent-plugin"))
+		})
+
+		It("should wait for compilation to complete for all valid plugins", func() {
+			pluginNames := []string{"fake_artist_agent", "fake_album_agent", "multi_plugin", "fake_scrobbler"}
+
+			for _, name := range pluginNames {
+				err := mgr.EnsureCompiled(name)
+				Expect(err).NotTo(HaveOccurred(), "plugin %s should compile successfully", name)
+			}
+		})
+	})
+
 	Describe("Invoke Methods", func() {
 		It("should load all MetadataAgent plugins and invoke methods", func() {
 			mediaAgentNames := mgr.PluginNames("MetadataAgent")
