@@ -96,8 +96,10 @@ var _ = Describe("LifecycleManagement", func() {
 			// Verify the keys used for tracking
 			key1 := plugin1.ID + consts.Zwsp + plugin1.Manifest.Version
 			key2 := plugin1.ID + consts.Zwsp + plugin2.Manifest.Version
-			Expect(lifecycleManager.plugins).To(HaveKey(key1))
-			Expect(lifecycleManager.plugins).To(HaveKey(key2))
+			_, exists1 := lifecycleManager.plugins.Load(key1)
+			_, exists2 := lifecycleManager.plugins.Load(key2)
+			Expect(exists1).To(BeTrue())
+			Expect(exists2).To(BeTrue())
 			Expect(key1).NotTo(Equal(key2))
 		})
 

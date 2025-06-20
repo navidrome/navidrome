@@ -14,8 +14,7 @@ import (
 
 // pluginLifecycleManager tracks which plugins have been initialized and manages their lifecycle
 type pluginLifecycleManager struct {
-	plugins map[string]bool
-	mu      sync.RWMutex
+	plugins sync.Map // string -> bool
 	config  map[string]map[string]string
 }
 
@@ -23,23 +22,21 @@ type pluginLifecycleManager struct {
 func newPluginLifecycleManager() *pluginLifecycleManager {
 	config := maps.Clone(conf.Server.PluginConfig)
 	return &pluginLifecycleManager{
-		plugins: make(map[string]bool),
-		config:  config,
+		config: config,
 	}
 }
 
 // isInitialized checks if a plugin has been initialized
 func (m *pluginLifecycleManager) isInitialized(plugin *plugin) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.plugins[plugin.ID+consts.Zwsp+plugin.Manifest.Version]
+	key := plugin.ID + consts.Zwsp + plugin.Manifest.Version
+	value, exists := m.plugins.Load(key)
+	return exists && value.(bool)
 }
 
 // markInitialized marks a plugin as initialized
 func (m *pluginLifecycleManager) markInitialized(plugin *plugin) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.plugins[plugin.ID+consts.Zwsp+plugin.Manifest.Version] = true
+	key := plugin.ID + consts.Zwsp + plugin.Manifest.Version
+	m.plugins.Store(key, true)
 }
 
 // callOnInit calls the OnInit method on a plugin that implements LifecycleManagement
