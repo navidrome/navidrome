@@ -73,23 +73,17 @@ var _ = Describe("CachingRuntime", func() {
 		val, ok := runtimePool.Load("fake_scrobbler")
 		Expect(ok).To(BeTrue())
 		prt = val.(*cachingRuntime)
-		prt.activeMu.Lock()
 		Expect(len(prt.pool.items)).To(Equal(1))
 		ptr1 := reflect.ValueOf(prt.pool.items[0].value).Pointer()
-		prt.activeMu.Unlock()
 
 		_, done, err = plugin.getInstance(ctx, "second")
 		Expect(err).ToNot(HaveOccurred())
 		done()
 
-		prt.activeMu.Lock()
 		Expect(len(prt.pool.items)).To(Equal(1))
 		ptr2 := reflect.ValueOf(prt.pool.items[0].value).Pointer()
-		active := len(prt.active)
-		prt.activeMu.Unlock()
 
 		Expect(ptr2).To(Equal(ptr1))
-		Expect(active).To(Equal(0))
 	})
 })
 

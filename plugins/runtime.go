@@ -44,96 +44,112 @@ func (m *Manager) createRuntime(pluginID string, permissions schema.PluginManife
 		// Check if runtime already exists
 		if rt, ok := runtimePool.Load(pluginID); ok {
 			log.Trace(ctx, "Using existing runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", rt))
-			return rt.(wazero.Runtime), nil
+			// Return a new wrapper for each call, so each instance gets its own module capture
+			return newScopedRuntime(rt.(wazero.Runtime)), nil
 		}
 
-		// Get compilation cache
-		compCache, err := getCompilationCache()
+		// Create new runtime with all the setup
+		cachingRT, err := m.createCachingRuntime(ctx, pluginID, permissions)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get compilation cache: %w", err)
-		}
-
-		// Create the runtime
-		runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(compCache)
-		r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
-		if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
 			return nil, err
 		}
-
-		// Define all available host services
-		type hostService struct {
-			name        string
-			isPermitted bool
-			loadFunc    func() (map[string]wazeroapi.FunctionDefinition, error)
-		}
-
-		// List of all available host services with their permissions and loading functions. For each service, we check
-		// if the plugin has the required permission before loading it.
-		availableServices := []hostService{
-			{"config", permissions.Config != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginID: pluginID})
-			}},
-			{"scheduler", permissions.Scheduler != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginID))
-			}},
-			{"cache", permissions.Cache != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginID))
-			}},
-			{"artwork", permissions.Artwork != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-				return loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
-			}},
-			{"http", permissions.Http != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-				httpPerms, err := parseHTTPPermissions(permissions.Http)
-				if err != nil {
-					return nil, fmt.Errorf("invalid http permissions for plugin %s: %w", pluginID, err)
-				}
-				return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{
-					pluginID:    pluginID,
-					permissions: httpPerms,
-				})
-			}},
-			{"websocket", permissions.Websocket != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-				wsPerms, err := parseWebSocketPermissions(permissions.Websocket)
-				if err != nil {
-					return nil, fmt.Errorf("invalid websocket permissions for plugin %s: %w", pluginID, err)
-				}
-				return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
-			}},
-		}
-
-		// Load only permitted services
-		var grantedPermissions []string
-		var libraries []map[string]wazeroapi.FunctionDefinition
-		for _, service := range availableServices {
-			if service.isPermitted {
-				lib, err := service.loadFunc()
-				if err != nil {
-					return nil, fmt.Errorf("error loading %s lib: %w", service.name, err)
-				}
-				libraries = append(libraries, lib)
-				grantedPermissions = append(grantedPermissions, service.name)
-			}
-		}
-		log.Trace(ctx, "Granting permissions for plugin", "plugin", pluginID, "permissions", grantedPermissions)
-
-		// Combine the permitted libraries
-		if err := combineLibraries(ctx, r, libraries...); err != nil {
-			return nil, err
-		}
-
-		cached := newCachingRuntime(r, pluginID)
 
 		// Use LoadOrStore to atomically check and store, preventing race conditions
-		if existing, loaded := runtimePool.LoadOrStore(pluginID, cached); loaded {
+		if existing, loaded := runtimePool.LoadOrStore(pluginID, cachingRT); loaded {
 			// Another goroutine created the runtime first, close ours and return the existing one
 			log.Trace(ctx, "Race condition detected, using existing runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", existing))
-			_ = r.Close(ctx)
-			return existing.(wazero.Runtime), nil
+			_ = cachingRT.Close(ctx)
+			return newScopedRuntime(existing.(wazero.Runtime)), nil
 		}
-		log.Trace(ctx, "Created new runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", cached))
 
-		return cached, nil
+		log.Trace(ctx, "Created new runtime", "plugin", pluginID, "runtime", fmt.Sprintf("%p", cachingRT))
+		return newScopedRuntime(cachingRT), nil
 	}
+}
+
+// createCachingRuntime handles the complex logic of setting up a new cachingRuntime
+func (m *Manager) createCachingRuntime(ctx context.Context, pluginID string, permissions schema.PluginManifestPermissions) (*cachingRuntime, error) {
+	// Get compilation cache
+	compCache, err := getCompilationCache()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get compilation cache: %w", err)
+	}
+
+	// Create the runtime
+	runtimeConfig := wazero.NewRuntimeConfig().WithCompilationCache(compCache)
+	r := wazero.NewRuntimeWithConfig(ctx, runtimeConfig)
+	if _, err := wasi_snapshot_preview1.Instantiate(ctx, r); err != nil {
+		return nil, err
+	}
+
+	// Setup host services
+	if err := m.setupHostServices(ctx, r, pluginID, permissions); err != nil {
+		_ = r.Close(ctx)
+		return nil, err
+	}
+
+	return newCachingRuntime(r, pluginID), nil
+}
+
+// setupHostServices configures all the permitted host services for a plugin
+func (m *Manager) setupHostServices(ctx context.Context, r wazero.Runtime, pluginID string, permissions schema.PluginManifestPermissions) error {
+	// Define all available host services
+	type hostService struct {
+		name        string
+		isPermitted bool
+		loadFunc    func() (map[string]wazeroapi.FunctionDefinition, error)
+	}
+
+	// List of all available host services with their permissions and loading functions
+	availableServices := []hostService{
+		{"config", permissions.Config != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			return loadHostLibrary[config.ConfigService](ctx, config.Instantiate, &configServiceImpl{pluginID: pluginID})
+		}},
+		{"scheduler", permissions.Scheduler != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			return loadHostLibrary[scheduler.SchedulerService](ctx, scheduler.Instantiate, m.schedulerService.HostFunctions(pluginID))
+		}},
+		{"cache", permissions.Cache != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			return loadHostLibrary[cache.CacheService](ctx, cache.Instantiate, newCacheService(pluginID))
+		}},
+		{"artwork", permissions.Artwork != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			return loadHostLibrary[artwork.ArtworkService](ctx, artwork.Instantiate, &artworkServiceImpl{})
+		}},
+		{"http", permissions.Http != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			httpPerms, err := parseHTTPPermissions(permissions.Http)
+			if err != nil {
+				return nil, fmt.Errorf("invalid http permissions for plugin %s: %w", pluginID, err)
+			}
+			return loadHostLibrary[http.HttpService](ctx, http.Instantiate, &httpServiceImpl{
+				pluginID:    pluginID,
+				permissions: httpPerms,
+			})
+		}},
+		{"websocket", permissions.Websocket != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			wsPerms, err := parseWebSocketPermissions(permissions.Websocket)
+			if err != nil {
+				return nil, fmt.Errorf("invalid websocket permissions for plugin %s: %w", pluginID, err)
+			}
+			return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
+		}},
+	}
+
+	// Load only permitted services
+	var grantedPermissions []string
+	var libraries []map[string]wazeroapi.FunctionDefinition
+	for _, service := range availableServices {
+		if service.isPermitted {
+			lib, err := service.loadFunc()
+			if err != nil {
+				return fmt.Errorf("error loading %s lib: %w", service.name, err)
+			}
+			libraries = append(libraries, lib)
+			grantedPermissions = append(grantedPermissions, service.name)
+		}
+	}
+	log.Trace(ctx, "Granting permissions for plugin", "plugin", pluginID, "permissions", grantedPermissions)
+
+	// Combine the permitted libraries
+	return combineLibraries(ctx, r, libraries...)
 }
 
 // purgeCacheBySize removes the oldest files in dir until its total size is
@@ -256,14 +272,22 @@ func precompilePlugin(p *plugin) {
 		return
 	}
 
-	cr := r.(*cachingRuntime)
-	compiledModule, err := cr.Runtime.CompileModule(ctx, b)
+	// We know r is always a *scopedRuntime from createRuntime
+	scopedRT := r.(*scopedRuntime)
+	cachingRT := scopedRT.GetCachingRuntime()
+	if cachingRT == nil {
+		p.compilationErr = fmt.Errorf("failed to get cachingRuntime for plugin %s", p.ID)
+		close(p.compilationReady)
+		return
+	}
+
+	compiledModule, err := cachingRT.Runtime.CompileModule(ctx, b)
 	if err != nil {
 		p.compilationErr = fmt.Errorf("failed to compile WASM for plugin %s: %w", p.ID, err)
 		log.Warn("Plugin compilation failed", "name", p.ID, "path", p.WasmPath, "err", err)
 	} else {
 		p.compilationErr = nil
-		cr.setCachedModule(compiledModule, md5.Sum(b))
+		cachingRT.setCachedModule(compiledModule, b)
 		log.Debug("Plugin compilation completed", "name", p.ID, "path", p.WasmPath)
 	}
 	close(p.compilationReady)
@@ -312,64 +336,110 @@ func combineLibraries(ctx context.Context, r wazero.Runtime, libs ...map[string]
 
 // Instance pool configuration
 const (
-	defaultMaxInstances = 0
+	defaultMaxInstances = 8
 	defaultInstanceTTL  = time.Minute
 )
 
 // pooledModule wraps a wazero Module and returns it to the pool when closed.
 type pooledModule struct {
 	wazeroapi.Module
-	pool *wasmInstancePool[wazeroapi.Module]
+	pool   *wasmInstancePool[wazeroapi.Module]
+	closed bool
 }
 
 func (m *pooledModule) Close(ctx context.Context) error {
-	m.pool.Put(ctx, m.Module)
+	if !m.closed {
+		m.closed = true
+		m.pool.Put(ctx, m.Module)
+	}
 	return nil
 }
 
 func (m *pooledModule) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
-	m.pool.Put(ctx, m.Module)
-	return nil
+	return m.Close(ctx)
 }
 
 func (m *pooledModule) IsClosed() bool {
-	return false
+	return m.closed
+}
+
+// newScopedRuntime creates a new scopedRuntime that wraps the given runtime
+func newScopedRuntime(runtime wazero.Runtime) *scopedRuntime {
+	return &scopedRuntime{Runtime: runtime}
+}
+
+// scopedRuntime wraps a cachingRuntime and captures a specific module
+// so that Close() only affects that module, not the entire shared runtime
+type scopedRuntime struct {
+	wazero.Runtime
+	capturedModule wazeroapi.Module
+}
+
+func (w *scopedRuntime) InstantiateModule(ctx context.Context, code wazero.CompiledModule, config wazero.ModuleConfig) (wazeroapi.Module, error) {
+	module, err := w.Runtime.InstantiateModule(ctx, code, config)
+	if err != nil {
+		return nil, err
+	}
+	// Capture the module for later cleanup
+	w.capturedModule = module
+	log.Trace(ctx, "scopedRuntime: captured module", "moduleID", getInstanceID(module))
+	return module, nil
+}
+
+func (w *scopedRuntime) Close(ctx context.Context) error {
+	// Close only the captured module, not the entire runtime
+	if w.capturedModule != nil {
+		log.Trace(ctx, "scopedRuntime: closing captured module", "moduleID", getInstanceID(w.capturedModule))
+		return w.capturedModule.Close(ctx)
+	}
+	log.Trace(ctx, "scopedRuntime: no captured module to close")
+	return nil
+}
+
+func (w *scopedRuntime) CloseWithExitCode(ctx context.Context, exitCode uint32) error {
+	return w.Close(ctx)
+}
+
+// GetCachingRuntime returns the underlying cachingRuntime for internal use
+func (w *scopedRuntime) GetCachingRuntime() *cachingRuntime {
+	if cr, ok := w.Runtime.(*cachingRuntime); ok {
+		return cr
+	}
+	return nil
 }
 
 // cachingRuntime wraps wazero.Runtime and pools module instances per plugin,
 // while also caching the compiled module in memory.
 type cachingRuntime struct {
 	wazero.Runtime
-	pluginID     string
-	maxInstances int
-	ttl          time.Duration
 
-	// module instance pool
-	poolOnce sync.Once
-	pool     *wasmInstancePool[wazeroapi.Module]
+	// pluginID is required to differentiate between different plugins that use the same file to initialize their
+	// runtime. The runtime will serve as a singleton for all instances of a given plugin.
+	pluginID string
 
-	// compiled module cache
-	cacheMu      sync.RWMutex
-	cachedModule wazero.CompiledModule
-	cachedHash   [16]byte
+	// compiledModule caches the compiled module to avoid re-compilation
+	// Protected by cacheMu
+	cacheMu        sync.RWMutex
+	compiledModule wazero.CompiledModule
+	cachedHash     [16]byte
 
-	// active instances
-	activeMu sync.Mutex
-	active   []wazeroapi.Module
+	// pool manages reusable module instances
+	pool *wasmInstancePool[wazeroapi.Module]
+
+	// poolInitOnce ensures the pool is initialized only once
+	poolInitOnce sync.Once
 }
 
-func newCachingRuntime(r wazero.Runtime, pluginID string) *cachingRuntime {
+func newCachingRuntime(runtime wazero.Runtime, pluginID string) *cachingRuntime {
 	return &cachingRuntime{
-		Runtime:      r,
-		pluginID:     pluginID,
-		maxInstances: defaultMaxInstances,
-		ttl:          defaultInstanceTTL,
+		Runtime:  runtime,
+		pluginID: pluginID,
 	}
 }
 
 func (r *cachingRuntime) initPool(code wazero.CompiledModule, config wazero.ModuleConfig) {
-	r.poolOnce.Do(func() {
-		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginID, r.maxInstances, r.ttl, func(ctx context.Context) (wazeroapi.Module, error) {
+	r.poolInitOnce.Do(func() {
+		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginID, defaultMaxInstances, defaultInstanceTTL, func(ctx context.Context) (wazeroapi.Module, error) {
 			log.Trace(ctx, "cachingRuntime: creating new module instance", "plugin", r.pluginID)
 			return r.Runtime.InstantiateModule(ctx, code, config)
 		})
@@ -380,40 +450,28 @@ func (r *cachingRuntime) InstantiateModule(ctx context.Context, code wazero.Comp
 	r.initPool(code, config)
 	mod, err := r.pool.Get(ctx)
 	if err != nil {
-		log.Warn(ctx, "cachingRuntime: failed to get module from pool", "plugin", r.pluginID, "error", err)
 		return nil, err
 	}
 	wrapped := &pooledModule{Module: mod, pool: r.pool}
 	log.Trace(ctx, "cachingRuntime: created wrapper for module", "plugin", r.pluginID, "underlyingModuleID", fmt.Sprintf("%p", mod), "wrapperID", fmt.Sprintf("%p", wrapped))
-	r.activeMu.Lock()
-	r.active = append(r.active, wrapped)
-	r.activeMu.Unlock()
 	return wrapped, nil
 }
 
-// Close returns all active module instances to the pool without closing the runtime.
 func (r *cachingRuntime) Close(ctx context.Context) error {
-	r.activeMu.Lock()
-	mods := r.active
-	r.active = nil
-	r.activeMu.Unlock()
-
-	log.Trace(ctx, "cachingRuntime: closing runtime", "plugin", r.pluginID, "activeModules", len(mods))
-	for _, m := range mods {
-		_ = m.Close(ctx)
+	log.Trace(ctx, "cachingRuntime: closing runtime", "plugin", r.pluginID)
+	// Close the instance pool
+	if r.pool != nil {
+		r.pool.Close(ctx)
 	}
-	return nil
+	// Close the underlying runtime
+	return r.Runtime.Close(ctx)
 }
 
-func (r *cachingRuntime) CloseWithExitCode(ctx context.Context, code uint32) error {
-	return r.Close(ctx)
-}
-
-func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, hash [16]byte) {
+func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, wasmBytes []byte) {
 	r.cacheMu.Lock()
 	defer r.cacheMu.Unlock()
-	r.cachedModule = module
-	r.cachedHash = hash
+	r.compiledModule = module
+	r.cachedHash = md5.Sum(wasmBytes)
 }
 
 // CompileModule checks if the provided bytes match our cached hash and returns
@@ -421,15 +479,16 @@ func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, hash [16]
 func (r *cachingRuntime) CompileModule(ctx context.Context, wasmBytes []byte) (wazero.CompiledModule, error) {
 	incomingHash := md5.Sum(wasmBytes)
 
+	// Check cache with read lock
 	r.cacheMu.RLock()
-	mod := r.cachedModule
-	hash := r.cachedHash
+	cachedModule := r.compiledModule
+	cachedHash := r.cachedHash
 	r.cacheMu.RUnlock()
 
 	// If the hash matches our cached hash, return the cached compiled module
-	if mod != nil && incomingHash == hash {
+	if cachedModule != nil && incomingHash == cachedHash {
 		log.Trace(ctx, "cachingRuntime: using cached compiled module", "plugin", r.pluginID)
-		return mod, nil
+		return cachedModule, nil
 	}
 
 	// Fall back to normal compilation for different bytes
