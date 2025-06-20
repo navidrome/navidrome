@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -281,13 +282,12 @@ func precompilePlugin(p *plugin) {
 		return
 	}
 
-	compiledModule, err := cachingRT.Runtime.CompileModule(ctx, b)
+	_, err = cachingRT.CompileModule(ctx, b)
 	if err != nil {
 		p.compilationErr = fmt.Errorf("failed to compile WASM for plugin %s: %w", p.ID, err)
 		log.Warn("Plugin compilation failed", "name", p.ID, "path", p.WasmPath, "err", err)
 	} else {
 		p.compilationErr = nil
-		cachingRT.setCachedModule(compiledModule, b)
 		log.Debug("Plugin compilation completed", "name", p.ID, "path", p.WasmPath)
 	}
 	close(p.compilationReady)
@@ -334,11 +334,102 @@ func combineLibraries(ctx context.Context, r wazero.Runtime, libs ...map[string]
 	return nil
 }
 
-// Instance pool configuration
 const (
+	// WASM Instance pool configuration
+	// defaultMaxInstances is the maximum number of instances per plugin
 	defaultMaxInstances = 8
-	defaultInstanceTTL  = time.Minute
+	// defaultInstanceTTL is the time after which an instance is considered stale and can be evicted
+	defaultInstanceTTL = time.Minute
+
+	// Compiled module cache configuration
+	// defaultCompiledModuleTTL is the time after which a compiled module is evicted from the cache
+	defaultCompiledModuleTTL = 5 * time.Minute
 )
+
+// cachedCompiledModule encapsulates a compiled WebAssembly module with TTL management
+type cachedCompiledModule struct {
+	module     wazero.CompiledModule
+	hash       [16]byte
+	lastAccess time.Time
+	timer      *time.Timer
+	mu         sync.Mutex
+	pluginID   string // for logging purposes
+}
+
+// newCachedCompiledModule creates a new cached compiled module with TTL management
+func newCachedCompiledModule(module wazero.CompiledModule, wasmBytes []byte, pluginID string) *cachedCompiledModule {
+	c := &cachedCompiledModule{
+		module:     module,
+		hash:       md5.Sum(wasmBytes),
+		lastAccess: time.Now(),
+		pluginID:   pluginID,
+	}
+
+	// Set up the TTL timer
+	c.timer = time.AfterFunc(defaultCompiledModuleTTL, c.evict)
+
+	return c
+}
+
+// get returns the cached module if the hash matches, nil otherwise
+// Also resets the TTL timer on successful access
+func (c *cachedCompiledModule) get(wasmHash [16]byte) wazero.CompiledModule {
+	c.mu.Lock() // Use write lock because we modify state in resetTimer
+	defer c.mu.Unlock()
+
+	if c.module != nil && c.hash == wasmHash {
+		// Reset TTL timer on access
+		c.resetTimer()
+		return c.module
+	}
+
+	return nil
+}
+
+// resetTimer resets the TTL timer (must be called with lock held)
+func (c *cachedCompiledModule) resetTimer() {
+	c.lastAccess = time.Now()
+
+	if c.timer != nil {
+		c.timer.Stop()
+		c.timer = time.AfterFunc(defaultCompiledModuleTTL, c.evict)
+	}
+}
+
+// evict removes the cached module and cleans up resources
+func (c *cachedCompiledModule) evict() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.module != nil {
+		log.Trace("cachedCompiledModule: evicting due to TTL expiry", "plugin", c.pluginID, "ttl", defaultCompiledModuleTTL)
+		c.module.Close(context.Background())
+		c.module = nil
+		c.hash = [16]byte{}
+		c.lastAccess = time.Time{}
+	}
+
+	if c.timer != nil {
+		c.timer.Stop()
+		c.timer = nil
+	}
+}
+
+// close cleans up the cached module and stops the timer
+func (c *cachedCompiledModule) close(ctx context.Context) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.timer != nil {
+		c.timer.Stop()
+		c.timer = nil
+	}
+
+	if c.module != nil {
+		c.module.Close(ctx)
+		c.module = nil
+	}
+}
 
 // pooledModule wraps a wazero Module and returns it to the pool when closed.
 type pooledModule struct {
@@ -417,11 +508,8 @@ type cachingRuntime struct {
 	// runtime. The runtime will serve as a singleton for all instances of a given plugin.
 	pluginID string
 
-	// compiledModule caches the compiled module to avoid re-compilation
-	// Protected by cacheMu
-	cacheMu        sync.RWMutex
-	compiledModule wazero.CompiledModule
-	cachedHash     [16]byte
+	// cachedModule manages the compiled module cache with TTL
+	cachedModule atomic.Pointer[cachedCompiledModule]
 
 	// pool manages reusable module instances
 	pool *wasmInstancePool[wazeroapi.Module]
@@ -459,6 +547,12 @@ func (r *cachingRuntime) InstantiateModule(ctx context.Context, code wazero.Comp
 
 func (r *cachingRuntime) Close(ctx context.Context) error {
 	log.Trace(ctx, "cachingRuntime: closing runtime", "plugin", r.pluginID)
+
+	// Clean up compiled module cache
+	if cached := r.cachedModule.Swap(nil); cached != nil {
+		cached.close(ctx)
+	}
+
 	// Close the instance pool
 	if r.pool != nil {
 		r.pool.Close(ctx)
@@ -467,11 +561,14 @@ func (r *cachingRuntime) Close(ctx context.Context) error {
 	return r.Runtime.Close(ctx)
 }
 
+// setCachedModule stores a newly compiled module in the cache with TTL management
 func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, wasmBytes []byte) {
-	r.cacheMu.Lock()
-	defer r.cacheMu.Unlock()
-	r.compiledModule = module
-	r.cachedHash = md5.Sum(wasmBytes)
+	newCached := newCachedCompiledModule(module, wasmBytes, r.pluginID)
+
+	// Replace old cached module and clean it up
+	if old := r.cachedModule.Swap(newCached); old != nil {
+		old.close(context.Background())
+	}
 }
 
 // CompileModule checks if the provided bytes match our cached hash and returns
@@ -479,19 +576,23 @@ func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, wasmBytes
 func (r *cachingRuntime) CompileModule(ctx context.Context, wasmBytes []byte) (wazero.CompiledModule, error) {
 	incomingHash := md5.Sum(wasmBytes)
 
-	// Check cache with read lock
-	r.cacheMu.RLock()
-	cachedModule := r.compiledModule
-	cachedHash := r.cachedHash
-	r.cacheMu.RUnlock()
-
-	// If the hash matches our cached hash, return the cached compiled module
-	if cachedModule != nil && incomingHash == cachedHash {
-		log.Trace(ctx, "cachingRuntime: using cached compiled module", "plugin", r.pluginID)
-		return cachedModule, nil
+	// Try to get from cache
+	if cached := r.cachedModule.Load(); cached != nil {
+		if module := cached.get(incomingHash); module != nil {
+			log.Trace(ctx, "cachingRuntime: using cached compiled module", "plugin", r.pluginID)
+			return module, nil
+		}
 	}
 
 	// Fall back to normal compilation for different bytes
 	log.Trace(ctx, "cachingRuntime: hash doesn't match cache, compiling normally", "plugin", r.pluginID)
-	return r.Runtime.CompileModule(ctx, wasmBytes)
+	module, err := r.Runtime.CompileModule(ctx, wasmBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the newly compiled module
+	r.setCachedModule(module, wasmBytes)
+
+	return module, nil
 }
