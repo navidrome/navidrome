@@ -76,15 +76,28 @@ type identifyProperties struct {
 }
 
 func (r *discordRPC) processImage(ctx context.Context, imageURL string, clientID string, token string) (string, error) {
+	return r.processImageWithFallback(ctx, imageURL, clientID, token, false)
+}
+
+func (r *discordRPC) processImageWithFallback(ctx context.Context, imageURL string, clientID string, token string, isDefaultImage bool) (string, error) {
+	// Check if context is canceled
+	if err := ctx.Err(); err != nil {
+		return "", fmt.Errorf("context canceled: %w", err)
+	}
+
 	if imageURL == "" {
-		return r.processImage(ctx, defaultImage, clientID, token)
+		if isDefaultImage {
+			// We're already processing the default image and it's empty, return error
+			return "", fmt.Errorf("default image URL is empty")
+		}
+		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
 	}
 
 	if strings.HasPrefix(imageURL, "mp:") {
 		return imageURL, nil
 	}
 
-	resp, err := r.web.Post(ctx, &http.HttpRequest{
+	resp, _ := r.web.Post(ctx, &http.HttpRequest{
 		Url: fmt.Sprintf("https://discord.com/api/v9/applications/%s/external-assets", clientID),
 		Headers: map[string]string{
 			"Authorization": token,
@@ -92,20 +105,52 @@ func (r *discordRPC) processImage(ctx context.Context, imageURL string, clientID
 		},
 		Body: fmt.Appendf(nil, `{"urls":[%q]}`, imageURL),
 	})
-	if err != nil || resp.Error != "" {
-		return r.processImage(ctx, defaultImage, clientID, token)
+
+	// Handle HTTP error responses
+	if resp.Status >= 400 {
+		if isDefaultImage {
+			return "", fmt.Errorf("failed to process default image: HTTP %d %s", resp.Status, resp.Error)
+		}
+		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
+	}
+	if resp.Error != "" {
+		if isDefaultImage {
+			// If we're already processing the default image and it fails, return error
+			return "", fmt.Errorf("failed to process default image: %s", resp.Error)
+		}
+		// Try with default image
+		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
 	}
 
 	var data []map[string]string
 	if err := json.Unmarshal(resp.Body, &data); err != nil {
-		return r.processImage(ctx, defaultImage, clientID, token)
+		if isDefaultImage {
+			// If we're already processing the default image and it fails, return error
+			return "", fmt.Errorf("failed to unmarshal default image response: %w", err)
+		}
+		// Try with default image
+		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
 	}
 
 	if len(data) == 0 {
-		return r.processImage(ctx, defaultImage, clientID, token)
+		if isDefaultImage {
+			// If we're already processing the default image and it fails, return error
+			return "", fmt.Errorf("no data returned for default image")
+		}
+		// Try with default image
+		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
 	}
 
 	image := data[0]["external_asset_path"]
+	if image == "" {
+		if isDefaultImage {
+			// If we're already processing the default image and it fails, return error
+			return "", fmt.Errorf("empty external_asset_path for default image")
+		}
+		// Try with default image
+		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
+	}
+
 	return fmt.Sprintf("mp:%s", image), nil
 }
 
@@ -114,8 +159,9 @@ func (r *discordRPC) sendActivity(ctx context.Context, clientID, username, token
 
 	processedImage, err := r.processImage(ctx, data.Assets.LargeImage, clientID, token)
 	if err != nil {
-		log.Printf("Failed to process image: %v", err)
-		// Continue without the image if processing fails
+		log.Printf("Failed to process image for user %s, continuing without image: %v", username, err)
+		// Clear the image and continue without it
+		data.Assets.LargeImage = ""
 	} else {
 		data.Assets.LargeImage = processedImage
 	}
