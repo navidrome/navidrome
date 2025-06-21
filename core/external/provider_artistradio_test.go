@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-var _ = Describe("Provider - SimilarSongs", func() {
+var _ = Describe("Provider - ArtistRadio", func() {
 	var ds model.DataStore
 	var provider Provider
 	var mockAgent *mockSimilarArtistAgent
@@ -85,7 +85,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song3}, nil).Once()
 
-		songs, err := provider.SimilarSongs(ctx, "artist-1", 3)
+		songs, err := provider.ArtistRadio(ctx, "artist-1", 3)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(3))
@@ -102,7 +102,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			return opt.Max == 1 && opt.Filters != nil
 		})).Return(model.Artists{}, nil).Maybe()
 
-		songs, err := provider.SimilarSongs(ctx, "artist-unknown-artist", 5)
+		songs, err := provider.ArtistRadio(ctx, "artist-unknown-artist", 5)
 
 		Expect(err).To(Equal(model.ErrNotFound))
 		Expect(songs).To(BeNil())
@@ -131,7 +131,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1}, nil).Once()
 
-		songs, err := provider.SimilarSongs(ctx, "artist-1", 5)
+		songs, err := provider.ArtistRadio(ctx, "artist-1", 5)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
@@ -156,7 +156,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist One", "", mock.Anything).
 			Return(nil, errors.New("error getting top songs")).Once()
 
-		songs, err := provider.SimilarSongs(ctx, "artist-1", 5)
+		songs, err := provider.ArtistRadio(ctx, "artist-1", 5)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(BeEmpty())
@@ -187,7 +187,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 
 		mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{song1, song2}, nil).Once()
 
-		songs, err := provider.SimilarSongs(ctx, "artist-1", 1)
+		songs, err := provider.ArtistRadio(ctx, "artist-1", 1)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(songs).To(HaveLen(1))
