@@ -1,0 +1,9 @@
+{
+  "name": "fake_artist_agent",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "Test data for artist agent",
+  "website": "https://test.navidrome.org/fake-artist-agent",
+  "capabilities": ["MetadataAgent"],
+  "permissions": {}
+}

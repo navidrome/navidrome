@@ -1,0 +1,25 @@
+{
+  "name": "crypto-ticker",
+  "author": "Navidrome Plugin",
+  "version": "1.0.0",
+  "description": "A plugin that tracks crypto currency prices using Coinbase WebSocket API",
+  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/crypto-ticker",
+  "capabilities": [
+    "WebSocketCallback",
+    "LifecycleManagement",
+    "SchedulerCallback"
+  ],
+  "permissions": {
+    "config": {
+      "reason": "To read API configuration and WebSocket endpoint settings"
+    },
+    "scheduler": {
+      "reason": "To schedule periodic reconnection attempts and status updates"
+    },
+    "websocket": {
+      "reason": "To connect to Coinbase WebSocket API for real-time cryptocurrency prices",
+      "allowedUrls": ["wss://ws-feed.exchange.coinbase.com"],
+      "allowLocalNetwork": false
+    }
+  }
+}

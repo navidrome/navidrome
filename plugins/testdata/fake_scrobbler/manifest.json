@@ -1,0 +1,9 @@
+{
+  "name": "fake_scrobbler",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "Test data for scrobbler",
+  "website": "https://test.navidrome.org/fake-scrobbler",
+  "capabilities": ["Scrobbler"],
+  "permissions": {}
+}

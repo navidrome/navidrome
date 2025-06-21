@@ -104,7 +104,7 @@ type fakePlayTracker struct {
 	Error       error
 }
 
-func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string) error {
+func (f *fakePlayTracker) NowPlaying(_ context.Context, playerId string, _ string, trackId string, position int) error {
 	if f.Error != nil {
 		return f.Error
 	}

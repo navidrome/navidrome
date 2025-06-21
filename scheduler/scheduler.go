@@ -9,7 +9,8 @@ import (
 
 type Scheduler interface {
 	Run(ctx context.Context)
-	Add(crontab string, cmd func()) error
+	Add(crontab string, cmd func()) (int, error)
+	Remove(id int)
 }
 
 func GetInstance() Scheduler {
@@ -31,7 +32,14 @@ func (s *scheduler) Run(ctx context.Context) {
 	s.c.Stop()
 }
 
-func (s *scheduler) Add(crontab string, cmd func()) error {
-	_, err := s.c.AddFunc(crontab, cmd)
-	return err
+func (s *scheduler) Add(crontab string, cmd func()) (int, error) {
+	entryID, err := s.c.AddFunc(crontab, cmd)
+	if err != nil {
+		return 0, err
+	}
+	return int(entryID), nil
+}
+
+func (s *scheduler) Remove(id int) {
+	s.c.Remove(cron.EntryID(id))
 }
