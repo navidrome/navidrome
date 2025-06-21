@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"io"
 	"net/http"
@@ -15,6 +16,8 @@ type httpServiceImpl struct {
 	pluginID    string
 	permissions *httpPermissions
 }
+
+const defaultTimeout = 10 * time.Second
 
 func (s *httpServiceImpl) Get(ctx context.Context, req *hosthttp.HttpRequest) (*hosthttp.HttpResponse, error) {
 	return s.doHttp(ctx, http.MethodGet, req)
@@ -53,7 +56,7 @@ func (s *httpServiceImpl) doHttp(ctx context.Context, method string, req *hostht
 		}
 	}
 	client := &http.Client{
-		Timeout: time.Duration(req.TimeoutMs) * time.Millisecond,
+		Timeout: cmp.Or(time.Duration(req.TimeoutMs)*time.Millisecond, defaultTimeout),
 	}
 
 	// Configure redirect policy based on permissions
