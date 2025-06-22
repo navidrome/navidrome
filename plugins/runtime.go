@@ -336,10 +336,14 @@ func combineLibraries(ctx context.Context, r wazero.Runtime, libs ...map[string]
 
 const (
 	// WASM Instance pool configuration
-	// defaultMaxInstances is the maximum number of instances per plugin
-	defaultMaxInstances = 8
+	// defaultPoolSize is the maximum number of instances per plugin that are kept in the pool for reuse
+	defaultPoolSize = 8
 	// defaultInstanceTTL is the time after which an instance is considered stale and can be evicted
 	defaultInstanceTTL = time.Minute
+	// defaultMaxConcurrentInstances is the hard limit on total instances that can exist simultaneously
+	defaultMaxConcurrentInstances = 10
+	// defaultGetTimeout is the maximum time to wait when getting an instance if at the concurrent limit
+	defaultGetTimeout = 5 * time.Second
 
 	// Compiled module cache configuration
 	// defaultCompiledModuleTTL is the time after which a compiled module is evicted from the cache
@@ -527,7 +531,7 @@ func newCachingRuntime(runtime wazero.Runtime, pluginID string) *cachingRuntime 
 
 func (r *cachingRuntime) initPool(code wazero.CompiledModule, config wazero.ModuleConfig) {
 	r.poolInitOnce.Do(func() {
-		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginID, defaultMaxInstances, defaultInstanceTTL, func(ctx context.Context) (wazeroapi.Module, error) {
+		r.pool = newWasmInstancePool[wazeroapi.Module](r.pluginID, defaultPoolSize, defaultMaxConcurrentInstances, defaultGetTimeout, defaultInstanceTTL, func(ctx context.Context) (wazeroapi.Module, error) {
 			log.Trace(ctx, "cachingRuntime: creating new module instance", "plugin", r.pluginID)
 			return r.Runtime.InstantiateModule(ctx, code, config)
 		})
