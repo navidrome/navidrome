@@ -297,8 +297,8 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	var allTouchedArtistIDs []string
 	if allArtists {
 		// Refresh stats for all artists
-		touchedArtistsQuerySQL := `SELECT DISTINCT id FROM artist WHERE id <> ''`
-		if err := r.db.NewQuery(touchedArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
+		allArtistsQuerySQL := `SELECT DISTINCT id FROM artist WHERE id <> ''`
+		if err := r.db.NewQuery(allArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
 			return 0, fmt.Errorf("fetching all artist IDs: %w", err)
 		}
 		log.Debug(r.ctx, "RefreshStats: Refreshing all artists.", "count", len(allTouchedArtistIDs))
