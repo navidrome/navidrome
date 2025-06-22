@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/host/cache"
@@ -97,6 +98,14 @@ func (r *discordRPC) processImageWithFallback(ctx context.Context, imageURL stri
 		return imageURL, nil
 	}
 
+	// Check cache first
+	cacheKey := fmt.Sprintf("discord.image.%x", imageURL)
+	cacheResp, _ := r.mem.GetString(ctx, &cache.GetRequest{Key: cacheKey})
+	if cacheResp.Exists {
+		log.Printf("Cache hit for image URL: %s", imageURL)
+		return cacheResp.Value, nil
+	}
+
 	resp, _ := r.web.Post(ctx, &http.HttpRequest{
 		Url: fmt.Sprintf("https://discord.com/api/v9/applications/%s/external-assets", clientID),
 		Headers: map[string]string{
@@ -151,7 +160,23 @@ func (r *discordRPC) processImageWithFallback(ctx context.Context, imageURL stri
 		return r.processImageWithFallback(ctx, defaultImage, clientID, token, true)
 	}
 
-	return fmt.Sprintf("mp:%s", image), nil
+	processedImage := fmt.Sprintf("mp:%s", image)
+
+	// Cache the processed image URL
+	var ttl = 4 * time.Hour // 4 hours for regular images
+	if isDefaultImage {
+		ttl = 48 * time.Hour // 48 hours for default image
+	}
+
+	_, _ = r.mem.SetString(ctx, &cache.SetStringRequest{
+		Key:        cacheKey,
+		Value:      processedImage,
+		TtlSeconds: int64(ttl.Seconds()),
+	})
+
+	log.Printf("Cached processed image URL for %s (TTL: %s seconds)", imageURL, ttl)
+
+	return processedImage, nil
 }
 
 func (r *discordRPC) sendActivity(ctx context.Context, clientID, username, token string, data activity) error {
@@ -163,6 +188,7 @@ func (r *discordRPC) sendActivity(ctx context.Context, clientID, username, token
 		// Clear the image and continue without it
 		data.Assets.LargeImage = ""
 	} else {
+		log.Printf("Processed image for URL %s: %s", data.Assets.LargeImage, processedImage)
 		data.Assets.LargeImage = processedImage
 	}
 
