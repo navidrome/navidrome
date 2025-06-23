@@ -230,6 +230,11 @@ plugin-examples: check_go_env ##@Development Build all example plugins
 	$(MAKE) -C plugins/examples clean all
 .PHONY: plugin-examples
 
+plugin-clean: check_go_env ##@Development Clean all plugins
+	$(MAKE) -C plugins/examples clean
+	$(MAKE) -C plugins/testdata clean
+.PHONY: plugin-clean
+
 plugin-tests: check_go_env ##@Development Build all test plugins
 	$(MAKE) -C plugins/testdata clean all
 .PHONY: plugin-tests
