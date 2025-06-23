@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -158,7 +161,7 @@ func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ..
 func (r *libraryRepositoryWrapper) Delete(id string) error {
 	libID, err := strconv.Atoi(id)
 	if err != nil {
-		return rest.ValidationError{Errors: map[string]string{
+		return &rest.ValidationError{Errors: map[string]string{
 			"id": "invalid library ID format",
 		}}
 	}
@@ -181,41 +184,107 @@ func (r *libraryRepositoryWrapper) mapError(err error) error {
 }
 
 func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error {
-	errors := make(map[string]string)
+	validationErrors := make(map[string]string)
 
 	if library.Name == "" {
-		errors["name"] = "library name is required"
-	}
-
-	if library.Path == "" {
-		errors["path"] = "library path is required"
+		validationErrors["name"] = "library name is required"
 	} else {
-		// Validate path format
-		if !filepath.IsAbs(library.Path) {
-			errors["path"] = "library path must be absolute"
-		} else {
-			// Clean the path to normalize it
-			cleanPath := filepath.Clean(library.Path)
-			library.Path = cleanPath
-
-			// Check if path exists and is accessible
-			info, err := os.Stat(library.Path)
-			if err != nil {
-				if os.IsNotExist(err) {
-					errors["path"] = "library path does not exist"
-				} else if os.IsPermission(err) {
-					errors["path"] = "library path is not accessible"
-				} else {
-					errors["path"] = fmt.Sprintf("error accessing library path: %v", err)
+		// Check for name uniqueness
+		if err := r.validateLibraryNameUnique(library); err != nil {
+			var validationErr *rest.ValidationError
+			if errors.As(err, &validationErr) {
+				for k, v := range validationErr.Errors {
+					validationErrors[k] = v
 				}
-			} else if !info.IsDir() {
-				errors["path"] = "library path must be a directory"
+			} else {
+				// For non-validation errors (like database errors), return them immediately
+				return err
 			}
 		}
 	}
 
-	if len(errors) > 0 {
-		return rest.ValidationError{Errors: errors}
+	if library.Path == "" {
+		validationErrors["path"] = "library path is required"
+	} else {
+		if err := r.validateLibraryPath(library); err != nil {
+			validationErrors["path"] = err.Error()
+		}
+	}
+
+	if len(validationErrors) > 0 {
+		return &rest.ValidationError{Errors: validationErrors}
+	}
+
+	return nil
+}
+
+func (r *libraryRepositoryWrapper) validateLibraryNameUnique(library *model.Library) error {
+	// Get all libraries to check for name conflicts
+	allLibraries, err := r.LibraryRepository.GetAll()
+	if err != nil {
+		return err
+	}
+
+	// Check if any other library has the same name
+	for _, existingLib := range allLibraries {
+		if existingLib.Name == library.Name && existingLib.ID != library.ID {
+			return &rest.ValidationError{Errors: map[string]string{"name": "ra.validation.unique"}}
+		}
+	}
+
+	return nil
+}
+
+func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) error {
+	// Validate path format
+	if !filepath.IsAbs(library.Path) {
+		return fmt.Errorf("library path must be absolute")
+	}
+
+	// Clean the path to normalize it
+	cleanPath := filepath.Clean(library.Path)
+	library.Path = cleanPath
+
+	// Check if path exists and is accessible using storage abstraction
+	fileStore, err := storage.For(library.Path)
+	if err != nil {
+		return fmt.Errorf("invalid storage scheme: %w", err)
+	}
+
+	fsys, err := fileStore.FS()
+	if err != nil {
+		// Parse the error to provide user-friendly messages
+		errStr := err.Error()
+		if os.IsNotExist(err) ||
+			strings.Contains(errStr, "no such file or directory") ||
+			strings.Contains(errStr, "The system cannot find the path specified.") {
+			return fmt.Errorf("library path does not exist")
+		} else if os.IsPermission(err) {
+			return fmt.Errorf("library path is not accessible")
+		} else {
+			return fmt.Errorf("error accessing library storage: %w", err)
+		}
+	}
+
+	// Check if root directory exists
+	info, err := fs.Stat(fsys, ".")
+	if err != nil {
+		// Parse the error message to check for "not a directory"
+		errStr := err.Error()
+		if strings.Contains(errStr, "not a directory") ||
+			strings.Contains(errStr, "The directory name is invalid.") {
+			return fmt.Errorf("library path must be a directory")
+		} else if os.IsNotExist(err) {
+			return fmt.Errorf("library path does not exist")
+		} else if os.IsPermission(err) {
+			return fmt.Errorf("library path is not accessible")
+		} else {
+			return fmt.Errorf("error accessing library path: %w", err)
+		}
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("library path must be a directory")
 	}
 
 	return nil
