@@ -20,6 +20,7 @@ type wasmBasePlugin[S any, P any] struct {
 	capability string
 	loader     P
 	loadFunc   loaderFunc[S, P]
+	manager    *Manager // Reference to manager for compilation waiting
 }
 
 func (w *wasmBasePlugin[S, P]) PluginID() string {
@@ -39,6 +40,15 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 	start := time.Now()
 	// Add context metadata for tracing
 	ctx = log.NewContext(ctx, "capability", w.serviceName(), "method", methodName)
+
+	// Wait for plugin compilation to complete before trying to load instance
+	if w.manager != nil {
+		if err := w.manager.EnsureCompiled(w.id); err != nil {
+			var zero S
+			return zero, func() {}, fmt.Errorf("wasmBasePlugin: failed to wait for compilation of %s: %w", w.serviceName(), err)
+		}
+	}
+
 	inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
 	if err != nil {
 		var zero S

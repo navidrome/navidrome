@@ -60,6 +60,7 @@ var _ = Describe("CachingRuntime", func() {
 			"fake_scrobbler",
 			rtFunc,
 			wazero.NewModuleConfig().WithStartFunctions("_initialize"),
+			nil, // Pass nil manager since this test bypasses normal plugin registration
 		).(*wasmScrobblerPlugin)
 		// runtime will be created on first plugin load
 	})

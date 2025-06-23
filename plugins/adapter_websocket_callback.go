@@ -9,7 +9,7 @@ import (
 )
 
 // newWasmWebSocketCallback creates a new adapter for a WebSocketCallback plugin
-func newWasmWebSocketCallback(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+func newWasmWebSocketCallback(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig, manager *Manager) WasmPlugin {
 	loader, err := api.NewWebSocketCallbackPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating WebSocket callback plugin", "plugin", pluginID, "path", wasmPath, err)
@@ -21,6 +21,7 @@ func newWasmWebSocketCallback(wasmPath, pluginID string, runtime api.WazeroNewRu
 			id:         pluginID,
 			capability: CapabilityWebSocketCallback,
 			loader:     loader,
+			manager:    manager,
 			loadFunc: func(ctx context.Context, l *api.WebSocketCallbackPlugin, path string) (api.WebSocketCallback, error) {
 				return l.Load(ctx, path)
 			},

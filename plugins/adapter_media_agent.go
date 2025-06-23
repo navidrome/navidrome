@@ -10,7 +10,7 @@ import (
 )
 
 // NewWasmMediaAgent creates a new adapter for a MetadataAgent plugin
-func newWasmMediaAgent(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
+func newWasmMediaAgent(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig, manager *Manager) WasmPlugin {
 	loader, err := api.NewMetadataAgentPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating media metadata service plugin", "plugin", pluginID, "path", wasmPath, err)
@@ -22,6 +22,7 @@ func newWasmMediaAgent(wasmPath, pluginID string, runtime api.WazeroNewRuntime, 
 			id:         pluginID,
 			capability: CapabilityMetadataAgent,
 			loader:     loader,
+			manager:    manager,
 			loadFunc: func(ctx context.Context, l *api.MetadataAgentPlugin, path string) (api.MetadataAgent, error) {
 				return l.Load(ctx, path)
 			},
