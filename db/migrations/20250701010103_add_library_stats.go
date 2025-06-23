@@ -30,7 +30,7 @@ update library set
         join artist a on la.artist_id = a.id 
         where la.library_id = library.id and a.missing = 0
     ),
-    total_folders = (select count(*) from folder where library_id = library.id and missing = 0),
+    total_folders = (select count(*) from folder where library_id = library.id and missing = 0 and num_audio_files > 0),
     total_files = (
         select ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0)
         from folder where library_id = library.id and missing = 0
