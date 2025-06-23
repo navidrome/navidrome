@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import {
   Edit,
   SimpleForm,
@@ -10,6 +10,9 @@ import {
   DateField,
   FunctionField,
   useTranslate,
+  useMutation,
+  useNotify,
+  useRedirect,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { Divider, Typography } from '@material-ui/core'
@@ -83,11 +86,38 @@ const formatBytes = (bytes, decimals = 2) => {
 const LibraryEdit = (props) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const [mutate] = useMutation()
+  const notify = useNotify()
+  const redirect = useRedirect()
   const isFirstLibrary = props.id === '1'
+
+  const save = useCallback(
+    async (values) => {
+      try {
+        await mutate(
+          {
+            type: 'update',
+            resource: 'library',
+            payload: { id: props.id, data: values },
+          },
+          { returnPromise: true },
+        )
+        notify('resources.library.notifications.updated', 'info', {
+          smart_count: 1,
+        })
+        redirect('/library')
+      } catch (error) {
+        if (error.body && error.body.errors) {
+          return error.body.errors
+        }
+      }
+    },
+    [mutate, notify, redirect, props.id],
+  )
 
   return (
     <Edit title={<LibraryTitle />} undoable={false} {...props}>
-      <SimpleForm variant={'outlined'} toolbar={<LibraryToolbar />}>
+      <SimpleForm variant={'outlined'} toolbar={<LibraryToolbar />} save={save}>
         <TextInput source="name" validate={[required()]} />
         <TextInput source="path" validate={[required()]} fullWidth disabled={isFirstLibrary} />
 
@@ -175,3 +205,4 @@ const LibraryEdit = (props) => {
 }
 
 export default LibraryEdit
+ 
