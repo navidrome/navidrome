@@ -9,7 +9,7 @@ import (
 )
 
 // newWasmSchedulerCallback creates a new adapter for a SchedulerCallback plugin
-func newWasmSchedulerCallback(wasmPath, pluginName string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig, manager *Manager) WasmPlugin {
+func newWasmSchedulerCallback(wasmPath, pluginName string, manager *Manager, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin {
 	loader, err := api.NewSchedulerCallbackPlugin(context.Background(), api.WazeroRuntime(runtime), api.WazeroModuleConfig(mc))
 	if err != nil {
 		log.Error("Error creating scheduler callback plugin", "plugin", pluginName, "path", wasmPath, err)
