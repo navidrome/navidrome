@@ -82,7 +82,7 @@ type ArtistRepository interface {
 
 	// The following methods are used exclusively by the scanner:
 	RefreshPlayCounts() (int64, error)
-	RefreshStats() (int64, error)
+	RefreshStats(allArtists bool) (int64, error)
 
 	AnnotatedRepository
 	SearchableRepository[Artists]
