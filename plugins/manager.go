@@ -161,6 +161,10 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 			continue
 		}
 		adapter := constructor(wasmPath, pluginID, customRuntime, mc)
+		if adapter == nil {
+			log.Error("Failed to create plugin adapter", "plugin", pluginID, "capability", capabilityStr, "path", wasmPath)
+			continue
+		}
 		m.adapters[pluginID+"_"+capabilityStr] = adapter
 	}
 
