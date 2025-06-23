@@ -83,10 +83,12 @@ func (r *libraryRepository) Put(l *model.Library) error {
 
 	var err error
 	if l.ID == 0 {
+		// Insert with autoassigned ID
 		l.CreatedAt = time.Now()
 		l.UpdatedAt = time.Now()
 		err = r.db.Model(l).Insert()
 	} else {
+		// Try to update first
 		cols := map[string]any{
 			"name":        l.Name,
 			"path":        l.Path,
@@ -94,7 +96,17 @@ func (r *libraryRepository) Put(l *model.Library) error {
 			"updated_at":  time.Now(),
 		}
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
-		_, err = r.executeSQL(sq)
+		rowsAffected, updateErr := r.executeSQL(sq)
+		if updateErr != nil {
+			return updateErr
+		}
+
+		// If no rows were affected, the record doesn't exist, so insert it
+		if rowsAffected == 0 {
+			l.CreatedAt = time.Now()
+			l.UpdatedAt = time.Now()
+			err = r.db.Model(l).Insert()
+		}
 	}
 	if err != nil {
 		return err

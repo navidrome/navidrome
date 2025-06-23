@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/Masterminds/squirrel"
@@ -179,16 +181,41 @@ func (r *libraryRepositoryWrapper) mapError(err error) error {
 }
 
 func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error {
+	errors := make(map[string]string)
+
 	if library.Name == "" {
-		return rest.ValidationError{Errors: map[string]string{
-			"name": "library name is required",
-		}}
+		errors["name"] = "library name is required"
 	}
 
 	if library.Path == "" {
-		return rest.ValidationError{Errors: map[string]string{
-			"path": "library path is required",
-		}}
+		errors["path"] = "library path is required"
+	} else {
+		// Validate path format
+		if !filepath.IsAbs(library.Path) {
+			errors["path"] = "library path must be absolute"
+		} else {
+			// Clean the path to normalize it
+			cleanPath := filepath.Clean(library.Path)
+			library.Path = cleanPath
+
+			// Check if path exists and is accessible
+			info, err := os.Stat(library.Path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					errors["path"] = "library path does not exist"
+				} else if os.IsPermission(err) {
+					errors["path"] = "library path is not accessible"
+				} else {
+					errors["path"] = fmt.Sprintf("error accessing library path: %v", err)
+				}
+			} else if !info.IsDir() {
+				errors["path"] = "library path must be a directory"
+			}
+		}
+	}
+
+	if len(errors) > 0 {
+		return rest.ValidationError{Errors: errors}
 	}
 
 	return nil
