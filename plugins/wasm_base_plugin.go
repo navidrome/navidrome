@@ -39,6 +39,7 @@ func (w *wasmBasePlugin[S, P]) getInstance(ctx context.Context, methodName strin
 	start := time.Now()
 	// Add context metadata for tracing
 	ctx = log.NewContext(ctx, "capability", w.serviceName(), "method", methodName)
+
 	inst, err := w.loadFunc(ctx, w.loader, w.wasmPath)
 	if err != nil {
 		var zero S
