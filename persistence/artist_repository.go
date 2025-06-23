@@ -292,25 +292,34 @@ on conflict (user_id, item_id, item_type) do update
 }
 
 // RefreshStats updates the stats field for artists whose associated media files were updated after the oldest recorded library scan time.
-// It processes artists in batches to handle potentially large updates.
-func (r *artistRepository) RefreshStats() (int64, error) {
-	touchedArtistsQuerySQL := `
+// When allArtists is true, it refreshes stats for all artists. It processes artists in batches to handle potentially large updates.
+func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
+	var allTouchedArtistIDs []string
+	if allArtists {
+		// Refresh stats for all artists
+		allArtistsQuerySQL := `SELECT DISTINCT id FROM artist WHERE id <> ''`
+		if err := r.db.NewQuery(allArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
+			return 0, fmt.Errorf("fetching all artist IDs: %w", err)
+		}
+		log.Debug(r.ctx, "RefreshStats: Refreshing all artists.", "count", len(allTouchedArtistIDs))
+	} else {
+		// Only refresh artists with updated media files
+		touchedArtistsQuerySQL := `
         SELECT DISTINCT mfa.artist_id
         FROM media_file_artists mfa
         JOIN media_file mf ON mfa.media_file_id = mf.id
         WHERE mf.updated_at > (SELECT last_scan_at FROM library ORDER BY last_scan_at ASC LIMIT 1)
         `
-
-	var allTouchedArtistIDs []string
-	if err := r.db.NewQuery(touchedArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
-		return 0, fmt.Errorf("fetching touched artist IDs: %w", err)
+		if err := r.db.NewQuery(touchedArtistsQuerySQL).Column(&allTouchedArtistIDs); err != nil {
+			return 0, fmt.Errorf("fetching touched artist IDs: %w", err)
+		}
+		log.Debug(r.ctx, "RefreshStats: Refreshing touched artists.", "count", len(allTouchedArtistIDs))
 	}
 
 	if len(allTouchedArtistIDs) == 0 {
 		log.Debug(r.ctx, "RefreshStats: No artists to update.")
 		return 0, nil
 	}
-	log.Debug(r.ctx, "RefreshStats: Found artists to update.", "count", len(allTouchedArtistIDs))
 
 	// Template for the batch update with placeholder markers that we'll replace
 	batchUpdateStatsSQL := `

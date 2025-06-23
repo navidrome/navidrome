@@ -612,6 +612,56 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 		})
 	})
+
+	Describe("RefreshStats", func() {
+		var refreshStatsCalls []bool
+
+		BeforeEach(func() {
+			refreshStatsCalls = nil
+
+			// Create a mock artist repository that tracks RefreshStats calls
+			originalArtistRepo := ds.RealDS.Artist(ctx)
+			ds.MockedArtist = &testArtistRepo{
+				ArtistRepository: originalArtistRepo,
+				callTracker:      &refreshStatsCalls,
+			}
+
+			// Create a simple filesystem for testing
+			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+			createFS(fstest.MapFS{
+				"The Beatles/Revolver/01 - Taxman.mp3": revolver(track(1, "Taxman")),
+			})
+		})
+
+		It("should call RefreshStats with allArtists=true for full scans", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			Expect(refreshStatsCalls).To(HaveLen(1))
+			Expect(refreshStatsCalls[0]).To(BeTrue(), "RefreshStats should be called with allArtists=true for full scans")
+		})
+
+		It("should call RefreshStats with allArtists=false for incremental scans", func() {
+			// First do a full scan to set up the data
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Reset the tracker to only track the incremental scan
+			refreshStatsCalls = nil
+
+			// Add a new file to trigger changes detection
+			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+			fsys := createFS(fstest.MapFS{
+				"The Beatles/Revolver/01 - Taxman.mp3":        revolver(track(1, "Taxman")),
+				"The Beatles/Revolver/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
+			})
+			_ = fsys
+
+			// Do an incremental scan
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			Expect(refreshStatsCalls).To(HaveLen(1))
+			Expect(refreshStatsCalls[0]).To(BeFalse(), "RefreshStats should be called with allArtists=false for incremental scans")
+		})
+	})
 })
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {
@@ -637,4 +687,14 @@ func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCur
 		return nil, m.GetMissingAndMatchingError
 	}
 	return m.MediaFileRepository.GetMissingAndMatching(libId)
+}
+
+type testArtistRepo struct {
+	model.ArtistRepository
+	callTracker *[]bool
+}
+
+func (m *testArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+	*m.callTracker = append(*m.callTracker, allArtists)
+	return m.ArtistRepository.RefreshStats(allArtists)
 }
