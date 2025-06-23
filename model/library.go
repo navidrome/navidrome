@@ -5,23 +5,23 @@ import (
 )
 
 type Library struct {
-	ID                 int       `json:"id"`
-	Name               string    `json:"name"`
-	Path               string    `json:"path"`
-	RemotePath         string    `json:"remotePath"`
-	LastScanAt         time.Time `json:"lastScanAt"`
-	LastScanStartedAt  time.Time `json:"lastScanStartedAt"`
-	FullScanInProgress bool      `json:"fullScanInProgress"`
-	UpdatedAt          time.Time `json:"updatedAt"`
-	CreatedAt          time.Time `json:"createdAt"`
-	TotalSongs         int       `json:"totalSongs"`
-	TotalAlbums        int       `json:"totalAlbums"`
-	TotalArtists       int       `json:"totalArtists"`
-	TotalFolders       int       `json:"totalFolders"`
-	TotalFiles         int       `json:"totalFiles"`
-	TotalMissingFiles  int       `json:"totalMissingFiles"`
-	TotalSize          int64     `json:"totalSize"`
-	TotalDuration      int       `json:"totalDuration"`
+	ID                 int       `json:"id" db:"id"`
+	Name               string    `json:"name" db:"name"`
+	Path               string    `json:"path" db:"path"`
+	RemotePath         string    `json:"remotePath" db:"remote_path"`
+	LastScanAt         time.Time `json:"lastScanAt" db:"last_scan_at"`
+	LastScanStartedAt  time.Time `json:"lastScanStartedAt" db:"last_scan_started_at"`
+	FullScanInProgress bool      `json:"fullScanInProgress" db:"full_scan_in_progress"`
+	UpdatedAt          time.Time `json:"updatedAt" db:"updated_at"`
+	CreatedAt          time.Time `json:"createdAt" db:"created_at"`
+	TotalSongs         int       `json:"totalSongs" db:"total_songs"`
+	TotalAlbums        int       `json:"totalAlbums" db:"total_albums"`
+	TotalArtists       int       `json:"totalArtists" db:"total_artists"`
+	TotalFolders       int       `json:"totalFolders" db:"total_folders"`
+	TotalFiles         int       `json:"totalFiles" db:"total_files"`
+	TotalMissingFiles  int       `json:"totalMissingFiles" db:"total_missing_files"`
+	TotalSize          int64     `json:"totalSize" db:"total_size"`
+	TotalDuration      float64   `json:"totalDuration" db:"total_duration"`
 }
 
 type Libraries []Library
