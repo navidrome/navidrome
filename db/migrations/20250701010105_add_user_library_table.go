@@ -32,7 +32,7 @@ func upAddUserLibraryTable(ctx context.Context, tx *sql.Tx) error {
 		FROM user u;
 
 	-- Add total_duration column to library table
-		ALTER TABLE library ADD COLUMN total_duration INTEGER DEFAULT 0;
+		ALTER TABLE library ADD COLUMN total_duration real DEFAULT 0;
 		UPDATE library SET total_duration = (
 			SELECT IFNULL(SUM(duration),0) from album where album.library_id = library.id and missing = 0
 		);

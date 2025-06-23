@@ -263,6 +263,47 @@
       "notifications": {
         "removed": "Missing file(s) removed"
       }
+    },
+    "library": {
+      "name": "Library |||| Libraries",
+      "fields": {
+        "name": "Name",
+        "path": "Path",
+        "remotePath": "Remote Path",
+        "lastScanAt": "Last Scan",
+        "totalSongs": "Songs",
+        "totalAlbums": "Albums",
+        "totalArtists": "Artists",
+        "totalFolders": "Folders",
+        "totalFiles": "Files",
+        "totalMissingFiles": "Missing Files",
+        "totalSize": "Total Size",
+        "totalDuration": "Duration",
+        "createdAt": "Created",
+        "updatedAt": "Updated"
+      },
+      "actions": {
+        "scan": "Scan Library",
+        "manageUsers": "Manage User Access",
+        "viewDetails": "View Details"
+      },
+      "notifications": {
+        "created": "Library created successfully",
+        "updated": "Library updated successfully",
+        "deleted": "Library deleted successfully",
+        "scanStarted": "Library scan started",
+        "scanCompleted": "Library scan completed"
+      },
+      "validation": {
+        "nameRequired": "Library name is required",
+        "pathRequired": "Library path is required",
+        "pathInvalid": "Invalid library path"
+      },
+      "messages": {
+        "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
+        "scanInProgress": "Scan in progress...",
+        "noLibrariesAssigned": "No libraries assigned to this user"
+      }
     }
   },
   "ra": {

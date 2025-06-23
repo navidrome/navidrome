@@ -71,20 +71,31 @@ func (r *libraryRepository) GetPath(id int) (string, error) {
 }
 
 func (r *libraryRepository) Put(l *model.Library) error {
-	cols := map[string]any{
-		"name":        l.Name,
-		"path":        l.Path,
-		"remote_path": l.RemotePath,
-		"updated_at":  time.Now(),
-	}
-	if l.ID != 0 {
-		cols["id"] = l.ID
+	if l.ID == 1 {
+		currentLib, err := r.Get(1)
+		// if we are creating it, it's ok.
+		if err == nil { // it exists, so we are updating it
+			if currentLib.Path != l.Path {
+				return fmt.Errorf("%w: path for library with ID 1 cannot be changed", model.ErrValidation)
+			}
+		}
 	}
 
-	sq := Insert(r.tableName).SetMap(cols).
-		Suffix(`on conflict(id) do update set name = excluded.name, path = excluded.path, 
-					remote_path = excluded.remote_path, updated_at = excluded.updated_at`)
-	_, err := r.executeSQL(sq)
+	var err error
+	if l.ID == 0 {
+		l.CreatedAt = time.Now()
+		l.UpdatedAt = time.Now()
+		err = r.db.Model(l).Insert()
+	} else {
+		cols := map[string]any{
+			"name":        l.Name,
+			"path":        l.Path,
+			"remote_path": l.RemotePath,
+			"updated_at":  time.Now(),
+		}
+		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
+		_, err = r.executeSQL(sq)
+	}
 	if err != nil {
 		return err
 	}
@@ -167,7 +178,8 @@ func (r *libraryRepository) ScanInProgress() (bool, error) {
 
 func (r *libraryRepository) RefreshStats(id int) error {
 	var songsRes, albumsRes, artistsRes, foldersRes, filesRes, missingRes struct{ Count int64 }
-	var sizeRes, durationRes struct{ Sum int64 }
+	var sizeRes struct{ Sum int64 }
+	var durationRes struct{ Sum float64 }
 
 	err := run.Parallel(
 		func() error {
@@ -224,6 +236,9 @@ func (r *libraryRepository) RefreshStats(id int) error {
 func (r *libraryRepository) Delete(id int) error {
 	if !isAdmin(r.ctx) {
 		return model.ErrNotAuthorized
+	}
+	if id == 1 {
+		return fmt.Errorf("%w: library with ID 1 cannot be deleted", model.ErrValidation)
 	}
 
 	err := r.delete(Eq{"id": id})
