@@ -79,12 +79,12 @@ var _ = Describe("listenBrainzAgent", func() {
 		It("updates NowPlaying successfully", func() {
 			httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"status": "ok"}`)), StatusCode: 200}
 
-			err := agent.NowPlaying(ctx, "user-1", track)
+			err := agent.NowPlaying(ctx, "user-1", track, 0)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("returns ErrNotAuthorized if user is not linked", func() {
-			err := agent.NowPlaying(ctx, "user-2", track)
+			err := agent.NowPlaying(ctx, "user-2", track, 0)
 			Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
 		})
 	})

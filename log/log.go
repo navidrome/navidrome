@@ -203,6 +203,10 @@ func log(level Level, args ...interface{}) {
 	logger.Log(logrus.Level(level), msg)
 }
 
+func Writer() io.Writer {
+	return defaultLogger.Writer()
+}
+
 func shouldLog(requiredLevel Level, skip int) bool {
 	if currentLevel >= requiredLevel {
 		return true

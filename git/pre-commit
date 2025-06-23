@@ -12,7 +12,7 @@
 
 gofmtcmd="go tool goimports"
 
-gofiles=$(git diff --cached --name-only --diff-filter=ACM | grep '.go$' | grep -v '_gen.go$')
+gofiles=$(git diff --cached --name-only --diff-filter=ACM | grep '.go$' | grep -v '_gen.go$' | grep -v '.pb.go$')
 [ -z "$gofiles" ] && exit 0
 
 unformatted=$($gofmtcmd -l $gofiles)

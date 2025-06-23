@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/slice"
 
 	"github.com/navidrome/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
@@ -29,7 +28,7 @@ var _ = Describe("Agents", func() {
 		var ag *Agents
 		BeforeEach(func() {
 			conf.Server.Agents = ""
-			ag = createAgents(ds)
+			ag = createAgents(ds, nil)
 		})
 
 		It("calls the placeholder GetArtistImages", func() {
@@ -49,12 +48,18 @@ var _ = Describe("Agents", func() {
 			Register("disabled", func(model.DataStore) Interface { return nil })
 			Register("empty", func(model.DataStore) Interface { return &emptyAgent{} })
 			conf.Server.Agents = "empty,fake,disabled"
-			ag = createAgents(ds)
+			ag = createAgents(ds, nil)
 			Expect(ag.AgentName()).To(Equal("agents"))
 		})
 
 		It("does not register disabled agents", func() {
-			ags := slice.Map(ag.agents, func(a Interface) string { return a.AgentName() })
+			var ags []string
+			for _, name := range ag.getEnabledAgentNames() {
+				agent := ag.getAgent(name)
+				if agent != nil {
+					ags = append(ags, agent.AgentName())
+				}
+			}
 			// local agent is always appended to the end of the agents list
 			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
 			Expect(ags).ToNot(ContainElement("disabled"))
@@ -187,7 +192,7 @@ var _ = Describe("Agents", func() {
 
 				It("falls back to the next agent on error", func() {
 					conf.Server.Agents = "imgFail,imgOk"
-					ag = createAgents(ds)
+					ag = createAgents(ds, nil)
 
 					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
 					Expect(err).ToNot(HaveOccurred())
@@ -200,7 +205,7 @@ var _ = Describe("Agents", func() {
 					first.Err = nil
 					first.Images = []ExternalImage{}
 					conf.Server.Agents = "imgFail,imgOk"
-					ag = createAgents(ds)
+					ag = createAgents(ds, nil)
 
 					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
 					Expect(err).ToNot(HaveOccurred())
@@ -262,18 +267,6 @@ var _ = Describe("Agents", func() {
 					MBID:        "mbid444",
 					Description: "A Description",
 					URL:         "External URL",
-					Images: []ExternalImage{
-						{
-							Size: 174,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
-						}, {
-							Size: 64,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
-						}, {
-							Size: 34,
-							URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
-						},
-					},
 				}))
 				Expect(mock.Args).To(HaveExactElements("album", "artist", "mbid"))
 			})
@@ -369,18 +362,6 @@ func (a *mockAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid string)
 		MBID:        "mbid444",
 		Description: "A Description",
 		URL:         "External URL",
-		Images: []ExternalImage{
-			{
-				Size: 174,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/174s/00000000000000000000000000000000.png",
-			}, {
-				Size: 64,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/64s/00000000000000000000000000000000.png",
-			}, {
-				Size: 34,
-				URL:  "https://lastfm.freetls.fastly.net/i/u/34s/00000000000000000000000000000000.png",
-			},
-		},
 	}, nil
 }
 

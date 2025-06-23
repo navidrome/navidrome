@@ -1,0 +1,57 @@
+syntax = "proto3";
+package websocket;
+option go_package = "github.com/navidrome/navidrome/plugins/host/websocket";
+
+// go:plugin type=host version=1
+service WebSocketService {
+  // Connect to a WebSocket endpoint
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
+
+  // Send a text message
+  rpc SendText(SendTextRequest) returns (SendTextResponse);
+
+  // Send binary data
+  rpc SendBinary(SendBinaryRequest) returns (SendBinaryResponse);
+
+  // Close a connection
+  rpc Close(CloseRequest) returns (CloseResponse);
+}
+
+message ConnectRequest {
+  string url = 1;
+  map<string, string> headers = 2;
+  string connection_id = 3;
+}
+
+message ConnectResponse {
+  string connection_id = 1;
+  string error = 2;
+}
+
+message SendTextRequest {
+  string connection_id = 1;
+  string message = 2;
+}
+
+message SendTextResponse {
+  string error = 1;
+}
+
+message SendBinaryRequest {
+  string connection_id = 1;
+  bytes data = 2;
+}
+
+message SendBinaryResponse {
+  string error = 1;
+}
+
+message CloseRequest {
+  string connection_id = 1;
+  int32 code = 2;
+  string reason = 3;
+}
+
+message CloseResponse {
+  string error = 1;
+}

@@ -2,7 +2,9 @@ package scrobbler
 
 import (
 	"context"
+	"maps"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -18,6 +20,7 @@ import (
 type NowPlayingInfo struct {
 	MediaFile  model.MediaFile
 	Start      time.Time
+	Position   int
 	Username   string
 	PlayerId   string
 	PlayerName string
@@ -29,36 +32,53 @@ type Submission struct {
 }
 
 type PlayTracker interface {
-	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error
+	NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error
 	GetNowPlaying(ctx context.Context) ([]NowPlayingInfo, error)
 	Submit(ctx context.Context, submissions []Submission) error
 }
 
-type playTracker struct {
-	ds         model.DataStore
-	broker     events.Broker
-	playMap    cache.SimpleCache[string, NowPlayingInfo]
-	scrobblers map[string]Scrobbler
+// PluginLoader is a minimal interface for plugin manager usage in PlayTracker
+// (avoids import cycles)
+type PluginLoader interface {
+	PluginNames(service string) []string
+	LoadScrobbler(name string) (Scrobbler, bool)
 }
 
-func GetPlayTracker(ds model.DataStore, broker events.Broker) PlayTracker {
+type playTracker struct {
+	ds                model.DataStore
+	broker            events.Broker
+	playMap           cache.SimpleCache[string, NowPlayingInfo]
+	builtinScrobblers map[string]Scrobbler
+	pluginScrobblers  map[string]Scrobbler
+	pluginLoader      PluginLoader
+	mu                sync.RWMutex
+}
+
+func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
 	return singleton.GetInstance(func() *playTracker {
-		return newPlayTracker(ds, broker)
+		return newPlayTracker(ds, broker, pluginManager)
 	})
 }
 
 // This constructor only exists for testing. For normal usage, the PlayTracker has to be a singleton, returned by
 // the GetPlayTracker function above
-func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
+func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) *playTracker {
 	m := cache.NewSimpleCache[string, NowPlayingInfo]()
-	p := &playTracker{ds: ds, playMap: m, broker: broker}
+	p := &playTracker{
+		ds:                ds,
+		playMap:           m,
+		broker:            broker,
+		builtinScrobblers: make(map[string]Scrobbler),
+		pluginScrobblers:  make(map[string]Scrobbler),
+		pluginLoader:      pluginManager,
+	}
 	if conf.Server.EnableNowPlaying {
 		m.OnExpiration(func(_ string, _ NowPlayingInfo) {
 			ctx := events.BroadcastToAll(context.Background())
 			broker.SendMessage(ctx, &events.NowPlayingCount{Count: m.Len()})
 		})
 	}
-	p.scrobblers = make(map[string]Scrobbler)
+
 	var enabled []string
 	for name, constructor := range constructors {
 		s := constructor(ds)
@@ -68,13 +88,92 @@ func newPlayTracker(ds model.DataStore, broker events.Broker) *playTracker {
 		}
 		enabled = append(enabled, name)
 		s = newBufferedScrobbler(ds, s, name)
-		p.scrobblers[name] = s
+		p.builtinScrobblers[name] = s
 	}
-	log.Debug("List of scrobblers enabled", "names", enabled)
+	log.Debug("List of builtin scrobblers enabled", "names", enabled)
 	return p
 }
 
-func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string) error {
+// pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers
+func pluginNamesMatchScrobblers(pluginNames []string, scrobblers map[string]Scrobbler) bool {
+	if len(pluginNames) != len(scrobblers) {
+		return false
+	}
+	for _, name := range pluginNames {
+		if _, ok := scrobblers[name]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// refreshPluginScrobblers updates the pluginScrobblers map to match the current set of plugin scrobblers
+func (p *playTracker) refreshPluginScrobblers() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.pluginLoader == nil {
+		return
+	}
+
+	// Get the list of available plugin names
+	pluginNames := p.pluginLoader.PluginNames("Scrobbler")
+
+	// Early return if plugin names match existing scrobblers (no change)
+	if pluginNamesMatchScrobblers(pluginNames, p.pluginScrobblers) {
+		return
+	}
+
+	// Build a set of current plugins for faster lookups
+	current := make(map[string]struct{}, len(pluginNames))
+
+	// Process additions - add new plugins
+	for _, name := range pluginNames {
+		current[name] = struct{}{}
+		// Only create a new scrobbler if it doesn't exist
+		if _, exists := p.pluginScrobblers[name]; !exists {
+			s, ok := p.pluginLoader.LoadScrobbler(name)
+			if ok && s != nil {
+				p.pluginScrobblers[name] = newBufferedScrobbler(p.ds, s, name)
+			}
+		}
+	}
+
+	// Process removals - remove plugins that no longer exist
+	for name, scrobbler := range p.pluginScrobblers {
+		if _, exists := current[name]; !exists {
+			// Type assertion to access the Stop method
+			// We need to ensure this works even with interface objects
+			if bs, ok := scrobbler.(*bufferedScrobbler); ok {
+				log.Debug("Stopping buffered scrobbler goroutine", "name", name)
+				bs.Stop()
+			} else {
+				// For tests - try to see if this is a mock with a Stop method
+				type stoppable interface {
+					Stop()
+				}
+				if s, ok := scrobbler.(stoppable); ok {
+					log.Debug("Stopping mock scrobbler", "name", name)
+					s.Stop()
+				}
+			}
+			delete(p.pluginScrobblers, name)
+		}
+	}
+}
+
+// getActiveScrobblers refreshes plugin scrobblers, acquires a read lock,
+// combines builtin and plugin scrobblers into a new map, releases the lock,
+// and returns the combined map.
+func (p *playTracker) getActiveScrobblers() map[string]Scrobbler {
+	p.refreshPluginScrobblers()
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	combined := maps.Clone(p.builtinScrobblers)
+	maps.Copy(combined, p.pluginScrobblers)
+	return combined
+}
+
+func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerName string, trackId string, position int) error {
 	mf, err := p.ds.MediaFile(ctx).GetWithParticipants(trackId)
 	if err != nil {
 		log.Error(ctx, "Error retrieving mediaFile", "id", trackId, err)
@@ -85,12 +184,20 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	info := NowPlayingInfo{
 		MediaFile:  *mf,
 		Start:      time.Now(),
+		Position:   position,
 		Username:   user.UserName,
 		PlayerId:   playerId,
 		PlayerName: playerName,
 	}
 
-	ttl := time.Duration(int(mf.Duration)+5) * time.Second
+	// Calculate TTL based on remaining track duration. If position exceeds track duration,
+	// remaining is set to 0 to avoid negative TTL.
+	remaining := int(mf.Duration) - position
+	if remaining < 0 {
+		remaining = 0
+	}
+	// Add 5 seconds buffer to ensure the NowPlaying info is available slightly longer than the track duration.
+	ttl := time.Duration(remaining+5) * time.Second
 	_ = p.playMap.AddWithTTL(playerId, info, ttl)
 	if conf.Server.EnableNowPlaying {
 		ctx = events.BroadcastToAll(ctx)
@@ -98,22 +205,23 @@ func (p *playTracker) NowPlaying(ctx context.Context, playerId string, playerNam
 	}
 	player, _ := request.PlayerFrom(ctx)
 	if player.ScrobbleEnabled {
-		p.dispatchNowPlaying(ctx, user.ID, mf)
+		p.dispatchNowPlaying(ctx, user.ID, mf, position)
 	}
 	return nil
 }
 
-func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile) {
+func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
 	}
-	for name, s := range p.scrobblers {
+	allScrobblers := p.getActiveScrobblers()
+	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, userId) {
 			continue
 		}
-		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist)
-		err := s.NowPlaying(ctx, userId, t)
+		log.Debug(ctx, "Sending NowPlaying update", "scrobbler", name, "track", t.Title, "artist", t.Artist, "position", position)
+		err := s.NowPlaying(ctx, userId, t, position)
 		if err != nil {
 			log.Error(ctx, "Error sending NowPlayingInfo", "scrobbler", name, "track", t.Title, "artist", t.Artist, err)
 			continue
@@ -185,9 +293,11 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 		log.Debug(ctx, "Ignoring external Scrobble for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
 	}
+
+	allScrobblers := p.getActiveScrobblers()
 	u, _ := request.UserFrom(ctx)
 	scrobble := Scrobble{MediaFile: *t, TimeStamp: playTime}
-	for name, s := range p.scrobblers {
+	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, u.ID) {
 			continue
 		}
