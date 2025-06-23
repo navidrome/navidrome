@@ -84,8 +84,8 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
 	g.Go(startPluginManager(ctx))
+	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
-		g.Go(runInitialScan(ctx))
 		g.Go(startScanWatcher(ctx))
 		g.Go(schedulePeriodicScan(ctx))
 	} else {
@@ -174,6 +174,7 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
 }
 
+// runInitialScan runs an initial scan of the music library if needed.
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
