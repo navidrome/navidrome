@@ -58,12 +58,14 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.MusicFolder = "fake:///music" // Set to match test library path
+		conf.Server.DevExternalScanner = false
+
 		db.Init(ctx)
 		DeferCleanup(func() {
 			Expect(tests.ClearDB()).To(Succeed())
 		})
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DevExternalScanner = false
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 		mfRepo = &mockMediaFileRepo{
