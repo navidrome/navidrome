@@ -5,6 +5,7 @@
 /navidrome
 /iTunes*.xml
 /tmp
+/bin
 data/*
 vendor/*/
 wiki
@@ -26,4 +27,5 @@ binaries
 navidrome-master
 AGENTS.md
 *.exe
-bin/
+*.test
+*.wasm

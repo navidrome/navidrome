@@ -7,14 +7,17 @@ import (
 
 	"github.com/google/wire"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/agents/lastfm"
 	"github.com/navidrome/navidrome/core/agents/listenbrainz"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/events"
@@ -36,6 +39,9 @@ var allProviders = wire.NewSet(
 	events.GetBroker,
 	scanner.New,
 	scanner.NewWatcher,
+	plugins.GetManager,
+	wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)),
+	wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)),
 	metrics.NewPrometheusInstance,
 	db.Db,
 )
