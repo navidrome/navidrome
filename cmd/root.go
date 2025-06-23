@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
@@ -82,8 +83,9 @@ func runNavidrome(ctx context.Context) {
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(startPluginManager(ctx))
+	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
-		g.Go(runInitialScan(ctx))
 		g.Go(startScanWatcher(ctx))
 		g.Go(schedulePeriodicScan(ctx))
 	} else {
@@ -147,7 +149,7 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic scan", "schedule", schedule)
-		err := schedulerInstance.Add(schedule, func() {
+		_, err := schedulerInstance.Add(schedule, func() {
 			_, err := s.ScanAll(ctx, false)
 			if err != nil {
 				log.Error(ctx, "Error executing periodic scan", err)
@@ -172,6 +174,7 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
 }
 
+// runInitialScan runs an initial scan of the music library if needed.
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
@@ -243,7 +246,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 		schedulerInstance := scheduler.GetInstance()
 
 		log.Info("Scheduling periodic backup", "schedule", schedule)
-		err := schedulerInstance.Add(schedule, func() {
+		_, err := schedulerInstance.Add(schedule, func() {
 			start := time.Now()
 			path, err := db.Backup(ctx)
 			elapsed := time.Since(start)
@@ -271,7 +274,7 @@ func scheduleDBOptimizer(ctx context.Context) func() error {
 	return func() error {
 		log.Info(ctx, "Scheduling DB optimizer", "schedule", consts.OptimizeDBSchedule)
 		schedulerInstance := scheduler.GetInstance()
-		err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
+		_, err := schedulerInstance.Add(consts.OptimizeDBSchedule, func() {
 			if scanner.IsScanning() {
 				log.Debug(ctx, "Skipping DB optimization because a scan is in progress")
 				return
@@ -322,6 +325,22 @@ func startPlaybackServer(ctx context.Context) func() error {
 		log.Info(ctx, "Starting Jukebox service")
 		playbackInstance := GetPlaybackServer()
 		return playbackInstance.Run(ctx)
+	}
+}
+
+// startPluginManager starts the plugin manager, if configured.
+func startPluginManager(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.Plugins.Enabled {
+			log.Debug("Plugins are DISABLED")
+			return nil
+		}
+		log.Info(ctx, "Starting plugin manager")
+		// Get the manager instance and scan for plugins
+		manager := plugins.GetManager()
+		manager.ScanPlugins()
+
+		return nil
 	}
 }
 

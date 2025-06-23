@@ -164,10 +164,15 @@ func (r *libraryRepository) RefreshStats(id int) error {
 				Where(Eq{"la.library_id": id, "a.missing": false}), &artistsRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("folder").Where(Eq{"library_id": id, "missing": false}), &foldersRes)
+			return r.queryOne(Select("count(*) as count").From("folder").
+				Where(And{
+					Eq{"library_id": id, "missing": false},
+					Gt{"num_audio_files": 0},
+				}), &foldersRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
+			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").
+				From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
 		},
 		func() error {
 			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)

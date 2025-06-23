@@ -72,16 +72,23 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 		return nil, err
 	}
 
-	response := agents.AlbumInfo{
+	return &agents.AlbumInfo{
 		Name:        a.Name,
 		MBID:        a.MBID,
 		Description: a.Description.Summary,
 		URL:         a.URL,
-		Images:      make([]agents.ExternalImage, 0),
+	}, nil
+}
+
+func (l *lastfmAgent) GetAlbumImages(ctx context.Context, name, artist, mbid string) ([]agents.ExternalImage, error) {
+	a, err := l.callAlbumGetInfo(ctx, name, artist, mbid)
+	if err != nil {
+		return nil, err
 	}
 
 	// Last.fm can return duplicate sizes.
 	seenSizes := map[int]bool{}
+	images := make([]agents.ExternalImage, 0)
 
 	// This assumes that Last.fm returns images with size small, medium, and large.
 	// This is true as of December 29, 2022
@@ -92,23 +99,20 @@ func (l *lastfmAgent) GetAlbumInfo(ctx context.Context, name, artist, mbid strin
 			log.Trace(ctx, "LastFM/albuminfo image URL does not match expected regex or is empty", "url", img.URL, "size", img.Size)
 			continue
 		}
-
 		numericSize, err := strconv.Atoi(size[0][2:])
 		if err != nil {
 			log.Error(ctx, "LastFM/albuminfo image URL does not match expected regex", "url", img.URL, "size", img.Size, err)
 			return nil, err
-		} else {
-			if _, exists := seenSizes[numericSize]; !exists {
-				response.Images = append(response.Images, agents.ExternalImage{
-					Size: numericSize,
-					URL:  img.URL,
-				})
-				seenSizes[numericSize] = true
-			}
+		}
+		if _, exists := seenSizes[numericSize]; !exists {
+			images = append(images, agents.ExternalImage{
+				Size: numericSize,
+				URL:  img.URL,
+			})
+			seenSizes[numericSize] = true
 		}
 	}
-
-	return &response, nil
+	return images, nil
 }
 
 func (l *lastfmAgent) GetArtistMBID(ctx context.Context, id string, name string) (string, error) {
@@ -286,7 +290,7 @@ func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile) string {
 	return track.Artist
 }
 
-func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile) error {
+func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *model.MediaFile, position int) error {
 	sk, err := l.sessionKeys.Get(ctx, userId)
 	if err != nil || sk == "" {
 		return scrobbler.ErrNotAuthorized
