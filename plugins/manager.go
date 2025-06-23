@@ -35,7 +35,7 @@ const (
 )
 
 // pluginCreators maps capability types to their respective creator functions
-type pluginConstructor func(wasmPath, pluginID string, manager *Manager, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
+type pluginConstructor func(wasmPath, pluginID string, runtime api.WazeroNewRuntime, mc wazero.ModuleConfig) WasmPlugin
 
 var pluginCreators = map[string]pluginConstructor{
 	CapabilityMetadataAgent:     newWasmMediaAgent,
@@ -160,7 +160,7 @@ func (m *Manager) registerPlugin(pluginID, pluginDir, wasmPath string, manifest 
 			}
 			continue
 		}
-		adapter := constructor(wasmPath, pluginID, m, customRuntime, mc)
+		adapter := constructor(wasmPath, pluginID, customRuntime, mc)
 		if adapter == nil {
 			log.Error("Failed to create plugin adapter", "plugin", pluginID, "capability", capabilityStr, "path", wasmPath)
 			continue

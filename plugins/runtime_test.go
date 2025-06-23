@@ -58,7 +58,6 @@ var _ = Describe("CachingRuntime", func() {
 		plugin = newWasmScrobblerPlugin(
 			filepath.Join(testDataDir, "fake_scrobbler", "plugin.wasm"),
 			"fake_scrobbler",
-			nil, // Pass nil manager since this test bypasses normal plugin registration
 			rtFunc,
 			wazero.NewModuleConfig().WithStartFunctions("_initialize"),
 		).(*wasmScrobblerPlugin)
