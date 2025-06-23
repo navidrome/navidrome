@@ -520,6 +520,9 @@ type cachingRuntime struct {
 
 	// poolInitOnce ensures the pool is initialized only once
 	poolInitOnce sync.Once
+
+	// compilationMu ensures only one compilation happens at a time per runtime
+	compilationMu sync.Mutex
 }
 
 func newCachingRuntime(runtime wazero.Runtime, pluginID string) *cachingRuntime {
@@ -580,10 +583,22 @@ func (r *cachingRuntime) setCachedModule(module wazero.CompiledModule, wasmBytes
 func (r *cachingRuntime) CompileModule(ctx context.Context, wasmBytes []byte) (wazero.CompiledModule, error) {
 	incomingHash := md5.Sum(wasmBytes)
 
-	// Try to get from cache
+	// Try to get from cache first (without lock for performance)
 	if cached := r.cachedModule.Load(); cached != nil {
 		if module := cached.get(incomingHash); module != nil {
 			log.Trace(ctx, "cachingRuntime: using cached compiled module", "plugin", r.pluginID)
+			return module, nil
+		}
+	}
+
+	// Synchronize compilation to prevent concurrent compilation issues
+	r.compilationMu.Lock()
+	defer r.compilationMu.Unlock()
+
+	// Double-check cache after acquiring lock (another goroutine might have compiled it)
+	if cached := r.cachedModule.Load(); cached != nil {
+		if module := cached.get(incomingHash); module != nil {
+			log.Trace(ctx, "cachingRuntime: using cached compiled module (after lock)", "plugin", r.pluginID)
 			return module, nil
 		}
 	}
