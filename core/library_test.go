@@ -2,6 +2,8 @@ package core_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -19,6 +21,7 @@ var _ = Describe("Library Service", func() {
 	var libraryRepo *tests.MockLibraryRepo
 	var userRepo *tests.MockedUserRepo
 	var ctx context.Context
+	var tempDir string
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -31,6 +34,14 @@ var _ = Describe("Library Service", func() {
 
 		service = core.NewLibrary(ds)
 		ctx = context.Background()
+
+		// Create a temporary directory for testing valid paths
+		var err error
+		tempDir, err = os.MkdirTemp("", "navidrome-library-test-")
+		Expect(err).NotTo(HaveOccurred())
+		DeferCleanup(func() {
+			os.RemoveAll(tempDir)
+		})
 	})
 
 	Describe("Library CRUD Operations", func() {
@@ -43,17 +54,17 @@ var _ = Describe("Library Service", func() {
 
 		Describe("Create", func() {
 			It("creates a new library successfully", func() {
-				library := &model.Library{ID: 1, Name: "New Library", Path: "/new/music"}
+				library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
 
 				_, err := repo.Save(library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Name).To(Equal("New Library"))
-				Expect(libraryRepo.Data[1].Path).To(Equal("/new/music"))
+				Expect(libraryRepo.Data[1].Path).To(Equal(tempDir))
 			})
 
 			It("fails when library name is empty", func() {
-				library := &model.Library{Path: "/music"}
+				library := &model.Library{Path: tempDir}
 
 				_, err := repo.Save(library)
 
@@ -69,27 +80,41 @@ var _ = Describe("Library Service", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("library path is required"))
 			})
+
+			It("cleans and normalizes the path", func() {
+				unnormalizedPath := tempDir + "//../" + filepath.Base(tempDir)
+				library := &model.Library{ID: 1, Name: "Test Library", Path: unnormalizedPath}
+
+				_, err := repo.Save(library)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(libraryRepo.Data[1].Path).To(Equal(filepath.Clean(unnormalizedPath)))
+			})
 		})
 
 		Describe("Update", func() {
 			BeforeEach(func() {
 				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Original Library", Path: "/original"},
+					{ID: 1, Name: "Original Library", Path: tempDir},
 				})
 			})
 
 			It("updates an existing library successfully", func() {
-				library := &model.Library{ID: 1, Name: "Updated Library", Path: "/updated"}
+				newTempDir, err := os.MkdirTemp("", "navidrome-library-update-")
+				Expect(err).NotTo(HaveOccurred())
+				DeferCleanup(func() { os.RemoveAll(newTempDir) })
 
-				err := repo.Update("1", library)
+				library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
+
+				err = repo.Update("1", library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Name).To(Equal("Updated Library"))
-				Expect(libraryRepo.Data[1].Path).To(Equal("/updated"))
+				Expect(libraryRepo.Data[1].Path).To(Equal(newTempDir))
 			})
 
 			It("fails when library doesn't exist", func() {
-				library := &model.Library{ID: 999, Name: "Non-existent", Path: "/path"}
+				library := &model.Library{ID: 999, Name: "Non-existent", Path: tempDir}
 
 				err := repo.Update("999", library)
 
@@ -98,19 +123,151 @@ var _ = Describe("Library Service", func() {
 			})
 
 			It("fails when library name is empty", func() {
-				library := &model.Library{ID: 1, Path: "/music"}
+				library := &model.Library{ID: 1, Path: tempDir}
 
 				err := repo.Update("1", library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("library name is required"))
 			})
+
+			It("cleans and normalizes the path on update", func() {
+				unnormalizedPath := tempDir + "//../" + filepath.Base(tempDir)
+				library := &model.Library{ID: 1, Name: "Updated Library", Path: unnormalizedPath}
+
+				err := repo.Update("1", library)
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(libraryRepo.Data[1].Path).To(Equal(filepath.Clean(unnormalizedPath)))
+			})
+		})
+
+		Describe("Path Validation", func() {
+			Context("Create operation", func() {
+				It("fails when path is not absolute", func() {
+					library := &model.Library{Name: "Test", Path: "relative/path"}
+
+					_, err := repo.Save(library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path must be absolute"))
+				})
+
+				It("fails when path does not exist", func() {
+					nonExistentPath := filepath.Join(tempDir, "nonexistent")
+					library := &model.Library{Name: "Test", Path: nonExistentPath}
+
+					_, err := repo.Save(library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path does not exist"))
+				})
+
+				It("fails when path is a file instead of directory", func() {
+					testFile := filepath.Join(tempDir, "testfile.txt")
+					err := os.WriteFile(testFile, []byte("test"), 0644)
+					Expect(err).NotTo(HaveOccurred())
+
+					library := &model.Library{Name: "Test", Path: testFile}
+
+					_, err = repo.Save(library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path must be a directory"))
+				})
+
+				It("fails when path is not accessible due to permissions", func() {
+					Skip("Permission tests are environment-dependent and may fail in CI")
+					// This test is skipped because creating a directory with no read permissions
+					// is complex and may not work consistently across different environments
+				})
+
+				It("handles multiple validation errors", func() {
+					library := &model.Library{Name: "", Path: "relative/path"}
+
+					_, err := repo.Save(library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors).To(HaveKey("name"))
+					Expect(err.(rest.ValidationError).Errors).To(HaveKey("path"))
+					Expect(err.(rest.ValidationError).Errors["name"]).To(Equal("library name is required"))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path must be absolute"))
+				})
+			})
+
+			Context("Update operation", func() {
+				BeforeEach(func() {
+					libraryRepo.SetData(model.Libraries{
+						{ID: 1, Name: "Test Library", Path: tempDir},
+					})
+				})
+
+				It("fails when updated path is not absolute", func() {
+					library := &model.Library{ID: 1, Name: "Test", Path: "relative/path"}
+
+					err := repo.Update("1", library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path must be absolute"))
+				})
+
+				It("fails when updated path does not exist", func() {
+					nonExistentPath := filepath.Join(tempDir, "nonexistent")
+					library := &model.Library{ID: 1, Name: "Test", Path: nonExistentPath}
+
+					err := repo.Update("1", library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path does not exist"))
+				})
+
+				It("fails when updated path is a file instead of directory", func() {
+					testFile := filepath.Join(tempDir, "updatefile.txt")
+					err := os.WriteFile(testFile, []byte("test"), 0644)
+					Expect(err).NotTo(HaveOccurred())
+
+					library := &model.Library{ID: 1, Name: "Test", Path: testFile}
+
+					err = repo.Update("1", library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path must be a directory"))
+				})
+
+				It("handles multiple validation errors on update", func() {
+					library := &model.Library{ID: 1, Name: "", Path: "relative/path"}
+
+					err := repo.Update("1", library)
+
+					Expect(err).To(HaveOccurred())
+					var validationErr rest.ValidationError
+					Expect(err).To(BeAssignableToTypeOf(validationErr))
+					Expect(err.(rest.ValidationError).Errors).To(HaveKey("name"))
+					Expect(err.(rest.ValidationError).Errors).To(HaveKey("path"))
+					Expect(err.(rest.ValidationError).Errors["name"]).To(Equal("library name is required"))
+					Expect(err.(rest.ValidationError).Errors["path"]).To(Equal("library path must be absolute"))
+				})
+			})
 		})
 
 		Describe("Delete", func() {
 			BeforeEach(func() {
 				libraryRepo.SetData(model.Libraries{
-					{ID: 1, Name: "Library to Delete", Path: "/delete"},
+					{ID: 1, Name: "Library to Delete", Path: tempDir},
 				})
 			})
 

@@ -254,8 +254,8 @@ var _ = Describe("UserRepository", func() {
 			Expect(repo.Put(&testUser)).To(BeNil())
 			userID = testUser.ID
 
-			library1 = model.Library{ID: 500, Name: "Library 500", Path: "/path/500"}
-			library2 = model.Library{ID: 501, Name: "Library 501", Path: "/path/501"}
+			library1 = model.Library{ID: 0, Name: "Library 500", Path: "/path/500"}
+			library2 = model.Library{ID: 0, Name: "Library 501", Path: "/path/501"}
 
 			// Create test libraries
 			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
@@ -269,7 +269,7 @@ var _ = Describe("UserRepository", func() {
 
 			// Clean up test libraries to ensure isolation between test groups
 			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{500, 501}})
+			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 		})
 
 		Describe("AddUserLibrary", func() {
@@ -396,8 +396,8 @@ var _ = Describe("UserRepository", func() {
 
 		BeforeEach(func() {
 			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			library1 = model.Library{ID: 201, Name: "Admin Test Library 1", Path: "/admin/test/path1"}
-			library2 = model.Library{ID: 202, Name: "Admin Test Library 2", Path: "/admin/test/path2"}
+			library1 = model.Library{ID: 0, Name: "Admin Test Library 1", Path: "/admin/test/path1"}
+			library2 = model.Library{ID: 0, Name: "Admin Test Library 2", Path: "/admin/test/path2"}
 
 			// Create test libraries
 			Expect(libRepo.Put(&library1)).To(BeNil())
@@ -406,10 +406,10 @@ var _ = Describe("UserRepository", func() {
 
 		AfterEach(func() {
 			// Clean up test libraries and their associations
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{201, 202}})
+			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 
 			// Clean up user-library associations for these test libraries
-			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{201, 202}}))
+			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
 		})
 
 		It("automatically assigns all libraries to admin users when created", func() {
@@ -503,8 +503,8 @@ var _ = Describe("UserRepository", func() {
 
 		BeforeEach(func() {
 			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			library1 = model.Library{ID: 301, Name: "Field Test Library 1", Path: "/field/test/path1"}
-			library2 = model.Library{ID: 302, Name: "Field Test Library 2", Path: "/field/test/path2"}
+			library1 = model.Library{ID: 0, Name: "Field Test Library 1", Path: "/field/test/path1"}
+			library2 = model.Library{ID: 0, Name: "Field Test Library 2", Path: "/field/test/path2"}
 
 			// Create test libraries
 			Expect(libRepo.Put(&library1)).To(BeNil())
@@ -527,11 +527,11 @@ var _ = Describe("UserRepository", func() {
 
 		AfterEach(func() {
 			// Clean up test libraries and their associations
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{301, 302}})
+			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 			_ = repo.(*userRepository).delete(squirrel.Eq{"id": testUser.ID})
 
 			// Clean up user-library associations for these test libraries
-			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{301, 302}}))
+			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
 		})
 
 		It("populates Libraries field when getting a single user", func() {
