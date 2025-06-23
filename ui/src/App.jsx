@@ -15,6 +15,7 @@ import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
 import share from './share'
+import library from './library'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -122,7 +123,13 @@ const Admin = (props) => {
         ) : (
           <Resource name="transcoding" />
         ),
-
+        permissions === 'admin' ? (
+          <Resource
+            name="library"
+            {...library}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
         permissions === 'admin' ? (
           <Resource
             name="missing"
