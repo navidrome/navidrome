@@ -40,11 +40,15 @@ const LibraryList = (props) => {
           <NumberField source="totalSongs" label="Songs" />
           <NumberField source="totalAlbums" label="Albums" />
           <NumberField source="totalMissingFiles" label="Missing Files" />
-          <DateField source="lastScanAt" label="Last Scan" sortByOrder={'DESC'} />
+          <DateField
+            source="lastScanAt"
+            label="Last Scan"
+            sortByOrder={'DESC'}
+          />
         </Datagrid>
       )}
     </List>
   )
 }
 
-export default LibraryList 
+export default LibraryList
