@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
+	"path"
 
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/host/subsonicapi"
@@ -63,19 +63,12 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, req *subsonicapi.Call
 	query.Set("f", "json")           // Response format
 	query.Set("v", subsonic.Version) // API version
 
-	// Strip /rest prefix from path since the router is already mounted at /rest
-	path := parsedURL.Path
-	if strings.HasPrefix(path, "/rest") {
-		path = strings.TrimPrefix(path, "/rest")
-	}
-	// Ensure path starts with / for the subsonic router
-	if path == "" || !strings.HasPrefix(path, "/") {
-		path = "/" + strings.TrimPrefix(path, "/")
-	}
+	// Extract the endpoint from the path
+	endpoint := path.Base(parsedURL.Path)
 
 	// Build the final URL with processed path and modified query parameters
 	finalURL := &url.URL{
-		Path:     path,
+		Path:     "/" + endpoint,
 		RawQuery: query.Encode(),
 	}
 

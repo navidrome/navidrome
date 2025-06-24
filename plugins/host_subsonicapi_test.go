@@ -39,6 +39,19 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 		}
 	})
 
+	// Helper function to create a mock router that captures the request
+	setupRequestCapture := func() **http.Request {
+		var capturedRequest *http.Request
+		mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedRequest = r
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		})
+		manager.subsonicRouter = mockRouter
+		service.router = manager.subsonicRouter
+		return &capturedRequest
+	}
+
 	Describe("Call", func() {
 		Context("when subsonic router is available", func() {
 			It("should process the request successfully", func() {
@@ -56,25 +69,18 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 			})
 
 			It("should add required parameters to the URL", func() {
-				var capturedRequest *http.Request
-				mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					capturedRequest = r
-					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte(`{}`))
-				})
-				manager.subsonicRouter = mockRouter
-				service.router = manager.subsonicRouter
+				capturedRequestPtr := setupRequestCapture()
 
 				req := &subsonicapi.CallRequest{
-					Url: "/rest/getAlbum?id=123&u=admin",
+					Url: "/rest/getAlbum.view?id=123&u=admin",
 				}
 
 				_, err := service.Call(context.Background(), req)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(capturedRequest).ToNot(BeNil())
+				Expect(*capturedRequestPtr).ToNot(BeNil())
 
-				query := capturedRequest.URL.Query()
+				query := (*capturedRequestPtr).URL.Query()
 				Expect(query.Get("c")).To(Equal("test-plugin"))
 				Expect(query.Get("f")).To(Equal("json"))
 				Expect(query.Get("v")).To(Equal("1.16.1"))
@@ -83,14 +89,7 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 			})
 
 			It("should only use path and query from the input URL", func() {
-				var capturedRequest *http.Request
-				mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					capturedRequest = r
-					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte(`{}`))
-				})
-				manager.subsonicRouter = mockRouter
-				service.router = manager.subsonicRouter
+				capturedRequestPtr := setupRequestCapture()
 
 				req := &subsonicapi.CallRequest{
 					Url: "https://external.example.com:8080/rest/ping?u=admin",
@@ -99,21 +98,28 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 				_, err := service.Call(context.Background(), req)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(capturedRequest).ToNot(BeNil())
-				Expect(capturedRequest.URL.Path).To(Equal("/ping"))
-				Expect(capturedRequest.URL.Host).To(BeEmpty())
-				Expect(capturedRequest.URL.Scheme).To(BeEmpty())
+				Expect(*capturedRequestPtr).ToNot(BeNil())
+				Expect((*capturedRequestPtr).URL.Path).To(Equal("/ping"))
+				Expect((*capturedRequestPtr).URL.Host).To(BeEmpty())
+				Expect((*capturedRequestPtr).URL.Scheme).To(BeEmpty())
+			})
+
+			It("ignores the path prefix in the URL", func() {
+				capturedRequestPtr := setupRequestCapture()
+
+				req := &subsonicapi.CallRequest{
+					Url: "/basepath/rest/ping?u=admin",
+				}
+
+				_, err := service.Call(context.Background(), req)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(*capturedRequestPtr).ToNot(BeNil())
+				Expect((*capturedRequestPtr).URL.Path).To(Equal("/ping"))
 			})
 
 			It("should set internal authentication with username from 'u' parameter", func() {
-				var capturedRequest *http.Request
-				mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					capturedRequest = r
-					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte(`{}`))
-				})
-				manager.subsonicRouter = mockRouter
-				service.router = manager.subsonicRouter
+				capturedRequestPtr := setupRequestCapture()
 
 				req := &subsonicapi.CallRequest{
 					Url: "/rest/ping?u=testuser",
@@ -122,10 +128,10 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 				_, err := service.Call(context.Background(), req)
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(capturedRequest).ToNot(BeNil())
+				Expect(*capturedRequestPtr).ToNot(BeNil())
 
 				// Verify that internal authentication is set in the context
-				username, ok := request.InternalAuthFrom(capturedRequest.Context())
+				username, ok := request.InternalAuthFrom((*capturedRequestPtr).Context())
 				Expect(ok).To(BeTrue())
 				Expect(username).To(Equal("testuser"))
 			})
