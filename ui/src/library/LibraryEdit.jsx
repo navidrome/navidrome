@@ -119,12 +119,11 @@ const LibraryEdit = (props) => {
           fullWidth
           disabled={isFirstLibrary}
         />
-
         <Divider className={classes.divider} fullWidth />
-
         <Typography variant="h6" gutterBottom>
           Statistics
         </Typography>
+        {/*eslint-disable-next-line react/no-unknown-property*/}
         <div className={classes.stats} fullWidth>
           <div>
             <Typography variant="caption" display="block" color="textSecondary">
@@ -178,6 +177,7 @@ const LibraryEdit = (props) => {
           </div>
         </div>
         <Divider className={classes.divider} fullWidth />
+        {/*eslint-disable-next-line react/no-unknown-property*/}
         <div className={classes.stats} fullWidth>
           <div>
             <Typography variant="caption" display="block" color="textSecondary">
