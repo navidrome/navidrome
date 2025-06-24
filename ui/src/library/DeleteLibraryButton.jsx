@@ -51,4 +51,4 @@ const DeleteLibraryButton = ({ record, resource, basePath, ...props }) => {
   )
 }
 
-export default DeleteLibraryButton 
+export default DeleteLibraryButton

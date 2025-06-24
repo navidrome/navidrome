@@ -41,11 +41,11 @@ const LibraryCreate = (props) => {
         if (error.body && error.body.errors) {
           return error.body.errors
         }
-        
+
         // Handle other structured errors from the server
         if (error.body && error.body.error) {
           const errorMsg = error.body.error
-          
+
           // Handle database constraint violations
           if (errorMsg.includes('UNIQUE constraint failed: library.name')) {
             return { name: 'ra.validation.unique' }
@@ -53,14 +53,15 @@ const LibraryCreate = (props) => {
           if (errorMsg.includes('UNIQUE constraint failed: library.path')) {
             return { path: 'ra.validation.unique' }
           }
-          
+
           // Show a general notification for other server errors
           notify(errorMsg, 'error')
           return
         }
-        
+
         // Fallback for unexpected error formats
-        const fallbackMessage = error.message || 
+        const fallbackMessage =
+          error.message ||
           (typeof error === 'string' ? error : 'An unexpected error occurred')
         notify(fallbackMessage, 'error')
       }
@@ -78,4 +79,4 @@ const LibraryCreate = (props) => {
   )
 }
 
-export default LibraryCreate 
+export default LibraryCreate
