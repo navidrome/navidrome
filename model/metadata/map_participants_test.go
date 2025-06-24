@@ -505,6 +505,25 @@ var _ = Describe("Participants", func() {
 				Expect(albumArtist.MbzArtistID).To(Equal(mbid2))
 			})
 		})
+		Context("Multiple values in a single-valued ARTIST tag, no ALBUMARTIST tag", func() {
+			BeforeEach(func() {
+				mf = toMediaFile(model.RawTags{
+					"ARTIST": {"hey; ho"},
+				})
+			})
+
+			It("should use the full artist name as displayAlbumArtist when no ALBUMARTIST is provided", func() {
+				Expect(mf.AlbumArtist).To(Equal("hey; ho"))
+
+				participants := mf.Participants
+				Expect(participants).To(SatisfyAll(
+					HaveKeyWithValue(model.RoleAlbumArtist, HaveLen(2)),
+				))
+
+				albumArtist := participants[model.RoleAlbumArtist][0]
+				Expect(albumArtist.Name).To(Equal("hey"))
+			})
+		})
 	})
 
 	Describe("COMPOSER and LYRICIST tags (with sort names)", func() {
