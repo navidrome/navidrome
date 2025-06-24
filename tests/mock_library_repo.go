@@ -12,8 +12,9 @@ import (
 
 type MockLibraryRepo struct {
 	model.LibraryRepository
-	Data map[int]model.Library
-	Err  error
+	Data  map[int]model.Library
+	Err   error
+	PutFn func(*model.Library) error // Allow custom Put behavior for testing
 }
 
 func (m *MockLibraryRepo) SetData(data model.Libraries) {
@@ -88,6 +89,9 @@ func (m *MockLibraryRepo) GetPath(id int) (string, error) {
 }
 
 func (m *MockLibraryRepo) Put(library *model.Library) error {
+	if m.PutFn != nil {
+		return m.PutFn(library)
+	}
 	if m.Err != nil {
 		return m.Err
 	}
