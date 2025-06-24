@@ -23,7 +23,7 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 		mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"subsonic-response":{"status":"ok","version":"1.16.1"}}`))
+			_, _ = w.Write([]byte(`{"subsonic-response":{"status":"ok","version":"1.16.1"}}`))
 		})
 
 		// Create manager with mock router
@@ -60,7 +60,7 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 				mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					capturedRequest = r
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`{}`))
+					_, _ = w.Write([]byte(`{}`))
 				})
 				manager.subsonicRouter = mockRouter
 				service.router = manager.subsonicRouter
@@ -87,7 +87,7 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 				mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					capturedRequest = r
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`{}`))
+					_, _ = w.Write([]byte(`{}`))
 				})
 				manager.subsonicRouter = mockRouter
 				service.router = manager.subsonicRouter
@@ -110,7 +110,7 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 				mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					capturedRequest = r
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`{}`))
+					_, _ = w.Write([]byte(`{}`))
 				})
 				manager.subsonicRouter = mockRouter
 				service.router = manager.subsonicRouter
