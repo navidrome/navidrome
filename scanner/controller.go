@@ -116,6 +116,24 @@ type controller struct {
 	changesDetected bool
 }
 
+// getLastScanTime returns the most recent scan time across all libraries
+func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
+	libs, err := s.ds.Library(ctx).GetAll(model.QueryOptions{
+		Sort:  "last_scan_at",
+		Order: "desc",
+		Max:   1,
+	})
+	if err != nil {
+		return time.Time{}, fmt.Errorf("getting libraries: %w", err)
+	}
+
+	if len(libs) == 0 {
+		return time.Time{}, nil
+	}
+
+	return libs[0].LastScanAt, nil
+}
+
 // getScanInfo retrieves scan status from the database
 func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
 	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
@@ -128,10 +146,10 @@ func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed 
 			if running.Load() {
 				elapsed = time.Since(startTime)
 			} else {
-				// If scan is not running, try to get the last scan time for the library
-				lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
-				if err == nil {
-					elapsed = lib.LastScanAt.Sub(startTime)
+				// If scan is not running, calculate elapsed time using the most recent scan time
+				lastScanTime, err := s.getLastScanTime(ctx)
+				if err == nil && !lastScanTime.IsZero() {
+					elapsed = lastScanTime.Sub(startTime)
 				}
 			}
 		}
@@ -141,9 +159,9 @@ func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed 
 }
 
 func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
-	lib, err := s.ds.Library(ctx).Get(1) //TODO Multi-library
+	lastScanTime, err := s.getLastScanTime(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("getting library: %w", err)
+		return nil, fmt.Errorf("getting last scan time: %w", err)
 	}
 
 	scanType, elapsed, lastErr := s.getScanInfo(ctx)
@@ -151,7 +169,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	if running.Load() {
 		status := &StatusInfo{
 			Scanning:    true,
-			LastScan:    lib.LastScanAt,
+			LastScan:    lastScanTime,
 			Count:       s.count.Load(),
 			FolderCount: s.folderCount.Load(),
 			LastError:   lastErr,
@@ -167,7 +185,7 @@ func (s *controller) Status(ctx context.Context) (*StatusInfo, error) {
 	}
 	return &StatusInfo{
 		Scanning:    false,
-		LastScan:    lib.LastScanAt,
+		LastScan:    lastScanTime,
 		Count:       uint32(count),
 		FolderCount: uint32(folderCount),
 		LastError:   lastErr,
