@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/log"
+	log "github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils"
@@ -549,6 +549,7 @@ func pluginRefresh(cmd *cobra.Command, args []string) {
 
 	// Get the plugin manager and refresh
 	mgr := plugins.GetManager()
+	mgr.SetSubsonicRouter(CreateSubsonicAPIRouter(cmd.Context()))
 	log.Debug("Scanning plugins directory", "path", pluginsDir)
 	mgr.ScanPlugins()
 

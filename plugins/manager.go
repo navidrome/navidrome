@@ -11,6 +11,7 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -79,10 +80,13 @@ func (p *plugin) waitForCompilation() error {
 	return p.compilationErr
 }
 
+type SubsonicRouter http.Handler
+
 // Manager is a singleton that manages plugins
 type Manager struct {
 	plugins          map[string]*plugin      // Map of plugin folder name to plugin info
 	mu               sync.RWMutex            // Protects plugins map
+	subsonicRouter   SubsonicRouter          // Subsonic API router
 	schedulerService *schedulerService       // Service for handling scheduled tasks
 	websocketService *websocketService       // Service for handling WebSocket connections
 	lifecycle        *pluginLifecycleManager // Manages plugin lifecycle and initialization
@@ -108,6 +112,13 @@ func createManager() *Manager {
 	m.websocketService = newWebsocketService(m)
 
 	return m
+}
+
+// SetSubsonicRouter sets the SubsonicRouter after Manager initialization
+func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.subsonicRouter = router
 }
 
 // registerPlugin adds a plugin to the registry with the given parameters
