@@ -18,6 +18,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { Divider, Typography } from '@material-ui/core'
 import DeleteLibraryButton from './DeleteLibraryButton'
 import { Title } from '../common'
+import { formatBytes } from '../utils/index.js'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -49,7 +50,9 @@ const LibraryTitle = ({ record }) => {
 const LibraryToolbar = (props) => (
   <Toolbar {...props} classes={useStyles()}>
     <SaveButton />
-    {props.record && props.record.id !== 1 && <DeleteLibraryButton {...props} />}
+    {props.record && props.record.id !== 1 && (
+      <DeleteLibraryButton {...props} />
+    )}
   </Toolbar>
 )
 
@@ -72,15 +75,6 @@ const formatDuration = (totalSeconds) => {
     parts.push(`${seconds}s`)
   }
   return parts.join(' ')
-}
-
-const formatBytes = (bytes, decimals = 2) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
 
 const LibraryEdit = (props) => {
@@ -119,7 +113,12 @@ const LibraryEdit = (props) => {
     <Edit title={<LibraryTitle />} undoable={false} {...props}>
       <SimpleForm variant={'outlined'} toolbar={<LibraryToolbar />} save={save}>
         <TextInput source="name" validate={[required()]} />
-        <TextInput source="path" validate={[required()]} fullWidth disabled={isFirstLibrary} />
+        <TextInput
+          source="path"
+          validate={[required()]}
+          fullWidth
+          disabled={isFirstLibrary}
+        />
 
         <Divider className={classes.divider} fullWidth />
 
@@ -205,4 +204,3 @@ const LibraryEdit = (props) => {
 }
 
 export default LibraryEdit
- 
