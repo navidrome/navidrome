@@ -2,7 +2,6 @@ package subsonic
 
 import (
 	"context"
-	"io"
 
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
@@ -10,33 +9,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-type fakePlaylists struct {
-	lastPlaylistID string
-	lastName       *string
-	lastComment    *string
-	lastPublic     *bool
-	lastAdd        []string
-	lastRemove     []int
-}
-
-func (f *fakePlaylists) ImportFile(ctx context.Context, folder *model.Folder, filename string) (*model.Playlist, error) {
-	return nil, nil
-}
-
-func (f *fakePlaylists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error) {
-	return nil, nil
-}
-
-func (f *fakePlaylists) Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {
-	f.lastPlaylistID = playlistID
-	f.lastName = name
-	f.lastComment = comment
-	f.lastPublic = public
-	f.lastAdd = idsToAdd
-	f.lastRemove = idxToRemove
-	return nil
-}
 
 var _ core.Playlists = (*fakePlaylists)(nil)
 
@@ -94,3 +66,23 @@ var _ = Describe("UpdatePlaylist", func() {
 		Expect(playlists.lastPublic).To(BeNil())
 	})
 })
+
+type fakePlaylists struct {
+	core.Playlists
+	lastPlaylistID string
+	lastName       *string
+	lastComment    *string
+	lastPublic     *bool
+	lastAdd        []string
+	lastRemove     []int
+}
+
+func (f *fakePlaylists) Update(ctx context.Context, playlistID string, name *string, comment *string, public *bool, idsToAdd []string, idxToRemove []int) error {
+	f.lastPlaylistID = playlistID
+	f.lastName = name
+	f.lastComment = comment
+	f.lastPublic = public
+	f.lastAdd = idsToAdd
+	f.lastRemove = idxToRemove
+	return nil
+}
