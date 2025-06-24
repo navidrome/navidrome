@@ -173,6 +173,23 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 // Helper methods
 
 func (r *libraryRepositoryWrapper) mapError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	errStr := err.Error()
+
+	// Handle database constraint violations.
+	// TODO: Being tied to react-admin translations is not ideal, but this will probably go away with the new UI/API
+	if strings.Contains(errStr, "UNIQUE constraint failed") {
+		if strings.Contains(errStr, "library.name") {
+			return &rest.ValidationError{Errors: map[string]string{"name": "ra.validation.unique"}}
+		}
+		if strings.Contains(errStr, "library.path") {
+			return &rest.ValidationError{Errors: map[string]string{"path": "ra.validation.unique"}}
+		}
+	}
+
 	switch {
 	case errors.Is(err, model.ErrNotFound):
 		return rest.ErrNotFound
@@ -187,25 +204,13 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 	validationErrors := make(map[string]string)
 
 	if library.Name == "" {
-		validationErrors["name"] = "library name is required"
-	} else {
-		// Check for name uniqueness
-		if err := r.validateLibraryNameUnique(library); err != nil {
-			var validationErr *rest.ValidationError
-			if errors.As(err, &validationErr) {
-				for k, v := range validationErr.Errors {
-					validationErrors[k] = v
-				}
-			} else {
-				// For non-validation errors (like database errors), return them immediately
-				return err
-			}
-		}
+		validationErrors["name"] = "ra.validation.required"
 	}
 
 	if library.Path == "" {
-		validationErrors["path"] = "library path is required"
+		validationErrors["path"] = "ra.validation.required"
 	} else {
+		// Validate path format and accessibility
 		if err := r.validateLibraryPath(library); err != nil {
 			validationErrors["path"] = err.Error()
 		}
@@ -213,23 +218,6 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 
 	if len(validationErrors) > 0 {
 		return &rest.ValidationError{Errors: validationErrors}
-	}
-
-	return nil
-}
-
-func (r *libraryRepositoryWrapper) validateLibraryNameUnique(library *model.Library) error {
-	// Get all libraries to check for name conflicts
-	allLibraries, err := r.LibraryRepository.GetAll()
-	if err != nil {
-		return err
-	}
-
-	// Check if any other library has the same name
-	for _, existingLib := range allLibraries {
-		if existingLib.Name == library.Name && existingLib.ID != library.ID {
-			return &rest.ValidationError{Errors: map[string]string{"name": "ra.validation.unique"}}
-		}
 	}
 
 	return nil
@@ -253,38 +241,30 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) e
 
 	fsys, err := fileStore.FS()
 	if err != nil {
-		// Parse the error to provide user-friendly messages
-		errStr := err.Error()
-		if os.IsNotExist(err) ||
-			strings.Contains(errStr, "no such file or directory") ||
-			strings.Contains(errStr, "The system cannot find the path specified.") {
-			return fmt.Errorf("library path does not exist")
-		} else if os.IsPermission(err) {
-			return fmt.Errorf("library path is not accessible")
-		} else {
-			return fmt.Errorf("error accessing library storage: %w", err)
-		}
+		log.Warn(r.ctx, "Error validating library.path", "path", library.Path, err)
+		return fmt.Errorf("resources.library.validation.pathInvalid")
 	}
 
 	// Check if root directory exists
 	info, err := fs.Stat(fsys, ".")
 	if err != nil {
 		// Parse the error message to check for "not a directory"
+		log.Warn(r.ctx, "Error stating library.path", "path", library.Path, err)
 		errStr := err.Error()
 		if strings.Contains(errStr, "not a directory") ||
 			strings.Contains(errStr, "The directory name is invalid.") {
-			return fmt.Errorf("library path must be a directory")
+			return fmt.Errorf("resources.library.validation.pathNotDirectory")
 		} else if os.IsNotExist(err) {
-			return fmt.Errorf("library path does not exist")
+			return fmt.Errorf("resources.library.validation.pathNotFound")
 		} else if os.IsPermission(err) {
-			return fmt.Errorf("library path is not accessible")
+			return fmt.Errorf("resources.library.validation.pathNotAccessible")
 		} else {
-			return fmt.Errorf("error accessing library path: %w", err)
+			return fmt.Errorf("resources.library.validation.pathInvalid")
 		}
 	}
 
 	if !info.IsDir() {
-		return fmt.Errorf("library path must be a directory")
+		return fmt.Errorf("resources.library.validation.pathNotDirectory")
 	}
 
 	return nil

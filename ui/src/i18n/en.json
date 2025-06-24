@@ -297,6 +297,9 @@
       "validation": {
         "nameRequired": "Library name is required",
         "pathRequired": "Library path is required",
+        "pathNotDirectory": "Library path must be a directory",
+        "pathNotFound": "Library path not found",
+        "pathNotAccessible": "Library path is not accessible",
         "pathInvalid": "Invalid library path"
       },
       "messages": {
