@@ -257,6 +257,12 @@ func displayTypedPermissions(permissions schema.PluginManifestPermissions, inden
 		fmt.Printf("%s  Reason: %s\n", indent, permissions.Artwork.Reason)
 		fmt.Println()
 	}
+
+	if permissions.Subsonicapi != nil {
+		fmt.Printf("%ssubsonicapi:\n", indent)
+		fmt.Printf("%s  Reason: %s\n", indent, permissions.Subsonicapi.Reason)
+		fmt.Println()
+	}
 }
 
 func displayPluginDetails(manifest *schema.PluginManifest, fileInfo *pluginFileInfo, permInfo *pluginPermissionInfo) {

@@ -157,6 +157,15 @@
               "description": "Artwork service permissions"
             }
           ]
+        },
+        "subsonicapi": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "SubsonicAPI service permissions"
+            }
+          ]
         }
       }
     }
