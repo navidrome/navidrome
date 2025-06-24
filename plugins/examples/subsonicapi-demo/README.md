@@ -47,6 +47,19 @@ func (SubsonicAPIDemoPlugin) OnInit(ctx context.Context, req *api.InitRequest) (
 }
 ```
 
+When running Navidrome with this plugin installed, it will automatically call the Subsonic API endpoints during the 
+server startup, and you can see the results in the logs:
+```agsl
+INFO[0000] 2022/01/01 00:00:00 SubsonicAPI Demo Plugin initializing...
+DEBU[0000] API: New request /ping                        client=subsonicapi-demo username=admin version=1.16.1
+DEBU[0000] API: Successful response                      endpoint=/ping status=OK
+DEBU[0000] API: New request /getLicense                  client=subsonicapi-demo username=admin version=1.16.1
+INFO[0000] 2022/01/01 00:00:00 SubsonicAPI ping response: {"subsonic-response":{"status":"ok","version":"1.16.1","type":"navidrome","serverVersion":"dev","openSubsonic":true}}
+DEBU[0000] API: Successful response                      endpoint=/getLicense status=OK
+DEBU[0000] Plugin initialized successfully               elapsed=41.9ms plugin=subsonicapi-demo
+INFO[0000] 2022/01/01 00:00:00 SubsonicAPI license info: {"subsonic-response":{"status":"ok","version":"1.16.1","type":"navidrome","serverVersion":"dev","openSubsonic":true,"license":{"valid":true}}}
+```
+
 ## Important Notes
 
 1. **Authentication**: The plugin must provide valid authentication parameters in the URL:
