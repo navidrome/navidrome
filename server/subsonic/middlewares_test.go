@@ -281,6 +281,31 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeFalse())
 			})
 		})
+
+		When("using internal authentication", func() {
+			It("passes authentication with correct internal credentials", func() {
+				// Simulate internal authentication by setting the context with WithInternalAuth
+				r := newGetRequest()
+				r = r.WithContext(request.WithInternalAuth(r.Context(), "admin"))
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				user, _ := request.UserFrom(next.req.Context())
+				Expect(user.UserName).To(Equal("admin"))
+			})
+
+			It("fails authentication with missing internal context", func() {
+				r := newGetRequest("u=admin")
+				// Do not set the internal auth context
+				cp := authenticate(ds)(next)
+				cp.ServeHTTP(w, r)
+
+				// Internal auth requires the context, so this should fail
+				Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(next.called).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("GetPlayer", func() {
