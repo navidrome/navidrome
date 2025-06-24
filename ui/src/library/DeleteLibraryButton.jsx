@@ -1,8 +1,7 @@
-import React, { Fragment, useState } from 'react'
+import React from 'react'
 import {
   useNotify,
-  useRefresh,
-  useDelete,
+  useDeleteWithConfirmController,
   Button,
   Confirm,
   useTranslate,
@@ -10,41 +9,33 @@ import {
 } from 'react-admin'
 import DeleteIcon from '@material-ui/icons/Delete'
 
-const DeleteLibraryButton = ({ record }) => {
-  const [open, setOpen] = useState(false)
+const DeleteLibraryButton = ({ record, resource, basePath, ...props }) => {
   const translate = useTranslate()
   const notify = useNotify()
   const redirect = useRedirect()
-  const [deleteOne, { loading }] = useDelete()
 
-  const handleClick = () => setOpen(true)
-  const handleDialogClose = () => setOpen(false)
-
-  const handleConfirm = async () => {
-    try {
-      await deleteOne('library', record.id, record)
-      notify('resources.library.notifications.deleted', 'info', {
-        smart_count: 1,
-      })
-      redirect('/library')
-    } catch (error) {
-      notify(
-        typeof error === 'string'
-          ? error
-          : error.message || 'ra.notification.http_error',
-        'warning',
-      )
-    } finally {
-      setOpen(false)
-    }
+  const onSuccess = () => {
+    notify('resources.library.notifications.deleted', 'info', {
+      smart_count: 1,
+    })
+    redirect('/library')
   }
 
+  const { open, loading, handleDialogOpen, handleDialogClose, handleDelete } =
+    useDeleteWithConfirmController({
+      resource,
+      record,
+      basePath,
+      onSuccess,
+    })
+
   return (
-    <Fragment>
+    <>
       <Button
         label="ra.action.delete"
-        onClick={handleClick}
+        onClick={handleDialogOpen}
         disabled={loading}
+        {...props}
       >
         <DeleteIcon />
       </Button>
@@ -53,10 +44,10 @@ const DeleteLibraryButton = ({ record }) => {
         loading={loading}
         title={translate('resources.library.name', { smart_count: 1 })}
         content={translate('resources.library.messages.deleteConfirm')}
-        onConfirm={handleConfirm}
+        onConfirm={handleDelete}
         onClose={handleDialogClose}
       />
-    </Fragment>
+    </>
   )
 }
 
