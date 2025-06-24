@@ -132,7 +132,8 @@ func (api *Router) UpdatePlaylist(r *http.Request) (*responses.Subsonic, error) 
 		plsName = &s
 	}
 	var comment *string
-	if s, err := p.String("comment"); err == nil {
+	if _, exists := r.URL.Query()["comment"]; exists {
+		s := r.URL.Query().Get("comment")
 		comment = &s
 	}
 	var public *bool
