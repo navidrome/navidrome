@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/api"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -92,20 +93,22 @@ type Manager struct {
 	websocketService *websocketService       // Service for handling WebSocket connections
 	lifecycle        *pluginLifecycleManager // Manages plugin lifecycle and initialization
 	adapters         map[string]WasmPlugin   // Map of plugin folder name + capability to adapter
+	ds               model.DataStore         // DataStore for accessing persistent data
 }
 
 // GetManager returns the singleton instance of Manager
-func GetManager() *Manager {
+func GetManager(ds model.DataStore) *Manager {
 	return singleton.GetInstance(func() *Manager {
-		return createManager()
+		return createManager(ds)
 	})
 }
 
 // createManager creates a new Manager instance. Used in tests
-func createManager() *Manager {
+func createManager(ds model.DataStore) *Manager {
 	m := &Manager{
 		plugins:   make(map[string]*plugin),
 		lifecycle: newPluginLifecycleManager(),
+		ds:        ds,
 	}
 
 	// Create the host services

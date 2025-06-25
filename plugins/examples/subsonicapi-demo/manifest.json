@@ -7,7 +7,8 @@
   "capabilities": ["LifecycleManagement"],
   "permissions": {
     "subsonicapi": {
-      "reason": "Demonstrate accessing Navidrome's Subsonic API from within plugins"
+      "reason": "Demonstrate accessing Navidrome's Subsonic API from within plugins",
+      "allowAdmins": true
     }
   }
 }

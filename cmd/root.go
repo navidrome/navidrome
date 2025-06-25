@@ -337,7 +337,7 @@ func startPluginManager(ctx context.Context) func() error {
 		}
 		log.Info(ctx, "Starting plugin manager")
 		// Get the manager instance and scan for plugins
-		manager := plugins.GetManager()
+		manager := plugins.GetManager(CreateDataStore())
 		manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
 		manager.ScanPlugins()
 

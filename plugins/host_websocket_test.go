@@ -84,7 +84,7 @@ var _ = Describe("WebSocket Host Service", func() {
 		DeferCleanup(server.Close)
 
 		// Create a new manager and websocket service
-		manager = createManager()
+		manager = createManager(nil)
 		wsService = newWebsocketService(manager)
 	})
 

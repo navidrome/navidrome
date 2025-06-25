@@ -67,7 +67,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -92,7 +92,7 @@ func CreatePublicRouter() *public.Router {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -137,7 +137,7 @@ func CreateScanner(ctx context.Context) scanner.Scanner {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -154,7 +154,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	dataStore := persistence.New(sqlDB)
 	fileCache := artwork.GetImageCache()
 	fFmpeg := ffmpeg.New()
-	manager := plugins.GetManager()
+	manager := plugins.GetManager(dataStore)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	provider := external.NewProvider(dataStore, agentsAgents)
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, fFmpeg, provider)
@@ -176,4 +176,4 @@ func GetPlaybackServer() playback.PlaybackServer {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), metrics.NewPrometheusInstance, db.Db)
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, plugins.GetManager, metrics.NewPrometheusInstance, db.Db, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)))

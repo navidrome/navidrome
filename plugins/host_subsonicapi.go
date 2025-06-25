@@ -2,14 +2,19 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path"
+	"strings"
 
+	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/host/subsonicapi"
+	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/navidrome/navidrome/server/subsonic"
 )
 
@@ -28,8 +33,10 @@ import (
 //
 // See example usage in the `plugins/examples/subsonicapi-demo` plugin
 type subsonicAPIServiceImpl struct {
-	pluginID string
-	router   SubsonicRouter
+	pluginID    string
+	router      SubsonicRouter
+	permissions *subsonicAPIPermissions
+	ds          model.DataStore
 }
 
 func (s *subsonicAPIServiceImpl) Call(ctx context.Context, req *subsonicapi.CallRequest) (*subsonicapi.CallResponse, error) {
@@ -56,6 +63,11 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, req *subsonicapi.Call
 		return &subsonicapi.CallResponse{
 			Error: "missing required parameter 'u' (username)",
 		}, nil
+	}
+
+	if err := s.checkPermissions(ctx, username); err != nil {
+		log.Warn(ctx, "SubsonicAPI call blocked by permissions", "plugin", s.pluginID, "user", username, err)
+		return &subsonicapi.CallResponse{Error: err.Error()}, nil
 	}
 
 	// Add required Subsonic API parameters
@@ -94,4 +106,52 @@ func (s *subsonicAPIServiceImpl) Call(ctx context.Context, req *subsonicapi.Call
 	return &subsonicapi.CallResponse{
 		Json: recorder.Body.String(),
 	}, nil
+}
+
+func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username string) error {
+	if s.permissions == nil {
+		return nil
+	}
+	if len(s.permissions.AllowedUsernames) > 0 {
+		if _, ok := s.permissions.usernameMap[strings.ToLower(username)]; !ok {
+			return fmt.Errorf("username %s is not allowed", username)
+		}
+	}
+	if !s.permissions.AllowAdmins {
+		if s.router == nil {
+			return fmt.Errorf("permissions check failed: router not available")
+		}
+		usr, err := s.ds.User(ctx).FindByUsername(username)
+		if err != nil {
+			if errors.Is(err, model.ErrNotFound) {
+				return fmt.Errorf("username %s not found", username)
+			}
+			return err
+		}
+		if usr.IsAdmin {
+			return fmt.Errorf("calling SubsonicAPI as admin user is not allowed")
+		}
+	}
+	return nil
+}
+
+type subsonicAPIPermissions struct {
+	AllowedUsernames []string
+	AllowAdmins      bool
+	usernameMap      map[string]struct{}
+}
+
+func parseSubsonicAPIPermissions(data *schema.PluginManifestPermissionsSubsonicapi) *subsonicAPIPermissions {
+	if data == nil {
+		return &subsonicAPIPermissions{}
+	}
+	perms := &subsonicAPIPermissions{
+		AllowedUsernames: data.AllowedUsernames,
+		AllowAdmins:      data.AllowAdmins,
+		usernameMap:      make(map[string]struct{}),
+	}
+	for _, u := range data.AllowedUsernames {
+		perms.usernameMap[strings.ToLower(u)] = struct{}{}
+	}
+	return perms
 }

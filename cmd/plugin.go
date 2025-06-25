@@ -554,7 +554,7 @@ func pluginRefresh(cmd *cobra.Command, args []string) {
 	fmt.Printf("Refreshing plugin '%s'...\n", pluginName)
 
 	// Get the plugin manager and refresh
-	mgr := plugins.GetManager()
+	mgr := plugins.GetManager(CreateDataStore())
 	mgr.SetSubsonicRouter(CreateSubsonicAPIRouter(cmd.Context()))
 	log.Debug("Scanning plugins directory", "path", pluginsDir)
 	mgr.ScanPlugins()

@@ -3,10 +3,12 @@ package plugins
 import (
 	"context"
 	"net/http"
-	"sync"
 
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/host/subsonicapi"
+	"github.com/navidrome/navidrome/plugins/schema"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -14,11 +16,17 @@ import (
 var _ = Describe("SubsonicAPI Host Service", func() {
 	var (
 		service    *subsonicAPIServiceImpl
-		manager    *Manager
 		mockRouter http.Handler
+		userRepo   *tests.MockedUserRepo
 	)
 
 	BeforeEach(func() {
+		// Setup mock datastore with users
+		userRepo = tests.CreateMockUserRepo()
+		_ = userRepo.Put(&model.User{UserName: "admin", IsAdmin: true})
+		_ = userRepo.Put(&model.User{UserName: "user", IsAdmin: false})
+		ds := &tests.MockDataStore{MockedUser: userRepo}
+
 		// Create a mock router
 		mockRouter = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
@@ -26,16 +34,11 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 			_, _ = w.Write([]byte(`{"subsonic-response":{"status":"ok","version":"1.16.1"}}`))
 		})
 
-		// Create manager with mock router
-		manager = &Manager{
-			mu:             sync.RWMutex{},
-			subsonicRouter: mockRouter,
-		}
-
 		// Create service implementation
 		service = &subsonicAPIServiceImpl{
 			pluginID: "test-plugin",
-			router:   manager.subsonicRouter,
+			router:   mockRouter,
+			ds:       ds,
 		}
 	})
 
@@ -47,8 +50,7 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{}`))
 		})
-		manager.subsonicRouter = mockRouter
-		service.router = manager.subsonicRouter
+		service.router = mockRouter
 		return &capturedRequest
 	}
 
@@ -139,7 +141,6 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 
 		Context("when subsonic router is not available", func() {
 			BeforeEach(func() {
-				manager.subsonicRouter = nil
 				service.router = nil
 			})
 
@@ -182,6 +183,35 @@ var _ = Describe("SubsonicAPI Host Service", func() {
 				Expect(resp).ToNot(BeNil())
 				Expect(resp.Error).To(Equal("missing required parameter 'u' (username)"))
 				Expect(resp.Json).To(BeEmpty())
+			})
+		})
+
+		Context("permission checks", func() {
+			It("rejects disallowed username", func() {
+				service.permissions = parseSubsonicAPIPermissions(&schema.PluginManifestPermissionsSubsonicapi{
+					Reason:           "test",
+					AllowedUsernames: []string{"user"},
+				})
+
+				resp, err := service.Call(context.Background(), &subsonicapi.CallRequest{Url: "/rest/ping?u=admin"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.Error).To(ContainSubstring("not allowed"))
+			})
+
+			It("rejects admin when allowAdmins is false", func() {
+				service.permissions = parseSubsonicAPIPermissions(&schema.PluginManifestPermissionsSubsonicapi{Reason: "test"})
+
+				resp, err := service.Call(context.Background(), &subsonicapi.CallRequest{Url: "/rest/ping?u=admin"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.Error).To(ContainSubstring("not allowed"))
+			})
+
+			It("allows admin when allowAdmins is true", func() {
+				service.permissions = parseSubsonicAPIPermissions(&schema.PluginManifestPermissionsSubsonicapi{Reason: "test", AllowAdmins: true})
+
+				resp, err := service.Call(context.Background(), &subsonicapi.CallRequest{Url: "/rest/ping?u=admin"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.Error).To(BeEmpty())
 			})
 		})
 	})

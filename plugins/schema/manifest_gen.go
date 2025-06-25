@@ -310,6 +310,12 @@ func (j *PluginManifestPermissionsScheduler) UnmarshalJSON(value []byte) error {
 
 // SubsonicAPI service permissions
 type PluginManifestPermissionsSubsonicapi struct {
+	// If false, reject calls where the u is an admin
+	AllowAdmins bool `json:"allowAdmins,omitempty" yaml:"allowAdmins,omitempty" mapstructure:"allowAdmins,omitempty"`
+
+	// List of usernames the plugin can pass as u. Any user if empty
+	AllowedUsernames []string `json:"allowedUsernames,omitempty" yaml:"allowedUsernames,omitempty" mapstructure:"allowedUsernames,omitempty"`
+
 	// Explanation of why this permission is needed
 	Reason string `json:"reason" yaml:"reason" mapstructure:"reason"`
 }
@@ -327,6 +333,9 @@ func (j *PluginManifestPermissionsSubsonicapi) UnmarshalJSON(value []byte) error
 	var plain Plain
 	if err := json.Unmarshal(value, &plain); err != nil {
 		return err
+	}
+	if v, ok := raw["allowAdmins"]; !ok || v == nil {
+		plain.AllowAdmins = false
 	}
 	if len(plain.Reason) < 1 {
 		return fmt.Errorf("field %s length: must be >= %d", "reason", 1)
