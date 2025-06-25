@@ -208,8 +208,32 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 		}}
 	}
 
+	// Get library info before deletion for logging
+	lib, err := r.Get(libID)
+	if err != nil {
+		return r.mapError(err)
+	}
+
 	err = r.LibraryRepository.Delete(libID)
-	return r.mapError(err)
+	if err != nil {
+		return r.mapError(err)
+	}
+
+	// Trigger scan after successful library deletion to clean up orphaned data
+	if r.scanner != nil {
+		go func() {
+			log.Info(r.ctx, "Triggering scan after library deletion", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+			start := time.Now()
+			warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan to clean up orphaned data
+			if err != nil {
+				log.Error(r.ctx, "Error scanning after library deletion", "libraryID", lib.ID, "name", lib.Name, err)
+			} else {
+				log.Info(r.ctx, "Scan completed after library deletion", "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
+			}
+		}()
+	}
+
+	return nil
 }
 
 // Helper methods
