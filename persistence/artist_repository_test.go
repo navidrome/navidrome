@@ -21,7 +21,7 @@ var _ = Describe("ArtistRepository", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid"})
+		ctx = request.WithUser(ctx, adminUser)
 		repo = NewArtistRepository(ctx, GetDBXBuilder())
 	})
 
