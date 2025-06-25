@@ -71,7 +71,7 @@ func (r *libraryRepository) GetPath(id int) (string, error) {
 }
 
 func (r *libraryRepository) Put(l *model.Library) error {
-	if l.ID == 1 {
+	if l.ID == model.DefaultLibraryID {
 		currentLib, err := r.Get(1)
 		// if we are creating it, it's ok.
 		if err == nil { // it exists, so we are updating it
@@ -131,19 +131,17 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 	return nil
 }
 
-const hardCodedMusicFolderID = 1
-
 // TODO Remove this method when we have a proper UI to add libraries
 // This is a temporary method to store the music folder path from the config in the DB
 func (r *libraryRepository) StoreMusicFolder() error {
 	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).
 		Set("updated_at", time.Now()).
-		Where(Eq{"id": hardCodedMusicFolderID})
+		Where(Eq{"id": model.DefaultLibraryID})
 	_, err := r.executeSQL(sq)
 	if err != nil {
 		libLock.Lock()
 		defer libLock.Unlock()
-		libCache[hardCodedMusicFolderID] = conf.Server.MusicFolder
+		libCache[model.DefaultLibraryID] = conf.Server.MusicFolder
 	}
 	return err
 }
