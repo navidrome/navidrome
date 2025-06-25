@@ -19,8 +19,10 @@ import {
   FormDataConsumer,
   usePermissions,
 } from 'react-admin'
+import { Typography } from '@material-ui/core'
 import { Title } from '../common'
 import DeleteUserButton from './DeleteUserButton'
+import { LibrarySelectionField } from './LibrarySelectionField.jsx'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -100,12 +102,28 @@ const UserEdit = (props) => {
     [mutate, notify, permissions, redirect, refresh],
   )
 
+  // Custom validation function
+  const validateUserForm = (values) => {
+    const errors = {}
+    // Only require library selection for non-admin users
+    if (
+      !values.isAdmin &&
+      (!values.libraryIds || values.libraryIds.length === 0)
+    ) {
+      errors.libraryIds = translate(
+        'resources.user.validation.librariesRequired',
+      )
+    }
+    return errors
+  }
+
   return (
     <Edit title={<UserTitle />} undoable={false} {...props}>
       <SimpleForm
         variant={'outlined'}
         toolbar={<UserToolbar showDelete={canDelete} />}
         save={save}
+        validate={validateUserForm}
       >
         {permissions === 'admin' && (
           <TextInput
@@ -139,6 +157,28 @@ const UserEdit = (props) => {
         {permissions === 'admin' && (
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
+
+        {/* Conditional Library Selection for Admin Users Only */}
+        {permissions === 'admin' && (
+          <FormDataConsumer>
+            {({ formData }) => (
+              <>
+                {!formData.isAdmin && <LibrarySelectionField />}
+
+                {formData.isAdmin && (
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    style={{ marginTop: 16, marginBottom: 16 }}
+                  >
+                    {translate('resources.user.messages.adminAutoLibraries')}
+                  </Typography>
+                )}
+              </>
+            )}
+          </FormDataConsumer>
+        )}
+
         <DateField variant="body1" source="lastLoginAt" showTime />
         <DateField variant="body1" source="lastAccessAt" showTime />
         <DateField variant="body1" source="updatedAt" showTime />
