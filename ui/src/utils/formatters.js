@@ -35,7 +35,7 @@ export const formatDuration2 = (totalSeconds) => {
   const seconds = Math.floor(totalSeconds % 60)
 
   const parts = []
-  
+
   if (days > 0) {
     // When days are present, show only d h m (3 levels max)
     parts.push(`${days}d`)
@@ -57,7 +57,7 @@ export const formatDuration2 = (totalSeconds) => {
       parts.push(`${seconds}s`)
     }
   }
-  
+
   return parts.join(' ')
 }
 

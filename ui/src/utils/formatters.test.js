@@ -110,12 +110,12 @@ describe('formatDuration2', () => {
 
   it('formats days with maximum 3 levels (d h m)', () => {
     expect(formatDuration2(86400)).toEqual('1d')
-    expect(formatDuration2(86461)).toEqual('1d 1m')  // seconds dropped when days present
-    expect(formatDuration2(90061)).toEqual('1d 1h 1m')  // seconds dropped when days present
+    expect(formatDuration2(86461)).toEqual('1d 1m') // seconds dropped when days present
+    expect(formatDuration2(90061)).toEqual('1d 1h 1m') // seconds dropped when days present
     expect(formatDuration2(172800)).toEqual('2d')
     expect(formatDuration2(176400)).toEqual('2d 1h')
     expect(formatDuration2(176460)).toEqual('2d 1h 1m')
-    expect(formatDuration2(176461)).toEqual('2d 1h 1m')  // seconds dropped when days present
+    expect(formatDuration2(176461)).toEqual('2d 1h 1m') // seconds dropped when days present
   })
 })
 

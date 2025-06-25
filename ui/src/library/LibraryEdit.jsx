@@ -11,30 +11,39 @@ import {
   useNotify,
   useRedirect,
   NumberInput,
+  Toolbar,
 } from 'react-admin'
-import { Typography, Box, Toolbar } from '@material-ui/core'
+import { Typography, Box } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import DeleteLibraryButton from './DeleteLibraryButton'
 import { Title } from '../common'
 import { formatBytes, formatDuration2, formatNumber } from '../utils/index.js'
+
+const useStyles = makeStyles({
+  toolbar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+})
 
 const LibraryTitle = ({ record }) => {
   const translate = useTranslate()
   const resourceName = translate('resources.library.name', { smart_count: 1 })
   return (
-    <Title subTitle={`${resourceName} ${record ? `\"${record.name}\"` : ''}`} />
+    <Title subTitle={`${resourceName} ${record ? `"${record.name}"` : ''}`} />
   )
 }
 
-const CustomToolbar = (props) => (
-  <Toolbar {...props}>
-    <Box display="flex" justifyContent="space-between" width="100%">
-      <SaveButton
-        handleSubmitWithRedirect={props.handleSubmitWithRedirect}
-        saving={props.saving}
-        pristine={props.pristine}
+const CustomToolbar = ({ showDelete, ...props }) => (
+  <Toolbar {...props} classes={useStyles()}>
+    <SaveButton disabled={props.pristine} />
+    {showDelete && (
+      <DeleteLibraryButton
+        record={props.record}
+        resource="library"
+        basePath="/library"
       />
-      <DeleteLibraryButton />
-    </Box>
+    )}
   </Toolbar>
 )
 
@@ -43,6 +52,9 @@ const LibraryEdit = (props) => {
   const [mutate] = useMutation()
   const notify = useNotify()
   const redirect = useRedirect()
+
+  // Library ID 1 is protected (main library)
+  const canDelete = props.id !== '1'
 
   const save = useCallback(
     async (values) => {
@@ -83,8 +95,19 @@ const LibraryEdit = (props) => {
                     {translate('resources.library.sections.basic')}
                   </Typography>
 
-                  <TextInput source="name" validate={[required()]} />
-                  <TextInput source="path" validate={[required()]} fullWidth />
+                  <TextInput
+                    source="name"
+                    validate={[required()]}
+                    variant="outlined"
+                    InputProps={{ readOnly: !canDelete }} // Disable editing path for library 1
+                  />
+                  <TextInput
+                    source="path"
+                    validate={[required()]}
+                    fullWidth
+                    variant="outlined"
+                    InputProps={{ readOnly: !canDelete }} // Disable editing path for library 1
+                  />
 
                   <Box mt="2em" />
 
@@ -96,18 +119,20 @@ const LibraryEdit = (props) => {
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
                       <NumberInput
-                        disabled
+                        InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalSongs'}
                         fullWidth
+                        variant="outlined"
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
                       <NumberInput
-                        disabled
+                        InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalAlbums'}
                         fullWidth
+                        variant="outlined"
                       />
                     </Box>
                   </Box>
@@ -115,19 +140,21 @@ const LibraryEdit = (props) => {
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
                       <NumberInput
-                        disabled
+                        InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalArtists'}
                         fullWidth
+                        variant="outlined"
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
                       <TextInput
-                        disabled
+                        InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalSize'}
                         format={formatBytes}
                         fullWidth
+                        variant="outlined"
                       />
                     </Box>
                   </Box>
@@ -135,19 +162,21 @@ const LibraryEdit = (props) => {
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
                       <TextInput
-                        disabled
+                        InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalDuration'}
                         format={formatDuration2}
                         fullWidth
+                        variant="outlined"
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
                       <TextInput
-                        disabled
+                        InputProps={{ readOnly: true }}
                         resource={'library'}
                         source={'totalMissingFiles'}
                         fullWidth
+                        variant="outlined"
                       />
                     </Box>
                   </Box>
@@ -208,6 +237,8 @@ const LibraryEdit = (props) => {
               handleSubmitWithRedirect={formProps.handleSubmitWithRedirect}
               pristine={formProps.pristine}
               saving={formProps.saving}
+              record={formProps.record}
+              showDelete={canDelete}
             />
           </form>
         )}

@@ -1,4 +1,7 @@
 import React from 'react'
+import DeleteIcon from '@material-ui/icons/Delete'
+import { makeStyles, alpha } from '@material-ui/core/styles'
+import clsx from 'clsx'
 import {
   useNotify,
   useDeleteWithConfirmController,
@@ -7,9 +10,30 @@ import {
   useTranslate,
   useRedirect,
 } from 'react-admin'
-import DeleteIcon from '@material-ui/icons/Delete'
 
-const DeleteLibraryButton = ({ record, resource, basePath, ...props }) => {
+const useStyles = makeStyles(
+  (theme) => ({
+    deleteButton: {
+      color: theme.palette.error.main,
+      '&:hover': {
+        backgroundColor: alpha(theme.palette.error.main, 0.12),
+        // Reset on mouse devices
+        '@media (hover: none)': {
+          backgroundColor: 'transparent',
+        },
+      },
+    },
+  }),
+  { name: 'RaDeleteWithConfirmButton' },
+)
+
+const DeleteLibraryButton = ({
+  record,
+  resource,
+  basePath,
+  className,
+  ...props
+}) => {
   const translate = useTranslate()
   const notify = useNotify()
   const redirect = useRedirect()
@@ -29,12 +53,14 @@ const DeleteLibraryButton = ({ record, resource, basePath, ...props }) => {
       onSuccess,
     })
 
+  const classes = useStyles(props)
   return (
     <>
       <Button
         label="ra.action.delete"
         onClick={handleDialogOpen}
         disabled={loading}
+        className={clsx('ra-delete-button', classes.deleteButton, className)}
         {...props}
       >
         <DeleteIcon />
