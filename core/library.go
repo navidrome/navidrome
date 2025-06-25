@@ -19,9 +19,15 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
-// Scanner defines the interface for triggering library scans
+// Scanner interface for triggering scans
 type Scanner interface {
 	ScanAll(ctx context.Context, fullScan bool) (warnings []string, err error)
+}
+
+// Watcher interface for managing file system watchers
+type Watcher interface {
+	Watch(ctx context.Context, lib *model.Library) error
+	StopWatching(ctx context.Context, libraryID int) error
 }
 
 // Library provides business logic for library management and user-library associations
@@ -36,11 +42,16 @@ type Library interface {
 type libraryService struct {
 	ds      model.DataStore
 	scanner Scanner
+	watcher Watcher
 }
 
 // NewLibrary creates a new Library service
-func NewLibrary(ds model.DataStore, scanner Scanner) Library {
-	return &libraryService{ds: ds, scanner: scanner}
+func NewLibrary(ds model.DataStore, scanner Scanner, watcher Watcher) Library {
+	return &libraryService{
+		ds:      ds,
+		scanner: scanner,
+		watcher: watcher,
+	}
 }
 
 // User-library association operations
@@ -118,6 +129,7 @@ func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
 		Repository:        repo.(rest.Repository),
 		ds:                s.ds,
 		scanner:           s.scanner,
+		watcher:           s.watcher,
 	}
 	return wrapper
 }
@@ -128,6 +140,7 @@ type libraryRepositoryWrapper struct {
 	ctx     context.Context
 	ds      model.DataStore
 	scanner Scanner
+	watcher Watcher
 }
 
 func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
@@ -141,7 +154,13 @@ func (r *libraryRepositoryWrapper) Save(entity interface{}) (string, error) {
 		return "", r.mapError(err)
 	}
 
-	// Trigger scan after successful library creation
+	// Start watcher and trigger scan after successful library creation
+	if r.watcher != nil {
+		if err := r.watcher.Watch(r.ctx, lib); err != nil {
+			log.Warn(r.ctx, "Failed to start watcher for new library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
+		}
+	}
+
 	if r.scanner != nil {
 		go r.triggerScan(lib, "new")
 	}
@@ -174,9 +193,17 @@ func (r *libraryRepositoryWrapper) Update(id string, entity interface{}, cols ..
 		return r.mapError(err)
 	}
 
-	// Trigger scan if path was updated
-	if pathChanged && r.scanner != nil {
-		go r.triggerScan(lib, "updated")
+	// Restart watcher and trigger scan if path was updated
+	if pathChanged {
+		if r.watcher != nil {
+			if err := r.watcher.Watch(r.ctx, lib); err != nil {
+				log.Warn(r.ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
+			}
+		}
+
+		if r.scanner != nil {
+			go r.triggerScan(lib, "updated")
+		}
 	}
 
 	return nil
@@ -201,7 +228,13 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 		return r.mapError(err)
 	}
 
-	// Trigger scan after successful library deletion to clean up orphaned data
+	// Stop watcher and trigger scan after successful library deletion to clean up orphaned data
+	if r.watcher != nil {
+		if err := r.watcher.StopWatching(r.ctx, libID); err != nil {
+			log.Warn(r.ctx, "Failed to stop watcher for deleted library", "libraryID", libID, "name", lib.Name, "path", lib.Path, err)
+		}
+	}
+
 	if r.scanner != nil {
 		go r.triggerScan(lib, "deleted")
 	}

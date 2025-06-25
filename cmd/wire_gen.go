@@ -68,7 +68,8 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	cacheWarmer := artwork.NewCacheWarmer(artworkArtwork, fileCache)
 	broker := events.GetBroker()
 	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
-	library := core.NewLibrary(dataStore, scannerScanner)
+	watcher := scanner.GetWatcher(dataStore, scannerScanner)
+	library := core.NewLibrary(dataStore, scannerScanner, watcher)
 	router := nativeapi.New(dataStore, share, playlists, insights, library)
 	return router
 }
@@ -175,7 +176,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	broker := events.GetBroker()
 	playlists := core.NewPlaylists(dataStore)
 	scannerScanner := scanner.New(ctx, dataStore, cacheWarmer, broker, playlists, metricsMetrics)
-	watcher := scanner.NewWatcher(dataStore, scannerScanner)
+	watcher := scanner.GetWatcher(dataStore, scannerScanner)
 	return watcher
 }
 
@@ -196,7 +197,7 @@ func getPluginManager() plugins.Manager {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.NewWatcher, plugins.GetManager, metrics.GetPrometheusInstance, db.Db, wire.Bind(new(agents.PluginLoader), new(plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)), wire.Bind(new(core.Scanner), new(scanner.Scanner)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, plugins.GetManager, metrics.GetPrometheusInstance, db.Db, wire.Bind(new(agents.PluginLoader), new(plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(plugins.Manager)), wire.Bind(new(core.Scanner), new(scanner.Scanner)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
 
 func GetPluginManager(ctx context.Context) plugins.Manager {
 	manager := getPluginManager()
