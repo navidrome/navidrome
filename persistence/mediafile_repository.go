@@ -106,6 +106,7 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 func (r *mediaFileRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := r.newSelect()
 	query = r.withAnnotation(query, "media_file.id")
+	query = r.applyLibraryFilter(query)
 	return r.count(query, options...)
 }
 
