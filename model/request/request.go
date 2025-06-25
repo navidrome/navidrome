@@ -63,8 +63,8 @@ func WithReverseProxyIp(ctx context.Context, reverseProxyIp string) context.Cont
 	return context.WithValue(ctx, ReverseProxyIp, reverseProxyIp)
 }
 
-func WithInternalAuth(ctx context.Context, internalAuth string) context.Context {
-	return context.WithValue(ctx, InternalAuth, internalAuth)
+func WithInternalAuth(ctx context.Context, username string) context.Context {
+	return context.WithValue(ctx, InternalAuth, username)
 }
 
 func UserFrom(ctx context.Context) (model.User, bool) {
