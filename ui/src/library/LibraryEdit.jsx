@@ -1,89 +1,48 @@
 import React, { useCallback } from 'react'
 import {
   Edit,
-  SimpleForm,
+  FormWithRedirect,
   TextInput,
   required,
-  Toolbar,
   SaveButton,
-  NumberField,
   DateField,
-  FunctionField,
   useTranslate,
   useMutation,
   useNotify,
   useRedirect,
+  NumberInput,
 } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
-import { Divider, Typography } from '@material-ui/core'
+import { Typography, Box, Toolbar } from '@material-ui/core'
 import DeleteLibraryButton from './DeleteLibraryButton'
 import { Title } from '../common'
-import { formatBytes } from '../utils/index.js'
-
-const useStyles = makeStyles({
-  toolbar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-  },
-  divider: {
-    marginTop: '1em',
-    marginBottom: '1em',
-  },
-  stats: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr',
-    gap: '0 1em',
-    '& > *': {
-      padding: '0.2em 0',
-    },
-  },
-})
+import { formatBytes, formatDuration2, formatNumber } from '../utils/index.js'
 
 const LibraryTitle = ({ record }) => {
   const translate = useTranslate()
   const resourceName = translate('resources.library.name', { smart_count: 1 })
   return (
-    <Title subTitle={`${resourceName} ${record ? `"${record.name}"` : ''}`} />
+    <Title subTitle={`${resourceName} ${record ? `\"${record.name}\"` : ''}`} />
   )
 }
 
-const LibraryToolbar = (props) => (
-  <Toolbar {...props} classes={useStyles()}>
-    <SaveButton />
-    {props.record && props.record.id !== 1 && (
-      <DeleteLibraryButton {...props} />
-    )}
+const CustomToolbar = (props) => (
+  <Toolbar {...props}>
+    <Box display="flex" justifyContent="space-between" width="100%">
+      <SaveButton
+        handleSubmitWithRedirect={props.handleSubmitWithRedirect}
+        saving={props.saving}
+        pristine={props.pristine}
+      />
+      <DeleteLibraryButton />
+    </Box>
   </Toolbar>
 )
 
-const formatDuration = (totalSeconds) => {
-  if (totalSeconds == null || totalSeconds < 0) {
-    return '0s'
-  }
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = Math.floor(totalSeconds % 60)
-
-  const parts = []
-  if (hours > 0) {
-    parts.push(`${hours}h`)
-  }
-  if (minutes > 0) {
-    parts.push(`${minutes}m`)
-  }
-  if (seconds > 0 || parts.length === 0) {
-    parts.push(`${seconds}s`)
-  }
-  return parts.join(' ')
-}
-
 const LibraryEdit = (props) => {
-  const classes = useStyles()
   const translate = useTranslate()
   const [mutate] = useMutation()
   const notify = useNotify()
   const redirect = useRedirect()
-  const isFirstLibrary = props.id === '1'
 
   const save = useCallback(
     async (values) => {
@@ -92,7 +51,7 @@ const LibraryEdit = (props) => {
           {
             type: 'update',
             resource: 'library',
-            payload: { id: props.id, data: values },
+            payload: { id: values.id, data: values },
           },
           { returnPromise: true },
         )
@@ -106,99 +65,153 @@ const LibraryEdit = (props) => {
         }
       }
     },
-    [mutate, notify, redirect, props.id],
+    [mutate, notify, redirect],
   )
 
   return (
     <Edit title={<LibraryTitle />} undoable={false} {...props}>
-      <SimpleForm variant={'outlined'} toolbar={<LibraryToolbar />} save={save}>
-        <TextInput source="name" validate={[required()]} />
-        <TextInput
-          source="path"
-          validate={[required()]}
-          fullWidth
-          disabled={isFirstLibrary}
-        />
-        <Divider className={classes.divider} fullWidth />
-        <Typography variant="h6" gutterBottom>
-          Statistics
-        </Typography>
-        {/*eslint-disable-next-line react/no-unknown-property*/}
-        <div className={classes.stats} fullWidth>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalSongs')}
-            </Typography>
-            <NumberField source="totalSongs" />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalAlbums')}
-            </Typography>
-            <NumberField source="totalAlbums" />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalArtists')}
-            </Typography>
-            <NumberField source="totalArtists" />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalFolders')}
-            </Typography>
-            <NumberField source="totalFolders" />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalFiles')}
-            </Typography>
-            <NumberField source="totalFiles" />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalMissingFiles')}
-            </Typography>
-            <NumberField source="totalMissingFiles" />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalSize')}
-            </Typography>
-            <FunctionField render={(record) => formatBytes(record.totalSize)} />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.totalDuration')}
-            </Typography>
-            <FunctionField
-              render={(record) => formatDuration(record.totalDuration)}
+      <FormWithRedirect
+        {...props}
+        save={save}
+        render={(formProps) => (
+          <form onSubmit={formProps.handleSubmit}>
+            <Box p="1em" maxWidth="800px">
+              <Box display="flex">
+                <Box flex={1} mr="1em">
+                  {/* Basic Information */}
+                  <Typography variant="h6" gutterBottom>
+                    {translate('resources.library.sections.basic')}
+                  </Typography>
+
+                  <TextInput source="name" validate={[required()]} />
+                  <TextInput source="path" validate={[required()]} fullWidth />
+
+                  <Box mt="2em" />
+
+                  {/* Statistics - Two Column Layout */}
+                  <Typography variant="h6" gutterBottom>
+                    {translate('resources.library.sections.statistics')}
+                  </Typography>
+
+                  <Box display="flex">
+                    <Box flex={1} mr="0.5em">
+                      <NumberInput
+                        disabled
+                        resource={'library'}
+                        source={'totalSongs'}
+                        fullWidth
+                      />
+                    </Box>
+                    <Box flex={1} ml="0.5em">
+                      <NumberInput
+                        disabled
+                        resource={'library'}
+                        source={'totalAlbums'}
+                        fullWidth
+                      />
+                    </Box>
+                  </Box>
+
+                  <Box display="flex">
+                    <Box flex={1} mr="0.5em">
+                      <NumberInput
+                        disabled
+                        resource={'library'}
+                        source={'totalArtists'}
+                        fullWidth
+                      />
+                    </Box>
+                    <Box flex={1} ml="0.5em">
+                      <TextInput
+                        disabled
+                        resource={'library'}
+                        source={'totalSize'}
+                        format={formatBytes}
+                        fullWidth
+                      />
+                    </Box>
+                  </Box>
+
+                  <Box display="flex">
+                    <Box flex={1} mr="0.5em">
+                      <TextInput
+                        disabled
+                        resource={'library'}
+                        source={'totalDuration'}
+                        format={formatDuration2}
+                        fullWidth
+                      />
+                    </Box>
+                    <Box flex={1} ml="0.5em">
+                      <TextInput
+                        disabled
+                        resource={'library'}
+                        source={'totalMissingFiles'}
+                        fullWidth
+                      />
+                    </Box>
+                  </Box>
+
+                  {/* Timestamps Section */}
+                  <Box mb="1em">
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
+                      {translate('resources.library.fields.lastScanAt')}
+                    </Typography>
+                    <DateField
+                      variant="body1"
+                      source="lastScanAt"
+                      showTime
+                      record={formProps.record}
+                    />
+                  </Box>
+
+                  <Box mb="1em">
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
+                      {translate('resources.library.fields.updatedAt')}
+                    </Typography>
+                    <DateField
+                      variant="body1"
+                      source="updatedAt"
+                      showTime
+                      record={formProps.record}
+                    />
+                  </Box>
+
+                  <Box mb="2em">
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
+                      {translate('resources.library.fields.createdAt')}
+                    </Typography>
+                    <DateField
+                      variant="body1"
+                      source="createdAt"
+                      showTime
+                      record={formProps.record}
+                    />
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+
+            <CustomToolbar
+              handleSubmitWithRedirect={formProps.handleSubmitWithRedirect}
+              pristine={formProps.pristine}
+              saving={formProps.saving}
             />
-          </div>
-        </div>
-        <Divider className={classes.divider} fullWidth />
-        {/*eslint-disable-next-line react/no-unknown-property*/}
-        <div className={classes.stats} fullWidth>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.lastScanAt')}
-            </Typography>
-            <DateField source="lastScanAt" showTime />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.createdAt')}
-            </Typography>
-            <DateField source="createdAt" showTime />
-          </div>
-          <div>
-            <Typography variant="caption" display="block" color="textSecondary">
-              {translate('resources.library.fields.updatedAt')}
-            </Typography>
-            <DateField source="updatedAt" showTime />
-          </div>
-        </div>
-      </SimpleForm>
+          </form>
+        )}
+      />
     </Edit>
   )
 }
