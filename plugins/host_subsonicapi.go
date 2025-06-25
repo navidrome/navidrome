@@ -35,8 +35,17 @@ import (
 type subsonicAPIServiceImpl struct {
 	pluginID    string
 	router      SubsonicRouter
-	permissions *subsonicAPIPermissions
 	ds          model.DataStore
+	permissions *subsonicAPIPermissions
+}
+
+func newSubsonicAPIService(pluginID string, router *SubsonicRouter, ds model.DataStore, permissions *schema.PluginManifestPermissionsSubsonicapi) subsonicapi.SubsonicAPIService {
+	return &subsonicAPIServiceImpl{
+		pluginID:    pluginID,
+		router:      *router,
+		ds:          ds,
+		permissions: parseSubsonicAPIPermissions(permissions),
+	}
 }
 
 func (s *subsonicAPIServiceImpl) Call(ctx context.Context, req *subsonicapi.CallRequest) (*subsonicapi.CallResponse, error) {

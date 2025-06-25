@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -86,14 +87,14 @@ type SubsonicRouter http.Handler
 
 // Manager is a singleton that manages plugins
 type Manager struct {
-	plugins          map[string]*plugin      // Map of plugin folder name to plugin info
-	mu               sync.RWMutex            // Protects plugins map
-	subsonicRouter   SubsonicRouter          // Subsonic API router
-	schedulerService *schedulerService       // Service for handling scheduled tasks
-	websocketService *websocketService       // Service for handling WebSocket connections
-	lifecycle        *pluginLifecycleManager // Manages plugin lifecycle and initialization
-	adapters         map[string]WasmPlugin   // Map of plugin folder name + capability to adapter
-	ds               model.DataStore         // DataStore for accessing persistent data
+	plugins          map[string]*plugin             // Map of plugin folder name to plugin info
+	mu               sync.RWMutex                   // Protects plugins map
+	subsonicRouter   atomic.Pointer[SubsonicRouter] // Subsonic API router
+	schedulerService *schedulerService              // Service for handling scheduled tasks
+	websocketService *websocketService              // Service for handling WebSocket connections
+	lifecycle        *pluginLifecycleManager        // Manages plugin lifecycle and initialization
+	adapters         map[string]WasmPlugin          // Map of plugin folder name + capability to adapter
+	ds               model.DataStore                // DataStore for accessing persistent data
 }
 
 // GetManager returns the singleton instance of Manager
@@ -120,9 +121,7 @@ func createManager(ds model.DataStore) *Manager {
 
 // SetSubsonicRouter sets the SubsonicRouter after Manager initialization
 func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.subsonicRouter = router
+	m.subsonicRouter.Store(&router)
 }
 
 // registerPlugin adds a plugin to the registry with the given parameters

@@ -134,25 +134,12 @@ func (m *Manager) setupHostServices(ctx context.Context, r wazero.Runtime, plugi
 			return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
 		}},
 		{"subsonicapi", permissions.Subsonicapi != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
-			// TODO Refactor this into a proper constructor function
-			// Check if subsonic router is available
-			m.mu.RLock()
-			router := m.subsonicRouter
-			m.mu.RUnlock()
-
-			if router == nil {
-				log.Error(ctx, "SubsonicAPI service requested but router not available", "plugin", pluginID)
-				return nil, fmt.Errorf("SubsonicAPI router not available for plugin %s", pluginID)
+			if router := m.subsonicRouter.Load(); router != nil {
+				service := newSubsonicAPIService(pluginID, m.subsonicRouter.Load(), m.ds, permissions.Subsonicapi)
+				return loadHostLibrary[subsonicapi.SubsonicAPIService](ctx, subsonicapi.Instantiate, service)
 			}
-
-			perms := parseSubsonicAPIPermissions(permissions.Subsonicapi)
-
-			return loadHostLibrary[subsonicapi.SubsonicAPIService](ctx, subsonicapi.Instantiate, &subsonicAPIServiceImpl{
-				pluginID:    pluginID,
-				router:      router,
-				permissions: perms,
-				ds:          m.ds,
-			})
+			log.Error(ctx, "SubsonicAPI service requested but router not available", "plugin", pluginID)
+			return nil, fmt.Errorf("SubsonicAPI router not available for plugin %s", pluginID)
 		}},
 	}
 
