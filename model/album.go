@@ -14,6 +14,8 @@ type Album struct {
 
 	ID            string `structs:"id" json:"id"`
 	LibraryID     int    `structs:"library_id" json:"libraryId"`
+	LibraryPath   string `structs:"-" json:"libraryPath" hash:"ignore"`
+	LibraryName   string `structs:"-" json:"libraryName" hash:"ignore"`
 	Name          string `structs:"name" json:"name"`
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants

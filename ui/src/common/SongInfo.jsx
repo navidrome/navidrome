@@ -59,6 +59,7 @@ export const SongInfo = (props) => {
   ]
   const data = {
     path: <PathField />,
+    libraryName: <TextField source="libraryName" />,
     album: (
       <AlbumLinkField source="album" sortByOrder={'ASC'} record={record} />
     ),
