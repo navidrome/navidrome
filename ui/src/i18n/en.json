@@ -255,6 +255,7 @@
       "fields": {
         "path": "Path",
         "size": "Size",
+        "libraryName": "Library",
         "updatedAt": "Disappeared on"
       },
       "actions": {
