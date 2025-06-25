@@ -184,9 +184,10 @@ func allRolesFilter(_ string, value interface{}) Sqlizer {
 }
 
 func (r *albumRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelect()
-	sql = r.withAnnotation(sql, "album.id")
-	return r.count(sql, options...)
+	query := r.newSelect()
+	query = r.withAnnotation(query, "album.id")
+	query = r.applyLibraryFilter(query)
+	return r.count(query, options...)
 }
 
 func (r *albumRepository) Exists(id string) (bool, error) {

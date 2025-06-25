@@ -86,8 +86,9 @@ func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, err
 }
 
 func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
-	sq := r.newSelect(opt...).Columns("count(*)")
-	return r.count(sq)
+	query := r.newSelect(opt...).Columns("count(*)")
+	query = r.applyLibraryFilter(query)
+	return r.count(query)
 }
 
 func (r folderRepository) GetLastUpdates(lib model.Library) (map[string]model.FolderUpdateInfo, error) {
