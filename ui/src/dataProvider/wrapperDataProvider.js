@@ -43,6 +43,60 @@ const callDeleteMany = (resource, params) => {
   }).then((response) => ({ data: response.json.ids || [] }))
 }
 
+// Helper function to handle user-library associations
+const handleUserLibraryAssociation = async (userId, libraryIds) => {
+  if (!libraryIds || libraryIds.length === 0) {
+    return // Admin users or users without library assignments
+  }
+
+  try {
+    await httpClient(`${REST_URL}/user/${userId}/library`, {
+      method: 'PUT',
+      body: JSON.stringify({ libraryIds }),
+    })
+  } catch (error) {
+    console.error('Error setting user libraries:', error) //eslint-disable-line no-console
+    throw error
+  }
+}
+
+// Enhanced user creation that handles library associations
+const createUser = async (params) => {
+  const { data } = params
+  const { libraryIds, ...userData } = data
+
+  // First create the user
+  const userResponse = await dataProvider.create('user', { data: userData })
+  const userId = userResponse.data.id
+
+  // Then set library associations for non-admin users
+  if (!userData.isAdmin && libraryIds && libraryIds.length > 0) {
+    await handleUserLibraryAssociation(userId, libraryIds)
+  }
+
+  return userResponse
+}
+
+// Enhanced user update that handles library associations
+const updateUser = async (params) => {
+  const { data } = params
+  const { libraryIds, ...userData } = data
+  const userId = params.id
+
+  // First update the user
+  const userResponse = await dataProvider.update('user', {
+    ...params,
+    data: userData,
+  })
+
+  // Then handle library associations for non-admin users
+  if (!userData.isAdmin && libraryIds !== undefined) {
+    await handleUserLibraryAssociation(userId, libraryIds)
+  }
+
+  return userResponse
+}
+
 const wrapperDataProvider = {
   ...dataProvider,
   getList: (resource, params) => {
@@ -62,6 +116,9 @@ const wrapperDataProvider = {
     return dataProvider.getManyReference(r, p)
   },
   update: (resource, params) => {
+    if (resource === 'user') {
+      return updateUser(params)
+    }
     const [r, p] = mapResource(resource, params)
     return dataProvider.update(r, p)
   },
@@ -70,6 +127,9 @@ const wrapperDataProvider = {
     return dataProvider.updateMany(r, p)
   },
   create: (resource, params) => {
+    if (resource === 'user') {
+      return createUser(params)
+    }
     const [r, p] = mapResource(resource, params)
     return dataProvider.create(r, p)
   },
