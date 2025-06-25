@@ -34,6 +34,7 @@ func mf(mf model.MediaFile) model.MediaFile {
 	mf.Tags = model.Tags{}
 	mf.LibraryID = 1
 	mf.LibraryPath = "music" // Default folder
+	mf.LibraryName = "Music Library"
 	mf.Participants = model.Participants{
 		model.RoleArtist: model.ParticipantList{
 			model.Participant{Artist: model.Artist{ID: mf.ArtistID, Name: mf.Artist}},
