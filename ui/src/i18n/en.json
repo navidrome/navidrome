@@ -149,19 +149,27 @@
         "changePassword": "Change Password?",
         "currentPassword": "Current Password",
         "newPassword": "New Password",
-        "token": "Token"
+        "token": "Token",
+        "libraries": "Libraries"
       },
       "helperTexts": {
-        "name": "Changes to your name will only be reflected on next login"
+        "name": "Changes to your name will only be reflected on next login",
+        "libraries": "Select which libraries this user can access"
       },
       "notifications": {
         "created": "User created",
         "updated": "User updated",
         "deleted": "User deleted"
       },
+      "validation": {
+        "librariesRequired": "At least one library must be selected for non-admin users"
+      },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",
         "clickHereForToken": "Click here to get your token"
+      },
+      "messages": {
+        "adminAutoLibraries": "Admin users automatically have access to all libraries"
       }
     },
     "player": {
