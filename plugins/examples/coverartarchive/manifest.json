@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/schema/manifest.schema.json",
   "name": "coverartarchive",
   "author": "Navidrome",
   "version": "1.0.0",

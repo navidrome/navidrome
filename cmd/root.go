@@ -15,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
@@ -193,7 +192,7 @@ func runInitialScan(ctx context.Context) func() error {
 		scanNeeded := conf.Server.Scanner.ScanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
 		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		if scanNeeded {
-			scanner := CreateScanner(ctx)
+			s := CreateScanner(ctx)
 			switch {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
@@ -207,7 +206,7 @@ func runInitialScan(ctx context.Context) func() error {
 				log.Info("Executing initial scan")
 			}
 
-			_, err = scanner.ScanAll(ctx, fullScanRequired == "1")
+			_, err = s.ScanAll(ctx, fullScanRequired == "1")
 			if err != nil {
 				log.Error(ctx, "Scan failed", err)
 			} else {
@@ -337,7 +336,7 @@ func startPluginManager(ctx context.Context) func() error {
 		}
 		log.Info(ctx, "Starting plugin manager")
 		// Get the manager instance and scan for plugins
-		manager := plugins.GetManager()
+		manager := GetPluginManager(ctx)
 		manager.ScanPlugins()
 
 		return nil

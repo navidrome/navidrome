@@ -16,7 +16,7 @@ var _ = Describe("SchedulerService", func() {
 	)
 
 	BeforeEach(func() {
-		manager = createManager()
+		manager = createManager(nil)
 		ss = manager.schedulerService
 	})
 

@@ -22,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/plugins/host/config"
 	"github.com/navidrome/navidrome/plugins/host/http"
 	"github.com/navidrome/navidrome/plugins/host/scheduler"
+	"github.com/navidrome/navidrome/plugins/host/subsonicapi"
 	"github.com/navidrome/navidrome/plugins/host/websocket"
 	"github.com/navidrome/navidrome/plugins/schema"
 	"github.com/tetratelabs/wazero"
@@ -131,6 +132,14 @@ func (m *Manager) setupHostServices(ctx context.Context, r wazero.Runtime, plugi
 				return nil, fmt.Errorf("invalid websocket permissions for plugin %s: %w", pluginID, err)
 			}
 			return loadHostLibrary[websocket.WebSocketService](ctx, websocket.Instantiate, m.websocketService.HostFunctions(pluginID, wsPerms))
+		}},
+		{"subsonicapi", permissions.Subsonicapi != nil, func() (map[string]wazeroapi.FunctionDefinition, error) {
+			if router := m.subsonicRouter.Load(); router != nil {
+				service := newSubsonicAPIService(pluginID, m.subsonicRouter.Load(), m.ds, permissions.Subsonicapi)
+				return loadHostLibrary[subsonicapi.SubsonicAPIService](ctx, subsonicapi.Instantiate, service)
+			}
+			log.Error(ctx, "SubsonicAPI service requested but router not available", "plugin", pluginID)
+			return nil, fmt.Errorf("SubsonicAPI router not available for plugin %s", pluginID)
 		}},
 	}
 

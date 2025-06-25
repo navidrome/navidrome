@@ -157,6 +157,27 @@
               "description": "Artwork service permissions"
             }
           ]
+        },
+        "subsonicapi": {
+          "allOf": [
+            { "$ref": "#/$defs/basePermission" },
+            {
+              "type": "object",
+              "description": "SubsonicAPI service permissions",
+              "properties": {
+                "allowedUsernames": {
+                  "type": "array",
+                  "description": "List of usernames the plugin can pass as u. Any user if empty",
+                  "items": { "type": "string" }
+                },
+                "allowAdmins": {
+                  "type": "boolean",
+                  "description": "If false, reject calls where the u is an admin",
+                  "default": false
+                }
+              }
+            }
+          ]
         }
       }
     }

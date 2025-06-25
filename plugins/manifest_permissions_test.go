@@ -55,7 +55,7 @@ var _ = Describe("Plugin Permissions", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
-		mgr = createManager()
+		mgr = createManager(nil)
 		tempDir = GinkgoT().TempDir()
 	})
 

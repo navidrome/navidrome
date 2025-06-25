@@ -40,7 +40,7 @@ var _ = Describe("CachingRuntime", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		mgr = createManager()
+		mgr = createManager(nil)
 		// Add permissions for the test plugin using typed struct
 		permissions := schema.PluginManifestPermissions{
 			Http: &schema.PluginManifestPermissionsHttp{
