@@ -28,7 +28,9 @@ var _ = Describe("phaseMissingTracks", func() {
 		lr = &tests.MockLibraryRepo{}
 		lr.SetData(model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}})
 		ds = &tests.MockDataStore{MockedMediaFile: mr, MockedLibrary: lr}
-		state = &scanState{}
+		state = &scanState{
+			libraries: model.Libraries{{ID: 1, LastScanStartedAt: time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC)}},
+		}
 		phase = createPhaseMissingTracks(ctx, state, ds)
 	})
 

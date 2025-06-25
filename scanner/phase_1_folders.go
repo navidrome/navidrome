@@ -28,6 +28,7 @@ import (
 
 func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer, libs []model.Library) *phaseFolders {
 	var jobs []*scanJob
+	var updatedLibs []model.Library
 	for _, lib := range libs {
 		if lib.LastScanStartedAt.IsZero() {
 			err := ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
@@ -54,7 +55,12 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			continue
 		}
 		jobs = append(jobs, job)
+		updatedLibs = append(updatedLibs, lib)
 	}
+
+	// Update the state with the libraries that have been processed and have their scan timestamps set
+	state.libraries = updatedLibs
+
 	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
 }
 
