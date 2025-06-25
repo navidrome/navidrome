@@ -24,7 +24,8 @@ The plugin performs the following operations during initialization:
 {
   "permissions": {
     "subsonicapi": {
-      "reason": "Demonstrate accessing Navidrome's Subsonic API from within plugins"
+      "reason": "Demonstrate accessing Navidrome's Subsonic API from within plugins",
+      "allowAdmins": true
     }
   }
 }
@@ -47,8 +48,9 @@ func (SubsonicAPIDemoPlugin) OnInit(ctx context.Context, req *api.InitRequest) (
 }
 ```
 
-When running Navidrome with this plugin installed, it will automatically call the Subsonic API endpoints during the 
+When running Navidrome with this plugin installed, it will automatically call the Subsonic API endpoints during the
 server startup, and you can see the results in the logs:
+
 ```agsl
 INFO[0000] 2022/01/01 00:00:00 SubsonicAPI Demo Plugin initializing...
 DEBU[0000] API: New request /ping                        client=subsonicapi-demo username=admin version=1.16.1

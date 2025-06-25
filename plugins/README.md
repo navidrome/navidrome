@@ -400,6 +400,11 @@ Permissions are declared in the plugin's `manifest.json` file using the `permiss
     },
     "cache": {
       "reason": "To cache API responses and reduce rate limiting"
+    },
+    "subsonicapi": {
+      "reason": "To query music library for artist and album information",
+      "allowedUsernames": ["metadata-user"],
+      "allowAdmins": false
     }
   }
 }
@@ -411,7 +416,8 @@ Each permission is represented as a key in the permissions object. The value mus
 
 - **`http`**: Requires `allowedUrls` object mapping URL patterns to allowed HTTP methods, and optional `allowLocalNetwork` boolean
 - **`websocket`**: Requires `allowedUrls` array of WebSocket URL patterns, and optional `allowLocalNetwork` boolean
-- **`config`**, **`cache`**, **`scheduler`**, **`artwork`**, **`subsonicapi`**: Only require the `reason` field
+- **`subsonicapi`**: Requires `reason` field, with optional `allowedUsernames` array and `allowAdmins` boolean for fine-grained access control
+- **`config`**, **`cache`**, **`scheduler`**, **`artwork`**: Only require the `reason` field
 
 **Security Benefits of Required Reasons:**
 
@@ -426,15 +432,15 @@ If no permissions are needed, use an empty permissions object: `"permissions": {
 
 The following permission keys correspond to host services:
 
-| Permission    | Host Service       | Description                                        | Required Fields         |
-|---------------|--------------------|----------------------------------------------------|-------------------------|
-| `http`        | HttpService        | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls` |
-| `websocket`   | WebSocketService   | Connect to and communicate via WebSockets          | `reason`, `allowedUrls` |
-| `cache`       | CacheService       | Store and retrieve cached data with TTL            | `reason`                |
-| `config`      | ConfigService      | Access Navidrome configuration values              | `reason`                |
-| `scheduler`   | SchedulerService   | Schedule one-time and recurring tasks              | `reason`                |
-| `artwork`     | ArtworkService     | Generate public URLs for artwork images            | `reason`                |
-| `subsonicapi` | SubsonicAPIService | Access Navidrome's Subsonic API endpoints          | `reason`                |
+| Permission    | Host Service       | Description                                        | Required Fields                                       |
+|---------------|--------------------|----------------------------------------------------|-------------------------------------------------------|
+| `http`        | HttpService        | Make HTTP requests (GET, POST, PUT, DELETE, etc..) | `reason`, `allowedUrls`                               |
+| `websocket`   | WebSocketService   | Connect to and communicate via WebSockets          | `reason`, `allowedUrls`                               |
+| `cache`       | CacheService       | Store and retrieve cached data with TTL            | `reason`                                              |
+| `config`      | ConfigService      | Access Navidrome configuration values              | `reason`                                              |
+| `scheduler`   | SchedulerService   | Schedule one-time and recurring tasks              | `reason`                                              |
+| `artwork`     | ArtworkService     | Generate public URLs for artwork images            | `reason`                                              |
+| `subsonicapi` | SubsonicAPIService | Access Navidrome's Subsonic API endpoints          | `reason`, optional: `allowedUsernames`, `allowAdmins` |
 
 #### HTTP Permission Structure
 
@@ -487,6 +493,80 @@ WebSocket permissions require explicit URL whitelisting:
 - `reason` (required): Explanation of why WebSocket access is needed
 - `allowedUrls` (required): Array of WebSocket URL patterns (must start with `ws://` or `wss://`)
 - `allowLocalNetwork` (optional, default false): Whether to allow connections to localhost/private IPs
+
+#### SubsonicAPI Permission Structure
+
+SubsonicAPI permissions control which users plugins can access Navidrome's Subsonic API as, providing fine-grained security controls:
+
+```json
+{
+  "subsonicapi": {
+    "reason": "To query music library data for recommendation engine",
+    "allowedUsernames": ["plugin-user", "readonly-user"],
+    "allowAdmins": false
+  }
+}
+```
+
+**Fields:**
+
+- `reason` (required): Explanation of why SubsonicAPI access is needed
+- `allowedUsernames` (optional): Array of specific usernames the plugin is allowed to use. If empty or omitted, any username can be used
+- `allowAdmins` (optional, default false): Whether the plugin can make API calls using admin user accounts
+
+**Security Model:**
+
+The SubsonicAPI service enforces strict user-based access controls:
+
+- **Username Validation**: The plugin must provide a valid `u` (username) parameter in all API calls
+- **User Context**: All API responses are filtered based on the specified user's permissions and library access
+- **Admin Protection**: By default, plugins cannot use admin accounts for API calls to prevent privilege escalation
+- **Username Restrictions**: When `allowedUsernames` is specified, only those users can be used
+
+**Common Permission Patterns:**
+
+```jsonc
+// Allow any non-admin user (most permissive)
+{
+  "subsonicapi": {
+    "reason": "To search music library for metadata enhancement",
+    "allowAdmins": false
+  }
+}
+
+// Allow only specific users (most secure)
+{
+  "subsonicapi": {
+    "reason": "To access playlists for synchronization with external service",
+    "allowedUsernames": ["sync-user"],
+    "allowAdmins": false
+  }
+}
+
+// Allow admin users (use with caution)
+{
+  "subsonicapi": {
+    "reason": "To perform administrative tasks like library statistics",
+    "allowAdmins": true
+  }
+}
+
+// Restrict to specific users but allow admins
+{
+  "subsonicapi": {
+    "reason": "To backup playlists for authorized users only",
+    "allowedUsernames": ["backup-admin", "user1", "user2"],
+    "allowAdmins": true
+  }
+}
+```
+
+**Important Notes:**
+
+- Username matching is case-insensitive
+- If `allowedUsernames` is empty or omitted, any username can be used (subject to `allowAdmins` setting)
+- Admin restriction (`allowAdmins: false`) is checked after username validation
+- Invalid or non-existent usernames will result in API call errors
 
 ### Permission Validation
 
