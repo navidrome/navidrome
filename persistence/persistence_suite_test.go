@@ -48,6 +48,8 @@ func mf(mf model.MediaFile) model.MediaFile {
 
 func al(al model.Album) model.Album {
 	al.LibraryID = 1
+	al.LibraryPath = "music"
+	al.LibraryName = "Music Library"
 	al.Discs = model.Discs{}
 	al.Tags = model.Tags{}
 	al.Participants = model.Participants{}
